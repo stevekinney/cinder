@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Wrapper to call Bun-based post-checkout hook
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+bun "$SCRIPT_DIR/../scripts/husky/post-checkout.ts" "$@"
