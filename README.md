@@ -2,7 +2,7 @@
 
 A Svelte 5 design system.
 
-**Phase 1 status**: the plugin + packaging contract + one example component (`Button`) are in place. Components from `../weft` and `../depict` get ported in Phase 2, the playground lands in Phase 3, static-analysis-driven controls in Phase 4. See `~/.claude/plans/svelte-5-we-can-ethereal-hedgehog.md` for the full multi-phase plan.
+**Phase 1 status**: the plugin + packaging contract + one example component (`Button`) are in place. Components from upstream design-system work get ported in Phase 2, the playground lands in Phase 3, static-analysis-driven controls in Phase 4.
 
 ## Consuming cinder
 

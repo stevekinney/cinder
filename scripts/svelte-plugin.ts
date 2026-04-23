@@ -1,5 +1,5 @@
 import type { BunPlugin } from 'bun';
-import { compile } from 'svelte/compiler';
+import { compile, compileModule } from 'svelte/compiler';
 
 type GenerationTarget = 'client' | 'server';
 
@@ -9,6 +9,8 @@ type GenerationTarget = 'client' | 'server';
  * - `generate`: chooses client-side or server-side rendering output.
  * - Rejects any component that carries a `<style>` block. Styles belong in
  *   `src/styles/` so the design system has a single CSS cascade surface.
+ * - Compiles `.svelte.js` / `.svelte.ts` rune modules via `compileModule` so libraries
+ *   like `@testing-library/svelte-core` that use runes in plain modules work at runtime.
  */
 export function sveltePlugin(
   options: { generate: GenerationTarget } = { generate: 'client' },
@@ -29,6 +31,16 @@ export function sveltePlugin(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );
         }
+        return { contents: compileResult.js.code, loader: 'js' };
+      });
+
+      builder.onLoad({ filter: /\.svelte\.(js|ts)$/ }, async ({ path }) => {
+        const source = await Bun.file(path).text();
+        const compileResult = compileModule(source, {
+          filename: path,
+          generate: options.generate,
+          dev: Bun.env.NODE_ENV !== 'production',
+        });
         return { contents: compileResult.js.code, loader: 'js' };
       });
     },

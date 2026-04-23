@@ -19,21 +19,27 @@ describe('svelte plugin', () => {
       onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
     };
 
+    // Plugin registers multiple onLoad handlers (`.svelte` for components, `.svelte.(js|ts)`
+    // for rune modules). Capture the one whose filter matches our `.svelte` fixture path.
     let registeredLoadHandler: LoadHandler | undefined;
     const builderStub: MinimalSetupBuilder = {
-      onLoad(_filter, handler) {
-        registeredLoadHandler = handler;
+      onLoad(filter, handler) {
+        if (filter.filter.test('fixture.svelte') && !filter.filter.test('fixture.svelte.ts')) {
+          registeredLoadHandler = handler;
+        }
       },
     };
     // The real builder has more surface but the plugin only calls onLoad.
     plugin.setup(builderStub as Parameters<typeof plugin.setup>[0]);
 
-    if (!registeredLoadHandler) throw new Error('plugin did not register onLoad');
+    if (!registeredLoadHandler) {
+      throw new Error('plugin did not register the .svelte onLoad handler');
+    }
 
     const fixturePath = `${import.meta.dir}/.forbidden-style-fixture.svelte`;
     await Bun.write(
       fixturePath,
-      `<script>let x = 1;</script><p>{x}</p><style>p { color: red; }</style>`,
+      `<p class="sample">hi</p>\n<style>\n.sample { color: tomato; }\n</style>\n`,
     );
 
     try {
