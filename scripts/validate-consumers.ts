@@ -34,12 +34,20 @@ function fail(message: string): never {
 }
 
 let nodeBinaryPath = '';
+const tarBinaryPath = Bun.which('tar');
+
+function ensureSupportedPlatform(): void {
+  if (process.platform !== 'win32') return;
+  fail(
+    'validate:consumer currently supports macOS and Linux only. Phase 1 still shells out to Unix tooling and does not yet implement a Windows-specific fixture/runtime strategy.',
+  );
+}
 
 /**
  * Resolve a real Node binary (not Bun's `bun-node-*` shim) to execute the node-consumer
- * fixture. Prefer the user's PATH so GitHub Actions, nvm, and asdf installs work, but reject
- * Bun's `bun-node-*` shim and obvious temporary-directory paths so a poisoned PATH cannot
- * silently redirect the validator to the wrong binary.
+ * fixture. Prefer the user's PATH so GitHub Actions, nvm, and asdf installs work, then fall
+ * back to common macOS/Linux locations. Reject Bun's `bun-node-*` shim and obvious
+ * temporary-directory paths so a poisoned PATH cannot silently redirect the validator.
  */
 const ALLOWED_NODE_DIRECTORIES = [
   '/usr/local/bin',
@@ -153,11 +161,24 @@ const tarballExpectations: TarballExpectations = {
 
 async function inspectTarball(): Promise<void> {
   process.stdout.write('[validate-consumers] step 3: inspecting tarball…\n');
+  if (tarBinaryPath === null) {
+    fail('tar is required to inspect the packed tarball. Install a tar CLI and re-run.');
+  }
   // Bun's $ passes `tarballFilePath` as a single argv value, not interpolated into a shell
   // string, so it can't be split on whitespace or interpreted as flags. BSD tar (macOS) doesn't
   // accept `--` as end-of-options the way GNU tar does, so omitting it is correct here.
-  const listing = await $`tar -tzf ${tarballFilePath}`.text();
-  const entries = listing.split('\n').filter((entry) => entry.length > 0);
+  const listingResult = await $`${tarBinaryPath} -tzf ${tarballFilePath}`
+    .cwd(repositoryRoot)
+    .nothrow();
+  if (listingResult.exitCode !== 0) {
+    fail(
+      `tar failed while listing ${tarballFileName}:\nstdout: ${listingResult.stdout.toString()}\nstderr: ${listingResult.stderr.toString()}`,
+    );
+  }
+  const entries = listingResult.stdout
+    .toString()
+    .split('\n')
+    .filter((entry) => entry.length > 0);
 
   const missingEntries = tarballExpectations.required.filter(
     (required) => !entries.includes(required),
@@ -359,6 +380,7 @@ async function runNodeFixture(): Promise<void> {
   }
 }
 
+ensureSupportedPlatform();
 await ensureNodeOnPath();
 await runBuild();
 await packTarball();
