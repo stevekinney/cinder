@@ -18,8 +18,7 @@ if (isContinuousIntegration()) {
 
 header('Post-merge hook');
 
-const changedList =
-  await $`git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD`.text();
+const changedList = await $`git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD`.text();
 const changed = changedList.split('\n').filter(Boolean);
 
 const has = (f: string) => changed.includes(f);

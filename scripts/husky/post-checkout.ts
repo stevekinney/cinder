@@ -33,8 +33,7 @@ if (lockChanged) {
   try {
     await $`bun install`;
     success('Dependencies installed');
-    const stat =
-      await $`git diff --stat ${prevHead}..${newHead} -- package.json bun.lock`.text();
+    const stat = await $`git diff --stat ${prevHead}..${newHead} -- package.json bun.lock`.text();
     await Bun.write(Bun.stdout, stat);
   } catch {
     warning('Failed to install dependencies — run bun install manually');

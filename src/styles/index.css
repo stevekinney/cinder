@@ -1,0 +1,6 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@import './tokens.css' layer(cinder.tokens);
+@import './foundation.css' layer(cinder.foundation);
+@import './components.css' layer(cinder.components);
+@import './utilities.css' layer(cinder.utilities);
