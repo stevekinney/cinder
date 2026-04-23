@@ -19,8 +19,8 @@ export function setupHappyDom(): void {
   const happyWindow = new Window();
   const target = globalThis as Global;
 
-  // Copy every enumerable property (DOM globals: document, Node, Element, MouseEvent, etc.)
-  // from the happy-dom Window onto Node's globalThis. Skip properties that already exist on
+  // Copy each own property defined on the happy-dom Window (DOM globals: document, Node,
+  // Element, MouseEvent, etc.) onto Node's globalThis. Skip properties that already exist on
   // globalThis (e.g., `fetch`, `URL`) so we don't clobber Bun's own implementations.
   for (const key of Object.getOwnPropertyNames(happyWindow)) {
     if (key in target) continue;

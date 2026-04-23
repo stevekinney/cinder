@@ -1,5 +1,5 @@
 import { $, Glob } from 'bun';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,10 +37,9 @@ let nodeBinaryPath = '';
 
 /**
  * Resolve a real Node binary (not Bun's `bun-node-*` shim) to execute the node-consumer
- * fixture. Only accept binaries from a small allowlist of standard system locations so a
- * poisoned PATH entry (`PATH=/tmp/evil:...`) cannot trick the validator into executing an
- * attacker-controlled `node`. This runs in dev + CI, not against user input, but the
- * defense-in-depth is cheap and the failure mode is loud.
+ * fixture. Prefer the user's PATH so GitHub Actions, nvm, and asdf installs work, but reject
+ * Bun's `bun-node-*` shim and obvious temporary-directory paths so a poisoned PATH cannot
+ * silently redirect the validator to the wrong binary.
  */
 const ALLOWED_NODE_DIRECTORIES = [
   '/usr/local/bin',
@@ -49,19 +48,43 @@ const ALLOWED_NODE_DIRECTORIES = [
   '/opt/local/bin',
 ];
 
+const DISALLOWED_NODE_DIRECTORY_PREFIXES = ['/tmp/', '/private/tmp/', '/var/tmp/'];
+
+function resolveUsableNodeBinaryPath(candidatePath: string): string | null {
+  if (!existsSync(candidatePath)) return null;
+  const resolvedPath = realpathSync(candidatePath);
+  if (resolvedPath.includes('bun-node')) return null;
+  if (
+    DISALLOWED_NODE_DIRECTORY_PREFIXES.some(
+      (directoryPrefix) =>
+        resolvedPath === directoryPrefix.slice(0, -1) || resolvedPath.startsWith(directoryPrefix),
+    )
+  ) {
+    return null;
+  }
+  const probe = Bun.spawnSync([resolvedPath, '--version']);
+  if (probe.exitCode !== 0) return null;
+  const version = probe.stdout.toString().trim();
+  const majorVersion = /^v(\d+)\./.exec(version)?.[1];
+  if (majorVersion === undefined || Number(majorVersion) < 22) return null;
+  return resolvedPath;
+}
+
 function resolveRealNodeBinary(): string {
+  const pathCandidate = Bun.which('node');
+  if (pathCandidate !== null) {
+    const resolvedPathCandidate = resolveUsableNodeBinaryPath(pathCandidate);
+    if (resolvedPathCandidate !== null) return resolvedPathCandidate;
+  }
+
   for (const directory of ALLOWED_NODE_DIRECTORIES) {
-    const candidatePath = join(directory, 'node');
-    if (!existsSync(candidatePath)) continue;
-    if (candidatePath.includes('bun-node')) continue;
-    const probe = Bun.spawnSync([candidatePath, '--version']);
-    if (probe.exitCode === 0) return candidatePath;
+    const resolvedPathCandidate = resolveUsableNodeBinaryPath(join(directory, 'node'));
+    if (resolvedPathCandidate !== null) return resolvedPathCandidate;
   }
   fail(
-    'Node is required in a standard system directory (/usr/local/bin, /usr/bin, /opt/homebrew/bin, /opt/local/bin) for the node-consumer fixture.\n' +
-      '  Install Node 22+ in one of those locations and re-run. Phase 1 verifies the "node"\n' +
-      '  export condition under real Node, not Bun, and uses an allowlist of standard system\n' +
-      '  directories to guard against a poisoned PATH in dev or CI environments.',
+    'Node is required on PATH or in a standard system directory (/usr/local/bin, /usr/bin, /opt/homebrew/bin, /opt/local/bin) for the node-consumer fixture.\n' +
+      '  Install Node 22+ and re-run. Phase 1 verifies the "node" export condition under real\n' +
+      '  Node, not Bun, so Bun shims and temporary-directory PATH entries are rejected.',
   );
 }
 
@@ -96,7 +119,11 @@ async function packTarball(): Promise<void> {
   if (!existsSync(tarballFilePath)) fail(`Tarball not at ${tarballFilePath} after pack.`);
 }
 
-type TarballExpectations = { required: string[]; forbidden: string[] };
+type TarballExpectations = {
+  required: string[];
+  forbiddenPatterns: RegExp[];
+  forbiddenPrefixes: string[];
+};
 
 const tarballExpectations: TarballExpectations = {
   required: [
@@ -114,7 +141,8 @@ const tarballExpectations: TarballExpectations = {
     'package/dist/components/button.svelte.d.ts',
     'package/dist/server/index.js',
   ],
-  forbidden: [
+  forbiddenPatterns: [/\.(test|spec)\.ts$/],
+  forbiddenPrefixes: [
     'package/fixtures/',
     'package/tmp/',
     'package/dist/client/',
@@ -138,9 +166,14 @@ async function inspectTarball(): Promise<void> {
     fail(`Tarball missing required entries:\n  ${missingEntries.join('\n  ')}`);
   }
 
-  const leakedEntries = tarballExpectations.forbidden
-    .map((forbiddenPrefix) => entries.filter((entry) => entry.startsWith(forbiddenPrefix)))
-    .flat();
+  const leakedEntries = [
+    ...tarballExpectations.forbiddenPrefixes.flatMap((forbiddenPrefix) =>
+      entries.filter((entry) => entry.startsWith(forbiddenPrefix)),
+    ),
+    ...tarballExpectations.forbiddenPatterns.flatMap((forbiddenPattern) =>
+      entries.filter((entry) => forbiddenPattern.test(entry)),
+    ),
+  ];
   if (leakedEntries.length) {
     fail(`Tarball contains forbidden entries:\n  ${leakedEntries.join('\n  ')}`);
   }

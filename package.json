@@ -24,9 +24,9 @@
   "files": [
     "dist",
     "src/index.ts",
-    "src/components",
-    "src/styles",
-    "src/utilities",
+    "src/components/**/*.svelte",
+    "src/styles/**/*.css",
+    "src/utilities/class-names.ts",
     "README.md"
   ],
   "scripts": {
@@ -41,7 +41,7 @@
     "playground": "echo 'Playground lands in Phase 3a.' && exit 0",
     "prepare": "husky",
     "prepublishOnly": "bun run validate && bun run build",
-    "start": "bun run src/index.ts",
+    "start": "echo 'No direct runtime start entrypoint is configured for this package.' && exit 1",
     "test": "bun test --conditions browser",
     "test:coverage": "bun test --conditions browser --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --tsconfig tsconfig.json --threshold error",
