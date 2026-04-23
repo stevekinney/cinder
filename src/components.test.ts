@@ -50,6 +50,47 @@ describe('svelte plugin', () => {
       await Bun.file(fixturePath).delete();
     }
   });
+
+  test('compiles .svelte.ts rune modules via compileModule', async () => {
+    const plugin = sveltePlugin({ generate: 'client' });
+    type LoadArguments = { path: string };
+    type LoadResult = { contents: string; loader: string };
+    type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
+    type MinimalSetupBuilder = {
+      onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
+    };
+
+    // Capture the `.svelte.(js|ts)` handler specifically (not the `.svelte` one).
+    let registeredLoadHandler: LoadHandler | undefined;
+    const builderStub: MinimalSetupBuilder = {
+      onLoad(filter, handler) {
+        if (filter.filter.test('fixture.svelte.ts')) {
+          registeredLoadHandler = handler;
+        }
+      },
+    };
+    plugin.setup(builderStub as Parameters<typeof plugin.setup>[0]);
+
+    if (!registeredLoadHandler) {
+      throw new Error('plugin did not register the .svelte.(js|ts) onLoad handler');
+    }
+
+    const fixturePath = `${import.meta.dir}/.rune-module-fixture.svelte.ts`;
+    await Bun.write(
+      fixturePath,
+      `export class Counter {\n  count = $state(0);\n  increment() { this.count += 1; }\n}\n`,
+    );
+
+    try {
+      const result = await registeredLoadHandler({ path: fixturePath });
+      expect(result.loader).toBe('js');
+      // compileModule should transform `$state(0)` into Svelte's runtime helpers.
+      expect(result.contents).toContain('Counter');
+      expect(result.contents.length).toBeGreaterThan(0);
+    } finally {
+      await Bun.file(fixturePath).delete();
+    }
+  });
 });
 
 describe('component AST', () => {

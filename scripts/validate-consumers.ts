@@ -116,7 +116,13 @@ const tarballExpectations: TarballExpectations = {
     'package/dist/components/button.svelte.d.ts',
     'package/dist/server/index.js',
   ],
-  forbidden: ['package/fixtures/', 'package/tmp/', 'package/dist/client/', 'package/scripts/'],
+  forbidden: [
+    'package/fixtures/',
+    'package/tmp/',
+    'package/dist/client/',
+    'package/dist/test/',
+    'package/scripts/',
+  ],
 };
 
 async function inspectTarball(): Promise<void> {

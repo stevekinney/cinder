@@ -72,15 +72,35 @@ Live-browser cascade verification (override-wins-over-internal) is explicitly a 
 ```bash
 bun install                 # install dependencies
 bun run build               # Bun.build server + svelte2tsx .d.ts + tsc declarations → dist/
-bun run typecheck           # tsc --noEmit + svelte-check
+bun run typecheck           # tsc --noEmit (scripts + plain TS) + svelte-check (components)
 bun run lint                # oxlint
-bun run test                # bun test (plugin smoke + AST enforcement)
+bun run test                # bun test --conditions browser (see "Writing component tests")
 bun run validate:workflow   # seed isolated tmp repo, run real lint-staged config on .svelte/.css/.ts
 bun run validate:consumer   # build → pack → tarball inspection → sveltekit-consumer + node-consumer
 bun run validate            # lint + typecheck + test + validate:workflow + validate:consumer
 ```
 
 The three validation layers are orthogonal: layer 1 (`bun test`) catches plugin / AST regressions in under a second; layer 2 (`validate:workflow`) catches config drift that would break commits; layer 3 (`validate:consumer`) catches packaging breakage (bad exports, missing files, declaration mismatches, SSR failures) by testing a packed tarball against two real consumer projects.
+
+> [!IMPORTANT]
+> Always run tests via `bun run test`, not `bun test` directly. The script passes `--conditions browser` so Svelte's `package.json` exports resolve to `index-client.js` (which defines `mount()`) instead of `index-server.js` (which throws `lifecycle_function_unavailable: mount(...) is not available on the server`). Bun doesn't yet honor `conditions` under `[test]` in `bunfig.toml`, so the flag has to live on the CLI invocation.
+
+### Writing component tests
+
+New component tests follow the pattern in `src/components/button.test.ts`:
+
+```typescript
+/// <reference lib="dom" />
+import { describe, expect, test } from 'bun:test';
+
+import { setupHappyDom } from '../test/happy-dom.ts';
+setupHappyDom(); // MUST run before @testing-library/svelte is imported
+
+const { render } = await import('@testing-library/svelte');
+const { default: Button } = await import('./button.svelte');
+```
+
+`setupHappyDom()` installs happy-dom's `Window` globals on Node's `globalThis` so testing-library can mount components. The dynamic `await import(...)` is required: if you move it above `setupHappyDom()`, testing-library's module-init sees `document === undefined` and `render()` fails with a confusing error that doesn't mention happy-dom.
 
 ### Running `.svelte`-importing scripts with `bun run`
 
