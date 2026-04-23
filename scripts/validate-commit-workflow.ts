@@ -17,6 +17,8 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isObjectRecord } from './validation-utilities.ts';
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, '..');
 const simulationDirectory = join(repositoryRoot, `tmp/commit-sim-${randomUUID()}`);
@@ -45,10 +47,6 @@ function isStringArrayRecord(value: unknown): value is Record<string, string[]> 
   return Object.values(value).every(
     (entry) => Array.isArray(entry) && entry.every((item) => typeof item === 'string'),
   );
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**

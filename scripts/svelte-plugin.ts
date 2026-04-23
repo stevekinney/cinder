@@ -54,5 +54,3 @@ export function sveltePlugin(
     },
   };
 }
-
-export default sveltePlugin;

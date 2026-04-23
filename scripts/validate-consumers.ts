@@ -1,15 +1,13 @@
 import { $, Glob } from 'bun';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(scriptDirectory, '..');
+import { isObjectRecord } from './validation-utilities.ts';
 
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolvePath(scriptDirectory, '..');
 
 type PackageIdentity = { name: string; version: string };
 
