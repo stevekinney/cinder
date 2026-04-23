@@ -14,7 +14,7 @@
     {
       "label": "Test",
       "type": "shell",
-      "command": "bun test",
+      "command": "bun run test",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -24,7 +24,7 @@
     {
       "label": "Test (Watch)",
       "type": "shell",
-      "command": "bun test --watch",
+      "command": "bun run test --watch",
       "isBackground": true,
       "problemMatcher": []
     },

@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
-    "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
+    "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
     "dev": "echo 'No dev server in Phase 1. Use `bun run test --watch` for component feedback, or wait for the playground in Phase 3a.' && exit 1",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",

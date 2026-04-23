@@ -75,6 +75,7 @@ bun run build               # Bun.build server + svelte2tsx .d.ts + tsc declarat
 bun run typecheck           # tsc --noEmit (scripts + plain TS) + svelte-check (components)
 bun run lint                # oxlint
 bun run test                # bun test --conditions browser (see "Writing component tests")
+bun run test:coverage       # same as above with --coverage
 bun run validate:workflow   # seed isolated tmp repo, run real lint-staged config on .svelte/.css/.ts
 bun run validate:consumer   # build → pack → tarball inspection → sveltekit-consumer + node-consumer
 bun run validate            # lint + typecheck + test + validate:workflow + validate:consumer
@@ -102,6 +103,8 @@ const { default: Button } = await import('./button.svelte');
 
 `setupHappyDom()` installs happy-dom's `Window` globals on Node's `globalThis` so testing-library can mount components. The dynamic `await import(...)` is required: if you move it above `setupHappyDom()`, testing-library's module-init sees `document === undefined` and `render()` fails with a confusing error that doesn't mention happy-dom.
 
+Component tests live flat at `src/components/*.test.ts`, alongside the `.svelte` sources. The `../test/happy-dom.ts` path above assumes that depth — nested test directories need a longer relative path.
+
 ### Running `.svelte`-importing scripts with `bun run`
 
 Only `bun test` auto-loads the Svelte plugin (via `[test] preload` in `bunfig.toml`). Ad-hoc scripts under `bun run` need the flag explicitly:
@@ -123,6 +126,7 @@ Component files live as flat `.svelte` under `src/components/`. Every component 
 - Carry **no `<style>` block**. The plugin throws at compile time if it sees one; an AST test catches attempts to work around the plugin.
 - Style via `.cinder-<name>` in a dedicated partial under `src/styles/components/<name>.css` (aggregated into `components.css`).
 - Merge a `class?: string` prop via `classNames()` from `src/utilities/class-names.ts`.
+- For build-mode guards use `import { DEV, BROWSER } from 'esm-env'`. Do not use `Bun.env.NODE_ENV`, `process.env.NODE_ENV`, or `import.meta.env.DEV` in component source — they don't replace correctly through Svelte's compiler or the `"svelte"` export condition, and components that reach for `Bun.env` throw `ReferenceError` in a Vite-compiled browser consumer.
 
 ## Packaging layout
 

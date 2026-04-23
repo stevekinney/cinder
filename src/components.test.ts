@@ -84,9 +84,11 @@ describe('svelte plugin', () => {
     try {
       const result = await registeredLoadHandler({ path: fixturePath });
       expect(result.loader).toBe('js');
-      // compileModule should transform `$state(0)` into Svelte's runtime helpers.
-      expect(result.contents).toContain('Counter');
-      expect(result.contents.length).toBeGreaterThan(0);
+      // Prove the rune was actually compiled, not that the source was returned unchanged.
+      // compileModule replaces `$state(0)` with Svelte's runtime helpers (`$.state(...)`, etc.)
+      // and drops the rune keyword from the emitted code.
+      expect(result.contents).toContain('$.state');
+      expect(result.contents).not.toContain('$state(');
     } finally {
       await Bun.file(fixturePath).delete();
     }

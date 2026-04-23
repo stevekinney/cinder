@@ -137,8 +137,13 @@
   // Dev-mode guard: TypeScript's `label: string` lets `""` through. Warn when the button
   // would render without an accessible name so the bug surfaces in local dev. `DEV` from
   // `esm-env` is a bundler-replaced constant: `true` in dev builds, `false` in prod — so
-  // the whole branch is tree-shaken in production. Safe in Vite, SvelteKit, Bun, and Node.
-  if (DEV) {
+  // the whole `$effect` body is tree-shaken in production. Safe in Vite, SvelteKit, Bun, Node.
+  //
+  // The check runs reactively via `$effect` (not once at mount) so prop changes after mount
+  // also surface the issue — e.g., a consumer binding `label` to a reactive source that flips
+  // to `""` mid-session will warn at the point the problem shows up.
+  $effect(() => {
+    if (!DEV) return;
     const hasLabel = typeof label === 'string' && label.trim().length > 0;
     const hasChildren = Boolean(children);
     if (!hasLabel && !hasChildren) {
@@ -146,7 +151,7 @@
         '[cinder/Button] rendered without an accessible name — pass a non-empty `label` or `children`.',
       );
     }
-  }
+  });
 </script>
 
 {#if href !== undefined}

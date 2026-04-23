@@ -2,10 +2,14 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
+
+// setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
+// reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
+// so we register happy-dom's globals first and then dynamic-import testing-library below.
+// If you flip this order the error doesn't mention happy-dom — it surfaces as a cryptic
+// "document is not defined" inside testing-library's internals.
 setupHappyDom();
 
-// Testing library imports have to come after the DOM is registered so their module-init
-// references `document` / `window` pick up the happy-dom globals.
 const { render } = await import('@testing-library/svelte');
 const { default: Button } = await import('./button.svelte');
 
