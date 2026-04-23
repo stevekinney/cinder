@@ -44,7 +44,7 @@
     "start": "bun run src/index.ts",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
-    "typecheck": "bunx svelte-check --tsconfig tsconfig.json --threshold error",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run validate:workflow && bun run validate:consumer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",

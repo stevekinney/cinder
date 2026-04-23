@@ -1,5 +1,5 @@
 /* Screen-reader only — visually hidden but announced by assistive technology. */
-.sr-only {
+.cinder-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;

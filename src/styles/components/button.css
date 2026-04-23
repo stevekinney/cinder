@@ -1,0 +1,201 @@
+/* ========================================
+ * BUTTON
+ * ======================================== */
+
+.cinder-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cinder-space-1-5);
+  white-space: nowrap;
+  text-decoration: none;
+
+  font-weight: var(--cinder-font-medium);
+  font-size: var(--cinder-text-sm);
+  line-height: 1;
+
+  background: var(--cinder-button-bg);
+  color: var(--cinder-button-fg);
+  border: 1px solid var(--cinder-button-border);
+  border-radius: var(--cinder-button-radius);
+
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-button:hover {
+  text-decoration: none;
+}
+
+.cinder-button:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-button-ring, var(--cinder-ring-color));
+}
+
+/* Disabled — matches both native :disabled and aria-disabled for link variant. */
+.cinder-button:disabled,
+.cinder-button[aria-disabled='true'] {
+  cursor: not-allowed;
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+  opacity: 0.6;
+}
+
+/* Loading state overrides disabled cursor + resets opacity so the spinner is visible. */
+.cinder-button[data-cinder-loading] {
+  cursor: wait;
+  opacity: 1;
+  position: relative;
+}
+
+/* Spinner — visible feedback for sighted users while `aria-busy` informs assistive tech. */
+.cinder-button[data-cinder-loading]::after {
+  content: '';
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: cinder-button-spin 0.6s linear infinite;
+  margin-inline-start: var(--cinder-space-1-5);
+}
+
+@keyframes cinder-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Full-width modifier */
+.cinder-button[data-cinder-full-width] {
+  width: 100%;
+}
+
+/* ----------------------------------------
+ * Size variants
+ * ---------------------------------------- */
+
+.cinder-button[data-cinder-size='xs'] {
+  font-size: var(--cinder-button-font-size-xs);
+  padding: var(--cinder-button-padding-y-xs) var(--cinder-button-padding-x-xs);
+  min-height: var(--cinder-button-height-xs);
+  border-radius: var(--cinder-button-radius-xs);
+}
+
+.cinder-button[data-cinder-size='sm'] {
+  font-size: var(--cinder-button-font-size-sm);
+  padding: var(--cinder-button-padding-y-sm) var(--cinder-button-padding-x-sm);
+  min-height: var(--cinder-button-height-sm);
+  border-radius: var(--cinder-button-radius-sm);
+}
+
+.cinder-button[data-cinder-size='md'] {
+  font-size: var(--cinder-button-font-size-md);
+  padding: var(--cinder-button-padding-y-md) var(--cinder-button-padding-x-md);
+  min-height: var(--cinder-button-height-md);
+  border-radius: var(--cinder-button-radius-md);
+}
+
+.cinder-button[data-cinder-size='lg'] {
+  font-size: var(--cinder-button-font-size-lg);
+  padding: var(--cinder-button-padding-y-lg) var(--cinder-button-padding-x-lg);
+  min-height: var(--cinder-button-height-lg);
+  border-radius: var(--cinder-button-radius-lg);
+}
+
+/* ----------------------------------------
+ * Color variants
+ * ---------------------------------------- */
+
+.cinder-button[data-cinder-variant='primary'] {
+  --_cinder-button-ring: var(--cinder-accent);
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-contrast);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-accent-hover);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-accent-active);
+}
+
+.cinder-button[data-cinder-variant='primary']:disabled,
+.cinder-button[data-cinder-variant='primary'][aria-disabled='true'] {
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-button[data-cinder-variant='secondary'] {
+  background: var(--cinder-surface-raised);
+  color: var(--cinder-text);
+  border-color: var(--cinder-border);
+}
+
+.cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-hover);
+}
+
+.cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='danger'] {
+  --_cinder-button-ring: var(--cinder-danger);
+  background: var(--cinder-danger);
+  color: var(--cinder-danger-contrast);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-danger-hover);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-danger-active);
+}
+
+.cinder-button[data-cinder-variant='danger']:disabled,
+.cinder-button[data-cinder-variant='danger'][aria-disabled='true'] {
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-button[data-cinder-variant='ghost'] {
+  background: transparent;
+  color: var(--cinder-text-muted);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-hover);
+  color: var(--cinder-text);
+}
+
+.cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='ghost']:disabled,
+.cinder-button[data-cinder-variant='ghost'][aria-disabled='true'] {
+  background: transparent;
+  color: var(--cinder-text-disabled);
+  border-color: transparent;
+  opacity: 0.6;
+}

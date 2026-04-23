@@ -8,81 +8,93 @@
   /** Size of the button. */
   export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
-  type SharedProps = {
+  type SharedBase = {
     /** Visual style. */
     variant?: ButtonVariant;
     /** Size of the button. */
     size?: ButtonSize;
     /** Expand to container width. */
     fullWidth?: boolean;
-    /** Disable the button and show a spinner if styled for it. */
+    /** Disable the button and show a spinner. */
     loading?: boolean;
-    /** Slot content (takes precedence over `label`). */
-    children?: Snippet;
-    /** Fallback text when `children` is not provided. */
-    label?: string;
     /** Custom class merged with `.cinder-button`. */
     class?: string;
   };
 
-  type ButtonOnlyProps = SharedProps & Omit<HTMLButtonAttributes, 'class'> & { href?: undefined };
+  // At least one of `label` or `children` must be provided so the button has an accessible name.
+  type WithLabel = { label: string; children?: Snippet };
+  type WithChildren = { label?: string; children: Snippet };
+  type SharedProps = SharedBase & (WithLabel | WithChildren);
 
+  type ButtonOnlyProps = SharedProps & Omit<HTMLButtonAttributes, 'class'> & { href?: undefined };
   type LinkButtonProps = SharedProps & Omit<HTMLAnchorAttributes, 'class'> & { href: string };
 
   /** Props for the Button component. */
   export type ButtonProps = ButtonOnlyProps | LinkButtonProps;
-
-  const SHARED_KEYS = new Set([
-    'variant',
-    'size',
-    'fullWidth',
-    'loading',
-    'children',
-    'label',
-    'class',
-  ]);
-
-  /** Strip component-specific props so the remainder can spread onto the native element. */
-  function nativeAttrs(props: ButtonProps): Record<string, unknown> {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(props)) {
-      if (!SHARED_KEYS.has(key)) out[key] = value;
-    }
-    return out;
-  }
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
-  const props: ButtonProps = $props();
+  // Destructured props let the Phase 4 analyzer read names + defaults mechanically.
+  // `...rest` carries native HTML attributes through; each branch casts it to the correct element's
+  // attribute type so the spread is type-safe without a runtime filter.
+  const {
+    variant = 'secondary',
+    size = 'md',
+    fullWidth = false,
+    loading = false,
+    children,
+    label,
+    class: customClassName,
+    href,
+    ...rest
+  }: ButtonProps = $props();
 
-  const variant = $derived(props.variant ?? 'secondary');
-  const size = $derived(props.size ?? 'md');
-  const fullWidth = $derived(props.fullWidth ?? false);
-  const loading = $derived(props.loading ?? false);
-  const classes = $derived(cn('cinder-button', props.class));
-  const dataAttrs = $derived({
+  const mergedClassName = $derived(classNames('cinder-button', customClassName));
+  const dataAttributes = $derived({
     'data-cinder-variant': variant,
     'data-cinder-size': size,
-    'data-cinder-full-width': fullWidth || undefined,
-    'data-cinder-loading': loading || undefined,
+    'data-cinder-full-width': fullWidth ? '' : undefined,
+    'data-cinder-loading': loading ? '' : undefined,
   });
+
+  // Narrow `rest` per branch. The union-distributed rest loses both arms' specifics; casting here
+  // is safe because the discriminant (`href !== undefined`) already selects the branch.
+  const anchorAttributes = $derived(
+    rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'tabindex'>,
+  );
+  const buttonAttributes = $derived(
+    rest as Omit<HTMLButtonAttributes, 'class' | 'type' | 'disabled'>,
+  );
+  const anchorTabIndex = $derived(
+    (rest as { tabindex?: HTMLAnchorAttributes['tabindex'] }).tabindex,
+  );
+  const buttonType = $derived((rest as { type?: HTMLButtonAttributes['type'] }).type);
+  const buttonDisabled = $derived((rest as { disabled?: boolean }).disabled ?? false);
 </script>
 
-{#if props.href !== undefined}
-  <a {...nativeAttrs(props)} class={classes} {...dataAttrs} aria-disabled={loading || undefined}>
-    {#if props.children}{@render props.children()}{:else}{props.label}{/if}
+{#if href !== undefined}
+  <a
+    {...anchorAttributes}
+    href={loading ? undefined : href}
+    tabindex={loading ? -1 : anchorTabIndex}
+    class={mergedClassName}
+    {...dataAttributes}
+    aria-disabled={loading ? 'true' : undefined}
+    aria-busy={loading ? 'true' : undefined}
+  >
+    {#if children}{@render children()}{:else}{label}{/if}
   </a>
 {:else}
   <button
-    {...nativeAttrs(props)}
-    type={props.type ?? 'button'}
-    class={classes}
-    {...dataAttrs}
-    disabled={(props.disabled ?? false) || loading}
-    aria-busy={loading || undefined}
+    {...buttonAttributes}
+    type={buttonType ?? 'button'}
+    class={mergedClassName}
+    {...dataAttributes}
+    disabled={buttonDisabled || loading}
+    aria-busy={loading ? 'true' : undefined}
   >
-    {#if props.children}{@render props.children()}{:else}{props.label}{/if}
+    {#if children}{@render children()}{:else}{label}{/if}
   </button>
 {/if}

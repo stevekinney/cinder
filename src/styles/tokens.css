@@ -115,7 +115,8 @@
   --cinder-success: light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145));
   --cinder-warning: light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75));
   --cinder-danger: light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25));
-  --cinder-danger-contrast: oklch(100% 0 0);
+  /* Text against the danger background. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it. */
+  --cinder-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
   --cinder-danger-hover: oklch(from var(--cinder-danger) calc(l - 0.08) c h);
   --cinder-danger-active: oklch(from var(--cinder-danger) calc(l - 0.15) c h);
 

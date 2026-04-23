@@ -1,73 +1,93 @@
-import { $ } from 'bun';
+import { $, Glob } from 'bun';
 import { existsSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(SCRIPT_DIR, '..');
-const TARBALL_NAME = 'cinder-0.0.1.tgz';
-const TARBALL_PATH = join(ROOT, TARBALL_NAME);
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(scriptDirectory, '..');
 
-function die(message: string): never {
+// Derive tarball name from package.json so version bumps don't silently break validation.
+function readPackageIdentity(): { name: string; version: string } {
+  const parsed: unknown = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('package.json must be a JSON object');
+  }
+  const record: Record<string, unknown> = { ...parsed } as Record<string, unknown>;
+  const name = record['name'];
+  const version = record['version'];
+  if (typeof name !== 'string' || typeof version !== 'string') {
+    throw new Error('package.json must have string `name` and `version`');
+  }
+  return { name, version };
+}
+const packageIdentity = readPackageIdentity();
+const tarballFileName = `${packageIdentity.name}-${packageIdentity.version}.tgz`;
+const tarballFilePath = join(repositoryRoot, tarballFileName);
+
+function fail(message: string): never {
   process.stderr.write(`[validate-consumers] ${message}\n`);
   process.exit(1);
 }
 
-let NODE_BIN = '';
+let nodeBinaryPath = '';
 
-function resolveRealNode(): string {
+/**
+ * Walk PATH for a `node` binary that is not one of Bun's shims. `Bun.which` prefers Bun's own
+ * `bun-node-*` shim which returns Bun's Node-compatibility runtime rather than real Node — we
+ * need real Node for the node-consumer fixture to genuinely exercise the `"node"` export
+ * condition under Node's module resolution.
+ */
+function resolveRealNodeBinary(): string {
   const pathEntries = (process.env['PATH'] ?? '').split(':');
-  for (const entry of pathEntries) {
-    const candidate = join(entry, 'node');
-    try {
-      const stat = Bun.file(candidate);
-      if (stat.size > 0 && !candidate.includes('bun-node-')) {
-        return candidate;
-      }
-    } catch {
-      // continue
-    }
+  for (const pathEntry of pathEntries) {
+    if (pathEntry.length === 0) continue;
+    const candidatePath = join(pathEntry, 'node');
+    if (candidatePath.includes('bun-node')) continue;
+    if (!existsSync(candidatePath)) continue;
+    const probe = Bun.spawnSync([candidatePath, '--version']);
+    if (probe.exitCode === 0) return candidatePath;
   }
-  die(
+  fail(
     'Node is required on PATH for the node-consumer fixture. Install Node 22+ and re-run.\n' +
       '  Phase 1 verifies the "node" export condition under real Node, not Bun.',
   );
 }
 
 async function ensureNodeOnPath(): Promise<void> {
-  NODE_BIN = resolveRealNode();
-  const versionResult = Bun.spawnSync([NODE_BIN, '--version']);
+  nodeBinaryPath = resolveRealNodeBinary();
+  const versionResult = Bun.spawnSync([nodeBinaryPath, '--version']);
   if (versionResult.exitCode !== 0) {
-    die(`Failed to run ${NODE_BIN} --version`);
+    fail(`Failed to run ${nodeBinaryPath} --version`);
   }
   const version = versionResult.stdout.toString().trim();
   const match = /^v(\d+)\./.exec(version);
-  const major = match?.[1] ? Number(match[1]) : 0;
-  if (major < 22) {
-    die(`Node >= 22 required. Found ${version}.`);
+  const majorVersion = match?.[1] ? Number(match[1]) : 0;
+  if (majorVersion < 22) {
+    fail(`Node >= 22 required. Found ${version}.`);
   }
-  process.stdout.write(`[validate-consumers] using node ${version} at ${NODE_BIN}\n`);
+  process.stdout.write(`[validate-consumers] using node ${version} at ${nodeBinaryPath}\n`);
 }
 
 async function runBuild(): Promise<void> {
   process.stdout.write('[validate-consumers] step 1: building cinder…\n');
-  const result = await $`bun run build`.cwd(ROOT).nothrow();
-  if (result.exitCode !== 0) die(`bun run build failed with exit ${result.exitCode}`);
+  const result = await $`bun run build`.cwd(repositoryRoot).nothrow();
+  if (result.exitCode !== 0) fail(`bun run build failed with exit ${result.exitCode}`);
 }
 
 async function packTarball(): Promise<void> {
-  process.stdout.write('[validate-consumers] step 2: packing tarball…\n');
-  if (existsSync(TARBALL_PATH)) {
-    await Bun.file(TARBALL_PATH).delete();
+  process.stdout.write(`[validate-consumers] step 2: packing ${tarballFileName}…\n`);
+  if (existsSync(tarballFilePath)) {
+    await Bun.file(tarballFilePath).delete();
   }
-  const result = await $`bun pm pack`.cwd(ROOT).nothrow();
-  if (result.exitCode !== 0) die(`bun pm pack failed: ${result.stderr.toString()}`);
-  if (!existsSync(TARBALL_PATH)) die(`Tarball not at ${TARBALL_PATH} after pack.`);
+  const result = await $`bun pm pack`.cwd(repositoryRoot).nothrow();
+  if (result.exitCode !== 0) fail(`bun pm pack failed: ${result.stderr.toString()}`);
+  if (!existsSync(tarballFilePath)) fail(`Tarball not at ${tarballFilePath} after pack.`);
 }
 
-type ExpectedPaths = { required: string[]; forbidden: string[] };
+type TarballExpectations = { required: string[]; forbidden: string[] };
 
-const EXPECTATIONS: ExpectedPaths = {
+const tarballExpectations: TarballExpectations = {
   required: [
     'package/package.json',
     'package/src/index.ts',
@@ -77,6 +97,7 @@ const EXPECTATIONS: ExpectedPaths = {
     'package/src/styles/tokens.css',
     'package/src/styles/foundation.css',
     'package/src/styles/components.css',
+    'package/src/styles/components/button.css',
     'package/src/styles/utilities.css',
     'package/dist/index.d.ts',
     'package/dist/components/button.svelte.d.ts',
@@ -87,121 +108,156 @@ const EXPECTATIONS: ExpectedPaths = {
 
 async function inspectTarball(): Promise<void> {
   process.stdout.write('[validate-consumers] step 3: inspecting tarball…\n');
-  const listing = await $`tar -tzf ${TARBALL_PATH}`.text();
-  const entries = listing.split('\n').filter((l) => l.length > 0);
+  // Bun's $ passes `tarballFilePath` as a single argv value, not interpolated into a shell
+  // string, so it can't be split on whitespace or interpreted as flags. BSD tar (macOS) doesn't
+  // accept `--` as end-of-options the way GNU tar does.
+  const listing = await $`tar -tzf ${tarballFilePath}`.text();
+  const entries = listing.split('\n').filter((entry) => entry.length > 0);
 
-  const missing = EXPECTATIONS.required.filter((r) => !entries.includes(r));
-  if (missing.length) {
-    die(`Tarball missing required entries:\n  ${missing.join('\n  ')}`);
+  const missingEntries = tarballExpectations.required.filter(
+    (required) => !entries.includes(required),
+  );
+  if (missingEntries.length) {
+    fail(`Tarball missing required entries:\n  ${missingEntries.join('\n  ')}`);
   }
 
-  const leaked = EXPECTATIONS.forbidden.map((f) => entries.filter((e) => e.startsWith(f))).flat();
-  if (leaked.length) {
-    die(`Tarball contains forbidden entries:\n  ${leaked.join('\n  ')}`);
+  const leakedEntries = tarballExpectations.forbidden
+    .map((forbiddenPrefix) => entries.filter((entry) => entry.startsWith(forbiddenPrefix)))
+    .flat();
+  if (leakedEntries.length) {
+    fail(`Tarball contains forbidden entries:\n  ${leakedEntries.join('\n  ')}`);
   }
+}
+
+/** Allocate an ephemeral port so concurrent CI runs don't collide on a shared one. */
+async function pickEphemeralPort(): Promise<number> {
+  return await new Promise<number>((resolve, reject) => {
+    const probeServer = createServer();
+    probeServer.once('error', reject);
+    probeServer.listen(0, '127.0.0.1', () => {
+      const address = probeServer.address();
+      if (address === null || typeof address === 'string') {
+        probeServer.close();
+        reject(new Error('unexpected server address shape'));
+        return;
+      }
+      const port = address.port;
+      probeServer.close(() => resolve(port));
+    });
+  });
 }
 
 async function runSveltekitFixture(): Promise<void> {
-  const dir = join(ROOT, 'fixtures/sveltekit-consumer');
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/sveltekit-consumer');
   process.stdout.write('[validate-consumers] step 4: sveltekit-consumer…\n');
 
-  await $`rm -rf node_modules .svelte-kit build`.cwd(dir);
-  const install = await $`bun install --no-save`.cwd(dir).nothrow();
-  if (install.exitCode !== 0) die(`sveltekit-consumer bun install failed`);
+  await $`rm -rf node_modules .svelte-kit build`.cwd(fixtureDirectory);
+  const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+  if (installResult.exitCode !== 0) fail(`sveltekit-consumer bun install failed`);
 
-  const sync = await $`bunx svelte-kit sync`.cwd(dir).nothrow();
-  if (sync.exitCode !== 0) {
-    die(`svelte-kit sync failed:\n${sync.stdout.toString()}\n${sync.stderr.toString()}`);
+  const syncResult = await $`bunx svelte-kit sync`.cwd(fixtureDirectory).nothrow();
+  if (syncResult.exitCode !== 0) {
+    fail(
+      `svelte-kit sync failed:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
+    );
   }
 
-  const check = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
-    .cwd(dir)
+  const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
+    .cwd(fixtureDirectory)
     .nothrow();
-  if (check.exitCode !== 0) {
-    die(`svelte-check failed in sveltekit-consumer:\n${check.stdout.toString()}`);
+  if (checkResult.exitCode !== 0) {
+    fail(`svelte-check failed in sveltekit-consumer:\n${checkResult.stdout.toString()}`);
   }
 
-  const build = await $`bunx vite build`.cwd(dir).nothrow();
-  if (build.exitCode !== 0) die(`vite build failed in sveltekit-consumer`);
+  const viteBuildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
+  if (viteBuildResult.exitCode !== 0) fail(`vite build failed in sveltekit-consumer`);
 
-  const builtHtmlOrCss = await findBuiltCssFile(join(dir, '.svelte-kit/output'));
-  if (!builtHtmlOrCss) die('could not find built CSS file under .svelte-kit/output');
-  const cssContent = readFileSync(builtHtmlOrCss, 'utf8');
-  if (!cssContent.includes('.cinder-button')) {
-    die(`built CSS bundle does not contain .cinder-button — check ./styles export`);
+  const combinedStylesheet = await readAllBuiltStylesheets(
+    join(fixtureDirectory, '.svelte-kit/output'),
+  );
+  if (!combinedStylesheet.includes('.cinder-button')) {
+    fail(`no built CSS file contains .cinder-button — check ./styles export`);
   }
-  if (!cssContent.includes('@layer cinder.components')) {
-    die(`built CSS bundle does not contain @layer cinder.components — @layer lost during bundling`);
+  if (!combinedStylesheet.includes('@layer cinder')) {
+    fail(`no built CSS contains @layer cinder — @layer declaration lost during bundling`);
   }
 
-  const server = Bun.spawn([NODE_BIN, 'build/index.js'], {
-    cwd: dir,
+  const httpPort = await pickEphemeralPort();
+  const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
+    cwd: fixtureDirectory,
     stdout: 'pipe',
     stderr: 'pipe',
-    env: { ...Bun.env, PORT: '4173', HOST: '127.0.0.1' },
+    env: { ...Bun.env, PORT: String(httpPort), HOST: '127.0.0.1' },
   });
 
   try {
-    await waitForUrl('http://127.0.0.1:4173/', 10_000);
-    const response = await fetch('http://127.0.0.1:4173/');
-    if (response.status !== 200) die(`fixture returned ${response.status}, want 200`);
+    await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
+    const response = await fetch(`http://127.0.0.1:${httpPort}/`);
+    if (response.status !== 200) fail(`fixture returned ${response.status}, want 200`);
     const body = await response.text();
     if (!body.includes('cinder-button')) {
-      die('fixture HTML does not contain cinder-button class');
+      fail('fixture HTML does not contain cinder-button class');
     }
   } finally {
-    server.kill();
-    await server.exited;
+    fixtureServer.kill();
+    await fixtureServer.exited;
   }
 }
 
-async function findBuiltCssFile(root: string): Promise<string | null> {
-  const result = await $`find ${root} -type f -name "*.css"`.nothrow().quiet();
-  if (result.exitCode !== 0) return null;
-  const files = result.stdout
-    .toString()
-    .split('\n')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  return files[0] ?? null;
+async function readAllBuiltStylesheets(root: string): Promise<string> {
+  const stylesheetGlob = new Glob('**/*.css');
+  const stylesheetContents: string[] = [];
+  for await (const stylesheetPath of stylesheetGlob.scan({ cwd: root, absolute: true })) {
+    stylesheetContents.push(await Bun.file(stylesheetPath).text());
+  }
+  return stylesheetContents.join('\n');
 }
 
-async function waitForUrl(url: string, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
+async function waitForUrl(
+  url: string,
+  timeoutMs: number,
+  runningServer: { exitCode: number | null },
+): Promise<void> {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    if (runningServer.exitCode !== null) {
+      fail(`server exited with code ${runningServer.exitCode} before becoming ready at ${url}`);
+    }
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(500) });
-      if (r.status === 200) return;
+      const response = await fetch(url, { signal: AbortSignal.timeout(500) });
+      if (response.status === 200) return;
     } catch {
-      // server not ready yet
+      // Not ready yet — keep polling.
     }
     await Bun.sleep(200);
   }
-  die(`timeout waiting for ${url}`);
+  fail(`timeout waiting for ${url}`);
 }
 
 async function runNodeFixture(): Promise<void> {
-  const dir = join(ROOT, 'fixtures/node-consumer');
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/node-consumer');
   process.stdout.write('[validate-consumers] step 5: node-consumer (under Node, not Bun)…\n');
 
-  await $`rm -rf node_modules dist`.cwd(dir);
-  const install = await $`bun install --no-save`.cwd(dir).nothrow();
-  if (install.exitCode !== 0) die(`node-consumer bun install failed`);
+  await $`rm -rf node_modules dist`.cwd(fixtureDirectory);
+  const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+  if (installResult.exitCode !== 0) fail(`node-consumer bun install failed`);
 
-  const build = await $`bunx tsc`.cwd(dir).nothrow();
-  if (build.exitCode !== 0) die(`tsc failed in node-consumer`);
+  const compileResult = await $`bunx tsc`.cwd(fixtureDirectory).nothrow();
+  if (compileResult.exitCode !== 0) fail(`tsc failed in node-consumer`);
 
-  const result = Bun.spawnSync([NODE_BIN, 'dist/render.js'], { cwd: dir });
-  if (result.exitCode !== 0) {
-    die(
-      `node dist/render.js exited ${result.exitCode}\n` +
-        `stdout: ${result.stdout.toString()}\n` +
-        `stderr: ${result.stderr.toString()}`,
+  const renderResult = Bun.spawnSync([nodeBinaryPath, 'dist/render.js'], {
+    cwd: fixtureDirectory,
+  });
+  if (renderResult.exitCode !== 0) {
+    fail(
+      `node dist/render.js exited ${renderResult.exitCode}\n` +
+        `stdout: ${renderResult.stdout.toString()}\n` +
+        `stderr: ${renderResult.stderr.toString()}`,
     );
   }
-  const output = result.stdout.toString();
-  if (!output.includes('cinder-button')) {
-    die(`node render output missing cinder-button class. Output:\n${output}`);
+  const renderedOutput = renderResult.stdout.toString();
+  if (!renderedOutput.includes('cinder-button')) {
+    fail(`node render output missing cinder-button class. Output:\n${renderedOutput}`);
   }
 }
 
