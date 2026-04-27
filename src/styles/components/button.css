@@ -1,0 +1,232 @@
+/* ========================================
+ * BUTTON
+ * ======================================== */
+
+.cinder-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cinder-space-1-5);
+  white-space: nowrap;
+  text-decoration: none;
+
+  font-weight: var(--cinder-font-medium);
+  font-size: var(--cinder-text-sm);
+  line-height: 1;
+
+  background: var(--cinder-button-bg);
+  color: var(--cinder-button-fg);
+  border: 1px solid var(--cinder-button-border);
+  border-radius: var(--cinder-button-radius);
+
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-button:hover {
+  text-decoration: none;
+}
+
+.cinder-button:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-button-ring, var(--cinder-ring-color));
+}
+
+/* Forced Colors Mode (Windows High Contrast, print, etc.) ignores `box-shadow`. Without this
+ * override the entire focus ring is invisible to users who rely on WHCM. ButtonText is the
+ * system color for text on buttons; it's guaranteed to contrast the button surface.
+ */
+@media (forced-colors: active) {
+  /* Larger offset in WHCM separates the focus outline from ButtonBorder, which often shares
+   * the ButtonText color family; 1px offset would let the two colors visually merge.
+   */
+  .cinder-button:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
+/* Disabled — matches both native :disabled and aria-disabled for link variant.
+ * Scoped with :not([data-cinder-loading]) so the loading state can own its own colors below
+ * without the variant-specific disabled rules (higher specificity) silently winning.
+ */
+.cinder-button:disabled:not([data-cinder-loading]),
+.cinder-button[aria-disabled='true']:not([data-cinder-loading]) {
+  cursor: not-allowed;
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+  opacity: 0.6;
+}
+
+/* Loading state — cursor + visible feedback. Per-variant loading overrides below restore
+ * each variant's own colors so loading buttons don't read as permanently-disabled.
+ */
+.cinder-button[data-cinder-loading] {
+  cursor: wait;
+  opacity: 1;
+}
+
+/* Spinner — visible feedback for sighted users while `aria-busy` informs assistive tech.
+ * No `margin-inline-start` here: the parent `.cinder-button` has `gap: var(--cinder-space-1-5)`
+ * which already separates the pseudo-element from the preceding label/children. Adding margin
+ * too would double-count the gap.
+ */
+.cinder-button[data-cinder-loading]::after {
+  content: '';
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: cinder-button-spin 0.6s linear infinite;
+}
+
+/* At `xs` size the button is ~24px tall and the spinner ends up ~9px square; a 2px border
+ * is disproportionately thick and reads as a chunky ring. Drop to 1px for xs only.
+ */
+.cinder-button[data-cinder-size='xs'][data-cinder-loading]::after {
+  border-width: 1px;
+}
+
+@keyframes cinder-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Full-width modifier */
+.cinder-button[data-cinder-full-width] {
+  width: 100%;
+}
+
+/* ----------------------------------------
+ * Size variants
+ * ---------------------------------------- */
+
+.cinder-button[data-cinder-size='xs'] {
+  font-size: var(--cinder-button-font-size-xs);
+  padding: var(--cinder-button-padding-y-xs) var(--cinder-button-padding-x-xs);
+  min-height: var(--cinder-button-height-xs);
+  border-radius: var(--cinder-button-radius-xs);
+}
+
+.cinder-button[data-cinder-size='sm'] {
+  font-size: var(--cinder-button-font-size-sm);
+  padding: var(--cinder-button-padding-y-sm) var(--cinder-button-padding-x-sm);
+  min-height: var(--cinder-button-height-sm);
+  border-radius: var(--cinder-button-radius-sm);
+}
+
+.cinder-button[data-cinder-size='md'] {
+  font-size: var(--cinder-button-font-size-md);
+  padding: var(--cinder-button-padding-y-md) var(--cinder-button-padding-x-md);
+  min-height: var(--cinder-button-height-md);
+  border-radius: var(--cinder-button-radius-md);
+}
+
+.cinder-button[data-cinder-size='lg'] {
+  font-size: var(--cinder-button-font-size-lg);
+  padding: var(--cinder-button-padding-y-lg) var(--cinder-button-padding-x-lg);
+  min-height: var(--cinder-button-height-lg);
+  border-radius: var(--cinder-button-radius-lg);
+}
+
+/* ----------------------------------------
+ * Color variants
+ * ---------------------------------------- */
+
+.cinder-button[data-cinder-variant='primary'] {
+  --_cinder-button-ring: var(--cinder-accent);
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-contrast);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-accent-hover);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-accent-active);
+}
+
+/* Variant-specific disabled overrides are now :not([data-cinder-loading]) so loading buttons
+ * keep their variant colors instead of falling through to the grey disabled palette.
+ */
+.cinder-button[data-cinder-variant='primary']:disabled:not([data-cinder-loading]),
+.cinder-button[data-cinder-variant='primary'][aria-disabled='true']:not([data-cinder-loading]) {
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-button[data-cinder-variant='secondary'] {
+  background: var(--cinder-surface-raised);
+  color: var(--cinder-text);
+  border-color: var(--cinder-border);
+}
+
+.cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-hover);
+}
+
+.cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='danger'] {
+  --_cinder-button-ring: var(--cinder-danger);
+  background: var(--cinder-danger);
+  color: var(--cinder-danger-contrast);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-danger-hover);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-danger-active);
+}
+
+.cinder-button[data-cinder-variant='danger']:disabled:not([data-cinder-loading]),
+.cinder-button[data-cinder-variant='danger'][aria-disabled='true']:not([data-cinder-loading]) {
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-button[data-cinder-variant='ghost'] {
+  background: transparent;
+  color: var(--cinder-text-muted);
+  border-color: transparent;
+}
+
+.cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-hover);
+  color: var(--cinder-text);
+}
+
+.cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
+.cinder-button[data-cinder-variant='ghost'][aria-disabled='true']:not([data-cinder-loading]) {
+  background: transparent;
+  color: var(--cinder-text-disabled);
+  border-color: transparent;
+  opacity: 0.6;
+}

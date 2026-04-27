@@ -1,0 +1,5 @@
+@import 'cinder/styles';
+
+/* No consumer overrides in Phase 1 — the plan narrowed ./styles verification to
+   "resolution + build + content", not "cascade wins over override". Override testing
+   is deferred to the Phase 5 browser-fixture phase. */

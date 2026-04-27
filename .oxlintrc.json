@@ -54,16 +54,13 @@
     "coverage/**",
     ".bun/**",
     "node_modules/**",
+    "fixtures/**",
+    "**/*.svelte",
     "*.lock"
   ],
   "overrides": [
     {
-      "files": [
-        "**/*.test.ts",
-        "**/*.spec.ts",
-        "**/test/**/*.ts",
-        "**/__tests__/**/*.ts"
-      ],
+      "files": ["**/*.test.ts", "**/*.spec.ts", "**/test/**/*.ts", "**/__tests__/**/*.ts"],
       "rules": {
         "typescript/no-explicit-any": "off",
         "typescript/no-unsafe-argument": "off",
@@ -79,6 +76,8 @@
         "typescript/no-empty-function": "off",
         "typescript/no-unused-expressions": "off",
         "typescript/no-unused-vars": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/await-thenable": "off",
         "no-unused-vars": "off"
       }
     }

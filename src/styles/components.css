@@ -1,0 +1,9 @@
+/**
+ * Component styles for cinder.
+ *
+ * This file is a Wave-2 aggregator in Phase 2's architecture; each component
+ * owns a partial under `./components/<name>.css`. Phase 1 pre-splits Button
+ * so the aggregator shape matches what Phase 2 assumes.
+ */
+
+@import './components/button.css';

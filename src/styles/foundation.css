@@ -1,0 +1,224 @@
+/**
+ * Foundation styles.
+ *
+ * Minimal reset using :where() for zero specificity.
+ * Every rule here is intentionally low-impact — consumers can override freely.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:where(html) {
+  font-family: var(--cinder-font-sans);
+  font-size: 16px;
+  line-height: var(--cinder-leading-normal);
+  font-weight: var(--cinder-font-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings:
+    'kern' 1,
+    'liga' 1,
+    'calt' 1;
+  hanging-punctuation: first last;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+:where(html):focus-within {
+  scroll-behavior: smooth;
+}
+
+:where(body) {
+  min-height: 100dvh;
+  background-color: var(--cinder-bg);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-base);
+}
+
+:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: var(--cinder-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--cinder-accent), transparent 70%);
+  color: var(--cinder-text);
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  line-height: var(--cinder-leading-tight);
+  letter-spacing: var(--cinder-tracking-tight);
+  font-weight: var(--cinder-font-semibold);
+  color: var(--cinder-text);
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+:where(h1) {
+  font-size: var(--cinder-text-4xl);
+}
+:where(h2) {
+  font-size: var(--cinder-text-3xl);
+}
+:where(h3) {
+  font-size: var(--cinder-text-2xl);
+}
+:where(h4) {
+  font-size: var(--cinder-text-xl);
+}
+:where(h5) {
+  font-size: var(--cinder-text-lg);
+}
+:where(h6) {
+  font-size: var(--cinder-text-base);
+  font-weight: var(--cinder-font-medium);
+}
+
+:where(p) {
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+:where(small) {
+  letter-spacing: var(--cinder-tracking-wide);
+}
+
+:where(strong, b) {
+  font-weight: var(--cinder-font-semibold);
+}
+
+:where(a) {
+  color: inherit;
+  text-decoration-skip-ink: auto;
+}
+
+:where(a:not([class])) {
+  color: var(--cinder-accent);
+  text-decoration: underline;
+  text-decoration-thickness: max(1px, 0.0625em);
+  text-underline-offset: 0.15em;
+  transition: color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+:where(a:not([class])):hover {
+  color: var(--cinder-accent-hover);
+}
+
+:where(code, kbd, samp, pre) {
+  font-family: var(--cinder-font-mono);
+  font-size: 0.9em;
+}
+
+:where(ul, ol) {
+  padding-left: var(--cinder-space-6);
+}
+
+:where(li) {
+  margin-bottom: var(--cinder-space-1);
+}
+
+:where(ul[role='list'], ol[role='list']) {
+  list-style: none;
+  padding: 0;
+}
+
+:where(hr) {
+  border: none;
+  border-top: 1px solid var(--cinder-border);
+  margin: var(--cinder-space-6) 0;
+}
+
+:where(table) {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+:where(th) {
+  text-align: left;
+  font-weight: var(--cinder-font-semibold);
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+  border-bottom: 2px solid var(--cinder-border);
+}
+
+:where(td) {
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+:where(input, button, textarea, select) {
+  font: inherit;
+  color: inherit;
+}
+
+:where(button) {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+:where(textarea) {
+  resize: vertical;
+}
+
+:where(fieldset) {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+:where(label) {
+  font-size: var(--cinder-text-sm);
+  font-weight: var(--cinder-font-medium);
+  color: var(--cinder-text);
+}
+
+:where(img, picture, video, canvas, svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+:where(summary) {
+  cursor: pointer;
+}
+
+:where(dialog) {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+}
+
+:where(dialog)::backdrop {
+  background: transparent;
+}
