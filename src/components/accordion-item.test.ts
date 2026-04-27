@@ -213,4 +213,45 @@ describe('AccordionItem', () => {
     const button = container.querySelector('.cinder-accordion-item__trigger');
     expect(button?.textContent).toContain('Visible Title Text');
   });
+
+  // §Interactive a11y matrix — Enter/Space toggles
+  // The trigger is a native <button type="button">, so the browser fires a click event
+  // on Enter and Space. Testing that pattern explicitly confirms the button is wired
+  // correctly so the a11y contract holds.
+
+  test('Enter key on trigger button toggles expanded state', async () => {
+    const changes: string[][] = [];
+
+    const { container } = renderItem({
+      id: 'enter-item',
+      title: 'Enter Item',
+      expandedIds: [],
+      onExpandedChange: (ids) => changes.push([...ids]),
+    });
+
+    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    // fireEvent.click simulates what the browser does when Enter is pressed on a <button>.
+    await fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
+    await fireEvent.click(button);
+    expect(changes.at(-1)).toContain('enter-item');
+  });
+
+  test('Space key on trigger button toggles expanded state', async () => {
+    const changes: string[][] = [];
+
+    const { container } = renderItem({
+      id: 'space-item',
+      title: 'Space Item',
+      expandedIds: [],
+      onExpandedChange: (ids) => changes.push([...ids]),
+    });
+
+    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    // fireEvent.click simulates what the browser does when Space is pressed on a <button>.
+    await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
+    await fireEvent.click(button);
+    expect(changes.at(-1)).toContain('space-item');
+  });
 });

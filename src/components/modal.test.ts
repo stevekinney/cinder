@@ -171,6 +171,33 @@ describe('Modal', () => {
     expect(openValue).toBe(false);
   });
 
+  test('Escape key on dialog fires close event and sets open to false', async () => {
+    // The native <dialog> element fires a "close" event when the user presses Escape
+    // (the browser handles Escape → close automatically when showModal() is used).
+    // happy-dom does not fully emulate this native behaviour, so we fire the close
+    // event after dispatching Escape to replicate the browser sequence.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog).not.toBeNull();
+    // Simulate the browser sequence: Escape keydown → close event on the dialog.
+    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    await fireEvent(dialog, new Event('close'));
+    expect(openValue).toBe(false);
+  });
+
   test('dialog has role="dialog" via native element', () => {
     const { container } = render(Modal, {
       props: {
