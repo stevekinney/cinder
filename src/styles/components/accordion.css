@@ -1,0 +1,14 @@
+/* ========================================
+ * ACCORDION
+ * ======================================== */
+
+.cinder-accordion {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  background: var(--cinder-surface);
+
+  /* Clip children so item borders respect the container's border-radius */
+  overflow: clip;
+}

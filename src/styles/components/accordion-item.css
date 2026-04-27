@@ -1,0 +1,139 @@
+/* ========================================
+ * ACCORDION ITEM
+ * ======================================== */
+
+.cinder-accordion-item {
+  border-block-end: 1px solid var(--cinder-border);
+}
+
+/* Remove the trailing divider from the last item so it doesn't
+ * double-up with the parent accordion's border-radius edge. */
+.cinder-accordion-item:last-child {
+  border-block-end: none;
+}
+
+/* ----------------------------------------
+ * Heading — reset browser h3 margins/styles
+ * ---------------------------------------- */
+
+.cinder-accordion-item__heading {
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------
+ * Trigger button
+ * ---------------------------------------- */
+
+.cinder-accordion-item__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  width: 100%;
+  padding: var(--cinder-space-4) var(--cinder-space-5);
+
+  font-size: var(--cinder-text-base);
+  font-weight: var(--cinder-font-medium);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
+  text-align: start;
+
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-accordion-item__trigger:hover:not(:disabled) {
+  background: var(--cinder-surface-hover);
+}
+
+.cinder-accordion-item__trigger:active:not(:disabled) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-accordion-item__trigger:focus-visible {
+  /* Use box-shadow ring pattern to match the button component */
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  /* Inset the ring so it stays within the item boundary */
+  box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: -var(--cinder-ring-width);
+}
+
+@media (forced-colors: active) {
+  .cinder-accordion-item__trigger:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: -3px;
+  }
+}
+
+/* Disabled state */
+.cinder-accordion-item__trigger:disabled {
+  cursor: not-allowed;
+  color: var(--cinder-text-disabled);
+  opacity: 0.6;
+}
+
+/* ----------------------------------------
+ * Title text
+ * ---------------------------------------- */
+
+.cinder-accordion-item__title {
+  flex: 1;
+}
+
+/* ----------------------------------------
+ * Chevron icon
+ * ---------------------------------------- */
+
+.cinder-accordion-item__chevron {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--cinder-text-muted);
+
+  transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Rotate chevron when item is expanded */
+.cinder-accordion-item[data-cinder-expanded] .cinder-accordion-item__chevron {
+  transform: rotate(180deg);
+}
+
+/* Dim chevron for disabled items */
+.cinder-accordion-item[data-cinder-disabled] .cinder-accordion-item__chevron {
+  opacity: 0.4;
+}
+
+/* ----------------------------------------
+ * Panel
+ * ---------------------------------------- */
+
+.cinder-accordion-item__panel {
+  border-block-start: 1px solid var(--cinder-border-muted);
+}
+
+.cinder-accordion-item__panel-inner {
+  padding: var(--cinder-space-4) var(--cinder-space-5) var(--cinder-space-5);
+  font-size: var(--cinder-text-base);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+}
+
+/* ----------------------------------------
+ * Reduced motion — skip chevron rotation animation
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-accordion-item__chevron {
+    transition: none;
+  }
+}
