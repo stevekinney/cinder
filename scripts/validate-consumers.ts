@@ -28,9 +28,15 @@ const packageIdentity = readPackageIdentity();
 const tarballFileName = `${packageIdentity.name}-${packageIdentity.version}.tgz`;
 const tarballFilePath = join(repositoryRoot, tarballFileName);
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
 function fail(message: string): never {
-  process.stderr.write(`[validate-consumers] ${message}\n`);
-  process.exit(1);
+  throw new ValidationError(message);
 }
 
 let nodeBinaryPath = '';
@@ -380,12 +386,19 @@ async function runNodeFixture(): Promise<void> {
   }
 }
 
-ensureSupportedPlatform();
-await ensureNodeOnPath();
-await runBuild();
-await packTarball();
-await inspectTarball();
-await runSveltekitFixture();
-await runNodeFixture();
-
-process.stdout.write('[validate-consumers] all checks passed.\n');
+try {
+  ensureSupportedPlatform();
+  await ensureNodeOnPath();
+  await runBuild();
+  await packTarball();
+  await inspectTarball();
+  await runSveltekitFixture();
+  await runNodeFixture();
+  process.stdout.write('[validate-consumers] all checks passed.\n');
+} catch (error) {
+  if (error instanceof ValidationError) {
+    process.stderr.write(`[validate-consumers] ${error.message}\n`);
+    process.exit(1);
+  }
+  throw error;
+}
