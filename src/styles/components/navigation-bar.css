@@ -1,0 +1,38 @@
+/* ========================================
+ * NAVIGATION BAR
+ * ======================================== */
+
+.cinder-navigation-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.5rem;
+  padding-inline: var(--cinder-space-4);
+  background: var(--cinder-surface);
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+/* ----------------------------------------
+ * Sections
+ * ---------------------------------------- */
+
+.cinder-navigation-bar__brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cinder-navigation-bar__items {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  flex: 1;
+}
+
+.cinder-navigation-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  flex-shrink: 0;
+}
