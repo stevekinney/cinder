@@ -111,6 +111,10 @@
     "src/components/**/*.svelte",
     "src/styles/**/*.css",
     "src/utilities/class-names.ts",
+    "src/utilities/format-date.ts",
+    "src/utilities/format-duration.ts",
+    "src/utilities/format-number.ts",
+    "src/utilities/truncate.ts",
     "README.md"
   ],
   "scripts": {

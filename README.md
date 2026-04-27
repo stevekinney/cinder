@@ -2,7 +2,7 @@
 
 A Svelte 5 design system.
 
-**Phase 1 status**: the plugin + packaging contract + one example component (`Button`) are in place. Components from upstream design-system work get ported in Phase 2, the playground lands in Phase 3, static-analysis-driven controls in Phase 4.
+**Phase 2 status**: 21 components shipped (Button + 20 new). Playground lands in Phase 3, static-analysis-driven controls in Phase 4.
 
 ## Consuming cinder
 
@@ -15,33 +15,67 @@ npm install cinder
 ```svelte
 <!-- routes/+page.svelte -->
 <script lang="ts">
-  import { Button } from 'cinder';
-  import type { ButtonVariant } from 'cinder';
+  import { Button, Alert } from 'cinder';
   import 'cinder/styles';
-
-  const variants: ButtonVariant[] = ['primary', 'secondary', 'danger', 'ghost'];
 </script>
 
-{#each variants as variant (variant)}
-  <Button {variant} label={variant} />
-{/each}
+<Alert variant="info">
+  {#snippet children()}Hello from cinder{/snippet}
+</Alert>
+<Button label="Click me" />
+```
+
+## Component API
+
+| Component          | Key props                                                              | Snippets                           | State model             |
+| ------------------ | ---------------------------------------------------------------------- | ---------------------------------- | ----------------------- |
+| **AccordionItem**  | `id`, `title`, `disabled?`                                             | `children` (panel)                 | reads Accordion context |
+| **Accordion**      | `expandedIds` ($bindable), `multiple?`                                 | `children`                         | controlled              |
+| **Alert**          | `variant?` (info/success/warning/error), `dismissible?`, `onDismiss?`  | `children`, `icon?`                | uncontrolled            |
+| **Badge**          | `variant?` (neutral/success/warning/danger/info), `size?` (sm/md)      | `children`                         | stateless               |
+| **Button**         | `variant?`, `size?`, `href?`, `label` or `children`                    | `children?`                        | stateless               |
+| **Card**           | discriminated: `title`+`description?` OR `header` snippet              | `children`, `footer?`              | stateless               |
+| **DataList**       | `items: T[]`                                                           | `children: Snippet<[T]>`, `empty?` | stateless               |
+| **Dropdown**       | `open` ($bindable), `placement?`                                       | `trigger`, `children`              | controlled              |
+| **EmptyState**     | `title`, `description?`                                                | `icon?`, `action?`                 | stateless               |
+| **Input**          | `id`, `value` ($bindable), `label?`, `description?`, `error?`, `type?` | —                                  | controlled              |
+| **Modal**          | `open` ($bindable), `title`                                            | `children`, `footer?`              | controlled              |
+| **NavigationBar**  | —                                                                      | `brand?`, `items`, `actions?`      | stateless               |
+| **NavigationItem** | discriminated: `href` OR `onClick`; `active?`, `disabled?`             | `children`                         | stateless               |
+| **PageLayout**     | `title`                                                                | `actions?`, `children`             | stateless               |
+| **Pagination**     | `currentPage` ($bindable), `totalPages`, `totalCount?`                 | —                                  | controlled              |
+| **Select**         | `id`, `value` ($bindable, string), `options`, `label?`, `disabled?`    | —                                  | controlled              |
+| **Skeleton**       | `width?`, `height?`, `radius?`                                         | —                                  | stateless               |
+| **Spinner**        | `size?` (sm/md/lg), `label?`                                           | —                                  | stateless               |
+| **Textarea**       | `id`, `value` ($bindable), `label?`, `description?`, `error?`, `rows?` | —                                  | controlled              |
+| **Toggle**         | `id`, `pressed` ($bindable), `label`, `disabled?`                      | —                                  | controlled              |
+| **Tooltip**        | `text`, `placement?` (top/right/bottom/left)                           | `children` (trigger)               | uncontrolled            |
+
+### Subpath imports
+
+Every component is individually importable:
+
+```svelte
+<script lang="ts">
+  import Button from 'cinder/button';
+  import Alert from 'cinder/alert';
+  // ...one subpath per component
+</script>
 ```
 
 ### Export conditions
 
-| Condition | Target                  | Consumer type                                                 |
-| --------- | ----------------------- | ------------------------------------------------------------- |
-| `svelte`  | `src/index.ts` (source) | Vite / SvelteKit — compiles against consumer's Svelte runtime |
-| `types`   | `dist/index.d.ts`       | TypeScript type resolution                                    |
-| `node`    | `dist/server/index.js`  | Plain Node SSR via `svelte/server`'s `render()`               |
-
-There is no `browser` or `default` condition in Phase 1. A compiled-client path ships in Phase 5 with its own consumer fixture.
+| Condition | Target                  | Consumer type                      |
+| --------- | ----------------------- | ---------------------------------- |
+| `svelte`  | `src/index.ts` (source) | Vite / SvelteKit                   |
+| `types`   | `dist/index.d.ts`       | TypeScript type resolution         |
+| `node`    | `dist/server/index.js`  | Plain Node SSR via `svelte/server` |
 
 ### Peer-dependency policy
 
 `peerDependencies: { "svelte": ">=5.55.0 <5.56.0" }`
 
-cinder's compiled server output is coupled to the Svelte minor it was built against. Every cinder release pins exactly one Svelte minor. When Svelte ships a new minor, cinder bumps its own minor in lockstep. Consumers pinning an earlier Svelte use an earlier cinder.
+cinder's compiled server output is coupled to the Svelte minor it was built against. Every cinder release pins exactly one Svelte minor. When Svelte ships a new minor, cinder bumps its own minor in lockstep.
 
 ### Styles
 
@@ -51,13 +85,9 @@ cinder's compiled server output is coupled to the Svelte minor it was built agai
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 ```
 
-- **Classes** use the `.cinder-*` prefix: `.cinder-button`, `.cinder-sr-only`.
-- **Variants** use `data-cinder-*` attributes: `data-cinder-variant`, `data-cinder-size`, `data-cinder-loading`.
-- **Design tokens** use the `--cinder-*` prefix for the public surface and `--_cinder-*` for internal-only custom properties.
-
-Consumers override tokens by redeclaring them on `:root` or a scoped selector. The foundation reset uses `:where()` for zero specificity, so consumer element styles always win on specificity alone.
-
-Live-browser cascade verification (override-wins-over-internal) is explicitly a Phase 5 concern and is not tested in Phase 1.
+- **Classes** use the `.cinder-*` prefix: `.cinder-button`, `.cinder-alert`.
+- **Variants** use `data-cinder-*` attributes: `data-cinder-variant`, `data-cinder-size`.
+- **Design tokens** use `--cinder-*` for the public surface and `--_cinder-*` for internal-only custom properties.
 
 ## Working on cinder
 
@@ -70,63 +100,52 @@ Live-browser cascade verification (override-wins-over-internal) is explicitly a 
 ### Scripts
 
 ```bash
-bun install                 # install dependencies
-bun run build               # Bun.build server + svelte2tsx .d.ts + tsc declarations → dist/
-bun run typecheck           # tsc --noEmit (scripts + plain TS) + svelte-check (components)
-bun run lint                # oxlint
-bun run test                # bun test --conditions browser (see "Writing component tests")
-bun run test:coverage       # same as above with --coverage
-bun run validate:workflow   # seed isolated tmp repo, run real lint-staged config on .svelte/.css/.ts
-bun run validate:consumer   # build → pack → tarball inspection → sveltekit-consumer + node-consumer
-bun run validate            # lint + typecheck + test + validate:workflow + validate:consumer
+bun install                    # install dependencies
+bun run build                  # server bundle + svelte2tsx .d.ts + tsc declarations → dist/
+bun run typecheck              # tsc --noEmit + svelte-check
+bun run lint                   # oxlint
+bun run test                   # TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser
+bun run test:coverage          # same with --coverage
+bun run exports:generate       # regenerate package.json#exports from src/components/*.svelte
+bun run exports:check          # assert exports are in sync (non-zero on drift)
+bun run validate:workflow      # isolated lint-staged simulation
+bun run validate:consumer      # build → pack → tarball check → sveltekit + node fixtures
+bun run validate               # all of the above
 ```
-
-The three validation layers are orthogonal: layer 1 (`bun test`) catches plugin / AST regressions in under a second; layer 2 (`validate:workflow`) catches config drift that would break commits; layer 3 (`validate:consumer`) catches packaging breakage (bad exports, missing files, declaration mismatches, SSR failures) by testing a packed tarball against two real consumer projects.
 
 > [!IMPORTANT]
-> Always run tests via `bun run test`, not `bun test` directly. The script passes `--conditions browser` so Svelte's `package.json` exports resolve to `index-client.js` (which defines `mount()`) instead of `index-server.js` (which throws `lifecycle_function_unavailable: mount(...) is not available on the server`). Bun doesn't yet honor `conditions` under `[test]` in `bunfig.toml`, so the flag has to live on the CLI invocation.
-
-### Writing component tests
-
-New component tests follow the pattern in `src/components/button.test.ts`:
-
-```typescript
-/// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
-
-import { setupHappyDom } from '../test/happy-dom.ts';
-setupHappyDom(); // MUST run before @testing-library/svelte is imported
-
-const { render } = await import('@testing-library/svelte');
-const { default: Button } = await import('./button.svelte');
-```
-
-`setupHappyDom()` installs happy-dom's `Window` globals on Node's `globalThis` so testing-library can mount components. The dynamic `await import(...)` is required: if you move it above `setupHappyDom()`, testing-library's module-init sees `document === undefined` and `render()` fails with a confusing error that doesn't mention happy-dom.
-
-Component tests live flat at `src/components/*.test.ts`, alongside the `.svelte` sources. The `../test/happy-dom.ts` path above assumes that depth — nested test directories need a longer relative path.
-
-### Running `.svelte`-importing scripts with `bun run`
-
-Only `bun test` auto-loads the Svelte plugin (via `[test] preload` in `bunfig.toml`). Ad-hoc scripts under `bun run` need the flag explicitly:
-
-```bash
-bun --preload ./scripts/preload.ts run my-ad-hoc-script.ts
-```
-
-`scripts/build.ts` doesn't need the preload because it imports `sveltePlugin` directly and passes it to `Bun.build`. Most scripts you write in this repo will follow that pattern — the `--preload` form is only for one-off scripts that import `.svelte` source and don't do their own plugin registration.
+> Always run tests via `bun run test`, not `bun test` directly. The script passes `--conditions browser` and sets `TZ=UTC LANG=en_US.UTF-8` for deterministic Intl output.
 
 ### Authoring conventions
 
-Component files live as flat `.svelte` under `src/components/`. Every component must:
+Component files live as flat `.svelte` under `src/components/`. Every public component must:
 
 - Use `<script lang="ts" module>` to export its `Props` type (and any `Variant`/`Size` literal unions) with JSDoc on each.
-- Use `$props()` destructuring with defaults and/or type annotations per destructured prop. The Phase 4 analyzer reads names + defaults straight off the destructuring AST.
-- Type `Snippet` children as `Snippet` or `Snippet<[...]>` — never as a bare function.
-- Use `$bindable(literal)` defaults (so analyzer can extract the default mechanically).
-- Carry **no `<style>` block**. The plugin throws at compile time if it sees one; an AST test catches attempts to work around the plugin.
-- Style via `.cinder-<name>` in a dedicated partial under `src/styles/components/<name>.css` (aggregated into `components.css`).
-- Merge a `class?: string` prop via `classNames()` from `src/utilities/class-names.ts`.
-- For build-mode guards use `import { DEV, BROWSER } from 'esm-env'`. Do not use `Bun.env.NODE_ENV`, `process.env.NODE_ENV`, or `import.meta.env.DEV` in component source — they don't replace correctly through Svelte's compiler or the `"svelte"` export condition, and components that reach for `Bun.env` throw `ReferenceError` in a Vite-compiled browser consumer.
+- Use `$props()` destructuring with defaults and/or type annotations per prop.
+- Type `Snippet` children as `Snippet` or `Snippet<[...]>` — never `Snippet | undefined` (use `Snippet?` for optional).
+- Use `$bindable(literal)` or `$bindable()` defaults — no arbitrary expression arguments.
+- Carry **no `<style>` block**. The plugin throws at compile time if it sees one.
+- Style via `.cinder-<name>` in a dedicated partial under `src/styles/components/<name>.css`.
+- Merge a `class?: string` prop via `cn()` from `src/utilities/class-names.ts`.
+- For components that spread HTML attributes (`{...rest}`): destructure `...rest` in `$props()` AND spread it on a native DOM element in the template.
+
+### Internal components
+
+`src/components/_internal/` is excluded from exports and the published tarball. Components there may be consumed by other components within cinder but are not public API.
+
+### Determinism
+
+Test output for date, number, and duration formatting is pinned to `en-US` locale and `UTC` timezone:
+
+- The `test` script in `package.json` sets `TZ=UTC LANG=en_US.UTF-8` before invoking Bun.
+- Utility test files (`format-date.test.ts`, etc.) include a `beforeAll` guard that throws if `TZ !== 'UTC'`.
+- `validate-consumers.ts` sets the same env vars when spawning fixture subprocesses.
+
+Run `bun run test` (not `bun test`) to pick up these variables.
+
+### Subpath export drift
+
+If you add a new component file, run `bun run exports:generate` to update `package.json#exports`, then commit both files together. The `exports:check` step (part of `bun run build`) will fail if they drift.
 
 ## Packaging layout
 
@@ -137,11 +156,11 @@ dist/
 ├── index.d.ts                         (tsc declarations for the barrel)
 ├── server/                            ("node" export target)
 │   ├── index.js
-│   └── components/button.js
-└── components/button.svelte.d.ts      (svelte2tsx output — preserves .svelte extension)
+│   └── components/{all-21-components}.js
+└── components/{all-21-components}.svelte.d.ts  (svelte2tsx output)
 ```
 
-The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/components/`, `src/styles/`, `src/utilities/`, `README.md`. Fixtures, tests, and `scripts/` are excluded. `validate:consumer` asserts both the presence of expected paths and the absence of forbidden ones.
+The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/components/**/*.svelte`, `src/styles/**/*.css`, the four generic utilities, and `README.md`. Fixtures, tests, `.a11y.md` files, `scripts/`, and `_internal/` components are excluded. `validate:consumer` asserts both expected and forbidden paths.
 
 ## License
 
