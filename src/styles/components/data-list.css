@@ -1,0 +1,8 @@
+/* ========================================
+ * DATA LIST
+ * ======================================== */
+
+.cinder-data-list {
+  display: flex;
+  flex-direction: column;
+}
