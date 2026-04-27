@@ -1,0 +1,41 @@
+/* ========================================
+ * EMPTY STATE
+ * ======================================== */
+
+.cinder-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding-block: var(--cinder-space-12);
+  padding-inline: var(--cinder-space-8);
+  gap: var(--cinder-space-2);
+}
+
+.cinder-empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cinder-text-disabled);
+  margin-bottom: var(--cinder-space-2);
+}
+
+.cinder-empty-state-title {
+  font-size: var(--cinder-text-base);
+  font-weight: var(--cinder-font-medium);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text-muted);
+  margin: 0;
+}
+
+.cinder-empty-state-description {
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-subtle);
+  margin: 0;
+}
+
+.cinder-empty-state-action {
+  margin-top: var(--cinder-space-4);
+}
