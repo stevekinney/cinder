@@ -1,0 +1,88 @@
+/* ========================================
+ * DROPDOWN
+ * ======================================== */
+
+.cinder-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* ----------------------------------------
+ * Trigger wrapper
+ * ---------------------------------------- */
+
+.cinder-dropdown__trigger {
+  display: contents;
+}
+
+/* ----------------------------------------
+ * Menu panel
+ * ---------------------------------------- */
+
+.cinder-dropdown__menu {
+  position: absolute;
+  z-index: var(--cinder-z-dropdown, 40);
+  min-width: 12rem;
+  padding: var(--cinder-space-1) 0;
+
+  border-radius: var(--cinder-radius-lg);
+  border: 1px solid var(--cinder-border);
+  background: var(--cinder-surface);
+  box-shadow:
+    0 4px 6px -1px color-mix(in oklch, var(--cinder-text) 8%, transparent),
+    0 2px 4px -2px color-mix(in oklch, var(--cinder-text) 6%, transparent);
+
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+}
+
+/* Popover reset — when the browser controls visibility via popover="auto",
+   remove the UA popover default styles that would otherwise interfere. */
+.cinder-dropdown__menu:popover-open,
+.cinder-dropdown__menu[popover] {
+  margin: 0;
+  border: 1px solid var(--cinder-border);
+  padding: var(--cinder-space-1) 0;
+  inset: unset;
+}
+
+/* ----------------------------------------
+ * Placement: bottom-start (default)
+ * ---------------------------------------- */
+
+.cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu {
+  inset-block-start: calc(100% + var(--cinder-space-1));
+  inset-inline-start: 0;
+}
+
+/* ----------------------------------------
+ * Placement: bottom-end
+ * ---------------------------------------- */
+
+.cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu {
+  inset-block-start: calc(100% + var(--cinder-space-1));
+  inset-inline-end: 0;
+}
+
+/* ----------------------------------------
+ * Reduced motion
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-dropdown__menu {
+    animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
+      forwards;
+  }
+
+  @keyframes cinder-dropdown-enter {
+    from {
+      opacity: 0;
+      translate: 0 -0.25rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+}

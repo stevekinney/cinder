@@ -1,0 +1,155 @@
+/* ========================================
+ * MODAL
+ * ======================================== */
+
+.cinder-modal {
+  /* Reset browser's default <dialog> styles */
+  margin: auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--cinder-radius-xl);
+  background: transparent;
+  color: var(--cinder-text);
+  max-width: min(90vw, 32rem);
+  width: 100%;
+
+  /* Prevent the panel from touching viewport edges on small screens */
+  max-height: calc(100dvh - var(--cinder-space-8));
+  overflow: hidden;
+}
+
+/* Backdrop — native <dialog>::backdrop is controlled by the UA */
+.cinder-modal::backdrop {
+  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+/* ----------------------------------------
+ * Panel (the visible card inside the dialog)
+ * ---------------------------------------- */
+
+.cinder-modal__panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-xl);
+  overflow: hidden;
+}
+
+/* ----------------------------------------
+ * Header
+ * ---------------------------------------- */
+
+.cinder-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  padding: var(--cinder-space-5) var(--cinder-space-6);
+  border-block-end: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+.cinder-modal__title {
+  margin: 0;
+  font-size: var(--cinder-text-lg);
+  font-weight: var(--cinder-font-semibold);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
+}
+
+/* ----------------------------------------
+ * Close button
+ * ---------------------------------------- */
+
+.cinder-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: var(--cinder-space-1);
+
+  border-radius: var(--cinder-radius-md);
+  border: none;
+  background: transparent;
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-modal__close:hover {
+  background: color-mix(in oklch, currentColor, transparent 85%);
+  color: var(--cinder-text);
+}
+
+.cinder-modal__close:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+@media (forced-colors: active) {
+  .cinder-modal__close:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
+.cinder-modal__close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ----------------------------------------
+ * Body
+ * ---------------------------------------- */
+
+.cinder-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--cinder-space-6);
+  overscroll-behavior: contain;
+}
+
+/* ----------------------------------------
+ * Footer
+ * ---------------------------------------- */
+
+.cinder-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-4) var(--cinder-space-6);
+  border-block-start: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Reduced motion
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-modal {
+    animation: cinder-modal-enter var(--cinder-duration-normal) var(--cinder-ease-spring) forwards;
+  }
+
+  @keyframes cinder-modal-enter {
+    from {
+      opacity: 0;
+      translate: 0 -0.5rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+}

@@ -1,0 +1,100 @@
+/* ========================================
+ * TOOLTIP
+ * ======================================== */
+
+.cinder-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ----------------------------------------
+ * Tooltip element
+ * ---------------------------------------- */
+
+.cinder-tooltip {
+  /* Positioning — CSS anchor API (where supported) */
+  @supports (anchor-name: --x) {
+    position: absolute;
+  }
+
+  /* Fallback: absolute positioned relative to the wrapper */
+  position: absolute;
+  z-index: var(--cinder-z-tooltip, 50);
+
+  max-width: 16rem;
+  padding: var(--cinder-space-1-5) var(--cinder-space-2-5);
+
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-text);
+  color: var(--cinder-surface);
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-snug);
+  white-space: nowrap;
+
+  pointer-events: none;
+  user-select: none;
+
+  transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Visible state */
+.cinder-tooltip[aria-hidden='false'] {
+  opacity: 1;
+}
+
+/* Hidden state */
+.cinder-tooltip[aria-hidden='true'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ----------------------------------------
+ * Placement: top (default)
+ * ---------------------------------------- */
+
+.cinder-tooltip[data-cinder-placement='top'] {
+  bottom: calc(100% + var(--cinder-space-2));
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* ----------------------------------------
+ * Placement: bottom
+ * ---------------------------------------- */
+
+.cinder-tooltip[data-cinder-placement='bottom'] {
+  top: calc(100% + var(--cinder-space-2));
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* ----------------------------------------
+ * Placement: left
+ * ---------------------------------------- */
+
+.cinder-tooltip[data-cinder-placement='left'] {
+  right: calc(100% + var(--cinder-space-2));
+  top: 50%;
+  translate: 0 -50%;
+}
+
+/* ----------------------------------------
+ * Placement: right
+ * ---------------------------------------- */
+
+.cinder-tooltip[data-cinder-placement='right'] {
+  left: calc(100% + var(--cinder-space-2));
+  top: 50%;
+  translate: 0 -50%;
+}
+
+/* ----------------------------------------
+ * Reduced motion
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-tooltip {
+    transition: none;
+  }
+}
