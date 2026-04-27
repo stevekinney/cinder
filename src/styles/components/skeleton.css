@@ -1,0 +1,34 @@
+/* ========================================
+ * SKELETON
+ * ======================================== */
+
+.cinder-skeleton {
+  display: block;
+  width: 100%;
+  height: 1em;
+  border-radius: var(--cinder-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--cinder-surface-inset, #e5e7eb) 0%,
+    color-mix(in srgb, var(--cinder-surface-inset, #e5e7eb), white 40%) 50%,
+    var(--cinder-surface-inset, #e5e7eb) 100%
+  );
+  background-size: 200% 100%;
+  animation: cinder-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes cinder-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-skeleton {
+    animation: none;
+    background: var(--cinder-surface-inset, #e5e7eb);
+  }
+}
