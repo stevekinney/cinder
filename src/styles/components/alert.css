@@ -1,0 +1,206 @@
+/* ========================================
+ * ALERT
+ * ======================================== */
+
+/*
+ * --cinder-info is not defined in tokens-base.css (the project only ships
+ * success / warning / danger status tokens). Define it here, scoped to
+ * .cinder-alert, so it doesn't bleed into other components.
+ */
+.cinder-alert {
+  --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
+}
+
+.cinder-alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-4);
+  border-radius: var(--cinder-radius-lg);
+  border: 1px solid var(--cinder-border);
+  background: var(--cinder-surface);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* ----------------------------------------
+ * Icon slot
+ * ---------------------------------------- */
+
+.cinder-alert__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  /* Nudge down 1px to optically align with the first line of body text */
+  margin-block-start: 1px;
+}
+
+.cinder-alert__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ----------------------------------------
+ * Content area
+ * ---------------------------------------- */
+
+.cinder-alert__content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ----------------------------------------
+ * Dismiss button
+ * ---------------------------------------- */
+
+.cinder-alert__dismiss {
+  /* Absolute so it sits in the corner without disturbing flex layout */
+  position: absolute;
+  inset-block-start: var(--cinder-space-3);
+  inset-inline-end: var(--cinder-space-3);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: var(--cinder-space-0-5);
+
+  border-radius: var(--cinder-radius-sm);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/*
+ * Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting
+ * layout. The ::after pseudo-element is absolutely positioned relative to the
+ * button, so it doesn't push adjacent content around.
+ */
+.cinder-alert__dismiss::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+.cinder-alert__dismiss:hover {
+  background: color-mix(in oklch, currentColor, transparent 80%);
+}
+
+.cinder-alert__dismiss:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-alert-ring, var(--cinder-ring-color));
+}
+
+@media (forced-colors: active) {
+  .cinder-alert__dismiss:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
+.cinder-alert__dismiss-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ----------------------------------------
+ * Variant: info
+ * ---------------------------------------- */
+
+.cinder-alert[data-cinder-variant='info'] {
+  --_cinder-alert-ring: var(--cinder-alert-info);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-alert-info) 96.5% 0.015 h),
+    oklch(from var(--cinder-alert-info) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-alert-info) 85% 0.05 h),
+    oklch(from var(--cinder-alert-info) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-alert-info) 35% 0.12 h),
+    oklch(from var(--cinder-alert-info) 88% 0.12 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: success
+ * ---------------------------------------- */
+
+.cinder-alert[data-cinder-variant='success'] {
+  --_cinder-alert-ring: var(--cinder-success);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-success) 96.5% 0.015 h),
+    oklch(from var(--cinder-success) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-success) 85% 0.05 h),
+    oklch(from var(--cinder-success) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-success) 35% 0.14 h),
+    oklch(from var(--cinder-success) 88% 0.12 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: warning
+ * ---------------------------------------- */
+
+.cinder-alert[data-cinder-variant='warning'] {
+  --_cinder-alert-ring: var(--cinder-warning);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-warning) 96.5% 0.015 h),
+    oklch(from var(--cinder-warning) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-warning) 85% 0.05 h),
+    oklch(from var(--cinder-warning) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-warning) 35% 0.16 h),
+    oklch(from var(--cinder-warning) 88% 0.14 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: error
+ * ---------------------------------------- */
+
+.cinder-alert[data-cinder-variant='error'] {
+  --_cinder-alert-ring: var(--cinder-danger);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-danger) 96.5% 0.015 h),
+    oklch(from var(--cinder-danger) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-danger) 85% 0.05 h),
+    oklch(from var(--cinder-danger) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-danger) 35% 0.18 h),
+    oklch(from var(--cinder-danger) 88% 0.16 h)
+  );
+}
