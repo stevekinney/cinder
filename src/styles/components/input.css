@@ -1,0 +1,132 @@
+/* ========================================
+ * INPUT
+ * ======================================== */
+
+/* ----------------------------------------
+ * Field wrapper
+ * ---------------------------------------- */
+
+.cinder-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1-5);
+}
+
+/* ----------------------------------------
+ * Label
+ * ---------------------------------------- */
+
+.cinder-input-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  line-height: 1;
+  color: var(--cinder-text);
+}
+
+.cinder-input-field__label[data-disabled] {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------
+ * Input element
+ * ---------------------------------------- */
+
+.cinder-input {
+  display: block;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: var(--cinder-space-1-5) var(--cinder-space-3);
+  font-size: var(--cinder-text-sm);
+  font-family: inherit;
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text);
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  appearance: none;
+
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-input::placeholder {
+  color: var(--cinder-text-subtle);
+}
+
+.cinder-input:hover:not(:disabled) {
+  border-color: var(--cinder-border-strong);
+}
+
+/* Focus ring — same pattern as Button so the system is visually consistent. */
+.cinder-input:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-input-ring, var(--cinder-ring-color));
+}
+
+/* Windows High Contrast Mode: box-shadow is suppressed by the browser. Restore
+ * focus visibility using the system Highlight color which is guaranteed to
+ * contrast the field surface in WHCM.
+ */
+@media (forced-colors: active) {
+  .cinder-input:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+/* ----------------------------------------
+ * Disabled state
+ * ---------------------------------------- */
+
+.cinder-input:disabled {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+.cinder-input:disabled::placeholder {
+  color: var(--cinder-text-disabled);
+}
+
+/* ----------------------------------------
+ * Error / invalid state
+ * ---------------------------------------- */
+
+/* Use the danger token so the error border matches the error text and alert
+ * components — one semantic color, used consistently.
+ */
+.cinder-input[aria-invalid='true'] {
+  --_cinder-input-ring: var(--cinder-danger);
+  border-color: var(--cinder-danger);
+}
+
+.cinder-input[aria-invalid='true']:hover:not(:disabled) {
+  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+}
+
+/* ----------------------------------------
+ * Supporting text
+ * ---------------------------------------- */
+
+.cinder-input-field__description {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  margin: 0;
+}
+
+.cinder-input-field__error {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-danger);
+  margin: 0;
+}
