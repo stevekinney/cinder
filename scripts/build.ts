@@ -7,6 +7,14 @@ const repositoryRoot = process.cwd();
 const distributionDirectory = `${repositoryRoot}/dist`;
 const svelteShimsPath = Bun.resolveSync('svelte2tsx/svelte-shims-v4.d.ts', repositoryRoot);
 
+// Fail fast if package.json#exports has drifted from the component file system.
+// Run `bun run exports:generate` to fix drift.
+const checkResult = await $`bun run exports:check`.nothrow();
+if (checkResult.exitCode !== 0) {
+  process.stderr.write('Build aborted: exports are out of sync. Run `bun run exports:generate`.\n');
+  process.exit(1);
+}
+
 await $`rm -rf dist`;
 
 process.env['NODE_ENV'] = 'production';

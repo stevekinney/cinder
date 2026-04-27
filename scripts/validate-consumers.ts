@@ -139,29 +139,58 @@ type TarballExpectations = {
   forbiddenPrefixes: string[];
 };
 
+// All public component source files and their CSS partials that must be in the tarball.
+const PUBLIC_COMPONENTS = [
+  'accordion-item',
+  'accordion',
+  'alert',
+  'badge',
+  'button',
+  'card',
+  'data-list',
+  'dropdown',
+  'empty-state',
+  'input',
+  'modal',
+  'navigation-bar',
+  'navigation-item',
+  'page-layout',
+  'pagination',
+  'select',
+  'skeleton',
+  'spinner',
+  'textarea',
+  'toggle',
+  'tooltip',
+];
+
 const tarballExpectations: TarballExpectations = {
   required: [
     'package/package.json',
     'package/src/index.ts',
-    'package/src/components/button.svelte',
     'package/src/utilities/class-names.ts',
     'package/src/styles/index.css',
     'package/src/styles/tokens.css',
+    'package/src/styles/tokens-base.css',
     'package/src/styles/foundation.css',
     'package/src/styles/components.css',
-    'package/src/styles/components/button.css',
     'package/src/styles/utilities.css',
     'package/dist/index.d.ts',
-    'package/dist/components/button.svelte.d.ts',
     'package/dist/server/index.js',
+    // All public component source + CSS partials.
+    ...PUBLIC_COMPONENTS.map((name) => `package/src/components/${name}.svelte`),
+    ...PUBLIC_COMPONENTS.map((name) => `package/src/styles/components/${name}.css`),
+    // Type declarations for all components.
+    ...PUBLIC_COMPONENTS.map((name) => `package/dist/components/${name}.svelte.d.ts`),
   ],
-  forbiddenPatterns: [/\.(test|spec)\.ts$/],
+  forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
   forbiddenPrefixes: [
     'package/fixtures/',
     'package/tmp/',
     'package/dist/client/',
     'package/dist/test/',
     'package/scripts/',
+    'package/src/components/_internal/',
   ],
 };
 
@@ -295,21 +324,72 @@ async function runSveltekitFixture(): Promise<void> {
       fail(`no built CSS contains @layer cinder — @layer declaration lost during bundling`);
     }
 
+    // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
+    // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
+    const ALWAYS_RENDERED_CLASSES = [
+      'cinder-accordion',
+      'cinder-alert',
+      'cinder-badge',
+      'cinder-button',
+      'cinder-data-list',
+      'cinder-empty-state',
+      'cinder-input-field',
+      'cinder-navigation-bar',
+      'cinder-page-layout',
+      'cinder-pagination',
+      'cinder-select-field',
+      'cinder-skeleton',
+      'cinder-spinner',
+      'cinder-textarea-field',
+      'cinder-toggle',
+    ];
+
+    // Lazy-mount: popup element must be ABSENT in default-closed SSR HTML.
+    const LAZY_ABSENT_STRINGS = ['<dialog', 'role="menu"'];
+
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
       cwd: fixtureDirectory,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { ...Bun.env, PORT: String(httpPort), HOST: '127.0.0.1' },
+      env: {
+        ...Bun.env,
+        PORT: String(httpPort),
+        HOST: '127.0.0.1',
+        TZ: 'UTC',
+        LANG: 'en_US.UTF-8',
+      },
     });
 
     try {
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
+
+      // Barrel page
       const response = await fetch(`http://127.0.0.1:${httpPort}/`);
-      if (response.status !== 200) fail(`fixture returned ${response.status}, want 200`);
+      if (response.status !== 200) fail(`fixture / returned ${response.status}, want 200`);
       const body = await response.text();
-      if (!body.includes('cinder-button')) {
-        fail('fixture HTML does not contain cinder-button class');
+      for (const cls of ALWAYS_RENDERED_CLASSES) {
+        if (!body.includes(cls)) {
+          fail(`fixture HTML (/) does not contain class "${cls}"`);
+        }
+      }
+      for (const absent of LAZY_ABSENT_STRINGS) {
+        if (body.includes(absent)) {
+          fail(
+            `fixture HTML (/) should not contain "${absent}" for lazy-mount components in closed state`,
+          );
+        }
+      }
+
+      // Subpath page
+      const subpathResponse = await fetch(`http://127.0.0.1:${httpPort}/subpath`);
+      if (subpathResponse.status !== 200)
+        fail(`fixture /subpath returned ${subpathResponse.status}, want 200`);
+      const subpathBody = await subpathResponse.text();
+      for (const cls of ALWAYS_RENDERED_CLASSES) {
+        if (!subpathBody.includes(cls)) {
+          fail(`fixture HTML (/subpath) does not contain class "${cls}"`);
+        }
       }
     } finally {
       fixtureServer.kill();
@@ -369,6 +449,7 @@ async function runNodeFixture(): Promise<void> {
 
     const renderResult = Bun.spawnSync([nodeBinaryPath, 'dist/render.js'], {
       cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
     });
     if (renderResult.exitCode !== 0) {
       fail(
@@ -378,8 +459,21 @@ async function runNodeFixture(): Promise<void> {
       );
     }
     const renderedOutput = renderResult.stdout.toString();
-    if (!renderedOutput.includes('cinder-button')) {
-      fail(`node render output missing cinder-button class. Output:\n${renderedOutput}`);
+    const requiredInNodeOutput = [
+      'cinder-button',
+      'cinder-alert',
+      'cinder-badge',
+      'cinder-spinner',
+      'cinder-skeleton',
+    ];
+    for (const cls of requiredInNodeOutput) {
+      if (!renderedOutput.includes(cls)) {
+        fail(`node render output missing "${cls}". Output:\n${renderedOutput}`);
+      }
+    }
+    // Verify snippet-only components were imported (marked "OK" in render.ts output).
+    if (!renderedOutput.includes('Card imported OK')) {
+      fail(`node render output missing "Card imported OK" — subpath import failed`);
     }
   } finally {
     restoreManifest();

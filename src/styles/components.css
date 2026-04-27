@@ -1,9 +1,27 @@
 /**
- * Component styles for cinder.
- *
- * This file is a Wave-2 aggregator in Phase 2's architecture; each component
- * owns a partial under `./components/<name>.css`. Phase 1 pre-splits Button
- * so the aggregator shape matches what Phase 2 assumes.
+ * Component styles aggregator.
+ * Each component owns its CSS partial under ./components/<name>.css.
+ * Wave 2 of Phase 2 adds all imports in alphabetical order.
  */
 
+@import './components/accordion-item.css';
+@import './components/accordion.css';
+@import './components/alert.css';
+@import './components/badge.css';
 @import './components/button.css';
+@import './components/card.css';
+@import './components/data-list.css';
+@import './components/dropdown.css';
+@import './components/empty-state.css';
+@import './components/input.css';
+@import './components/modal.css';
+@import './components/navigation-bar.css';
+@import './components/navigation-item.css';
+@import './components/page-layout.css';
+@import './components/pagination.css';
+@import './components/select.css';
+@import './components/skeleton.css';
+@import './components/spinner.css';
+@import './components/textarea.css';
+@import './components/toggle.css';
+@import './components/tooltip.css';

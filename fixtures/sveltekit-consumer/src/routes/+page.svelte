@@ -1,31 +1,159 @@
 <script lang="ts">
-  import { Button } from 'cinder';
-  import type { ButtonVariant, ButtonSize } from 'cinder';
+  // Barrel imports — exercises the main cinder entry point
+  import {
+    AccordionItem,
+    Accordion,
+    Alert,
+    Badge,
+    Button,
+    Card,
+    DataList,
+    Dropdown,
+    EmptyState,
+    Input,
+    Modal,
+    NavigationBar,
+    NavigationItem,
+    PageLayout,
+    Pagination,
+    Select,
+    Skeleton,
+    Spinner,
+    Textarea,
+    Toggle,
+    Tooltip,
+  } from 'cinder';
   import '../app.css';
 
-  const variants: ButtonVariant[] = ['primary', 'secondary', 'danger', 'ghost'];
-  const sizes: ButtonSize[] = ['xs', 'sm', 'md', 'lg'];
+  let currentPage = $state(1);
+  let inputValue = $state('');
+  let textareaValue = $state('');
+  let selectValue = $state('option-a');
+  let togglePressed = $state(false);
+  let modalOpen = $state(false);
+  let dropdownOpen = $state(false);
+  let expandedIds = $state<string[]>([]);
 </script>
 
 <main>
-  <h1>cinder sveltekit consumer fixture</h1>
+  <h1>cinder sveltekit consumer fixture — barrel imports</h1>
 
-  <section>
-    <h2>variants</h2>
-    {#each variants as variant (variant)}
-      <Button {variant} label={variant} />
-    {/each}
+  <section aria-label="Alert">
+    <Alert variant="info">
+      {#snippet children()}Info alert{/snippet}
+    </Alert>
   </section>
 
-  <section>
-    <h2>sizes</h2>
-    {#each sizes as size (size)}
-      <Button variant="primary" {size} label={size} />
-    {/each}
+  <section aria-label="Badge">
+    <Badge variant="neutral">
+      {#snippet children()}neutral{/snippet}
+    </Badge>
   </section>
 
-  <section>
-    <h2>link variant</h2>
-    <Button href="/about" label="an anchor button" />
+  <section aria-label="Button">
+    <Button label="click me" />
+  </section>
+
+  <section aria-label="Card with title">
+    <Card title="Card title" description="Card description">
+      {#snippet children()}<p>card body</p>{/snippet}
+    </Card>
+  </section>
+
+  <section aria-label="DataList">
+    <DataList items={['a', 'b', 'c']}>
+      {#snippet children(item)}<span>{item}</span>{/snippet}
+    </DataList>
+  </section>
+
+  <section aria-label="Dropdown">
+    <Dropdown bind:open={dropdownOpen}>
+      {#snippet trigger()}<button type="button">Open dropdown</button>{/snippet}
+      {#snippet children()}<div role="menu"><p>menu item</p></div>{/snippet}
+    </Dropdown>
+  </section>
+
+  <section aria-label="EmptyState">
+    <EmptyState title="Nothing here" description="Add some items" />
+  </section>
+
+  <section aria-label="Input">
+    <Input id="fixture-input" bind:value={inputValue} label="Your name" />
+  </section>
+
+  <section aria-label="Modal trigger">
+    <button type="button" onclick={() => (modalOpen = true)}>Open modal</button>
+    <Modal bind:open={modalOpen} title="Hello modal">
+      {#snippet children()}<p>modal body</p>{/snippet}
+    </Modal>
+  </section>
+
+  <section aria-label="NavigationBar">
+    <NavigationBar>
+      {#snippet items()}<NavigationItem href="/">Home</NavigationItem>{/snippet}
+    </NavigationBar>
+  </section>
+
+  <section aria-label="NavigationItem">
+    <NavigationItem href="/" active={true}>
+      {#snippet children()}Home{/snippet}
+    </NavigationItem>
+  </section>
+
+  <section aria-label="PageLayout">
+    <PageLayout title="Page title">
+      {#snippet children()}<p>page content</p>{/snippet}
+    </PageLayout>
+  </section>
+
+  <section aria-label="Pagination">
+    <Pagination bind:currentPage totalPages={10} />
+  </section>
+
+  <section aria-label="Select">
+    <Select
+      id="fixture-select"
+      bind:value={selectValue}
+      options={[
+        { value: 'option-a', label: 'Option A' },
+        { value: 'option-b', label: 'Option B' },
+      ]}
+      label="Choose one"
+    />
+  </section>
+
+  <section aria-label="Skeleton">
+    <Skeleton width="200px" height="20px" />
+  </section>
+
+  <section aria-label="Spinner">
+    <Spinner size="md" />
+  </section>
+
+  <section aria-label="Textarea">
+    <Textarea id="fixture-textarea" bind:value={textareaValue} label="Your message" />
+  </section>
+
+  <section aria-label="Toggle">
+    <Toggle id="fixture-toggle" bind:pressed={togglePressed} label="Enable feature" />
+  </section>
+
+  <section aria-label="Tooltip">
+    <Tooltip text="Helpful info">
+      {#snippet children()}<button type="button">hover me</button>{/snippet}
+    </Tooltip>
+  </section>
+
+  <section aria-label="Accordion">
+    <Accordion bind:expandedIds>
+      {#snippet children()}
+        <AccordionItem id="item-1" title="First item">
+          {#snippet children()}<p>First panel</p>{/snippet}
+        </AccordionItem>
+        <AccordionItem id="item-2" title="Second item">
+          {#snippet children()}<p>Second panel</p>{/snippet}
+        </AccordionItem>
+      {/snippet}
+    </Accordion>
   </section>
 </main>

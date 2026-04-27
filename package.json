@@ -16,6 +16,90 @@
     },
     "./styles": {
       "default": "./src/styles/index.css"
+    },
+    "./accordion-item": {
+      "svelte": "./src/components/accordion-item.svelte",
+      "types": "./dist/components/accordion-item.svelte.d.ts"
+    },
+    "./accordion": {
+      "svelte": "./src/components/accordion.svelte",
+      "types": "./dist/components/accordion.svelte.d.ts"
+    },
+    "./alert": {
+      "svelte": "./src/components/alert.svelte",
+      "types": "./dist/components/alert.svelte.d.ts"
+    },
+    "./badge": {
+      "svelte": "./src/components/badge.svelte",
+      "types": "./dist/components/badge.svelte.d.ts"
+    },
+    "./button": {
+      "svelte": "./src/components/button.svelte",
+      "types": "./dist/components/button.svelte.d.ts"
+    },
+    "./card": {
+      "svelte": "./src/components/card.svelte",
+      "types": "./dist/components/card.svelte.d.ts"
+    },
+    "./data-list": {
+      "svelte": "./src/components/data-list.svelte",
+      "types": "./dist/components/data-list.svelte.d.ts"
+    },
+    "./dropdown": {
+      "svelte": "./src/components/dropdown.svelte",
+      "types": "./dist/components/dropdown.svelte.d.ts"
+    },
+    "./empty-state": {
+      "svelte": "./src/components/empty-state.svelte",
+      "types": "./dist/components/empty-state.svelte.d.ts"
+    },
+    "./input": {
+      "svelte": "./src/components/input.svelte",
+      "types": "./dist/components/input.svelte.d.ts"
+    },
+    "./modal": {
+      "svelte": "./src/components/modal.svelte",
+      "types": "./dist/components/modal.svelte.d.ts"
+    },
+    "./navigation-bar": {
+      "svelte": "./src/components/navigation-bar.svelte",
+      "types": "./dist/components/navigation-bar.svelte.d.ts"
+    },
+    "./navigation-item": {
+      "svelte": "./src/components/navigation-item.svelte",
+      "types": "./dist/components/navigation-item.svelte.d.ts"
+    },
+    "./page-layout": {
+      "svelte": "./src/components/page-layout.svelte",
+      "types": "./dist/components/page-layout.svelte.d.ts"
+    },
+    "./pagination": {
+      "svelte": "./src/components/pagination.svelte",
+      "types": "./dist/components/pagination.svelte.d.ts"
+    },
+    "./select": {
+      "svelte": "./src/components/select.svelte",
+      "types": "./dist/components/select.svelte.d.ts"
+    },
+    "./skeleton": {
+      "svelte": "./src/components/skeleton.svelte",
+      "types": "./dist/components/skeleton.svelte.d.ts"
+    },
+    "./spinner": {
+      "svelte": "./src/components/spinner.svelte",
+      "types": "./dist/components/spinner.svelte.d.ts"
+    },
+    "./textarea": {
+      "svelte": "./src/components/textarea.svelte",
+      "types": "./dist/components/textarea.svelte.d.ts"
+    },
+    "./toggle": {
+      "svelte": "./src/components/toggle.svelte",
+      "types": "./dist/components/toggle.svelte.d.ts"
+    },
+    "./tooltip": {
+      "svelte": "./src/components/tooltip.svelte",
+      "types": "./dist/components/tooltip.svelte.d.ts"
     }
   },
   "main": "./dist/server/index.js",
@@ -33,6 +117,8 @@
     "build": "bun run scripts/build.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
     "dev": "echo 'No dev server in Phase 1. Use `bun run test --watch` for component feedback, or wait for the playground in Phase 3a.' && exit 1",
+    "exports:check": "bun run scripts/generate-exports.ts --check",
+    "exports:generate": "bun run scripts/generate-exports.ts",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",

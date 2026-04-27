@@ -1,6 +1,4 @@
-import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
-import { parse } from 'svelte/compiler';
 
 import { sveltePlugin } from '../scripts/svelte-plugin.ts';
 import Button from './components/button.svelte';
@@ -95,24 +93,6 @@ describe('svelte plugin', () => {
   });
 });
 
-describe('component AST', () => {
-  const componentGlob = new Glob('components/*.svelte');
-  const componentPaths: string[] = [];
-
-  for (const componentPath of componentGlob.scanSync({
-    cwd: import.meta.dir,
-    absolute: true,
-  })) {
-    componentPaths.push(componentPath);
-  }
-
-  test('at least one component exists', () => {
-    expect(componentPaths.length).toBeGreaterThan(0);
-  });
-
-  test.each(componentPaths)('%s has no <style> block (ast.css === null)', async (componentPath) => {
-    const source = await Bun.file(componentPath).text();
-    const abstractSyntaxTree = parse(source, { modern: true });
-    expect(abstractSyntaxTree.css).toBeNull();
-  });
-});
+// The per-component ast.css === null assertion and structural convention checks
+// moved to src/convention.test.ts in Phase 2 (Wave 2). This file retains only
+// the svelte plugin unit tests.
