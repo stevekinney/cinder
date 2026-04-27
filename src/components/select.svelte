@@ -1,0 +1,46 @@
+<script lang="ts" module>
+  export type SelectOption = { value: string; label: string; disabled?: boolean };
+
+  export type SelectProps = {
+    id: string;
+    value: string;
+    options: SelectOption[];
+    label?: string;
+    disabled?: boolean;
+    class?: string;
+  };
+</script>
+
+<script lang="ts">
+  import { cn } from '../utilities/class-names.ts';
+
+  let {
+    id,
+    value = $bindable(),
+    options,
+    label,
+    disabled = false,
+    class: className,
+  }: SelectProps = $props();
+
+  $effect(() => {
+    if (options.length === 0) {
+      console.warn('Select: options is empty');
+    }
+  });
+</script>
+
+<div class={cn('cinder-select-field', className)}>
+  {#if label}
+    <label for={id}>{label}</label>
+  {/if}
+  {#if options.length === 0}
+    <select {id} class="cinder-select" {disabled} data-cinder-empty="true"></select>
+  {:else}
+    <select {id} class="cinder-select" {disabled} bind:value>
+      {#each options as option (option.value)}
+        <option value={option.value} disabled={option.disabled}>{option.label}</option>
+      {/each}
+    </select>
+  {/if}
+</div>
