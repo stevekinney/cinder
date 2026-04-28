@@ -238,24 +238,26 @@ export async function handleRequest(request: Request): Promise<Response> {
 
 export type PlaygroundServer = {
   port: number;
-  /** Stop the HTTP server and all file watchers. */
-  dispose: () => void;
+  /** Stop the HTTP server and all file watchers. Awaitable. */
+  dispose: () => Promise<void>;
 };
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export function startServer(port: number = PORT): PlaygroundServer {
-  const watchers = startWatcher();
-
+  // Start the HTTP server first — if Bun.serve throws (e.g. EADDRINUSE),
+  // no watchers are leaked.
   const server = Bun.serve({
     port,
     fetch: handleRequest,
   });
 
-  function dispose(): void {
+  const watchers = startWatcher();
+
+  async function dispose(): Promise<void> {
     for (const watcher of watchers) {
       watcher.close();
     }
-    void server.stop(true);
+    await server.stop(true);
   }
 
   const actualPort = server.port ?? port;

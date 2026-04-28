@@ -178,10 +178,10 @@ try {
   await validateSseReload(BASE_URL);
 
   process.stdout.write('[validate:playground] all checks passed.\n');
-  server.dispose();
+  await server.dispose();
   process.exit(0);
 } catch (error) {
-  server?.dispose();
+  await server?.dispose();
   if (error instanceof PlaygroundValidationError) {
     process.stderr.write(`[validate:playground] FAILED: ${error.message}\n`);
     process.exit(1);
