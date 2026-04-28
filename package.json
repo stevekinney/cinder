@@ -128,7 +128,7 @@
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "prepack": "bun run build",
-    "playground": "bun --hot run scripts/playground/server.ts",
+    "playground": "bun --watch run scripts/playground/server.ts",
     "prepare": "husky",
     "prepublishOnly": "bun run validate && bun run build",
     "start": "echo 'No direct runtime start entrypoint is configured for this package.' && exit 1",

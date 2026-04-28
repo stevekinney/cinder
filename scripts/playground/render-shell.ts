@@ -1,3 +1,13 @@
+/** Escape a string for safe use in HTML text content and attribute values. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Renders the full HTML shell for the cinder component playground.
  *
@@ -8,18 +18,21 @@
  * and reloads the page on a `reload` message.
  */
 export function renderShell(activeComponent: string | null, components: string[]): string {
-  const title = activeComponent ? `cinder playground — ${activeComponent}` : 'cinder playground';
+  const title = activeComponent
+    ? `cinder playground — ${escapeHtml(activeComponent)}`
+    : 'cinder playground';
 
   const navItems = components
     .map((name) => {
       const isActive = name === activeComponent;
       const ariaCurrent = isActive ? ' aria-current="page"' : '';
-      return `      <li><a href="/c/${name}"${ariaCurrent}>${name}</a></li>`;
+      const safeName = escapeHtml(name);
+      return `      <li><a href="/c/${safeName}"${ariaCurrent}>${safeName}</a></li>`;
     })
     .join('\n');
 
   const mainContent = activeComponent
-    ? `<iframe src="/c/${activeComponent}" title="${activeComponent} preview"></iframe>`
+    ? `<iframe src="/c/${escapeHtml(activeComponent)}" title="${escapeHtml(activeComponent)} preview"></iframe>`
     : `<div class="placeholder"><p>Select a component from the sidebar to preview it.</p></div>`;
 
   return `<!DOCTYPE html>

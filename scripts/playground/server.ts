@@ -4,7 +4,7 @@
  * Runs at http://localhost:4173. Routes:
  *   GET /              → 302 redirect to /c/<first-component>
  *   GET /c/:name       → full shell HTML for the named component
- *   GET /bundle/:name.js → compiled Svelte client bundle (cached)
+ *   GET /bundle/:name/:scenario.js → compiled example bundle (cached)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
@@ -24,22 +24,26 @@ import { renderShell } from './render-shell.ts';
 const PORT = 4173;
 const ROOT = process.cwd();
 
-/** Compiled bundle cache: component name → JS source string. */
+/** Compiled bundle cache: "componentName/scenario" → JS source string. */
 const bundleCache = new Map<string, string>();
 
 /** Set of active SSE stream controllers. */
-const sseClients = new Set<ReadableStreamDefaultController>();
+const sseClients = new Set<ReadableStreamDefaultController<string>>();
 
 /** Send a `reload` event to every connected SSE client. */
 export function triggerReload(): void {
   const message = 'event: reload\ndata: {}\n\n';
+  const dead: ReadableStreamDefaultController<string>[] = [];
   for (const controller of sseClients) {
     try {
       controller.enqueue(message);
     } catch {
-      // Client already closed — remove it.
-      sseClients.delete(controller);
+      // Client already closed — collect for removal after iteration.
+      dead.push(controller);
     }
+  }
+  for (const controller of dead) {
+    sseClients.delete(controller);
   }
 }
 
@@ -48,36 +52,49 @@ function startWatcher(): void {
   const srcPath = join(ROOT, 'src');
   watch(srcPath, { recursive: true }, (_event, filename) => {
     if (filename) {
-      // Invalidate the bundle cache for any changed component.
+      // Invalidate example bundle cache for any changed component.
       const match = filename.match(/^components\/([^/]+)\.svelte$/);
       if (match) {
-        bundleCache.delete(match[1]!);
+        const componentName = match[1]!;
+        for (const key of bundleCache.keys()) {
+          if (key.startsWith(`${componentName}/`)) {
+            bundleCache.delete(key);
+          }
+        }
       }
       triggerReload();
     }
   });
 }
 
-/** Compile a component bundle and cache the result. */
-async function buildBundle(componentName: string): Promise<string | null> {
-  if (bundleCache.has(componentName)) {
-    return bundleCache.get(componentName)!;
+/** Compile an example bundle and cache the result. */
+async function buildBundle(componentName: string, scenario: string): Promise<string | null> {
+  const cacheKey = `${componentName}/${scenario}`;
+  if (bundleCache.has(cacheKey)) {
+    return bundleCache.get(cacheKey)!;
   }
 
-  const componentPath = join(ROOT, 'src', 'components', `${componentName}.svelte`);
-  const file = Bun.file(componentPath);
+  const examplePath = join(
+    ROOT,
+    'scripts',
+    'playground',
+    'examples',
+    componentName,
+    `${scenario}.example.svelte`,
+  );
+  const file = Bun.file(examplePath);
   const exists = await file.exists();
   if (!exists) return null;
 
   const result = await Bun.build({
-    entrypoints: [componentPath],
+    entrypoints: [examplePath],
     plugins: [sveltePlugin({ generate: 'client' })],
     target: 'browser',
     format: 'esm',
   });
 
   if (!result.success) {
-    console.error(`[playground] Bundle failed for ${componentName}:`, result.logs);
+    console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);
     return null;
   }
 
@@ -85,8 +102,13 @@ async function buildBundle(componentName: string): Promise<string | null> {
   if (!output) return null;
 
   const code = await output.text();
-  bundleCache.set(componentName, code);
+  bundleCache.set(cacheKey, code);
   return code;
+}
+
+/** Verify a path segment is a safe identifier (no path traversal). */
+function isSafeSegment(segment: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*$/.test(segment);
 }
 
 /** Build a plain-text 404 response. */
@@ -94,8 +116,8 @@ function notFound(message = 'Not Found'): Response {
   return new Response(message, { status: 404, headers: { 'Content-Type': 'text/plain' } });
 }
 
-/** Main request handler for Bun.serve. */
-async function handleRequest(request: Request): Promise<Response> {
+/** Main request handler — exported for testing. */
+export async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const { pathname } = url;
 
@@ -106,16 +128,16 @@ async function handleRequest(request: Request): Promise<Response> {
 
   // GET /events
   if (pathname === '/events') {
-    let controller!: ReadableStreamDefaultController;
-    const stream = new ReadableStream({
+    let controller: ReadableStreamDefaultController<string> | undefined;
+    const stream = new ReadableStream<string>({
       start(c) {
         controller = c;
-        sseClients.add(controller);
+        sseClients.add(c);
         // Send an initial comment to establish the connection.
-        controller.enqueue(': connected\n\n');
+        c.enqueue(': connected\n\n');
       },
       cancel() {
-        sseClients.delete(controller);
+        if (controller) sseClients.delete(controller);
       },
     });
 
@@ -137,12 +159,15 @@ async function handleRequest(request: Request): Promise<Response> {
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
-  // GET /bundle/:name.js
-  const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\.js$/);
+  // GET /bundle/:name/:scenario.js
+  const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
     const componentName = bundleMatch[1]!;
-    const code = await buildBundle(componentName);
-    if (code === null) return notFound(`Component "${componentName}" not found or failed to build`);
+    const scenario = bundleMatch[2]!;
+    if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
+    const code = await buildBundle(componentName, scenario);
+    if (code === null)
+      return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 
@@ -151,6 +176,7 @@ async function handleRequest(request: Request): Promise<Response> {
   if (exampleSrcMatch) {
     const componentName = exampleSrcMatch[1]!;
     const scenario = exampleSrcMatch[2]!;
+    if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
     const examplePath = join(
       ROOT,
       'scripts',
@@ -170,6 +196,7 @@ async function handleRequest(request: Request): Promise<Response> {
   const componentMatch = pathname.match(/^\/c\/([^/]+)$/);
   if (componentMatch) {
     const componentName = componentMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
     const allComponents = await discoverComponents();
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
@@ -195,7 +222,7 @@ async function handleRequest(request: Request): Promise<Response> {
 }
 
 /** Start the playground server. */
-function main(): void {
+export function main(): void {
   startWatcher();
 
   const server = Bun.serve({
@@ -206,4 +233,6 @@ function main(): void {
   process.stdout.write(`[playground] Listening at http://localhost:${server.port}\n`);
 }
 
-main();
+if (import.meta.main) {
+  main();
+}

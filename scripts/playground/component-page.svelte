@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
 <script lang="ts">
-  import { mount, onDestroy } from 'svelte';
+  import { mount } from 'svelte';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -8,10 +8,13 @@
 
   // The server injects window.__CINDER_EXAMPLES__ before the bundle script tag.
   // Fall back to an empty array so the component doesn't crash if the global is missing.
-  const examples: CinderExampleDescriptor[] =
-    typeof window !== 'undefined' && Array.isArray((window as CinderWindow).__CINDER_EXAMPLES__)
-      ? ((window as CinderWindow).__CINDER_EXAMPLES__ ?? [])
-      : [];
+  function readExamples(): CinderExampleDescriptor[] {
+    if (typeof window === 'undefined') return [];
+    const raw = (window as CinderWindow).__CINDER_EXAMPLES__;
+    return Array.isArray(raw) ? raw : [];
+  }
+
+  const examples: CinderExampleDescriptor[] = readExamples();
 
   // Extract the component name from the current URL path: /c/<name>
   const componentName: string = window.location.pathname.replace(/^\/c\//, '').split('/')[0] ?? '';
@@ -44,49 +47,49 @@
   // .example.svelte into its own bundle at /bundle/<name>/<scenario>.js (separate
   // from the component-page bundle itself). We dynamically import them so the
   // component-page doesn't need to know the module graph at compile time.
-  //
-  // Mounted instances collected for cleanup. Svelte 5's mount() returns
-  // Record<string, any> in practice; we cast to get the destroy() call.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mountedApps: Array<{ destroy?: () => void }> = [];
-
   $effect(() => {
+    // Per-run local collection so the cleanup only destroys this run's mounts.
+    const localApps: Array<{ destroy?: () => void }> = [];
+    let cancelled = false;
+
     for (const { scenario } of examples) {
       const containerId = `example-mount-${scenario}`;
 
       // Use a microtask so the DOM element rendered by the template is
       // guaranteed to exist before we try to mount into it.
       queueMicrotask(async () => {
+        if (cancelled) return;
         const container = document.getElementById(containerId);
         if (!container) return;
 
         try {
           const module = await import(`/bundle/${componentName}/${scenario}.js`);
+          if (cancelled) return;
           const Component = module.default;
           if (typeof Component !== 'function') return;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const app = mount(Component, { target: container }) as any;
-          mountedApps.push(app as { destroy?: () => void });
+          const app = mount(Component, { target: container }) as { destroy?: () => void };
+          localApps.push(app);
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
         }
       });
     }
-  });
 
-  onDestroy(() => {
-    for (const app of mountedApps) {
-      try {
-        app.destroy?.();
-      } catch {
-        // Suppress — best-effort cleanup only.
+    return () => {
+      cancelled = true;
+      for (const app of localApps) {
+        try {
+          app.destroy?.();
+        } catch {
+          // Suppress — best-effort cleanup only.
+        }
       }
-    }
+    };
   });
 </script>
 
-// @ts-nocheck
 <div class="example-list">
   {#if examples.length === 0}
     <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
