@@ -189,7 +189,7 @@ The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/com
 
 ### Workspace split — elected but deferred
 
-The split criteria are met: the playground has 3,736 lines of TS/Svelte across 13 source files, and `ts-morph` (a playground-only dep) lives in the root `devDependencies` with no reason to appear there from a consumer's perspective.
+Two criteria trigger a workspace split per the project plan: (1) the playground exceeds a complexity threshold where it deserves independent dependency isolation, and (2) a playground-only tool pollutes the root development environment with no benefit to contributors working only on components. Both are met as of commit `472ebff` (2026-04-28): the playground source is substantial enough to justify isolation, and `ts-morph` — used exclusively by the playground analyzer — currently lives in root `devDependencies` alongside every contributor's install, even those who never touch the playground.
 
 The target structure when executed:
 
@@ -200,11 +200,11 @@ cinder/
 │   └── playground/   (private — name: "@cinder/playground", ts-morph isolated here)
 ```
 
-This is the right call. The migration itself is a 393-file move (import paths, tsconfigs, bunfig.toml, husky hooks) and was deliberately deferred rather than executed with broken tests to avoid shipping an unverified structural change. Execute it as a standalone commit when the repo is quiescent and a full `bun test` + `validate:consumer` green run can be confirmed before merging.
+The migration touches a large number of files (import paths, tsconfigs, `bunfig.toml`, husky hooks) and was deliberately deferred rather than executed with broken tests. Do not execute until there are no concurrent package-structure changes on `main`, and both `bun test --conditions browser` and `bun run validate:consumer` pass cleanly on the migration branch before merging.
 
 ### Browser export — declined
 
-No consumer demand for a compiled-client `"browser"` export has materialized. Both consumer fixtures use the `"svelte"` condition. Premature until a specific consumer signals a need for it.
+The two existing consumer fixtures (`fixtures/sveltekit-consumer/` and `fixtures/node-consumer/`) both resolve via the `"svelte"` condition; neither requires a pre-compiled client bundle. No external consumer has raised a specific need for a `"browser"` export condition. Revisit if a real consuming application fails to resolve cinder through its bundler, or if a concrete use case (e.g. usage in a non-Svelte-aware build pipeline) is documented in an issue.
 
 ## License
 
