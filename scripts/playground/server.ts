@@ -14,7 +14,7 @@
  * whenever a file changes. Use `triggerReload()` directly in tests.
  */
 
-import { watch } from 'node:fs';
+import { watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../svelte-plugin.ts';
@@ -48,9 +48,9 @@ export function triggerReload(): void {
 }
 
 /** Start watching `src/` and `scripts/playground/examples/` for live reload. */
-function startWatcher(): void {
+function startWatcher(): FSWatcher[] {
   const srcPath = join(ROOT, 'src');
-  watch(srcPath, { recursive: true }, (_event, filename) => {
+  const srcWatcher = watch(srcPath, { recursive: true }, (_event, filename) => {
     if (filename) {
       // Invalidate example bundle cache for any changed component.
       const match = filename.match(/^components\/([^/]+)\.svelte$/);
@@ -69,7 +69,7 @@ function startWatcher(): void {
   // Watch the examples directory so edits to .example.svelte files invalidate
   // the cached bundle and trigger a browser reload.
   const examplesPath = join(ROOT, 'scripts', 'playground', 'examples');
-  watch(examplesPath, { recursive: true }, (_event, filename) => {
+  const examplesWatcher = watch(examplesPath, { recursive: true }, (_event, filename) => {
     if (filename) {
       const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
       if (match) {
@@ -78,6 +78,8 @@ function startWatcher(): void {
       triggerReload();
     }
   });
+
+  return [srcWatcher, examplesWatcher];
 }
 
 /** Compile an example bundle and cache the result. */
@@ -234,17 +236,31 @@ export async function handleRequest(request: Request): Promise<Response> {
   return notFound();
 }
 
-/** Start the playground server on the given port and return the Bun.Server instance. */
-export function startServer(port: number = PORT): ReturnType<typeof Bun.serve> {
-  startWatcher();
+export type PlaygroundServer = {
+  port: number;
+  /** Stop the HTTP server and all file watchers. */
+  dispose: () => void;
+};
+
+/** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
+export function startServer(port: number = PORT): PlaygroundServer {
+  const watchers = startWatcher();
 
   const server = Bun.serve({
     port,
     fetch: handleRequest,
   });
 
-  process.stdout.write(`[playground] Listening at http://localhost:${server.port}\n`);
-  return server;
+  function dispose(): void {
+    for (const watcher of watchers) {
+      watcher.close();
+    }
+    void server.stop(true);
+  }
+
+  const actualPort = server.port ?? port;
+  process.stdout.write(`[playground] Listening at http://localhost:${actualPort}\n`);
+  return { port: actualPort, dispose };
 }
 
 if (import.meta.main) {

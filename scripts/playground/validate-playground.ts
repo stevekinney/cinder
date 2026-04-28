@@ -1,7 +1,7 @@
 /**
  * Validation script for the cinder component playground server.
  *
- * Starts the playground server in-process by calling main() from server.ts
+ * Starts the playground server in-process by calling startServer() from server.ts
  * (guarded by import.meta.main so importing it here does not auto-start it),
  * crawls every /c/<name> route for all discovered components, validates HTTP
  * status codes and page content, and tests the SSE reload path.
@@ -13,7 +13,7 @@
  */
 
 import { discoverComponents } from './discover.ts';
-import { PORT, startServer, triggerReload } from './server.ts';
+import { type PlaygroundServer, PORT, startServer, triggerReload } from './server.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {
@@ -159,7 +159,7 @@ async function validateSseReload(baseUrl: string): Promise<void> {
   process.stdout.write('[validate:playground] SSE reload event received.\n');
 }
 
-let server: ReturnType<typeof startServer> | undefined;
+let server: PlaygroundServer | undefined;
 
 try {
   server = startServer(PORT);
@@ -178,10 +178,10 @@ try {
   await validateSseReload(BASE_URL);
 
   process.stdout.write('[validate:playground] all checks passed.\n');
-  void server.stop(true);
+  server.dispose();
   process.exit(0);
 } catch (error) {
-  void server?.stop(true);
+  server?.dispose();
   if (error instanceof PlaygroundValidationError) {
     process.stderr.write(`[validate:playground] FAILED: ${error.message}\n`);
     process.exit(1);
