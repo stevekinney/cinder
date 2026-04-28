@@ -185,6 +185,27 @@ dist/
 
 The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/components/**/*.svelte`, `src/styles/**/*.css`, the four generic utilities, and `README.md`. Fixtures, tests, `.a11y.md` files, `scripts/`, and `_internal/` components are excluded. `validate:consumer` asserts both expected and forbidden paths.
 
+## Phase 5 decision log
+
+### Workspace split — elected but deferred
+
+Two criteria trigger a workspace split per the project plan: (1) the playground exceeds a complexity threshold where it deserves independent dependency isolation, and (2) a playground-only tool pollutes the root development environment with no benefit to contributors working only on components. Both are met as of commit `472ebff` (2026-04-28): the playground source is substantial enough to justify isolation, and `ts-morph` — used exclusively by the playground analyzer — currently lives in root `devDependencies` alongside every contributor's install, even those who never touch the playground.
+
+The target structure when executed:
+
+```
+cinder/
+├── packages/
+│   ├── components/   (published — name: "cinder", all current exports)
+│   └── playground/   (private — name: "@cinder/playground", ts-morph isolated here)
+```
+
+The migration touches a large number of files (import paths, tsconfigs, `bunfig.toml`, husky hooks) and was deliberately deferred rather than executed with broken tests. Do not execute until there are no concurrent package-structure changes on `main`, and both `bun test --conditions browser` and `bun run validate:consumer` pass cleanly on the migration branch before merging.
+
+### Browser export — declined
+
+The two existing consumer fixtures (`fixtures/sveltekit-consumer/` and `fixtures/node-consumer/`) both resolve via the `"svelte"` condition; neither requires a pre-compiled client bundle. No external consumer has raised a specific need for a `"browser"` export condition. Revisit if a real consuming application fails to resolve cinder through its bundler, or if a concrete use case (e.g. usage in a non-Svelte-aware build pipeline) is documented in an issue.
+
 ## License
 
 MIT
