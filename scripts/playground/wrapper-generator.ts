@@ -59,13 +59,25 @@ export function generateWrapper(manifest: ComponentManifest): string {
   import ${componentIdentifier} from '${manifest.importPath}';
 
   ${pickedComment}
-  const rawControls: Record<string, unknown> = (window as any).__CINDER_CONTROLS__ ?? {};
-
   // Filter to only the props this component accepts (excluding snippets and class).
   const allowedKeys = new Set(${JSON.stringify(propKeys)});
-  let controlProps = $state<Record<string, unknown>>(
-    Object.fromEntries(Object.entries(rawControls).filter(([key]) => allowedKeys.has(key))),
-  );
+
+  function readControlProps(): Record<string, unknown> {
+    const raw: Record<string, unknown> = (window as any).__CINDER_CONTROLS__ ?? {};
+    return Object.fromEntries(Object.entries(raw).filter(([key]) => allowedKeys.has(key)));
+  }
+
+  let controlProps = $state<Record<string, unknown>>(readControlProps());
+
+  // Re-read props reactively whenever the host page updates __CINDER_CONTROLS__.
+  // The host dispatches 'cinder:controls-updated' on window after each change.
+  $effect(() => {
+    function handleUpdate() {
+      controlProps = readControlProps();
+    }
+    window.addEventListener('cinder:controls-updated', handleUpdate);
+    return () => window.removeEventListener('cinder:controls-updated', handleUpdate);
+  });
 </script>
 
 <${componentIdentifier} {...controlProps} />

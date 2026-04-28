@@ -35,20 +35,7 @@
   // Control values keyed by prop name. Populated from manifest on load.
   const controlValues: Record<string, unknown> = $state({});
 
-  // Debounced snapshot of controlValues used as the {#key} for example mounts.
-  // Only updates after 500ms of idle time so text input doesn't remount on every keystroke.
-  let debouncedControlsKey: string = $state('{}');
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function scheduleControlsKeyUpdate(): void {
-    if (debounceTimer !== null) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      debouncedControlsKey = JSON.stringify(controlValues);
-      debounceTimer = null;
-    }, 500);
-  }
-
-  // Immediate (non-debounced) key for window.__CINDER_CONTROLS__ sync.
+  // Track changes for window.__CINDER_CONTROLS__ sync.
   const controlsKey: string = $derived(JSON.stringify(controlValues));
 
   // Fetch the manifest for this component on mount.
@@ -75,10 +62,12 @@
       });
   });
 
-  // Keep __CINDER_CONTROLS__ in sync immediately on every control change.
+  // Sync __CINDER_CONTROLS__ and notify mounted wrapper bundles on every control change.
+  // Wrappers listen to 'cinder:controls-updated' and re-read props reactively — no remount needed.
   $effect(() => {
     void controlsKey; // subscribe to changes
     (window as unknown as Record<string, unknown>)['__CINDER_CONTROLS__'] = controlValues;
+    window.dispatchEvent(new CustomEvent('cinder:controls-updated'));
   });
 
   // Controllable props — exclude snippets and unknown kinds for rendering.
@@ -112,9 +101,8 @@
   // from the component-page bundle itself). We dynamically import them so the
   // component-page doesn't need to know the module graph at compile time.
   $effect(() => {
-    // Depend on debouncedControlsKey (not controlsKey) so remounting happens
-    // only after the user stops typing, not on every keystroke.
-    void debouncedControlsKey;
+    // Mount examples once; they stay mounted and receive control updates via the
+    // 'cinder:controls-updated' event rather than being remounted on each change.
 
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
@@ -173,9 +161,7 @@
       </header>
 
       <div class="example-layout">
-        {#key debouncedControlsKey}
-          <div class="example-preview" id="example-mount-{scenario}"></div>
-        {/key}
+        <div class="example-preview" id="example-mount-{scenario}"></div>
 
         {#if controllableProps.length > 0}
           <div class="controls-panel">
@@ -193,7 +179,6 @@
                     checked={Boolean(controlValues[prop.name])}
                     onchange={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLInputElement).checked;
-                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'number'}
@@ -206,7 +191,6 @@
                       controlValues[prop.name] = Number(
                         (event.currentTarget as HTMLInputElement).value,
                       );
-                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'text'}
@@ -217,7 +201,6 @@
                     value={String(controlValues[prop.name] ?? '')}
                     oninput={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLInputElement).value;
-                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'select'}
@@ -227,7 +210,6 @@
                     value={String(controlValues[prop.name] ?? '')}
                     onchange={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLSelectElement).value;
-                      scheduleControlsKeyUpdate();
                     }}
                   >
                     {#each prop.control.options as option (option)}
