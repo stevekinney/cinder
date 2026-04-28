@@ -156,11 +156,10 @@ try {
   );
   // The root lint-staged invokes `oxlint --type-aware --tsconfig ./packages/components/tsconfig.json`.
   // Mirror the components tsconfig at that path in the sim so oxlint can find it.
+  // The extends path "../../tsconfig.base.json" is intentionally preserved — when oxlint reads
+  // this file from sim/packages/components/, ../../ correctly resolves to sim/tsconfig.base.json.
   mkdirSync(join(simulationDirectory, 'packages/components'), { recursive: true });
-  await Bun.write(
-    join(simulationDirectory, 'packages/components/tsconfig.json'),
-    typescriptConfig.replace('"../../tsconfig.base.json"', '"../../tsconfig.base.json"'),
-  );
+  await Bun.write(join(simulationDirectory, 'packages/components/tsconfig.json'), typescriptConfig);
   // Critical: keep node_modules + bun.lock out of `git add .`. Without this the sim stages
   // thousands of files, lint-staged walks them all, and sort-package-json / oxlint thrash on
   // upstream package.json files that don't belong to the sim.

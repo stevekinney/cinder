@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch run src/server.ts",
-    "lint": "oxlint --fix src/",
+    "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test",
     "typecheck": "tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
