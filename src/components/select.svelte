@@ -26,8 +26,10 @@
     ...rest
   }: SelectProps = $props();
 
+  // Guard runs only in the browser after mount so SSR render doesn't pollute
+  // server output with warnings. $effect never runs on the server in Svelte 5.
   $effect(() => {
-    if (options.length === 0) {
+    if (typeof window !== 'undefined' && options.length === 0) {
       console.warn('Select: options is empty');
     }
   });

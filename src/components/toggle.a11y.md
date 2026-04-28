@@ -34,7 +34,11 @@ No custom `onkeydown` handler is needed. The native `<button>` element fires `cl
 
 ## External Label Association
 
-The `id` prop is placed on the `<button>` element so a consuming page can associate an external visible `<label>` element using `<label for="…">`. When an external label is present, the button's `aria-label` supplements rather than replaces it — screen readers announce the external label text in addition to the `aria-pressed` state.
+The `id` prop is placed on the `<button>` element. Note that when `aria-label` is present on the button, it **takes precedence over** any external `<label for="…">` in the accessible name computation (step 2D vs step 2F in the ARIA spec). An external label element with `for` pointing at this button's `id` will be silently ignored by screen readers when `aria-label` is also present.
+
+If you need a visible, clickable label associated with the toggle, wrap both the label and the toggle in a container and use the label's `onclick` to toggle the state programmatically rather than relying on `<label for>` association.
+
+The `id` prop is therefore most useful for: (a) test selectors, (b) `aria-labelledby` references from other elements (which **do** take precedence over `aria-label` and can coexist correctly).
 
 ## Screen Reader Announcements
 

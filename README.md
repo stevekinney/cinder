@@ -53,7 +53,7 @@ npm install cinder
 
 ### Subpath imports
 
-Every component is individually importable:
+Every component is individually importable in Vite/SvelteKit consumers (the `svelte` export condition):
 
 ```svelte
 <script lang="ts">
@@ -62,6 +62,9 @@ Every component is individually importable:
   // ...one subpath per component
 </script>
 ```
+
+> [!NOTE]
+> Subpath exports only define `svelte` and `types` conditions — they are designed for Vite/SvelteKit bundler consumers. Plain Node SSR consumers should use the root barrel via the `node` condition: `import { Button } from 'cinder'`. Per-component Node SSR subpaths are a Phase 5 addition.
 
 ### Export conditions
 
