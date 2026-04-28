@@ -26,13 +26,15 @@ export function renderShell(activeComponent: string | null, components: string[]
     .map((name) => {
       const isActive = name === activeComponent;
       const ariaCurrent = isActive ? ' aria-current="page"' : '';
-      const safeName = escapeHtml(name);
-      return `      <li><a href="/c/${safeName}"${ariaCurrent}>${safeName}</a></li>`;
+      // Component names are validated by isSafeSegment (/^[a-z0-9][a-z0-9-]*$/),
+      // so they're safe in URL paths. Escape only the visible text node.
+      return `      <li><a href="/c/${name}"${ariaCurrent}>${escapeHtml(name)}</a></li>`;
     })
     .join('\n');
 
+  // Component names are path-safe; escaping is only needed in title attribute and visible text.
   const mainContent = activeComponent
-    ? `<iframe src="/c/${escapeHtml(activeComponent)}" title="${escapeHtml(activeComponent)} preview"></iframe>`
+    ? `<iframe src="/c/${activeComponent}" title="${escapeHtml(activeComponent)} preview"></iframe>`
     : `<div class="placeholder"><p>Select a component from the sidebar to preview it.</p></div>`;
 
   return `<!DOCTYPE html>

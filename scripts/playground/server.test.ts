@@ -3,14 +3,41 @@
  *
  * Uses handleRequest directly (no live server) for route-level coverage.
  * The triggerReload / SSE integration path is covered by validate-playground.ts.
+ *
+ * Tests that hit /bundle/button/primary.js and /example-src/button/primary rely
+ * on scripts/playground/examples/button/primary.example.svelte existing. A
+ * beforeAll guard asserts this up front so failures are diagnosable.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
+import { join } from 'node:path';
 
-import { handleRequest, triggerReload } from './server.ts';
+import { PORT, handleRequest, triggerReload } from './server.ts';
+
+const ROOT = process.cwd();
+const FIXTURE_COMPONENT = 'button';
+const FIXTURE_SCENARIO = 'primary';
+const FIXTURE_PATH = join(
+  ROOT,
+  'scripts',
+  'playground',
+  'examples',
+  FIXTURE_COMPONENT,
+  `${FIXTURE_SCENARIO}.example.svelte`,
+);
+
+beforeAll(async () => {
+  const exists = await Bun.file(FIXTURE_PATH).exists();
+  if (!exists) {
+    throw new Error(
+      `[server.test] Required fixture missing: ${FIXTURE_PATH}\n` +
+        `Create scripts/playground/examples/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.example.svelte before running these tests.`,
+    );
+  }
+});
 
 function req(path: string, options?: RequestInit): Request {
-  return new Request(`http://localhost:4173${path}`, options);
+  return new Request(`http://localhost:${PORT}${path}`, options);
 }
 
 describe('/ping', () => {
@@ -24,7 +51,6 @@ describe('/ping', () => {
 describe('/styles.css', () => {
   it('returns 200 with text/css when src/styles/index.css exists', async () => {
     const response = await handleRequest(req('/styles.css'));
-    // The file exists in this repo, so we expect 200.
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('text/css');
   });
@@ -59,9 +85,8 @@ describe('/c/:name', () => {
     expect(response.status).toBe(404);
   });
 
-  it('returns 404 for segments starting with a digit in wrong pattern', async () => {
-    // Component names must match /^[a-z0-9][a-z0-9-]*$/ and exist in allowlist.
-    const response = await handleRequest(req('/c/9button'));
+  it('returns 404 for segments starting with a hyphen', async () => {
+    const response = await handleRequest(req('/c/-bad'));
     expect(response.status).toBe(404);
   });
 });
@@ -73,22 +98,32 @@ describe('/bundle/:name/:scenario.js', () => {
   });
 
   it('returns 404 for segments with uppercase (blocked by isSafeSegment)', async () => {
-    // URL parser normalizes .. away, so test actual unsafe chars instead.
     const response = await handleRequest(req('/bundle/Button/primary.js'));
     expect(response.status).toBe(404);
   });
 
   it('returns 200 application/javascript for a known example', async () => {
-    // button/primary.example.svelte exists in this repo
-    const response = await handleRequest(req('/bundle/button/primary.js'));
+    const response = await handleRequest(
+      req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/javascript');
+  });
+
+  it('returns the same bundle on repeated requests (cache hit)', async () => {
+    const r1 = await handleRequest(req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`));
+    const r2 = await handleRequest(req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`));
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+    expect(await r1.text()).toBe(await r2.text());
   });
 });
 
 describe('/example-src/:name/:scenario', () => {
   it('returns 200 text/plain for a known example', async () => {
-    const response = await handleRequest(req('/example-src/button/primary'));
+    const response = await handleRequest(
+      req(`/example-src/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}`),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('text/plain');
     const source = await response.text();
@@ -107,15 +142,15 @@ describe('/example-src/:name/:scenario', () => {
 });
 
 describe('/events (SSE)', () => {
-  it('returns 200 with text/event-stream', async () => {
+  it('returns 200 with text/event-stream and sends initial handshake', async () => {
     const response = await handleRequest(req('/events'));
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('text/event-stream');
     // Consume and verify the initial handshake comment.
     const reader = response.body!.getReader();
     const { value } = await reader.read();
-    // The controller enqueues strings; coerce to string regardless of chunk type.
-    const text = typeof value === 'string' ? value : new TextDecoder().decode(value as Uint8Array);
+    // The stream enqueues strings; Bun may deliver them as string or Uint8Array.
+    const text = value instanceof Uint8Array ? new TextDecoder().decode(value) : String(value);
     expect(text).toContain(': connected');
     reader.cancel();
   });
@@ -127,14 +162,10 @@ describe('triggerReload', () => {
   });
 
   it('removes dead controllers from sseClients without throwing', async () => {
-    // Connect a client, then immediately close the stream and trigger reload.
     const response = await handleRequest(req('/events'));
     const reader = response.body!.getReader();
-    // Consume the initial handshake.
     await reader.read();
-    // Cancel the reader (simulates client disconnect).
     await reader.cancel();
-    // triggerReload should not throw even though the controller is dead.
     expect(() => triggerReload()).not.toThrow();
   });
 });
@@ -154,37 +185,8 @@ describe('isSafeSegment (via route behavior)', () => {
     expect(r2.status).toBe(404);
   });
 
-  it('rejects segments starting with a hyphen', async () => {
-    const response = await handleRequest(req('/c/-bad'));
-    expect(response.status).toBe(404);
-  });
-
   it('rejects segments containing special characters', async () => {
     const response = await handleRequest(req('/c/bad%20name'));
     expect(response.status).toBe(404);
-  });
-});
-
-describe('beforeEach/afterEach cleanup', () => {
-  // Verify the bundle cache doesn't leak between tests by checking
-  // that repeated requests for the same bundle produce the same content.
-  let firstResponse: string;
-
-  beforeEach(async () => {
-    const r = await handleRequest(req('/bundle/button/primary.js'));
-    if (r.status === 200) {
-      firstResponse = await r.text();
-    }
-  });
-
-  afterEach(() => {
-    firstResponse = '';
-  });
-
-  it('serves the same bundle content on repeated requests (cache hit)', async () => {
-    const r = await handleRequest(req('/bundle/button/primary.js'));
-    if (r.status === 200) {
-      expect(await r.text()).toBe(firstResponse);
-    }
   });
 });

@@ -68,7 +68,6 @@
           const Component = module.default;
           if (typeof Component !== 'function') return;
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const app = mount(Component, { target: container }) as { destroy?: () => void };
           localApps.push(app);
         } catch (error) {

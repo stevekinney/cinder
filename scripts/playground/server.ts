@@ -21,7 +21,7 @@ import { sveltePlugin } from '../svelte-plugin.ts';
 import { discoverComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 
-const PORT = 4173;
+export const PORT = 4173;
 const ROOT = process.cwd();
 
 /** Compiled bundle cache: "componentName/scenario" → JS source string. */
@@ -53,6 +53,10 @@ function startWatcher(): void {
   watch(srcPath, { recursive: true }, (_event, filename) => {
     if (filename) {
       // Invalidate example bundle cache for any changed component.
+      // Note: changes to .example.svelte files under scripts/playground/examples/
+      // are NOT watched here — the SSE reload still triggers a page reload which
+      // will fetch and recompile the bundle fresh on next request. Revisit if
+      // Phase 3b concurrent example authoring surfaces stale-bundle issues.
       const match = filename.match(/^components\/([^/]+)\.svelte$/);
       if (match) {
         const componentName = match[1]!;

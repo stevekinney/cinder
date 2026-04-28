@@ -13,7 +13,7 @@
  */
 
 import { discoverComponents } from './discover.ts';
-import { main as startServer, triggerReload } from './server.ts';
+import { PORT, main as startServer, triggerReload } from './server.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {
@@ -29,7 +29,6 @@ function fail(message: string): never {
 /** Minimum number of public components expected in src/components/. */
 const MINIMUM_COMPONENT_COUNT = 21;
 
-const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 /** Wait for the server to become ready by polling /ping. */

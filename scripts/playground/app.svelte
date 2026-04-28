@@ -5,5 +5,3 @@
   // eslint-disable-next-line no-console
   console.info(signal);
 </script>
-
-// @ts-nocheck
