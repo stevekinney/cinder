@@ -15,18 +15,24 @@
  * whenever a file changes. Use `triggerReload()` directly in tests.
  */
 
-import { watch, type FSWatcher } from 'node:fs';
+import { unlinkSync, watch, type FSWatcher } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../svelte-plugin.ts';
+import { analyzeAll, type ComponentManifest } from './analyze.ts';
 import { discoverComponents, discoverExamples } from './discover.ts';
 import { renderShell } from './render-shell.ts';
+import { generateWrapper } from './wrapper-generator.ts';
 
 export const PORT = 4173;
 const ROOT = process.cwd();
 
 /** Compiled bundle cache: "componentName/scenario" → JS source string. */
 const bundleCache = new Map<string, string>();
+
+/** Cached result of analyzeAll — cleared whenever bundleCache is cleared. */
+let manifestCache: ComponentManifest[] | null = null;
 
 /** Set of active SSE stream controllers. */
 const sseClients = new Set<ReadableStreamDefaultController<string>>();
@@ -63,6 +69,7 @@ function startWatcher(): FSWatcher[] {
           // bundle since it imports from svelte which may pull in updated code.
           bundleCache.clear();
           componentPageBundleCache = null;
+          manifestCache = null;
           triggerReload();
         }
       }),
@@ -174,6 +181,70 @@ async function buildComponentPageBundle(): Promise<string | null> {
   const code = await output.text();
   componentPageBundleCache = code;
   return code;
+}
+
+/**
+ * Return the full manifest array, using the module-level cache.
+ * Cleared whenever bundleCache.clear() is called (i.e., on any src/ change).
+ */
+async function getManifests(): Promise<ComponentManifest[]> {
+  if (manifestCache !== null) return manifestCache;
+  manifestCache = await analyzeAll(join(ROOT, 'src', 'components'));
+  return manifestCache;
+}
+
+/**
+ * Compile a controls wrapper bundle for the given component and cache the result
+ * under the key `${componentName}/controls`.
+ */
+async function buildControlsBundle(componentName: string): Promise<string | null> {
+  const cacheKey = `${componentName}/controls`;
+  if (bundleCache.has(cacheKey)) {
+    return bundleCache.get(cacheKey)!;
+  }
+
+  const manifests = await getManifests();
+  const manifest = manifests.find((m) => m.kebabName === componentName);
+  if (manifest === undefined) return null;
+
+  // generateWrapper expects a manifest whose `name` field is the kebab name
+  // (it derives PascalCase from it internally).
+  const wrapperSource = generateWrapper({
+    name: manifest.kebabName,
+    importPath: manifest.importPath,
+    props: manifest.props,
+  });
+
+  const tempPath = join(tmpdir(), `cinder-controls-${componentName}-${Date.now()}.svelte`);
+  await Bun.write(tempPath, wrapperSource);
+
+  try {
+    const result = await Bun.build({
+      entrypoints: [tempPath],
+      plugins: [sveltePlugin({ generate: 'client' })],
+      target: 'browser',
+      format: 'esm',
+    });
+
+    if (!result.success) {
+      console.error(`[playground] controls bundle failed for ${componentName}:`, result.logs);
+      return null;
+    }
+
+    const output = result.outputs[0];
+    if (!output) return null;
+
+    const code = await output.text();
+    bundleCache.set(cacheKey, code);
+    return code;
+  } finally {
+    // Best-effort synchronous cleanup of the temp file.
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Ignore — file may already be gone or never written.
+    }
+  }
 }
 
 /** Render the standalone component page HTML (the iframe content — no outer shell). */
@@ -294,6 +365,38 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (pathname === '/component-page.js') {
     const code = await buildComponentPageBundle();
     if (code === null) return notFound('component-page bundle failed to build');
+    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  // GET /api/manifest — full manifest array
+  if (pathname === '/api/manifest') {
+    const manifests = await getManifests();
+    return new Response(JSON.stringify(manifests), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // GET /api/manifest/:name — single component manifest
+  const apiManifestMatch = pathname.match(/^\/api\/manifest\/([^/]+)$/);
+  if (apiManifestMatch) {
+    const componentName = apiManifestMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    const manifests = await getManifests();
+    const manifest = manifests.find((m) => m.kebabName === componentName);
+    if (manifest === undefined) return notFound(`Manifest for "${componentName}" not found`);
+    return new Response(JSON.stringify(manifest), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // GET /bundle/:name/controls.js — compiled wrapper bundle
+  const controlsBundleMatch = pathname.match(/^\/bundle\/([^/]+)\/controls\.js$/);
+  if (controlsBundleMatch) {
+    const componentName = controlsBundleMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    const code = await buildControlsBundle(componentName);
+    if (code === null)
+      return notFound(`Controls bundle for "${componentName}" not found or failed to build`);
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 

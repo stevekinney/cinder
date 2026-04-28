@@ -2,6 +2,33 @@
 <script lang="ts">
   import { mount, unmount } from 'svelte';
 
+  import { defaultForControl } from './controls.ts';
+
+  type ControlKind =
+    | { kind: 'text' }
+    | { kind: 'number' }
+    | { kind: 'boolean' }
+    | { kind: 'select'; options: string[] }
+    | { kind: 'snippet' }
+    | { kind: 'unknown'; rawType: string };
+
+  type PropManifest = {
+    name: string;
+    control: ControlKind;
+    defaultValue?: unknown;
+    bindable: boolean;
+    optional: boolean;
+    description?: string;
+  };
+
+  type ComponentManifest = {
+    name: string;
+    kebabName: string;
+    file: string;
+    importPath: string;
+    props: PropManifest[];
+  };
+
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
     typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
@@ -26,6 +53,55 @@
   const fetchedSource: Record<string, string | null> = $state({});
   const loadingSource: Record<string, boolean> = $state({});
 
+  // Manifest and controls state
+  let manifest: ComponentManifest | null = $state(null);
+
+  // Control values keyed by prop name. Populated from manifest on load.
+  const controlValues: Record<string, unknown> = $state({});
+
+  // Derived key that stringifies control values — used with {#key} to force
+  // remount of example containers when controls change.
+  const controlsKey: string = $derived(JSON.stringify(controlValues));
+
+  // Fetch the manifest for this component on mount.
+  $effect(() => {
+    if (!componentName) return;
+    fetch(`/api/manifest/${componentName}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: ComponentManifest | null) => {
+        if (data === null) return;
+        manifest = data;
+        // Seed control values from manifest defaults.
+        for (const prop of data.props) {
+          if (prop.control.kind === 'snippet') continue;
+          if (prop.control.kind === 'unknown') continue;
+          const defaultValue =
+            prop.defaultValue !== undefined ? prop.defaultValue : defaultForControl(prop.control);
+          controlValues[prop.name] = defaultValue;
+        }
+        // Expose to the mounted example bundles.
+        (window as unknown as Record<string, unknown>)['__CINDER_CONTROLS__'] = controlValues;
+      })
+      .catch(() => {
+        // Manifest fetch failed — controls panel will be empty. Not fatal.
+      });
+  });
+
+  // Keep __CINDER_CONTROLS__ in sync whenever controlValues changes.
+  $effect(() => {
+    // Access controlsKey to subscribe to changes.
+    void controlsKey;
+    (window as unknown as Record<string, unknown>)['__CINDER_CONTROLS__'] = controlValues;
+  });
+
+  // Controllable props — exclude snippets and unknown kinds for rendering.
+  const controllableProps: PropManifest[] = $derived.by(() => {
+    if (manifest === null) return [];
+    return manifest.props.filter(
+      (prop: PropManifest) => prop.control.kind !== 'snippet' && prop.control.kind !== 'unknown',
+    );
+  });
+
   async function handleDetailsToggle(event: Event, scenario: string): Promise<void> {
     const details = event.currentTarget as HTMLDetailsElement;
 
@@ -49,6 +125,9 @@
   // from the component-page bundle itself). We dynamically import them so the
   // component-page doesn't need to know the module graph at compile time.
   $effect(() => {
+    // Depend on controlsKey so re-mounting happens when controls change.
+    void controlsKey;
+
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
     const localApps: ReturnType<typeof mount>[] = [];
@@ -105,7 +184,70 @@
         {/if}
       </header>
 
-      <div class="example-preview" id="example-mount-{scenario}"></div>
+      <div class="example-layout">
+        {#key controlsKey}
+          <div class="example-preview" id="example-mount-{scenario}"></div>
+        {/key}
+
+        {#if controllableProps.length > 0}
+          <div class="controls-panel">
+            {#each controllableProps as prop (prop.name)}
+              <div class="control-row">
+                <label class="control-label" for="control-{scenario}-{prop.name}">
+                  {prop.name}
+                </label>
+
+                {#if prop.control.kind === 'boolean'}
+                  <input
+                    id="control-{scenario}-{prop.name}"
+                    class="control-input"
+                    type="checkbox"
+                    checked={Boolean(controlValues[prop.name])}
+                    onchange={(event) => {
+                      controlValues[prop.name] = (event.currentTarget as HTMLInputElement).checked;
+                    }}
+                  />
+                {:else if prop.control.kind === 'number'}
+                  <input
+                    id="control-{scenario}-{prop.name}"
+                    class="control-input"
+                    type="number"
+                    value={Number(controlValues[prop.name] ?? 0)}
+                    oninput={(event) => {
+                      controlValues[prop.name] = Number(
+                        (event.currentTarget as HTMLInputElement).value,
+                      );
+                    }}
+                  />
+                {:else if prop.control.kind === 'text'}
+                  <input
+                    id="control-{scenario}-{prop.name}"
+                    class="control-input"
+                    type="text"
+                    value={String(controlValues[prop.name] ?? '')}
+                    oninput={(event) => {
+                      controlValues[prop.name] = (event.currentTarget as HTMLInputElement).value;
+                    }}
+                  />
+                {:else if prop.control.kind === 'select'}
+                  <select
+                    id="control-{scenario}-{prop.name}"
+                    class="control-input"
+                    value={String(controlValues[prop.name] ?? '')}
+                    onchange={(event) => {
+                      controlValues[prop.name] = (event.currentTarget as HTMLSelectElement).value;
+                    }}
+                  >
+                    {#each prop.control.options as option (option)}
+                      <option value={option}>{option}</option>
+                    {/each}
+                  </select>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <details class="example-source" ontoggle={(event) => handleDetailsToggle(event, scenario)}>
         <summary class="example-source-toggle">View source</summary>
@@ -164,6 +306,12 @@
     line-height: var(--cinder-leading-normal);
   }
 
+  .example-layout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--cinder-space-4);
+  }
+
   .example-preview {
     padding: var(--cinder-space-6);
     min-height: 4rem;
@@ -171,6 +319,40 @@
     align-items: flex-start;
     flex-wrap: wrap;
     gap: var(--cinder-space-4);
+  }
+
+  .controls-panel {
+    width: 220px;
+    min-width: 180px;
+    border-left: 1px solid var(--cinder-border-muted);
+    padding: var(--cinder-space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
+
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .control-label {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .control-input {
+    font-size: var(--cinder-text-sm);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    width: 100%;
   }
 
   .example-source {
