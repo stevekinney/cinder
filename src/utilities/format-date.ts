@@ -37,7 +37,12 @@ export function formatRelativeTime(input: number | string | Date): string {
   if (elapsed < WEEK) return `${Math.floor(elapsed / DAY)}d ago`;
   if (elapsed < MONTH) return `${Math.floor(elapsed / WEEK)}w ago`;
 
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 }
 
 /** Format a timestamp for display. Returns "-" for null/undefined. */
@@ -46,11 +51,12 @@ export function formatTimestamp(input: number | string | Date | null | undefined
 
   const date = toDate(input);
 
-  return date.toLocaleString(undefined, {
+  return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
-  });
+    timeZone: 'UTC',
+  }).format(date);
 }
