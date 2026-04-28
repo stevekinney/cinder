@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "//": "tsc --noEmit pass for files that don't import .svelte. Those are handled by svelte-check.",
+  "exclude": [
+    "node_modules",
+    "coverage",
+    "fixtures",
+    "**/dist/**",
+    "**/build/**",
+    "src/index.ts",
+    "src/components.test.ts"
+  ]
+}

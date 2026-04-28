@@ -1,0 +1,8 @@
+[loader]
+".md" = "text"
+
+[run]
+bun = true
+
+[test]
+preload = ["./scripts/preload.ts"]

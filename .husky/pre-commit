@@ -2,4 +2,4 @@
 
 # Lightweight wrapper to call Bun-based hook
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-bun "$SCRIPT_DIR/../scripts/husky/pre-commit.ts"
+bun "$SCRIPT_DIR/../packages/components/scripts/husky/pre-commit.ts"
