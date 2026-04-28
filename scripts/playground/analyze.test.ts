@@ -205,3 +205,56 @@ describe('analyzeAll', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// NavigationItem — non-destructuring $props() returns empty props array
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — navigation-item.svelte (non-destructuring $props)', () => {
+  it('returns an empty props array when $props() is not destructured', async () => {
+    const manifest = await analyzeComponent(componentPath('navigation-item'));
+    // NavigationItem uses `const props: NavigationItemProps = $props()` (no destructuring),
+    // so extractPropsFromSvelteAst returns [] and the manifest has no props.
+    expect(manifest.props).toEqual([]);
+  });
+
+  it('still returns the correct name and kebabName', async () => {
+    const manifest = await analyzeComponent(componentPath('navigation-item'));
+    expect(manifest.name).toBe('NavigationItem');
+    expect(manifest.kebabName).toBe('navigation-item');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Card — discriminated union Props (CardWithHeader | CardWithTitle)
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — card.svelte (discriminated union Props)', () => {
+  it('returns a manifest without throwing', async () => {
+    await expect(analyzeComponent(componentPath('card'))).resolves.toBeDefined();
+  });
+
+  it('includes the children prop present in both arms', async () => {
+    const manifest = await analyzeComponent(componentPath('card'));
+    const children = manifest.props.find((p) => p.name === 'children');
+    expect(children).toBeDefined();
+    expect(children?.control.kind).toBe('snippet');
+  });
+
+  it('marks arm-only props as optional (header is only in CardWithHeader)', async () => {
+    const manifest = await analyzeComponent(componentPath('card'));
+    const header = manifest.props.find((p) => p.name === 'header');
+    // header appears in CardWithHeader but not CardWithTitle → optional across arms
+    if (header !== undefined) {
+      expect(header.optional).toBe(true);
+    }
+  });
+
+  it('marks arm-only props as optional (title is only in CardWithTitle)', async () => {
+    const manifest = await analyzeComponent(componentPath('card'));
+    const title = manifest.props.find((p) => p.name === 'title');
+    if (title !== undefined) {
+      expect(title.optional).toBe(true);
+    }
+  });
+});

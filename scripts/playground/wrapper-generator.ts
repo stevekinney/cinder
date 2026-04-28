@@ -2,45 +2,15 @@
  * Generates a Svelte 5 wrapper component source string for the controls panel.
  *
  * The wrapper reads prop values from `window.__CINDER_CONTROLS__` (a plain object
- * injected by the server from URL query params) and renders the target component
- * with those values spread as props.
+ * injected by the server) and renders the target component with those values spread as props.
  *
  * The generated wrapper is compiled by `Bun.build` and served at
  * `/bundle/:name/controls.js`.
- *
- * NOTE: `ComponentManifest` and `PropManifest` are defined here until `analyze.ts`
- * is created in the next phase. The analyzer will re-export them so callers can
- * `import type { ComponentManifest, PropManifest } from './analyze.ts'`.
  */
 
-import type { ControlKind } from './controls.ts';
+import type { ComponentManifest, PropManifest } from './types.ts';
 
-/** Metadata for a single component prop extracted by the static analyzer. */
-export type PropManifest = {
-  /** Prop name as it appears in the component's `$props()` destructure. */
-  name: string;
-  /** Inferred control kind for this prop's type. */
-  control: ControlKind;
-  /** Whether the prop was marked `$bindable()`. */
-  bindable: boolean;
-  /** Default value from the component source, if present. */
-  defaultValue?: unknown;
-  /** Whether the prop is optional (`?`). */
-  optional: boolean;
-};
-
-/** Metadata for a Svelte component extracted by the static analyzer. */
-export type ComponentManifest = {
-  /** Kebab-case component name (matches the `.svelte` filename without extension). */
-  name: string;
-  /**
-   * Path used in the generated `import` statement. Relative to
-   * `scripts/playground/` so that `Bun.build` can resolve it.
-   */
-  importPath: string;
-  /** Ordered list of props, as extracted from the component's script. */
-  props: PropManifest[];
-};
+export type { ComponentManifest, PropManifest };
 
 /**
  * Returns the subset of props that should appear in `controlProps` — i.e., props
@@ -72,16 +42,13 @@ function toPascalCase(kebab: string): string {
  * 3. Filters to only the controllable props (no snippets, no `class`).
  * 4. Renders `<Component {...controlProps} />`.
  *
- * Snippet props are intentionally omitted — they cannot be represented as URL
- * query params or serialised JSON values.
+ * Snippet props are intentionally omitted — they cannot be represented as
+ * serialized form values.
  */
 export function generateWrapper(manifest: ComponentManifest): string {
   const componentIdentifier = toPascalCase(manifest.name);
   const controlled = selectableProps(manifest.props);
 
-  // Build the object type annotation for controlProps so TypeScript is happy
-  // inside the generated Svelte script. We use `Record<string, unknown>` as the
-  // widened type since the generated code is a dev-only harness.
   const propKeys = controlled.map((prop) => prop.name);
   const pickedComment =
     propKeys.length > 0

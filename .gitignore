@@ -100,3 +100,6 @@ repomix-output.xml
 .env.local
 .env.*.local
 tmp/
+
+# Playground server temporary wrapper files
+scripts/playground/.controls-*.svelte

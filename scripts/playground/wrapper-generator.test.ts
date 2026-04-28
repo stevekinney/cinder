@@ -13,6 +13,8 @@ import { generateWrapper } from './wrapper-generator.ts';
 /** Minimal Button manifest for testing — does not reflect all real Button props. */
 const buttonManifest: ComponentManifest = {
   name: 'button',
+  kebabName: 'button',
+  file: '/fake/src/components/button.svelte',
   importPath: '../../../../src/components/button.svelte',
   props: [
     {
@@ -117,6 +119,8 @@ describe('generateWrapper', () => {
   it('handles a component with no controllable props gracefully', () => {
     const emptyManifest: ComponentManifest = {
       name: 'spinner',
+      kebabName: 'spinner',
+      file: '/fake/src/components/spinner.svelte',
       importPath: '../../../../src/components/spinner.svelte',
       props: [
         {
@@ -147,6 +151,8 @@ describe('generateWrapper', () => {
   it('converts a multi-word kebab name to PascalCase for the identifier', () => {
     const manifest: ComponentManifest = {
       name: 'data-list',
+      kebabName: 'data-list',
+      file: '/fake/src/components/data-list.svelte',
       importPath: '../../../../src/components/data-list.svelte',
       props: [],
     };

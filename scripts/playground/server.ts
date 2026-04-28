@@ -15,13 +15,15 @@
  * whenever a file changes. Use `triggerReload()` directly in tests.
  */
 
+import { randomUUID } from 'node:crypto';
 import { unlinkSync, watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../svelte-plugin.ts';
-import { analyzeAll, type ComponentManifest } from './analyze.ts';
+import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples } from './discover.ts';
 import { renderShell } from './render-shell.ts';
+import type { ComponentManifest } from './types.ts';
 import { generateWrapper } from './wrapper-generator.ts';
 
 export const PORT = 4173;
@@ -30,8 +32,10 @@ const ROOT = process.cwd();
 /** Compiled bundle cache: "componentName/scenario" → JS source string. */
 const bundleCache = new Map<string, string>();
 
-/** Cached result of analyzeAll — cleared whenever bundleCache is cleared. */
+/** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
+/** In-flight analyzeAll() promise — prevents duplicate concurrent analyses. */
+let manifestPromise: Promise<ComponentManifest[]> | null = null;
 
 /** Set of active SSE stream controllers. */
 const sseClients = new Set<ReadableStreamDefaultController<string>>();
@@ -69,6 +73,7 @@ function startWatcher(): FSWatcher[] {
           bundleCache.clear();
           componentPageBundleCache = null;
           manifestCache = null;
+          manifestPromise = null;
           triggerReload();
         }
       }),
@@ -188,8 +193,14 @@ async function buildComponentPageBundle(): Promise<string | null> {
  */
 async function getManifests(): Promise<ComponentManifest[]> {
   if (manifestCache !== null) return manifestCache;
-  manifestCache = await analyzeAll(join(ROOT, 'src', 'components'));
-  return manifestCache;
+  // Reuse the in-flight promise so concurrent callers don't each start analyzeAll().
+  manifestPromise ??= analyzeAll(join(ROOT, 'src', 'components'));
+  try {
+    manifestCache = await manifestPromise;
+    return manifestCache;
+  } finally {
+    manifestPromise = null;
+  }
 }
 
 /**
@@ -206,14 +217,12 @@ async function buildControlsBundle(componentName: string): Promise<string | null
   const manifest = manifests.find((m) => m.kebabName === componentName);
   if (manifest === undefined) return null;
 
-  // generateWrapper expects a manifest whose `name` is kebab-case and
-  // importPath is resolvable from the temp file's location. Use the absolute
-  // source path (manifest.file) so Bun.build can resolve it without needing
-  // the cinder package installed.
+  // Use manifest.file (absolute source path) as importPath so Bun.build can
+  // resolve it from the temp wrapper file without needing the cinder package installed.
   const wrapperSource = generateWrapper({
+    ...manifest,
     name: manifest.kebabName,
     importPath: manifest.file,
-    props: manifest.props,
   });
 
   // Write the temp wrapper inside the repo so Bun's module resolver can find
@@ -222,7 +231,7 @@ async function buildControlsBundle(componentName: string): Promise<string | null
     ROOT,
     'scripts',
     'playground',
-    `.controls-${componentName}-${Date.now()}.svelte`,
+    `.controls-${componentName}-${randomUUID()}.svelte`,
   );
   await Bun.write(tempPath, wrapperSource);
 

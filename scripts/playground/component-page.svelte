@@ -3,31 +3,7 @@
   import { mount, unmount } from 'svelte';
 
   import { defaultForControl } from './controls.ts';
-
-  type ControlKind =
-    | { kind: 'text' }
-    | { kind: 'number' }
-    | { kind: 'boolean' }
-    | { kind: 'select'; options: string[] }
-    | { kind: 'snippet' }
-    | { kind: 'unknown'; rawType: string };
-
-  type PropManifest = {
-    name: string;
-    control: ControlKind;
-    defaultValue?: unknown;
-    bindable: boolean;
-    optional: boolean;
-    description?: string;
-  };
-
-  type ComponentManifest = {
-    name: string;
-    kebabName: string;
-    file: string;
-    importPath: string;
-    props: PropManifest[];
-  };
+  import type { ComponentManifest, PropManifest } from './types.ts';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -59,8 +35,20 @@
   // Control values keyed by prop name. Populated from manifest on load.
   const controlValues: Record<string, unknown> = $state({});
 
-  // Derived key that stringifies control values — used with {#key} to force
-  // remount of example containers when controls change.
+  // Debounced snapshot of controlValues used as the {#key} for example mounts.
+  // Only updates after 500ms of idle time so text input doesn't remount on every keystroke.
+  let debouncedControlsKey: string = $state('{}');
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function scheduleControlsKeyUpdate(): void {
+    if (debounceTimer !== null) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debouncedControlsKey = JSON.stringify(controlValues);
+      debounceTimer = null;
+    }, 500);
+  }
+
+  // Immediate (non-debounced) key for window.__CINDER_CONTROLS__ sync.
   const controlsKey: string = $derived(JSON.stringify(controlValues));
 
   // Fetch the manifest for this component on mount.
@@ -87,10 +75,9 @@
       });
   });
 
-  // Keep __CINDER_CONTROLS__ in sync whenever controlValues changes.
+  // Keep __CINDER_CONTROLS__ in sync immediately on every control change.
   $effect(() => {
-    // Access controlsKey to subscribe to changes.
-    void controlsKey;
+    void controlsKey; // subscribe to changes
     (window as unknown as Record<string, unknown>)['__CINDER_CONTROLS__'] = controlValues;
   });
 
@@ -125,8 +112,9 @@
   // from the component-page bundle itself). We dynamically import them so the
   // component-page doesn't need to know the module graph at compile time.
   $effect(() => {
-    // Depend on controlsKey so re-mounting happens when controls change.
-    void controlsKey;
+    // Depend on debouncedControlsKey (not controlsKey) so remounting happens
+    // only after the user stops typing, not on every keystroke.
+    void debouncedControlsKey;
 
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
@@ -185,7 +173,7 @@
       </header>
 
       <div class="example-layout">
-        {#key controlsKey}
+        {#key debouncedControlsKey}
           <div class="example-preview" id="example-mount-{scenario}"></div>
         {/key}
 
@@ -205,6 +193,7 @@
                     checked={Boolean(controlValues[prop.name])}
                     onchange={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLInputElement).checked;
+                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'number'}
@@ -217,6 +206,7 @@
                       controlValues[prop.name] = Number(
                         (event.currentTarget as HTMLInputElement).value,
                       );
+                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'text'}
@@ -227,6 +217,7 @@
                     value={String(controlValues[prop.name] ?? '')}
                     oninput={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLInputElement).value;
+                      scheduleControlsKeyUpdate();
                     }}
                   />
                 {:else if prop.control.kind === 'select'}
@@ -236,6 +227,7 @@
                     value={String(controlValues[prop.name] ?? '')}
                     onchange={(event) => {
                       controlValues[prop.name] = (event.currentTarget as HTMLSelectElement).value;
+                      scheduleControlsKeyUpdate();
                     }}
                   >
                     {#each prop.control.options as option (option)}

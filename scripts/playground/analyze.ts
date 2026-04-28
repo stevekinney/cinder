@@ -17,34 +17,9 @@ import { basename, join } from 'node:path';
 import { parse } from 'svelte/compiler';
 import { Project, type PropertySignature, SyntaxKind, type TypeNode } from 'ts-morph';
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
+import type { ComponentManifest, ControlKind, PropManifest } from './types.ts';
 
-export type ControlKind =
-  | { kind: 'text' }
-  | { kind: 'number' }
-  | { kind: 'boolean' }
-  | { kind: 'select'; options: string[] }
-  | { kind: 'snippet' }
-  | { kind: 'unknown'; rawType: string };
-
-export type PropManifest = {
-  name: string;
-  control: ControlKind;
-  defaultValue?: unknown;
-  bindable: boolean;
-  optional: boolean;
-  description?: string;
-};
-
-export type ComponentManifest = {
-  name: string;
-  kebabName: string;
-  file: string;
-  importPath: string;
-  props: PropManifest[];
-};
+export type { ComponentManifest, ControlKind, PropManifest };
 
 // ---------------------------------------------------------------------------
 // Internal types for AST nodes (svelte/compiler returns untyped objects)
@@ -58,9 +33,12 @@ type AstNode = Record<string, unknown>;
 
 /**
  * Infers a control kind from a ts-morph TypeNode.
- * This will be replaced by controls.ts; keep the logic self-contained here.
+ * Internal implementation — the public string-based API lives in controls.ts.
  */
-export function inferControlKind(typeNode: TypeNode | undefined, typeText: string): ControlKind {
+function inferControlKindFromTypeNode(
+  typeNode: TypeNode | undefined,
+  typeText: string,
+): ControlKind {
   if (typeNode === undefined) return { kind: 'unknown', rawType: typeText };
 
   const kind = typeNode.getKind();
@@ -106,7 +84,7 @@ export function inferControlKind(typeNode: TypeNode | undefined, typeText: strin
     const alias = sf.getTypeAlias(name);
     if (alias !== undefined) {
       const resolvedNode = alias.getTypeNode();
-      return inferControlKind(resolvedNode, resolvedNode?.getText() ?? typeText);
+      return inferControlKindFromTypeNode(resolvedNode, resolvedNode?.getText() ?? typeText);
     }
 
     return { kind: 'unknown', rawType: typeText };
@@ -386,7 +364,7 @@ function buildTypeInfoMap(
         const uniqueTexts = [...new Set(typeTexts)];
         let control: ControlKind;
         if (uniqueTexts.length === 1 && firstProp !== undefined) {
-          control = inferControlKind(firstProp.getTypeNode(), uniqueTexts[0] ?? '?');
+          control = inferControlKindFromTypeNode(firstProp.getTypeNode(), uniqueTexts[0] ?? '?');
         } else {
           control = { kind: 'unknown', rawType: 'discriminated-union' };
         }
@@ -404,7 +382,7 @@ function buildTypeInfoMap(
     for (const [name, prop] of propMap) {
       const typeNodeForProp = prop.getTypeNode();
       const typeText = typeNodeForProp?.getText() ?? '?';
-      const control = inferControlKind(typeNodeForProp, typeText);
+      const control = inferControlKindFromTypeNode(typeNodeForProp, typeText);
       const optional = prop.hasQuestionToken();
       const description =
         prop

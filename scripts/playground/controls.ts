@@ -1,20 +1,14 @@
 /**
  * Maps a prop's TypeScript type string to a {@link ControlKind} discriminated union.
  *
- * This is the single source of truth for type→control mapping. The static analyzer
- * (`analyze.ts`) calls {@link inferControlKind} after extracting type text from ts-morph;
- * the wrapper generator calls {@link defaultForControl} when no explicit defaultValue
- * is available.
+ * The runtime-facing public API for type→control mapping. The static analyzer uses
+ * the ts-morph TypeNode path (inferControlKindFromTypeNode in analyze.ts — internal);
+ * this string-based function is used by the controls panel UI and wrapper generator.
  */
 
-/** Discriminated union describing the kind of UI control for a single prop. */
-export type ControlKind =
-  | { kind: 'text' }
-  | { kind: 'number' }
-  | { kind: 'boolean' }
-  | { kind: 'select'; options: string[] }
-  | { kind: 'snippet' }
-  | { kind: 'unknown'; rawType: string };
+import type { ControlKind } from './types.ts';
+
+export type { ControlKind };
 
 /** Regex matching a single-quoted string literal arm: `'foo'`. */
 const SINGLE_QUOTED_PATTERN = /^'[^']+'$/;
