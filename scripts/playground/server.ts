@@ -243,7 +243,7 @@ export type PlaygroundServer = {
 };
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
-export function startServer(port: number = PORT): PlaygroundServer {
+export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   // Start the HTTP server first — if Bun.serve throws (e.g. EADDRINUSE),
   // no watchers are leaked.
   const server = Bun.serve({
@@ -251,7 +251,14 @@ export function startServer(port: number = PORT): PlaygroundServer {
     fetch: handleRequest,
   });
 
-  const watchers = startWatcher();
+  let watchers: FSWatcher[];
+  try {
+    watchers = startWatcher();
+  } catch (error) {
+    // startWatcher() failed — stop the already-listening server before rethrowing.
+    await server.stop(true);
+    throw error;
+  }
 
   async function dispose(): Promise<void> {
     for (const watcher of watchers) {
@@ -266,5 +273,5 @@ export function startServer(port: number = PORT): PlaygroundServer {
 }
 
 if (import.meta.main) {
-  startServer();
+  await startServer();
 }

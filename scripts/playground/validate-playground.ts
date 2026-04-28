@@ -162,7 +162,7 @@ async function validateSseReload(baseUrl: string): Promise<void> {
 let server: PlaygroundServer | undefined;
 
 try {
-  server = startServer(PORT);
+  server = await startServer(PORT);
   process.stdout.write(`[validate:playground] waiting for playground server on port ${PORT}…\n`);
   await waitForPing(10_000);
   process.stdout.write(`[validate:playground] server ready at ${BASE_URL}\n`);
