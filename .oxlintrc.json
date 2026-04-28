@@ -54,9 +54,9 @@
     "coverage/**",
     ".bun/**",
     "node_modules/**",
-    "fixtures/**",
+    "packages/components/fixtures/**",
     "**/*.svelte",
-    "scripts/playground/**/*.svelte",
+    "packages/playground/src/**/*.svelte",
     "*.lock"
   ],
   "overrides": [

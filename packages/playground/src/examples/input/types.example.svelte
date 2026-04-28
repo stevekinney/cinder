@@ -1,0 +1,20 @@
+<script lang="ts" module>
+  export const title = 'Input types';
+  export const description = 'Text, email, password, search, tel, and url types.';
+</script>
+
+<script lang="ts">
+  import { Input } from '../../../../components/src/index.ts';
+
+  let text = $state('');
+  let email = $state('');
+  let password = $state('');
+  let search = $state('');
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 1rem;">
+  <Input id="t-text" type="text" bind:value={text} label="Text" placeholder="Plain text" />
+  <Input id="t-email" type="email" bind:value={email} label="Email" placeholder="you@example.com" />
+  <Input id="t-password" type="password" bind:value={password} label="Password" />
+  <Input id="t-search" type="search" bind:value={search} label="Search" placeholder="Search…" />
+</div>

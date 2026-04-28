@@ -2,4 +2,4 @@
 
 # Wrapper to call Bun-based post-merge hook
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-bun "$SCRIPT_DIR/../scripts/husky/post-merge.ts"
+bun "$SCRIPT_DIR/../packages/components/scripts/husky/post-merge.ts"
