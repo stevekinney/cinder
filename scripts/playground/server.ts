@@ -16,7 +16,6 @@
  */
 
 import { unlinkSync, watch, type FSWatcher } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../svelte-plugin.ts';
@@ -207,15 +206,24 @@ async function buildControlsBundle(componentName: string): Promise<string | null
   const manifest = manifests.find((m) => m.kebabName === componentName);
   if (manifest === undefined) return null;
 
-  // generateWrapper expects a manifest whose `name` field is the kebab name
-  // (it derives PascalCase from it internally).
+  // generateWrapper expects a manifest whose `name` is kebab-case and
+  // importPath is resolvable from the temp file's location. Use the absolute
+  // source path (manifest.file) so Bun.build can resolve it without needing
+  // the cinder package installed.
   const wrapperSource = generateWrapper({
     name: manifest.kebabName,
-    importPath: manifest.importPath,
+    importPath: manifest.file,
     props: manifest.props,
   });
 
-  const tempPath = join(tmpdir(), `cinder-controls-${componentName}-${Date.now()}.svelte`);
+  // Write the temp wrapper inside the repo so Bun's module resolver can find
+  // 'svelte' and other local deps (tmpdir is outside the module graph).
+  const tempPath = join(
+    ROOT,
+    'scripts',
+    'playground',
+    `.controls-${componentName}-${Date.now()}.svelte`,
+  );
   await Bun.write(tempPath, wrapperSource);
 
   try {
@@ -349,7 +357,18 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
-  // GET /bundle/:name/:scenario.js
+  // GET /bundle/:name/controls.js — compiled wrapper bundle (must precede the generic route)
+  const controlsBundleMatch = pathname.match(/^\/bundle\/([^/]+)\/controls\.js$/);
+  if (controlsBundleMatch) {
+    const componentName = controlsBundleMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    const code = await buildControlsBundle(componentName);
+    if (code === null)
+      return notFound(`Controls bundle for "${componentName}" not found or failed to build`);
+    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  // GET /bundle/:name/:scenario.js (scenario must not be "controls" — handled above)
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
     const componentName = bundleMatch[1]!;
@@ -387,17 +406,6 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(JSON.stringify(manifest), {
       headers: { 'Content-Type': 'application/json' },
     });
-  }
-
-  // GET /bundle/:name/controls.js — compiled wrapper bundle
-  const controlsBundleMatch = pathname.match(/^\/bundle\/([^/]+)\/controls\.js$/);
-  if (controlsBundleMatch) {
-    const componentName = controlsBundleMatch[1]!;
-    if (!isSafeSegment(componentName)) return notFound();
-    const code = await buildControlsBundle(componentName);
-    if (code === null)
-      return notFound(`Controls bundle for "${componentName}" not found or failed to build`);
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 
   // GET /page/:name — standalone component page (iframe content, no shell)

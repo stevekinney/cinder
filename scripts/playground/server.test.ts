@@ -12,6 +12,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
+import type { ComponentManifest } from './analyze.ts';
 import { PORT, handleRequest, triggerReload } from './server.ts';
 
 const ROOT = process.cwd();
@@ -189,4 +190,88 @@ describe('isSafeSegment (via route behavior)', () => {
     const response = await handleRequest(req('/c/bad%20name'));
     expect(response.status).toBe(404);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 2: manifest and controls-bundle routes
+// ---------------------------------------------------------------------------
+
+describe('/api/manifest', () => {
+  it('returns 200 application/json', async () => {
+    const response = await handleRequest(req('/api/manifest'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+  }, 30_000);
+
+  it('returns an array with at least 21 entries', async () => {
+    const response = await handleRequest(req('/api/manifest'));
+    const manifests = (await response.json()) as unknown[];
+    expect(Array.isArray(manifests)).toBe(true);
+    expect(manifests.length).toBeGreaterThanOrEqual(21);
+  }, 30_000);
+
+  it('each entry has name, kebabName, file, importPath, and props array', async () => {
+    const response = await handleRequest(req('/api/manifest'));
+    const manifests = (await response.json()) as ComponentManifest[];
+    for (const entry of manifests) {
+      expect(typeof entry.name).toBe('string');
+      expect(typeof entry.kebabName).toBe('string');
+      expect(typeof entry.file).toBe('string');
+      expect(typeof entry.importPath).toBe('string');
+      expect(Array.isArray(entry.props)).toBe(true);
+    }
+  }, 30_000);
+
+  it('includes button in the manifest', async () => {
+    const response = await handleRequest(req('/api/manifest'));
+    const manifests = (await response.json()) as ComponentManifest[];
+    const button = manifests.find((entry) => entry.kebabName === 'button');
+    expect(button).toBeDefined();
+  }, 30_000);
+});
+
+describe('/api/manifest/:name', () => {
+  it('returns 200 for a known component (button)', async () => {
+    const response = await handleRequest(req('/api/manifest/button'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+  }, 30_000);
+
+  it('returns parsed JSON with name=Button and kebabName=button', async () => {
+    const response = await handleRequest(req('/api/manifest/button'));
+    const result = (await response.json()) as ComponentManifest;
+    expect(result.name).toBe('Button');
+    expect(result.kebabName).toBe('button');
+  }, 30_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/api/manifest/does-not-exist'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for segments with uppercase (isSafeSegment blocked)', async () => {
+    const response = await handleRequest(req('/api/manifest/Button'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+});
+
+describe('/bundle/:name/controls.js', () => {
+  // The controls route is matched before the generic /bundle/:name/:scenario.js
+  // route so that "controls" is not treated as a scenario name.
+
+  it('returns 200 application/javascript for button', async () => {
+    const response = await handleRequest(req('/bundle/button/controls.js'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/javascript');
+  }, 60_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/bundle/does-not-exist/controls.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for unsafe segment (uppercase)', async () => {
+    const response = await handleRequest(req('/bundle/Button/controls.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
 });

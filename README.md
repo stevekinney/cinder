@@ -92,6 +92,26 @@ cinder's compiled server output is coupled to the Svelte minor it was built agai
 - **Variants** use `data-cinder-*` attributes: `data-cinder-variant`, `data-cinder-size`.
 - **Design tokens** use `--cinder-*` for the public surface and `--_cinder-*` for internal-only custom properties.
 
+## Playground
+
+`bun run playground` starts the playground dev server at http://localhost:4173. The sidebar lists all 21 components—click any one to open its page in the main frame. Each component page shows curated examples with live controls.
+
+Those controls aren't hardcoded. The playground reads your component's `Props` type and generates form inputs automatically—text fields for strings, toggles for booleans, dropdowns for string unions. Change a `.svelte` file and the playground reloads via Server-Sent Events; no manual refresh needed.
+
+## Analyzer conventions
+
+The static analyzer (`scripts/playground/analyze.ts`) relies on five structural conventions—already enforced by `src/convention.test.ts` and required to ship a component in Phase 2 or later. None of this is magic; it's just how the analyzer finds what it needs.
+
+Every component's module script must export a `${PascalName}Props` type alias. The analyzer reads the exported name to find the type definition; a Props export with any other name is silently ignored.
+
+Your instance script must destructure from `$props()`—not assign to a variable like `const props = $props()`. Destructuring lets the analyzer walk the object pattern directly and know exactly which props exist.
+
+Every prop you destructure must have either a default value or a type annotation. The analyzer needs the type to infer control kinds (text, boolean, dropdown); the default value seeds the control's initial state.
+
+When you use `$bindable()`, its argument must be a JSON-serializable literal—strings, numbers, booleans, empty arrays, empty objects, or nothing at all. No function calls, no identifiers, no dynamic expressions. The playground initializes form state from your defaults and can only do that with values it can serialize.
+
+Snippet props must be typed as `Snippet` or `Snippet<[T]>`, never `Snippet | undefined`. Use `Snippet?` for optional snippets instead. The analyzer skips snippets entirely when generating controls—they can't be represented as form inputs.
+
 ## Working on cinder
 
 ### Environment
