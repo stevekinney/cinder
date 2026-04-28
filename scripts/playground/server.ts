@@ -47,16 +47,12 @@ export function triggerReload(): void {
   }
 }
 
-/** Start watching `src/` recursively and fire `triggerReload` on any change. */
+/** Start watching `src/` and `scripts/playground/examples/` for live reload. */
 function startWatcher(): void {
   const srcPath = join(ROOT, 'src');
   watch(srcPath, { recursive: true }, (_event, filename) => {
     if (filename) {
       // Invalidate example bundle cache for any changed component.
-      // Note: changes to .example.svelte files under scripts/playground/examples/
-      // are NOT watched here — the SSE reload still triggers a page reload which
-      // will fetch and recompile the bundle fresh on next request. Revisit if
-      // Phase 3b concurrent example authoring surfaces stale-bundle issues.
       const match = filename.match(/^components\/([^/]+)\.svelte$/);
       if (match) {
         const componentName = match[1]!;
@@ -65,6 +61,19 @@ function startWatcher(): void {
             bundleCache.delete(key);
           }
         }
+      }
+      triggerReload();
+    }
+  });
+
+  // Watch the examples directory so edits to .example.svelte files invalidate
+  // the cached bundle and trigger a browser reload.
+  const examplesPath = join(ROOT, 'scripts', 'playground', 'examples');
+  watch(examplesPath, { recursive: true }, (_event, filename) => {
+    if (filename) {
+      const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
+      if (match) {
+        bundleCache.delete(`${match[1]}/${match[2]}`);
       }
       triggerReload();
     }
@@ -225,18 +234,19 @@ export async function handleRequest(request: Request): Promise<Response> {
   return notFound();
 }
 
-/** Start the playground server. */
-export function main(): void {
+/** Start the playground server on the given port and return the Bun.Server instance. */
+export function startServer(port: number = PORT): ReturnType<typeof Bun.serve> {
   startWatcher();
 
   const server = Bun.serve({
-    port: PORT,
+    port,
     fetch: handleRequest,
   });
 
   process.stdout.write(`[playground] Listening at http://localhost:${server.port}\n`);
+  return server;
 }
 
 if (import.meta.main) {
-  main();
+  startServer();
 }

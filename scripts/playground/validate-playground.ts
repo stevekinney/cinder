@@ -13,7 +13,7 @@
  */
 
 import { discoverComponents } from './discover.ts';
-import { PORT, main as startServer, triggerReload } from './server.ts';
+import { PORT, startServer, triggerReload } from './server.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {
@@ -159,8 +159,10 @@ async function validateSseReload(baseUrl: string): Promise<void> {
   process.stdout.write('[validate:playground] SSE reload event received.\n');
 }
 
+let server: ReturnType<typeof startServer> | undefined;
+
 try {
-  startServer();
+  server = startServer(PORT);
   process.stdout.write(`[validate:playground] waiting for playground server on port ${PORT}…\n`);
   await waitForPing(10_000);
   process.stdout.write(`[validate:playground] server ready at ${BASE_URL}\n`);
@@ -176,8 +178,10 @@ try {
   await validateSseReload(BASE_URL);
 
   process.stdout.write('[validate:playground] all checks passed.\n');
+  void server.stop(true);
   process.exit(0);
 } catch (error) {
+  void server?.stop(true);
   if (error instanceof PlaygroundValidationError) {
     process.stderr.write(`[validate:playground] FAILED: ${error.message}\n`);
     process.exit(1);
