@@ -13,6 +13,7 @@
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
+  import { useId } from '../utilities/use-id.ts';
 
   let {
     open = $bindable(false),
@@ -25,8 +26,7 @@
 
   let dialogElement: HTMLDialogElement | undefined = $state();
 
-  // Unique ID for aria-labelledby
-  const titleId = `cinder-modal-title-${Math.random().toString(36).slice(2, 9)}`;
+  const titleId = useId('cinder-modal-title');
 
   $effect(() => {
     if (!dialogElement) return;

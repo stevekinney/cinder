@@ -14,6 +14,7 @@
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
+  import { useId } from '../utilities/use-id.ts';
 
   let {
     open = $bindable(false),
@@ -29,7 +30,7 @@
   // the browser supports it. This avoids a hydration mismatch.
   let supportsPopover = $state(false);
 
-  const menuId = `cinder-dropdown-menu-${Math.random().toString(36).slice(2, 9)}`;
+  const menuId = useId('cinder-dropdown-menu');
 
   let rootElement: HTMLDivElement | undefined = $state();
   let menuElement: HTMLDivElement | undefined = $state();
@@ -104,11 +105,13 @@
   onkeydown={handleKeydown}
 >
   <!--
-    The trigger wrapper wires aria-haspopup, aria-expanded, and aria-controls onto the
-    first focusable element inside the trigger snippet. Consumers must provide exactly one
-    focusable trigger element inside the trigger snippet (typically a <button>).
+    The trigger wrapper intercepts clicks to toggle open, and wires ARIA attributes
+    (aria-haspopup, aria-expanded, aria-controls) onto the first focusable element
+    inside the snippet. Consumers must provide exactly one focusable trigger element
+    (typically a <button>). The click is intercepted on the wrapper so it works
+    regardless of whether the consumer's button has its own onclick handler.
   -->
-  <div class="cinder-dropdown__trigger" bind:this={triggerWrapper}>
+  <div class="cinder-dropdown__trigger" bind:this={triggerWrapper} onclick={() => (open = !open)}>
     {@render trigger()}
   </div>
 

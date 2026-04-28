@@ -13,13 +13,11 @@
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
+  import { useId } from '../utilities/use-id.ts';
 
   let { text, placement = 'top', class: className, children }: TooltipProps = $props();
 
-  // Generate a stable unique ID for aria-describedby linkage.
-  // crypto.randomUUID() is client-only — use it directly since this component
-  // is always rendered in a browser context (SSR renders nothing interactive).
-  const tooltipId = `cinder-tooltip-${Math.random().toString(36).slice(2, 9)}`;
+  const tooltipId = useId('cinder-tooltip');
 
   let visible = $state(false);
   let showTimer: ReturnType<typeof setTimeout> | undefined;
