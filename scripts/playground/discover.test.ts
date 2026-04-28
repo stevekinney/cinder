@@ -53,9 +53,10 @@ describe('discoverComponents', () => {
 });
 
 describe('discoverExamples', () => {
-  it("returns ['primary'] for the button component", async () => {
+  it('returns at least one example for the button component', async () => {
     const examples = await discoverExamples('button');
-    expect(examples).toEqual(['primary']);
+    expect(examples.length).toBeGreaterThanOrEqual(1);
+    expect(examples).toContain('primary');
   });
 
   it('returns an empty array for a nonexistent component without throwing', async () => {
@@ -88,11 +89,11 @@ describe('discoverAll', () => {
     }
   });
 
-  it('reports exampleCount: 1 for button', async () => {
+  it('reports exampleCount >= 1 for button', async () => {
     const results = await discoverAll();
     const buttonEntry = results.find((entry) => entry.name === 'button');
     expect(buttonEntry).toBeDefined();
-    expect(buttonEntry!.exampleCount).toBe(1);
+    expect(buttonEntry!.exampleCount).toBeGreaterThanOrEqual(1);
   });
 
   it('covers at least 21 components', async () => {

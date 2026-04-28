@@ -1,0 +1,15 @@
+<script lang="ts" module>
+  export const title = 'Basic toggle';
+  export const description = 'Toggle button with aria-pressed reflecting the pressed state.';
+</script>
+
+<script lang="ts">
+  import { Toggle } from '../../../../src/index.ts';
+
+  let muted = $state(false);
+</script>
+
+<Toggle id="mute" bind:pressed={muted} label={muted ? 'Unmute' : 'Mute'} />
+<p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
+  {muted ? '🔇 Muted' : '🔊 Unmuted'}
+</p>
