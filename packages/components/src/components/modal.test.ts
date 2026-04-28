@@ -45,7 +45,11 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('Modal', () => {
-  test('renders nothing when open=false (SSR-safe: no <dialog> in closed state)', () => {
+  test('dialog is in the DOM but has no open attribute when open=false (client-side)', () => {
+    // In a browser context $effect runs, setting mounted=true, so the <dialog> is always
+    // present client-side. The dialog is closed (no 'open' attribute) but not torn down,
+    // which allows dialogElement.close() to fire correctly on programmatic close.
+    // In SSR (no $effect), mounted stays false, so the element is absent from HTML output.
     const { container } = render(Modal, {
       props: {
         open: false,
@@ -53,7 +57,9 @@ describe('Modal', () => {
         children: emptySnippet,
       },
     });
-    expect(container.querySelector('dialog')).toBeNull();
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute('open')).toBe(false);
   });
 
   test('renders a dialog element when open=true', () => {

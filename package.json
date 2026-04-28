@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "lint": "bun run --filter='*' lint",
+    "lint:fix": "bun run --filter='*' lint:fix",
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
     "test": "bun run --filter='*' test",
