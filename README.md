@@ -185,6 +185,27 @@ dist/
 
 The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/components/**/*.svelte`, `src/styles/**/*.css`, the four generic utilities, and `README.md`. Fixtures, tests, `.a11y.md` files, `scripts/`, and `_internal/` components are excluded. `validate:consumer` asserts both expected and forbidden paths.
 
+## Phase 5 decision log
+
+### Workspace split — elected but deferred
+
+The split criteria are met: the playground has 3,736 lines of TS/Svelte across 13 source files, and `ts-morph` (a playground-only dep) lives in the root `devDependencies` with no reason to appear there from a consumer's perspective.
+
+The target structure when executed:
+
+```
+cinder/
+├── packages/
+│   ├── components/   (published — name: "cinder", all current exports)
+│   └── playground/   (private — name: "@cinder/playground", ts-morph isolated here)
+```
+
+This is the right call. The migration itself is a 393-file move (import paths, tsconfigs, bunfig.toml, husky hooks) and was deliberately deferred rather than executed with broken tests to avoid shipping an unverified structural change. Execute it as a standalone commit when the repo is quiescent and a full `bun test` + `validate:consumer` green run can be confirmed before merging.
+
+### Browser export — declined
+
+No consumer demand for a compiled-client `"browser"` export has materialized. Both consumer fixtures use the `"svelte"` condition. Premature until a specific consumer signals a need for it.
+
 ## License
 
 MIT
