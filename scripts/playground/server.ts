@@ -3,7 +3,8 @@
  *
  * Runs at http://localhost:4173. Routes:
  *   GET /              → 302 redirect to /c/<first-component>
- *   GET /c/:name       → full shell HTML for the named component
+ *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
+ *   GET /page/:name    → component page HTML (the iframe target — lists examples)
  *   GET /bundle/:name/:scenario.js → compiled example bundle (cached)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
@@ -18,7 +19,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../svelte-plugin.ts';
-import { discoverComponents } from './discover.ts';
+import { discoverComponents, discoverExamples } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 
 export const PORT = 4173;
@@ -56,16 +57,12 @@ function startWatcher(): FSWatcher[] {
     created.push(
       watch(srcPath, { recursive: true }, (_event, filename) => {
         if (filename) {
-          // Invalidate example bundle cache for any changed component.
-          const match = filename.match(/^components\/([^/]+)\.svelte$/);
-          if (match) {
-            const componentName = match[1]!;
-            for (const key of bundleCache.keys()) {
-              if (key.startsWith(`${componentName}/`)) {
-                bundleCache.delete(key);
-              }
-            }
-          }
+          // Clear both caches on any src/ change. Each example imports from
+          // src/index.ts which re-exports every component, so editing any component
+          // invalidates all cached example bundles. Also clear the component-page
+          // bundle since it imports from svelte which may pull in updated code.
+          bundleCache.clear();
+          componentPageBundleCache = null;
           triggerReload();
         }
       }),
@@ -135,6 +132,99 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   return code;
 }
 
+/** Extract title/description from an example file's module script via regex. */
+async function readExampleMetadata(
+  filePath: string,
+): Promise<{ title: string; description?: string }> {
+  const source = await Bun.file(filePath).text();
+  const titleMatch = source.match(/export\s+const\s+title\s*=\s*['"]([^'"]+)['"]/);
+  const descriptionMatch = source.match(/export\s+const\s+description\s*=\s*['"]([^'"]+)['"]/);
+  const meta: { title: string; description?: string } = {
+    title: titleMatch?.[1] ?? 'Untitled',
+  };
+  if (descriptionMatch?.[1] !== undefined) {
+    meta.description = descriptionMatch[1];
+  }
+  return meta;
+}
+
+/** Cache for the component-page client bundle. */
+let componentPageBundleCache: string | null = null;
+
+/** Compile the component-page.svelte into a client bundle (cached). */
+async function buildComponentPageBundle(): Promise<string | null> {
+  if (componentPageBundleCache !== null) return componentPageBundleCache;
+
+  const entrypoint = join(ROOT, 'scripts', 'playground', 'component-page.svelte');
+  const result = await Bun.build({
+    entrypoints: [entrypoint],
+    plugins: [sveltePlugin({ generate: 'client' })],
+    target: 'browser',
+    format: 'esm',
+  });
+
+  if (!result.success) {
+    console.error('[playground] component-page bundle failed:', result.logs);
+    return null;
+  }
+
+  const output = result.outputs[0];
+  if (!output) return null;
+
+  const code = await output.text();
+  componentPageBundleCache = code;
+  return code;
+}
+
+/** Render the standalone component page HTML (the iframe content — no outer shell). */
+async function renderComponentPage(componentName: string): Promise<string> {
+  const scenarios = await discoverExamples(componentName);
+  const examples = await Promise.all(
+    scenarios.map(async (scenario) => {
+      const filePath = join(
+        ROOT,
+        'scripts',
+        'playground',
+        'examples',
+        componentName,
+        `${scenario}.example.svelte`,
+      );
+      const meta = await readExampleMetadata(filePath);
+      return { scenario, ...meta };
+    }),
+  );
+
+  const examplesJson = JSON.stringify(examples);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${componentName} — cinder playground</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; min-height: 100%; }
+      body {
+        background-color: var(--cinder-bg);
+        color: var(--cinder-text);
+        font-family: var(--cinder-font-sans);
+        font-size: var(--cinder-text-base);
+        line-height: var(--cinder-leading-normal);
+        padding: var(--cinder-space-6);
+      }
+      #app { display: contents; }
+    </style>
+  </head>
+  <body>
+    <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
+    <div id="app"></div>
+    <script type="module" src="/component-page.js"></script>
+  </body>
+</html>`;
+}
+
 /** Verify a path segment is a safe identifier (no path traversal). */
 function isSafeSegment(segment: string): boolean {
   return /^[a-z0-9][a-z0-9-]*$/.test(segment);
@@ -198,6 +288,25 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (code === null)
       return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  // GET /component-page.js — the component-page.svelte compiled for the browser
+  if (pathname === '/component-page.js') {
+    const code = await buildComponentPageBundle();
+    if (code === null) return notFound('component-page bundle failed to build');
+    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  // GET /page/:name — standalone component page (iframe content, no shell)
+  const pageMatch = pathname.match(/^\/page\/([^/]+)$/);
+  if (pageMatch) {
+    const componentName = pageMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    const allComponents = await discoverComponents();
+    if (!allComponents.includes(componentName))
+      return notFound(`Component "${componentName}" not found`);
+    const html = await renderComponentPage(componentName);
+    return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   // GET /example-src/:name/:scenario

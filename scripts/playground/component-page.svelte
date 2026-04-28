@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
 <script lang="ts">
-  import { mount } from 'svelte';
+  import { mount, unmount } from 'svelte';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -16,8 +16,9 @@
 
   const examples: CinderExampleDescriptor[] = readExamples();
 
-  // Extract the component name from the current URL path: /c/<name>
-  const componentName: string = window.location.pathname.replace(/^\/c\//, '').split('/')[0] ?? '';
+  // Extract the component name from the current URL path: /page/<name>
+  const componentName: string =
+    window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
 
   // Track which <details> elements have had their source fetched so we only
   // hit /example-src once per scenario regardless of how many times the user
@@ -48,8 +49,9 @@
   // from the component-page bundle itself). We dynamically import them so the
   // component-page doesn't need to know the module graph at compile time.
   $effect(() => {
-    // Per-run local collection so the cleanup only destroys this run's mounts.
-    const localApps: Array<{ destroy?: () => void }> = [];
+    // Per-run local collection so the cleanup only unmounts this run's mounts.
+    // Svelte 5 disposal is unmount(component), not component.destroy().
+    const localApps: ReturnType<typeof mount>[] = [];
     let cancelled = false;
 
     for (const { scenario } of examples) {
@@ -68,7 +70,7 @@
           const Component = module.default;
           if (typeof Component !== 'function') return;
 
-          const app = mount(Component, { target: container }) as { destroy?: () => void };
+          const app = mount(Component, { target: container });
           localApps.push(app);
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
@@ -80,7 +82,7 @@
       cancelled = true;
       for (const app of localApps) {
         try {
-          app.destroy?.();
+          unmount(app);
         } catch {
           // Suppress — best-effort cleanup only.
         }

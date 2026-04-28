@@ -32,9 +32,10 @@ export function renderShell(activeComponent: string | null, components: string[]
     })
     .join('\n');
 
-  // Component names are path-safe; escaping is only needed in title attribute and visible text.
+  // The iframe targets /page/:name (the component page content route), not /c/:name
+  // (the shell route). Pointing an iframe at its own shell URL would cause recursive loading.
   const mainContent = activeComponent
-    ? `<iframe src="/c/${activeComponent}" title="${escapeHtml(activeComponent)} preview"></iframe>`
+    ? `<iframe src="/page/${activeComponent}" title="${escapeHtml(activeComponent)} preview"></iframe>`
     : `<div class="placeholder"><p>Select a component from the sidebar to preview it.</p></div>`;
 
   return `<!DOCTYPE html>

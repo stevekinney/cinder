@@ -47,32 +47,56 @@ async function waitForPing(timeoutMs: number): Promise<void> {
 }
 
 /**
- * Validate that every /c/<name> route returns HTTP 200 and renders an HTML page
- * with the expected <nav> shell element.
+ * Validate shell + component page routes for all discovered components:
+ *   - /c/:name — shell with sidebar nav + iframe pointing at /page/:name
+ *   - /page/:name — standalone component page (the iframe content)
  */
 async function validateComponentRoutes(baseUrl: string, components: string[]): Promise<void> {
   process.stdout.write(`[validate:playground] crawling ${components.length} component routes…\n`);
 
   for (const name of components) {
-    const url = `${baseUrl}/c/${name}`;
-    let response: Response;
+    // Shell route
+    const shellUrl = `${baseUrl}/c/${name}`;
+    let shellResponse: Response;
     try {
-      response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+      shellResponse = await fetch(shellUrl, { signal: AbortSignal.timeout(5_000) });
     } catch (error) {
-      fail(`fetch ${url} threw: ${String(error)}`);
+      fail(`fetch ${shellUrl} threw: ${String(error)}`);
+    }
+    if (shellResponse.status !== 200) {
+      fail(`GET ${shellUrl} returned ${shellResponse.status}, expected 200`);
+    }
+    const shellBody = await shellResponse.text();
+    if (!shellBody.includes('<!DOCTYPE html>')) {
+      fail(`GET ${shellUrl} did not return HTML (missing DOCTYPE)`);
+    }
+    if (!shellBody.includes('<nav>')) {
+      fail(`GET ${shellUrl} HTML is missing the expected <nav> shell element`);
+    }
+    // Shell iframe must target /page/:name, not /c/:name (recursive self-reference)
+    if (shellBody.includes(`src="/c/${name}"`)) {
+      fail(
+        `GET ${shellUrl} shell iframe references /c/${name} (recursive) — should reference /page/${name}`,
+      );
+    }
+    if (!shellBody.includes(`src="/page/${name}"`)) {
+      fail(`GET ${shellUrl} shell iframe does not reference /page/${name}`);
     }
 
-    if (response.status !== 200) {
-      fail(`GET ${url} returned ${response.status}, expected 200`);
+    // Component page route (iframe content)
+    const pageUrl = `${baseUrl}/page/${name}`;
+    let pageResponse: Response;
+    try {
+      pageResponse = await fetch(pageUrl, { signal: AbortSignal.timeout(5_000) });
+    } catch (error) {
+      fail(`fetch ${pageUrl} threw: ${String(error)}`);
     }
-
-    const body = await response.text();
-    if (!body.includes('<!DOCTYPE html>')) {
-      fail(`GET ${url} did not return HTML (missing DOCTYPE)`);
+    if (pageResponse.status !== 200) {
+      fail(`GET ${pageUrl} returned ${pageResponse.status}, expected 200`);
     }
-
-    if (!body.includes('<nav>')) {
-      fail(`GET ${url} HTML is missing the expected <nav> shell element`);
+    const pageBody = await pageResponse.text();
+    if (!pageBody.includes('__CINDER_EXAMPLES__')) {
+      fail(`GET ${pageUrl} does not inject __CINDER_EXAMPLES__`);
     }
   }
 
