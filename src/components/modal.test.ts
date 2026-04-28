@@ -45,7 +45,7 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('Modal', () => {
-  test('does not render a dialog element when open=false', () => {
+  test('dialog element is always in the DOM; when open=false it has no open attribute', () => {
     const { container } = render(Modal, {
       props: {
         open: false,
@@ -53,7 +53,10 @@ describe('Modal', () => {
         children: emptySnippet,
       },
     });
-    expect(container.querySelector('dialog')).toBeNull();
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    // The stubbed close() removes the open attribute — the dialog is closed.
+    expect(dialog?.hasAttribute('open')).toBe(false);
   });
 
   test('renders a dialog element when open=true', () => {

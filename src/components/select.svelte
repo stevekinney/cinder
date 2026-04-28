@@ -1,7 +1,9 @@
 <script lang="ts" module>
+  import type { HTMLSelectAttributes } from 'svelte/elements';
+
   export type SelectOption = { value: string; label: string; disabled?: boolean };
 
-  export type SelectProps = {
+  export type SelectProps = HTMLSelectAttributes & {
     id: string;
     value: string;
     options: SelectOption[];
@@ -12,7 +14,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
   let {
     id,
@@ -21,6 +23,7 @@
     label,
     disabled = false,
     class: className,
+    ...rest
   }: SelectProps = $props();
 
   $effect(() => {
@@ -30,14 +33,14 @@
   });
 </script>
 
-<div class={cn('cinder-select-field', className)}>
+<div class={classNames('cinder-select-field', className)}>
   {#if label}
     <label for={id}>{label}</label>
   {/if}
   {#if options.length === 0}
-    <select {id} class="cinder-select" {disabled} data-cinder-empty="true"></select>
+    <select {id} class="cinder-select" {disabled} data-cinder-empty="true" {...rest}></select>
   {:else}
-    <select {id} class="cinder-select" {disabled} bind:value>
+    <select {id} class="cinder-select" {disabled} bind:value {...rest}>
       {#each options as option (option.value)}
         <option value={option.value} disabled={option.disabled}>{option.label}</option>
       {/each}

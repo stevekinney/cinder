@@ -62,7 +62,8 @@ export type ComponentContract = {
 const L = (value: unknown): DefaultSpec => ({ kind: 'literal', value });
 const B = (value: unknown): DefaultSpec => ({ kind: 'bindable', value });
 const BE: DefaultSpec = { kind: 'bindable-empty' };
-const REQUIRED: DefaultSpec = undefined;
+const REQUIRED: DefaultSpec = undefined; // required prop — caller must supply, no default in $props()
+const NO_DEFAULT: DefaultSpec = undefined; // optional prop — present in $props() destructuring but no default expression
 
 const s0 = (optional: boolean): SnippetSpec => ({ kind: 'zero-arg', optional });
 const sp = (tupleArity: number, optional: boolean): SnippetSpec => ({
@@ -103,7 +104,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       variant: { optional: true, type_kind: 'TSTypeReference', default: L('info') },
       dismissible: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-      onDismiss: { optional: true, type_kind: 'TSFunctionType', default: REQUIRED },
+      onDismiss: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {
@@ -132,7 +133,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         kind: 'intersection',
         html_attrs: 'HTMLButtonAttributes',
         props: {
-          variant: { optional: true, type_kind: 'TSUnionType', default: L('primary') },
+          variant: { optional: true, type_kind: 'TSUnionType', default: L('secondary') },
           size: { optional: true, type_kind: 'TSUnionType', default: L('md') },
           fullWidth: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           loading: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
@@ -144,7 +145,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         kind: 'intersection',
         html_attrs: 'HTMLAnchorAttributes',
         props: {
-          variant: { optional: true, type_kind: 'TSUnionType', default: L('primary') },
+          variant: { optional: true, type_kind: 'TSUnionType', default: L('secondary') },
           size: { optional: true, type_kind: 'TSUnionType', default: L('md') },
           fullWidth: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           loading: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
@@ -170,7 +171,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         html_attrs: 'HTMLAttributes',
         props: {
           title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-          description: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+          description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
         },
         snippets: { children: s0(false), footer: s0(true) },
@@ -208,7 +209,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      description: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {
@@ -223,9 +224,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       value: { optional: false, type_kind: 'TSStringKeyword', default: B('') },
-      label: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      description: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      error: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      error: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       type: { optional: true, type_kind: 'TSTypeReference', default: L('text') },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
@@ -288,19 +289,20 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       currentPage: { optional: false, type_kind: 'TSNumberKeyword', default: B(1) },
       totalPages: { optional: false, type_kind: 'TSNumberKeyword', default: REQUIRED },
-      totalCount: { optional: true, type_kind: 'TSNumberKeyword', default: REQUIRED },
+      totalCount: { optional: true, type_kind: 'TSNumberKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {},
   },
 
   select: {
-    kind: 'literal',
+    kind: 'intersection',
+    html_attrs: 'HTMLSelectAttributes',
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       value: { optional: false, type_kind: 'TSStringKeyword', default: BE },
       options: { optional: false, type_kind: 'TSArrayType', default: REQUIRED },
-      label: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
@@ -310,9 +312,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
   skeleton: {
     kind: 'literal',
     props: {
-      width: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      height: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      radius: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+      width: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      height: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      radius: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {},
@@ -334,9 +336,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       value: { optional: true, type_kind: 'TSStringKeyword', default: B('') },
-      label: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      description: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
-      error: { optional: true, type_kind: 'TSStringKeyword', default: REQUIRED },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      error: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       rows: { optional: true, type_kind: 'TSNumberKeyword', default: L(4) },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },

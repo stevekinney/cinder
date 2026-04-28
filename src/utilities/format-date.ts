@@ -19,10 +19,10 @@ function toDate(input: number | string | Date): Date {
 export function formatDate(
   date: Date | string | number,
   locale: string = 'en-US',
-  options: Intl.DateTimeFormatOptions = { timeZone: 'UTC' },
+  options: Intl.DateTimeFormatOptions = {},
 ): string {
   const d = date instanceof Date ? date : new Date(date);
-  return new Intl.DateTimeFormat(locale, options).format(d);
+  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(d);
 }
 
 /** Format a date relative to now (e.g., "5m ago", "2h ago", "3d ago"). */

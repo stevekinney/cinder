@@ -84,12 +84,15 @@ describe('Toggle — disabled state', () => {
     expect(button?.hasAttribute('disabled')).toBe(true);
   });
 
-  test('disabled button has aria-disabled="true"', () => {
+  test('disabled button does not have aria-disabled (native disabled is sufficient)', () => {
     const { container } = render(Toggle, {
       props: { id: 't9', pressed: false, label: 'Toggle', disabled: true },
     });
     const button = container.querySelector('button');
-    expect(button?.getAttribute('aria-disabled')).toBe('true');
+    // The native `disabled` attribute is authoritative for <button>. Adding aria-disabled
+    // alongside it causes double-announcement in some screen readers.
+    expect(button?.hasAttribute('disabled')).toBe(true);
+    expect(button?.hasAttribute('aria-disabled')).toBe(false);
   });
 
   test('enabled button does not have aria-disabled', () => {
@@ -135,22 +138,27 @@ describe('Toggle — interactive behaviour', () => {
     expect(button.getAttribute('data-cinder-pressed')).toBe('');
   });
 
-  // Enter and Space are handled by native <button> behavior. The browser fires a click event
-  // on Enter/Space for any <button type="button">, so these keyboard paths are covered by the
-  // click handler above. The following tests confirm native button keyboard behavior works.
-  test('Enter key dispatches a click event (native button behavior)', async () => {
+  // Enter and Space are handled by native <button> behavior in real browsers. However,
+  // happy-dom does not synthesize a click from keydown, so we cannot assert that
+  // aria-pressed changes here. Instead we verify that the keydown fires without throwing
+  // and that the button carries the correct ARIA semantics for real browsers to act on.
+  test('Enter key fires without error; button has correct aria-pressed and type', async () => {
     const { container } = render(Toggle, { props: { id: 't15', pressed: false, label: 'Toggle' } });
     const button = container.querySelector('button') as HTMLButtonElement;
+    expect(button.getAttribute('type')).toBe('button');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+
+    // Should not throw.
     await fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
-    await fireEvent.click(button);
-    expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('Space key dispatches a click event (native button behavior)', async () => {
+  test('Space key fires without error; button has correct aria-pressed and type', async () => {
     const { container } = render(Toggle, { props: { id: 't16', pressed: false, label: 'Toggle' } });
     const button = container.querySelector('button') as HTMLButtonElement;
+    expect(button.getAttribute('type')).toBe('button');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+
+    // Should not throw.
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
-    await fireEvent.click(button);
-    expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 });

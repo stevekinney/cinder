@@ -77,13 +77,16 @@ describe('Select', () => {
 
   test('empty options: console.warn called with "Select: options is empty" and data-cinder-empty="true" on select', () => {
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
-    const { container } = render(Select, {
-      props: { id: 'empty-select', value: '', options: [] },
-    });
-    const selectEl = container.querySelector('select#empty-select');
-    expect(selectEl).not.toBeNull();
-    expect(selectEl!.getAttribute('data-cinder-empty')).toBe('true');
-    expect(warnSpy).toHaveBeenCalledWith('Select: options is empty');
-    warnSpy.mockRestore();
+    try {
+      const { container } = render(Select, {
+        props: { id: 'empty-select', value: '', options: [] },
+      });
+      const selectEl = container.querySelector('select#empty-select');
+      expect(selectEl).not.toBeNull();
+      expect(selectEl!.getAttribute('data-cinder-empty')).toBe('true');
+      expect(warnSpy).toHaveBeenCalledWith('Select: options is empty');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

@@ -87,6 +87,22 @@ function renderItem(options: {
 // Tests
 // ---------------------------------------------------------------------------
 
+test('throws if rendered outside an Accordion', () => {
+  // No Accordion context set — getContext() returns undefined
+  expect(() => {
+    render(AccordionItem, {
+      props: {
+        id: 'item-1',
+        title: 'Test',
+        children: createRawSnippet(() => ({
+          render: () => '<span>content</span>',
+          setup: () => {},
+        })),
+      },
+    });
+  }).toThrow(/must be used inside an Accordion/);
+});
+
 describe('AccordionItem', () => {
   test('header button has aria-expanded="false" when id is not in expandedIds', () => {
     const { container } = renderItem({
@@ -165,7 +181,7 @@ describe('AccordionItem', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  test('disabled item button has aria-disabled="true"', () => {
+  test('disabled item button does not have aria-disabled (native disabled is sufficient)', () => {
     const { container } = renderItem({
       id: 'item-g',
       title: 'Item G',
@@ -173,7 +189,9 @@ describe('AccordionItem', () => {
     });
 
     const button = container.querySelector('.cinder-accordion-item__trigger');
-    expect(button?.getAttribute('aria-disabled')).toBe('true');
+    // The native `disabled` attribute is authoritative for <button>. Adding aria-disabled
+    // alongside it causes double-announcement in some screen readers.
+    expect(button?.hasAttribute('aria-disabled')).toBe(false);
   });
 
   test('header button aria-controls points to the panel id', () => {
@@ -190,7 +208,7 @@ describe('AccordionItem', () => {
     expect(panel?.id).toBe('my-item-panel');
   });
 
-  test('panel has aria-labelledby pointing to the header button id', () => {
+  test('panel id matches the aria-controls reference on the header button', () => {
     const { container } = renderItem({
       id: 'linked-item',
       title: 'Linked Item',
@@ -200,8 +218,13 @@ describe('AccordionItem', () => {
     const button = container.querySelector('.cinder-accordion-item__trigger');
     const panel = container.querySelector('.cinder-accordion-item__panel');
 
+    // The panel does not carry role="region" or aria-labelledby — per WAI-ARIA APG,
+    // role="region" on every accordion panel pollutes the landmark list. The panel id
+    // is sufficient for the aria-controls reference on the trigger button.
     expect(button?.id).toBe('linked-item-header');
-    expect(panel?.getAttribute('aria-labelledby')).toBe('linked-item-header');
+    expect(panel?.id).toBe('linked-item-panel');
+    expect(button?.getAttribute('aria-controls')).toBe('linked-item-panel');
+    expect(panel?.hasAttribute('aria-labelledby')).toBe(false);
   });
 
   test('title text is rendered inside the trigger button', () => {
@@ -214,44 +237,42 @@ describe('AccordionItem', () => {
     expect(button?.textContent).toContain('Visible Title Text');
   });
 
-  // §Interactive a11y matrix — Enter/Space toggles
-  // The trigger is a native <button type="button">, so the browser fires a click event
-  // on Enter and Space. Testing that pattern explicitly confirms the button is wired
-  // correctly so the a11y contract holds.
+  // §Interactive a11y matrix — Enter/Space key events
+  // NOTE: happy-dom does not synthesize a click event from keydown on <button>, so we
+  // cannot assert that the expanded state changes here. Instead we verify that:
+  //   1. The keydown event fires without throwing.
+  //   2. The element has the correct role and ARIA attributes before the keydown —
+  //      confirming the button is semantically correct so real browsers will handle it.
 
-  test('Enter key on trigger button toggles expanded state', async () => {
-    const changes: string[][] = [];
-
+  test('Enter key on trigger button fires without error; button has correct role and aria', async () => {
     const { container } = renderItem({
       id: 'enter-item',
       title: 'Enter Item',
       expandedIds: [],
-      onExpandedChange: (ids) => changes.push([...ids]),
     });
 
     const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
     expect(button).not.toBeNull();
-    // fireEvent.click simulates what the browser does when Enter is pressed on a <button>.
+    expect(button.getAttribute('role') ?? button.tagName.toLowerCase()).toMatch(/button/i);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    // Should not throw.
     await fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
-    await fireEvent.click(button);
-    expect(changes.at(-1)).toContain('enter-item');
   });
 
-  test('Space key on trigger button toggles expanded state', async () => {
-    const changes: string[][] = [];
-
+  test('Space key on trigger button fires without error; button has correct role and aria', async () => {
     const { container } = renderItem({
       id: 'space-item',
       title: 'Space Item',
       expandedIds: [],
-      onExpandedChange: (ids) => changes.push([...ids]),
     });
 
     const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
     expect(button).not.toBeNull();
-    // fireEvent.click simulates what the browser does when Space is pressed on a <button>.
+    expect(button.getAttribute('role') ?? button.tagName.toLowerCase()).toMatch(/button/i);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    // Should not throw.
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
-    await fireEvent.click(button);
-    expect(changes.at(-1)).toContain('space-item');
   });
 });

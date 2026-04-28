@@ -37,7 +37,6 @@
   type="button"
   aria-pressed={pressed}
   aria-label={label}
-  aria-disabled={disabled ? true : undefined}
   {disabled}
   onclick={toggle}
   class={cn('cinder-toggle', customClassName)}

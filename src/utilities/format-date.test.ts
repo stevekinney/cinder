@@ -45,6 +45,12 @@ describe('formatDate', () => {
     expect(formatted).toMatch(/^Apr 15, 2026.+12:34$/);
   });
 
+  test('preserves UTC timeZone when only other options are overridden', () => {
+    const result = formatDate(FIXED_DATE, 'en-US', { month: 'long' });
+    // April in UTC — if system-tz bleed occurred, this could differ on machines with offset TZ
+    expect(result).toBe('April');
+  });
+
   test('time zone override shifts wall-clock display', () => {
     // 12:34 UTC is 08:34 in America/New_York (EDT, UTC-4) on 2026-04-15.
     const formatted = formatDate(FIXED_DATE, 'en-US', {

@@ -59,6 +59,6 @@
     <p id={descriptionId} class="cinder-textarea-description">{description}</p>
   {/if}
   {#if error}
-    <p id={errorId} class="cinder-textarea-error" role="alert">{error}</p>
+    <p id={errorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
   {/if}
 </div>

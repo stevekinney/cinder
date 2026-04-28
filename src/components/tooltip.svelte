@@ -47,7 +47,7 @@
     show();
   }
 
-  function handleBlur() {
+  function handleFocusOut() {
     hide();
   }
 </script>
@@ -57,9 +57,15 @@
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   onfocusin={handleFocusIn}
-  onblur={handleBlur}
-  aria-describedby={tooltipId}
+  onfocusout={handleFocusOut}
   data-cinder-placement={placement}
+  {@attach (el) => {
+    const focusable = el.querySelector<HTMLElement>(
+      'button, a, [tabindex]:not([tabindex="-1"]), input, select, textarea',
+    );
+    if (focusable) focusable.setAttribute('aria-describedby', tooltipId);
+    return () => focusable?.removeAttribute('aria-describedby');
+  }}
 >
   {@render children()}
 

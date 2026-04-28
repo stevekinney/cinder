@@ -24,7 +24,11 @@
 
   let { id, title, disabled = false, class: className, children }: AccordionItemProps = $props();
 
-  const context = getContext<AccordionContext>(ACCORDION_CONTEXT_KEY);
+  const rawContext = getContext<AccordionContext | undefined>(ACCORDION_CONTEXT_KEY);
+  if (!rawContext) {
+    throw new Error('AccordionItem must be used inside an Accordion component.');
+  }
+  const context: AccordionContext = rawContext;
 
   const isExpanded = $derived(context.expandedIds.includes(id));
 
@@ -50,7 +54,6 @@
       aria-expanded={isExpanded}
       aria-controls={panelId}
       {disabled}
-      aria-disabled={disabled ? 'true' : undefined}
       onclick={handleClick}
     >
       <span class="cinder-accordion-item__title">{title}</span>
@@ -72,7 +75,7 @@
   </h3>
 
   {#if isExpanded}
-    <div id={panelId} class="cinder-accordion-item__panel" role="region" aria-labelledby={headerId}>
+    <div id={panelId} class="cinder-accordion-item__panel">
       <div class="cinder-accordion-item__panel-inner">
         {@render children()}
       </div>

@@ -44,16 +44,17 @@ describe('Tooltip', () => {
     expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('trigger wrapper has aria-describedby that matches the tooltip id', () => {
+  test('focusable trigger inside wrapper has aria-describedby that matches the tooltip id', () => {
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper');
+    // aria-describedby must be on the element that receives focus, not the wrapper.
+    const trigger = container.querySelector<HTMLElement>('button');
     const tooltip = container.querySelector('[role="tooltip"]');
-    expect(wrapper?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
+    expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
   });
 
   test('tooltip becomes visible on focusin (aria-hidden="false")', async () => {
@@ -72,7 +73,7 @@ describe('Tooltip', () => {
     });
   });
 
-  test('tooltip becomes hidden on blur', async () => {
+  test('tooltip becomes hidden on focusout', async () => {
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
@@ -89,8 +90,8 @@ describe('Tooltip', () => {
       );
     });
 
-    // Then hide
-    await fireEvent.blur(wrapper);
+    // Then hide — focusout bubbles from any descendant losing focus.
+    await fireEvent.focusOut(wrapper);
     await waitFor(() => {
       expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
     });
@@ -128,5 +129,27 @@ describe('Tooltip', () => {
     });
     const tooltip = container.querySelector('[role="tooltip"]');
     expect(tooltip?.textContent?.trim()).toBe('This is the tooltip text');
+  });
+
+  test('shows tooltip on mouseenter and hides on mouseleave', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Hover tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+
+    await fireEvent.mouseLeave(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    });
   });
 });

@@ -45,7 +45,7 @@
 
 {#if isLink}
   <a
-    href={(props as { href: string }).href}
+    href={disabled ? undefined : (props as LinkArm).href}
     class={resolvedClass}
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
@@ -58,7 +58,7 @@
   <button
     type="button"
     class={resolvedClass}
-    aria-pressed={active ? 'true' : undefined}
+    aria-current={active ? 'true' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
     onclick={handleClick}

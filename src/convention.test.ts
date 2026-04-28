@@ -175,7 +175,7 @@ describe('component conventions', () => {
           if (!init) return false;
           if (init.type !== 'CallExpression') return false;
           const callee = init.callee as Record<string, unknown>;
-          return callee?.name === '$props' || callee?.type === 'Identifier';
+          return callee?.name === '$props';
         });
       });
 

@@ -40,7 +40,8 @@ describe('Pagination', () => {
     const previousButton = container.querySelector('button[aria-label="Go to previous page"]');
     expect(previousButton).not.toBeNull();
     expect(previousButton?.hasAttribute('disabled')).toBe(true);
-    expect(previousButton?.getAttribute('aria-disabled')).toBe('true');
+    // Native disabled is sufficient for <button>; aria-disabled must not be present to avoid double-announcement.
+    expect(previousButton?.hasAttribute('aria-disabled')).toBe(false);
   });
 
   // §Interactive a11y matrix — test 4
@@ -51,7 +52,8 @@ describe('Pagination', () => {
     const nextButton = container.querySelector('button[aria-label="Go to next page"]');
     expect(nextButton).not.toBeNull();
     expect(nextButton?.hasAttribute('disabled')).toBe(true);
-    expect(nextButton?.getAttribute('aria-disabled')).toBe('true');
+    // Native disabled is sufficient for <button>; aria-disabled must not be present to avoid double-announcement.
+    expect(nextButton?.hasAttribute('aria-disabled')).toBe(false);
   });
 
   // §Interactive a11y matrix — test 5

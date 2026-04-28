@@ -81,10 +81,11 @@ describe('EmptyState rendering', () => {
     console.error = (...args: unknown[]) => {
       errors.push(args);
     };
-
-    render(EmptyState, { props: { title: 'Clean render' } });
-
-    console.error = originalError;
-    expect(errors).toHaveLength(0);
+    try {
+      render(EmptyState, { props: { title: 'Clean render' } });
+      expect(errors).toHaveLength(0);
+    } finally {
+      console.error = originalError;
+    }
   });
 });

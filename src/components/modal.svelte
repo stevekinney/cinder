@@ -7,13 +7,21 @@
     class?: string;
     children: Snippet;
     footer?: Snippet;
+    triggerRef?: HTMLElement | null;
   };
 </script>
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
 
-  let { open = $bindable(false), title, class: className, children, footer }: ModalProps = $props();
+  let {
+    open = $bindable(false),
+    title,
+    class: className,
+    children,
+    footer,
+    triggerRef = null,
+  }: ModalProps = $props();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
 
@@ -31,24 +39,26 @@
 
   function handleClose() {
     open = false;
+    triggerRef?.focus();
   }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {
       open = false;
+      triggerRef?.focus();
     }
   }
 </script>
 
-{#if open}
-  <dialog
-    bind:this={dialogElement}
-    class={cn('cinder-modal', className)}
-    aria-modal="true"
-    aria-labelledby={titleId}
-    onclose={handleClose}
-    onclick={handleBackdropClick}
-  >
+<dialog
+  bind:this={dialogElement}
+  class={cn('cinder-modal', className)}
+  aria-modal="true"
+  aria-labelledby={titleId}
+  onclose={handleClose}
+  onclick={handleBackdropClick}
+>
+  {#if open}
     <div class="cinder-modal__panel">
       <div class="cinder-modal__header">
         <h2 id={titleId} class="cinder-modal__title">{title}</h2>
@@ -82,5 +92,5 @@
         </div>
       {/if}
     </div>
-  </dialog>
-{/if}
+  {/if}
+</dialog>

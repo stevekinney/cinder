@@ -13,10 +13,12 @@ Choosing the semantically correct element is the foundation of accessible naviga
 
 ### Active state
 
-| Arm    | Attribute      | Value    | Meaning                                                              |
-| ------ | -------------- | -------- | -------------------------------------------------------------------- |
-| Link   | `aria-current` | `"page"` | Indicates this link represents the current page in a navigation set. |
-| Button | `aria-pressed` | `"true"` | Indicates the button is in a pressed/selected state.                 |
+| Arm    | Attribute      | Value    | Meaning                                                                  |
+| ------ | -------------- | -------- | ------------------------------------------------------------------------ |
+| Link   | `aria-current` | `"page"` | Indicates this link represents the current page in a navigation set.     |
+| Button | `aria-current` | `"true"` | Indicates the button is the currently selected item in a navigation set. |
+
+`aria-pressed` is intentionally not used on the button arm. `aria-pressed` implies toggle semantics—a button that independently switches between on and off states. Navigation selection is not a toggle; the correct signal is `aria-current`, which communicates "this is the active item in a set" without implying the button controls its own binary state.
 
 When not active, neither attribute is rendered (omitting them is preferred over setting a `false` / `undefined` value, which can confuse some assistive technologies).
 
@@ -45,7 +47,7 @@ Both element arms are natively focusable and receive a visible `:focus-visible` 
 ## Screen Reader Announcements
 
 - An active link is announced with its text content followed by "link" and "current page" (or equivalent in the active AT's language).
-- An active button is announced with its text content followed by "button" and "pressed".
+- An active button is announced with its text content followed by "button" and "current" (or equivalent in the active AT's language).
 - A disabled item is announced with "dimmed" or "unavailable" depending on the assistive technology and browser pairing.
 
 ## Navigation Landmark Context

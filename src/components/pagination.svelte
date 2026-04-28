@@ -103,7 +103,6 @@
       class="cinder-pagination__step"
       aria-label="Go to previous page"
       disabled={!canGoPrevious}
-      aria-disabled={!canGoPrevious ? 'true' : undefined}
       onclick={() => goToPage(currentPage - 1)}
     >
       <svg
@@ -124,27 +123,30 @@
     </button>
 
     <!-- Page number buttons -->
-    <div class="cinder-pagination__pages" role="list">
+    <ul class="cinder-pagination__pages">
       {#each pageItems as item (typeof item === 'string' ? item : `page-${item}`)}
         {#if typeof item === 'string'}
-          <span class="cinder-pagination__ellipsis" aria-hidden="true" role="listitem">
-            &hellip;
-          </span>
+          <li class="cinder-pagination__ellipsis-item" aria-hidden="true">
+            <span class="cinder-pagination__ellipsis">&hellip;</span>
+          </li>
         {:else}
-          <button
-            type="button"
-            class="cinder-pagination__page"
-            role="listitem"
-            aria-label={item === currentPage ? `Page ${item}, current page` : `Go to page ${item}`}
-            aria-current={item === currentPage ? 'page' : undefined}
-            data-cinder-current={item === currentPage ? '' : undefined}
-            onclick={() => goToPage(item)}
-          >
-            {item}
-          </button>
+          <li>
+            <button
+              type="button"
+              class="cinder-pagination__page"
+              aria-label={item === currentPage
+                ? `Page ${item}, current page`
+                : `Go to page ${item}`}
+              aria-current={item === currentPage ? 'page' : undefined}
+              data-cinder-current={item === currentPage ? '' : undefined}
+              onclick={() => goToPage(item)}
+            >
+              {item}
+            </button>
+          </li>
         {/if}
       {/each}
-    </div>
+    </ul>
 
     <!-- Next -->
     <button
@@ -152,7 +154,6 @@
       class="cinder-pagination__step"
       aria-label="Go to next page"
       disabled={!canGoNext}
-      aria-disabled={!canGoNext ? 'true' : undefined}
       onclick={() => goToPage(currentPage + 1)}
     >
       <svg

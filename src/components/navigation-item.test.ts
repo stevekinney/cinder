@@ -48,20 +48,20 @@ describe('NavigationItem rendering', () => {
     expect(anchor?.hasAttribute('aria-current')).toBe(false);
   });
 
-  test('active button has aria-pressed="true"', () => {
+  test('active button has aria-current="true"', () => {
     const { container } = render(NavigationItem, {
       props: { onClick: () => {}, active: true, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
-    expect(button?.getAttribute('aria-pressed')).toBe('true');
+    expect(button?.getAttribute('aria-current')).toBe('true');
   });
 
-  test('inactive button does not have aria-pressed', () => {
+  test('inactive button does not have aria-current', () => {
     const { container } = render(NavigationItem, {
       props: { onClick: () => {}, active: false, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
-    expect(button?.hasAttribute('aria-pressed')).toBe(false);
+    expect(button?.hasAttribute('aria-current')).toBe(false);
   });
 
   test('disabled link has aria-disabled and blocks click', () => {
