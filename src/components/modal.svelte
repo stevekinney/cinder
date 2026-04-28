@@ -30,9 +30,11 @@
 
   $effect(() => {
     if (!dialogElement) return;
-    if (open) {
+    if (open && !dialogElement.open) {
       dialogElement.showModal();
-    } else {
+    } else if (!open && dialogElement.open) {
+      // Only close if the dialog is actually open — close() throws InvalidStateError
+      // if called on a dialog that was never opened.
       dialogElement.close();
     }
   });

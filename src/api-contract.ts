@@ -240,6 +240,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
       open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
       title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+      // triggerRef: optional escape-hatch for focus restoration; TSTypeReference to HTMLElement|null.
+      // Excluded from strict contract validation — it is a lifecycle prop, not a data prop.
+      // Phase 4 ts-morph will cover the full type check.
     },
     snippets: {
       children: s0(false),

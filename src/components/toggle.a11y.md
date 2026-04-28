@@ -6,15 +6,14 @@ This component implements the **toggle button** pattern — `<button type="butto
 
 ## ARIA Roles and Attributes
 
-| Attribute       | Value                          | Purpose                                                              |
-| --------------- | ------------------------------ | -------------------------------------------------------------------- |
-| `type`          | `"button"`                     | Prevents form submission; ensures native keyboard activation.        |
-| `aria-pressed`  | `"true"` \| `"false"`          | Communicates the current pressed/unpressed state to assistive tech.  |
-| `aria-label`    | value of the `label` prop      | Provides a concise accessible name when no visible label is present. |
-| `aria-disabled` | `"true"` (when `disabled`)     | Signals the non-interactive state to screen readers.                 |
-| `disabled`      | present (when `disabled=true`) | Prevents pointer and keyboard activation at the browser level.       |
+| Attribute      | Value                          | Purpose                                                                      |
+| -------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| `type`         | `"button"`                     | Prevents form submission; ensures native keyboard activation.                |
+| `aria-pressed` | `"true"` \| `"false"`          | Communicates the current pressed/unpressed state to assistive tech.          |
+| `aria-label`   | value of the `label` prop      | Provides a concise accessible name when no visible label is present.         |
+| `disabled`     | present (when `disabled=true`) | Prevents pointer and keyboard activation and removes element from tab order. |
 
-`aria-disabled` is only present when `disabled` is `true`; it is omitted entirely (not set to `"false"`) when the button is enabled, so screen readers do not announce a redundant "not disabled" state.
+The native `disabled` attribute is sufficient for a `<button>` element — it removes the element from the tab order, prevents all activation, and is announced as "dimmed" or "unavailable" by screen readers. `aria-disabled` is intentionally omitted: adding it alongside native `disabled` causes some screen readers (JAWS in particular) to announce the disabled state twice. `aria-disabled` is appropriate only for non-native interactive elements (e.g. `<a>` or `<div role="button">`) where the native attribute is unavailable.
 
 ## Keyboard Interactions
 

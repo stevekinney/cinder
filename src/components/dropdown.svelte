@@ -33,6 +33,23 @@
 
   let rootElement: HTMLDivElement | undefined = $state();
   let menuElement: HTMLDivElement | undefined = $state();
+  let triggerWrapper: HTMLDivElement | undefined = $state();
+
+  // Keep aria-expanded on the trigger element in sync with open state.
+  $effect(() => {
+    const btn = triggerWrapper?.querySelector<HTMLElement>(
+      'button, a, [tabindex]:not([tabindex="-1"]), input, select',
+    );
+    if (!btn) return;
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', String(open));
+    btn.setAttribute('aria-controls', menuId);
+    return () => {
+      btn.removeAttribute('aria-haspopup');
+      btn.removeAttribute('aria-expanded');
+      btn.removeAttribute('aria-controls');
+    };
+  });
 
   $effect(() => {
     // Runs only on the client after mount — safe to check browser APIs.
@@ -86,7 +103,12 @@
   data-cinder-placement={placement}
   onkeydown={handleKeydown}
 >
-  <div class="cinder-dropdown__trigger">
+  <!--
+    The trigger wrapper wires aria-haspopup, aria-expanded, and aria-controls onto the
+    first focusable element inside the trigger snippet. Consumers must provide exactly one
+    focusable trigger element inside the trigger snippet (typically a <button>).
+  -->
+  <div class="cinder-dropdown__trigger" bind:this={triggerWrapper}>
     {@render trigger()}
   </div>
 

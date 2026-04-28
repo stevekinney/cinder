@@ -63,8 +63,27 @@
     const focusable = el.querySelector<HTMLElement>(
       'button, a, [tabindex]:not([tabindex="-1"]), input, select, textarea',
     );
-    if (focusable) focusable.setAttribute('aria-describedby', tooltipId);
-    return () => focusable?.removeAttribute('aria-describedby');
+    if (!focusable) return;
+    // Append our tooltipId to any existing aria-describedby value rather than replacing it,
+    // so consumer-provided relationships on the trigger element are preserved.
+    const existing = focusable.getAttribute('aria-describedby');
+    const ids = existing ? existing.split(' ').filter(Boolean) : [];
+    if (!ids.includes(tooltipId)) {
+      focusable.setAttribute('aria-describedby', [...ids, tooltipId].join(' '));
+    }
+    return () => {
+      const current = focusable.getAttribute('aria-describedby');
+      if (!current) return;
+      const remaining = current
+        .split(' ')
+        .filter((id) => id !== tooltipId)
+        .join(' ');
+      if (remaining) {
+        focusable.setAttribute('aria-describedby', remaining);
+      } else {
+        focusable.removeAttribute('aria-describedby');
+      }
+    };
   }}
 >
   {@render children()}

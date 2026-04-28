@@ -45,7 +45,7 @@
 
 {#if isLink}
   <a
-    href={disabled ? undefined : (props as LinkArm).href}
+    href={(props as LinkArm).href}
     class={resolvedClass}
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
