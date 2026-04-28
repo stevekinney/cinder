@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{COMPONENT_NAME}} — cinder playground</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+      }
+
+      body {
+        background-color: var(--cinder-bg);
+        color: var(--cinder-text);
+        font-family: var(--cinder-font-sans);
+        font-size: var(--cinder-text-base);
+        line-height: var(--cinder-leading-normal);
+        padding: var(--cinder-space-6);
+      }
+
+      #app {
+        display: contents;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/bundle/{{COMPONENT_NAME}}.js"></script>
+  </body>
+</html>

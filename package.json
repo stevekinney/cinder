@@ -128,7 +128,7 @@
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "prepack": "bun run build",
-    "playground": "echo 'Playground lands in Phase 3a.' && exit 0",
+    "playground": "bun --hot run scripts/playground/server.ts",
     "prepare": "husky",
     "prepublishOnly": "bun run validate && bun run build",
     "start": "echo 'No direct runtime start entrypoint is configured for this package.' && exit 1",
@@ -137,6 +137,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run validate:workflow && bun run validate:consumer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
+    "validate:playground": "bun run scripts/playground/validate-playground.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },

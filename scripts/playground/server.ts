@@ -1,0 +1,209 @@
+/**
+ * Cinder component playground dev server.
+ *
+ * Runs at http://localhost:4173. Routes:
+ *   GET /              → 302 redirect to /c/<first-component>
+ *   GET /c/:name       → full shell HTML for the named component
+ *   GET /bundle/:name.js → compiled Svelte client bundle (cached)
+ *   GET /styles.css    → raw contents of src/styles/index.css
+ *   GET /example-src/:name/:scenario → raw .example.svelte source
+ *   GET /events        → Server-Sent Events stream for live reload
+ *   GET /ping          → health check ("pong")
+ *
+ * A file watcher on `src/` triggers a reload event to all connected SSE clients
+ * whenever a file changes. Use `triggerReload()` directly in tests.
+ */
+
+import { watch } from 'node:fs';
+import { join } from 'node:path';
+
+import { sveltePlugin } from '../svelte-plugin.ts';
+import { discoverComponents } from './discover.ts';
+import { renderShell } from './render-shell.ts';
+
+const PORT = 4173;
+const ROOT = process.cwd();
+
+/** Compiled bundle cache: component name → JS source string. */
+const bundleCache = new Map<string, string>();
+
+/** Set of active SSE stream controllers. */
+const sseClients = new Set<ReadableStreamDefaultController>();
+
+/** Send a `reload` event to every connected SSE client. */
+export function triggerReload(): void {
+  const message = 'event: reload\ndata: {}\n\n';
+  for (const controller of sseClients) {
+    try {
+      controller.enqueue(message);
+    } catch {
+      // Client already closed — remove it.
+      sseClients.delete(controller);
+    }
+  }
+}
+
+/** Start watching `src/` recursively and fire `triggerReload` on any change. */
+function startWatcher(): void {
+  const srcPath = join(ROOT, 'src');
+  watch(srcPath, { recursive: true }, (_event, filename) => {
+    if (filename) {
+      // Invalidate the bundle cache for any changed component.
+      const match = filename.match(/^components\/([^/]+)\.svelte$/);
+      if (match) {
+        bundleCache.delete(match[1]!);
+      }
+      triggerReload();
+    }
+  });
+}
+
+/** Compile a component bundle and cache the result. */
+async function buildBundle(componentName: string): Promise<string | null> {
+  if (bundleCache.has(componentName)) {
+    return bundleCache.get(componentName)!;
+  }
+
+  const componentPath = join(ROOT, 'src', 'components', `${componentName}.svelte`);
+  const file = Bun.file(componentPath);
+  const exists = await file.exists();
+  if (!exists) return null;
+
+  const result = await Bun.build({
+    entrypoints: [componentPath],
+    plugins: [sveltePlugin({ generate: 'client' })],
+    target: 'browser',
+    format: 'esm',
+  });
+
+  if (!result.success) {
+    console.error(`[playground] Bundle failed for ${componentName}:`, result.logs);
+    return null;
+  }
+
+  const output = result.outputs[0];
+  if (!output) return null;
+
+  const code = await output.text();
+  bundleCache.set(componentName, code);
+  return code;
+}
+
+/** Build a plain-text 404 response. */
+function notFound(message = 'Not Found'): Response {
+  return new Response(message, { status: 404, headers: { 'Content-Type': 'text/plain' } });
+}
+
+/** Main request handler for Bun.serve. */
+async function handleRequest(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const { pathname } = url;
+
+  // GET /ping
+  if (pathname === '/ping') {
+    return new Response('pong', { headers: { 'Content-Type': 'text/plain' } });
+  }
+
+  // GET /events
+  if (pathname === '/events') {
+    let controller!: ReadableStreamDefaultController;
+    const stream = new ReadableStream({
+      start(c) {
+        controller = c;
+        sseClients.add(controller);
+        // Send an initial comment to establish the connection.
+        controller.enqueue(': connected\n\n');
+      },
+      cancel() {
+        sseClients.delete(controller);
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
+  }
+
+  // GET /styles.css
+  if (pathname === '/styles.css') {
+    const cssPath = join(ROOT, 'src', 'styles', 'index.css');
+    const cssFile = Bun.file(cssPath);
+    if (!(await cssFile.exists())) return notFound('styles.css not found');
+    const css = await cssFile.text();
+    return new Response(css, { headers: { 'Content-Type': 'text/css' } });
+  }
+
+  // GET /bundle/:name.js
+  const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\.js$/);
+  if (bundleMatch) {
+    const componentName = bundleMatch[1]!;
+    const code = await buildBundle(componentName);
+    if (code === null) return notFound(`Component "${componentName}" not found or failed to build`);
+    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  // GET /example-src/:name/:scenario
+  const exampleSrcMatch = pathname.match(/^\/example-src\/([^/]+)\/([^/]+)$/);
+  if (exampleSrcMatch) {
+    const componentName = exampleSrcMatch[1]!;
+    const scenario = exampleSrcMatch[2]!;
+    const examplePath = join(
+      ROOT,
+      'scripts',
+      'playground',
+      'examples',
+      componentName,
+      `${scenario}.example.svelte`,
+    );
+    const exampleFile = Bun.file(examplePath);
+    if (!(await exampleFile.exists()))
+      return notFound(`Example "${componentName}/${scenario}" not found`);
+    const source = await exampleFile.text();
+    return new Response(source, { headers: { 'Content-Type': 'text/plain' } });
+  }
+
+  // GET /c/:name
+  const componentMatch = pathname.match(/^\/c\/([^/]+)$/);
+  if (componentMatch) {
+    const componentName = componentMatch[1]!;
+    const allComponents = await discoverComponents();
+    if (!allComponents.includes(componentName))
+      return notFound(`Component "${componentName}" not found`);
+    const html = renderShell(componentName, allComponents);
+    return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+  }
+
+  // GET / → redirect to first component
+  if (pathname === '/') {
+    const allComponents = await discoverComponents();
+    if (allComponents.length === 0) {
+      const html = renderShell(null, []);
+      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+    }
+    const first = allComponents[0];
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `/c/${first}` },
+    });
+  }
+
+  return notFound();
+}
+
+/** Start the playground server. */
+function main(): void {
+  startWatcher();
+
+  const server = Bun.serve({
+    port: PORT,
+    fetch: handleRequest,
+  });
+
+  process.stdout.write(`[playground] Listening at http://localhost:${server.port}\n`);
+}
+
+main();
