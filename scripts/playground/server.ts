@@ -49,37 +49,51 @@ export function triggerReload(): void {
 
 /** Start watching `src/` and `scripts/playground/examples/` for live reload. */
 function startWatcher(): FSWatcher[] {
-  const srcPath = join(ROOT, 'src');
-  const srcWatcher = watch(srcPath, { recursive: true }, (_event, filename) => {
-    if (filename) {
-      // Invalidate example bundle cache for any changed component.
-      const match = filename.match(/^components\/([^/]+)\.svelte$/);
-      if (match) {
-        const componentName = match[1]!;
-        for (const key of bundleCache.keys()) {
-          if (key.startsWith(`${componentName}/`)) {
-            bundleCache.delete(key);
+  const created: FSWatcher[] = [];
+
+  try {
+    const srcPath = join(ROOT, 'src');
+    created.push(
+      watch(srcPath, { recursive: true }, (_event, filename) => {
+        if (filename) {
+          // Invalidate example bundle cache for any changed component.
+          const match = filename.match(/^components\/([^/]+)\.svelte$/);
+          if (match) {
+            const componentName = match[1]!;
+            for (const key of bundleCache.keys()) {
+              if (key.startsWith(`${componentName}/`)) {
+                bundleCache.delete(key);
+              }
+            }
           }
+          triggerReload();
         }
-      }
-      triggerReload();
-    }
-  });
+      }),
+    );
 
-  // Watch the examples directory so edits to .example.svelte files invalidate
-  // the cached bundle and trigger a browser reload.
-  const examplesPath = join(ROOT, 'scripts', 'playground', 'examples');
-  const examplesWatcher = watch(examplesPath, { recursive: true }, (_event, filename) => {
-    if (filename) {
-      const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
-      if (match) {
-        bundleCache.delete(`${match[1]}/${match[2]}`);
-      }
-      triggerReload();
+    // Watch the examples directory so edits to .example.svelte files invalidate
+    // the cached bundle and trigger a browser reload.
+    const examplesPath = join(ROOT, 'scripts', 'playground', 'examples');
+    created.push(
+      watch(examplesPath, { recursive: true }, (_event, filename) => {
+        if (filename) {
+          const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
+          if (match) {
+            bundleCache.delete(`${match[1]}/${match[2]}`);
+          }
+          triggerReload();
+        }
+      }),
+    );
+  } catch (error) {
+    // Close any watchers already created before rethrowing.
+    for (const watcher of created) {
+      watcher.close();
     }
-  });
+    throw error;
+  }
 
-  return [srcWatcher, examplesWatcher];
+  return created;
 }
 
 /** Compile an example bundle and cache the result. */
