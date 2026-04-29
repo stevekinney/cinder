@@ -22,5 +22,5 @@ review_bot_patterns:
 - bugbot
 - coderabbit
 
-worktree_dir: ../cinder-worktrees
+worktree_dir: ../worktrees
 branch_prefix: phase-6/
