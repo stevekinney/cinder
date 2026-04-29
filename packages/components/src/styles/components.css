@@ -29,7 +29,14 @@
 @import './components/tab.css';
 @import './components/tab-list.css';
 @import './components/tab-panel.css';
+@import './components/table.css';
+@import './components/table-body.css';
+@import './components/table-cell.css';
+@import './components/table-header.css';
+@import './components/table-header-cell.css';
+@import './components/table-row.css';
 @import './components/tabs.css';
 @import './components/textarea.css';
+@import './components/toast-region.css';
 @import './components/toggle.css';
 @import './components/tooltip.css';

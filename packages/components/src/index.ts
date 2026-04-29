@@ -73,11 +73,39 @@ export type { TabListProps } from './components/tab-list.svelte';
 export { default as TabPanel } from './components/tab-panel.svelte';
 export type { TabPanelProps } from './components/tab-panel.svelte';
 
+export { default as Table } from './components/table.svelte';
+export type { SortDirection, TableContext, TableProps, TableSort } from './components/table.svelte';
+
+export { default as TableBody } from './components/table-body.svelte';
+export type { TableBodyProps } from './components/table-body.svelte';
+
+export { default as TableCell } from './components/table-cell.svelte';
+export type { TableCellProps } from './components/table-cell.svelte';
+
+export { default as TableHeader } from './components/table-header.svelte';
+export type { TableHeaderProps } from './components/table-header.svelte';
+
+export { default as TableHeaderCell } from './components/table-header-cell.svelte';
+export type { TableHeaderCellProps } from './components/table-header-cell.svelte';
+
+export { default as TableRow } from './components/table-row.svelte';
+export type { TableRowProps } from './components/table-row.svelte';
+
 export { default as Tabs } from './components/tabs.svelte';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs.svelte';
 
 export { default as Textarea } from './components/textarea.svelte';
 export type { TextareaProps } from './components/textarea.svelte';
+
+export { default as ToastRegion } from './components/toast-region.svelte';
+export type {
+  ToastApi,
+  ToastItem,
+  ToastOptions,
+  ToastVariant,
+} from './components/toast-region.svelte';
+
+export { useToast } from './utilities/use-toast.ts';
 
 export { default as Toggle } from './components/toggle.svelte';
 export type { ToggleProps } from './components/toggle.svelte';

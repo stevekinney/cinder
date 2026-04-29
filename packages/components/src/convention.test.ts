@@ -34,8 +34,10 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'pagination',
   'radio-group',
   'select',
+  'table',
   'tabs',
   'textarea',
+  'toast-region',
   'toggle',
   'tooltip',
 ]);

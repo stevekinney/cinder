@@ -117,6 +117,30 @@
       "svelte": "./src/components/tab.svelte",
       "types": "./dist/components/tab.svelte.d.ts"
     },
+    "./table-body": {
+      "svelte": "./src/components/table-body.svelte",
+      "types": "./dist/components/table-body.svelte.d.ts"
+    },
+    "./table-cell": {
+      "svelte": "./src/components/table-cell.svelte",
+      "types": "./dist/components/table-cell.svelte.d.ts"
+    },
+    "./table-header-cell": {
+      "svelte": "./src/components/table-header-cell.svelte",
+      "types": "./dist/components/table-header-cell.svelte.d.ts"
+    },
+    "./table-header": {
+      "svelte": "./src/components/table-header.svelte",
+      "types": "./dist/components/table-header.svelte.d.ts"
+    },
+    "./table-row": {
+      "svelte": "./src/components/table-row.svelte",
+      "types": "./dist/components/table-row.svelte.d.ts"
+    },
+    "./table": {
+      "svelte": "./src/components/table.svelte",
+      "types": "./dist/components/table.svelte.d.ts"
+    },
     "./tabs": {
       "svelte": "./src/components/tabs.svelte",
       "types": "./dist/components/tabs.svelte.d.ts"
@@ -124,6 +148,10 @@
     "./textarea": {
       "svelte": "./src/components/textarea.svelte",
       "types": "./dist/components/textarea.svelte.d.ts"
+    },
+    "./toast-region": {
+      "svelte": "./src/components/toast-region.svelte",
+      "types": "./dist/components/toast-region.svelte.d.ts"
     },
     "./toggle": {
       "svelte": "./src/components/toggle.svelte",
@@ -144,6 +172,7 @@
     "src/_internal/collection.ts",
     "src/_internal/field-control.ts",
     "src/_internal/overlay.ts",
+    "src/_internal/toast-context.ts",
     "src/styles/**/*.css",
     "src/utilities/class-names.ts",
     "src/utilities/format-date.ts",
@@ -151,6 +180,7 @@
     "src/utilities/format-number.ts",
     "src/utilities/truncate.ts",
     "src/utilities/use-id.ts",
+    "src/utilities/use-toast.ts",
     "README.md"
   ],
   "scripts": {
