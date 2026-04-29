@@ -9,11 +9,11 @@
  * DEP-583: WYSIWYG invalid-token decoration for saved-prompt template authoring.
  */
 
-import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
-import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
-import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
-import { $prose } from '@milkdown/kit/utils';
+import type { Node as ProseMirrorNode } from 'prosemirror-model';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
 
+import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
 import { parsePlaceholderTokens, validatePlaceholderTokens } from './template-placeholders.js';
 import { textOffsetToBlockDocumentPosition } from './template-position-utilities.js';
 import type { PlaceholderCandidate } from './types.js';
@@ -144,7 +144,7 @@ export function createTemplateInvalidDecorationPlugin(
 ) {
   const resolveInvalidClassName = () => getInvalidClassName?.() ?? 'template-placeholder-invalid';
 
-  return $prose(() => {
+  return createLazyProsePlugin(() => {
     return new Plugin<DecorationPluginState>({
       key: templateInvalidDecorationPluginKey,
 

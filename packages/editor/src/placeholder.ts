@@ -5,9 +5,11 @@
  * is empty, enabling CSS placeholder styling via ::before pseudo-element.
  */
 
-import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
-import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
-import { $prose } from '@milkdown/kit/utils';
+import type { Node as ProseMirrorNode } from 'prosemirror-model';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
+
+import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
 
 const placeholderPluginKey = new PluginKey('placeholder');
 
@@ -15,7 +17,7 @@ const placeholderPluginKey = new PluginKey('placeholder');
  * Check if the document is considered "empty" for placeholder purposes.
  * Empty means: single paragraph with no text content, or completely empty.
  */
-function isDocumentEmpty(doc: import('@milkdown/kit/prose/model').Node): boolean {
+function isDocumentEmpty(doc: ProseMirrorNode): boolean {
   // Document must have exactly one child
   if (doc.childCount !== 1) return false;
 
@@ -36,7 +38,7 @@ function isDocumentEmpty(doc: import('@milkdown/kit/prose/model').Node): boolean
  * `is-editor-empty` class to the first paragraph, allowing CSS to
  * display a placeholder via `::before` pseudo-element.
  */
-export const placeholderPlugin = $prose(() => {
+export const placeholderPlugin = createLazyProsePlugin(() => {
   return new Plugin({
     key: placeholderPluginKey,
     props: {

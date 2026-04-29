@@ -834,8 +834,10 @@ describe('template completion async lookup lifecycle', () => {
 
   beforeEach(() => {
     const mockBody = createMockElement();
+    const mockDocumentElement = createMockElement();
     const mockDocument = {
       body: mockBody,
+      documentElement: mockDocumentElement,
       createElement: () => createMockElement(),
     } as unknown as Document;
     Object.defineProperty(globalThis, 'document', {

@@ -15,11 +15,16 @@
  */
 
 import { normalize } from '@cinder/markdown/pipeline';
-import { editorViewOptionsCtx, parserCtx, schemaCtx, serializerCtx } from '@milkdown/kit/core';
-import { getNodeFromSchema, isTextOnlySlice } from '@milkdown/kit/prose';
-import { DOMParser, DOMSerializer } from '@milkdown/kit/prose/model';
-import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state';
-import { $prose } from '@milkdown/kit/utils';
+import {
+  DOMParser,
+  DOMSerializer,
+  type Node as ProseMirrorNode,
+  type Schema,
+  type Slice,
+} from 'prosemirror-model';
+import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
+
+import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
 import { sanitizeHtml } from './sanitize-html.js';
 
 function isVscodeClipboardPayload(value: unknown): value is { mode?: unknown } {
@@ -56,10 +61,35 @@ function getLanguageHintFromVscodeClipboard(dataTransfer: DataTransfer): string 
   }
 }
 
+function getNodeFromSchema(type: string, schema: Schema) {
+  const nodeType = schema.nodes[type];
+  if (!nodeType) {
+    throw new Error(`Missing ProseMirror node type: ${type}`);
+  }
+
+  return nodeType;
+}
+
+function isTextOnlySlice(slice: Slice): ProseMirrorNode | false {
+  if (slice.content.childCount !== 1) return false;
+
+  const node = slice.content.firstChild;
+  if (node?.type.name === 'text' && node.marks.length === 0) return node;
+
+  if (node?.type.name === 'paragraph' && node.childCount === 1) {
+    const firstChild = node.firstChild;
+    if (firstChild?.type.name === 'text' && firstChild.marks.length === 0) return firstChild;
+  }
+
+  return false;
+}
+
 /**
  * Milkdown plugin wrapper for the ProseMirror clipboard plugin.
  */
-export const clipboardPlugin = $prose((ctx) => {
+export const clipboardPlugin = createLazyProsePlugin(async (ctx) => {
+  const { editorViewOptionsCtx, parserCtx, schemaCtx, serializerCtx } =
+    await import('@milkdown/kit/core');
   const schema = ctx.get(schemaCtx);
 
   // Ensure editable prop exists (Milkdown issue workaround).
