@@ -18,6 +18,11 @@ describe('computeLineDiff', () => {
       const result = computeLineDiff('', '');
       expect(result).toEqual([{ type: 'same', text: '' }]);
     });
+
+    it('handles trailing newlines the same as the normal path', () => {
+      const result = computeLineDiff('line 1\n', 'line 1\n');
+      expect(result).toEqual([{ type: 'same', text: 'line 1' }]);
+    });
   });
 
   describe('single character changes', () => {

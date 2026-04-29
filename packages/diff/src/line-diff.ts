@@ -82,7 +82,7 @@ export function computeWordChanges(oldText: string, newText: string): WordChange
 export function computeLineDiff(original: string, current: string): LineDiff[] {
   // Fast path for identical content
   if (original === current) {
-    return original.split('\n').map((text) => ({ type: 'same' as const, text }));
+    return splitLines(original).map((text) => ({ type: 'same' as const, text }));
   }
 
   // Use diff-match-patch's line diff mode
@@ -137,7 +137,7 @@ export function computeLineDiff(original: string, current: string): LineDiff[] {
 function splitLines(text: string): string[] {
   const lines = text.split('\n');
   // If text ends with newline, remove the trailing empty string
-  if (lines.length > 0 && lines[lines.length - 1] === '') {
+  if (lines.length > 1 && lines[lines.length - 1] === '') {
     lines.pop();
   }
   return lines;
