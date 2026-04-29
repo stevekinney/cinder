@@ -1,11 +1,22 @@
 import { $ } from 'bun';
 import { emitDts } from 'svelte2tsx';
 
+import { createServerEntrySource } from './server-entry.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
 
 const repositoryRoot = process.cwd();
 const distributionDirectory = `${repositoryRoot}/dist`;
 const svelteShimsPath = Bun.resolveSync('svelte2tsx/svelte-shims-v4.d.ts', repositoryRoot);
+
+async function createServerEntry(): Promise<string> {
+  const sourcePath = `${repositoryRoot}/src/index.ts`;
+  const serverEntryPath = `${repositoryRoot}/node_modules/.cache/server-entry.ts`;
+  const source = await Bun.file(sourcePath).text();
+
+  await Bun.write(serverEntryPath, createServerEntrySource(source));
+
+  return serverEntryPath;
+}
 
 // Fail fast if package.json#exports has drifted from the component file system.
 // Run `bun run exports:generate` to fix drift.
@@ -19,12 +30,14 @@ await $`rm -rf dist`;
 
 process.env['NODE_ENV'] = 'production';
 
+const serverEntryPath = await createServerEntry();
+
 const serverBuildResult = await Bun.build({
-  entrypoints: [`${repositoryRoot}/src/index.ts`],
+  entrypoints: [serverEntryPath],
   outdir: `${distributionDirectory}/server`,
   target: 'node',
   format: 'esm',
-  naming: '[dir]/[name].js',
+  naming: 'index.js',
   sourcemap: 'external',
   minify: false,
   plugins: [sveltePlugin({ generate: 'server' })],

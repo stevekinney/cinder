@@ -4,6 +4,8 @@
   "type": "module",
   "workspaces": [
     "packages/components",
+    "packages/diff",
+    "packages/markdown",
     "packages/playground"
   ],
   "scripts": {
@@ -15,9 +17,9 @@
     "lint:fix": "bun run --filter='*' lint:fix",
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
-    "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser",
+    "test": "bun run --filter='*' test",
     "typecheck": "bun run --filter='*' typecheck",
-    "validate": "bun run --filter=cinder validate",
+    "validate": "bun run --filter='*' validate && bun run --filter=cinder validate:consumer",
     "validate:consumer": "bun run --filter=cinder validate:consumer",
     "validate:playground": "bun run --filter='@cinder/playground' validate"
   },
@@ -28,6 +30,14 @@
     ],
     "packages/components/scripts/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "oxlint --fix",
+      "prettier --write"
+    ],
+    "packages/diff/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
+      "oxlint --fix --type-aware --tsconfig ./packages/diff/tsconfig.json",
+      "prettier --write"
+    ],
+    "packages/markdown/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
+      "oxlint --fix --type-aware --tsconfig ./packages/markdown/tsconfig.json",
       "prettier --write"
     ],
     "packages/playground/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
