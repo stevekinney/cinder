@@ -136,7 +136,9 @@ async function main() {
   );
 }
 
-main().catch((err: unknown) => {
-  console.error('generate-exports failed:', err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err: unknown) => {
+    console.error('generate-exports failed:', err);
+    process.exit(1);
+  });
+}
