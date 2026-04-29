@@ -46,8 +46,16 @@ const components: Array<{ name: string; component: unknown; props: Record<string
   { name: 'Pagination', component: Pagination, props: { currentPage: 1, totalPages: 5 } },
   { name: 'Toggle', component: Toggle, props: { id: 'toggle-1', pressed: false, label: 'Toggle' } },
   // Lazy-mount components render only their trigger surface at open=false
-  { name: 'Modal', component: Modal, props: { open: false, title: 'My modal', children: noopSnippet } },
-  { name: 'Dropdown', component: Dropdown, props: { open: false, trigger: noopSnippet, children: noopSnippet } },
+  {
+    name: 'Modal',
+    component: Modal,
+    props: { open: false, title: 'My modal', children: noopSnippet },
+  },
+  {
+    name: 'Dropdown',
+    component: Dropdown,
+    props: { open: false, trigger: noopSnippet, children: noopSnippet },
+  },
 ];
 
 for (const { name, component, props } of components) {

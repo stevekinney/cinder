@@ -1,0 +1,58 @@
+{
+  "name": "@cinder/editor",
+  "version": "0.0.1",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./sanitize-html": {
+      "types": "./dist/sanitize-html.d.ts",
+      "import": "./dist/sanitize-html.js",
+      "default": "./dist/sanitize-html.js"
+    },
+    "./template-placeholders": {
+      "types": "./dist/template-placeholders.d.ts",
+      "import": "./dist/template-placeholders.js",
+      "default": "./dist/template-placeholders.js"
+    },
+    "./template-render": {
+      "types": "./dist/template-render.d.ts",
+      "import": "./dist/template-render.js",
+      "default": "./dist/template-render.js"
+    },
+    "./test-utilities": {
+      "types": "./dist/test-utilities.d.ts",
+      "import": "./dist/test-utilities.js",
+      "default": "./dist/test-utilities.js"
+    }
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "clean": "rm -rf dist coverage node_modules/.cache",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && TZ=UTC LANG=en_US.UTF-8 bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "validate": "bun run lint && bun run typecheck && bun run test && bun run build"
+  },
+  "dependencies": {
+    "@cinder/markdown": "workspace:*",
+    "@milkdown/kit": "^7.17.3"
+  },
+  "devDependencies": {
+    "@milkdown/ctx": "^7.17.3",
+    "@types/bun": "^1.3.11",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "svelte": "~5.55.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "svelte": ">=5.55.0 <5.56.0"
+  }
+}
