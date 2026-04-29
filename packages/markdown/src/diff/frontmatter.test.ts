@@ -70,6 +70,8 @@ describe('computeDiffWithFrontMatter', () => {
 
     expect(result.hasFrontMatterChanges).toBe(true);
     expect(result.frontMatterGroup).not.toBeNull();
+    expect(result.bodyGroups).toHaveLength(0);
+    expect(getBodyChanges(result.changes)).toHaveLength(0);
   });
 
   test('handles removing front matter', () => {
@@ -80,6 +82,8 @@ describe('computeDiffWithFrontMatter', () => {
 
     expect(result.hasFrontMatterChanges).toBe(true);
     expect(result.frontMatterGroup).not.toBeNull();
+    expect(result.bodyGroups).toHaveLength(0);
+    expect(getBodyChanges(result.changes)).toHaveLength(0);
   });
 
   test('front matter group appears first in groups array when present', () => {

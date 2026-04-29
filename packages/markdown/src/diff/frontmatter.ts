@@ -24,6 +24,20 @@ export const FRONTMATTER_BLOCK_INDEX = -1;
  */
 export const FRONTMATTER_BLOCK_TYPE = 'frontmatter';
 
+function stripSingleLeadingLineBreak(value: string): string {
+  if (value.startsWith('\r\n')) {
+    return value.slice(2);
+  }
+  if (value.startsWith('\n') || value.startsWith('\r')) {
+    return value.slice(1);
+  }
+  return value;
+}
+
+function normalizeParsedBodyForDiff(body: string, hasFrontMatter: boolean): string {
+  return hasFrontMatter ? stripSingleLeadingLineBreak(body) : body;
+}
+
 /**
  * Extended diff result that includes front matter changes.
  */
@@ -105,8 +119,17 @@ export function computeDiffWithFrontMatter(
     }
   }
 
+  const originalBodyForDiff = normalizeParsedBodyForDiff(
+    originalParsed.body,
+    originalParsed.hasFrontMatter,
+  );
+  const currentBodyForDiff = normalizeParsedBodyForDiff(
+    currentParsed.body,
+    currentParsed.hasFrontMatter,
+  );
+
   // Compute body diff
-  const bodyDiff = computeDiff(originalParsed.body, currentParsed.body);
+  const bodyDiff = computeDiff(originalBodyForDiff, currentBodyForDiff);
 
   // Combine all changes
   const allChanges = [...frontMatterChanges, ...bodyDiff.changes];
