@@ -7,10 +7,7 @@
  * @module
  */
 
-import { defaultValueCtx, Editor, editorViewCtx, rootCtx } from '@milkdown/kit/core';
-import { commonmark } from '@milkdown/kit/preset/commonmark';
-import { gfm } from '@milkdown/kit/preset/gfm';
-import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
+import type { Node as ProseMirrorNode } from 'prosemirror-model';
 
 /**
  * Result of creating a test document.
@@ -47,6 +44,13 @@ export async function createDocFromMarkdown(markdown: string): Promise<TestDocum
   if (typeof document === 'undefined') {
     throw new Error('createDocFromMarkdown() requires a browser document.');
   }
+
+  const [{ defaultValueCtx, Editor, editorViewCtx, rootCtx }, { commonmark }, { gfm }] =
+    await Promise.all([
+      import('@milkdown/kit/core'),
+      import('@milkdown/kit/preset/commonmark'),
+      import('@milkdown/kit/preset/gfm'),
+    ]);
 
   // Create a hidden container for the editor
   const container = document.createElement('div');

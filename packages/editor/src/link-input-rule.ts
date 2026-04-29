@@ -2,13 +2,14 @@
  * Input rule for converting Markdown link syntax into a link mark.
  */
 
-import { schemaCtx } from '@milkdown/kit/core';
-import { InputRule } from '@milkdown/kit/prose/inputrules';
-import { $inputRule } from '@milkdown/kit/utils';
+import { InputRule } from 'prosemirror-inputrules';
+
+import { createLazyInputRule } from './milkdown-plugin-runtime.js';
 
 const linkInputRuleRegex = /(^|[^!])\[([^\]]+)\]\(([^)\s]+)\)$/;
 
-export const linkInputRulePlugin = $inputRule((ctx) => {
+export const linkInputRulePlugin = createLazyInputRule(async (ctx) => {
+  const { schemaCtx } = await import('@milkdown/kit/core');
   const schema = ctx.get(schemaCtx);
   const linkMark = schema.marks['link'];
 

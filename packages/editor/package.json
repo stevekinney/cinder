@@ -47,7 +47,11 @@
   },
   "dependencies": {
     "@cinder/markdown": "workspace:*",
-    "@milkdown/kit": "^7.17.3"
+    "@milkdown/kit": "^7.17.3",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3"
   },
   "devDependencies": {
     "@milkdown/ctx": "^7.17.3",
