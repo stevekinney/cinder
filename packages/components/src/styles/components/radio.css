@@ -1,0 +1,11 @@
+/* ========================================
+ * RADIO
+ * Radio inherits its visual treatment from radio-group.css since the row
+ * (input + label pair) is shared between the standalone Radio and the
+ * fieldset-wrapped RadioGroup. This file exists so the per-component CSS
+ * registry has an entry — keeping one CSS partial per .svelte file makes
+ * the convention test happy and the registry consistent.
+ *
+ * Override any .cinder-radio specifics here in the future without touching
+ * the group-level styles.
+ * ======================================== */

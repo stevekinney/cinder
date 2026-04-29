@@ -41,6 +41,10 @@
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
     },
+    "./checkbox": {
+      "svelte": "./src/components/checkbox.svelte",
+      "types": "./dist/components/checkbox.svelte.d.ts"
+    },
     "./data-list": {
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
@@ -56,6 +60,10 @@
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
+    },
+    "./label": {
+      "svelte": "./src/components/label.svelte",
+      "types": "./dist/components/label.svelte.d.ts"
     },
     "./modal": {
       "svelte": "./src/components/modal.svelte",
@@ -77,6 +85,14 @@
       "svelte": "./src/components/pagination.svelte",
       "types": "./dist/components/pagination.svelte.d.ts"
     },
+    "./radio-group": {
+      "svelte": "./src/components/radio-group.svelte",
+      "types": "./dist/components/radio-group.svelte.d.ts"
+    },
+    "./radio": {
+      "svelte": "./src/components/radio.svelte",
+      "types": "./dist/components/radio.svelte.d.ts"
+    },
     "./select": {
       "svelte": "./src/components/select.svelte",
       "types": "./dist/components/select.svelte.d.ts"
@@ -88,6 +104,22 @@
     "./spinner": {
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
+    },
+    "./tab-list": {
+      "svelte": "./src/components/tab-list.svelte",
+      "types": "./dist/components/tab-list.svelte.d.ts"
+    },
+    "./tab-panel": {
+      "svelte": "./src/components/tab-panel.svelte",
+      "types": "./dist/components/tab-panel.svelte.d.ts"
+    },
+    "./tab": {
+      "svelte": "./src/components/tab.svelte",
+      "types": "./dist/components/tab.svelte.d.ts"
+    },
+    "./tabs": {
+      "svelte": "./src/components/tabs.svelte",
+      "types": "./dist/components/tabs.svelte.d.ts"
     },
     "./textarea": {
       "svelte": "./src/components/textarea.svelte",
