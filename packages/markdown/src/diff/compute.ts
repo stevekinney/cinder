@@ -97,8 +97,8 @@ export function computeDiff(original: string, current: string): DiffResult {
  * This approach lets diff-match-patch work at word granularity
  * while still using its optimized string diffing algorithms.
  */
-// Maximum unique tokens supported (UTF-16 code unit limit minus reserved range)
-const MAX_TOKENS = 65535;
+// Keep generated token code units below the UTF-16 surrogate range.
+const MAX_TOKENS = 40_000;
 
 function wordsToChars(text1: string, text2: string): TokenizedText | null {
   const tokenArray: string[] = ['']; // Index 0 unused (char code 0 is problematic)

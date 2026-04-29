@@ -185,7 +185,7 @@ describe('computeDiff', () => {
 
       try {
         const uniqueTokensBeforeOverflow = Array.from(
-          { length: 65_533 },
+          { length: 39_998 },
           (_, index) => `token-${index}`,
         ).join(' ');
 

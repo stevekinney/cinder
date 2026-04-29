@@ -1,6 +1,7 @@
 import { $ } from 'bun';
 import { emitDts } from 'svelte2tsx';
 
+import { createServerEntrySource } from './server-entry.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
 
 const repositoryRoot = process.cwd();
@@ -11,48 +12,8 @@ async function createServerEntry(): Promise<string> {
   const sourcePath = `${repositoryRoot}/src/index.ts`;
   const serverEntryPath = `${repositoryRoot}/node_modules/.cache/server-entry.ts`;
   const source = await Bun.file(sourcePath).text();
-  const imports: string[] = [];
-  const exportNames: string[] = [];
 
-  for (const line of source.split('\n')) {
-    const defaultExportMatch = /^export \{ default as ([A-Za-z0-9_]+) \} from '(\.[^']+)';$/.exec(
-      line,
-    );
-    if (defaultExportMatch) {
-      const [, name, importPath] = defaultExportMatch;
-      if (name && importPath) {
-        imports.push(`import ${name} from '../../src/${importPath.slice(2)}';`);
-        exportNames.push(name);
-      }
-      continue;
-    }
-
-    const namedExportMatch = /^export \{ ([A-Za-z0-9_,\s]+) \} from '(\.[^']+)';$/.exec(line);
-    if (namedExportMatch) {
-      const [, names, importPath] = namedExportMatch;
-      if (names && importPath) {
-        imports.push(`import { ${names} } from '../../src/${importPath.slice(2)}';`);
-        exportNames.push(
-          ...names
-            .split(',')
-            .map((name) => name.trim())
-            .filter(Boolean),
-        );
-      }
-    }
-  }
-
-  await Bun.write(
-    serverEntryPath,
-    [
-      imports.join('\n'),
-      '',
-      exportNames.map((name) => `const ${name}Export = ${name};`).join('\n'),
-      '',
-      `export {\n  ${exportNames.map((name) => `${name}Export as ${name}`).join(',\n  ')},\n};`,
-      '',
-    ].join('\n'),
-  );
+  await Bun.write(serverEntryPath, createServerEntrySource(source));
 
   return serverEntryPath;
 }
