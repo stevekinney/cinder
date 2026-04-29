@@ -106,6 +106,7 @@ function wordsToChars(
             );
             // Reuse the most recent token to continue without crashing
             index = tokenArray.length - 1;
+            tokenHash.set(token, index);
           } else {
             tokenArray.push(token);
             tokenHash.set(token, index);
@@ -230,7 +231,7 @@ export function groupChangesByBlock(changes: Change[]): ChangeGroup[] {
 /**
  * Compute statistics from changes.
  */
-function computeStats(changes: Change[]): DiffStats {
+export function computeStats(changes: Change[]): DiffStats {
   let insertions = 0;
   let deletions = 0;
   let replacements = 0;

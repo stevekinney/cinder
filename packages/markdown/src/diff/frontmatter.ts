@@ -10,8 +10,8 @@
  */
 
 import { parseFrontMatter } from '../pipeline/index.js';
-import { computeDiff, groupChangesByBlock } from './compute.js';
-import type { Change, ChangeGroup, DiffResult, DiffStats } from './types.js';
+import { computeDiff, computeStats, groupChangesByBlock } from './compute.js';
+import type { Change, ChangeGroup, DiffResult } from './types.js';
 
 /**
  * Special block index for front matter changes.
@@ -116,7 +116,7 @@ export function computeDiffWithFrontMatter(
   const allGroups = frontMatterGroup ? [frontMatterGroup, ...bodyGroups] : bodyGroups;
 
   // Compute combined stats
-  const stats = computeCombinedStats(frontMatterChanges, bodyDiff.changes);
+  const stats = computeStats(allChanges);
 
   return {
     changes: allChanges,
@@ -132,47 +132,6 @@ export function computeDiffWithFrontMatter(
     frontMatterGroup,
     bodyGroups,
   };
-}
-
-/**
- * Compute combined statistics from front matter and body changes.
- */
-function computeCombinedStats(frontMatterChanges: Change[], bodyChanges: Change[]): DiffStats {
-  const allChanges = [...frontMatterChanges, ...bodyChanges];
-
-  let insertions = 0;
-  let deletions = 0;
-  let replacements = 0;
-  let wordsAdded = 0;
-  let wordsRemoved = 0;
-
-  for (const change of allChanges) {
-    switch (change.type) {
-      case 'insertion':
-        insertions++;
-        wordsAdded += countWords(change.currentText);
-        break;
-      case 'deletion':
-        deletions++;
-        wordsRemoved += countWords(change.originalText);
-        break;
-      case 'replacement':
-        replacements++;
-        wordsAdded += countWords(change.currentText);
-        wordsRemoved += countWords(change.originalText);
-        break;
-    }
-  }
-
-  return { insertions, deletions, replacements, wordsAdded, wordsRemoved };
-}
-
-/**
- * Count words in text (non-whitespace sequences).
- */
-function countWords(text: string): number {
-  const words = text.match(/\S+/g);
-  return words?.length ?? 0;
 }
 
 /**

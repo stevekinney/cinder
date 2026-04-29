@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import { computeDiff, groupChangesByBlock } from './compute.js';
 
 describe('computeDiff', () => {
@@ -176,6 +176,28 @@ describe('computeDiff', () => {
 
       expect(result.changes.length).toBeGreaterThan(0);
       expect(result.changes[0].type).toBe('insertion');
+    });
+  });
+
+  describe('token overflow handling', () => {
+    it('caches repeated overflow tokens after warning once', () => {
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const uniqueTokensBeforeOverflow = Array.from(
+          { length: 65_533 },
+          (_, index) => `token-${index}`,
+        ).join(' ');
+
+        computeDiff(
+          '',
+          `${uniqueTokensBeforeOverflow} overflow-token overflow-token overflow-token`,
+        );
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 
