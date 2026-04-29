@@ -6,57 +6,68 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./pipeline": {
-      "types": "./dist/pipeline/index.d.ts",
+      "types": "./src/pipeline/index.ts",
+      "bun": "./src/pipeline/index.ts",
       "import": "./dist/pipeline/index.js",
       "default": "./dist/pipeline/index.js"
     },
     "./diff": {
-      "types": "./dist/diff/index.d.ts",
+      "types": "./src/diff/index.ts",
+      "bun": "./src/diff/index.ts",
       "import": "./dist/diff/index.js",
       "default": "./dist/diff/index.js"
     },
     "./diff/line-diff": {
-      "types": "./dist/diff/line-diff.d.ts",
+      "types": "./src/diff/line-diff.ts",
+      "bun": "./src/diff/line-diff.ts",
       "import": "./dist/diff/line-diff.js",
       "default": "./dist/diff/line-diff.js"
     },
     "./diff/types": {
-      "types": "./dist/diff/types.d.ts",
+      "types": "./src/diff/types.ts",
+      "bun": "./src/diff/types.ts",
       "import": "./dist/diff/types.js",
       "default": "./dist/diff/types.js"
     },
     "./rendering": {
-      "types": "./dist/rendering/index.d.ts",
+      "types": "./src/rendering/index.ts",
+      "bun": "./src/rendering/index.ts",
       "import": "./dist/rendering/index.js",
       "default": "./dist/rendering/index.js"
     },
     "./rendering/types": {
-      "types": "./dist/rendering/types.d.ts",
+      "types": "./src/rendering/types.ts",
+      "bun": "./src/rendering/types.ts",
       "import": "./dist/rendering/types.js",
       "default": "./dist/rendering/types.js"
     },
     "./rendering/highlighter": {
-      "types": "./dist/rendering/highlighter.d.ts",
+      "types": "./src/rendering/highlighter.ts",
+      "bun": "./src/rendering/highlighter.ts",
       "import": "./dist/rendering/highlighter.js",
       "default": "./dist/rendering/highlighter.js"
     },
     "./rendering/mermaid-cache": {
-      "types": "./dist/rendering/mermaid-cache.d.ts",
+      "types": "./src/rendering/mermaid-cache.ts",
+      "bun": "./src/rendering/mermaid-cache.ts",
       "import": "./dist/rendering/mermaid-cache.js",
       "default": "./dist/rendering/mermaid-cache.js"
     },
     "./utilities/safe-url": {
-      "types": "./dist/utilities/safe-url.d.ts",
+      "types": "./src/utilities/safe-url.ts",
+      "bun": "./src/utilities/safe-url.ts",
       "import": "./dist/utilities/safe-url.js",
       "default": "./dist/utilities/safe-url.js"
     },
     "./utilities/sort-keys": {
-      "types": "./dist/utilities/sort-keys.d.ts",
+      "types": "./src/utilities/sort-keys.ts",
+      "bun": "./src/utilities/sort-keys.ts",
       "import": "./dist/utilities/sort-keys.js",
       "default": "./dist/utilities/sort-keys.js"
     }
