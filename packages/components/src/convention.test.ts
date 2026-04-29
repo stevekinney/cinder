@@ -27,6 +27,7 @@ const COMPONENTS_DIR = join(import.meta.dir, 'components');
 const INTERACTIVE_ALLOW_LIST = new Set([
   'accordion',
   'checkbox',
+  'combobox',
   'dropdown',
   'input',
   'modal',

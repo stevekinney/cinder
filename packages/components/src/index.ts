@@ -25,6 +25,9 @@ export type { CardProps } from './components/card.svelte';
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
 
+export { default as Combobox } from './components/combobox.svelte';
+export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
+
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 

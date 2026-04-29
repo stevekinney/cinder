@@ -53,6 +53,10 @@
       "svelte": "./src/components/checkbox.svelte",
       "types": "./dist/components/checkbox.svelte.d.ts"
     },
+    "./combobox": {
+      "svelte": "./src/components/combobox.svelte",
+      "types": "./dist/components/combobox.svelte.d.ts"
+    },
     "./data-list": {
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
