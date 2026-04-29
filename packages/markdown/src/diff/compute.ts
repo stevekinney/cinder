@@ -89,6 +89,7 @@ function wordsToChars(
 ): { chars1: string; chars2: string; tokenArray: string[] } {
   const tokenArray: string[] = ['']; // Index 0 unused (char code 0 is problematic)
   const tokenHash = new Map<string, number>();
+  let didWarnAboutTokenLimit = false;
 
   function encode(text: string): string {
     // Split on word boundaries, keeping whitespace as separate tokens
@@ -101,9 +102,12 @@ function wordsToChars(
           if (index >= MAX_TOKENS) {
             // Token limit exceeded - fall back to reusing an existing token.
             // This degrades diff quality for very large documents but prevents crashes.
-            console.warn(
-              `Diff token limit (${MAX_TOKENS}) exceeded. Consider using character-level diff for very large documents.`,
-            );
+            if (!didWarnAboutTokenLimit) {
+              console.warn(
+                `Diff token limit (${MAX_TOKENS}) exceeded. Consider using character-level diff for very large documents.`,
+              );
+              didWarnAboutTokenLimit = true;
+            }
             // Reuse the most recent token to continue without crashing
             index = tokenArray.length - 1;
             tokenHash.set(token, index);

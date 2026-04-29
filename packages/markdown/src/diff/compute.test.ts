@@ -180,7 +180,7 @@ describe('computeDiff', () => {
   });
 
   describe('token overflow handling', () => {
-    it('caches repeated overflow tokens after warning once', () => {
+    it('warns once after token overflow even with distinct overflow tokens', () => {
       const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 
       try {
@@ -191,7 +191,7 @@ describe('computeDiff', () => {
 
         computeDiff(
           '',
-          `${uniqueTokensBeforeOverflow} overflow-token overflow-token overflow-token`,
+          `${uniqueTokensBeforeOverflow} overflow-one overflow-two overflow-one overflow-three`,
         );
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
