@@ -1,0 +1,22 @@
+/* ========================================
+ * KBD
+ * Keyboard-key chip. Use to display shortcuts in tooltips and help text.
+ * ======================================== */
+
+.cinder-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 var(--cinder-space-1-5);
+  font-family: var(--cinder-font-mono);
+  font-size: 0.6875rem;
+  font-weight: var(--cinder-font-medium);
+  line-height: 1;
+  color: var(--cinder-text);
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-bottom-width: 2px;
+  border-radius: var(--cinder-radius-sm);
+}

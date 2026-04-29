@@ -1,0 +1,126 @@
+/* ========================================
+ * CHECKBOX
+ * Styled native <input type="checkbox"> with description and error.
+ * ======================================== */
+
+.cinder-checkbox-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1-5);
+}
+
+.cinder-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-checkbox {
+  /* Custom-painted but native: keep the input in the layout so screen readers
+   * and form submission see it; restyle via appearance:none. */
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface-raised);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    background var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-checkbox:hover:not(:disabled) {
+  border-color: var(--cinder-border-strong);
+}
+
+.cinder-checkbox:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-checkbox-ring, var(--cinder-ring-color));
+}
+
+@media (forced-colors: active) {
+  .cinder-checkbox:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+/* Checked state — paint the box with the accent color and a CSS-rendered tick. */
+.cinder-checkbox:checked {
+  background: var(--cinder-accent);
+  border-color: var(--cinder-accent);
+  /* Tick rendered via inline SVG to avoid a separate asset; sized in viewBox units. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5.5'/%3E%3C/svg%3E");
+  background-size: 0.875rem 0.875rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Indeterminate state — paint a horizontal bar instead of a tick. */
+.cinder-checkbox:indeterminate {
+  background: var(--cinder-accent);
+  border-color: var(--cinder-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M3.5 8h9'/%3E%3C/svg%3E");
+  background-size: 0.875rem 0.875rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Disabled state */
+.cinder-checkbox:disabled {
+  cursor: not-allowed;
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-checkbox:disabled:checked,
+.cinder-checkbox:disabled:indeterminate {
+  background-color: var(--cinder-text-disabled);
+  border-color: var(--cinder-text-disabled);
+}
+
+/* Error / invalid state */
+.cinder-checkbox[aria-invalid='true'] {
+  --_cinder-checkbox-ring: var(--cinder-danger);
+  border-color: var(--cinder-danger);
+}
+
+/* Label */
+.cinder-checkbox-field__label {
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text);
+  cursor: pointer;
+}
+
+.cinder-checkbox-field__label[data-disabled] {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Supporting text */
+.cinder-checkbox-field__description {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  margin: 0;
+  padding-left: calc(1.125rem + var(--cinder-space-2));
+}
+
+.cinder-checkbox-field__error {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-danger);
+  margin: 0;
+  padding-left: calc(1.125rem + var(--cinder-space-2));
+}

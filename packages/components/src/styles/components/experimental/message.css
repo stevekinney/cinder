@@ -1,0 +1,54 @@
+/* ========================================
+ * MESSAGE (experimental)
+ * Chat-style bubble with role and optional timestamp.
+ * ======================================== */
+
+.cinder-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1);
+  padding: var(--cinder-space-3) var(--cinder-space-4);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border-muted);
+  max-width: 48rem;
+}
+
+.cinder-message[data-cinder-role='user'] {
+  background: var(--cinder-color-info-bg);
+  border-color: var(--cinder-color-info-border);
+  align-self: flex-end;
+}
+
+.cinder-message[data-cinder-role='assistant'] {
+  background: var(--cinder-surface-raised);
+  border-color: var(--cinder-border);
+}
+
+.cinder-message[data-cinder-role='system'] {
+  background: var(--cinder-surface-inset);
+  border-style: dashed;
+  font-size: var(--cinder-text-sm);
+}
+
+.cinder-message__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cinder-space-2);
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+.cinder-message__name {
+  font-weight: var(--cinder-font-medium);
+}
+
+.cinder-message__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.cinder-message__body {
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-relaxed);
+  color: var(--cinder-text);
+}

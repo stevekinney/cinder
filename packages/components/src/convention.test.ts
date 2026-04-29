@@ -23,15 +23,23 @@ const COMPONENTS_DIR = join(import.meta.dir, 'components');
 
 // Components that are interactive and must have a sibling .a11y.md file.
 // AccordionItem is excluded — its a11y docs live in accordion.a11y.md.
+// Tab is excluded — its a11y docs live in tabs.a11y.md.
 const INTERACTIVE_ALLOW_LIST = new Set([
   'accordion',
+  'checkbox',
+  'combobox',
+  'copy-button',
   'dropdown',
   'input',
   'modal',
   'navigation-item',
   'pagination',
+  'radio-group',
   'select',
+  'table',
+  'tabs',
   'textarea',
+  'toast-region',
   'toggle',
   'tooltip',
 ]);

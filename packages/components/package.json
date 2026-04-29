@@ -29,9 +29,17 @@
       "svelte": "./src/components/alert.svelte",
       "types": "./dist/components/alert.svelte.d.ts"
     },
+    "./avatar": {
+      "svelte": "./src/components/avatar.svelte",
+      "types": "./dist/components/avatar.svelte.d.ts"
+    },
     "./badge": {
       "svelte": "./src/components/badge.svelte",
       "types": "./dist/components/badge.svelte.d.ts"
+    },
+    "./breadcrumbs": {
+      "svelte": "./src/components/breadcrumbs.svelte",
+      "types": "./dist/components/breadcrumbs.svelte.d.ts"
     },
     "./button": {
       "svelte": "./src/components/button.svelte",
@@ -40,6 +48,22 @@
     "./card": {
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
+    },
+    "./checkbox": {
+      "svelte": "./src/components/checkbox.svelte",
+      "types": "./dist/components/checkbox.svelte.d.ts"
+    },
+    "./code-block": {
+      "svelte": "./src/components/code-block.svelte",
+      "types": "./dist/components/code-block.svelte.d.ts"
+    },
+    "./combobox": {
+      "svelte": "./src/components/combobox.svelte",
+      "types": "./dist/components/combobox.svelte.d.ts"
+    },
+    "./copy-button": {
+      "svelte": "./src/components/copy-button.svelte",
+      "types": "./dist/components/copy-button.svelte.d.ts"
     },
     "./data-list": {
       "svelte": "./src/components/data-list.svelte",
@@ -53,9 +77,49 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
+    "./experimental/connection-indicator": {
+      "svelte": "./src/components/experimental/connection-indicator.svelte",
+      "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
+    },
+    "./experimental/json-viewer": {
+      "svelte": "./src/components/experimental/json-viewer.svelte",
+      "types": "./dist/components/experimental/json-viewer.svelte.d.ts"
+    },
+    "./experimental/message": {
+      "svelte": "./src/components/experimental/message.svelte",
+      "types": "./dist/components/experimental/message.svelte.d.ts"
+    },
+    "./experimental/popover": {
+      "svelte": "./src/components/experimental/popover.svelte",
+      "types": "./dist/components/experimental/popover.svelte.d.ts"
+    },
+    "./experimental/sheet": {
+      "svelte": "./src/components/experimental/sheet.svelte",
+      "types": "./dist/components/experimental/sheet.svelte.d.ts"
+    },
+    "./experimental/stat": {
+      "svelte": "./src/components/experimental/stat.svelte",
+      "types": "./dist/components/experimental/stat.svelte.d.ts"
+    },
+    "./experimental/timeline-item": {
+      "svelte": "./src/components/experimental/timeline-item.svelte",
+      "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
+    },
+    "./experimental/timeline": {
+      "svelte": "./src/components/experimental/timeline.svelte",
+      "types": "./dist/components/experimental/timeline.svelte.d.ts"
+    },
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
+    },
+    "./kbd": {
+      "svelte": "./src/components/kbd.svelte",
+      "types": "./dist/components/kbd.svelte.d.ts"
+    },
+    "./label": {
+      "svelte": "./src/components/label.svelte",
+      "types": "./dist/components/label.svelte.d.ts"
     },
     "./modal": {
       "svelte": "./src/components/modal.svelte",
@@ -77,6 +141,18 @@
       "svelte": "./src/components/pagination.svelte",
       "types": "./dist/components/pagination.svelte.d.ts"
     },
+    "./progress": {
+      "svelte": "./src/components/progress.svelte",
+      "types": "./dist/components/progress.svelte.d.ts"
+    },
+    "./radio-group": {
+      "svelte": "./src/components/radio-group.svelte",
+      "types": "./dist/components/radio-group.svelte.d.ts"
+    },
+    "./radio": {
+      "svelte": "./src/components/radio.svelte",
+      "types": "./dist/components/radio.svelte.d.ts"
+    },
     "./select": {
       "svelte": "./src/components/select.svelte",
       "types": "./dist/components/select.svelte.d.ts"
@@ -89,9 +165,53 @@
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
     },
+    "./tab-list": {
+      "svelte": "./src/components/tab-list.svelte",
+      "types": "./dist/components/tab-list.svelte.d.ts"
+    },
+    "./tab-panel": {
+      "svelte": "./src/components/tab-panel.svelte",
+      "types": "./dist/components/tab-panel.svelte.d.ts"
+    },
+    "./tab": {
+      "svelte": "./src/components/tab.svelte",
+      "types": "./dist/components/tab.svelte.d.ts"
+    },
+    "./table-body": {
+      "svelte": "./src/components/table-body.svelte",
+      "types": "./dist/components/table-body.svelte.d.ts"
+    },
+    "./table-cell": {
+      "svelte": "./src/components/table-cell.svelte",
+      "types": "./dist/components/table-cell.svelte.d.ts"
+    },
+    "./table-header-cell": {
+      "svelte": "./src/components/table-header-cell.svelte",
+      "types": "./dist/components/table-header-cell.svelte.d.ts"
+    },
+    "./table-header": {
+      "svelte": "./src/components/table-header.svelte",
+      "types": "./dist/components/table-header.svelte.d.ts"
+    },
+    "./table-row": {
+      "svelte": "./src/components/table-row.svelte",
+      "types": "./dist/components/table-row.svelte.d.ts"
+    },
+    "./table": {
+      "svelte": "./src/components/table.svelte",
+      "types": "./dist/components/table.svelte.d.ts"
+    },
+    "./tabs": {
+      "svelte": "./src/components/tabs.svelte",
+      "types": "./dist/components/tabs.svelte.d.ts"
+    },
     "./textarea": {
       "svelte": "./src/components/textarea.svelte",
       "types": "./dist/components/textarea.svelte.d.ts"
+    },
+    "./toast-region": {
+      "svelte": "./src/components/toast-region.svelte",
+      "types": "./dist/components/toast-region.svelte.d.ts"
     },
     "./toggle": {
       "svelte": "./src/components/toggle.svelte",
@@ -109,13 +229,19 @@
     "dist",
     "src/index.ts",
     "src/components/**/*.svelte",
+    "src/_internal/collection.ts",
+    "src/_internal/field-control.ts",
+    "src/_internal/overlay.ts",
+    "src/_internal/toast-context.ts",
     "src/styles/**/*.css",
     "src/utilities/class-names.ts",
+    "src/utilities/clipboard.ts",
     "src/utilities/format-date.ts",
     "src/utilities/format-duration.ts",
     "src/utilities/format-number.ts",
     "src/utilities/truncate.ts",
     "src/utilities/use-id.ts",
+    "src/utilities/use-toast.ts",
     "README.md"
   ],
   "scripts": {

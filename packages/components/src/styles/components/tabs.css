@@ -1,0 +1,121 @@
+/* ========================================
+ * TABS
+ * Outer wrapper provides flex layout for horizontal vs vertical orientation.
+ * Contains a TabList (with role="tablist") and one or more TabPanels.
+ * ======================================== */
+
+.cinder-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+}
+
+.cinder-tabs[data-cinder-orientation='vertical'] {
+  flex-direction: row;
+}
+
+/* ----------------------------------------
+ * Tab list
+ * ---------------------------------------- */
+
+.cinder-tab-list {
+  display: flex;
+  gap: var(--cinder-space-1);
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+.cinder-tab-list[data-cinder-orientation='vertical'] {
+  flex-direction: column;
+  border-bottom: none;
+  border-right: 1px solid var(--cinder-border-muted);
+  align-self: stretch;
+}
+
+/* ----------------------------------------
+ * Tab button
+ * ---------------------------------------- */
+
+.cinder-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+  position: relative;
+  border-radius: var(--cinder-radius-sm) var(--cinder-radius-sm) 0 0;
+  transition:
+    color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    background var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-tab:hover:not([data-cinder-disabled]) {
+  color: var(--cinder-text);
+  background: var(--cinder-surface-hover);
+}
+
+.cinder-tab[data-cinder-active] {
+  color: var(--cinder-accent);
+  font-weight: var(--cinder-font-medium);
+}
+
+/* Active indicator — bottom (horizontal) / right (vertical) accent stripe. */
+.cinder-tab[data-cinder-active]::after {
+  content: '';
+  position: absolute;
+  background: var(--cinder-accent);
+  pointer-events: none;
+}
+
+.cinder-tabs[data-cinder-orientation='horizontal'] .cinder-tab[data-cinder-active]::after,
+.cinder-tab-list[data-cinder-orientation='horizontal'] .cinder-tab[data-cinder-active]::after {
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+}
+
+.cinder-tabs[data-cinder-orientation='vertical'] .cinder-tab[data-cinder-active]::after,
+.cinder-tab-list[data-cinder-orientation='vertical'] .cinder-tab[data-cinder-active]::after {
+  top: 0;
+  bottom: 0;
+  right: -1px;
+  width: 2px;
+  height: auto;
+}
+
+.cinder-tab:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+@media (forced-colors: active) {
+  .cinder-tab:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+.cinder-tab[data-cinder-disabled] {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------
+ * Tab panel
+ * ---------------------------------------- */
+
+.cinder-tab-panel {
+  flex: 1 1 auto;
+  padding: var(--cinder-space-2) 0;
+  outline: none;
+}
+
+.cinder-tab-panel:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: 2px;
+}

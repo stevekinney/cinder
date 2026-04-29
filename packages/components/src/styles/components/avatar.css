@@ -1,0 +1,84 @@
+/* ========================================
+ * AVATAR
+ * Image with initials fallback. Sizes: xs|sm|md|lg|xl. Shapes: circle|square.
+ * ======================================== */
+
+.cinder-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-muted);
+  font-weight: var(--cinder-font-medium);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.cinder-avatar[data-cinder-shape='circle'] {
+  border-radius: var(--cinder-radius-full);
+}
+
+.cinder-avatar[data-cinder-shape='square'] {
+  border-radius: var(--cinder-radius-md);
+}
+
+.cinder-avatar[data-cinder-size='xs'] {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: var(--cinder-text-xs);
+}
+
+.cinder-avatar[data-cinder-size='sm'] {
+  width: 2rem;
+  height: 2rem;
+  font-size: var(--cinder-text-xs);
+}
+
+.cinder-avatar[data-cinder-size='md'] {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: var(--cinder-text-sm);
+}
+
+.cinder-avatar[data-cinder-size='lg'] {
+  width: 3rem;
+  height: 3rem;
+  font-size: var(--cinder-text-base);
+}
+
+.cinder-avatar[data-cinder-size='xl'] {
+  width: 4rem;
+  height: 4rem;
+  font-size: var(--cinder-text-lg);
+}
+
+.cinder-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cinder-avatar__initials {
+  text-transform: uppercase;
+  letter-spacing: var(--cinder-tracking-wide);
+}
+
+.cinder-avatar__placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--cinder-surface-inset) 0%, var(--cinder-surface) 100%);
+}
+
+.cinder-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,199 @@
+/// <reference lib="dom" />
+import { describe, expect, test } from 'bun:test';
+
+import { setupHappyDom } from '../test/happy-dom.ts';
+
+setupHappyDom();
+
+const { render, fireEvent } = await import('@testing-library/svelte');
+const { default: Combobox } = await import('./combobox.svelte');
+
+const fruits = [
+  { value: 'apple', label: 'Apple' },
+  { value: 'banana', label: 'Banana' },
+  { value: 'cherry', label: 'Cherry' },
+  { value: 'durian', label: 'Durian', disabled: true },
+];
+
+describe('Combobox structure', () => {
+  test('renders an input with role=combobox and aria-controls', () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`);
+    expect(input?.getAttribute('role')).toBe('combobox');
+    expect(input?.getAttribute('aria-autocomplete')).toBe('list');
+    expect(input?.getAttribute('aria-controls')).toBe('fruit-listbox');
+  });
+
+  test('renders a label when label prop is supplied', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      label: 'Fruit',
+    });
+    const label = container.querySelector('label');
+    expect(label?.getAttribute('for')).toBe('fruit');
+    expect(label?.textContent?.trim()).toBe('Fruit');
+  });
+
+  test('listbox is closed by default and has no aria-expanded=true', () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    expect(container.querySelector(`#fruit`)?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+});
+
+describe('Combobox filtering', () => {
+  test('opens on focus and shows all options', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = Array.from(container.querySelectorAll('[role="option"]'));
+    expect(options.length).toBe(4);
+  });
+
+  test('typing filters options by case-insensitive substring', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'an' } });
+    const options = Array.from(container.querySelectorAll('[role="option"]'));
+    // Banana, Durian (durian contains 'an' if we're doing simple includes — but 'an' isn't in 'Durian'). Actually 'd-u-r-i-a-n' contains 'an' (positions 4-5). Yes.
+    expect(options.map((o) => o.textContent?.trim())).toEqual(['Banana', 'Durian']);
+  });
+
+  test('typing with no matches renders the empty state', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    expect(container.querySelector('[role="option"]')).toBeNull();
+    expect(container.querySelector('.cinder-combobox__empty')?.textContent?.trim()).toBe(
+      'No results',
+    );
+  });
+
+  test('custom filter callback is honored', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      filter: (option: { value: string }) => option.value.startsWith('a'),
+    });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = Array.from(container.querySelectorAll('[role="option"]'));
+    expect(options.map((o) => o.textContent?.trim())).toEqual(['Apple']);
+  });
+
+  test('maxVisibleOptions caps the rendered list', async () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({ value: String(i), label: `Item ${i}` }));
+    const { container } = render(Combobox, {
+      id: 'big',
+      options: many,
+      maxVisibleOptions: 50,
+    });
+    const input = container.querySelector('#big') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = Array.from(container.querySelectorAll('[role="option"]'));
+    expect(options.length).toBe(50);
+  });
+});
+
+describe('Combobox keyboard', () => {
+  test('ArrowDown opens the listbox and activates the first option', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const active = container.querySelector('[role="option"][data-cinder-active]');
+    expect(active?.textContent?.trim()).toBe('Apple');
+    expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
+  });
+
+  test('ArrowDown wraps from the last option to the first', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    // Open and move to the last index.
+    await fireEvent.focus(input);
+    await fireEvent.keyDown(input, { key: 'End' });
+    let active = container.querySelector('[role="option"][data-cinder-active]');
+    expect(active?.textContent?.trim()).toBe('Durian');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    active = container.querySelector('[role="option"][data-cinder-active]');
+    expect(active?.textContent?.trim()).toBe('Apple');
+  });
+
+  test('Enter selects the active option', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(input.value).toBe('Banana');
+    // Listbox closes after selection.
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape closes the listbox without selecting', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.focus();
+    await fireEvent.focus(input);
+    expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+});
+
+describe('Combobox selection', () => {
+  test('mousedown on an option selects it', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    const cherry = Array.from(container.querySelectorAll('[role="option"]')).find((el) =>
+      el.textContent?.includes('Cherry'),
+    );
+    expect(cherry).toBeDefined();
+    await fireEvent.mouseDown(cherry as Element);
+    expect(input.value).toBe('Cherry');
+  });
+
+  test('disabled options are not selectable', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    const durian = Array.from(container.querySelectorAll('[role="option"]')).find((el) =>
+      el.textContent?.includes('Durian'),
+    );
+    expect(durian?.getAttribute('aria-disabled')).toBe('true');
+    await fireEvent.mouseDown(durian as Element);
+    expect(input.value).toBe('');
+  });
+});
+
+describe('Combobox aria wiring', () => {
+  test('error sets aria-invalid="true" and renders a labelled error', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      error: 'Pick one',
+    });
+    const input = container.querySelector(`#fruit`);
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('fruit-error');
+    expect(container.querySelector('#fruit-error')?.textContent?.trim()).toBe('Pick one');
+  });
+
+  test('description appears in aria-describedby', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      description: 'Type to filter',
+    });
+    const input = container.querySelector(`#fruit`);
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('fruit-description');
+  });
+});

@@ -15,7 +15,7 @@
     "lint:fix": "bun run --filter='*' lint:fix",
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
-    "test": "bun run --filter='*' test",
+    "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser",
     "typecheck": "bun run --filter='*' typecheck",
     "validate": "bun run --filter=cinder validate",
     "validate:consumer": "bun run --filter=cinder validate:consumer",
