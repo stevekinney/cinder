@@ -107,3 +107,4 @@ scripts/playground/.controls-*.svelte
 
 # Hydration-test temporary SSR-compiled component files
 **/.cinder-ssr-*.mjs
+tmp/ralph-pipeline.log
