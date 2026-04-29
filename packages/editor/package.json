@@ -6,27 +6,32 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./sanitize-html": {
-      "types": "./dist/sanitize-html.d.ts",
+      "types": "./src/sanitize-html.ts",
+      "bun": "./src/sanitize-html.ts",
       "import": "./dist/sanitize-html.js",
       "default": "./dist/sanitize-html.js"
     },
     "./template-placeholders": {
-      "types": "./dist/template-placeholders.d.ts",
+      "types": "./src/template-placeholders.ts",
+      "bun": "./src/template-placeholders.ts",
       "import": "./dist/template-placeholders.js",
       "default": "./dist/template-placeholders.js"
     },
     "./template-render": {
-      "types": "./dist/template-render.d.ts",
+      "types": "./src/template-render.ts",
+      "bun": "./src/template-render.ts",
       "import": "./dist/template-render.js",
       "default": "./dist/template-render.js"
     },
     "./test-utilities": {
-      "types": "./dist/test-utilities.d.ts",
+      "types": "./src/test-utilities.ts",
+      "bun": "./src/test-utilities.ts",
       "import": "./dist/test-utilities.js",
       "default": "./dist/test-utilities.js"
     }
