@@ -19,12 +19,12 @@ describe('exports drift', () => {
     const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf-8'));
     const existing = packageJson.exports as Record<string, unknown>;
 
-    // Glob top-level .svelte files (not _internal/).
-    const glob = new Glob('src/components/*.svelte');
+    // Glob both top-level (stable) and experimental component .svelte files.
+    const stable = new Glob('src/components/*.svelte');
+    const experimental = new Glob('src/components/experimental/*.svelte');
     const files: string[] = [];
-    for await (const file of glob.scan(ROOT)) {
-      files.push(file);
-    }
+    for await (const file of stable.scan(ROOT)) files.push(file);
+    for await (const file of experimental.scan(ROOT)) files.push(file);
     files.sort();
 
     const expected = computeExports(files);
@@ -76,11 +76,12 @@ describe('exports drift', () => {
 
   test('every component .svelte has a matching barrel export in src/index.ts', async () => {
     const barrel = await readFile(join(ROOT, 'src', 'index.ts'), 'utf-8');
-    const glob = new Glob('src/components/*.svelte');
+    const stable = new Glob('src/components/*.svelte');
+    const experimental = new Glob('src/components/experimental/*.svelte');
 
     const missing: string[] = [];
 
-    for await (const file of glob.scan(ROOT)) {
+    for await (const file of stable.scan(ROOT)) {
       const name = file
         .split('/')
         .pop()!
@@ -88,6 +89,16 @@ describe('exports drift', () => {
       if (name.startsWith('_')) continue;
       if (!barrel.includes(`from './components/${name}.svelte'`)) {
         missing.push(name);
+      }
+    }
+
+    for await (const file of experimental.scan(ROOT)) {
+      const name = file
+        .split('/')
+        .pop()!
+        .replace(/\.svelte$/, '');
+      if (!barrel.includes(`from './components/experimental/${name}.svelte'`)) {
+        missing.push(`experimental/${name}`);
       }
     }
 

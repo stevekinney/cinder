@@ -25,8 +25,13 @@ type ExportsMap = Record<string, ExportEntry | Record<string, string>>;
  * Compute the expected subpath export entries from a list of .svelte file paths.
  * Reserved entries (`.` and `./styles`) are excluded — callers must merge those in.
  *
+ * Stable components (top-level `src/components/*.svelte`) export at
+ * `./<name>`. Experimental components (`src/components/experimental/*.svelte`)
+ * export at `./experimental/<name>`. The naming separation makes it visible
+ * in import statements that an experimental API can churn.
+ *
  * @param filePaths - Paths to .svelte component files.
- * @returns Map from subpath key (e.g. `"./button"`) to its export entry.
+ * @returns Map from subpath key (e.g. `"./button"`, `"./experimental/sheet"`) to its export entry.
  */
 export function computeExports(filePaths: string[]): Record<string, ExportEntry> {
   const result: Record<string, ExportEntry> = {};
@@ -37,21 +42,35 @@ export function computeExports(filePaths: string[]): Record<string, ExportEntry>
     if (base.startsWith('_')) continue;
 
     const name = base.replace(/\.svelte$/, '');
-    const subpath = `./${name}`;
+    const isExperimental = filePath.includes('/experimental/');
+    const subpath = isExperimental ? `./experimental/${name}` : `./${name}`;
 
-    result[subpath] = {
-      svelte: `./src/components/${name}.svelte`,
-      types: `./dist/components/${name}.svelte.d.ts`,
-    };
+    if (isExperimental) {
+      result[subpath] = {
+        svelte: `./src/components/experimental/${name}.svelte`,
+        types: `./dist/components/experimental/${name}.svelte.d.ts`,
+      };
+    } else {
+      result[subpath] = {
+        svelte: `./src/components/${name}.svelte`,
+        types: `./dist/components/${name}.svelte.d.ts`,
+      };
+    }
   }
 
   return result;
 }
 
 async function scanComponentFiles(): Promise<string[]> {
-  const glob = new Glob('src/components/*.svelte');
+  // Two globs: top-level stable components + experimental subdirectory.
+  // The combined sort makes the resulting subpath order deterministic.
+  const stable = new Glob('src/components/*.svelte');
+  const experimental = new Glob('src/components/experimental/*.svelte');
   const files: string[] = [];
-  for await (const file of glob.scan('.')) {
+  for await (const file of stable.scan('.')) {
+    files.push(file);
+  }
+  for await (const file of experimental.scan('.')) {
     files.push(file);
   }
   return files.toSorted();

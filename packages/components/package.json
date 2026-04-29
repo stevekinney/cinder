@@ -29,9 +29,17 @@
       "svelte": "./src/components/alert.svelte",
       "types": "./dist/components/alert.svelte.d.ts"
     },
+    "./avatar": {
+      "svelte": "./src/components/avatar.svelte",
+      "types": "./dist/components/avatar.svelte.d.ts"
+    },
     "./badge": {
       "svelte": "./src/components/badge.svelte",
       "types": "./dist/components/badge.svelte.d.ts"
+    },
+    "./breadcrumbs": {
+      "svelte": "./src/components/breadcrumbs.svelte",
+      "types": "./dist/components/breadcrumbs.svelte.d.ts"
     },
     "./button": {
       "svelte": "./src/components/button.svelte",
@@ -56,6 +64,14 @@
     "./empty-state": {
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
+    },
+    "./experimental/popover": {
+      "svelte": "./src/components/experimental/popover.svelte",
+      "types": "./dist/components/experimental/popover.svelte.d.ts"
+    },
+    "./experimental/sheet": {
+      "svelte": "./src/components/experimental/sheet.svelte",
+      "types": "./dist/components/experimental/sheet.svelte.d.ts"
     },
     "./input": {
       "svelte": "./src/components/input.svelte",
@@ -84,6 +100,10 @@
     "./pagination": {
       "svelte": "./src/components/pagination.svelte",
       "types": "./dist/components/pagination.svelte.d.ts"
+    },
+    "./progress": {
+      "svelte": "./src/components/progress.svelte",
+      "types": "./dist/components/progress.svelte.d.ts"
     },
     "./radio-group": {
       "svelte": "./src/components/radio-group.svelte",

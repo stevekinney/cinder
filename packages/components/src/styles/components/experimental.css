@@ -1,0 +1,11 @@
+/* ========================================
+ * EXPERIMENTAL COMPONENT STYLES
+ *
+ * Aggregator for components in the cinder/experimental/* subpath. Their
+ * APIs are unstable and may change between minor versions until promoted
+ * to stable; consumers opting into experimental components should expect
+ * to upgrade their callsites alongside Cinder bumps.
+ * ======================================== */
+
+@import './experimental/popover.css';
+@import './experimental/sheet.css';

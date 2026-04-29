@@ -7,8 +7,14 @@ export type { AccordionContext, AccordionProps } from './components/accordion.sv
 export { default as Alert } from './components/alert.svelte';
 export type { AlertProps, AlertVariant } from './components/alert.svelte';
 
+export { default as Avatar } from './components/avatar.svelte';
+export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar.svelte';
+
 export { default as Badge } from './components/badge.svelte';
 export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge.svelte';
+
+export { default as Breadcrumbs } from './components/breadcrumbs.svelte';
+export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.svelte';
 
 export { default as Button } from './components/button.svelte';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button.svelte';
@@ -48,6 +54,9 @@ export type { PageLayoutProps } from './components/page-layout.svelte';
 
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';
+
+export { default as Progress } from './components/progress.svelte';
+export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress.svelte';
 
 export { default as Radio } from './components/radio.svelte';
 export type { RadioProps } from './components/radio.svelte';
@@ -112,3 +121,15 @@ export type { ToggleProps } from './components/toggle.svelte';
 
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
+
+// ---------------------------------------------------------------------------
+// Experimental components — exported under cinder/experimental/<name>. Their
+// APIs may change between minor versions until they meet the canonical
+// promotion criteria documented in COMPONENT-COVERAGE-PLAN.md.
+// ---------------------------------------------------------------------------
+
+export { default as Popover } from './components/experimental/popover.svelte';
+export type { PopoverPlacement, PopoverProps } from './components/experimental/popover.svelte';
+
+export { default as Sheet } from './components/experimental/sheet.svelte';
+export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
