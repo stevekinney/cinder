@@ -1,0 +1,43 @@
+{
+  "name": "@cinder/diff",
+  "version": "0.0.1",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./line-diff": {
+      "types": "./dist/line-diff.d.ts",
+      "import": "./dist/line-diff.js",
+      "default": "./dist/line-diff.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
+    }
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "clean": "rm -rf dist coverage node_modules/.cache",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "test": "TZ=UTC LANG=en_US.UTF-8 bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "validate": "bun run lint && bun run typecheck && bun run test && bun run build"
+  },
+  "dependencies": {
+    "diff-match-patch": "^1.0.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "@types/diff-match-patch": "^1.0.36",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "typescript": "^5.9.0"
+  }
+}
