@@ -16,7 +16,7 @@ The goal is to confirm coverage and plan the missing pieces.
 
 ## Library Boundary (Admission Criteria)
 
-Cinder is **primitives-only** in its stable surface. There are two namespaces: **stable** (`cinder/<name>`) and **experimental** (`cinder/experimental/<name>`). A component is admitted directly to stable only if **either**:
+Cinder has **three namespaces**: **stable** (`cinder/<name>`), **experimental** (`cinder/experimental/<name>`), and **domain-suite** (`cinder/<name>` — same subpath shape as stable but admitted under a different rule). The first two are **primitives-only** in their surface. A component is admitted directly to stable only if **either**:
 
 - **Multi-consumer rule**: requested by two or more of the three reference consumers, AND independent of any single consumer's domain model, AND has a public API stable enough that adopters can rely on prerelease bumps.
 - **Universal-primitive rule**: it is a low-risk visual primitive with a well-established API in the wider Svelte/web ecosystem and minimal API-stability risk: Label, Avatar, Breadcrumbs, Kbd, CopyButton, Progress, CodeBlock. **Overlay components are explicitly excluded** from this rule because their API surface (modality, focus, positioning, hydration) is high-churn regardless of ecosystem precedent.
@@ -49,7 +49,25 @@ Components that meet neither rule — including all overlays without multi-consu
 - Sheet, Popover — overlay components, single-consumer demand today, will promote when depict's adoption demonstrates API fitness.
 - ConnectionIndicator, JSON Viewer, Timeline, Message, Stat — observability-flavored, likely to churn on first contact with real data.
 
-**Out of scope entirely**: markdown rendering, syntax highlighting, mermaid, diff viewer, review editor, charts. Heavyweight peer deps that belong in consuming apps.
+**Domain-suite tier** (admitted under a separate rule, not primitives-only):
+
+The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives — chat surfaces, diff viewers, markdown editors, review editors. They ship under `cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from 'cinder/chat'`). They are tree-shaken: a consumer that imports only `cinder/button` does not pay for ProseMirror, remark, or shiki. Install size grows; runtime cost does not.
+
+**Domain-suite admission rule**: requested by **at least one of the three reference consumers** with the heavy peer-dep chain accepted by both Cinder maintainers and that consumer. The single-consumer threshold (vs the multi-consumer threshold for stable) is intentional — these components are too specialized to expect uniform demand, but too valuable to leave in consuming apps to re-implement.
+
+**Domain-suite carve-outs** (scoped, allowlisted, removable):
+
+- The "no `<style>` blocks" rule does not apply. Components in this tier may carry per-component `<style>` blocks and co-located `.css` files. The exemption is enforced by a hard-coded allowlist in `convention.test.ts`: `chat`, `diff-viewer`, `review-editor`, `markdown-editor`. Adding a new domain-suite component requires explicit allowlist update; new names attempting `<style>` blocks fail the test.
+- **Removal criteria**: a component leaves the allowlist when its CSS migrates to a partial under `src/styles/components/`. The allowlist is a transitional accommodation, not a permanent license.
+
+**Domain-suite components** (current allowlist):
+
+- `chat` — depict-driven; `conversationalist` runtime dep.
+- `diff-viewer` — depict-driven; `@cinder/diff` + `@cinder/markdown/diff` runtime deps.
+- `markdown-editor` — depict-driven; `@cinder/editor` + `@cinder/markdown` + `@milkdown/kit` + `prosemirror-*` runtime deps.
+- `review-editor` — depict-driven; everything above plus `@cinder/commentary`.
+
+**Out of scope entirely**: syntax highlighting (consumer's call — Shiki is heavy and consumers like depict already own it), mermaid, charts. These are deliberately not on the domain-suite allowlist.
 
 ---
 
@@ -106,10 +124,12 @@ Components that meet neither rule — including all overlays without multi-consu
 | Status Badge w/ semantic states                   | ✓                                | ✓      | ✓                            | partial (Badge variants) | covered by Badge composition                     |
 | Form (validation surface)                         | —                                | ✓      | —                            | ✗                        | **deferred — not built until two consumers ask** |
 | VerificationCodeInput                             | —                                | ✓      | —                            | ✗                        | **deferred — depict-specific**                   |
-| Markdown Renderer                                 | —                                | ✓      | —                            | —                        | **out of scope**                                 |
+| Markdown Renderer (`@cinder/markdown` package)    | —                                | ✓      | —                            | ✗                        | **domain-suite, Phase 6**                        |
 | Mermaid Diagram                                   | —                                | ✓      | —                            | —                        | **out of scope**                                 |
-| Diff Viewer                                       | —                                | ✓      | —                            | —                        | **out of scope**                                 |
-| Review Editor                                     | —                                | ✓      | —                            | —                        | **out of scope**                                 |
+| Diff Viewer (`cinder/diff-viewer`)                | —                                | ✓      | —                            | ✗                        | **domain-suite, Phase 6**                        |
+| Markdown Editor (`cinder/markdown-editor`)        | —                                | ✓      | —                            | ✗                        | **domain-suite, Phase 6**                        |
+| Review Editor (`cinder/review-editor`)            | —                                | ✓      | —                            | ✗                        | **domain-suite, Phase 6**                        |
+| Chat (`cinder/chat`)                              | ✓                                | ✓      | —                            | ✗                        | **domain-suite, Phase 6**                        |
 | Cost Waterfall / Charts                           | —                                | —      | ✓                            | —                        | **out of scope**                                 |
 
 ---
@@ -443,11 +463,14 @@ This separates Cinder's engineering pace from depict/weft team availability. Cin
 
 ## Out of Scope
 
-- Markdown rendering, syntax-highlighted code, mermaid, diff viewer, review editor, charts — domain widgets with heavy peer deps; stay in consuming apps.
+- Mermaid, charts — domain widgets with heavy peer deps that don't have multi-consumer demand; stay in consuming apps.
+- Syntax-highlighted code blocks shipped as a primitive — Shiki is heavy and depict already owns it; `cinder/code-block` ships without highlighting, consumers add Shiki at their boundary if they want it.
 - Form wrapper with validation orchestration — defer until two consumers ask.
 - VerificationCodeInput — depict-only, specialized.
-- Multi-select / async combobox, virtualized table, charting — explicit non-goals for v1.
+- Multi-select / async combobox, virtualized table — explicit non-goals for v1.
 - React port of Cinder — agent-bureau's needs are tracked at the vocabulary level; the port itself is not in this plan.
+
+**Note**: markdown rendering, diff viewer, markdown editor, review editor, and chat were previously listed as out-of-scope. Phase 6 admits them under the new **domain-suite tier** with scoped carve-outs. See "Library Boundary" above.
 
 ---
 

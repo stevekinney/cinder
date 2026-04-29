@@ -933,6 +933,39 @@ Codex's round-8 finding on this DAG is addressed: examples no longer reside unde
 - **Convention test flags existing components** during Phase 2 → Phase 4 transition — expected. Phase 4 requires Phase 2 to be done first so the test is enforceable.
 - **Workspace split in Phase 5 is more churn than value** — exit criterion includes "explicitly decline" as a valid outcome.
 
+## Phase 6 — Domain-Suite Port
+
+The full execution plan is at `~/.claude/plans/let-s-make-a-plan-quizzical-milner.md`. This section is the ROADMAP-side index pointing at it.
+
+**Goal**: port `chat`, `diff-viewer`, `review-editor`, and `markdown-editor` from `@depict/components` into cinder under the new **domain-suite** tier (see `COMPONENT-COVERAGE-PLAN.md`), along with four new workspace packages (`@cinder/diff`, `@cinder/markdown`, `@cinder/commentary`, `@cinder/editor`) supporting them.
+
+**Prerequisite**: all Phase-5 work committed. Phase 6 depends on no Phase-5 deliverables directly, but the domain-suite tier admission needs `convention.test.ts` exemptions to land cleanly, and overlay/field-control/collection contracts need to be settled.
+
+**Sub-phase decomposition**:
+
+- **D-1 — Inventory freeze + decision lock-down** (read-only, no repo state changed). Five artifacts under `tmp/port-inventory/`: dependency-graph, css-token-map, browser-only-imports, version-matrix, compatibility-matrix. Plus test-classification. Resolves `@cinder/diff` shape (standalone, decided), API parity target (depict-compatible), and surfaces plan corrections.
+- **D0 — Admission doc + roadmap update** (doc-only, no executable changes). Updates `COMPONENT-COVERAGE-PLAN.md` with the domain-suite tier and scoped allowlist. Adds this section to ROADMAP. **No `package.json`, no workspaces, no lint-staged, no validate scripts changed in D0** — those move to D1d, gated on `@cinder/markdown` building cleanly.
+- **D1 — Foundational packages**: `@cinder/markdown` + `@cinder/diff`. Two parallel leaf workers in worktrees. D1d (workspace widening) runs only after D1a–c (build/typecheck/smoke harness) pass. Rollback-safe.
+- **D2 — `@cinder/editor`**: single worker, depends on `@cinder/markdown`. SSR rewrites per `browser-only-imports.md`.
+- **D3 — `@cinder/commentary` + four leaf cinder components + cinder primitive extensions**: `@cinder/commentary` serial-on-D2; in parallel: `segmented-control`, `diff-statistics`, `view-switcher`, `selection-popover`, plus additive primitive extensions (Button `ghost-danger`, Badge `accent`/`xs`, Kbd `label`/`size`, Card `description` verify, Dropdown compound family — `DropdownTrigger`, `DropdownMenu`, `DropdownItem`, `DropdownLabel`, `DropdownSeparator`).
+- **D4 — `cinder/chat` + `cinder/diff-viewer` + `cinder/surface` + `cinder/markdown-editor`**: three parallel worktrees. `markdown-editor` moved here from D5 because chat depends on it.
+- **D5 — `cinder/review-editor`**: single primary worker. Most deps already landed in D1–D4.
+
+**Per-phase review gate**: same as Phases 1–5 (committee-review + codex-advisor against the exact target hash; sentinels in `tmp/phase-review/`; fast-forward-only merge).
+
+**Verification (gate D5)**:
+
+- `bun run validate` green at root.
+- `/c/chat`, `/c/diff-viewer`, `/c/markdown-editor`, `/c/review-editor`, `/c/surface`, plus the four D3 sibling routes and the Dropdown compound demos — all render in playground without console errors.
+- Tree-shake fixture: `import { Button } from 'cinder/button'` produces a bundle that does not contain `shiki`, `unified`, `@milkdown/kit`, `diff-match-patch`, `prosemirror`, or any `--depict-*`/`--cinder-chat-*`/`--cinder-markdown-editor-*` CSS custom properties.
+- SSR fixture (adapter-node): all nine new components on one page renders without throwing at module-eval time.
+- Per-component interaction acceptance tests pass (keyboard, focus, ARIA, streaming, scroll-pin, anchor persistence — full list in the plan file's gate sections).
+- Long-document regression test (>5000 lines) renders review-editor in playground in <2s.
+
+**Rollback strategy**: per-phase rollback table in the plan file. Rollback is local to the phase that failed; no phase reverts an earlier phase. If D5 fails, D4 stays shipped.
+
+---
+
 ## Out of Scope (all phases)
 
 - Publishing workflow (`.github/workflows`) — separate concern.
