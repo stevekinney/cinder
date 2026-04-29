@@ -935,7 +935,7 @@ Codex's round-8 finding on this DAG is addressed: examples no longer reside unde
 
 ## Phase 6 — Domain-Suite Port
 
-The full execution plan is at `~/.claude/plans/let-s-make-a-plan-quizzical-milner.md`. This section is the ROADMAP-side index pointing at it.
+The full execution plan is at `docs/phase-6-plan.md`. This section is the ROADMAP-side index pointing at it.
 
 **Goal**: port `chat`, `diff-viewer`, `review-editor`, and `markdown-editor` from `@depict/components` into cinder under the new **domain-suite** tier (see `COMPONENT-COVERAGE-PLAN.md`), along with four new workspace packages (`@cinder/diff`, `@cinder/markdown`, `@cinder/commentary`, `@cinder/editor`) supporting them.
 
@@ -943,7 +943,7 @@ The full execution plan is at `~/.claude/plans/let-s-make-a-plan-quizzical-milne
 
 **Sub-phase decomposition**:
 
-- **D-1 — Inventory freeze + decision lock-down** (read-only, no repo state changed). Five artifacts under `tmp/port-inventory/`: dependency-graph, css-token-map, browser-only-imports, version-matrix, compatibility-matrix. Plus test-classification. Resolves `@cinder/diff` shape (standalone, decided), API parity target (depict-compatible), and surfaces plan corrections.
+- **D-1 — Inventory freeze + decision lock-down** (no tracked repo state changed; writes to gitignored `tmp/port-inventory/` only). Five artifacts: dependency-graph, css-token-map, browser-only-imports, version-matrix, compatibility-matrix. Plus test-classification. Resolves `@cinder/diff` shape (standalone, decided), API parity target (depict-compatible), and surfaces plan corrections.
 - **D0 — Admission doc + roadmap update** (doc-only, no executable changes). Updates `COMPONENT-COVERAGE-PLAN.md` with the domain-suite tier and scoped allowlist. Adds this section to ROADMAP. **No `package.json`, no workspaces, no lint-staged, no validate scripts changed in D0** — those move to D1d, gated on `@cinder/markdown` building cleanly.
 - **D1 — Foundational packages**: `@cinder/markdown` + `@cinder/diff`. Two parallel leaf workers in worktrees. D1d (workspace widening) runs only after D1a–c (build/typecheck/smoke harness) pass. Rollback-safe.
 - **D2 — `@cinder/editor`**: single worker, depends on `@cinder/markdown`. SSR rewrites per `browser-only-imports.md`.
