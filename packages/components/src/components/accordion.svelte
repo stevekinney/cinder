@@ -26,6 +26,7 @@
 <script lang="ts">
   import { setContext } from 'svelte';
 
+  import { createMultiSelection } from '../_internal/collection.ts';
   import { classNames } from '../utilities/class-names.ts';
 
   let {
@@ -35,20 +36,19 @@
     children,
   }: AccordionProps = $props();
 
-  /**
-   * Toggle the expanded state of an item by its id.
-   *
-   * - `multiple=false`: if the item is already open, collapse it (set expandedIds to []);
-   *   otherwise replace expandedIds with [id] so only one item is ever open.
-   * - `multiple=true`: toggle the id in/out of the expandedIds array.
-   */
+  // Multi-mode delegates to the shared collection helper; single-mode keeps the
+  // "open one at a time" invariant local. Both update `expandedIds` in place so
+  // the bindable parent prop sees the change.
+  const multi = createMultiSelection<string>(
+    () => expandedIds,
+    (next) => {
+      expandedIds = next;
+    },
+  );
+
   function toggle(id: string): void {
     if (multiple) {
-      if (expandedIds.includes(id)) {
-        expandedIds = expandedIds.filter((existing) => existing !== id);
-      } else {
-        expandedIds = [...expandedIds, id];
-      }
+      multi.toggle(id);
     } else {
       expandedIds = expandedIds.includes(id) ? [] : [id];
     }

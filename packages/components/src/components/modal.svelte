@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import { captureFocus, restoreFocusTo } from '../_internal/overlay.ts';
   import { cn } from '../utilities/class-names.ts';
   import { useId } from '../utilities/use-id.ts';
 
@@ -30,6 +31,10 @@
   // This keeps the <dialog> absent from SSR HTML when closed, while letting the client
   // keep the element mounted so dialogElement.close() fires correctly.
   let mounted = $state(false);
+  // Element that had focus before the dialog opened. Captured each time the dialog
+  // transitions from closed → open so focus can be restored to wherever the user
+  // came from, even if the consumer didn't supply an explicit `triggerRef`.
+  let capturedFocus: HTMLElement | null = null;
 
   const titleId = useId('cinder-modal-title');
 
@@ -40,6 +45,7 @@
   $effect(() => {
     if (!dialogElement) return;
     if (open && !dialogElement.open) {
+      capturedFocus = captureFocus();
       dialogElement.showModal();
     } else if (!open && dialogElement.open) {
       // Only close if the dialog is actually open — close() throws InvalidStateError
@@ -48,15 +54,26 @@
     }
   });
 
+  function returnFocus() {
+    // Explicit triggerRef wins over auto-capture; otherwise restore to wherever
+    // focus lived before the dialog opened.
+    if (triggerRef) {
+      restoreFocusTo(triggerRef);
+    } else {
+      restoreFocusTo(capturedFocus);
+    }
+    capturedFocus = null;
+  }
+
   function handleClose() {
     open = false;
-    triggerRef?.focus();
+    returnFocus();
   }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {
       open = false;
-      triggerRef?.focus();
+      returnFocus();
     }
   }
 </script>

@@ -22,6 +22,12 @@
 </script>
 
 <script lang="ts">
+  import {
+    ariaInvalid,
+    composeDescribedBy,
+    describeId,
+    errorId as buildErrorId,
+  } from '../_internal/field-control.ts';
   import { classNames } from '../utilities/class-names.ts';
 
   let {
@@ -36,9 +42,9 @@
     ...rest
   }: TextareaProps = $props();
 
-  const descriptionId = $derived(description ? `${id}-description` : undefined);
-  const errorId = $derived(error ? `${id}-error` : undefined);
-  const describedBy = $derived([descriptionId, errorId].filter(Boolean).join(' ') || undefined);
+  const descriptionId = $derived(describeId(id, !!description));
+  const errId = $derived(buildErrorId(id, !!error));
+  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
 </script>
 
 <div class="cinder-textarea-field">
@@ -50,7 +56,7 @@
     {rows}
     {disabled}
     class={classNames('cinder-textarea', customClassName)}
-    aria-invalid={error ? 'true' : undefined}
+    aria-invalid={ariaInvalid(!!error)}
     aria-describedby={describedBy}
     bind:value
     {...rest}
@@ -59,6 +65,6 @@
     <p id={descriptionId} class="cinder-textarea-description">{description}</p>
   {/if}
   {#if error}
-    <p id={errorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
+    <p id={errId} class="cinder-textarea-error" aria-live="polite">{error}</p>
   {/if}
 </div>

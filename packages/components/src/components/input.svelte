@@ -16,6 +16,12 @@
 </script>
 
 <script lang="ts">
+  import {
+    ariaInvalid,
+    composeDescribedBy,
+    describeId,
+    errorId as buildErrorId,
+  } from '../_internal/field-control.ts';
   import { cn } from '../utilities/class-names.ts';
 
   let {
@@ -30,15 +36,11 @@
     ...rest
   }: InputProps = $props();
 
-  // Build stable, predictable IDs for associated elements so `aria-describedby`
-  // references don't collide across multiple inputs on the same page.
-  const descriptionId = $derived(description ? `${id}-description` : undefined);
-  const errorId = $derived(error ? `${id}-error` : undefined);
-
-  // Both description and error can coexist — screen readers announce both.
-  const describedBy = $derived(
-    [descriptionId, errorId].filter((v): v is string => v !== undefined).join(' ') || undefined,
-  );
+  // Stable, predictable IDs for associated elements via the shared field-control
+  // contract — keeps wiring identical across Input, Textarea, Select, Checkbox, Radio.
+  const descriptionId = $derived(describeId(id, !!description));
+  const errId = $derived(buildErrorId(id, !!error));
+  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
 </script>
 
 <div class="cinder-input-field">
@@ -54,7 +56,7 @@
     {disabled}
     bind:value
     class={cn('cinder-input', className)}
-    aria-invalid={error ? 'true' : undefined}
+    aria-invalid={ariaInvalid(!!error)}
     aria-describedby={describedBy}
     {...rest}
   />
@@ -64,6 +66,6 @@
   {/if}
 
   {#if error}
-    <p id={errorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+    <p id={errId} class="cinder-input-field__error" aria-live="polite">{error}</p>
   {/if}
 </div>

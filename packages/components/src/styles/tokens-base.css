@@ -111,7 +111,8 @@
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
 
-  /* Status */
+  /* Status — solid (legacy single-value tokens, retained for back-compat) */
+  --cinder-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245));
   --cinder-success: light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145));
   --cinder-warning: light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75));
   --cinder-danger: light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25));
@@ -119,6 +120,26 @@
   --cinder-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
   --cinder-danger-hover: oklch(from var(--cinder-danger) calc(l - 0.08) c h);
   --cinder-danger-active: oklch(from var(--cinder-danger) calc(l - 0.15) c h);
+
+  /* Status — semantic triples (foreground / background / border) for soft surfaces.
+     Use these in components like Alert and Toast where you need a soft tinted surface
+     with semantically-paired text and border colors. The solid `--cinder-info|success|
+     warning|danger` tokens above remain for accent fills (e.g. solid badges). */
+  --cinder-color-info-bg: light-dark(oklch(96% 0.025 245), oklch(28% 0.06 245));
+  --cinder-color-info-fg: light-dark(oklch(28% 0.12 245), oklch(88% 0.1 245));
+  --cinder-color-info-border: light-dark(oklch(82% 0.06 245), oklch(45% 0.08 245));
+
+  --cinder-color-success-bg: light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145));
+  --cinder-color-success-fg: light-dark(oklch(28% 0.13 145), oklch(88% 0.11 145));
+  --cinder-color-success-border: light-dark(oklch(80% 0.08 145), oklch(45% 0.09 145));
+
+  --cinder-color-warning-bg: light-dark(oklch(96% 0.04 75), oklch(28% 0.08 75));
+  --cinder-color-warning-fg: light-dark(oklch(32% 0.14 75), oklch(90% 0.12 75));
+  --cinder-color-warning-border: light-dark(oklch(82% 0.1 75), oklch(50% 0.1 75));
+
+  --cinder-color-danger-bg: light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25));
+  --cinder-color-danger-fg: light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25));
+  --cinder-color-danger-border: light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25));
 
   /* Focus ring */
   --cinder-ring-width: 3px;
@@ -128,6 +149,34 @@
     oklch(from var(--cinder-accent) 55% 0.12 195),
     oklch(from var(--cinder-accent) 70% 0.14 195)
   );
+
+  /* ========================================
+   * LAYERING (Z-INDEX)
+   * Ordered: tooltip < dropdown/popover < modal/sheet < toast.
+   * Toast sits above modal so confirmations and warnings reach users
+   * even when a modal is open.
+   * ======================================== */
+  --cinder-z-tooltip: 1000;
+  --cinder-z-dropdown: 1100;
+  --cinder-z-popover: 1100;
+  --cinder-z-modal: 1200;
+  --cinder-z-sheet: 1200;
+  --cinder-z-toast: 1300;
+
+  /* ========================================
+   * OVERLAY SURFACES
+   * Backdrop, blur, and panel padding shared by Modal, Sheet, Popover.
+   * ======================================== */
+  --cinder-overlay-backdrop: light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65));
+  --cinder-overlay-blur: 4px;
+  --cinder-overlay-padding: var(--cinder-space-6);
+  --cinder-overlay-radius: var(--cinder-radius-lg);
+
+  /* ========================================
+   * EXTRA EASING + GRANULAR DURATION
+   * ======================================== */
+  --cinder-duration-moderate: 280ms;
+  --cinder-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ========================================
    * BUTTON TOKENS
@@ -189,6 +238,7 @@
     --cinder-duration-instant: 0ms;
     --cinder-duration-fast: 0ms;
     --cinder-duration: 0ms;
+    --cinder-duration-moderate: 0ms;
     --cinder-duration-slow: 0ms;
   }
 }
