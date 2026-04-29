@@ -68,11 +68,11 @@ No code, no document changes that affect repository state. Read-only investigati
 
 Document changes only. **No package.json, no workspaces, no lint-staged, no validate scripts changed.** Those move to D1 (gated on `@cinder/markdown` actually building). This addresses Issue 3: D0 cannot break the repo because it changes no executable contract.
 
-- Update `/Users/stevekinney/Developer/cinder/COMPONENT-COVERAGE-PLAN.md`:
+- Update `COMPONENT-COVERAGE-PLAN.md`:
   - Add "domain-suite" admission tier with **scoped allowlist** (`chat`, `diff-viewer`, `review-editor`, `markdown-editor`).
   - Move `Markdown Renderer`, `Diff Viewer`, `Review Editor` rows out of "out of scope" into the new tier.
   - Document the per-component `<style>`/`.css` exemption with the allowlist and removal criteria.
-- Add Phases D1–D5 to `/Users/stevekinney/Developer/cinder/ROADMAP.md` referencing this plan's gates, deviations file, and rollback strategy.
+- Add Phases D1–D5 to `ROADMAP.md` referencing this plan's gates, deviations file, and rollback strategy.
 
 **Gate D0:** `bun run validate` still green (only doc changes; nothing to break).
 
@@ -203,22 +203,22 @@ Disjoint internal cinder dep sets and disjoint package deps. **Three parallel wo
 
 **Modified:**
 
-- `/Users/stevekinney/Developer/cinder/COMPONENT-COVERAGE-PLAN.md` (D0)
-- `/Users/stevekinney/Developer/cinder/ROADMAP.md` (D0)
-- `/Users/stevekinney/Developer/cinder/package.json` (D0; lint-staged + workspaces + scripts.validate)
-- `/Users/stevekinney/Developer/cinder/packages/components/package.json` (D3, D4, D5; exports map for each new component)
-- `/Users/stevekinney/Developer/cinder/packages/components/src/index.ts` (D3, D4, D5; barrel)
-- `/Users/stevekinney/Developer/cinder/packages/components/src/styles/components.css` (D3, D4, D5; CSS imports)
-- `/Users/stevekinney/Developer/cinder/packages/components/src/convention.test.ts` (D3; domain-suite carve-outs)
+- `COMPONENT-COVERAGE-PLAN.md` (D0)
+- `ROADMAP.md` (D0)
+- `package.json` (D0; lint-staged + workspaces + scripts.validate)
+- `packages/components/package.json` (D3, D4, D5; exports map for each new component)
+- `packages/components/src/index.ts` (D3, D4, D5; barrel)
+- `packages/components/src/styles/components.css` (D3, D4, D5; CSS imports)
+- `packages/components/src/convention.test.ts` (D3; domain-suite carve-outs)
 
 **Added:**
 
-- `/Users/stevekinney/Developer/cinder/packages/markdown/**` (D1)
-- `/Users/stevekinney/Developer/cinder/packages/diff/**` (D1)
-- `/Users/stevekinney/Developer/cinder/packages/editor/**` (D2)
-- `/Users/stevekinney/Developer/cinder/packages/commentary/**` (D3)
-- `/Users/stevekinney/Developer/cinder/packages/components/src/components/{segmented-control,diff-statistics,view-switcher,selection-popover,surface,chat,diff-viewer,markdown-editor,review-editor}.svelte` (+ co-located CSS where needed) (D3, D4, D5)
-- `/Users/stevekinney/Developer/cinder/packages/playground/src/examples/{...}/` for each new component (D3, D4, D5)
+- `packages/markdown/**` (D1)
+- `packages/diff/**` (D1)
+- `packages/editor/**` (D2)
+- `packages/commentary/**` (D3)
+- `packages/components/src/components/{segmented-control,diff-statistics,view-switcher,selection-popover,surface,chat,diff-viewer,markdown-editor,review-editor}.svelte` (+ co-located CSS where needed) (D3, D4, D5)
+- `packages/playground/src/examples/{...}/` for each new component (D3, D4, D5)
 
 **Reused (do not rewrite):**
 
