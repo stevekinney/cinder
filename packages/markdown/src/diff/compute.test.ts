@@ -180,7 +180,7 @@ describe('computeDiff', () => {
   });
 
   describe('token overflow handling', () => {
-    it('warns once after token overflow even with distinct overflow tokens', () => {
+    it('falls back to character diff after token overflow without corrupting text', () => {
       const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 
       try {
@@ -189,12 +189,15 @@ describe('computeDiff', () => {
           (_, index) => `token-${index}`,
         ).join(' ');
 
-        computeDiff(
-          '',
-          `${uniqueTokensBeforeOverflow} overflow-one overflow-two overflow-one overflow-three`,
-        );
+        const current = `${uniqueTokensBeforeOverflow} overflow-one overflow-two overflow-one overflow-three`;
+        const result = computeDiff('', current);
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(result.changes[0]).toMatchObject({
+          type: 'insertion',
+          originalText: '',
+          currentText: current,
+        });
       } finally {
         warnSpy.mockRestore();
       }

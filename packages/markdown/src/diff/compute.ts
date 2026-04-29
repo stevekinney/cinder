@@ -26,6 +26,12 @@ function decodeTokens(chars: string, tokenArray: string[]): string {
     .join('');
 }
 
+interface TokenizedText {
+  chars1: string;
+  chars2: string;
+  tokenArray: string[];
+}
+
 /**
  * Compute word-level diff between two strings.
  * Pure function, no side effects.
@@ -43,16 +49,27 @@ export function computeDiff(original: string, current: string): DiffResult {
   }
 
   // 1. Tokenize to words (preserves whitespace boundaries)
-  const { chars1, chars2, tokenArray } = wordsToChars(original, current);
+  const tokenizedText = wordsToChars(original, current);
+  const decode = tokenizedText
+    ? (chars: string) => decodeTokens(chars, tokenizedText.tokenArray)
+    : (text: string) => text;
 
-  // 2. Diff the word tokens
-  const diffs = dmp.diff_main(chars1, chars2);
+  if (!tokenizedText) {
+    console.warn(
+      `Diff token limit (${MAX_TOKENS}) exceeded. Falling back to character-level diff for this document.`,
+    );
+  }
+
+  // 2. Diff the word tokens, or the original text if tokenization overflowed
+  const diffs = tokenizedText
+    ? dmp.diff_main(tokenizedText.chars1, tokenizedText.chars2)
+    : dmp.diff_main(original, current);
 
   // 3. Semantic cleanup (merge small edits)
   dmp.diff_cleanupSemantic(diffs);
 
   // 4. Convert back to text and build Change objects
-  const changes = diffsToChanges(diffs, tokenArray);
+  const changes = diffsToChanges(diffs, decode);
 
   // 5. Group by block (initial grouping - will be enriched with positions later)
   const groups = groupChangesByBlock(changes);
@@ -83,47 +100,40 @@ export function computeDiff(original: string, current: string): DiffResult {
 // Maximum unique tokens supported (UTF-16 code unit limit minus reserved range)
 const MAX_TOKENS = 65535;
 
-function wordsToChars(
-  text1: string,
-  text2: string,
-): { chars1: string; chars2: string; tokenArray: string[] } {
+function wordsToChars(text1: string, text2: string): TokenizedText | null {
   const tokenArray: string[] = ['']; // Index 0 unused (char code 0 is problematic)
   const tokenHash = new Map<string, number>();
-  let didWarnAboutTokenLimit = false;
 
-  function encode(text: string): string {
+  function encode(text: string): string | null {
     // Split on word boundaries, keeping whitespace as separate tokens
     const tokens = text.match(/\S+|\s+/g) || [];
-    return tokens
-      .map((token) => {
-        let index = tokenHash.get(token);
-        if (index === undefined) {
-          index = tokenArray.length;
-          if (index >= MAX_TOKENS) {
-            // Token limit exceeded - fall back to reusing an existing token.
-            // This degrades diff quality for very large documents but prevents crashes.
-            if (!didWarnAboutTokenLimit) {
-              console.warn(
-                `Diff token limit (${MAX_TOKENS}) exceeded. Consider using character-level diff for very large documents.`,
-              );
-              didWarnAboutTokenLimit = true;
-            }
-            // Reuse the most recent token to continue without crashing
-            index = tokenArray.length - 1;
-            tokenHash.set(token, index);
-          } else {
-            tokenArray.push(token);
-            tokenHash.set(token, index);
-          }
-        }
-        return String.fromCharCode(index);
-      })
-      .join('');
+    let encoded = '';
+
+    for (const token of tokens) {
+      let index = tokenHash.get(token);
+      if (index === undefined) {
+        index = tokenArray.length;
+        if (index >= MAX_TOKENS) return null;
+
+        tokenArray.push(token);
+        tokenHash.set(token, index);
+      }
+
+      encoded += String.fromCharCode(index);
+    }
+
+    return encoded;
   }
 
+  const chars1 = encode(text1);
+  if (chars1 === null) return null;
+
+  const chars2 = encode(text2);
+  if (chars2 === null) return null;
+
   return {
-    chars1: encode(text1),
-    chars2: encode(text2),
+    chars1,
+    chars2,
     tokenArray,
   };
 }
@@ -132,7 +142,7 @@ function wordsToChars(
  * Convert diff-match-patch output to Change objects.
  * Merges consecutive DELETE+INSERT into REPLACEMENT.
  */
-function diffsToChanges(diffs: [number, string][], tokenArray: string[]): Change[] {
+function diffsToChanges(diffs: [number, string][], decode: (text: string) => string): Change[] {
   const changes: Change[] = [];
   let originalOffset = 0;
   let currentOffset = 0;
@@ -144,7 +154,7 @@ function diffsToChanges(diffs: [number, string][], tokenArray: string[]): Change
 
     const [op, chars] = diff;
     // Decode char codes back to original tokens
-    const text = decodeTokens(chars, tokenArray);
+    const text = decode(chars);
 
     if (op === DIFF_EQUAL) {
       // EQUAL - advance both pointers
@@ -155,7 +165,7 @@ function diffsToChanges(diffs: [number, string][], tokenArray: string[]): Change
       const next = diffs[i + 1];
       if (next && next[0] === DIFF_INSERT) {
         // Merge into replacement
-        const insertText = decodeTokens(next[1], tokenArray);
+        const insertText = decode(next[1]);
 
         changes.push(
           createChange(changeId++, 'replacement', text, insertText, originalOffset, currentOffset),

@@ -665,6 +665,20 @@ describe('groupIntoHunks', () => {
 });
 
 describe('unequal line count alignment', () => {
+  it('prefers exact matches over earlier near matches', () => {
+    const result = computeLineDiff('Hello world\nA', 'Hello worlds\nHello world\nB');
+
+    expect(result[0]).toEqual({ type: 'added', text: 'Hello worlds' });
+    expect(result[1]).toEqual({ type: 'same', text: 'Hello world' });
+    expect(result).not.toContainEqual(
+      expect.objectContaining({
+        type: 'modified',
+        oldText: 'Hello world',
+        newText: 'Hello worlds',
+      }),
+    );
+  });
+
   it('handles modification where lines are added', () => {
     const original = 'line A\nline B';
     const current = 'line A modified\ninserted line\nline B modified';

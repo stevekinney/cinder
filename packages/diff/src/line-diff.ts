@@ -235,8 +235,9 @@ function alignLines(oldLines: string[], newLines: string[]): AlignmentResult[] {
         bestSimilarity = similarity;
         bestMatchIdx = newIdx;
 
-        // Early termination: 0.8+ is a strong match, stop searching
-        if (similarity >= 0.8) break;
+        // Exact matches cannot be improved, but near matches can still hide
+        // a better match later in the candidate window.
+        if (similarity === 1) break;
       }
     }
 
