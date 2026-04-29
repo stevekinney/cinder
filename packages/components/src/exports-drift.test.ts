@@ -97,6 +97,8 @@ describe('exports drift', () => {
         .split('/')
         .pop()!
         .replace(/\.svelte$/, '');
+      // Underscore-prefixed files are internal-only, just like at the top level.
+      if (name.startsWith('_')) continue;
       if (!barrel.includes(`from './components/experimental/${name}.svelte'`)) {
         missing.push(`experimental/${name}`);
       }

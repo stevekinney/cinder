@@ -1,0 +1,48 @@
+/* ========================================
+ * STAT (experimental)
+ * Label + value + optional delta tile.
+ * ======================================== */
+
+.cinder-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1);
+  padding: var(--cinder-space-3);
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-md);
+}
+
+.cinder-stat__label {
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  color: var(--cinder-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--cinder-tracking-wide);
+}
+
+.cinder-stat__value {
+  font-size: var(--cinder-text-3xl);
+  font-weight: var(--cinder-font-semibold);
+  color: var(--cinder-text);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--cinder-leading-tight);
+}
+
+.cinder-stat__delta {
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.cinder-stat__delta[data-cinder-trend='up'] {
+  color: var(--cinder-success);
+}
+
+.cinder-stat__delta[data-cinder-trend='down'] {
+  color: var(--cinder-danger);
+}
+
+.cinder-stat__delta[data-cinder-trend='flat'] {
+  color: var(--cinder-text-muted);
+}

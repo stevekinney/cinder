@@ -1,0 +1,93 @@
+/* ========================================
+ * TIMELINE (experimental)
+ * Vertical event rail. Items are TimelineItem children.
+ * ======================================== */
+
+.cinder-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.cinder-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: var(--cinder-space-3);
+  padding-bottom: var(--cinder-space-4);
+}
+
+.cinder-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Connecting line between items */
+.cinder-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0.6875rem;
+  top: 1rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--cinder-border-muted);
+}
+
+.cinder-timeline-item:last-child::before {
+  display: none;
+}
+
+.cinder-timeline-item__marker {
+  position: relative;
+  z-index: 1;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.25rem;
+  border-radius: var(--cinder-radius-full);
+  background: var(--cinder-surface-raised);
+  border: 2px solid currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cinder-timeline-item[data-cinder-status='info'] .cinder-timeline-item__marker {
+  color: var(--cinder-info);
+}
+
+.cinder-timeline-item[data-cinder-status='success'] .cinder-timeline-item__marker {
+  color: var(--cinder-success);
+}
+
+.cinder-timeline-item[data-cinder-status='warning'] .cinder-timeline-item__marker {
+  color: var(--cinder-warning);
+}
+
+.cinder-timeline-item[data-cinder-status='danger'] .cinder-timeline-item__marker {
+  color: var(--cinder-danger);
+}
+
+.cinder-timeline-item__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cinder-space-2);
+  flex-wrap: wrap;
+}
+
+.cinder-timeline-item__title {
+  font-size: var(--cinder-text-sm);
+  font-weight: var(--cinder-font-medium);
+  color: var(--cinder-text);
+}
+
+.cinder-timeline-item__time {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cinder-timeline-item__body {
+  margin-top: var(--cinder-space-1);
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+}

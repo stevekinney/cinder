@@ -25,8 +25,16 @@ export type { CardProps } from './components/card.svelte';
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
 
+export { default as CodeBlock } from './components/code-block.svelte';
+export type { CodeBlockProps } from './components/code-block.svelte';
+
 export { default as Combobox } from './components/combobox.svelte';
 export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
+
+export { default as CopyButton } from './components/copy-button.svelte';
+export type { CopyButtonProps } from './components/copy-button.svelte';
+
+export { copyToClipboard } from './utilities/clipboard.ts';
 
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
@@ -39,6 +47,9 @@ export type { EmptyStateProps } from './components/empty-state.svelte';
 
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
+
+export { default as Kbd } from './components/kbd.svelte';
+export type { KbdProps } from './components/kbd.svelte';
 
 export { default as Label } from './components/label.svelte';
 export type { LabelProps } from './components/label.svelte';
@@ -131,8 +142,29 @@ export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte
 // promotion criteria documented in COMPONENT-COVERAGE-PLAN.md.
 // ---------------------------------------------------------------------------
 
+export { default as ConnectionIndicator } from './components/experimental/connection-indicator.svelte';
+export type {
+  ConnectionIndicatorProps,
+  ConnectionState,
+} from './components/experimental/connection-indicator.svelte';
+
+export { default as JsonViewer } from './components/experimental/json-viewer.svelte';
+export type { JsonViewerProps } from './components/experimental/json-viewer.svelte';
+
+export { default as Message } from './components/experimental/message.svelte';
+export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
+
 export { default as Popover } from './components/experimental/popover.svelte';
 export type { PopoverPlacement, PopoverProps } from './components/experimental/popover.svelte';
 
 export { default as Sheet } from './components/experimental/sheet.svelte';
 export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
+
+export { default as Stat } from './components/experimental/stat.svelte';
+export type { StatProps, StatTrend } from './components/experimental/stat.svelte';
+
+export { default as Timeline } from './components/experimental/timeline.svelte';
+export type { TimelineProps } from './components/experimental/timeline.svelte';
+
+export { default as TimelineItem } from './components/experimental/timeline-item.svelte';
+export type { TimelineItemProps } from './components/experimental/timeline-item.svelte';

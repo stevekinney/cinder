@@ -28,6 +28,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'accordion',
   'checkbox',
   'combobox',
+  'copy-button',
   'dropdown',
   'input',
   'modal',

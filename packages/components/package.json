@@ -53,9 +53,17 @@
       "svelte": "./src/components/checkbox.svelte",
       "types": "./dist/components/checkbox.svelte.d.ts"
     },
+    "./code-block": {
+      "svelte": "./src/components/code-block.svelte",
+      "types": "./dist/components/code-block.svelte.d.ts"
+    },
     "./combobox": {
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
+    },
+    "./copy-button": {
+      "svelte": "./src/components/copy-button.svelte",
+      "types": "./dist/components/copy-button.svelte.d.ts"
     },
     "./data-list": {
       "svelte": "./src/components/data-list.svelte",
@@ -69,6 +77,18 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
+    "./experimental/connection-indicator": {
+      "svelte": "./src/components/experimental/connection-indicator.svelte",
+      "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
+    },
+    "./experimental/json-viewer": {
+      "svelte": "./src/components/experimental/json-viewer.svelte",
+      "types": "./dist/components/experimental/json-viewer.svelte.d.ts"
+    },
+    "./experimental/message": {
+      "svelte": "./src/components/experimental/message.svelte",
+      "types": "./dist/components/experimental/message.svelte.d.ts"
+    },
     "./experimental/popover": {
       "svelte": "./src/components/experimental/popover.svelte",
       "types": "./dist/components/experimental/popover.svelte.d.ts"
@@ -77,9 +97,25 @@
       "svelte": "./src/components/experimental/sheet.svelte",
       "types": "./dist/components/experimental/sheet.svelte.d.ts"
     },
+    "./experimental/stat": {
+      "svelte": "./src/components/experimental/stat.svelte",
+      "types": "./dist/components/experimental/stat.svelte.d.ts"
+    },
+    "./experimental/timeline-item": {
+      "svelte": "./src/components/experimental/timeline-item.svelte",
+      "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
+    },
+    "./experimental/timeline": {
+      "svelte": "./src/components/experimental/timeline.svelte",
+      "types": "./dist/components/experimental/timeline.svelte.d.ts"
+    },
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
+    },
+    "./kbd": {
+      "svelte": "./src/components/kbd.svelte",
+      "types": "./dist/components/kbd.svelte.d.ts"
     },
     "./label": {
       "svelte": "./src/components/label.svelte",
@@ -199,6 +235,7 @@
     "src/_internal/toast-context.ts",
     "src/styles/**/*.css",
     "src/utilities/class-names.ts",
+    "src/utilities/clipboard.ts",
     "src/utilities/format-date.ts",
     "src/utilities/format-duration.ts",
     "src/utilities/format-number.ts",
