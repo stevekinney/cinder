@@ -35,7 +35,7 @@ The source repository to port from is at `/Users/stevekinney/Developer/depict`.
 
 ## Phase D2 — @cinder/editor package
 
-- [ ] Scaffold `@cinder/editor` workspace package porting the Milkdown/ProseMirror integration
+- [x] Scaffold `@cinder/editor` workspace package porting the Milkdown/ProseMirror integration
 
   Port `/Users/stevekinney/Developer/depict/packages/editor/src/` into `packages/editor/src/`. Rewrite all `@depict/markdown/*` imports to `@cinder/markdown/*`. Migrate vitest → bun:test by category. Apply the SSR rewrite list from `tmp/port-inventory/browser-only-imports.md`: every `@milkdown/kit` static top-level import becomes a dynamic `import()` inside `$effect` or `onMount`.
 
