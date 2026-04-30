@@ -49,6 +49,10 @@
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
     },
+    "./chat": {
+      "svelte": "./src/components/chat.svelte",
+      "types": "./dist/components/chat.svelte.d.ts"
+    },
     "./checkbox": {
       "svelte": "./src/components/checkbox.svelte",
       "types": "./dist/components/checkbox.svelte.d.ts"
@@ -72,6 +76,10 @@
     "./diff-statistics": {
       "svelte": "./src/components/diff-statistics.svelte",
       "types": "./dist/components/diff-statistics.svelte.d.ts"
+    },
+    "./diff-viewer": {
+      "svelte": "./src/components/diff-viewer.svelte",
+      "types": "./dist/components/diff-viewer.svelte.d.ts"
     },
     "./dropdown-item": {
       "svelte": "./src/components/dropdown-item.svelte",
@@ -145,6 +153,10 @@
       "svelte": "./src/components/label.svelte",
       "types": "./dist/components/label.svelte.d.ts"
     },
+    "./markdown-editor": {
+      "svelte": "./src/components/markdown-editor.svelte",
+      "types": "./dist/components/markdown-editor.svelte.d.ts"
+    },
     "./modal": {
       "svelte": "./src/components/modal.svelte",
       "types": "./dist/components/modal.svelte.d.ts"
@@ -196,6 +208,10 @@
     "./spinner": {
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
+    },
+    "./surface": {
+      "svelte": "./src/components/surface.svelte",
+      "types": "./dist/components/surface.svelte.d.ts"
     },
     "./tab-list": {
       "svelte": "./src/components/tab-list.svelte",
@@ -264,18 +280,24 @@
   "files": [
     "dist",
     "src/index.ts",
+    "src/components/**/*.ts",
     "src/components/**/*.svelte",
     "src/_internal/collection.ts",
     "src/_internal/field-control.ts",
     "src/_internal/overlay.ts",
     "src/_internal/toast-context.ts",
     "src/styles/**/*.css",
+    "src/components/icons/index.ts",
+    "src/utilities/attachments.ts",
     "src/utilities/class-names.ts",
     "src/utilities/clipboard.ts",
+    "src/utilities/format-bytes.ts",
     "src/utilities/format-date.ts",
     "src/utilities/format-duration.ts",
     "src/utilities/format-number.ts",
+    "src/utilities/stringify.ts",
     "src/utilities/truncate.ts",
+    "src/utilities/use-announcer.svelte.ts",
     "src/utilities/use-id.ts",
     "src/utilities/use-toast.ts",
     "README.md"
@@ -292,13 +314,20 @@
     "prepublishOnly": "bun run validate && bun run build",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --coverage",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --tsconfig tsconfig.json --threshold error",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run validate:workflow && bun run validate:consumer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },
   "dependencies": {
+    "@cinder/diff": "workspace:*",
+    "@cinder/editor": "workspace:*",
+    "@cinder/markdown": "workspace:*",
+    "@lasercat/homogenaize": "^1.2.41",
+    "@milkdown/ctx": "^7.17.3",
+    "@milkdown/kit": "^7.17.3",
+    "conversationalist": "0.0.9",
     "esm-env": "^1.2.0"
   },
   "devDependencies": {

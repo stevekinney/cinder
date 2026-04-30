@@ -1,0 +1,13 @@
+.cinder-surface {
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+}
+
+.cinder-surface[data-cinder-tone='raised'] {
+  background: var(--cinder-surface-raised);
+}
+
+.cinder-surface[data-cinder-tone='inset'] {
+  background: var(--cinder-surface-inset);
+}

@@ -20,6 +20,7 @@ describe('@cinder/editor package export build contract', () => {
       `${packageRoot}/src/template-placeholders.ts`,
       `${packageRoot}/src/template-render.ts`,
       `${packageRoot}/src/test-utilities.ts`,
+      `${packageRoot}/src/component-runtime.ts`,
     ]);
   });
 
@@ -38,6 +39,8 @@ describe('@cinder/editor package export build contract', () => {
       `${packageRoot}/dist/template-render.d.ts`,
       `${packageRoot}/dist/test-utilities.js`,
       `${packageRoot}/dist/test-utilities.d.ts`,
+      `${packageRoot}/dist/component-runtime.js`,
+      `${packageRoot}/dist/component-runtime.d.ts`,
     ]);
   });
 });

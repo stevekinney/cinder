@@ -22,6 +22,9 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 
+export { default as Chat } from './components/chat.svelte';
+export type { ChatProps } from './components/chat.svelte';
+
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
 
@@ -44,6 +47,13 @@ export type {
   DiffStatisticsProps,
   DiffStatisticsVariant,
 } from './components/diff-statistics.svelte';
+
+export { default as DiffViewer } from './components/diff-viewer.svelte';
+export type {
+  DiffToolbarContext,
+  DiffViewerProps,
+  ViewMode,
+} from './components/diff-viewer.svelte';
 
 export { default as Dropdown } from './components/dropdown.svelte';
 export type {
@@ -78,6 +88,14 @@ export type { KbdProps } from './components/kbd.svelte';
 
 export { default as Label } from './components/label.svelte';
 export type { LabelProps } from './components/label.svelte';
+
+export { default as MarkdownEditor } from './components/markdown-editor.svelte';
+export type {
+  EditorHandle,
+  EditorMode,
+  MarkdownEditorProps,
+  ToolbarContext,
+} from './components/markdown-editor.svelte';
 
 export { default as Modal } from './components/modal.svelte';
 export type { ModalProps } from './components/modal.svelte';
@@ -123,6 +141,9 @@ export type { SkeletonProps } from './components/skeleton.svelte';
 
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
+
+export { default as Surface } from './components/surface.svelte';
+export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
 
 export { default as Tab } from './components/tab.svelte';
 export type { TabProps } from './components/tab.svelte';

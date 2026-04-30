@@ -1,0 +1,874 @@
+<script lang="ts" module>
+  import type { HTMLAttributes } from 'svelte/elements';
+  import type { Snippet } from 'svelte';
+  import type { MilkdownPlugin } from '@milkdown/ctx';
+  import type { Ctx } from '@milkdown/kit/ctx';
+  import type {
+    EditorHandle as EditorHandleType,
+    EditorSelection,
+    ActiveMarks,
+    ActiveBlockType,
+    PlaceholderCompletionConfiguration,
+    PlaceholderDecorationConfiguration,
+  } from '@cinder/editor/component-runtime';
+
+  /** Editor display mode */
+  export type EditorMode = 'wysiwyg' | 'source';
+
+  /** Context passed to toolbar snippets for custom rendering */
+  export interface ToolbarContext {
+    /** The Milkdown editor context (null if not ready) */
+    editorContext: Ctx | null;
+    /** Currently active marks at cursor position */
+    activeMarks: ActiveMarks;
+    /** Currently active block type at cursor position */
+    activeBlockType: ActiveBlockType;
+    /** Whether undo is available */
+    canUndo: boolean;
+    /** Whether redo is available */
+    canRedo: boolean;
+    /** Whether the editor is readonly */
+    readonly: boolean;
+  }
+
+  export type MarkdownEditorProps = Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'id' | 'class' | 'onchange'
+  > & {
+    /** Unique identifier for accessibility (required) */
+    id: string;
+    /** Accessible label for the editor (required for screen readers) */
+    label?: string;
+    /** Current markdown content (two-way bindable) */
+    value?: string;
+    /** Editor display mode (two-way bindable) */
+    mode?: EditorMode;
+    /** Show an inline toggle for switching between WYSIWYG and raw Markdown */
+    showModeToggle?: boolean;
+    /** Accessible label for the mode toggle (visually hidden) */
+    modeLabel?: string;
+    /** Read-only mode */
+    readonly?: boolean;
+    /** Placeholder text when empty */
+    placeholder?: string;
+    /** Show formatting toolbar (DEP-37) */
+    showToolbar?: boolean;
+    /** Additional CSS classes */
+    class?: string;
+    /** Called when content changes */
+    onchange?: (value: string) => void;
+    /** Called when the editor is ready (Milkdown initialized) */
+    onReady?: () => void;
+    /** Called when editor mode changes */
+    onmodechange?: (mode: EditorMode) => void;
+    /** Called when selection changes (stub for DEP-39) */
+    onSelectionChange?: (selection: EditorSelection | null) => void;
+    /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
+    onCommentShortcut?: () => void;
+    /**
+     * Additional Milkdown plugins to load.
+     * Used for comment anchoring (DEP-39), decorations, and other extensions.
+     */
+    plugins?: MilkdownPlugin[];
+
+    /**
+     * Placeholder completion configuration (DEP-583).
+     * When provided, enables inline suggestion menu for {{…}} tokens in WYSIWYG mode.
+     */
+    placeholderCompletion?: PlaceholderCompletionConfiguration;
+
+    /**
+     * Placeholder decoration configuration (DEP-583).
+     * When provided, decorates invalid {{…}} tokens with CSS class and data attributes.
+     */
+    placeholderDecoration?: PlaceholderDecorationConfiguration;
+
+    // =========================================================================
+    // Snippet-based Extensibility
+    // =========================================================================
+
+    /**
+     * Custom toolbar content. When provided, replaces default toolbar.
+     * Receives ToolbarContext for building custom toolbar UI.
+     */
+    toolbar?: Snippet<[ToolbarContext]>;
+
+    /**
+     * Additional toolbar actions (appended to default toolbar).
+     * Use this for adding buttons without replacing the entire toolbar.
+     */
+    toolbarActions?: Snippet<[ToolbarContext]>;
+
+    /**
+     * Leading toolbar content (prepended before default toolbar items).
+     * Useful for adding undo/redo or other leading actions.
+     */
+    toolbarLeading?: Snippet<[ToolbarContext]>;
+  };
+
+  /** Re-export EditorHandle type for convenience */
+  export type EditorHandle = EditorHandleType;
+</script>
+
+<script lang="ts">
+  import { BROWSER as browser } from 'esm-env';
+  import { onDestroy } from 'svelte';
+  import './markdown-editor/prosemirror.css';
+  // Ctx is imported in module script
+  import { classNames } from '../utilities/class-names.ts';
+  import {
+    createEditorAttachment,
+    setEditorReadonly,
+    type EditorState,
+    // ActiveMarks and ActiveBlockType are imported in module script
+    getActiveMarks,
+    getActiveBlockType,
+    getLinkAtCursor,
+    getLinkTextAtCursor,
+    isSelectionCollapsed,
+    insertLinkAtCursor,
+    applyLinkToSelection,
+    updateLinkAtCursor,
+    removeLink,
+    getLinkRangeAtCursor,
+    undo as undoCommand,
+    redo as redoCommand,
+    DEFAULT_DEBOUNCE_MS,
+  } from '@cinder/editor/component-runtime';
+  import { EditorToolbar, LinkPopover } from './markdown-editor/editor-toolbar/index.ts';
+  import type { LinkPopoverMode } from './markdown-editor/editor-toolbar/link-popover.svelte';
+  import SegmentedControl from './segmented-control.svelte';
+  import EditorSkeleton from './markdown-editor/editor-skeleton.svelte';
+
+  type HistoryUtilities = Pick<
+    typeof import('@milkdown/kit/prose/history'),
+    'undoDepth' | 'redoDepth'
+  >;
+
+  type MarkdownPipelineUtilities = Pick<
+    typeof import('@cinder/markdown/pipeline'),
+    'normalize' | 'parseOrThrow'
+  >;
+
+  let {
+    id,
+    label = 'Markdown editor',
+    value = $bindable(''),
+    mode = $bindable<EditorMode>('wysiwyg'),
+    showModeToggle = false,
+    modeLabel = 'Editor mode',
+    readonly = false,
+    placeholder = 'Start writing...',
+    showToolbar = true,
+    class: className,
+    onchange,
+    onReady,
+    onmodechange,
+    onSelectionChange,
+    onCommentShortcut,
+    plugins = [],
+    placeholderCompletion,
+    placeholderDecoration,
+    toolbar,
+    toolbarActions,
+    toolbarLeading,
+    ...rest
+  }: MarkdownEditorProps = $props();
+
+  // Escape single quotes in placeholder for CSS content property
+  const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
+
+  // Internal state
+  let editorState = $state<EditorState | null>(null);
+  let isInitializing = $state(true);
+  let pipelineUtilities = $state<MarkdownPipelineUtilities | null>(null);
+
+  // Guard to prevent effect loops on two-way binding
+  let isInternalUpdate = false;
+
+  /**
+   * Normalize Markdown to the DEP-35 canonical form.
+   *
+   * We fail open (return the original string) to avoid losing user input if
+   * normalization ever throws for unexpected content.
+   */
+  function normalizeSafely(markdown: string): string {
+    try {
+      return pipelineUtilities?.normalize(markdown) ?? normalizeForEditor(markdown);
+    } catch (error) {
+      console.warn('Failed to normalize markdown, using raw value:', error);
+      return markdown;
+    }
+  }
+
+  function normalizeForEditor(markdown: string): string {
+    if (!markdown.trim()) return '\n';
+
+    return markdown
+      .replace(/\r\n?/g, '\n')
+      .replace(/^(\s*)[*+] /gm, '$1- ')
+      .replace(/^([-*+] .*)$\n\n(?=[-*+] )/gm, '$1\n')
+      .replace(/^(\d+\. .*)$\n\n(?=\d+\. )/gm, '$1\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '\n');
+  }
+
+  // Toolbar state: track a version counter that increments on selection change
+  // This forces re-derivation of active marks/block type
+  let selectionVersion = $state(0);
+  let historyUtilities = $state<HistoryUtilities | null>(null);
+
+  $effect(() => {
+    if (!browser) return;
+
+    let cancelled = false;
+    void import('@milkdown/kit/prose/history').then((module) => {
+      if (!cancelled) {
+        historyUtilities = {
+          undoDepth: module.undoDepth,
+          redoDepth: module.redoDepth,
+        };
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  $effect(() => {
+    if (!browser) return;
+
+    let cancelled = false;
+    void import('@cinder/markdown/pipeline').then((module) => {
+      if (!cancelled) {
+        pipelineUtilities = {
+          normalize: module.normalize,
+          parseOrThrow: module.parseOrThrow,
+        };
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  // Derive editor context for toolbar (SSR safe - null until editor ready)
+  const editorContext = $derived<Ctx | null>(editorState?.editor?.ctx ?? null);
+
+  // Derive active marks (updates when selectionVersion changes)
+  const activeMarks = $derived.by((): ActiveMarks => {
+    // Force dependency on selectionVersion
+    void selectionVersion;
+
+    if (!editorContext) {
+      return { bold: false, italic: false, code: false, strikethrough: false, link: false };
+    }
+    return getActiveMarks(editorContext);
+  });
+
+  // Derive active block type (updates when selectionVersion changes)
+  const activeBlockType = $derived.by((): ActiveBlockType => {
+    // Force dependency on selectionVersion
+    void selectionVersion;
+
+    if (!editorContext) {
+      return { type: 'paragraph' };
+    }
+    return getActiveBlockType(editorContext);
+  });
+
+  // Derive undo/redo availability from ProseMirror history
+  const canUndo = $derived.by(() => {
+    void value;
+    const view = editorState?.view;
+    if (!view || historyUtilities === null) return false;
+    return historyUtilities.undoDepth(view.state) > 0;
+  });
+
+  const canRedo = $derived.by(() => {
+    void value;
+    const view = editorState?.view;
+    if (!view || historyUtilities === null) return false;
+    return historyUtilities.redoDepth(view.state) > 0;
+  });
+
+  // Should toolbar be visible?
+  // Show toolbar in wysiwyg mode, or always when mode toggle is enabled (so users can switch modes)
+  const toolbarVisible = $derived(
+    showToolbar && !readonly && browser && (mode === 'wysiwyg' || showModeToggle),
+  );
+
+  // Toolbar context for snippets
+  const toolbarContext: ToolbarContext = $derived({
+    editorContext,
+    activeMarks,
+    activeBlockType,
+    canUndo,
+    canRedo,
+    readonly,
+  });
+
+  // Link popover state
+  let linkPopoverOpen = $state(false);
+
+  // Derive link popover props based on current selection
+  const linkPopoverMode = $derived.by((): LinkPopoverMode => {
+    // Force dependency on selectionVersion for reactivity
+    void selectionVersion;
+
+    if (!editorContext) return 'insert';
+    const existingUrl = getLinkAtCursor(editorContext);
+    return existingUrl ? 'edit' : 'insert';
+  });
+
+  const linkPopoverInitialUrl = $derived.by(() => {
+    // Force dependency on selectionVersion for reactivity
+    void selectionVersion;
+
+    if (!editorContext) return '';
+    return getLinkAtCursor(editorContext) ?? '';
+  });
+
+  const linkPopoverHasSelection = $derived.by(() => {
+    // Force dependency on selectionVersion for reactivity
+    void selectionVersion;
+
+    if (!editorContext) return false;
+    return !isSelectionCollapsed(editorContext);
+  });
+
+  const linkPopoverInitialText = $derived.by(() => {
+    // Force dependency on selectionVersion for reactivity
+    void selectionVersion;
+
+    if (!editorContext) return '';
+    // If there's a selection, the text input is hidden (selected text becomes link text)
+    if (!isSelectionCollapsed(editorContext)) return '';
+    // When cursor is inside a link, get the full link text for editing
+    return getLinkTextAtCursor(editorContext) ?? '';
+  });
+
+  // Captured link range for removal - updated on every selection change while cursor is inside a link.
+  // This ensures we have the link range available even after the popover steals focus.
+  const lastKnownLinkRange = $derived.by((): [number, number] | null => {
+    // Force dependency on selectionVersion for reactivity
+    void selectionVersion;
+
+    if (!editorContext) return null;
+    // Only capture range when cursor is inside a link
+    const url = getLinkAtCursor(editorContext);
+    if (!url) return null;
+    return getLinkRangeAtCursor(editorContext);
+  });
+
+  // Store the link range when popover opens (captured from the last known value)
+  let capturedLinkRange = $state<[number, number] | null>(null);
+
+  function handleLinkClick() {
+    // Use the last known link range (updated reactively before focus changes)
+    capturedLinkRange = lastKnownLinkRange;
+    linkPopoverOpen = true;
+  }
+
+  function handleLinkPopoverClose() {
+    linkPopoverOpen = false;
+    // Refocus the editor after closing
+    editorState?.focus();
+  }
+
+  function handleLinkInsert(url: string, text?: string) {
+    if (!editorContext) return;
+
+    if (text) {
+      // Check if we're editing an existing link (cursor inside link)
+      const existingLinkUrl = getLinkAtCursor(editorContext);
+      if (existingLinkUrl) {
+        // Update the existing link instead of inserting a new one
+        updateLinkAtCursor(editorContext, text, url);
+      } else {
+        // Insert new link with text (no selection case)
+        insertLinkAtCursor(editorContext, text, url);
+      }
+    } else {
+      // Apply link to selection
+      applyLinkToSelection(editorContext, url);
+    }
+
+    linkPopoverOpen = false;
+    editorState?.focus();
+  }
+
+  function handleLinkRemove() {
+    if (!editorContext) return;
+    // Use the captured link range (from when popover opened) - editor selection may have changed
+    removeLink(editorContext, capturedLinkRange ?? undefined);
+    linkPopoverOpen = false;
+    capturedLinkRange = null;
+    editorState?.focus();
+  }
+
+  function handleUndo(): void {
+    if (!editorContext || !canUndo) return;
+    undoCommand(editorContext);
+  }
+
+  function handleRedo(): void {
+    if (!editorContext || !canRedo) return;
+    redoCommand(editorContext);
+  }
+
+  // Create the editor attachment
+  const editorAttachment = createEditorAttachment({
+    // Initialize Milkdown with canonical markdown for consistent parsing/serialization (DEP-35).
+    getInitialValue: () => normalizeSafely(value),
+    getReadonly: () => readonly,
+    getAriaLabel: () => label,
+    debounceMs: DEFAULT_DEBOUNCE_MS,
+    getPlugins: () => plugins,
+    getPlaceholderCompletion: () => placeholderCompletion,
+    getPlaceholderDecoration: () => placeholderDecoration,
+    onReady: (state) => {
+      editorState = state;
+      isInitializing = false;
+      onReady?.();
+    },
+    onChange: (markdown) => {
+      isInternalUpdate = true;
+      value = markdown;
+      onchange?.(markdown);
+      // Increment version to trigger toolbar state re-derivation
+      // (block type may have changed even if selection didn't move)
+      selectionVersion++;
+      // Reset flag after microtask
+      queueMicrotask(() => {
+        isInternalUpdate = false;
+      });
+    },
+    onSelectionChange: (selection) => {
+      // Increment version to trigger toolbar state re-derivation
+      selectionVersion++;
+      onSelectionChange?.(selection);
+    },
+    onLinkShortcut: () => {
+      // Mod-k pressed - open link popover
+      linkPopoverOpen = true;
+    },
+    // DEP-47: Comment shortcut (Ctrl-Alt-c)
+    onCommentShortcut: () => onCommentShortcut?.(),
+  });
+
+  // Track mode transitions to normalize content on switch (DEP-45).
+  let previousMode: EditorMode = mode;
+
+  $effect(() => {
+    if (mode === previousMode) return;
+
+    const nextMode = mode;
+    const priorMode = previousMode;
+    previousMode = nextMode;
+
+    onmodechange?.(nextMode);
+
+    // Prevent stale editor context when switching modes.
+    linkPopoverOpen = false;
+
+    if (nextMode === 'source') {
+      // Flush pending WYSIWYG edits and canonicalize before showing raw markdown.
+      let latestMarkdown = value;
+      if (editorState) {
+        try {
+          latestMarkdown = editorState.getMarkdown();
+        } catch (error) {
+          console.warn('Failed to read markdown from editor during mode switch:', error);
+        }
+        editorState.clearPendingTimers();
+      }
+
+      const normalized = normalizeSafely(latestMarkdown);
+      if (normalized !== value) {
+        isInternalUpdate = true;
+        value = normalized;
+        onchange?.(normalized);
+        queueMicrotask(() => {
+          isInternalUpdate = false;
+        });
+      }
+
+      // Avoid keeping references to a destroyed Milkdown instance.
+      editorState = null;
+      isInitializing = false;
+      return;
+    }
+
+    if (nextMode === 'wysiwyg' && priorMode === 'source') {
+      // Canonicalize the textarea content before initializing Milkdown.
+      const normalized = normalizeSafely(value);
+      if (normalized !== value) {
+        isInternalUpdate = true;
+        value = normalized;
+        onchange?.(normalized);
+        queueMicrotask(() => {
+          isInternalUpdate = false;
+        });
+      }
+
+      isInitializing = true;
+    }
+  });
+
+  // Sync external value changes to editor
+  $effect(() => {
+    const externalValue = value;
+
+    if (editorState && !isInternalUpdate) {
+      let currentMarkdown: string;
+      try {
+        currentMarkdown = editorState.getMarkdown();
+      } catch {
+        // Editor may be in the middle of teardown; fail open to avoid crashing.
+        return;
+      }
+      // Only update if actually different
+      if (externalValue !== currentMarkdown) {
+        try {
+          editorState.setMarkdown(externalValue);
+        } catch {
+          // Ignore errors during teardown or transient editor state.
+        }
+      }
+    }
+  });
+
+  // Sync readonly prop changes to editor (action's update() is never called without parameters)
+  $effect(() => {
+    if (editorState) {
+      setEditorReadonly(editorState, readonly);
+    }
+    // Close link popover when editor becomes readonly (toolbar disappears but popover might stay)
+    if (readonly) {
+      linkPopoverOpen = false;
+    }
+  });
+
+  // Expose imperative handle via exported functions
+  export function focus(): void {
+    editorState?.focus();
+  }
+
+  export function getMarkdown(): string {
+    return editorState?.getMarkdown() ?? value;
+  }
+
+  export function setMarkdown(content: string): void {
+    if (editorState) {
+      editorState.setMarkdown(content);
+    } else {
+      value = content;
+    }
+  }
+
+  export function getAst() {
+    const markdown = getMarkdown();
+    if (pipelineUtilities === null) {
+      throw new Error('Markdown pipeline is not ready yet.');
+    }
+    return pipelineUtilities.parseOrThrow(markdown);
+  }
+
+  export function getSelection(): EditorSelection | null {
+    if (!editorState?.view) return null;
+    const { from, to } = editorState.view.state.selection;
+    return { from, to, isCollapsed: from === to };
+  }
+
+  // Expose direct access for advanced use (DEP-39/43)
+  export function getView() {
+    return editorState?.view ?? null;
+  }
+
+  export function getEditor() {
+    return editorState?.editor ?? null;
+  }
+
+  onDestroy(() => {
+    // Avoid leaving timers running and prevent stale references to destroyed Milkdown state.
+    editorState?.clearPendingTimers();
+    editorState = null;
+  });
+</script>
+
+<div
+  class={classNames('markdown-editor-wrapper', className)}
+  data-initializing={isInitializing || undefined}
+  data-ready={!isInitializing ? true : undefined}
+  data-mode={mode}
+  data-has-toolbar={toolbarVisible || undefined}
+  {...rest}
+>
+  {#if toolbarVisible}
+    {#if toolbar}
+      <!-- Full custom toolbar override -->
+      {@render toolbar(toolbarContext)}
+    {:else}
+      <!-- Default toolbar with optional extension points -->
+      <div class="editor-toolbar-wrapper">
+        {#if showModeToggle}
+          <div class="toolbar-mode-toggle">
+            <SegmentedControl
+              id={`${id}-mode-toggle`}
+              bind:value={mode}
+              options={[
+                { value: 'wysiwyg', label: 'Rich' },
+                { value: 'source', label: 'Raw' },
+              ]}
+              label={modeLabel}
+              hideLabel
+            />
+          </div>
+        {/if}
+
+        {#if toolbarLeading}
+          <div class="toolbar-leading">
+            {@render toolbarLeading(toolbarContext)}
+          </div>
+        {/if}
+
+        <EditorToolbar
+          id={`${id}-toolbar`}
+          editorId={id}
+          {editorContext}
+          {activeMarks}
+          {activeBlockType}
+          {canUndo}
+          {canRedo}
+          disabled={!editorContext}
+          onLinkClick={handleLinkClick}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+        />
+
+        {#if toolbarActions}
+          <div class="toolbar-actions">
+            {@render toolbarActions(toolbarContext)}
+          </div>
+        {/if}
+      </div>
+    {/if}
+  {/if}
+
+  {#if browser}
+    {#if mode === 'wysiwyg'}
+      <!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -- ESLint doesn't see Svelte's a11y warning -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div
+        {id}
+        class="prose markdown-editor surface"
+        data-readonly={readonly || undefined}
+        style:--editor-placeholder="'{escapedPlaceholder}'"
+        role="application"
+        aria-label={label || 'Markdown editor'}
+        tabindex="0"
+        {@attach editorAttachment}
+      ></div>
+    {:else}
+      <textarea
+        {id}
+        class="markdown-editor surface source-mode"
+        bind:value
+        oninput={(e) => onchange?.(e.currentTarget.value)}
+        {placeholder}
+        readonly={readonly || undefined}
+        aria-label={label}
+      ></textarea>
+    {/if}
+  {:else}
+    <EditorSkeleton class="markdown-editor" />
+  {/if}
+
+  {#if linkPopoverOpen && mode === 'wysiwyg'}
+    <LinkPopover
+      id={`${id}-link-popover`}
+      mode={linkPopoverMode}
+      initialUrl={linkPopoverInitialUrl}
+      initialText={linkPopoverInitialText}
+      hasSelection={linkPopoverHasSelection}
+      onclose={handleLinkPopoverClose}
+      oninsert={handleLinkInsert}
+      onremove={handleLinkRemove}
+    />
+  {/if}
+</div>
+
+<style>
+  .markdown-editor-wrapper {
+    /* Configurable minimum height for the editor content area */
+    --editor-min-height: 200px;
+
+    display: flex;
+    flex-direction: column;
+    min-height: var(--editor-min-height);
+    gap: var(--cinder-space-2);
+  }
+
+  /* Toolbar wrapper for extension points */
+  .editor-toolbar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .editor-toolbar-wrapper :global(.editor-toolbar) {
+    flex: 1;
+  }
+
+  .toolbar-mode-toggle {
+    flex-shrink: 0;
+  }
+
+  /* Compact mode toggle styling for toolbar context */
+  .toolbar-mode-toggle :global(.segmented-control) {
+    font-size: var(--cinder-text-xs);
+  }
+
+  .toolbar-mode-toggle :global(.segmented-control-option) {
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    min-height: auto;
+  }
+
+  .toolbar-leading,
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    flex-shrink: 0;
+  }
+
+  .markdown-editor {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    min-height: var(--editor-min-height);
+  }
+
+  /* When toolbar is present, connect it visually */
+  .markdown-editor-wrapper[data-has-toolbar] {
+    gap: 0;
+  }
+
+  .markdown-editor-wrapper[data-has-toolbar] :global(.editor-toolbar) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
+  }
+
+  .markdown-editor-wrapper[data-has-toolbar] .markdown-editor {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .markdown-editor[data-readonly] {
+    background: var(--cinder-surface-raised);
+  }
+
+  /* Source mode (raw markdown textarea) */
+  textarea.markdown-editor.source-mode {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: 1.6;
+    padding: var(--cinder-space-4);
+    resize: none;
+    width: 100%;
+    /* Use flex: 1 instead of height: 100% for consistent sizing with WYSIWYG mode */
+    flex: 1;
+    color: var(--cinder-text);
+  }
+
+  textarea.markdown-editor.source-mode::placeholder {
+    color: var(--cinder-text-muted);
+  }
+
+  textarea.markdown-editor.source-mode:focus {
+    outline: none;
+    border-color: var(--cinder-accent);
+  }
+
+  /* ProseMirror content area */
+  .markdown-editor :global(.ProseMirror) {
+    padding: var(--cinder-space-4);
+    outline: none;
+    min-height: 100%;
+  }
+
+  /* Placeholder for empty editor - uses CSS custom property that cascades from parent */
+  .markdown-editor :global(.ProseMirror p.is-editor-empty:first-child::before) {
+    content: var(--editor-placeholder, 'Start writing...');
+    color: var(--cinder-text-muted);
+    pointer-events: none;
+    float: left;
+    height: 0;
+  }
+
+  /* Focus indicator - subtle border change, not a thick ring.
+     Rich text editors already show a blinking cursor for focus,
+     so a prominent ring around the entire container is redundant. */
+  .markdown-editor:focus-within {
+    border-color: var(--cinder-accent);
+  }
+
+  /*
+   * Typography styles for ProseMirror content are provided by the shared
+   * markdown.css file in the design system. That file targets
+   * .markdown-editor .ProseMirror descendants with the same styles used
+   * by MarkdownPreview, ensuring consistent rendering across both modes.
+   */
+
+  /* Template placeholder invalid token decoration (DEP-583) */
+  .markdown-editor :global(.template-placeholder-invalid) {
+    text-decoration: wavy underline var(--cinder-warning, #e5a200);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 2px;
+  }
+
+  /* Template completion popup (DEP-583) */
+  .markdown-editor :global(.template-completion-popup) {
+    background: var(--cinder-surface-raised, #fff);
+    border: 1px solid var(--cinder-border, #d0d5dd);
+    border-radius: var(--cinder-radius-md, 6px);
+    box-shadow: var(--cinder-shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+    max-height: 240px;
+    overflow-y: auto;
+    min-width: 200px;
+    max-width: 360px;
+    padding: var(--cinder-space-1, 4px);
+  }
+
+  .markdown-editor :global(.template-completion-item) {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: var(--cinder-space-1, 4px) var(--cinder-space-2, 8px);
+    border-radius: var(--cinder-radius-sm, 4px);
+    cursor: pointer;
+    font-size: var(--cinder-text-sm, 0.875rem);
+    line-height: 1.4;
+  }
+
+  .markdown-editor :global(.template-completion-item:hover),
+  .markdown-editor :global(.template-completion-item--active) {
+    background: var(--cinder-surface-active, #f0f4ff);
+  }
+
+  .markdown-editor :global(.template-completion-item-path) {
+    font-family: var(--cinder-font-mono);
+    font-weight: 500;
+    color: var(--cinder-text, #1a1a1a);
+  }
+
+  .markdown-editor :global(.template-completion-item-description) {
+    font-size: var(--cinder-text-xs, 0.75rem);
+    color: var(--cinder-text-muted, #6b7280);
+  }
+</style>
