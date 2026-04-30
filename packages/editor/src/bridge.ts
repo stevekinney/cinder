@@ -13,9 +13,8 @@
  * count text content plus block separators ('\n' between blocks).
  */
 
-import type { SourcePosition } from '@cinder/markdown/diff';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
-import type { EditorSelection } from './types.js';
+import type { EditorSelection, SourcePosition } from './types.js';
 
 // ============================================================================
 // Text Offset <-> ProseMirror Position Mapping
@@ -219,14 +218,11 @@ export function textOffsetToLineColumn(doc: ProseMirrorNode, textOffset: number)
  * @returns Source position or null if mapping fails
  *
  * @remarks
- * This is a stub implementation for DEP-36. Full implementation
- * will be added in DEP-39 when comment anchoring is built.
+ * This direct mapping is used when the current markdown string is the only
+ * available source of truth. Use the ProseMirror document helpers above when
+ * mapping from an instantiated editor document.
  */
 export function mapPosToSource(pmPos: number, markdown: string): SourcePosition | null {
-  // Stub: Direct offset mapping
-  // Full implementation will walk the ProseMirror document structure
-  // and correlate with markdown character offsets
-
   if (pmPos < 0 || pmPos > markdown.length) {
     return null;
   }
@@ -262,11 +258,11 @@ export function mapPosToSource(pmPos: number, markdown: string): SourcePosition 
  * @returns ProseMirror position or null if mapping fails
  *
  * @remarks
- * This is a stub implementation for DEP-36. Full implementation
- * will be added in DEP-39 when comment anchoring is built.
+ * This direct mapping is used when a stored markdown offset is available. Use
+ * the ProseMirror document helpers above when translating through an
+ * instantiated editor document.
  */
 export function mapSourceToPos(sourcePos: SourcePosition, markdown: string): number | null {
-  // Stub: Use offset directly if available
   if (sourcePos.offset !== undefined && sourcePos.offset >= 0) {
     return Math.min(sourcePos.offset, markdown.length);
   }

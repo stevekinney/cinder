@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'bun:test';
 import { enrichSelectionWithSource, mapPosToSource, mapSourceToPos } from './bridge.js';
-import type { EditorSelection } from './types.js';
+import type { EditorSelection, SourcePosition } from './types.js';
+
+function expectSourcePosition(sourcePosition: SourcePosition | null): SourcePosition {
+  expect(sourcePosition).not.toBeNull();
+
+  if (sourcePosition === null) {
+    throw new Error('Expected source position.');
+  }
+
+  return sourcePosition;
+}
 
 describe('mapPosToSource', () => {
   it('maps position 0 to line 1, column 1', () => {
@@ -192,10 +202,9 @@ describe('round-trip position mapping', () => {
     const markdown = 'Hello world';
     const position = 6;
 
-    const source = mapPosToSource(position, markdown);
-    expect(source).not.toBeNull();
+    const source = expectSourcePosition(mapPosToSource(position, markdown));
 
-    const roundTripped = mapSourceToPos(source!, markdown);
+    const roundTripped = mapSourceToPos(source, markdown);
     expect(roundTripped).toBe(position);
   });
 
@@ -203,10 +212,9 @@ describe('round-trip position mapping', () => {
     const markdown = '# Heading\n\nParagraph with some text.\n\nAnother paragraph.';
     const position = 15;
 
-    const source = mapPosToSource(position, markdown);
-    expect(source).not.toBeNull();
+    const source = expectSourcePosition(mapPosToSource(position, markdown));
 
-    const roundTripped = mapSourceToPos(source!, markdown);
+    const roundTripped = mapSourceToPos(source, markdown);
     expect(roundTripped).toBe(position);
   });
 
@@ -214,12 +222,12 @@ describe('round-trip position mapping', () => {
     const markdown = 'Content';
 
     // Start
-    const startSource = mapPosToSource(0, markdown);
-    expect(mapSourceToPos(startSource!, markdown)).toBe(0);
+    const startSource = expectSourcePosition(mapPosToSource(0, markdown));
+    expect(mapSourceToPos(startSource, markdown)).toBe(0);
 
     // End
-    const endSource = mapPosToSource(7, markdown);
-    expect(mapSourceToPos(endSource!, markdown)).toBe(7);
+    const endSource = expectSourcePosition(mapPosToSource(7, markdown));
+    expect(mapSourceToPos(endSource, markdown)).toBe(7);
   });
 });
 
