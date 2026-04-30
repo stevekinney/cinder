@@ -13,6 +13,7 @@
   "scripts": {
     "build": "bun run --filter=cinder build",
     "clean": "bun run --filter='*' clean",
+    "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "lint": "bun run --filter='*' lint",
