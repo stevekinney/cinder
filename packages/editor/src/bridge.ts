@@ -13,7 +13,7 @@
  * count text content plus block separators ('\n' between blocks).
  */
 
-import type { SourcePosition } from '@cinder/markdown/diff/types';
+import type { SourcePosition } from '@cinder/markdown/diff';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import type { EditorSelection } from './types.js';
 

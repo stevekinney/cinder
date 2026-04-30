@@ -5,7 +5,7 @@
  * including configuration, handle interface, and selection state.
  */
 
-import type { SourcePosition } from '@cinder/markdown/diff/types';
+import type { SourcePosition } from '@cinder/markdown/diff';
 import type { Root } from '@cinder/markdown/pipeline';
 import type { MilkdownPlugin } from '@milkdown/ctx';
 import type { Editor } from '@milkdown/kit/core';
