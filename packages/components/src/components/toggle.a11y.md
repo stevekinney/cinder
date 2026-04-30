@@ -40,6 +40,10 @@ The `id` prop is placed on the `<button>` element. Because `aria-label` is prese
 
 Do not wrap the switch button in a `<label>`. Label activation forwards clicks to its labeled control and can create double-toggle behavior for a nested interactive button.
 
+## Legacy `pressed` Prop
+
+The former toggle-button API used a bindable `pressed` prop. `pressed` is still accepted as a compatibility alias for the same on/off state, but new code should use `checked` so the prop name matches `role="switch"` and `aria-checked`.
+
 ## Screen Reader Announcements
 
 A typical screen reader announcement when the switch receives focus:

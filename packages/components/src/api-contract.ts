@@ -370,7 +370,8 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      checked: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
+      checked: { optional: true, type_kind: 'TSBooleanKeyword', default: B(false) },
+      pressed: { optional: true, type_kind: 'TSBooleanKeyword', default: B(false) },
       label: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },

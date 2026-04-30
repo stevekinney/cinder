@@ -198,19 +198,42 @@ describe('Tooltip', () => {
   });
 
   test('Escape cancels a pending tooltip before the show delay completes', async () => {
-    const { container } = render(Tooltip, {
-      props: {
-        text: 'Pending tooltip',
-        children: triggerSnippet,
-      },
-    });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    const pendingTimers = new Map<number, () => void>();
+    let nextTimerId = 0;
 
-    await fireEvent.mouseEnter(wrapper);
-    await fireEvent.keyDown(document, { key: 'Escape' });
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    globalThis.setTimeout = ((handler: TimerHandler) => {
+      nextTimerId += 1;
+      pendingTimers.set(nextTimerId, () => {
+        if (typeof handler === 'function') handler();
+      });
+      return nextTimerId;
+    }) as typeof setTimeout;
+    globalThis.clearTimeout = ((id: number | undefined) => {
+      if (typeof id === 'number') pendingTimers.delete(id);
+    }) as typeof clearTimeout;
 
-    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    try {
+      const { container } = render(Tooltip, {
+        props: {
+          text: 'Pending tooltip',
+          children: triggerSnippet,
+        },
+      });
+      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+      await fireEvent.mouseEnter(wrapper);
+      await fireEvent.keyDown(document, { key: 'Escape' });
+      for (const runTimer of pendingTimers.values()) {
+        runTimer();
+      }
+
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    }
   });
 
   test('Escape on a hidden tooltip is a no-op', async () => {

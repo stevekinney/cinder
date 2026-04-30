@@ -52,6 +52,14 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('aria-checked')).toBe('true');
   });
 
+  test('legacy pressed prop still controls checked state', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'legacy-pressed', pressed: true, label: 'Dark mode' },
+    });
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('aria-checked')).toBe('true');
+  });
+
   test('label prop becomes aria-label on the button', () => {
     const { container } = render(Toggle, {
       props: { id: 't4', checked: false, label: 'Enable notifications' },
@@ -144,6 +152,26 @@ describe('Toggle — interactive behaviour', () => {
     await fireEvent.click(button);
     await fireEvent.click(button);
     expect(button.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('click updates legacy pressed binding', async () => {
+    let pressed = false;
+    const { container } = render(Toggle, {
+      props: {
+        id: 'legacy-pressed-binding',
+        get pressed() {
+          return pressed;
+        },
+        set pressed(value: boolean) {
+          pressed = value;
+        },
+        label: 'Toggle',
+      },
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    await fireEvent.click(button);
+    expect(pressed).toBe(true);
+    expect(button.getAttribute('aria-checked')).toBe('true');
   });
 
   test('data-cinder-checked attribute reflects checked state', async () => {

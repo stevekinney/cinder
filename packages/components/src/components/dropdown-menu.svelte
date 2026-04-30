@@ -78,20 +78,22 @@
   }
 </script>
 
-<div
-  bind:this={menuElement}
-  id={context.menuId}
-  popover="auto"
-  class={classNames('cinder-dropdown-menu', customClassName)}
-  style={`position-anchor: --${context.menuId};`}
-  role="menu"
-  aria-orientation="vertical"
-  tabindex={-1}
-  onkeydown={handleKeydown}
-  ontoggle={handleToggle}
-  {...rest}
->
-  {#if children}
-    {@render children()}
-  {/if}
-</div>
+{#if context.supportsPopover || context.isOpen}
+  <div
+    bind:this={menuElement}
+    id={context.menuId}
+    popover={context.supportsPopover ? 'auto' : undefined}
+    class={classNames('cinder-dropdown-menu', customClassName)}
+    style={context.supportsPopover ? `position-anchor: --${context.menuId};` : undefined}
+    role="menu"
+    aria-orientation="vertical"
+    tabindex={-1}
+    onkeydown={handleKeydown}
+    ontoggle={context.supportsPopover ? handleToggle : undefined}
+    {...rest}
+  >
+    {#if children}
+      {@render children()}
+    {/if}
+  </div>
+{/if}

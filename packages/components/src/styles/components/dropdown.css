@@ -72,10 +72,9 @@
 }
 
 .cinder-dropdown-menu {
-  position: fixed;
-  inset: auto;
-  top: calc(anchor(bottom) + var(--cinder-space-1));
-  right: anchor(right);
+  position: absolute;
+  inset-block-start: calc(100% + var(--cinder-space-1));
+  inset-inline-end: 0;
   min-width: 12rem;
   max-width: calc(100vw - 1rem);
   max-height: calc(100vh - 2rem);
@@ -88,7 +87,6 @@
   color: var(--cinder-text);
   box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
   outline: none;
-  position-try-fallbacks: flip-block, flip-inline;
 }
 
 .cinder-dropdown-item {
@@ -188,7 +186,15 @@
  * browsers would render the menu at viewport-relative `inset: auto`.
  */
 
-@supports (anchor-name: --x) {
+@supports (anchor-name: --x) and (position-anchor: --x) and (top: anchor(bottom)) {
+  .cinder-dropdown-menu[popover] {
+    position: fixed;
+    inset: auto;
+    top: calc(anchor(bottom) + var(--cinder-space-1));
+    right: anchor(right);
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
   .cinder-dropdown__menu[popover] {
     position: fixed;
     margin: 0;

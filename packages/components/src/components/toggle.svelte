@@ -13,7 +13,12 @@
     /** Native id placed on the `<button>` so an external `<label for="…">` can reference it. */
     id: string;
     /** Whether the toggle is currently checked. Bindable — defaults to false. */
-    checked: boolean;
+    checked?: boolean;
+    /**
+     * @deprecated Use `checked`. Preserved so existing consumers using the former
+     * toggle-button API keep controlling the same on/off state.
+     */
+    pressed?: boolean;
     /** Visible accessible name placed on `aria-label`. Required. */
     label: string;
     /** Prevents interaction when true. Sets `disabled` attribute. */
@@ -28,15 +33,20 @@
 
   let {
     id,
-    checked = $bindable(false),
+    checked = $bindable<boolean | undefined>(undefined),
+    pressed = $bindable<boolean | undefined>(undefined),
     label,
     disabled = false,
     class: customClassName,
   }: ToggleProps = $props();
 
+  const isChecked = $derived(checked ?? pressed ?? false);
+
   function toggle(): void {
     if (!disabled) {
-      checked = !checked;
+      const nextChecked = !isChecked;
+      checked = nextChecked;
+      pressed = nextChecked;
     }
   }
 </script>
@@ -45,12 +55,12 @@
   {id}
   type="button"
   role="switch"
-  aria-checked={checked}
+  aria-checked={isChecked}
   aria-label={label}
   {disabled}
   onclick={toggle}
   class={cn('cinder-toggle', customClassName)}
-  data-cinder-checked={checked ? '' : undefined}
+  data-cinder-checked={isChecked ? '' : undefined}
 >
   <span aria-hidden="true" class="cinder-toggle__thumb"></span>
 </button>

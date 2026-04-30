@@ -11,6 +11,7 @@
   export type DropdownContext = {
     get menuId(): string;
     get isOpen(): boolean;
+    get supportsPopover(): boolean;
     close: () => void;
   };
 
@@ -94,6 +95,9 @@
     get isOpen() {
       return compoundOpen;
     },
+    get supportsPopover() {
+      return supportsPopover;
+    },
     close: closeCompoundMenu,
   });
   setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerCompoundMenu);
@@ -123,18 +127,23 @@
       'showPopover' in HTMLElement.prototype &&
       typeof CSS !== 'undefined' &&
       typeof CSS.supports === 'function' &&
-      CSS.supports('anchor-name: --x');
+      CSS.supports('anchor-name: --x') &&
+      CSS.supports('position-anchor: --x') &&
+      CSS.supports('top: anchor(bottom)');
   });
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && open) {
       open = false;
+    } else if (event.key === 'Escape' && compoundOpen) {
+      closeCompoundMenu();
     }
   }
 
   function handleOutsideClick(event: MouseEvent) {
     if (rootElement && !rootElement.contains(event.target as Node)) {
       open = false;
+      compoundOpen = false;
     }
   }
 
@@ -159,7 +168,7 @@
 
   // Non-popover path: listen for outside clicks while the menu is open.
   $effect(() => {
-    if (supportsPopover || !open) return;
+    if (supportsPopover || (!open && !compoundOpen)) return;
     document.addEventListener('click', handleOutsideClick);
     return () => {
       document.removeEventListener('click', handleOutsideClick);

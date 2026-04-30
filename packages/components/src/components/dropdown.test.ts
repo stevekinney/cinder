@@ -156,11 +156,13 @@ describe('Dropdown', () => {
     const trigger = container.querySelector('.trigger');
     expect(trigger?.getAttribute('aria-haspopup')).toBe('menu');
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
-    expect(trigger?.getAttribute('popovertarget')).toBe('actions-menu-menu');
+    expect(trigger?.hasAttribute('popovertarget')).toBe(false);
   });
 
-  test('compound menu renders labels, separators, and items', () => {
+  test('compound menu renders labels, separators, and items', async () => {
     const { container } = render(DropdownCompoundFixture);
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
 
     expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
     expect(container.querySelector('.cinder-dropdown-label')?.textContent).toContain('Document');
@@ -171,6 +173,7 @@ describe('Dropdown', () => {
   test('compound item click closes the menu and invokes onclick', async () => {
     const { container } = render(DropdownCompoundFixture);
 
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
     await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
 
     expect(container.querySelector('output')?.textContent).toBe('copy');

@@ -81,7 +81,7 @@ describe('NavigationItem rendering', () => {
     expect(clickCount).toBe(0);
   });
 
-  test('disabled link omits href so it cannot be activated by keyboard', () => {
+  test('disabled link keeps href so it remains discoverable as a link', () => {
     const { container } = render(NavigationItem, {
       props: {
         href: '/protected',
@@ -90,10 +90,10 @@ describe('NavigationItem rendering', () => {
       },
     });
     const anchor = container.querySelector('a');
-    expect(anchor?.hasAttribute('href')).toBe(false);
+    expect(anchor?.getAttribute('href')).toBe('/protected');
   });
 
-  test('disabled link has tabindex="-1" so it is skipped by Tab', () => {
+  test('disabled link does not override tabindex so it remains discoverable by keyboard', () => {
     const { container } = render(NavigationItem, {
       props: {
         href: '/protected',
@@ -102,7 +102,7 @@ describe('NavigationItem rendering', () => {
       },
     });
     const anchor = container.querySelector('a');
-    expect(anchor?.getAttribute('tabindex')).toBe('-1');
+    expect(anchor?.hasAttribute('tabindex')).toBe(false);
   });
 
   test('enabled link has its href and no tabindex override', () => {
