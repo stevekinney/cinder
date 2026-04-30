@@ -142,7 +142,7 @@ Read `docs/phase-6-plan.md` for the full architectural plan, dep graph, and para
 
 ## Phase D5 — `cinder/review-editor`
 
-- [ ] Port review-editor component — the final and most complex domain-suite component
+- [x] Port review-editor component — the final and most complex domain-suite component
 
   Port `/Users/stevekinney/Developer/depict/packages/components/src/review-editor/` (~5,600 LOC, 17 files) into `packages/components/src/components/review-editor/`.
 
