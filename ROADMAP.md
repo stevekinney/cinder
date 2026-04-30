@@ -87,7 +87,7 @@ Read `docs/phase-6-plan.md` for the full architectural plan, dep graph, and para
 
 ## Phase D3 — `@cinder/commentary` + four leaf components + primitive extensions
 
-- [ ] Port `@cinder/commentary` and four leaf cinder components; extend existing cinder primitives
+- [x] Port `@cinder/commentary` and four leaf cinder components; extend existing cinder primitives
 
   **Part A — `@cinder/commentary` package**: port `/Users/stevekinney/Developer/depict/packages/commentary/src/` into `packages/commentary/src/`. Rewrite `@depict/{markdown,editor}/*` → `@cinder/*`. Wire `happy-dom` via a local `bunfig.toml` (commentary's anchoring tests touch DOM). Migrate vitest → bun:test. Same package skeleton as D1/D2. Add to root workspaces.
 
