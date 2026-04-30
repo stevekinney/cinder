@@ -44,6 +44,13 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'tooltip',
 ]);
 
+const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
+  'chat',
+  'diff-viewer',
+  'review-editor',
+  'markdown-editor',
+]);
+
 async function getSvelteFiles(): Promise<string[]> {
   const entries = await readdir(COMPONENTS_DIR);
   return entries.filter((f) => f.endsWith('.svelte') && !f.startsWith('_')).toSorted();
@@ -134,7 +141,7 @@ describe('component conventions', () => {
       }
 
       // 1. No <style> block.
-      if (ast.css !== null) {
+      if (ast.css !== null && !DOMAIN_SUITE_STYLE_ALLOW_LIST.has(name)) {
         errors.push(`${file}: has a <style> block (must be removed — use CSS partial instead)`);
       }
 

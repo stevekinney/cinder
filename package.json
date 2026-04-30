@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": [
     "packages/components",
+    "packages/commentary",
     "packages/diff",
     "packages/editor",
     "packages/markdown",
@@ -31,6 +32,10 @@
     ],
     "packages/components/scripts/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "oxlint --fix",
+      "prettier --write"
+    ],
+    "packages/commentary/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
+      "oxlint --fix --type-aware --tsconfig ./packages/commentary/tsconfig.json",
       "prettier --write"
     ],
     "packages/diff/**/*.{js,ts,tsx,jsx,mjs,cjs}": [

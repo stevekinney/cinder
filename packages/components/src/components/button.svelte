@@ -3,7 +3,7 @@
   import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
   /** Visual style of the button. */
-  export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+  export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'ghost-danger';
 
   /** Size of the button. */
   export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';

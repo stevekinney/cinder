@@ -193,16 +193,33 @@ export const CONTRACT: Record<string, ComponentContract> = {
   },
 
   dropdown: {
-    kind: 'literal',
-    props: {
-      open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
-      placement: { optional: true, type_kind: 'TSTypeReference', default: L('bottom-start') },
-      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-    },
-    snippets: {
-      trigger: s0(false),
-      children: s0(false),
-    },
+    kind: 'union',
+    arms: [
+      {
+        kind: 'intersection',
+        html_attrs: 'HTMLAttributes',
+        props: {
+          open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
+          placement: { optional: true, type_kind: 'TSTypeReference', default: L('bottom-start') },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+        },
+        snippets: {
+          trigger: s0(false),
+          children: s0(false),
+        },
+      },
+      {
+        kind: 'intersection',
+        html_attrs: 'HTMLAttributes',
+        props: {
+          id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+        },
+        snippets: {
+          children: s0(true),
+        },
+      },
+    ],
   },
 
   'empty-state': {

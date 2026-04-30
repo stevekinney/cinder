@@ -1,28 +1,60 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  export const DROPDOWN_CONTEXT = Symbol('cinder-dropdown');
+  export const DROPDOWN_REGISTER = Symbol('cinder-dropdown-register');
+  export const DROPDOWN_SET_OPEN = Symbol('cinder-dropdown-set-open');
 
   export type DropdownPlacement = 'bottom-start' | 'bottom-end';
 
-  export type DropdownProps = {
-    open: boolean;
-    placement?: DropdownPlacement;
+  export type DropdownContext = {
+    get menuId(): string;
+    get isOpen(): boolean;
+    close: () => void;
+  };
+
+  type DropdownBaseProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+    id?: string;
     class?: string;
+  };
+
+  type LegacyDropdownProps = DropdownBaseProps & {
+    open?: boolean;
+    placement?: DropdownPlacement;
     trigger: Snippet;
     children: Snippet;
   };
+
+  type CompoundDropdownProps = DropdownBaseProps & {
+    id: string;
+    children?: Snippet;
+    trigger?: never;
+    open?: never;
+    placement?: never;
+  };
+
+  export type DropdownProps = LegacyDropdownProps | CompoundDropdownProps;
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { setContext } from 'svelte';
+
+  import { classNames } from '../utilities/class-names.ts';
   import { useId } from '../utilities/use-id.ts';
 
   let {
+    id = useId('cinder-dropdown'),
     open = $bindable(false),
     placement = 'bottom-start',
-    class: className,
+    class: customClassName,
     trigger,
     children,
+    ...rest
   }: DropdownProps = $props();
+
+  let compoundMenuElement = $state<HTMLElement | null>(null);
+  let compoundOpen = $state(false);
 
   // Popover API detection is deferred to after mount so the server and client
   // produce identical initial markup (both start with the fallback {#if open}
@@ -36,8 +68,37 @@
   let menuElement: HTMLDivElement | undefined = $state();
   let triggerWrapper: HTMLDivElement | undefined = $state();
 
+  const compoundMenuId = $derived(`${id}-menu`);
+  const usesLegacySnippetApi = $derived(Boolean(trigger));
+
+  function closeCompoundMenu(): void {
+    compoundMenuElement?.hidePopover();
+    compoundOpen = false;
+  }
+
+  function registerCompoundMenu(element: HTMLElement | null): void {
+    compoundMenuElement = element;
+  }
+
+  function setCompoundOpen(nextOpen: boolean): void {
+    compoundOpen = nextOpen;
+  }
+
+  setContext<DropdownContext>(DROPDOWN_CONTEXT, {
+    get menuId() {
+      return compoundMenuId;
+    },
+    get isOpen() {
+      return compoundOpen;
+    },
+    close: closeCompoundMenu,
+  });
+  setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerCompoundMenu);
+  setContext<(nextOpen: boolean) => void>(DROPDOWN_SET_OPEN, setCompoundOpen);
+
   // Keep aria-expanded on the trigger element in sync with open state.
   $effect(() => {
+    if (!usesLegacySnippetApi) return;
     const btn = triggerWrapper?.querySelector<HTMLElement>(
       'button, a, [tabindex]:not([tabindex="-1"]), input, select',
     );
@@ -100,40 +161,45 @@
 
 <div
   bind:this={rootElement}
-  class={cn('cinder-dropdown', className)}
+  {id}
+  class={classNames('cinder-dropdown', customClassName)}
   data-cinder-placement={placement}
   onkeydown={handleKeydown}
+  {...rest}
 >
-  <!--
-    The trigger wrapper intercepts clicks to toggle open, and wires ARIA attributes
-    (aria-haspopup, aria-expanded, aria-controls) onto the first focusable element
-    inside the snippet. Consumers must provide exactly one focusable trigger element
-    (typically a <button>). The click is intercepted on the wrapper so it works
-    regardless of whether the consumer's button has its own onclick handler.
-  -->
-  <div class="cinder-dropdown__trigger" bind:this={triggerWrapper} onclick={() => (open = !open)}>
-    {@render trigger()}
-  </div>
-
-  {#if supportsPopover}
+  {#if usesLegacySnippetApi}
     <!--
-      Popover API path: menu is in the DOM and driven via showPopover()/hidePopover().
-      ontoggle syncs browser-driven state changes (light-dismiss, Escape) back to `open`.
+      The legacy trigger wrapper intercepts clicks to toggle open, and wires ARIA attributes
+      onto the first focusable element inside the snippet.
     -->
-    <div
-      bind:this={menuElement}
-      id={menuId}
-      class="cinder-dropdown__menu"
-      popover="auto"
-      role="menu"
-      data-cinder-placement={placement}
-      ontoggle={handlePopoverToggle}
-    >
-      {@render children()}
+    <div class="cinder-dropdown__trigger" bind:this={triggerWrapper} onclick={() => (open = !open)}>
+      {#if trigger}
+        {@render trigger()}
+      {/if}
     </div>
-  {:else if open}
-    <div id={menuId} class="cinder-dropdown__menu" role="menu" data-cinder-placement={placement}>
-      {@render children()}
-    </div>
+
+    {#if supportsPopover}
+      <div
+        bind:this={menuElement}
+        id={menuId}
+        class="cinder-dropdown__menu"
+        popover="auto"
+        role="menu"
+        data-cinder-placement={placement}
+        ontoggle={handlePopoverToggle}
+      >
+        {#if children}
+          {@render children()}
+        {/if}
+      </div>
+    {:else if open}
+      <div id={menuId} class="cinder-dropdown__menu" role="menu" data-cinder-placement={placement}>
+        {#if children}
+          {@render children()}
+        {/if}
+      </div>
+    {/if}
+  {:else if children}
+    {@render children()}
   {/if}
 </div>

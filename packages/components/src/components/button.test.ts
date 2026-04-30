@@ -35,6 +35,16 @@ describe('Button rendering', () => {
     expect(button?.getAttribute('data-cinder-size')).toBe('lg');
   });
 
+  test('supports the ghost-danger variant', () => {
+    const { container } = render(Button, {
+      props: { label: 'Remove', variant: 'ghost-danger' },
+    });
+
+    expect(container.querySelector('button')?.getAttribute('data-cinder-variant')).toBe(
+      'ghost-danger',
+    );
+  });
+
   test('loading button has disabled + aria-busy + aria-disabled', () => {
     const { container } = render(Button, { props: { label: 'sending', loading: true } });
     const button = container.querySelector('button');

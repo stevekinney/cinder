@@ -24,6 +24,12 @@
  * Size variants
  * ---------------------------------------- */
 
+.cinder-badge[data-cinder-size='xs'] {
+  font-size: var(--cinder-text-2xs, 0.625rem);
+  padding: 0 var(--cinder-space-1);
+  line-height: 0.875rem;
+}
+
 .cinder-badge[data-cinder-size='sm'] {
   font-size: var(--cinder-text-2xs, 0.625rem);
   padding: 0 var(--cinder-space-1);
@@ -91,4 +97,10 @@
     --cinder-info-border,
     color-mix(in oklch, var(--cinder-info, #2563eb), transparent 60%)
   );
+}
+
+.cinder-badge[data-cinder-variant='accent'] {
+  background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+  color: var(--cinder-accent);
+  border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
 }
