@@ -1,0 +1,169 @@
+/**
+ * ReviewEditor styles extracted from review-editor.svelte
+ *
+ * Note: Since this is an external CSS file imported via `import './review-editor.css'`,
+ * it is NOT scoped by Svelte. All selectors are global. We use the
+ * `.review-editor-container` prefix consistently to prevent style leakage.
+ */
+
+/* =========================================================================
+ * Layout Container
+ * ========================================================================= */
+
+.review-editor-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  position: relative;
+}
+
+/* When sidebar is open, main layout becomes row */
+.review-editor-container:has(.comment-sidebar) {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr;
+}
+
+/* =========================================================================
+ * Controls Bar Connection
+ * Connect the controls bar visually to the content below
+ * ========================================================================= */
+
+.review-editor-container > .review-editor-controls {
+  /* Controls bar spans the full width when sidebar is open */
+  grid-column: 1 / -1;
+}
+
+/* Connect controls bar to MarkdownEditor's toolbar when in editor view */
+.review-editor-container[data-view='editor'] > .review-editor-controls {
+  border-bottom: none;
+  border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
+}
+
+/* For diff/summary views, controls bar has bottom border but no radius on bottom */
+.review-editor-container:not([data-view='editor']) > .review-editor-controls {
+  border-bottom: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
+}
+
+/*
+ * Connect EditorToolbar to controls bar when present.
+ * MarkdownEditor removes the toolbar's bottom border via its [data-has-toolbar] styles
+ * to visually connect toolbar and editor. Here we restore it because the controls bar
+ * above already provides visual connection. This rule only applies when the toolbar
+ * exists (i.e., when MarkdownEditor is in non-readonly mode with showToolbar=true).
+ */
+.review-editor-container[data-view='editor']
+  .markdown-editor-wrapper[data-has-toolbar]
+  .editor-toolbar {
+  border-radius: 0;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid var(--cinder-border);
+}
+
+/* =========================================================================
+ * Main Content Area
+ * ========================================================================= */
+
+.review-editor-main {
+  flex: 1;
+  min-width: 0; /* Prevent flex item overflow */
+  min-height: 300px; /* Consistent height across views to prevent layout shift */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  /* Unified border for main content area - connects to controls above */
+  border: 1px solid var(--cinder-border);
+  border-top: none;
+  border-radius: 0 0 var(--cinder-radius-md) var(--cinder-radius-md);
+  background: var(--cinder-surface);
+}
+
+/* Override surface borders on child components - main handles the border */
+.review-editor-main .markdown-editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-editor-main .markdown-editor-wrapper .markdown-editor.surface {
+  border: none;
+  border-radius: 0;
+  flex: 1;
+}
+
+.review-editor-main > .diff-viewer {
+  border: none;
+  border-radius: 0;
+}
+
+/* Summary view inherits the main container's background */
+.review-editor-main > .summary-view {
+  border: none;
+  border-radius: 0;
+}
+
+/* When sidebar is open, main loses right border-radius */
+.review-editor-container:has(.comment-sidebar) .review-editor-main {
+  border-right: none;
+  border-radius: 0 0 0 var(--cinder-radius-md);
+}
+
+/* Sidebar adjusts height and connects visually to main content */
+.review-editor-container > .comment-sidebar {
+  height: auto;
+  max-height: 100%;
+  border-top: 1px solid var(--cinder-border);
+  border-bottom: 1px solid var(--cinder-border);
+  border-right: 1px solid var(--cinder-border);
+  border-radius: 0 0 var(--cinder-radius-md) 0;
+}
+
+/* In diff/summary views, sidebar top connects to controls bar bottom border */
+.review-editor-container:not([data-view='editor']) > .comment-sidebar {
+  border-top: none;
+}
+
+/* =========================================================================
+ * Summary View (DEP-47)
+ * ========================================================================= */
+
+/* Summary view empty state container */
+.review-editor-container .summary-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cinder-space-4);
+}
+
+.review-editor-container .summary-empty {
+  text-align: center;
+  padding: var(--cinder-space-8);
+  color: var(--cinder-text-muted);
+}
+
+.review-editor-container .summary-hint {
+  font-size: var(--cinder-text-xs);
+  margin-top: var(--cinder-space-2);
+}
+
+/* =========================================================================
+ * Comment Anchor Decorations (DEP-39)
+ * ========================================================================= */
+
+/* Standard anchored comment highlight */
+.review-editor-container .comment-anchor {
+  background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
+  border-bottom: 2px solid var(--cinder-accent);
+  cursor: pointer;
+  transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.review-editor-container .comment-anchor:hover {
+  background: color-mix(in oklch, var(--cinder-accent), transparent 75%);
+}

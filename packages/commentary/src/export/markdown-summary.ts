@@ -12,7 +12,7 @@
 
 import { computeLineDiff } from '@cinder/markdown/diff/line-diff';
 import type { PersistedThread, ReviewState } from '../comments/types.js';
-import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types';
+import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types.js';
 
 /**
  * Generate an LLM-optimized Markdown summary from review state.
