@@ -30,10 +30,21 @@
   const setOpen = getContext<(open: boolean) => void>(DROPDOWN_SET_OPEN);
 
   let menuElement = $state<HTMLDivElement | null>(null);
+  let focusedFallbackOpen = false;
 
   $effect(() => {
     registerMenu(menuElement);
     return () => registerMenu(null);
+  });
+
+  $effect(() => {
+    if (context.supportsPopover || !context.isOpen) {
+      focusedFallbackOpen = false;
+      return;
+    }
+    if (focusedFallbackOpen) return;
+    focusedFallbackOpen = true;
+    void tick().then(() => focusMenuItem(0));
   });
 
   function focusMenuItem(index: number): void {
@@ -45,6 +56,13 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setOpen(false);
+      context.focusTrigger();
+      return;
+    }
+
     const items = menuElement?.querySelectorAll<HTMLElement>(
       '[role="menuitem"]:not([data-disabled])',
     );

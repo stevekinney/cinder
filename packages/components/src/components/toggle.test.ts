@@ -20,7 +20,7 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('type')).toBe('button');
   });
 
-  test('button has role="switch"', () => {
+  test('checked API button has role="switch"', () => {
     const { container } = render(Toggle, {
       props: { id: 't1b', checked: false, label: 'Dark mode' },
     });
@@ -28,7 +28,7 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('role')).toBe('switch');
   });
 
-  test('button does not use toggle-button aria-pressed semantics', () => {
+  test('checked API button does not use toggle-button aria-pressed semantics', () => {
     const { container } = render(Toggle, {
       props: { id: 't1c', checked: false, label: 'Dark mode' },
     });
@@ -52,12 +52,14 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('aria-checked')).toBe('true');
   });
 
-  test('legacy pressed prop still controls checked state', () => {
+  test('legacy pressed prop preserves toggle-button semantics', () => {
     const { container } = render(Toggle, {
       props: { id: 'legacy-pressed', pressed: true, label: 'Dark mode' },
     });
     const button = container.querySelector('button');
-    expect(button?.getAttribute('aria-checked')).toBe('true');
+    expect(button?.getAttribute('aria-pressed')).toBe('true');
+    expect(button?.hasAttribute('role')).toBe(false);
+    expect(button?.hasAttribute('aria-checked')).toBe(false);
   });
 
   test('label prop becomes aria-label on the button', () => {
@@ -146,6 +148,31 @@ describe('Toggle — interactive behaviour', () => {
     expect(button.getAttribute('aria-checked')).toBe('true');
   });
 
+  test('legacy pressed binding remains the source of truth after parent updates', async () => {
+    let pressed = false;
+    const props = {
+      id: 'legacy-pressed-rerender',
+      get pressed() {
+        return pressed;
+      },
+      set pressed(value: boolean) {
+        pressed = value;
+      },
+      label: 'Toggle',
+    };
+    const { container, rerender } = render(Toggle, { props });
+    const button = container.querySelector('button') as HTMLButtonElement;
+
+    await fireEvent.click(button);
+    expect(pressed).toBe(true);
+    await rerender(props);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+
+    pressed = false;
+    await rerender(props);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+  });
+
   test('second click toggles aria-checked back to false', async () => {
     const { container } = render(Toggle, { props: { id: 't13', checked: false, label: 'Toggle' } });
     const button = container.querySelector('button') as HTMLButtonElement;
@@ -156,22 +183,23 @@ describe('Toggle — interactive behaviour', () => {
 
   test('click updates legacy pressed binding', async () => {
     let pressed = false;
-    const { container } = render(Toggle, {
-      props: {
-        id: 'legacy-pressed-binding',
-        get pressed() {
-          return pressed;
-        },
-        set pressed(value: boolean) {
-          pressed = value;
-        },
-        label: 'Toggle',
+    const props = {
+      id: 'legacy-pressed-binding',
+      get pressed() {
+        return pressed;
       },
-    });
+      set pressed(value: boolean) {
+        pressed = value;
+      },
+      label: 'Toggle',
+    };
+    const { container, rerender } = render(Toggle, { props });
     const button = container.querySelector('button') as HTMLButtonElement;
+
     await fireEvent.click(button);
     expect(pressed).toBe(true);
-    expect(button.getAttribute('aria-checked')).toBe('true');
+    await rerender(props);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 
   test('data-cinder-checked attribute reflects checked state', async () => {

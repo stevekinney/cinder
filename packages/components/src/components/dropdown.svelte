@@ -4,6 +4,7 @@
 
   export const DROPDOWN_CONTEXT = Symbol('cinder-dropdown');
   export const DROPDOWN_REGISTER = Symbol('cinder-dropdown-register');
+  export const DROPDOWN_REGISTER_TRIGGER = Symbol('cinder-dropdown-register-trigger');
   export const DROPDOWN_SET_OPEN = Symbol('cinder-dropdown-set-open');
 
   export type DropdownPlacement = 'bottom-start' | 'bottom-end';
@@ -13,6 +14,7 @@
     get isOpen(): boolean;
     get supportsPopover(): boolean;
     close: () => void;
+    focusTrigger: () => void;
   };
 
   type DropdownBaseProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
@@ -55,6 +57,7 @@
   }: DropdownProps = $props();
 
   let compoundMenuElement = $state<HTMLElement | null>(null);
+  let compoundTriggerElement = $state<HTMLElement | null>(null);
   let compoundOpen = $state(false);
 
   // Popover + CSS Anchor Positioning detection is deferred to after mount so
@@ -84,6 +87,14 @@
     compoundMenuElement = element;
   }
 
+  function registerCompoundTrigger(element: HTMLElement | null): void {
+    compoundTriggerElement = element;
+  }
+
+  function focusCompoundTrigger(): void {
+    compoundTriggerElement?.focus();
+  }
+
   function setCompoundOpen(nextOpen: boolean): void {
     compoundOpen = nextOpen;
   }
@@ -99,8 +110,13 @@
       return supportsPopover;
     },
     close: closeCompoundMenu,
+    focusTrigger: focusCompoundTrigger,
   });
   setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerCompoundMenu);
+  setContext<(element: HTMLElement | null) => void>(
+    DROPDOWN_REGISTER_TRIGGER,
+    registerCompoundTrigger,
+  );
   setContext<(nextOpen: boolean) => void>(DROPDOWN_SET_OPEN, setCompoundOpen);
 
   // Keep aria-expanded on the trigger element in sync with open state.
@@ -137,6 +153,7 @@
       open = false;
     } else if (event.key === 'Escape' && compoundOpen) {
       closeCompoundMenu();
+      focusCompoundTrigger();
     }
   }
 

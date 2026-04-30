@@ -42,7 +42,7 @@ Do not wrap the switch button in a `<label>`. Label activation forwards clicks t
 
 ## Legacy `pressed` Prop
 
-The former toggle-button API used a bindable `pressed` prop. `pressed` is still accepted as a compatibility alias for the same on/off state, but new code should use `checked` so the prop name matches `role="switch"` and `aria-checked`.
+The former toggle-button API used a bindable `pressed` prop. When `pressed` is used without `checked`, the component preserves the old toggle-button semantics and renders `aria-pressed` rather than `role="switch"` / `aria-checked`. New code should use `checked` so the prop name matches the switch pattern and the rendered ARIA state.
 
 ## Screen Reader Announcements
 

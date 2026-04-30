@@ -40,13 +40,20 @@
     class: customClassName,
   }: ToggleProps = $props();
 
-  const isChecked = $derived(checked ?? pressed ?? false);
+  const usesLegacyPressedSemantics = $derived(checked === undefined && pressed !== undefined);
+  const isChecked = $derived(usesLegacyPressedSemantics ? (pressed ?? false) : (checked ?? false));
 
   function toggle(): void {
     if (!disabled) {
       const nextChecked = !isChecked;
-      checked = nextChecked;
-      pressed = nextChecked;
+      if (usesLegacyPressedSemantics) {
+        pressed = nextChecked;
+      } else {
+        checked = nextChecked;
+        if (pressed !== undefined) {
+          pressed = nextChecked;
+        }
+      }
     }
   }
 </script>
@@ -54,8 +61,9 @@
 <button
   {id}
   type="button"
-  role="switch"
-  aria-checked={isChecked}
+  role={usesLegacyPressedSemantics ? undefined : 'switch'}
+  aria-checked={usesLegacyPressedSemantics ? undefined : isChecked}
+  aria-pressed={usesLegacyPressedSemantics ? isChecked : undefined}
   aria-label={label}
   {disabled}
   onclick={toggle}

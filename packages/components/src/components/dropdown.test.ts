@@ -13,7 +13,7 @@ setupHappyDom();
 // All tests below exercise that fallback path. The popover API path is verified
 // through integration tests in a real browser environment.
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Dropdown } = await import('./dropdown.svelte');
 const { default: DropdownCompoundFixture } =
   await import('../test/fixtures/dropdown-compound-fixture.svelte');
@@ -168,6 +168,33 @@ describe('Dropdown', () => {
     expect(container.querySelector('.cinder-dropdown-label')?.textContent).toContain('Document');
     expect(container.querySelector('[role="separator"]')).not.toBeNull();
     expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+  });
+
+  test('compound fallback menu focuses the first enabled item when opened', async () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+  });
+
+  test('compound fallback menu restores focus to trigger on Escape', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(container.querySelector('[role="menu"]')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
   });
 
   test('compound item click closes the menu and invokes onclick', async () => {
