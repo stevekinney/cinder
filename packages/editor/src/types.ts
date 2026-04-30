@@ -5,11 +5,22 @@
  * including configuration, handle interface, and selection state.
  */
 
-import type { SourcePosition } from '@cinder/markdown/diff';
 import type { Root } from '@cinder/markdown/pipeline';
 import type { MilkdownPlugin } from '@milkdown/ctx';
 import type { Editor } from '@milkdown/kit/core';
 import type { EditorView } from '@milkdown/kit/prose/view';
+
+/**
+ * Source coordinate for a position in markdown text.
+ */
+export type SourcePosition = {
+  /** 1-indexed line number */
+  line: number;
+  /** 1-indexed column number */
+  column: number;
+  /** 0-indexed UTF-16 character offset */
+  offset: number;
+};
 
 /**
  * Editor configuration options.
@@ -25,7 +36,7 @@ export interface EditorConfig {
   changeDebounceMs?: number;
   /** Callback when content changes (debounced) */
   onChange?: (markdown: string) => void;
-  /** Callback when selection changes (stub for DEP-39) */
+  /** Callback when selection changes */
   onSelectionChange?: (selection: EditorSelection | null) => void;
   /** Callback when link keyboard shortcut (Mod-k) is pressed */
   onLinkShortcut?: () => void;
