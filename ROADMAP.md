@@ -119,7 +119,7 @@ Read `docs/phase-6-plan.md` for the full architectural plan, dep graph, and para
 
 ## Phase D4 — `cinder/chat` + `cinder/diff-viewer` + `cinder/surface` + `cinder/markdown-editor`
 
-- [ ] Port chat, diff-viewer, surface, and markdown-editor components with playground demos
+- [x] Port chat, diff-viewer, surface, and markdown-editor components with playground demos
 
   Port all four from `/Users/stevekinney/Developer/depict/packages/components/src/`. Apply the rename codemod for each. SSR rewrites per `tmp/port-inventory/browser-only-imports.md`.
 
