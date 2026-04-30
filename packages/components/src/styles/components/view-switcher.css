@@ -4,7 +4,6 @@
 
 .cinder-view-switcher {
   display: inline-flex;
-  inline-size: 100%;
   align-items: center;
   gap: var(--cinder-space-0-5);
   padding: var(--cinder-space-0-5);

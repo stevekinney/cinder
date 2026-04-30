@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Basic toggle';
-  export const description = 'Switch with role="switch" and aria-checked reflecting state.';
+  export const description =
+    'Switch using the WAI-ARIA switch pattern (aria-checked reflects state).';
 </script>
 
 <script lang="ts">
