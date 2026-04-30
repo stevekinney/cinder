@@ -58,7 +58,7 @@ Read `docs/phase-6-plan.md` for the full architectural plan, dep graph, and para
 
 ## Phase D2 — `@cinder/editor` package
 
-- [ ] Scaffold `@cinder/editor` workspace package porting the Milkdown/ProseMirror integration
+- [x] Scaffold `@cinder/editor` workspace package porting the Milkdown/ProseMirror integration
 
   Port `/Users/stevekinney/Developer/depict/packages/editor/src/` into `packages/editor/src/`. Rewrite all `@depict/markdown/*` imports to `@cinder/markdown/*`. Migrate vitest → bun:test by category (per `tmp/port-inventory/test-classification.md`). Apply the SSR rewrite list from `tmp/port-inventory/browser-only-imports.md`: every `@milkdown/kit` static top-level import becomes a dynamic `import()` inside `$effect` or `onMount`.
 
