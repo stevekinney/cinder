@@ -9,7 +9,7 @@
   let muted = $state(false);
 </script>
 
-<Toggle id="mute" bind:checked={muted} label={muted ? 'Unmute' : 'Mute'} />
+<Toggle id="mute" bind:checked={muted} label="Mute audio" />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
   {muted ? 'Muted' : 'Unmuted'}
 </p>

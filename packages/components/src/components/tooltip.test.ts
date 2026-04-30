@@ -175,6 +175,44 @@ describe('Tooltip', () => {
     });
   });
 
+  test('Escape on document hides a tooltip opened by hover', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Dismissible hover tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  test('Escape cancels a pending tooltip before the show delay completes', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Pending tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   test('Escape on a hidden tooltip is a no-op', async () => {
     const { container } = render(Tooltip, {
       props: {

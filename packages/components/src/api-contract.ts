@@ -344,7 +344,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-      label: { optional: true, type_kind: 'TSStringKeyword', default: L('Loading...') },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: L('Loading') },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {},

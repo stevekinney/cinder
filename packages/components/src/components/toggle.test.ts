@@ -28,6 +28,14 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('role')).toBe('switch');
   });
 
+  test('button does not use toggle-button aria-pressed semantics', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't1c', checked: false, label: 'Dark mode' },
+    });
+    const button = container.querySelector('button');
+    expect(button?.hasAttribute('aria-pressed')).toBe(false);
+  });
+
   test('button has aria-checked="false" initially', () => {
     const { container } = render(Toggle, {
       props: { id: 't2', checked: false, label: 'Dark mode' },

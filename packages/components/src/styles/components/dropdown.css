@@ -46,7 +46,7 @@
  * ---------------------------------------- */
 
 .cinder-dropdown__trigger {
-  display: contents;
+  display: inline-block;
 }
 
 /* ----------------------------------------

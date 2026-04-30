@@ -135,7 +135,7 @@
   </section>
 
   <section aria-label="Toggle">
-    <Toggle id="fixture-toggle" bind:pressed={togglePressed} label="Enable feature" />
+    <Toggle id="fixture-toggle" bind:checked={togglePressed} label="Enable feature" />
   </section>
 
   <section aria-label="Tooltip">

@@ -56,10 +56,10 @@
   let compoundMenuElement = $state<HTMLElement | null>(null);
   let compoundOpen = $state(false);
 
-  // Popover API detection is deferred to after mount so the server and client
-  // produce identical initial markup (both start with the fallback {#if open}
-  // branch). Once the component mounts on the client, we upgrade to popover if
-  // the browser supports it. This avoids a hydration mismatch.
+  // Popover + CSS Anchor Positioning detection is deferred to after mount so
+  // the server and client produce identical initial markup (both start with the
+  // fallback {#if open} branch). Popover alone is not enough: without anchor()
+  // support, top-layer menus cannot stay positioned relative to the trigger.
   let supportsPopover = $state(false);
 
   // useId() returns identifiers like `cinder-dropdown-menu-1` — always a
@@ -118,7 +118,12 @@
 
   $effect(() => {
     // Runs only on the client after mount — safe to check browser APIs.
-    supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
+    supportsPopover =
+      typeof HTMLElement !== 'undefined' &&
+      'showPopover' in HTMLElement.prototype &&
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('anchor-name: --x');
   });
 
   function handleKeydown(event: KeyboardEvent) {
