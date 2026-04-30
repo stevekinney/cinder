@@ -1,14 +1,15 @@
 import { $ } from 'bun';
 
+import {
+  getBuildEntrypoints,
+  getExpectedBuildOutputs,
+  readPackageExports,
+} from './package-exports.js';
+
 const packageRoot = process.cwd();
 const distributionDirectory = `${packageRoot}/dist`;
-const entrypoints = [
-  `${packageRoot}/src/index.ts`,
-  `${packageRoot}/src/sanitize-html.ts`,
-  `${packageRoot}/src/template-placeholders.ts`,
-  `${packageRoot}/src/template-render.ts`,
-  `${packageRoot}/src/test-utilities.ts`,
-];
+const packageExports = await readPackageExports();
+const entrypoints = getBuildEntrypoints(packageRoot, packageExports);
 
 await $`rm -rf dist`;
 
@@ -32,18 +33,7 @@ if (!buildResult.success) {
 
 await $`tsc -p tsconfig.build.json`;
 
-const expectedOutputs = [
-  `${distributionDirectory}/index.js`,
-  `${distributionDirectory}/index.d.ts`,
-  `${distributionDirectory}/sanitize-html.js`,
-  `${distributionDirectory}/sanitize-html.d.ts`,
-  `${distributionDirectory}/template-placeholders.js`,
-  `${distributionDirectory}/template-placeholders.d.ts`,
-  `${distributionDirectory}/template-render.js`,
-  `${distributionDirectory}/template-render.d.ts`,
-  `${distributionDirectory}/test-utilities.js`,
-  `${distributionDirectory}/test-utilities.d.ts`,
-];
+const expectedOutputs = getExpectedBuildOutputs(packageRoot, packageExports);
 
 for (const outputPath of expectedOutputs) {
   if (!(await Bun.file(outputPath).exists())) {
