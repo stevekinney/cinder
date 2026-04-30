@@ -152,4 +152,40 @@ describe('Tooltip', () => {
       expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
     });
   });
+
+  test('Escape hides a visible tooltip (WAI-ARIA APG dismiss requirement)', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Dismissible tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.focusIn(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+
+    await fireEvent.keyDown(wrapper, { key: 'Escape' });
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  test('Escape on a hidden tooltip is a no-op', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Already hidden',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    await fireEvent.keyDown(wrapper, { key: 'Escape' });
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+  });
 });

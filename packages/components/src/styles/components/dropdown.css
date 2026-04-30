@@ -180,22 +180,30 @@
  *
  * `position-try-fallbacks: flip-block, flip-inline` lets the browser flip
  * to the opposite side if the natural placement would clip the viewport.
+ *
+ * The anchor() rules are gated behind `@supports` so that browsers which
+ * shipped popover but not anchor positioning (a roughly 6-month window in
+ * Chrome / Firefox, mostly past as of this writing) fall through to the
+ * `:not([popover])`-style fallback path below. Without the gate, those
+ * browsers would render the menu at viewport-relative `inset: auto`.
  */
 
-.cinder-dropdown__menu[popover] {
-  position: fixed;
-  margin: 0;
-  inset: auto;
-  inset-block-start: calc(anchor(bottom) + var(--cinder-space-1));
-  position-try-fallbacks: flip-block, flip-inline;
-}
+@supports (anchor-name: --x) {
+  .cinder-dropdown__menu[popover] {
+    position: fixed;
+    margin: 0;
+    inset: auto;
+    inset-block-start: calc(anchor(bottom) + var(--cinder-space-1));
+    position-try-fallbacks: flip-block, flip-inline;
+  }
 
-.cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu[popover] {
-  inset-inline-start: anchor(left);
-}
+  .cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu[popover] {
+    inset-inline-start: anchor(left);
+  }
 
-.cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
-  inset-inline-end: calc(100vw - anchor(right));
+  .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
+    inset-inline-end: calc(100vw - anchor(right));
+  }
 }
 
 /* ----------------------------------------

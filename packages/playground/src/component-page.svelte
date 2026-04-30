@@ -294,7 +294,9 @@
     display: block;
   }
 
-  :global(.example-preview-row) {
+  /* Scoped to .example-preview descendants so the helper can't leak into
+     unrelated pages even though the inner selector is :global. */
+  .example-preview :global(.example-preview-row) {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;

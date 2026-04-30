@@ -62,6 +62,9 @@
   // the browser supports it. This avoids a hydration mismatch.
   let supportsPopover = $state(false);
 
+  // useId() returns identifiers like `cinder-dropdown-menu-1` — always a
+  // valid CSS ident, so it can be safely interpolated into the inline
+  // `anchor-name`/`position-anchor` styles below without sanitization.
   const menuId = useId('cinder-dropdown-menu');
 
   let rootElement: HTMLDivElement | undefined = $state();
