@@ -121,6 +121,33 @@ export type { RadioProps } from './components/radio.svelte';
 export { default as RadioGroup } from './components/radio-group.svelte';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group.svelte';
 
+export { default as ReviewEditor } from './components/review-editor.svelte';
+export type { ReviewEditorProps } from './components/review-editor.svelte';
+export {
+  buildFormData,
+  buildFormDataFromValues,
+  createAnchorManager,
+  createReviewEditorState,
+  createSelectionPopover,
+  createThreadManager,
+  exportCommentsMarkdown,
+  exportMarkdownSummary,
+  exportUnifiedDiff,
+  getSummaryContentWithoutHeading,
+  toPersistedThreads,
+  type AnchorManager,
+  type AnchorManagerOptions,
+  type DiffStats,
+  type ExportedReviewFormData,
+  type PopoverPosition,
+  type ReviewEditorState,
+  type ReviewEditorStateOptions,
+  type SelectionPopover as ReviewSelectionPopover,
+  type SelectionPopoverOptions,
+  type ThreadManager,
+  type ThreadManagerOptions,
+} from './components/review-editor/index.ts';
+
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
 

@@ -13,41 +13,40 @@ export {
   isDocumentAnchor,
   isTextAnchor,
   timestamp,
-  type AnchorStatus,
+} from './types.js';
+
+export type {
+  AnchorStatus,
   // Anchor types
-  type AnchorType,
-  type AnchorUpdate,
+  AnchorType,
+  AnchorUpdate,
   // Comment types
-  type Comment,
-  type CommentAnchor,
-  type CommentCreateEvent,
-  type CommentDeleteEvent,
-  type CommentUpdateEvent,
-  type CreateCommentInput,
-  type CreateThreadInput,
-  type PersistedAnchor,
-  type PersistedThread,
-  type ReanchorResult,
+  Comment,
+  CommentAnchor,
+  CommentCreateEvent,
+  CommentDeleteEvent,
+  CommentUpdateEvent,
+  CreateCommentInput,
+  CreateThreadInput,
+  PersistedAnchor,
+  PersistedThread,
+  ReanchorResult,
   // Review state
-  type ReviewState,
-  type RuntimeAnchor,
-  type TextQuoteAnchor,
+  ReviewState,
+  RuntimeAnchor,
+  TextQuoteAnchor,
   // Thread types
-  type Thread,
+  Thread,
   // Event types (DEP-40: added new lifecycle events)
-  type ThreadCreateEvent,
-  type ThreadDeleteEvent,
-  type UpdateCommentInput,
+  ThreadCreateEvent,
+  ThreadDeleteEvent,
+  UpdateCommentInput,
 } from './types.js';
 
 // Re-anchoring algorithm (DEP-39)
-export {
-  findAllOccurrences,
-  fuzzyReanchor,
-  reanchorQuote,
-  scoreContextMatch,
-  type ReanchorInput,
-} from './reanchor.js';
+export { findAllOccurrences, fuzzyReanchor, reanchorQuote, scoreContextMatch } from './reanchor.js';
+
+export type { ReanchorInput } from './reanchor.js';
 
 // Pure update helpers (DEP-40)
 export {
@@ -59,8 +58,9 @@ export {
   isCommentVisible,
   restoreComment,
   updateComment,
-  type UpdateResult,
 } from './updates.js';
+
+export type { UpdateResult } from './updates.js';
 
 // Mention extraction (DEP-40)
 export { extractMentions } from './mentions.js';

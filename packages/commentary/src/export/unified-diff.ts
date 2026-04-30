@@ -6,7 +6,7 @@
 
 import { normalize } from '@cinder/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
-import type { UnifiedDiffOptions, UnifiedDiffResult } from './types';
+import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
 
 interface DiffHunk {
   originalStart: number;

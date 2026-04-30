@@ -8,9 +8,9 @@
  */
 
 // Pure functions (for direct use/testing)
-export { generateCommentsExport, generateCommentsJSON } from './comments-export';
-export { generateMarkdownSummary } from './markdown-summary';
-export { generateUnifiedDiff } from './unified-diff';
+export { generateCommentsExport, generateCommentsJSON } from './comments-export.js';
+export { generateMarkdownSummary } from './markdown-summary.js';
+export { generateUnifiedDiff } from './unified-diff.js';
 
 // Types
 export type {
@@ -25,4 +25,4 @@ export type {
   MarkdownSummaryResult,
   UnifiedDiffOptions,
   UnifiedDiffResult,
-} from './types';
+} from './types.js';

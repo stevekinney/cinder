@@ -19,7 +19,7 @@ import type {
   ExportedComment,
   ExportedSelection,
   ExportedThread,
-} from './types';
+} from './types.js';
 
 /**
  * Check if an anchor is a document-level anchor.

@@ -8,12 +8,23 @@ import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolvePath(scriptDirectory, '..');
+const workspaceRoot = resolvePath(repositoryRoot, '../..');
 
 type PackageIdentity = { name: string; version: string };
+type WorkspaceDependencyPackage = PackageIdentity & {
+  packageDirectory: string;
+  tarballFileName: string;
+  tarballFilePath: string;
+};
+
+function getPackFileName(identity: PackageIdentity): string {
+  const packageFileNamePrefix = identity.name.replace(/^@/, '').replaceAll('/', '-');
+  return `${packageFileNamePrefix}-${identity.version}.tgz`;
+}
 
 /** Derive the tarball filename from package.json so version bumps don't silently break validation. */
-function readPackageIdentity(): PackageIdentity {
-  const parsed: unknown = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8'));
+function readPackageIdentity(packageDirectory = repositoryRoot): PackageIdentity {
+  const parsed: unknown = JSON.parse(readFileSync(join(packageDirectory, 'package.json'), 'utf8'));
   if (!isObjectRecord(parsed)) {
     throw new Error('package.json must be a JSON object');
   }
@@ -25,8 +36,21 @@ function readPackageIdentity(): PackageIdentity {
   return { name, version };
 }
 const packageIdentity = readPackageIdentity();
-const tarballFileName = `${packageIdentity.name}-${packageIdentity.version}.tgz`;
+const tarballFileName = getPackFileName(packageIdentity);
 const tarballFilePath = join(repositoryRoot, tarballFileName);
+const workspaceDependencyPackages = ['diff', 'markdown', 'editor', 'commentary'].map(
+  (packageDirectoryName): WorkspaceDependencyPackage => {
+    const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
+    const identity = readPackageIdentity(packageDirectory);
+    const workspaceDependencyTarballFileName = getPackFileName(identity);
+    return {
+      ...identity,
+      packageDirectory,
+      tarballFileName: workspaceDependencyTarballFileName,
+      tarballFilePath: join(packageDirectory, workspaceDependencyTarballFileName),
+    };
+  },
+);
 
 class ValidationError extends Error {
   constructor(message: string) {
@@ -118,9 +142,35 @@ async function ensureNodeOnPath(): Promise<void> {
 }
 
 async function runBuild(): Promise<void> {
+  for (const dependencyPackage of workspaceDependencyPackages) {
+    process.stdout.write(`[validate-consumers] building ${dependencyPackage.name}…\n`);
+    const result = await $`bun run build`.cwd(dependencyPackage.packageDirectory).nothrow();
+    if (result.exitCode !== 0) {
+      fail(`${dependencyPackage.name} build failed with exit ${result.exitCode}`);
+    }
+  }
+
   process.stdout.write('[validate-consumers] step 1: building cinder…\n');
   const result = await $`bun run build`.cwd(repositoryRoot).nothrow();
   if (result.exitCode !== 0) fail(`bun run build failed with exit ${result.exitCode}`);
+}
+
+async function packWorkspaceDependencyTarballs(): Promise<void> {
+  for (const dependencyPackage of workspaceDependencyPackages) {
+    process.stdout.write(`[validate-consumers] packing ${dependencyPackage.tarballFileName}…\n`);
+    if (existsSync(dependencyPackage.tarballFilePath)) {
+      await Bun.file(dependencyPackage.tarballFilePath).delete();
+    }
+    const result = await $`bun pm pack`.cwd(dependencyPackage.packageDirectory).nothrow();
+    if (result.exitCode !== 0) {
+      fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr.toString()}`);
+    }
+    if (!existsSync(dependencyPackage.tarballFilePath)) {
+      fail(
+        `${dependencyPackage.name} tarball not at ${dependencyPackage.tarballFilePath} after pack.`,
+      );
+    }
+  }
 }
 
 async function packTarball(): Promise<void> {
@@ -277,7 +327,19 @@ function injectTarballIntoFixture(fixtureDirectory: string): () => void {
   if (!isObjectRecord(dependencies)) {
     fail(`${manifestPath} is missing a dependencies object`);
   }
+  const rawOverrides = parsed['overrides'];
+  if (rawOverrides !== undefined && !isObjectRecord(rawOverrides)) {
+    fail(`${manifestPath} has an overrides field that is not a JSON object`);
+  }
+  const overrides: Record<string, unknown> = rawOverrides ?? {};
+  parsed['overrides'] = overrides;
+
   dependencies['cinder'] = `file:${tarballFilePath}`;
+  for (const dependencyPackage of workspaceDependencyPackages) {
+    const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
+    dependencies[dependencyPackage.name] = fileSpecifier;
+    overrides[dependencyPackage.name] = fileSpecifier;
+  }
   writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n');
   return () => writeFileSync(manifestPath, originalContent);
 }
@@ -484,6 +546,7 @@ try {
   ensureSupportedPlatform();
   await ensureNodeOnPath();
   await runBuild();
+  await packWorkspaceDependencyTarballs();
   await packTarball();
   await inspectTarball();
   await runSveltekitFixture();

@@ -37,9 +37,14 @@ const serverBuildResult = await Bun.build({
   outdir: `${distributionDirectory}/server`,
   target: 'node',
   format: 'esm',
-  naming: 'index.js',
+  naming: {
+    entry: 'index.[ext]',
+    chunk: '[name]-[hash].[ext]',
+    asset: '[name]-[hash].[ext]',
+  },
   sourcemap: 'external',
   minify: false,
+  external: ['@cinder/*', 'svelte'],
   plugins: [sveltePlugin({ generate: 'server' })],
 });
 
