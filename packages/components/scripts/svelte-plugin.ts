@@ -3,6 +3,20 @@ import { compile, compileModule } from 'svelte/compiler';
 
 type GenerationTarget = 'client' | 'server';
 
+const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
+  'chat',
+  'diff-viewer',
+  'markdown-editor',
+  'review-editor',
+]);
+
+function allowsStyleBlock(path: string): boolean {
+  const normalizedPath = path.replaceAll('\\', '/');
+  const componentPathMatch = normalizedPath.match(/\/src\/components\/([^/]+)(?:\/|\.svelte$)/);
+  const componentName = componentPathMatch?.[1];
+  return componentName !== undefined && DOMAIN_SUITE_STYLE_COMPONENTS.has(componentName);
+}
+
 /**
  * Bun plugin that compiles Svelte 5 components with `svelte/compiler`.
  *
@@ -28,7 +42,7 @@ export function sveltePlugin(
           // runs so production builds and test/dev loads stay in sync.
           dev: process.env['NODE_ENV'] !== 'production',
         });
-        if (compileResult.css?.code?.trim()) {
+        if (compileResult.css?.code?.trim() && !allowsStyleBlock(path)) {
           throw new Error(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );
@@ -38,7 +52,10 @@ export function sveltePlugin(
 
       builder.onLoad({ filter: /\.svelte\.(js|ts)$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
-        const compileResult = compileModule(source, {
+        const moduleSource = path.endsWith('.ts')
+          ? new Bun.Transpiler({ loader: 'ts' }).transformSync(source)
+          : source;
+        const compileResult = compileModule(moduleSource, {
           filename: path,
           generate: options.generate,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`

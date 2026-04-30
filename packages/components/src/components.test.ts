@@ -49,6 +49,46 @@ describe('svelte plugin', () => {
     }
   });
 
+  test('allows style blocks for domain-suite implementation files', async () => {
+    const plugin = sveltePlugin({ generate: 'client' });
+    type LoadArguments = { path: string };
+    type LoadResult = { contents: string; loader: string };
+    type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
+    type MinimalSetupBuilder = {
+      onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
+    };
+
+    let registeredLoadHandler: LoadHandler | undefined;
+    const builderStub: MinimalSetupBuilder = {
+      onLoad(filter, handler) {
+        if (filter.filter.test('chat.svelte') && !filter.filter.test('chat.svelte.ts')) {
+          registeredLoadHandler = handler;
+        }
+      },
+    };
+    plugin.setup(builderStub as Parameters<typeof plugin.setup>[0]);
+
+    if (!registeredLoadHandler) {
+      throw new Error('plugin did not register the .svelte onLoad handler');
+    }
+
+    const fixtureDirectory = `${import.meta.dir}/components/chat`;
+    const fixturePath = `${fixtureDirectory}/style-allowed-fixture.svelte`;
+    await Bun.$`mkdir -p ${fixtureDirectory}`;
+    await Bun.write(
+      fixturePath,
+      `<p class="sample">hi</p>\n<style>\n.sample { color: tomato; }\n</style>\n`,
+    );
+
+    try {
+      const result = await registeredLoadHandler({ path: fixturePath });
+      expect(result.loader).toBe('js');
+      expect(result.contents).toContain('hi');
+    } finally {
+      await Bun.file(fixturePath).delete();
+    }
+  });
+
   test('compiles .svelte.ts rune modules via compileModule', async () => {
     const plugin = sveltePlugin({ generate: 'client' });
     type LoadArguments = { path: string };
@@ -76,7 +116,7 @@ describe('svelte plugin', () => {
     const fixturePath = `${import.meta.dir}/.rune-module-fixture.svelte.ts`;
     await Bun.write(
       fixturePath,
-      `export class Counter {\n  count = $state(0);\n  increment() { this.count += 1; }\n}\n`,
+      `import type { Snippet } from 'svelte';\nexport interface CounterOptions { label?: string; children?: Snippet; }\nexport class Counter {\n  count = $state(0);\n  increment() { this.count += 1; }\n}\n`,
     );
 
     try {

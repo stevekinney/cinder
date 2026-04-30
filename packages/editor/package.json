@@ -34,6 +34,12 @@
       "bun": "./src/test-utilities.ts",
       "import": "./dist/test-utilities.js",
       "default": "./dist/test-utilities.js"
+    },
+    "./component-runtime": {
+      "types": "./src/component-runtime.ts",
+      "bun": "./src/component-runtime.ts",
+      "import": "./dist/component-runtime.js",
+      "default": "./dist/component-runtime.js"
     }
   },
   "scripts": {
