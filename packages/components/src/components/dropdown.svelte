@@ -79,7 +79,12 @@
   const usesLegacySnippetApi = $derived(Boolean(trigger));
 
   function closeCompoundMenu(): void {
-    compoundMenuElement?.hidePopover();
+    // Optional-chain the method too: when CSS Anchor Positioning is missing,
+    // the menu renders without `popover="auto"` (see dropdown-menu.svelte),
+    // and calling hidePopover() on a non-popover element throws
+    // InvalidStateError — which would prevent compoundOpen from flipping
+    // to false and leave the menu stuck open.
+    compoundMenuElement?.hidePopover?.();
     compoundOpen = false;
   }
 
