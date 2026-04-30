@@ -170,9 +170,17 @@
   {#if usesLegacySnippetApi}
     <!--
       The legacy trigger wrapper intercepts clicks to toggle open, and wires ARIA attributes
-      onto the first focusable element inside the snippet.
+      onto the first focusable element inside the snippet. The anchor-name on the trigger
+      and position-anchor on the menu hand off positioning to CSS Anchor Positioning,
+      so the menu lands beside the trigger even after the popover API promotes the menu
+      into the top layer (where percent-based offsets would otherwise resolve against the viewport).
     -->
-    <div class="cinder-dropdown__trigger" bind:this={triggerWrapper} onclick={() => (open = !open)}>
+    <div
+      class="cinder-dropdown__trigger"
+      bind:this={triggerWrapper}
+      style={`anchor-name: --${menuId};`}
+      onclick={() => (open = !open)}
+    >
       {#if trigger}
         {@render trigger()}
       {/if}
@@ -186,6 +194,7 @@
         popover="auto"
         role="menu"
         data-cinder-placement={placement}
+        style={`position-anchor: --${menuId};`}
         ontoggle={handlePopoverToggle}
       >
         {#if children}

@@ -50,10 +50,10 @@ describe('Spinner', () => {
     expect(spinner?.getAttribute('aria-label')).toBe('Please wait');
   });
 
-  test('default aria-label is "Loading..."', () => {
+  test('default aria-label is "Loading"', () => {
     const { container } = render(Spinner);
     const spinner = container.querySelector('.cinder-spinner');
-    expect(spinner?.getAttribute('aria-label')).toBe('Loading...');
+    expect(spinner?.getAttribute('aria-label')).toBe('Loading');
   });
 
   test('sr-only inner span contains the label text', () => {

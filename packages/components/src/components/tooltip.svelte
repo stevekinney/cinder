@@ -48,6 +48,15 @@
   function handleFocusOut() {
     hide();
   }
+
+  // WAI-ARIA APG: tooltips must be dismissible via Escape without losing
+  // pointer or focus on the trigger. Hide the tooltip but don't blur — the
+  // user keeps interacting with the trigger.
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && visible) {
+      hide();
+    }
+  }
 </script>
 
 <span
@@ -56,6 +65,7 @@
   onmouseleave={handleMouseLeave}
   onfocusin={handleFocusIn}
   onfocusout={handleFocusOut}
+  onkeydown={handleKeydown}
   data-cinder-placement={placement}
   {@attach (el) => {
     const focusable = el.querySelector<HTMLElement>(

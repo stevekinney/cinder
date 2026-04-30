@@ -7,7 +7,7 @@
   import { Spinner } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; align-items: center; gap: 0.5rem;">
+<div class="example-preview-row" style="align-items: center; gap: 0.5rem;">
   <Spinner size="sm" />
   <span>Saving changes…</span>
 </div>

@@ -291,9 +291,13 @@
   .example-preview {
     padding: var(--cinder-space-6);
     min-height: 4rem;
+    display: block;
+  }
+
+  :global(.example-preview-row) {
     display: flex;
-    align-items: flex-start;
     flex-wrap: wrap;
+    align-items: flex-start;
     gap: var(--cinder-space-4);
   }
 

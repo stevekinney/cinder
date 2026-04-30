@@ -23,7 +23,7 @@ import { dirname, join } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
-import { discoverComponents, discoverExamples } from './discover.ts';
+import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 import type { ComponentManifest } from './types.ts';
 import { generateWrapper } from './wrapper-generator.ts';
@@ -136,6 +136,7 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     plugins: [sveltePlugin({ generate: 'client' })],
     target: 'browser',
     format: 'esm',
+    conditions: ['bun'],
   });
 
   if (!result.success) {
@@ -182,7 +183,9 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   }
 
   const scenarios = await discoverExamples(componentName);
-  if (scenarios.length === 0) return null;
+  // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
+  // which renders a "No examples found" fallback. Returning null here would
+  // 404 the bundle URL and the iframe would silently fail to load.
 
   const manifests = await getManifests();
   const manifest = manifests.find((m) => m.kebabName === componentName);
@@ -256,6 +259,7 @@ mount(ComponentPage, { target });
       plugins: [sveltePlugin({ generate: 'client' })],
       target: 'browser',
       format: 'esm',
+      conditions: ['bun'],
     });
 
     if (!result.success) {
@@ -334,6 +338,7 @@ async function buildControlsBundle(componentName: string): Promise<string | null
       plugins: [sveltePlugin({ generate: 'client' })],
       target: 'browser',
       format: 'esm',
+      conditions: ['bun'],
     });
 
     if (!result.success) {
@@ -562,18 +567,19 @@ export async function handleRequest(request: Request): Promise<Response> {
     const allComponents = await discoverComponents();
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
-    const html = renderShell(componentName, allComponents);
+    const sidebarComponents = await discoverSidebarComponents();
+    const html = renderShell(componentName, sidebarComponents);
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   // GET / → redirect to first component
   if (pathname === '/') {
-    const allComponents = await discoverComponents();
-    if (allComponents.length === 0) {
+    const sidebarComponents = await discoverSidebarComponents();
+    if (sidebarComponents.length === 0) {
       const html = renderShell(null, []);
       return new Response(html, { headers: { 'Content-Type': 'text/html' } });
     }
-    const first = allComponents[0];
+    const first = sidebarComponents[0];
     return new Response(null, {
       status: 302,
       headers: { Location: `/c/${first}` },

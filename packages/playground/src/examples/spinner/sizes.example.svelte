@@ -7,7 +7,7 @@
   import { Spinner } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; align-items: center; gap: 1.5rem;">
+<div class="example-preview-row" style="align-items: center;">
   <Spinner size="sm" label="Loading small" />
   <Spinner size="md" label="Loading medium" />
   <Spinner size="lg" label="Loading large" />

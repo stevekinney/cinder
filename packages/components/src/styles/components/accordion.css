@@ -5,6 +5,7 @@
 .cinder-accordion {
   display: flex;
   flex-direction: column;
+  inline-size: 100%;
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-lg);
   background: var(--cinder-surface);

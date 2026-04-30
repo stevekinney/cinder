@@ -7,7 +7,7 @@
   import { Button } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+<div class="example-preview-row">
   <Button variant="primary" label="Primary" />
   <Button variant="secondary" label="Secondary" />
   <Button variant="danger" label="Danger" />

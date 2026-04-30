@@ -5,4 +5,9 @@
 .cinder-data-list {
   display: flex;
   flex-direction: column;
+  inline-size: 100%;
+}
+
+.cinder-data-list > :not(:first-child) {
+  border-block-start: 1px solid var(--cinder-border-muted);
 }

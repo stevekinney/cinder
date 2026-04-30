@@ -1,6 +1,6 @@
 <script lang="ts" module>
   export const title = 'Basic toggle';
-  export const description = 'Toggle button with aria-pressed reflecting the pressed state.';
+  export const description = 'Switch with role="switch" and aria-checked reflecting state.';
 </script>
 
 <script lang="ts">
@@ -9,7 +9,7 @@
   let muted = $state(false);
 </script>
 
-<Toggle id="mute" bind:pressed={muted} label={muted ? 'Unmute' : 'Mute'} />
+<Toggle id="mute" bind:checked={muted} label={muted ? 'Unmute' : 'Mute'} />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
-  {muted ? '🔇 Muted' : '🔊 Unmuted'}
+  {muted ? 'Muted' : 'Unmuted'}
 </p>

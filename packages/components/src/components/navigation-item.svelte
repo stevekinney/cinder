@@ -45,10 +45,11 @@
 
 {#if isLink}
   <a
-    href={(props as LinkArm).href}
+    href={disabled ? undefined : (props as LinkArm).href}
     class={resolvedClass}
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
+    tabindex={disabled ? -1 : undefined}
     data-active={active}
     onclick={handleClick}
   >

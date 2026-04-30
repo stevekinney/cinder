@@ -41,7 +41,10 @@
 .cinder-view-switcher__tab[aria-selected='true'] {
   background: var(--cinder-surface);
   color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+  font-weight: var(--cinder-font-semibold);
+  box-shadow:
+    var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1)),
+    inset 0 0 0 1px var(--cinder-border-muted);
 }
 
 .cinder-view-switcher__icon {

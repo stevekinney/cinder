@@ -7,7 +7,7 @@
   import { Tooltip } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 1rem;">
+<div class="example-preview-row" style="padding: 1rem;">
   <Tooltip text="Appears above" placement="top">
     <button type="button">Top</button>
   </Tooltip>

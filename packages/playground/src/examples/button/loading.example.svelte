@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Loading state';
-  export const description = 'Click to toggle loading; the button is disabled while loading.';
+  export const description =
+    'A permanent loading button alongside one that toggles loading on click; both render the spinner and set aria-busy.';
 </script>
 
 <script lang="ts">
@@ -15,4 +16,7 @@
   }
 </script>
 
-<Button variant="primary" label="Save changes" {loading} onclick={handleClick} />
+<div class="example-preview-row">
+  <Button variant="primary" label="Saving..." loading />
+  <Button variant="primary" label="Save changes" {loading} onclick={handleClick} />
+</div>

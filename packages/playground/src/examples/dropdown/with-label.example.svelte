@@ -1,6 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Dropdown label';
-  export const description = 'Labels group related menu actions without entering the tab order.';
+  export const title = 'With group labels';
+  export const description =
+    'DropdownLabel groups related menu actions without entering the tab order.';
 </script>
 
 <script lang="ts">
@@ -13,11 +14,14 @@
   } from '../../../../components/src/index.ts';
 </script>
 
-<Dropdown id="label-demo">
+<Dropdown id="dropdown-with-label">
   <DropdownTrigger>Grouped menu</DropdownTrigger>
   <DropdownMenu>
     <DropdownLabel>Document</DropdownLabel>
     <DropdownItem>Rename</DropdownItem>
     <DropdownItem>Move</DropdownItem>
+    <DropdownLabel>Sharing</DropdownLabel>
+    <DropdownItem>Copy link</DropdownItem>
+    <DropdownItem>Invite people</DropdownItem>
   </DropdownMenu>
 </Dropdown>

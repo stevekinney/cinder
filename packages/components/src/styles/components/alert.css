@@ -16,6 +16,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--cinder-space-3);
+  inline-size: 100%;
   padding: var(--cinder-space-4);
   border-radius: var(--cinder-radius-lg);
   border: 1px solid var(--cinder-border);
@@ -60,10 +61,10 @@
  * ---------------------------------------- */
 
 .cinder-alert__dismiss {
-  /* Absolute so it sits in the corner without disturbing flex layout */
-  position: absolute;
-  inset-block-start: var(--cinder-space-3);
-  inset-inline-end: var(--cinder-space-3);
+  /* Sits as a flex sibling so it never overlaps the content. */
+  flex-shrink: 0;
+  /* Nudge to align with the first line of body text, matching the icon. */
+  margin-block-start: 1px;
 
   display: inline-flex;
   align-items: center;
@@ -77,6 +78,9 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+
+  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
+  position: relative;
 
   transition:
     background-color var(--cinder-duration-fast) var(--cinder-ease-standard),

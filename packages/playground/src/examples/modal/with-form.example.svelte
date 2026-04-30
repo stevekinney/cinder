@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Modal with form';
-  export const description = 'A modal containing an input that receives focus on open.';
+  export const description =
+    'A modal whose first input carries autofocus; the native dialog focuses it on open.';
 </script>
 
 <script lang="ts">
@@ -8,13 +9,19 @@
 
   let open = $state(false);
   let name = $state('');
-  let triggerRef: HTMLButtonElement | undefined = $state();
+  let triggerRef: HTMLElement | null = $state(null);
 </script>
 
-<button bind:this={triggerRef} type="button" onclick={() => (open = true)}>Rename item</button>
+<Button
+  label="Rename item"
+  onclick={(event) => {
+    triggerRef = event.currentTarget;
+    open = true;
+  }}
+/>
 
 <Modal bind:open title="Rename item" {triggerRef}>
-  <Input id="modal-name" bind:value={name} label="New name" placeholder="Enter a name…" />
+  <Input id="modal-name" bind:value={name} label="New name" placeholder="Enter a name…" autofocus />
   {#snippet footer()}
     <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
       <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
