@@ -1,0 +1,96 @@
+{
+  "name": "@cinder/commentary",
+  "version": "0.0.1",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./anchor-decorations": {
+      "types": "./src/anchor-decorations.ts",
+      "bun": "./src/anchor-decorations.ts",
+      "import": "./dist/anchor-decorations.js",
+      "default": "./dist/anchor-decorations.js"
+    },
+    "./anchoring": {
+      "types": "./src/anchoring.ts",
+      "bun": "./src/anchoring.ts",
+      "import": "./dist/anchoring.js",
+      "default": "./dist/anchoring.js"
+    },
+    "./comments": {
+      "types": "./src/comments/index.ts",
+      "bun": "./src/comments/index.ts",
+      "import": "./dist/comments/index.js",
+      "default": "./dist/comments/index.js"
+    },
+    "./comments/types": {
+      "types": "./src/comments/types.ts",
+      "bun": "./src/comments/types.ts",
+      "import": "./dist/comments/types.js",
+      "default": "./dist/comments/types.js"
+    },
+    "./export": {
+      "types": "./src/export/index.ts",
+      "bun": "./src/export/index.ts",
+      "import": "./dist/export/index.js",
+      "default": "./dist/export/index.js"
+    },
+    "./export/types": {
+      "types": "./src/export/types.ts",
+      "bun": "./src/export/types.ts",
+      "import": "./dist/export/types.js",
+      "default": "./dist/export/types.js"
+    },
+    "./session": {
+      "types": "./src/session/index.ts",
+      "bun": "./src/session/index.ts",
+      "import": "./dist/session/index.js",
+      "default": "./dist/session/index.js"
+    },
+    "./session/types": {
+      "types": "./src/session/types.ts",
+      "bun": "./src/session/types.ts",
+      "import": "./dist/session/types.js",
+      "default": "./dist/session/types.js"
+    },
+    "./shared/anchor-types": {
+      "types": "./src/shared/anchor-types.ts",
+      "bun": "./src/shared/anchor-types.ts",
+      "import": "./dist/shared/anchor-types.js",
+      "default": "./dist/shared/anchor-types.js"
+    }
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "clean": "rm -rf dist coverage node_modules/.cache",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && TZ=UTC LANG=en_US.UTF-8 bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "validate": "bun run lint && bun run typecheck && bun run test && bun run build"
+  },
+  "dependencies": {
+    "@cinder/editor": "workspace:*",
+    "@cinder/markdown": "workspace:*",
+    "@milkdown/kit": "^7.17.3",
+    "@milkdown/prose": "^7.17.3",
+    "prosemirror-view": "^1.41.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "happy-dom": "^15.11.7",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "svelte": "~5.55.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "svelte": ">=5.55.0 <5.56.0"
+  }
+}

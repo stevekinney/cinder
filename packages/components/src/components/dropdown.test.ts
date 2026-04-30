@@ -15,6 +15,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Dropdown } = await import('./dropdown.svelte');
+const { default: DropdownCompoundFixture } =
+  await import('../test/fixtures/dropdown-compound-fixture.svelte');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open Menu</button>`,
@@ -135,14 +137,6 @@ describe('Dropdown', () => {
     expect(menu?.textContent).toContain('My menu item');
   });
 
-  // ---------------------------------------------------------------------------
-  // ARIA state on the trigger wrapper
-  // ---------------------------------------------------------------------------
-  // The current dropdown.svelte implementation does not yet set aria-haspopup
-  // or aria-expanded on the trigger wrapper (<div class="cinder-dropdown__trigger">).
-  // The tests below assert the current reality and include TODO markers where
-  // the attributes are missing — adding them is a separate implementation task.
-
   test('trigger wrapper exists and wraps the trigger snippet', () => {
     const { container } = render(Dropdown, {
       props: {
@@ -156,9 +150,33 @@ describe('Dropdown', () => {
     expect(triggerWrapper?.textContent).toContain('Open Menu');
   });
 
-  // TODO: dropdown.svelte should add aria-haspopup="menu" to .cinder-dropdown__trigger
-  // so assistive technology announces the button as opening a menu.
-  test('trigger wrapper does not yet have aria-haspopup (implementation gap)', () => {
+  test('compound trigger wires menu ARIA to the button', () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    const trigger = container.querySelector('.trigger');
+    expect(trigger?.getAttribute('aria-haspopup')).toBe('menu');
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+    expect(trigger?.getAttribute('popovertarget')).toBe('actions-menu-menu');
+  });
+
+  test('compound menu renders labels, separators, and items', () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
+    expect(container.querySelector('.cinder-dropdown-label')?.textContent).toContain('Document');
+    expect(container.querySelector('[role="separator"]')).not.toBeNull();
+    expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+  });
+
+  test('compound item click closes the menu and invokes onclick', async () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
+
+    expect(container.querySelector('output')?.textContent).toBe('copy');
+  });
+
+  test('legacy trigger wrapper does not own aria-haspopup', () => {
     const { container } = render(Dropdown, {
       props: {
         open: false,
@@ -167,13 +185,10 @@ describe('Dropdown', () => {
       },
     });
     const triggerWrapper = container.querySelector('.cinder-dropdown__trigger');
-    // Current implementation omits aria-haspopup — this test documents the gap.
     expect(triggerWrapper?.hasAttribute('aria-haspopup')).toBe(false);
   });
 
-  // TODO: dropdown.svelte should add aria-expanded={open} to .cinder-dropdown__trigger
-  // so assistive technology communicates whether the menu is open or closed.
-  test('trigger wrapper does not yet have aria-expanded (implementation gap)', () => {
+  test('legacy trigger wrapper does not own aria-expanded', () => {
     const { container } = render(Dropdown, {
       props: {
         open: false,
@@ -182,7 +197,6 @@ describe('Dropdown', () => {
       },
     });
     const triggerWrapper = container.querySelector('.cinder-dropdown__trigger');
-    // Current implementation omits aria-expanded — this test documents the gap.
     expect(triggerWrapper?.hasAttribute('aria-expanded')).toBe(false);
   });
 });

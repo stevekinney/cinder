@@ -39,7 +39,7 @@ describe('Badge', () => {
     expect(span?.getAttribute('class')).toContain('my-custom-class');
   });
 
-  test.each(['neutral', 'success', 'warning', 'danger', 'info'] as const)(
+  test.each(['neutral', 'success', 'warning', 'danger', 'info', 'accent'] as const)(
     'renders data-cinder-variant="%s"',
     (variant) => {
       const { container } = render(Badge, {
@@ -51,7 +51,7 @@ describe('Badge', () => {
     },
   );
 
-  test.each(['sm', 'md'] as const)('renders data-cinder-size="%s"', (size) => {
+  test.each(['xs', 'sm', 'md'] as const)('renders data-cinder-size="%s"', (size) => {
     const { container } = render(Badge, {
       children: textSnippet('label'),
       size,

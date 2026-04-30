@@ -9,20 +9,37 @@
    * Use to indicate keyboard shortcuts in tooltips, command palettes, and
    * help text.
    */
-  export type KbdProps = HTMLAttributes<HTMLElement> & {
+  export type KbdSize = 'sm' | 'md';
+
+  type KbdBaseProps = HTMLAttributes<HTMLElement> & {
     /** Additional class names merged with `.cinder-kbd`. */
     class?: string;
+    /** Keyboard key size. */
+    size?: KbdSize;
+  };
+
+  type KbdWithLabel = KbdBaseProps & {
+    /** Key label content. */
+    label: string;
+    children?: Snippet;
+  };
+
+  type KbdWithChildren = KbdBaseProps & {
+    /** Key label content. */
+    label?: string;
     /** Key label content. */
     children: Snippet;
   };
+
+  export type KbdProps = KbdWithLabel | KbdWithChildren;
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
-  let { class: className, children, ...rest }: KbdProps = $props();
+  let { class: customClassName, size = 'md', label, children, ...rest }: KbdProps = $props();
 </script>
 
-<kbd class={cn('cinder-kbd', className)} {...rest}>
-  {@render children()}
+<kbd class={classNames('cinder-kbd', customClassName)} data-cinder-size={size} {...rest}>
+  {#if children}{@render children()}{:else}{label}{/if}
 </kbd>

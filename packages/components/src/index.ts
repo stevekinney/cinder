@@ -39,8 +39,33 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 
+export { default as DiffStatistics } from './components/diff-statistics.svelte';
+export type {
+  DiffStatisticsProps,
+  DiffStatisticsVariant,
+} from './components/diff-statistics.svelte';
+
 export { default as Dropdown } from './components/dropdown.svelte';
-export type { DropdownPlacement, DropdownProps } from './components/dropdown.svelte';
+export type {
+  DropdownContext,
+  DropdownPlacement,
+  DropdownProps,
+} from './components/dropdown.svelte';
+
+export { default as DropdownItem } from './components/dropdown-item.svelte';
+export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item.svelte';
+
+export { default as DropdownLabel } from './components/dropdown-label.svelte';
+export type { DropdownLabelProps } from './components/dropdown-label.svelte';
+
+export { default as DropdownMenu } from './components/dropdown-menu.svelte';
+export type { DropdownMenuProps } from './components/dropdown-menu.svelte';
+
+export { default as DropdownSeparator } from './components/dropdown-separator.svelte';
+export type { DropdownSeparatorProps } from './components/dropdown-separator.svelte';
+
+export { default as DropdownTrigger } from './components/dropdown-trigger.svelte';
+export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte';
 
 export { default as EmptyState } from './components/empty-state.svelte';
 export type { EmptyStateProps } from './components/empty-state.svelte';
@@ -80,6 +105,18 @@ export type { RadioGroupContext, RadioGroupProps } from './components/radio-grou
 
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
+
+export { default as SegmentedControl } from './components/segmented-control.svelte';
+export type {
+  SegmentedControlOption,
+  SegmentedControlProps,
+} from './components/segmented-control.svelte';
+
+export { default as SelectionPopover } from './components/selection-popover.svelte';
+export type {
+  SelectionPopoverPosition,
+  SelectionPopoverProps,
+} from './components/selection-popover.svelte';
 
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
@@ -135,6 +172,9 @@ export type { ToggleProps } from './components/toggle.svelte';
 
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
+
+export { default as ViewSwitcher } from './components/view-switcher.svelte';
+export type { ViewOption, ViewSwitcherProps, ViewType } from './components/view-switcher.svelte';
 
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their

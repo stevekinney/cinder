@@ -9,8 +9,8 @@ const { render } = await import('@testing-library/svelte');
 const { createRawSnippet } = await import('svelte');
 const { default: Kbd } = await import('./kbd.svelte');
 
-function snippet(html: string) {
-  return createRawSnippet(() => ({ render: () => html }));
+function snippet(text: string) {
+  return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
 }
 
 describe('Kbd', () => {
@@ -37,5 +37,15 @@ describe('Kbd', () => {
       children: snippet('K'),
     });
     expect(container.querySelector('[data-testid="shortcut"]')).not.toBeNull();
+  });
+
+  test('renders label content without a children snippet', () => {
+    const { container } = render(Kbd, { label: 'Esc' });
+    expect(container.querySelector('kbd')?.textContent).toBe('Esc');
+  });
+
+  test('applies size as a data attribute', () => {
+    const { container } = render(Kbd, { label: 'K', size: 'sm' });
+    expect(container.querySelector('kbd')?.getAttribute('data-cinder-size')).toBe('sm');
   });
 });

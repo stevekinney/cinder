@@ -69,6 +69,30 @@
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
     },
+    "./diff-statistics": {
+      "svelte": "./src/components/diff-statistics.svelte",
+      "types": "./dist/components/diff-statistics.svelte.d.ts"
+    },
+    "./dropdown-item": {
+      "svelte": "./src/components/dropdown-item.svelte",
+      "types": "./dist/components/dropdown-item.svelte.d.ts"
+    },
+    "./dropdown-label": {
+      "svelte": "./src/components/dropdown-label.svelte",
+      "types": "./dist/components/dropdown-label.svelte.d.ts"
+    },
+    "./dropdown-menu": {
+      "svelte": "./src/components/dropdown-menu.svelte",
+      "types": "./dist/components/dropdown-menu.svelte.d.ts"
+    },
+    "./dropdown-separator": {
+      "svelte": "./src/components/dropdown-separator.svelte",
+      "types": "./dist/components/dropdown-separator.svelte.d.ts"
+    },
+    "./dropdown-trigger": {
+      "svelte": "./src/components/dropdown-trigger.svelte",
+      "types": "./dist/components/dropdown-trigger.svelte.d.ts"
+    },
     "./dropdown": {
       "svelte": "./src/components/dropdown.svelte",
       "types": "./dist/components/dropdown.svelte.d.ts"
@@ -153,9 +177,17 @@
       "svelte": "./src/components/radio.svelte",
       "types": "./dist/components/radio.svelte.d.ts"
     },
+    "./segmented-control": {
+      "svelte": "./src/components/segmented-control.svelte",
+      "types": "./dist/components/segmented-control.svelte.d.ts"
+    },
     "./select": {
       "svelte": "./src/components/select.svelte",
       "types": "./dist/components/select.svelte.d.ts"
+    },
+    "./selection-popover": {
+      "svelte": "./src/components/selection-popover.svelte",
+      "types": "./dist/components/selection-popover.svelte.d.ts"
     },
     "./skeleton": {
       "svelte": "./src/components/skeleton.svelte",
@@ -220,6 +252,10 @@
     "./tooltip": {
       "svelte": "./src/components/tooltip.svelte",
       "types": "./dist/components/tooltip.svelte.d.ts"
+    },
+    "./view-switcher": {
+      "svelte": "./src/components/view-switcher.svelte",
+      "types": "./dist/components/view-switcher.svelte.d.ts"
     }
   },
   "main": "./dist/server/index.js",

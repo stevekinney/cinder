@@ -2,8 +2,8 @@
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
 
-  export type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
-  export type BadgeSize = 'sm' | 'md';
+  export type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
+  export type BadgeSize = 'xs' | 'sm' | 'md';
 
   export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
     variant?: BadgeVariant;
