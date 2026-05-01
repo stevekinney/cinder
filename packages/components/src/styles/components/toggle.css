@@ -8,6 +8,7 @@
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
+  box-sizing: border-box;
 
   /* Dimensions — 44 × 24 px satisfies WCAG 2.5.5 minimum touch target at 44 px height
    * when the surrounding interactive area is considered. Adjust via tokens if needed.
@@ -16,7 +17,7 @@
   height: var(--cinder-toggle-height, 1.5rem); /* 24px */
 
   padding: 0;
-  border: 2px solid transparent;
+  border: none;
   border-radius: 9999px;
   cursor: pointer;
 
@@ -90,12 +91,13 @@
   /* Remove from pointer events — the button handles all interaction. */
   pointer-events: none;
 
-  /* Circle sitting inside the track. */
+  /* Circle sitting inside the track, vertically centered with a gap on every side. */
   position: absolute;
+  inset-block-start: 50%;
   inset-inline-start: 0.125rem; /* 2px gap from track edge */
   display: block;
-  width: var(--cinder-toggle-thumb-size, 1.25rem); /* 20px */
-  height: var(--cinder-toggle-thumb-size, 1.25rem);
+  width: var(--cinder-toggle-thumb-size, 1rem); /* 16px — leaves 4px vertical gap in 24px track */
+  height: var(--cinder-toggle-thumb-size, 1rem);
   border-radius: 50%;
   background: var(--cinder-toggle-thumb-color, #ffffff);
   box-shadow: var(
@@ -107,15 +109,15 @@
   /* Slide transition — mirrors the track transition duration. */
   transition: transform var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);
 
-  /* Unpressed: thumb sits at the start of the track. */
-  transform: translateX(0);
+  /* Unpressed: thumb sits at the start of the track, vertically centered.
+   * translateY(-50%) compensates for inset-block-start: 50%. */
+  transform: translate(0, -50%);
 }
 
-/* Pressed: slide thumb to the end. The travel distance is track-width minus thumb-size minus
- * the 2px gap on each side: 44 - 20 - 4 = 20px = 1.25rem.
- */
+/* Pressed: slide thumb to the end. Travel distance is track-width minus thumb-size minus
+ * the 2px gap on each side: 44 - 16 - 4 = 24px = 1.5rem. */
 .cinder-toggle[data-cinder-checked] .cinder-toggle__thumb {
-  transform: translateX(var(--cinder-toggle-thumb-travel, 1.25rem));
+  transform: translate(var(--cinder-toggle-thumb-travel, 1.5rem), -50%);
 }
 
 /* ----------------------------------------

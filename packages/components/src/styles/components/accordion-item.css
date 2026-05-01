@@ -71,6 +71,25 @@
   box-shadow: none;
 }
 
+/* Round the trigger to match the accordion's outer corners on first/last
+ * items so the focus outline follows the parent's border-radius rather than
+ * appearing to poke past it.
+ *
+ * Only the corners that touch the accordion's edge are rounded. The
+ * trigger is otherwise full-width with sharp corners on the inner edges. */
+.cinder-accordion-item:first-child .cinder-accordion-item__trigger {
+  border-start-start-radius: var(--cinder-radius-lg);
+  border-start-end-radius: var(--cinder-radius-lg);
+}
+
+/* Last-item trigger only rounds bottom corners when its panel is collapsed —
+ * an expanded panel renders below, so the trigger's bottom must remain square
+ * to abut the panel cleanly. */
+.cinder-accordion-item:last-child:not([data-cinder-expanded]) .cinder-accordion-item__trigger {
+  border-end-start-radius: var(--cinder-radius-lg);
+  border-end-end-radius: var(--cinder-radius-lg);
+}
+
 @media (forced-colors: active) {
   .cinder-accordion-item__trigger:focus-visible {
     outline: var(--cinder-ring-width) solid ButtonText;

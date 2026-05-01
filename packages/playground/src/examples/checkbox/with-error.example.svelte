@@ -5,14 +5,14 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from '../../../../components/src/index.ts';
+  import { Button, Checkbox } from '../../../../components/src/index.ts';
 
   let accepted = $state(false);
   let submitted = $state(false);
   const showError = $derived(submitted && !accepted);
 </script>
 
-<div style="display: flex; flex-direction: column; gap: 0.5rem;">
+<div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
   {#if showError}
     <Checkbox
       id="checkbox-error-terms"
@@ -29,11 +29,5 @@
       bind:checked={accepted}
     />
   {/if}
-  <button
-    type="button"
-    style="align-self: flex-start; padding: 0.4rem 0.75rem; border: 1px solid #c8c8c8; background: #fafafa; cursor: pointer;"
-    onclick={() => (submitted = true)}
-  >
-    Try to submit
-  </button>
+  <Button variant="secondary" onclick={() => (submitted = true)}>Try to submit</Button>
 </div>

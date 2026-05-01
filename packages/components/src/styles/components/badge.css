@@ -11,7 +11,7 @@
   font-weight: var(--cinder-font-medium);
   line-height: 1.25;
   border-radius: var(--cinder-radius-sm);
-  border: 1px solid var(--cinder-border-muted);
+  border: 1px solid var(--cinder-border);
   white-space: nowrap;
 
   background: var(--cinder-surface-inset);
@@ -48,7 +48,7 @@
 .cinder-badge[data-cinder-variant='neutral'] {
   background: var(--cinder-surface-inset);
   color: var(--cinder-text);
-  border-color: var(--cinder-border-muted);
+  border-color: var(--cinder-border);
 }
 
 .cinder-badge[data-cinder-variant='success'] {

@@ -61,17 +61,20 @@
  * ---------------------------------------- */
 
 .cinder-alert__dismiss {
-  /* Sits as a flex sibling so it never overlaps the content. */
+  /* Sits as a flex sibling so it never overlaps the content. The button's
+   * box height is sized to the body line-height (1.25rem) so a dismissible
+   * alert is the same height as a non-dismissible one — the WCAG 2.5.5
+   * hit-area expansion happens via the ::after pseudo-element below, which
+   * is absolutely positioned and doesn't influence layout. */
   flex-shrink: 0;
-  /* Nudge to align with the first line of body text, matching the icon. */
-  margin-block-start: 1px;
+  align-self: flex-start;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: var(--cinder-space-0-5);
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
 
   border-radius: var(--cinder-radius-sm);
   border: none;
