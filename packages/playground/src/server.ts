@@ -19,7 +19,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { unlinkSync, watch, type FSWatcher } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
@@ -436,9 +436,11 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (relative.includes('..') || relative.startsWith('/')) return notFound();
     const cssPath = join(STYLES_ROOT, relative);
     // Guard against traversal that survives the includes('..') pre-filter via
-    // canonicalization quirks. The trailing separator prevents adjacent-prefix
-    // bypasses (e.g. STYLES_ROOT="/x/styles" matching "/x/styles-evil/...").
-    if (!cssPath.startsWith(STYLES_ROOT + '/')) return notFound();
+    // canonicalization quirks. `relative()` keeps this check platform-safe:
+    // POSIX paths use `/`, Windows paths use `\`, and adjacent-prefix bypasses
+    // still resolve outside the styles root.
+    const cssRelativePath = relativePath(STYLES_ROOT, cssPath);
+    if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
     const cssFile = Bun.file(cssPath);
     if (!(await cssFile.exists())) return notFound(`${relative} not found`);
     const css = await cssFile.text();
