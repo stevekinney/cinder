@@ -126,17 +126,20 @@ describe('/styles/* (path traversal guard)', () => {
     expect(response.status).toBe(404);
   });
 
-  it('returns 404 when join() resolves outside STYLES_ROOT (encoded traversal)', async () => {
-    // URL-encoded ".." segments that survive into the relative path until
-    // join() canonicalizes them. The cssPath.startsWith(STYLES_ROOT + '/')
-    // guard is the load-bearing fence here — without the trailing slash the
-    // adjacent-prefix bypass at /x/styles vs /x/styles-evil would slip past.
+  it('returns 404 when the request contains URL-encoded traversal sequences', async () => {
+    // WHATWG URL parsing preserves %2E (does not decode it to '.'), so the
+    // literal filename '%2E%2E%2F%2E%2E%2Fpasswd.css' never resolves to a
+    // real file under STYLES_ROOT — the file-existence check returns 404.
+    // Combined with the .css extension filter and the platform-safe
+    // relativePath()/isAbsolute() containment guard, encoded traversal is
+    // not a viable bypass.
     const response = await handleRequest(req('/styles/%2E%2E%2F%2E%2E%2Fpasswd.css'));
     expect(response.status).toBe(404);
   });
 
   it('returns 404 for null-byte injection attempts', async () => {
-    // Defense-in-depth: ensure %00 doesn't truncate the path inside Bun.file.
+    // The '.css'-extension guard rejects this before any file read happens
+    // because '%00.png' makes the relative path end in '.png', not '.css'.
     const response = await handleRequest(req('/styles/index.css%00.png'));
     expect(response.status).toBe(404);
   });
