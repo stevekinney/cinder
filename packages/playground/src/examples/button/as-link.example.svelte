@@ -7,7 +7,7 @@
   import { Button } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+<div class="example-preview-row">
   <Button href="https://svelte.dev" target="_blank" rel="noopener noreferrer" label="Svelte docs" />
   <Button href="#" variant="ghost" label="Internal link" />
 </div>

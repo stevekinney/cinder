@@ -21,15 +21,22 @@
 
   let visible = $state(false);
   let showTimer: ReturnType<typeof setTimeout> | undefined;
+  let hasPendingShow = $state(false);
 
   function show() {
+    clearTimeout(showTimer);
+    hasPendingShow = true;
     showTimer = setTimeout(() => {
+      showTimer = undefined;
+      hasPendingShow = false;
       visible = true;
     }, 100);
   }
 
   function hide() {
     clearTimeout(showTimer);
+    showTimer = undefined;
+    hasPendingShow = false;
     visible = false;
   }
 
@@ -48,6 +55,23 @@
   function handleFocusOut() {
     hide();
   }
+
+  // WAI-ARIA APG: tooltips must be dismissible via Escape without losing
+  // pointer or focus on the trigger. Hide the tooltip but don't blur — the
+  // user keeps interacting with the trigger.
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      hide();
+    }
+  }
+
+  $effect(() => {
+    if (!visible && !hasPendingShow) return;
+    document.addEventListener('keydown', handleKeydown);
+    return () => {
+      document.removeEventListener('keydown', handleKeydown);
+    };
+  });
 </script>
 
 <span

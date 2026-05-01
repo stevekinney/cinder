@@ -125,7 +125,7 @@
   </section>
 
   <section aria-label="Toggle">
-    <Toggle id="subpath-toggle" bind:pressed={togglePressed} label="Toggle via subpath" />
+    <Toggle id="subpath-toggle" bind:checked={togglePressed} label="Toggle via subpath" />
   </section>
 
   <section aria-label="Tooltip">

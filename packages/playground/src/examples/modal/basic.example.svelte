@@ -7,10 +7,16 @@
   import { Button, Modal } from '../../../../components/src/index.ts';
 
   let open = $state(false);
-  let triggerRef: HTMLButtonElement | undefined = $state();
+  let triggerRef: HTMLElement | null = $state(null);
 </script>
 
-<button bind:this={triggerRef} type="button" onclick={() => (open = true)}>Open modal</button>
+<Button
+  label="Open modal"
+  onclick={(event) => {
+    triggerRef = event.currentTarget;
+    open = true;
+  }}
+/>
 
 <Modal bind:open title="Confirm action" {triggerRef}>
   <p>Are you sure you want to proceed? This action cannot be undone.</p>

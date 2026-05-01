@@ -11,6 +11,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--cinder-space-1);
+  min-height: 2rem;
+  padding-block: var(--cinder-space-1-5);
+  padding-inline: var(--cinder-space-3);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface);
+  color: var(--cinder-text);
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-dropdown-trigger:hover {
+  background: var(--cinder-surface-hover);
+}
+
+.cinder-dropdown-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--cinder-ring-color);
+}
+
+.cinder-dropdown-trigger[aria-expanded='true'] {
+  background: var(--cinder-surface-pressed);
 }
 
 /* ----------------------------------------
@@ -18,7 +46,7 @@
  * ---------------------------------------- */
 
 .cinder-dropdown__trigger {
-  display: contents;
+  display: inline-block;
 }
 
 /* ----------------------------------------
@@ -44,10 +72,9 @@
 }
 
 .cinder-dropdown-menu {
-  position: fixed;
-  inset: auto;
-  top: calc(anchor(bottom) + var(--cinder-space-1));
-  right: anchor(right);
+  position: absolute;
+  inset-block-start: calc(100% + var(--cinder-space-1));
+  inset-inline-end: 0;
   min-width: 12rem;
   max-width: calc(100vw - 1rem);
   max-height: calc(100vh - 2rem);
@@ -60,7 +87,6 @@
   color: var(--cinder-text);
   box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
   outline: none;
-  position-try-fallbacks: flip-block, flip-inline;
 }
 
 .cinder-dropdown-item {
@@ -139,37 +165,84 @@
   background: var(--cinder-border);
 }
 
-/* Popover reset — when the browser controls visibility via popover="auto",
-   remove the UA popover default styles that would otherwise interfere. */
-.cinder-dropdown__menu:popover-open,
-.cinder-dropdown__menu[popover] {
-  margin: 0;
-  border: 1px solid var(--cinder-border);
-  padding: var(--cinder-space-1) 0;
-  inset: unset;
+/* ----------------------------------------
+ * Popover-API positioning (CSS Anchor Positioning)
+ * ----------------------------------------
+ *
+ * When popover="auto" is set, the menu is promoted to the top layer where
+ * its containing block becomes the viewport — percent-based offsets like
+ * `top: 100%` no longer point at the trigger. The component sets
+ * `anchor-name` on the trigger wrapper and `position-anchor` on the menu so
+ * we can use anchor() to position relative to the trigger regardless of the
+ * top-layer promotion.
+ *
+ * `position-try-fallbacks: flip-block, flip-inline` lets the browser flip
+ * to the opposite side if the natural placement would clip the viewport.
+ *
+ * The anchor() rules are gated behind `@supports` so that browsers which
+ * shipped popover but not anchor positioning (a roughly 6-month window in
+ * Chrome / Firefox, mostly past as of this writing) fall through to the
+ * `:not([popover])`-style fallback path below. Without the gate, those
+ * browsers would render the menu at viewport-relative `inset: auto`.
+ */
+
+@supports (anchor-name: --x) and (position-anchor: --x) and (top: anchor(bottom)) {
+  .cinder-dropdown-menu[popover] {
+    position: fixed;
+    inset: auto;
+    top: calc(anchor(bottom) + var(--cinder-space-1));
+    right: anchor(right);
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
+  .cinder-dropdown__menu[popover] {
+    position: fixed;
+    margin: 0;
+    inset: auto;
+    inset-block-start: calc(anchor(bottom) + var(--cinder-space-1));
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
+  .cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu[popover] {
+    inset-inline-start: anchor(left);
+  }
+
+  .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
+    inset-inline-end: calc(100vw - anchor(right));
+  }
 }
 
 /* ----------------------------------------
- * Placement: bottom-start (default)
+ * Non-popover fallback path
+ *
+ * Browsers without the popover API render the menu inside the dropdown's
+ * relatively-positioned root, so percent-based offsets work normally.
  * ---------------------------------------- */
 
-.cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu {
+.cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu:not([popover]) {
+  position: absolute;
   inset-block-start: calc(100% + var(--cinder-space-1));
   inset-inline-start: 0;
 }
 
-/* ----------------------------------------
- * Placement: bottom-end
- * ---------------------------------------- */
-
-.cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu {
+.cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu:not([popover]) {
+  position: absolute;
   inset-block-start: calc(100% + var(--cinder-space-1));
   inset-inline-end: 0;
 }
 
 /* ----------------------------------------
  * Reduced motion
- * ---------------------------------------- */
+ * ----------------------------------------
+ *
+ * The motion-preference path uses an entrance animation that fades opacity
+ * 0 → 1. When reduced motion is preferred, the animation is skipped — but
+ * the menu must still be visible, so we set opacity: 1 unconditionally below.
+ */
+
+.cinder-dropdown__menu {
+  opacity: 1;
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .cinder-dropdown__menu {

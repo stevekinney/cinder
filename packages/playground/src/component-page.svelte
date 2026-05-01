@@ -96,36 +96,38 @@
     }
   }
 
-  // Mount each example bundle into its target element. The server compiles each
-  // .example.svelte into its own bundle at /bundle/<name>/<scenario>.js (separate
-  // from the component-page bundle itself). We dynamically import them so the
-  // component-page doesn't need to know the module graph at compile time.
+  // Mount each example into its target. The page-bundle server route bundles
+  // every scenario for this component together with this page, sharing one
+  // Svelte runtime, and exposes the components on window.__CINDER_SCENARIOS__.
   $effect(() => {
-    // Mount examples once; they stay mounted and receive control updates via the
-    // 'cinder:controls-updated' event rather than being remounted on each change.
-
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
     const localApps: ReturnType<typeof mount>[] = [];
     let cancelled = false;
 
+    const registry =
+      ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
+        | Record<string, unknown>
+        | undefined) ?? {};
+
     for (const { scenario } of examples) {
       const containerId = `example-mount-${scenario}`;
 
-      // Use a microtask so the DOM element rendered by the template is
+      // Defer to a microtask so the DOM element rendered by the template is
       // guaranteed to exist before we try to mount into it.
-      queueMicrotask(async () => {
+      queueMicrotask(() => {
         if (cancelled) return;
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        try {
-          const module = await import(`/bundle/${componentName}/${scenario}.js`);
-          if (cancelled) return;
-          const Component = module.default;
-          if (typeof Component !== 'function') return;
+        const Component = registry[scenario];
+        if (typeof Component !== 'function') {
+          console.error(`[cinder playground] no registered component for scenario "${scenario}"`);
+          return;
+        }
 
-          const app = mount(Component, { target: container });
+        try {
+          const app = mount(Component as Parameters<typeof mount>[0], { target: container });
           localApps.push(app);
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
@@ -289,9 +291,15 @@
   .example-preview {
     padding: var(--cinder-space-6);
     min-height: 4rem;
+    display: block;
+  }
+
+  /* Scoped to .example-preview descendants so the helper can't leak into
+     unrelated pages even though the inner selector is :global. */
+  .example-preview :global(.example-preview-row) {
     display: flex;
-    align-items: flex-start;
     flex-wrap: wrap;
+    align-items: flex-start;
     gap: var(--cinder-space-4);
   }
 

@@ -30,10 +30,21 @@
   const setOpen = getContext<(open: boolean) => void>(DROPDOWN_SET_OPEN);
 
   let menuElement = $state<HTMLDivElement | null>(null);
+  let focusedFallbackOpen = false;
 
   $effect(() => {
     registerMenu(menuElement);
     return () => registerMenu(null);
+  });
+
+  $effect(() => {
+    if (context.supportsPopover || !context.isOpen) {
+      focusedFallbackOpen = false;
+      return;
+    }
+    if (focusedFallbackOpen) return;
+    focusedFallbackOpen = true;
+    void tick().then(() => focusMenuItem(0));
   });
 
   function focusMenuItem(index: number): void {
@@ -45,6 +56,13 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setOpen(false);
+      context.focusTrigger();
+      return;
+    }
+
     const items = menuElement?.querySelectorAll<HTMLElement>(
       '[role="menuitem"]:not([data-disabled])',
     );
@@ -78,20 +96,22 @@
   }
 </script>
 
-<div
-  bind:this={menuElement}
-  id={context.menuId}
-  popover="auto"
-  class={classNames('cinder-dropdown-menu', customClassName)}
-  style={`position-anchor: --${context.menuId};`}
-  role="menu"
-  aria-orientation="vertical"
-  tabindex={-1}
-  onkeydown={handleKeydown}
-  ontoggle={handleToggle}
-  {...rest}
->
-  {#if children}
-    {@render children()}
-  {/if}
-</div>
+{#if context.supportsPopover || context.isOpen}
+  <div
+    bind:this={menuElement}
+    id={context.menuId}
+    popover={context.supportsPopover ? 'auto' : undefined}
+    class={classNames('cinder-dropdown-menu', customClassName)}
+    style={context.supportsPopover ? `position-anchor: --${context.menuId};` : undefined}
+    role="menu"
+    aria-orientation="vertical"
+    tabindex={-1}
+    onkeydown={handleKeydown}
+    ontoggle={context.supportsPopover ? handleToggle : undefined}
+    {...rest}
+  >
+    {#if children}
+      {@render children()}
+    {/if}
+  </div>
+{/if}

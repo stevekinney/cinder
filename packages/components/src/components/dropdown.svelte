@@ -4,6 +4,7 @@
 
   export const DROPDOWN_CONTEXT = Symbol('cinder-dropdown');
   export const DROPDOWN_REGISTER = Symbol('cinder-dropdown-register');
+  export const DROPDOWN_REGISTER_TRIGGER = Symbol('cinder-dropdown-register-trigger');
   export const DROPDOWN_SET_OPEN = Symbol('cinder-dropdown-set-open');
 
   export type DropdownPlacement = 'bottom-start' | 'bottom-end';
@@ -11,7 +12,9 @@
   export type DropdownContext = {
     get menuId(): string;
     get isOpen(): boolean;
+    get supportsPopover(): boolean;
     close: () => void;
+    focusTrigger: () => void;
   };
 
   type DropdownBaseProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
@@ -54,14 +57,18 @@
   }: DropdownProps = $props();
 
   let compoundMenuElement = $state<HTMLElement | null>(null);
+  let compoundTriggerElement = $state<HTMLElement | null>(null);
   let compoundOpen = $state(false);
 
-  // Popover API detection is deferred to after mount so the server and client
-  // produce identical initial markup (both start with the fallback {#if open}
-  // branch). Once the component mounts on the client, we upgrade to popover if
-  // the browser supports it. This avoids a hydration mismatch.
+  // Popover + CSS Anchor Positioning detection is deferred to after mount so
+  // the server and client produce identical initial markup (both start with the
+  // fallback {#if open} branch). Popover alone is not enough: without anchor()
+  // support, top-layer menus cannot stay positioned relative to the trigger.
   let supportsPopover = $state(false);
 
+  // useId() returns identifiers like `cinder-dropdown-menu-1` — always a
+  // valid CSS ident, so it can be safely interpolated into the inline
+  // `anchor-name`/`position-anchor` styles below without sanitization.
   const menuId = useId('cinder-dropdown-menu');
 
   let rootElement: HTMLDivElement | undefined = $state();
@@ -72,12 +79,25 @@
   const usesLegacySnippetApi = $derived(Boolean(trigger));
 
   function closeCompoundMenu(): void {
-    compoundMenuElement?.hidePopover();
+    // Optional-chain the method too: when CSS Anchor Positioning is missing,
+    // the menu renders without `popover="auto"` (see dropdown-menu.svelte),
+    // and calling hidePopover() on a non-popover element throws
+    // InvalidStateError — which would prevent compoundOpen from flipping
+    // to false and leave the menu stuck open.
+    compoundMenuElement?.hidePopover?.();
     compoundOpen = false;
   }
 
   function registerCompoundMenu(element: HTMLElement | null): void {
     compoundMenuElement = element;
+  }
+
+  function registerCompoundTrigger(element: HTMLElement | null): void {
+    compoundTriggerElement = element;
+  }
+
+  function focusCompoundTrigger(): void {
+    compoundTriggerElement?.focus();
   }
 
   function setCompoundOpen(nextOpen: boolean): void {
@@ -91,9 +111,17 @@
     get isOpen() {
       return compoundOpen;
     },
+    get supportsPopover() {
+      return supportsPopover;
+    },
     close: closeCompoundMenu,
+    focusTrigger: focusCompoundTrigger,
   });
   setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerCompoundMenu);
+  setContext<(element: HTMLElement | null) => void>(
+    DROPDOWN_REGISTER_TRIGGER,
+    registerCompoundTrigger,
+  );
   setContext<(nextOpen: boolean) => void>(DROPDOWN_SET_OPEN, setCompoundOpen);
 
   // Keep aria-expanded on the trigger element in sync with open state.
@@ -115,18 +143,29 @@
 
   $effect(() => {
     // Runs only on the client after mount — safe to check browser APIs.
-    supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
+    supportsPopover =
+      typeof HTMLElement !== 'undefined' &&
+      'showPopover' in HTMLElement.prototype &&
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('anchor-name: --x') &&
+      CSS.supports('position-anchor: --x') &&
+      CSS.supports('top: anchor(bottom)');
   });
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && open) {
       open = false;
+    } else if (event.key === 'Escape' && compoundOpen) {
+      closeCompoundMenu();
+      focusCompoundTrigger();
     }
   }
 
   function handleOutsideClick(event: MouseEvent) {
     if (rootElement && !rootElement.contains(event.target as Node)) {
       open = false;
+      compoundOpen = false;
     }
   }
 
@@ -151,7 +190,7 @@
 
   // Non-popover path: listen for outside clicks while the menu is open.
   $effect(() => {
-    if (supportsPopover || !open) return;
+    if (supportsPopover || (!open && !compoundOpen)) return;
     document.addEventListener('click', handleOutsideClick);
     return () => {
       document.removeEventListener('click', handleOutsideClick);
@@ -170,9 +209,17 @@
   {#if usesLegacySnippetApi}
     <!--
       The legacy trigger wrapper intercepts clicks to toggle open, and wires ARIA attributes
-      onto the first focusable element inside the snippet.
+      onto the first focusable element inside the snippet. The anchor-name on the trigger
+      and position-anchor on the menu hand off positioning to CSS Anchor Positioning,
+      so the menu lands beside the trigger even after the popover API promotes the menu
+      into the top layer (where percent-based offsets would otherwise resolve against the viewport).
     -->
-    <div class="cinder-dropdown__trigger" bind:this={triggerWrapper} onclick={() => (open = !open)}>
+    <div
+      class="cinder-dropdown__trigger"
+      bind:this={triggerWrapper}
+      style={`anchor-name: --${menuId};`}
+      onclick={() => (open = !open)}
+    >
       {#if trigger}
         {@render trigger()}
       {/if}
@@ -186,6 +233,7 @@
         popover="auto"
         role="menu"
         data-cinder-placement={placement}
+        style={`position-anchor: --${menuId};`}
         ontoggle={handlePopoverToggle}
       >
         {#if children}

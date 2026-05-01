@@ -232,4 +232,36 @@ describe('Modal', () => {
     expect(dialog?.classList.contains('cinder-modal')).toBe(true);
     expect(dialog?.classList.contains('my-custom-class')).toBe(true);
   });
+
+  test('body container has tabindex="-1" so it can receive programmatic focus', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const body = container.querySelector('.cinder-modal__body');
+    expect(body?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('close button is the last focusable element inside the panel', () => {
+    // The close button was deliberately moved to the end of the DOM so the
+    // native <dialog>.showModal() autofocus fallback (first focusable) does
+    // not land on the X. Visually it stays in the corner via CSS.
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: textSnippet('Body content'),
+        footer: textSnippet('Footer'),
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel');
+    const focusables = panel?.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    const last = focusables?.[focusables.length - 1];
+    expect(last?.classList.contains('cinder-modal__close')).toBe(true);
+  });
 });

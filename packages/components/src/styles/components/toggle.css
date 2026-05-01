@@ -32,7 +32,7 @@
  * Pressed (on) state
  * ---------------------------------------- */
 
-.cinder-toggle[data-cinder-pressed] {
+.cinder-toggle[data-cinder-checked] {
   background: var(--cinder-toggle-track-on, var(--cinder-accent, #6366f1));
 }
 
@@ -67,7 +67,7 @@
   background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
 }
 
-.cinder-toggle[data-cinder-pressed]:hover:not(:disabled) {
+.cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
   background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
 }
 
@@ -114,7 +114,7 @@
 /* Pressed: slide thumb to the end. The travel distance is track-width minus thumb-size minus
  * the 2px gap on each side: 44 - 20 - 4 = 20px = 1.25rem.
  */
-.cinder-toggle[data-cinder-pressed] .cinder-toggle__thumb {
+.cinder-toggle[data-cinder-checked] .cinder-toggle__thumb {
   transform: translateX(var(--cinder-toggle-thumb-travel, 1.25rem));
 }
 

@@ -5,7 +5,9 @@
  *   GET /              → 302 redirect to /c/<first-component>
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
- *   GET /bundle/:name/:scenario.js → compiled example bundle (cached)
+ *   GET /page-bundle/:name.js → all-in-one bundle: component-page + every scenario
+ *                              + controls for one component, sharing one Svelte runtime
+ *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
@@ -21,7 +23,7 @@ import { dirname, join } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
-import { discoverComponents, discoverExamples } from './discover.ts';
+import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 import type { ComponentManifest } from './types.ts';
 import { generateWrapper } from './wrapper-generator.ts';
@@ -33,6 +35,9 @@ const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/c
 
 /** Compiled bundle cache: "componentName/scenario" → JS source string. */
 const bundleCache = new Map<string, string>();
+
+/** Compiled per-component page-bundle cache: componentName → JS source string. */
+const pageBundleCache = new Map<string, string>();
 
 /** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
@@ -74,7 +79,7 @@ function startWatcher(): FSWatcher[] {
           // clear the component-page bundle since it imports from svelte which
           // may pull in updated code.
           bundleCache.clear();
-          componentPageBundleCache = null;
+          pageBundleCache.clear();
           manifestCache = null;
           manifestPromise = null;
           triggerReload();
@@ -91,6 +96,7 @@ function startWatcher(): FSWatcher[] {
           const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
           if (match) {
             bundleCache.delete(`${match[1]}/${match[2]}`);
+            pageBundleCache.delete(match[1]!);
           }
           triggerReload();
         }
@@ -130,6 +136,7 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     plugins: [sveltePlugin({ generate: 'client' })],
     target: 'browser',
     format: 'esm',
+    conditions: ['bun'],
   });
 
   if (!result.success) {
@@ -145,48 +152,142 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   return code;
 }
 
-/** Extract title/description from an example file's module script via regex. */
+/**
+ * Extract title/description from an example file's module script via regex.
+ *
+ * Supports single-quoted, double-quoted, and template-literal (backtick) strings.
+ * The matched body is run through `unescapeStringLiteral` so escape sequences
+ * like `\n`, `\'`, and `\\` render correctly. Template literals with
+ * `${...}` interpolations are intentionally not supported — example metadata
+ * is a static label, not a computed expression.
+ */
 async function readExampleMetadata(
   filePath: string,
 ): Promise<{ title: string; description?: string }> {
   const source = await Bun.file(filePath).text();
-  const titleMatch = source.match(/export\s+const\s+title\s*=\s*['"]([^'"]+)['"]/);
-  const descriptionMatch = source.match(/export\s+const\s+description\s*=\s*['"]([^'"]+)['"]/);
+  // Capture group 1 = the surrounding quote (one of `'`, `"`, ``\``);
+  // group 2 = the body. The body matches anything that's not the matching
+  // quote or a backslash-escape — backreferenced \1 enforces same-quote close.
+  const stringPattern = /(['"`])((?:[^\\]|\\.)*?)\1/.source;
+  const titleMatch = source.match(new RegExp(`export\\s+const\\s+title\\s*=\\s*${stringPattern}`));
+  const descriptionMatch = source.match(
+    new RegExp(`export\\s+const\\s+description\\s*=\\s*${stringPattern}`),
+  );
   const meta: { title: string; description?: string } = {
-    title: titleMatch?.[1] ?? 'Untitled',
+    title: titleMatch ? unescapeStringLiteral(titleMatch[2] ?? '') : 'Untitled',
   };
-  if (descriptionMatch?.[1] !== undefined) {
-    meta.description = descriptionMatch[1];
+  if (descriptionMatch?.[2] !== undefined) {
+    meta.description = unescapeStringLiteral(descriptionMatch[2]);
   }
   return meta;
 }
 
-/** Cache for the component-page client bundle. */
-let componentPageBundleCache: string | null = null;
-
-/** Compile the component-page.svelte into a client bundle (cached). */
-async function buildComponentPageBundle(): Promise<string | null> {
-  if (componentPageBundleCache !== null) return componentPageBundleCache;
-
-  const entrypoint = join(PLAYGROUND_ROOT, 'src', 'component-page.svelte');
-  const result = await Bun.build({
-    entrypoints: [entrypoint],
-    plugins: [sveltePlugin({ generate: 'client' })],
-    target: 'browser',
-    format: 'esm',
+/** Resolve common JavaScript string escape sequences in a captured literal body. */
+function unescapeStringLiteral(raw: string): string {
+  return raw.replace(/\\(.)/g, (_match, char: string) => {
+    switch (char) {
+      case 'n':
+        return '\n';
+      case 't':
+        return '\t';
+      case 'r':
+        return '\r';
+      case '\\':
+        return '\\';
+      case "'":
+        return "'";
+      case '"':
+        return '"';
+      case '`':
+        return '`';
+      default:
+        return char;
+    }
   });
+}
 
-  if (!result.success) {
-    console.error('[playground] component-page bundle failed:', result.logs);
-    return null;
+/**
+ * Build the all-in-one page bundle for a single component: component-page.svelte
+ * plus every scenario, all in one `Bun.build` invocation so they share a single
+ * Svelte runtime instance in the browser.
+ *
+ * Scenarios register themselves on `window.__CINDER_SCENARIOS__`, and
+ * `component-page.svelte` reads that global on mount — no per-scenario dynamic
+ * import needed. The controls panel is loaded as a separate bundle via
+ * `/bundle/:name/controls.js`.
+ */
+async function buildPageBundle(componentName: string): Promise<string | null> {
+  if (pageBundleCache.has(componentName)) {
+    return pageBundleCache.get(componentName)!;
   }
 
-  const output = result.outputs[0];
-  if (!output) return null;
+  const scenarios = await discoverExamples(componentName);
+  // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
+  // which renders a "No examples found" fallback. Returning null here would
+  // 404 the bundle URL and the iframe would silently fail to load.
 
-  const code = await output.text();
-  componentPageBundleCache = code;
-  return code;
+  const entryTempPath = join(
+    PLAYGROUND_ROOT,
+    'src',
+    `.page-entry-${componentName}-${randomUUID()}.ts`,
+  );
+
+  const scenarioImports = scenarios
+    .map(
+      (scenario, index) =>
+        `import Scenario_${index} from './examples/${componentName}/${scenario}.example.svelte';`,
+    )
+    .join('\n');
+  const scenarioRegistrations = scenarios
+    .map((scenario, index) => `  ${JSON.stringify(scenario)}: Scenario_${index},`)
+    .join('\n');
+
+  const entrySource = `import { mount } from 'svelte';
+
+import ComponentPage from './component-page.svelte';
+${scenarioImports}
+const scenarios: Record<string, unknown> = {
+${scenarioRegistrations}
+};
+
+(window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] = scenarios;
+const target = document.getElementById('app');
+if (target === null) {
+  throw new Error('[cinder playground] #app target not found');
+}
+
+mount(ComponentPage, { target });
+`;
+
+  await Bun.write(entryTempPath, entrySource);
+
+  try {
+    const result = await Bun.build({
+      entrypoints: [entryTempPath],
+      plugins: [sveltePlugin({ generate: 'client' })],
+      target: 'browser',
+      format: 'esm',
+      conditions: ['bun'],
+    });
+
+    if (!result.success) {
+      console.error(`[playground] page bundle failed for ${componentName}:`, result.logs);
+      return null;
+    }
+
+    const output = result.outputs[0];
+    if (!output) return null;
+
+    const code = await output.text();
+    pageBundleCache.set(componentName, code);
+    return code;
+  } finally {
+    try {
+      unlinkSync(entryTempPath);
+    } catch {
+      // Ignore — file may already be gone or never written.
+    }
+  }
 }
 
 /**
@@ -242,6 +343,7 @@ async function buildControlsBundle(componentName: string): Promise<string | null
       plugins: [sveltePlugin({ generate: 'client' })],
       target: 'browser',
       format: 'esm',
+      conditions: ['bun'],
     });
 
     if (!result.success) {
@@ -290,7 +392,7 @@ async function renderComponentPage(componentName: string): Promise<string> {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${componentName} — cinder playground</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles/index.css" />
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
@@ -308,7 +410,7 @@ async function renderComponentPage(componentName: string): Promise<string> {
   <body>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
     <div id="app"></div>
-    <script type="module" src="/component-page.js"></script>
+    <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>
 </html>`;
 }
@@ -357,11 +459,23 @@ export async function handleRequest(request: Request): Promise<Response> {
     });
   }
 
-  // GET /styles.css
-  if (pathname === '/styles.css') {
-    const cssPath = join(COMPONENTS_ROOT, 'src', 'styles', 'index.css');
+  // GET /styles.css → packages/components/src/styles/index.css
+  // GET /styles/<path>.css → packages/components/src/styles/<path>.css
+  // The component-library's index.css uses `@import './tokens.css'` etc. which
+  // the browser resolves relative to the served URL — so we need to serve the
+  // full styles/ tree, not just the entry file.
+  if (pathname === '/styles.css' || pathname.startsWith('/styles/')) {
+    const STYLES_ROOT = join(COMPONENTS_ROOT, 'src', 'styles');
+    const relative = pathname === '/styles.css' ? 'index.css' : pathname.slice('/styles/'.length);
+    // Require an actual .css filename. Without this, `GET /styles/` resolves
+    // to the styles directory itself, and Bun.file(dir).text() throws a 500.
+    if (relative === '' || !relative.endsWith('.css')) return notFound();
+    // Reject path-traversal attempts.
+    if (relative.includes('..') || relative.startsWith('/')) return notFound();
+    const cssPath = join(STYLES_ROOT, relative);
+    if (!cssPath.startsWith(STYLES_ROOT)) return notFound();
     const cssFile = Bun.file(cssPath);
-    if (!(await cssFile.exists())) return notFound('styles.css not found');
+    if (!(await cssFile.exists())) return notFound(`${relative} not found`);
     const css = await cssFile.text();
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
@@ -389,10 +503,14 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 
-  // GET /component-page.js — the component-page.svelte compiled for the browser
-  if (pathname === '/component-page.js') {
-    const code = await buildComponentPageBundle();
-    if (code === null) return notFound('component-page bundle failed to build');
+  // GET /page-bundle/:name.js — the all-in-one page bundle for one component.
+  const pageBundleMatch = pathname.match(/^\/page-bundle\/([^/]+)\.js$/);
+  if (pageBundleMatch) {
+    const componentName = pageBundleMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    const code = await buildPageBundle(componentName);
+    if (code === null)
+      return notFound(`Page bundle for "${componentName}" not found or failed to build`);
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 
@@ -457,18 +575,19 @@ export async function handleRequest(request: Request): Promise<Response> {
     const allComponents = await discoverComponents();
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
-    const html = renderShell(componentName, allComponents);
+    const sidebarComponents = await discoverSidebarComponents();
+    const html = renderShell(componentName, sidebarComponents);
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   // GET / → redirect to first component
   if (pathname === '/') {
-    const allComponents = await discoverComponents();
-    if (allComponents.length === 0) {
+    const sidebarComponents = await discoverSidebarComponents();
+    if (sidebarComponents.length === 0) {
       const html = renderShell(null, []);
       return new Response(html, { headers: { 'Content-Type': 'text/html' } });
     }
-    const first = allComponents[0];
+    const first = sidebarComponents[0];
     return new Response(null, {
       status: 302,
       headers: { Location: `/c/${first}` },

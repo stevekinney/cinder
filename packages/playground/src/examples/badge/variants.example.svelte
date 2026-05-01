@@ -7,7 +7,7 @@
   import { Badge } from '../../../../components/src/index.ts';
 </script>
 
-<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+<div class="example-preview-row">
   <Badge variant="neutral">Neutral</Badge>
   <Badge variant="success">Success</Badge>
   <Badge variant="warning">Warning</Badge>

@@ -152,4 +152,101 @@ describe('Tooltip', () => {
       expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
     });
   });
+
+  test('Escape hides a visible tooltip (WAI-ARIA APG dismiss requirement)', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Dismissible tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.focusIn(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+
+    await fireEvent.keyDown(wrapper, { key: 'Escape' });
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  test('Escape on document hides a tooltip opened by hover', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Dismissible hover tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
+        'false',
+      );
+    });
+
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  test('Escape cancels a pending tooltip before the show delay completes', async () => {
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    const pendingTimers = new Map<number, () => void>();
+    let nextTimerId = 0;
+
+    globalThis.setTimeout = ((handler: TimerHandler) => {
+      nextTimerId += 1;
+      pendingTimers.set(nextTimerId, () => {
+        if (typeof handler === 'function') handler();
+      });
+      return nextTimerId;
+    }) as typeof setTimeout;
+    globalThis.clearTimeout = ((id: number | undefined) => {
+      if (typeof id === 'number') pendingTimers.delete(id);
+    }) as typeof clearTimeout;
+
+    try {
+      const { container } = render(Tooltip, {
+        props: {
+          text: 'Pending tooltip',
+          children: triggerSnippet,
+        },
+      });
+      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+      await fireEvent.mouseEnter(wrapper);
+      await fireEvent.keyDown(document, { key: 'Escape' });
+      for (const runTimer of pendingTimers.values()) {
+        runTimer();
+      }
+
+      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  test('Escape on a hidden tooltip is a no-op', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Already hidden',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    await fireEvent.keyDown(wrapper, { key: 'Escape' });
+    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+  });
 });

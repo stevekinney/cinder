@@ -6,6 +6,7 @@
 
 .cinder-surface[data-cinder-tone='raised'] {
   background: var(--cinder-surface-raised);
+  box-shadow: var(--cinder-shadow-sm);
 }
 
 .cinder-surface[data-cinder-tone='inset'] {

@@ -1,6 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Dropdown separator';
-  export const description = 'Separators divide menu item groups.';
+  export const title = 'With separators';
+  export const description =
+    'DropdownSeparator divides menu item groups; useful before destructive actions.';
 </script>
 
 <script lang="ts">
@@ -13,10 +14,11 @@
   } from '../../../../components/src/index.ts';
 </script>
 
-<Dropdown id="separator-demo">
+<Dropdown id="dropdown-with-separator">
   <DropdownTrigger>More actions</DropdownTrigger>
   <DropdownMenu>
     <DropdownItem>Copy link</DropdownItem>
+    <DropdownItem>Duplicate</DropdownItem>
     <DropdownSeparator />
     <DropdownItem variant="danger">Delete</DropdownItem>
   </DropdownMenu>

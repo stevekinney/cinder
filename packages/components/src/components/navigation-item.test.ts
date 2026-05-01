@@ -81,6 +81,42 @@ describe('NavigationItem rendering', () => {
     expect(clickCount).toBe(0);
   });
 
+  test('disabled link keeps href so it remains discoverable as a link', () => {
+    const { container } = render(NavigationItem, {
+      props: {
+        href: '/protected',
+        disabled: true,
+        children: (() => {}) as never,
+      },
+    });
+    const anchor = container.querySelector('a');
+    expect(anchor?.getAttribute('href')).toBe('/protected');
+  });
+
+  test('disabled link does not override tabindex so it remains discoverable by keyboard', () => {
+    const { container } = render(NavigationItem, {
+      props: {
+        href: '/protected',
+        disabled: true,
+        children: (() => {}) as never,
+      },
+    });
+    const anchor = container.querySelector('a');
+    expect(anchor?.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test('enabled link has its href and no tabindex override', () => {
+    const { container } = render(NavigationItem, {
+      props: {
+        href: '/dashboard',
+        children: (() => {}) as never,
+      },
+    });
+    const anchor = container.querySelector('a');
+    expect(anchor?.getAttribute('href')).toBe('/dashboard');
+    expect(anchor?.hasAttribute('tabindex')).toBe(false);
+  });
+
   test('disabled button has aria-disabled and blocks onClick', () => {
     let clickCount = 0;
     const { container } = render(NavigationItem, {

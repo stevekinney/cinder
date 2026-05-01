@@ -56,3 +56,14 @@ export async function discoverAll(): Promise<Array<{ name: string; exampleCount:
 
   return results;
 }
+
+/**
+ * Components that should appear in the playground sidebar — those with at least
+ * one `.example.svelte` file. Compose-only subcomponents (e.g. `accordion-item`,
+ * `dropdown-label`, `radio`, `tab`) intentionally have no example folder and are
+ * therefore absent from the sidebar without any name-based blacklist.
+ */
+export async function discoverSidebarComponents(): Promise<string[]> {
+  const all = await discoverAll();
+  return all.filter(({ exampleCount }) => exampleCount > 0).map(({ name }) => name);
+}

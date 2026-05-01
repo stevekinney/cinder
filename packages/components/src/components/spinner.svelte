@@ -11,7 +11,7 @@
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
 
-  const { size = 'md', label = 'Loading...', class: className }: SpinnerProps = $props();
+  const { size = 'md', label = 'Loading', class: className }: SpinnerProps = $props();
 </script>
 
 <span

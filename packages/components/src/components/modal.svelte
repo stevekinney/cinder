@@ -26,6 +26,7 @@
   }: ModalProps = $props();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
+  let bodyElement: HTMLDivElement | undefined = $state();
   // `mounted` is false during SSR and becomes true after the first client-side effect.
   // The dialog renders only when mounted (client) or when open (SSR with open=true).
   // This keeps the <dialog> absent from SSR HTML when closed, while letting the client
@@ -47,6 +48,15 @@
     if (open && !dialogElement.open) {
       capturedFocus = captureFocus();
       dialogElement.showModal();
+      // Initial focus strategy:
+      //   1. If a child carries `autofocus`, the native dialog already focused it.
+      //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
+      //      lands on meaningful content rather than the close-X button — which
+      //      would otherwise be the first sequentially-focusable element.
+      const hasExplicitAutofocus = dialogElement.querySelector('[autofocus]') !== null;
+      if (!hasExplicitAutofocus && bodyElement) {
+        bodyElement.focus();
+      }
     } else if (!open && dialogElement.open) {
       // Only close if the dialog is actually open — close() throws InvalidStateError
       // if called on a dialog that was never opened.
@@ -91,27 +101,9 @@
       <div class="cinder-modal__panel">
         <div class="cinder-modal__header">
           <h2 id={titleId} class="cinder-modal__title">{title}</h2>
-          <button
-            type="button"
-            class="cinder-modal__close"
-            aria-label="Close dialog"
-            onclick={handleClose}
-          >
-            <svg
-              class="cinder-modal__close-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-              />
-            </svg>
-          </button>
         </div>
 
-        <div class="cinder-modal__body">
+        <div bind:this={bodyElement} class="cinder-modal__body" tabindex="-1">
           {@render children()}
         </div>
 
@@ -120,6 +112,29 @@
             {@render footer()}
           </div>
         {/if}
+
+        <!--
+          Rendered last so tabbing forward from the panel leaves it last in
+          sequential focus order. CSS positions it visually in the corner.
+        -->
+        <button
+          type="button"
+          class="cinder-modal__close"
+          aria-label="Close dialog"
+          onclick={handleClose}
+        >
+          <svg
+            class="cinder-modal__close-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+            />
+          </svg>
+        </button>
       </div>
     {/if}
   </dialog>

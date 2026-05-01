@@ -10,7 +10,7 @@
   let openEnd = $state(false);
 </script>
 
-<div style="display: flex; gap: 1rem;">
+<div class="example-preview-row">
   <Dropdown bind:open={openStart} placement="bottom-start">
     {#snippet trigger()}
       <button type="button">Bottom-start ▾</button>

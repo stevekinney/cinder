@@ -1,6 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Dropdown item';
-  export const description = 'Menu items can close on selection and carry a danger variant.';
+  export const title = 'With clickable items';
+  export const description =
+    'DropdownItem accepts onclick handlers and a danger variant for destructive actions.';
 </script>
 
 <script lang="ts">
@@ -15,10 +16,11 @@
 </script>
 
 <div style="display: grid; gap: 0.75rem;">
-  <Dropdown id="item-demo">
+  <Dropdown id="dropdown-with-items">
     <DropdownTrigger>Document actions</DropdownTrigger>
     <DropdownMenu>
       <DropdownItem onclick={() => (selected = 'Copy link')}>Copy link</DropdownItem>
+      <DropdownItem onclick={() => (selected = 'Duplicate')}>Duplicate</DropdownItem>
       <DropdownItem variant="danger" onclick={() => (selected = 'Delete')}>Delete</DropdownItem>
     </DropdownMenu>
   </Dropdown>

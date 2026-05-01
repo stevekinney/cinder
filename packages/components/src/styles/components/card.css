@@ -3,6 +3,7 @@
  * ======================================== */
 
 .cinder-card {
+  inline-size: 100%;
   border-radius: var(--cinder-radius-lg);
   background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border-muted);
