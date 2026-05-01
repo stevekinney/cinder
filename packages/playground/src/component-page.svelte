@@ -78,22 +78,11 @@
     );
   });
 
-  // Components with required snippet/unknown props can't be previewed by the
-  // generic wrapper — there's no way for the playground to supply meaningful
-  // children. In that case the Try-it card stays hidden and the static
-  // scenarios stand alone.
-  const hasUncontrollableRequiredProps: boolean = $derived.by(() => {
-    if (manifest === null) return false;
-    return manifest.props.some(
-      (prop: PropManifest) =>
-        prop.optional === false &&
-        (prop.control.kind === 'snippet' || prop.control.kind === 'unknown'),
-    );
-  });
-
-  const showTryIt: boolean = $derived(
-    controllableProps.length > 0 && !hasUncontrollableRequiredProps,
-  );
+  // Try-it is shown whenever there's anything to control. The wrapper-generator
+  // synthesises filler defaults for required snippets and unknown-typed props
+  // (e.g. accordion's `children`, button's `label`) so the preview still
+  // renders even when those props can't be exposed in the controls panel.
+  const showTryIt: boolean = $derived(controllableProps.length > 0);
 
   async function handleDetailsToggle(event: Event, scenario: string): Promise<void> {
     const details = event.currentTarget as HTMLDetailsElement;

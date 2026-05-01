@@ -33,6 +33,50 @@ function toPascalCase(kebab: string): string {
 }
 
 /**
+ * Required props the controls panel can't surface (snippet bodies, unknown
+ * types). The wrapper supplies sensible defaults so the component still
+ * renders even when these aren't bound from the controls panel.
+ *
+ * Heuristic categories:
+ * - `children`-like snippets render a small `Sample content.` string.
+ * - Other named snippets render their name as a placeholder.
+ * - `id` / `name`-like required strings get a stable synthetic value.
+ * - Event handler names (`on[A-Z]...`, `onclick`, etc.) get a no-op fn.
+ * - Anything else falls back to undefined and the component decides.
+ */
+function defaultExpressionFor(prop: PropManifest): string | null {
+  if (prop.control.kind === 'snippet') {
+    // Use a snippet form so the {@render ...} call sites in the component
+    // see a real Snippet, not a string.
+    return null;
+  }
+  if (prop.control.kind === 'unknown') {
+    const lower = prop.name.toLowerCase();
+    if (
+      prop.name.startsWith('on') &&
+      prop.name.length > 2 &&
+      prop.name[2] === prop.name[2]?.toUpperCase()
+    ) {
+      return '() => {}';
+    }
+    if (['onclick', 'onchange', 'oninput', 'onsubmit'].includes(lower)) {
+      return '() => {}';
+    }
+    if (['id', 'name', 'label', 'title', 'placeholder'].some((needle) => lower.includes(needle))) {
+      return JSON.stringify(`tryit-${prop.name}`);
+    }
+    if (lower.includes('value') || lower.includes('text')) {
+      return JSON.stringify('');
+    }
+    if (lower.includes('items') || lower.includes('options') || lower.includes('children')) {
+      return '[]';
+    }
+    return 'undefined';
+  }
+  return null;
+}
+
+/**
  * Generate a Svelte 5 wrapper component source string for the given manifest.
  *
  * The wrapper:
@@ -40,10 +84,10 @@ function toPascalCase(kebab: string): string {
  * 2. Reads prop values from `(window as any).__CINDER_CONTROLS__ ?? {}` into a
  *    reactive `$state` object.
  * 3. Filters to only the controllable props (no snippets, no `class`).
- * 4. Renders `<Component {...controlProps} />`.
- *
- * Snippet props are intentionally omitted — they cannot be represented as
- * serialized form values.
+ * 4. Synthesises filler defaults for required snippet / unknown-typed props
+ *    so components like Accordion (which require `children`) still render
+ *    something inside the Try-it preview.
+ * 5. Renders `<Component {...controlProps} {...filler}>{#snippet children()}…{/snippet}</Component>`.
  */
 export function generateWrapper(manifest: ComponentManifest): string {
   const componentIdentifier = toPascalCase(manifest.name);
@@ -54,6 +98,51 @@ export function generateWrapper(manifest: ComponentManifest): string {
     propKeys.length > 0
       ? `// Controllable props: ${propKeys.join(', ')}`
       : '// No controllable props for this component';
+
+  // Required snippet props the wrapper has to satisfy. We render each as a
+  // top-level snippet block in the template — `children` gets a sample
+  // paragraph, others get their name as a placeholder string.
+  const requiredSnippets = manifest.props.filter(
+    (prop) => prop.control.kind === 'snippet' && prop.optional === false,
+  );
+
+  // Required non-snippet props the controls panel can't handle (kind: 'unknown').
+  // Generate a `let` binding with a sensible default so spreading the wrapper
+  // covers the contract.
+  const requiredUnknown = manifest.props.filter(
+    (prop) =>
+      prop.optional === false &&
+      prop.control.kind === 'unknown' &&
+      prop.name !== 'class' &&
+      // Don't override anything the controls panel will provide.
+      !propKeys.includes(prop.name),
+  );
+
+  const fillerLines = requiredUnknown
+    .map((prop) => {
+      const expr = defaultExpressionFor(prop);
+      if (expr === null) return null;
+      return `  const ${prop.name}_filler = ${expr};`;
+    })
+    .filter((line): line is string => line !== null);
+
+  const fillerSpread = requiredUnknown
+    .map((prop) => `${prop.name}: ${prop.name}_filler`)
+    .join(', ');
+
+  const snippetBlocks = requiredSnippets
+    .map((prop) => {
+      if (prop.name === 'children') {
+        return `  {#snippet children()}<span style="color: var(--cinder-text-muted);">Sample content.</span>{/snippet}`;
+      }
+      return `  {#snippet ${prop.name}()}<span style="color: var(--cinder-text-muted);">[${prop.name}]</span>{/snippet}`;
+    })
+    .join('\n');
+
+  const fillerObjectLine =
+    fillerSpread.length > 0
+      ? `  const fillerProps: Record<string, unknown> = { ${fillerSpread} };`
+      : `  const fillerProps: Record<string, unknown> = {};`;
 
   return `<script lang="ts">
   import { onMount } from 'svelte';
@@ -69,6 +158,9 @@ export function generateWrapper(manifest: ComponentManifest): string {
   }
 
   let controlProps = $state<Record<string, unknown>>(readControlProps());
+
+${fillerLines.join('\n')}
+${fillerObjectLine}
 
   // Re-read props reactively whenever the host page updates __CINDER_CONTROLS__.
   // The host dispatches 'cinder:controls-updated' on window after each change.
@@ -87,6 +179,8 @@ export function generateWrapper(manifest: ComponentManifest): string {
   });
 </script>
 
-<${componentIdentifier} {...controlProps} />
+<${componentIdentifier} {...fillerProps} {...controlProps}>
+${snippetBlocks}
+</${componentIdentifier}>
 `;
 }
