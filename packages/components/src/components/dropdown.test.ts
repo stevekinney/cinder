@@ -197,6 +197,39 @@ describe('Dropdown', () => {
     });
   });
 
+  test('Escape on compound menu does not double-fire close+focus through parent handler', async () => {
+    // Regression for the Bugbot finding: dropdown-menu owns Escape for the
+    // compound API; dropdown.svelte's keydown handler must not run a second
+    // close+focus pass when compoundOpen was true. We assert that focus
+    // lands on the trigger exactly once and that the menu is gone — the
+    // observable failure mode of the double-call would be subtle, but at
+    // minimum this guards against regression of the parent-handler split.
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    let triggerFocusCalls = 0;
+    const originalFocus = trigger.focus.bind(trigger);
+    trigger.focus = () => {
+      triggerFocusCalls += 1;
+      originalFocus();
+    };
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(container.querySelector('[role="menu"]')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+    // Exactly one focus restoration — without the fix, the compound parent
+    // handler would call focusCompoundTrigger() a second time.
+    expect(triggerFocusCalls).toBe(1);
+  });
+
   test('compound item click closes the menu and invokes onclick', async () => {
     const { container } = render(DropdownCompoundFixture);
 

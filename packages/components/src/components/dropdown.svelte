@@ -154,11 +154,13 @@
   });
 
   function handleKeydown(event: KeyboardEvent) {
+    // Compound API: the inner DropdownMenu owns Escape (closes the menu and
+    // restores focus to the trigger). Don't run a second close+focus pass
+    // here — Svelte 5 delegates onkeydown to the document, so the child
+    // handler runs in the same bubble walk before this one and handles it.
+    if (compoundOpen) return;
     if (event.key === 'Escape' && open) {
       open = false;
-    } else if (event.key === 'Escape' && compoundOpen) {
-      closeCompoundMenu();
-      focusCompoundTrigger();
     }
   }
 
