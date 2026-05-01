@@ -6,7 +6,7 @@
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
  *   GET /page-bundle/:name.js → all-in-one bundle: component-page + every scenario
- *                              + controls for one component, sharing one Svelte runtime
+ *                              for one component, sharing one Svelte runtime
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
@@ -103,7 +103,7 @@ function startWatcher(): FSWatcher[] {
     );
 
     // Watch the playground src tree (component-page.svelte, render-shell.ts,
-    // controls.ts, etc.) — these are baked into every page bundle, so any edit
+    // analyze.ts, etc.) — these are baked into every page bundle, so any edit
     // must invalidate every cached bundle.
     const playgroundSrcPath = join(PLAYGROUND_ROOT, 'src');
     created.push(

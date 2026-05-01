@@ -41,8 +41,6 @@
   background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-md);
-  /* Clip the variant accent stripe to the rounded corners. */
-  overflow: hidden;
   box-shadow:
     0 1px 2px oklch(0% 0 0 / 0.04),
     0 4px 12px oklch(0% 0 0 / 0.08);
@@ -71,14 +69,21 @@
 }
 
 /* Variant accent stripe — drawn as a ::before pseudo so it sits inside the
- * toast's border-radius without fighting border-left's miter corners. */
+ * toast's border-radius without fighting border-left's miter corners. The
+ * stripe rounds its own start-side corners (matching the toast's outer
+ * radius minus the 1px border) so the parent toast does not need
+ * `overflow: hidden`, which would clip the dismiss button's 44×44 ::after
+ * hit-area pseudo-element. */
 .cinder-toast[data-cinder-variant]::before {
   content: '';
   position: absolute;
+  /* Sit just inside the toast's 1px border so the stripe doesn't cover it. */
   inset-block: 0;
   inset-inline-start: 0;
   width: 3px;
   background: var(--_cinder-toast-accent, transparent);
+  border-start-start-radius: calc(var(--cinder-radius-md) - 1px);
+  border-end-start-radius: calc(var(--cinder-radius-md) - 1px);
 }
 
 .cinder-toast[data-cinder-variant='info'] {

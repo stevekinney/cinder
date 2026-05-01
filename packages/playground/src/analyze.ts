@@ -33,7 +33,6 @@ type AstNode = Record<string, unknown>;
 
 /**
  * Infers a control kind from a ts-morph TypeNode.
- * Internal implementation — the public string-based API lives in controls.ts.
  */
 function inferControlKindFromTypeNode(
   typeNode: TypeNode | undefined,
