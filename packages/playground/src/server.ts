@@ -26,7 +26,6 @@ import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 import type { ComponentManifest } from './types.ts';
-import { generateWrapper } from './wrapper-generator.ts';
 
 export const PORT = 4173;
 // import.meta.dirname is packages/playground/src/
@@ -227,16 +226,11 @@ function unescapeStringLiteral(raw: string): string {
 
 /**
  * Build the all-in-one page bundle for a single component: component-page.svelte
- * plus every scenario plus the "Try it" controls wrapper, all in one
- * `Bun.build` invocation so they share a single Svelte runtime instance in
- * the browser.
+ * plus every scenario, all in one `Bun.build` invocation so they share a
+ * single Svelte runtime instance in the browser.
  *
  * Scenarios register themselves on `window.__CINDER_SCENARIOS__`, and
- * `component-page.svelte` reads that global on mount. The controls wrapper
- * (when the component has controllable props) is exposed on
- * `window.__CINDER_TRY_IT__` and mounted by component-page into the
- * `#try-it-mount` container — sharing runtime with the host avoids the
- * effect_orphan error that a separate dynamically-imported bundle would hit.
+ * `component-page.svelte` reads that global on mount.
  */
 async function buildPageBundle(componentName: string): Promise<string | null> {
   if (pageBundleCache.has(componentName)) {
@@ -247,23 +241,6 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
   // which renders a "No examples found" fallback. Returning null here would
   // 404 the bundle URL and the iframe would silently fail to load.
-
-  const manifests = await getManifests();
-  const manifest = manifests.find((m) => m.kebabName === componentName);
-
-  // Generate the "Try it" wrapper temp file when the component has a manifest
-  // — we still emit the bundle even if there are no controllable props so the
-  // page can render a no-controls preview if it wants to.
-  let tryItTempPath: string | null = null;
-  if (manifest !== undefined) {
-    const wrapperSource = generateWrapper({
-      ...manifest,
-      name: manifest.kebabName,
-      importPath: manifest.file,
-    });
-    tryItTempPath = join(PLAYGROUND_ROOT, 'src', `.try-it-${componentName}-${randomUUID()}.svelte`);
-    await Bun.write(tryItTempPath, wrapperSource);
-  }
 
   const entryTempPath = join(
     PLAYGROUND_ROOT,
@@ -281,26 +258,15 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
     .map((scenario, index) => `  ${JSON.stringify(scenario)}: Scenario_${index},`)
     .join('\n');
 
-  const tryItImport =
-    tryItTempPath === null
-      ? ''
-      : `import TryItWrapper from './${tryItTempPath.split('/').pop()}';\n`;
-  const tryItRegistration =
-    tryItTempPath === null
-      ? ''
-      : `(window as unknown as Record<string, unknown>)['__CINDER_TRY_IT__'] = TryItWrapper;\n`;
-
   const entrySource = `import { mount } from 'svelte';
 
 import ComponentPage from './component-page.svelte';
 ${scenarioImports}
-${tryItImport}
 const scenarios: Record<string, unknown> = {
 ${scenarioRegistrations}
 };
 
 (window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] = scenarios;
-${tryItRegistration}
 const target = document.getElementById('app');
 if (target === null) {
   throw new Error('[cinder playground] #app target not found');
@@ -332,13 +298,10 @@ mount(ComponentPage, { target });
     pageBundleCache.set(componentName, code);
     return code;
   } finally {
-    for (const path of [entryTempPath, tryItTempPath]) {
-      if (path === null) continue;
-      try {
-        unlinkSync(path);
-      } catch {
-        // Ignore — file may already be gone or never written.
-      }
+    try {
+      unlinkSync(entryTempPath);
+    } catch {
+      // Ignore — file may already be gone or never written.
     }
   }
 }
@@ -356,67 +319,6 @@ async function getManifests(): Promise<ComponentManifest[]> {
     return manifestCache;
   } finally {
     manifestPromise = null;
-  }
-}
-
-/**
- * Compile a controls wrapper bundle for the given component and cache the result
- * under the key `${componentName}/controls`.
- */
-async function buildControlsBundle(componentName: string): Promise<string | null> {
-  const cacheKey = `${componentName}/controls`;
-  if (bundleCache.has(cacheKey)) {
-    return bundleCache.get(cacheKey)!;
-  }
-
-  const manifests = await getManifests();
-  const manifest = manifests.find((m) => m.kebabName === componentName);
-  if (manifest === undefined) return null;
-
-  // Use manifest.file (absolute source path) as importPath so Bun.build can
-  // resolve it from the temp wrapper file without needing the cinder package installed.
-  const wrapperSource = generateWrapper({
-    ...manifest,
-    name: manifest.kebabName,
-    importPath: manifest.file,
-  });
-
-  // Write the temp wrapper inside the repo so Bun's module resolver can find
-  // 'svelte' and other local deps (tmpdir is outside the module graph).
-  const tempPath = join(
-    PLAYGROUND_ROOT,
-    'src',
-    `.controls-${componentName}-${randomUUID()}.svelte`,
-  );
-  await Bun.write(tempPath, wrapperSource);
-
-  try {
-    const result = await Bun.build({
-      entrypoints: [tempPath],
-      plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-    });
-
-    if (!result.success) {
-      console.error(`[playground] controls bundle failed for ${componentName}:`, result.logs);
-      return null;
-    }
-
-    const output = result.outputs[0];
-    if (!output) return null;
-
-    const code = await output.text();
-    bundleCache.set(cacheKey, code);
-    return code;
-  } finally {
-    // Best-effort synchronous cleanup of the temp file.
-    try {
-      unlinkSync(tempPath);
-    } catch {
-      // Ignore — file may already be gone or never written.
-    }
   }
 }
 
@@ -533,18 +435,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
-  // GET /bundle/:name/controls.js — compiled wrapper bundle (must precede the generic route)
-  const controlsBundleMatch = pathname.match(/^\/bundle\/([^/]+)\/controls\.js$/);
-  if (controlsBundleMatch) {
-    const componentName = controlsBundleMatch[1]!;
-    if (!isSafeSegment(componentName)) return notFound();
-    const code = await buildControlsBundle(componentName);
-    if (code === null)
-      return notFound(`Controls bundle for "${componentName}" not found or failed to build`);
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
-  }
-
-  // GET /bundle/:name/:scenario.js (scenario must not be "controls" — handled above)
+  // GET /bundle/:name/:scenario.js
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
     const componentName = bundleMatch[1]!;
