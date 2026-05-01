@@ -28,6 +28,12 @@ function allowsStyleBlock(path: string): boolean {
  * Bun plugin that compiles Svelte 5 components with `svelte/compiler`.
  *
  * - `generate`: chooses client-side or server-side rendering output.
+ * - `cssMode`: `'auto'` (default) keeps library components on `external` and
+ *   playground files on `injected`. `'injected'` forces every component to
+ *   inject its CSS into the JS bundle — required for the playground server
+ *   so domain-suite components (chat, diff-viewer, markdown-editor,
+ *   review-editor) get their scoped styles applied. `'external'` mirrors
+ *   the production library build.
  * - Rejects any component that carries a `<style>` block, except for files
  *   under `packages/playground/` and the domain-suite components allowlisted
  *   above. Styles belong in `src/styles/` so the design system has a single
@@ -36,21 +42,31 @@ function allowsStyleBlock(path: string): boolean {
  *   like `@testing-library/svelte-core` that use runes in plain modules work at runtime.
  */
 export function sveltePlugin(
-  options: { generate: GenerationTarget } = { generate: 'client' },
+  options: { generate: GenerationTarget; cssMode?: 'auto' | 'injected' | 'external' } = {
+    generate: 'client',
+  },
 ): BunPlugin {
+  const cssMode = options.cssMode ?? 'auto';
   return {
     name: `svelte-${options.generate}`,
     setup(builder) {
       builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
-        // Playground files inject their styles at runtime so dev-only chrome
-        // renders without depending on the design-system CSS surface. Library
-        // components keep `external` so their CSS flows through `src/styles/`.
+        // Playground files always inject their CSS so dev-only chrome renders
+        // without depending on the design-system CSS surface. For library
+        // components, `cssMode: 'injected'` forces inline CSS too — used by
+        // the playground server so domain-suite scoped styles apply.
         const isPlaygroundFile = path.replaceAll('\\', '/').includes('/packages/playground/');
+        const css =
+          isPlaygroundFile || cssMode === 'injected'
+            ? 'injected'
+            : cssMode === 'external'
+              ? 'external'
+              : 'external';
         const compileResult = compile(source, {
           filename: path,
           generate: options.generate,
-          css: isPlaygroundFile ? 'injected' : 'external',
+          css,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
           // runs so production builds and test/dev loads stay in sync.
           dev: process.env['NODE_ENV'] !== 'production',

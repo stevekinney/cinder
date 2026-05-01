@@ -102,6 +102,25 @@ function startWatcher(): FSWatcher[] {
         }
       }),
     );
+
+    // Watch the playground src tree (component-page.svelte, render-shell.ts,
+    // controls.ts, etc.) — these are baked into every page bundle, so any edit
+    // must invalidate every cached bundle.
+    const playgroundSrcPath = join(PLAYGROUND_ROOT, 'src');
+    created.push(
+      watch(playgroundSrcPath, { recursive: true }, (_event, filename) => {
+        if (
+          filename &&
+          !filename.startsWith('examples/') &&
+          !filename.endsWith('.test.ts') &&
+          !filename.startsWith('.')
+        ) {
+          bundleCache.clear();
+          pageBundleCache.clear();
+          triggerReload();
+        }
+      }),
+    );
   } catch (error) {
     // Close any watchers already created before rethrowing.
     for (const watcher of created) {
@@ -133,7 +152,7 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
 
   const result = await Bun.build({
     entrypoints: [examplePath],
-    plugins: [sveltePlugin({ generate: 'client' })],
+    plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
     target: 'browser',
     format: 'esm',
     conditions: ['bun'],
@@ -208,13 +227,16 @@ function unescapeStringLiteral(raw: string): string {
 
 /**
  * Build the all-in-one page bundle for a single component: component-page.svelte
- * plus every scenario, all in one `Bun.build` invocation so they share a single
- * Svelte runtime instance in the browser.
+ * plus every scenario plus the "Try it" controls wrapper, all in one
+ * `Bun.build` invocation so they share a single Svelte runtime instance in
+ * the browser.
  *
  * Scenarios register themselves on `window.__CINDER_SCENARIOS__`, and
- * `component-page.svelte` reads that global on mount — no per-scenario dynamic
- * import needed. The controls panel is loaded as a separate bundle via
- * `/bundle/:name/controls.js`.
+ * `component-page.svelte` reads that global on mount. The controls wrapper
+ * (when the component has controllable props) is exposed on
+ * `window.__CINDER_TRY_IT__` and mounted by component-page into the
+ * `#try-it-mount` container — sharing runtime with the host avoids the
+ * effect_orphan error that a separate dynamically-imported bundle would hit.
  */
 async function buildPageBundle(componentName: string): Promise<string | null> {
   if (pageBundleCache.has(componentName)) {
@@ -225,6 +247,23 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
   // which renders a "No examples found" fallback. Returning null here would
   // 404 the bundle URL and the iframe would silently fail to load.
+
+  const manifests = await getManifests();
+  const manifest = manifests.find((m) => m.kebabName === componentName);
+
+  // Generate the "Try it" wrapper temp file when the component has a manifest
+  // — we still emit the bundle even if there are no controllable props so the
+  // page can render a no-controls preview if it wants to.
+  let tryItTempPath: string | null = null;
+  if (manifest !== undefined) {
+    const wrapperSource = generateWrapper({
+      ...manifest,
+      name: manifest.kebabName,
+      importPath: manifest.file,
+    });
+    tryItTempPath = join(PLAYGROUND_ROOT, 'src', `.try-it-${componentName}-${randomUUID()}.svelte`);
+    await Bun.write(tryItTempPath, wrapperSource);
+  }
 
   const entryTempPath = join(
     PLAYGROUND_ROOT,
@@ -242,15 +281,26 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
     .map((scenario, index) => `  ${JSON.stringify(scenario)}: Scenario_${index},`)
     .join('\n');
 
+  const tryItImport =
+    tryItTempPath === null
+      ? ''
+      : `import TryItWrapper from './${tryItTempPath.split('/').pop()}';\n`;
+  const tryItRegistration =
+    tryItTempPath === null
+      ? ''
+      : `(window as unknown as Record<string, unknown>)['__CINDER_TRY_IT__'] = TryItWrapper;\n`;
+
   const entrySource = `import { mount } from 'svelte';
 
 import ComponentPage from './component-page.svelte';
 ${scenarioImports}
+${tryItImport}
 const scenarios: Record<string, unknown> = {
 ${scenarioRegistrations}
 };
 
 (window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] = scenarios;
+${tryItRegistration}
 const target = document.getElementById('app');
 if (target === null) {
   throw new Error('[cinder playground] #app target not found');
@@ -264,7 +314,7 @@ mount(ComponentPage, { target });
   try {
     const result = await Bun.build({
       entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client' })],
+      plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
       target: 'browser',
       format: 'esm',
       conditions: ['bun'],
@@ -282,10 +332,13 @@ mount(ComponentPage, { target });
     pageBundleCache.set(componentName, code);
     return code;
   } finally {
-    try {
-      unlinkSync(entryTempPath);
-    } catch {
-      // Ignore — file may already be gone or never written.
+    for (const path of [entryTempPath, tryItTempPath]) {
+      if (path === null) continue;
+      try {
+        unlinkSync(path);
+      } catch {
+        // Ignore — file may already be gone or never written.
+      }
     }
   }
 }
@@ -340,7 +393,7 @@ async function buildControlsBundle(componentName: string): Promise<string | null
   try {
     const result = await Bun.build({
       entrypoints: [tempPath],
-      plugins: [sveltePlugin({ generate: 'client' })],
+      plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
       target: 'browser',
       format: 'esm',
       conditions: ['bun'],

@@ -78,6 +78,23 @@
     );
   });
 
+  // Components with required snippet/unknown props can't be previewed by the
+  // generic wrapper — there's no way for the playground to supply meaningful
+  // children. In that case the Try-it card stays hidden and the static
+  // scenarios stand alone.
+  const hasUncontrollableRequiredProps: boolean = $derived.by(() => {
+    if (manifest === null) return false;
+    return manifest.props.some(
+      (prop: PropManifest) =>
+        prop.optional === false &&
+        (prop.control.kind === 'snippet' || prop.control.kind === 'unknown'),
+    );
+  });
+
+  const showTryIt: boolean = $derived(
+    controllableProps.length > 0 && !hasUncontrollableRequiredProps,
+  );
+
   async function handleDetailsToggle(event: Event, scenario: string): Promise<void> {
     const details = event.currentTarget as HTMLDetailsElement;
 
@@ -146,11 +163,128 @@
       }
     };
   });
+
+  // Mount the controls-driven "Try it" wrapper. The wrapper is bundled into
+  // the same page bundle as this component (exposed on
+  // `window.__CINDER_TRY_IT__`) so it shares a Svelte runtime with the host
+  // — a separate dynamically-imported bundle would hit `effect_orphan` when
+  // its component-init effects ran in a different runtime tree.
+  //
+  // The wrapper listens for `cinder:controls-updated` and re-reads
+  // `window.__CINDER_CONTROLS__`, so the panel below the preview drives this
+  // single live instance.
+  $effect(() => {
+    if (!showTryIt) return;
+
+    let cancelled = false;
+    let mounted: ReturnType<typeof mount> | null = null;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const Wrapper = (window as unknown as Record<string, unknown>)['__CINDER_TRY_IT__'];
+      if (typeof Wrapper !== 'function') return;
+
+      const target = document.getElementById('try-it-mount');
+      if (!target) return;
+
+      try {
+        mounted = mount(Wrapper as Parameters<typeof mount>[0], { target });
+      } catch (error) {
+        console.error(
+          `[cinder playground] failed to mount Try-it wrapper for "${componentName}":`,
+          error,
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (mounted !== null) {
+        try {
+          unmount(mounted);
+        } catch {
+          // Suppress — best-effort cleanup only.
+        }
+      }
+    };
+  });
 </script>
 
 <div class="example-list">
   {#if examples.length === 0}
     <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
+  {/if}
+
+  {#if showTryIt}
+    <section class="example-card example-card--try-it">
+      <header class="example-card-header">
+        <h2 class="example-title">Try it</h2>
+        <p class="example-description">
+          Adjust the controls to see how each prop changes the rendered component.
+        </p>
+      </header>
+
+      <div class="example-layout">
+        <div class="example-preview" id="try-it-mount"></div>
+
+        <div class="controls-panel">
+          {#each controllableProps as prop (prop.name)}
+            <div class={['control-row', prop.control.kind === 'boolean' && 'control-row--inline']}>
+              <label class="control-label" for="control-tryit-{prop.name}">
+                {prop.name}
+              </label>
+
+              {#if prop.control.kind === 'boolean'}
+                <input
+                  id="control-tryit-{prop.name}"
+                  class="control-checkbox"
+                  type="checkbox"
+                  checked={Boolean(controlValues[prop.name])}
+                  onchange={(event) => {
+                    controlValues[prop.name] = (event.currentTarget as HTMLInputElement).checked;
+                  }}
+                />
+              {:else if prop.control.kind === 'number'}
+                <input
+                  id="control-tryit-{prop.name}"
+                  class="control-input"
+                  type="number"
+                  value={Number(controlValues[prop.name] ?? 0)}
+                  oninput={(event) => {
+                    controlValues[prop.name] = Number(
+                      (event.currentTarget as HTMLInputElement).value,
+                    );
+                  }}
+                />
+              {:else if prop.control.kind === 'text'}
+                <input
+                  id="control-tryit-{prop.name}"
+                  class="control-input"
+                  type="text"
+                  value={String(controlValues[prop.name] ?? '')}
+                  oninput={(event) => {
+                    controlValues[prop.name] = (event.currentTarget as HTMLInputElement).value;
+                  }}
+                />
+              {:else if prop.control.kind === 'select'}
+                <select
+                  id="control-tryit-{prop.name}"
+                  class="control-input"
+                  value={String(controlValues[prop.name] ?? '')}
+                  onchange={(event) => {
+                    controlValues[prop.name] = (event.currentTarget as HTMLSelectElement).value;
+                  }}
+                >
+                  {#each prop.control.options as option (option)}
+                    <option value={option}>{option}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    </section>
   {/if}
 
   {#each examples as { scenario, title, description } (scenario)}
@@ -164,65 +298,6 @@
 
       <div class="example-layout">
         <div class="example-preview" id="example-mount-{scenario}"></div>
-
-        {#if controllableProps.length > 0}
-          <div class="controls-panel">
-            {#each controllableProps as prop (prop.name)}
-              <div class="control-row">
-                <label class="control-label" for="control-{scenario}-{prop.name}">
-                  {prop.name}
-                </label>
-
-                {#if prop.control.kind === 'boolean'}
-                  <input
-                    id="control-{scenario}-{prop.name}"
-                    class="control-input"
-                    type="checkbox"
-                    checked={Boolean(controlValues[prop.name])}
-                    onchange={(event) => {
-                      controlValues[prop.name] = (event.currentTarget as HTMLInputElement).checked;
-                    }}
-                  />
-                {:else if prop.control.kind === 'number'}
-                  <input
-                    id="control-{scenario}-{prop.name}"
-                    class="control-input"
-                    type="number"
-                    value={Number(controlValues[prop.name] ?? 0)}
-                    oninput={(event) => {
-                      controlValues[prop.name] = Number(
-                        (event.currentTarget as HTMLInputElement).value,
-                      );
-                    }}
-                  />
-                {:else if prop.control.kind === 'text'}
-                  <input
-                    id="control-{scenario}-{prop.name}"
-                    class="control-input"
-                    type="text"
-                    value={String(controlValues[prop.name] ?? '')}
-                    oninput={(event) => {
-                      controlValues[prop.name] = (event.currentTarget as HTMLInputElement).value;
-                    }}
-                  />
-                {:else if prop.control.kind === 'select'}
-                  <select
-                    id="control-{scenario}-{prop.name}"
-                    class="control-input"
-                    value={String(controlValues[prop.name] ?? '')}
-                    onchange={(event) => {
-                      controlValues[prop.name] = (event.currentTarget as HTMLSelectElement).value;
-                    }}
-                  >
-                    {#each prop.control.options as option (option)}
-                      <option value={option}>{option}</option>
-                    {/each}
-                  </select>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {/if}
       </div>
 
       <details class="example-source" ontoggle={(event) => handleDetailsToggle(event, scenario)}>
@@ -283,6 +358,13 @@
   }
 
   .example-layout {
+    display: block;
+  }
+
+  /* When the layout includes a controls panel ("Try it" card), switch to a
+     two-column grid so the panel sits beside the preview. Static scenarios
+     without controls render as a single column. */
+  .example-layout:has(.controls-panel) {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: var(--cinder-space-4);
@@ -319,12 +401,29 @@
     gap: var(--cinder-space-1);
   }
 
+  /* Boolean controls put the label and checkbox on the same row — a small
+     checkbox on the right of a normal-cased label reads like a real form
+     control, not a stretched-empty-square. */
+  .control-row--inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+  }
+
   .control-label {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .control-row--inline .control-label {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
   }
 
   .control-input {
@@ -335,6 +434,14 @@
     background: var(--cinder-surface);
     color: var(--cinder-text);
     width: 100%;
+  }
+
+  /* Checkbox sized like a normal form control rather than stretched to fill. */
+  .control-checkbox {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
   }
 
   .example-source {

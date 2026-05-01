@@ -56,6 +56,7 @@ export function generateWrapper(manifest: ComponentManifest): string {
       : '// No controllable props for this component';
 
   return `<script lang="ts">
+  import { onMount } from 'svelte';
   import ${componentIdentifier} from '${manifest.importPath}';
 
   ${pickedComment}
@@ -71,7 +72,13 @@ export function generateWrapper(manifest: ComponentManifest): string {
 
   // Re-read props reactively whenever the host page updates __CINDER_CONTROLS__.
   // The host dispatches 'cinder:controls-updated' on window after each change.
-  $effect(() => {
+  //
+  // Use onMount rather than $effect: the wrapper is shipped as a separate
+  // compiled bundle from the host page, and Svelte's effect-orphan check
+  // rejects effects that run across runtime boundaries. onMount fires after
+  // mount() so the runtime context is established and the listener wiring
+  // is straightforward DOM rather than a reactive effect.
+  onMount(() => {
     function handleUpdate() {
       controlProps = readControlProps();
     }
