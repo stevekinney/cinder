@@ -197,6 +197,31 @@ describe('Dropdown', () => {
     });
   });
 
+  test('Escape with focus on trigger (outside menu) still closes compound menu', async () => {
+    // Regression: when focus is on the trigger (e.g. Shift+Tab back from the
+    // menu), the menu's onkeydown does not fire because the event path does
+    // not traverse the menu element. The parent dropdown's handler must
+    // fall back to closeCompoundMenu/focusCompoundTrigger.
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    });
+
+    // Move focus back to the trigger (the user can do this with Shift+Tab).
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    await fireEvent.keyDown(trigger, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(container.querySelector('[role="menu"]')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
+
   test('Escape on compound menu does not double-fire close+focus through parent handler', async () => {
     // Regression for the Bugbot finding: dropdown-menu owns Escape for the
     // compound API; dropdown.svelte's keydown handler must not run a second
