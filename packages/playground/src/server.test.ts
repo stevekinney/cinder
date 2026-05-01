@@ -120,8 +120,24 @@ describe('/styles/* (path traversal guard)', () => {
     expect(response.headers.get('Content-Type')).toBe('text/css');
   });
 
-  it('returns 404 for a path-traversal attempt', async () => {
+  it('returns 404 for a path-traversal attempt with `..` segments', async () => {
+    // Caught by the includes('..') pre-filter.
     const response = await handleRequest(req('/styles/../../../etc/passwd'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when join() resolves outside STYLES_ROOT (encoded traversal)', async () => {
+    // URL-encoded ".." segments that survive into the relative path until
+    // join() canonicalizes them. The cssPath.startsWith(STYLES_ROOT + '/')
+    // guard is the load-bearing fence here — without the trailing slash the
+    // adjacent-prefix bypass at /x/styles vs /x/styles-evil would slip past.
+    const response = await handleRequest(req('/styles/%2E%2E%2F%2E%2E%2Fpasswd.css'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for null-byte injection attempts', async () => {
+    // Defense-in-depth: ensure %00 doesn't truncate the path inside Bun.file.
+    const response = await handleRequest(req('/styles/index.css%00.png'));
     expect(response.status).toBe(404);
   });
 
