@@ -152,24 +152,58 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   return code;
 }
 
-/** Extract title/description from an example file's module script via regex. */
+/**
+ * Extract title/description from an example file's module script via regex.
+ *
+ * Supports single-quoted, double-quoted, and template-literal (backtick) strings.
+ * The matched body is run through `unescapeStringLiteral` so escape sequences
+ * like `\n`, `\'`, and `\\` render correctly. Template literals with
+ * `${...}` interpolations are intentionally not supported — example metadata
+ * is a static label, not a computed expression.
+ */
 async function readExampleMetadata(
   filePath: string,
 ): Promise<{ title: string; description?: string }> {
   const source = await Bun.file(filePath).text();
-  // Match the surrounding quote type so example strings can safely contain the
-  // *other* quote character (e.g. an HTML attribute literal inside a description).
-  const titleMatch = source.match(/export\s+const\s+title\s*=\s*(['"])((?:[^\\]|\\.)*?)\1/);
+  // Capture group 1 = the surrounding quote (one of `'`, `"`, ``\``);
+  // group 2 = the body. The body matches anything that's not the matching
+  // quote or a backslash-escape — backreferenced \1 enforces same-quote close.
+  const stringPattern = /(['"`])((?:[^\\]|\\.)*?)\1/.source;
+  const titleMatch = source.match(new RegExp(`export\\s+const\\s+title\\s*=\\s*${stringPattern}`));
   const descriptionMatch = source.match(
-    /export\s+const\s+description\s*=\s*(['"])((?:[^\\]|\\.)*?)\1/,
+    new RegExp(`export\\s+const\\s+description\\s*=\\s*${stringPattern}`),
   );
   const meta: { title: string; description?: string } = {
-    title: titleMatch?.[2] ?? 'Untitled',
+    title: titleMatch ? unescapeStringLiteral(titleMatch[2] ?? '') : 'Untitled',
   };
   if (descriptionMatch?.[2] !== undefined) {
-    meta.description = descriptionMatch[2];
+    meta.description = unescapeStringLiteral(descriptionMatch[2]);
   }
   return meta;
+}
+
+/** Resolve common JavaScript string escape sequences in a captured literal body. */
+function unescapeStringLiteral(raw: string): string {
+  return raw.replace(/\\(.)/g, (_match, char: string) => {
+    switch (char) {
+      case 'n':
+        return '\n';
+      case 't':
+        return '\t';
+      case 'r':
+        return '\r';
+      case '\\':
+        return '\\';
+      case "'":
+        return "'";
+      case '"':
+        return '"';
+      case '`':
+        return '`';
+      default:
+        return char;
+    }
+  });
 }
 
 /**

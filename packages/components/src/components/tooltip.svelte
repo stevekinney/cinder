@@ -80,7 +80,6 @@
   onmouseleave={handleMouseLeave}
   onfocusin={handleFocusIn}
   onfocusout={handleFocusOut}
-  onkeydown={handleKeydown}
   data-cinder-placement={placement}
   {@attach (el) => {
     const focusable = el.querySelector<HTMLElement>(
