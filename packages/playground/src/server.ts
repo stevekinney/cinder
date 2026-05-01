@@ -151,7 +151,7 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
 
   const result = await Bun.build({
     entrypoints: [examplePath],
-    plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
+    plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
     target: 'browser',
     format: 'esm',
     conditions: ['bun'],
@@ -237,6 +237,13 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
     return pageBundleCache.get(componentName)!;
   }
 
+  // Validate that this is an actual component before building. A bundle for a
+  // bogus name still compiles (empty scenario list + the no-examples fallback)
+  // and would 200, hiding typos behind a "No examples found" UI. The
+  // componentName must correspond to a real `.svelte` under components/src/.
+  const components = await discoverComponents();
+  if (!components.includes(componentName)) return null;
+
   const scenarios = await discoverExamples(componentName);
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
   // which renders a "No examples found" fallback. Returning null here would
@@ -280,7 +287,7 @@ mount(ComponentPage, { target });
   try {
     const result = await Bun.build({
       entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client', cssMode: 'injected' })],
+      plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
       target: 'browser',
       format: 'esm',
       conditions: ['bun'],
@@ -428,7 +435,10 @@ export async function handleRequest(request: Request): Promise<Response> {
     // Reject path-traversal attempts.
     if (relative.includes('..') || relative.startsWith('/')) return notFound();
     const cssPath = join(STYLES_ROOT, relative);
-    if (!cssPath.startsWith(STYLES_ROOT)) return notFound();
+    // Guard against traversal that survives the includes('..') pre-filter via
+    // canonicalization quirks. The trailing separator prevents adjacent-prefix
+    // bypasses (e.g. STYLES_ROOT="/x/styles" matching "/x/styles-evil/...").
+    if (!cssPath.startsWith(STYLES_ROOT + '/')) return notFound();
     const cssFile = Bun.file(cssPath);
     if (!(await cssFile.exists())) return notFound(`${relative} not found`);
     const css = await cssFile.text();

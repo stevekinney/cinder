@@ -370,12 +370,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      // Both `checked` and `pressed` are declared as `$bindable<boolean | undefined>(undefined)`
-      // so consumer code can disambiguate "not bound at all" from "bound to false". The component
-      // derives `usesLegacyPressedSemantics` from `checked === undefined && pressed !== undefined`,
-      // which means the runtime default must be `undefined`, not `false`.
-      checked: { optional: true, type_kind: 'TSBooleanKeyword', default: B(undefined) },
-      pressed: { optional: true, type_kind: 'TSBooleanKeyword', default: B(undefined) },
+      // `checked` is declared as `$bindable(false)` — a switch is binary by nature
+      // and there is no third "unbound" state to disambiguate from `false`.
+      checked: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       label: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },

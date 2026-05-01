@@ -89,6 +89,58 @@ describe('/c/:name', () => {
   });
 });
 
+describe('/page-bundle/:name.js', () => {
+  it('returns 200 application/javascript for a known component', async () => {
+    const response = await handleRequest(req(`/page-bundle/${FIXTURE_COMPONENT}.js`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/javascript');
+  }, 30_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/page-bundle/does-not-exist.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for segments with uppercase (blocked by isSafeSegment)', async () => {
+    const response = await handleRequest(req('/page-bundle/Button.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+});
+
+describe('/styles/* (path traversal guard)', () => {
+  it('returns 200 text/css for /styles/index.css', async () => {
+    const response = await handleRequest(req('/styles/index.css'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/css');
+  });
+
+  it('returns 200 text/css for /styles/foundation.css', async () => {
+    const response = await handleRequest(req('/styles/foundation.css'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/css');
+  });
+
+  it('returns 404 for a path-traversal attempt', async () => {
+    const response = await handleRequest(req('/styles/../../../etc/passwd'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for an empty relative path', async () => {
+    const response = await handleRequest(req('/styles/'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when the requested path does not end in .css', async () => {
+    const response = await handleRequest(req('/styles/index.html'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when the requested file does not exist', async () => {
+    const response = await handleRequest(req('/styles/this-file-does-not-exist.css'));
+    expect(response.status).toBe(404);
+  });
+});
+
 describe('/bundle/:name/:scenario.js', () => {
   it('returns 404 for a nonexistent example', async () => {
     const response = await handleRequest(req('/bundle/button/nonexistent.js'));

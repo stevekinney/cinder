@@ -132,11 +132,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
+  position: relative;
 }
 
 .cinder-toast__dismiss svg {
   width: 1rem;
   height: 1rem;
+}
+
+/*
+ * Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting
+ * layout. Mirrors the alert dismiss treatment.
+ */
+.cinder-toast__dismiss::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 .cinder-toast__dismiss:hover {
@@ -147,4 +162,11 @@
 .cinder-toast__dismiss:focus-visible {
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .cinder-toast__action:focus-visible,
+  .cinder-toast__dismiss:focus-visible {
+    outline-color: ButtonText;
+  }
 }
