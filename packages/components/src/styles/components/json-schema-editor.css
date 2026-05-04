@@ -224,7 +224,7 @@
 }
 
 .cinder-jse-property-row__name {
-  font-family: var(--cinder-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-sm);
   font-weight: 600;
   color: var(--cinder-text);
@@ -328,17 +328,19 @@
   flex-wrap: wrap;
 }
 
-.cinder-jse-json-view__textarea textarea {
-  font-family: var(--cinder-font-mono, ui-monospace, SFMono-Regular, monospace);
+textarea.cinder-jse-json-view__textarea {
+  font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-sm);
   line-height: 1.5;
   min-height: 16rem;
+  /* Tab characters render as 2 spaces' worth — matches the canonical text we serialise. */
+  tab-size: 2;
 }
 
 .cinder-jse-json-view__errors {
   margin: 0;
   white-space: pre-wrap;
-  font-family: var(--cinder-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-xs);
 }
 
