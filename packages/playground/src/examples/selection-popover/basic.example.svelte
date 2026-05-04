@@ -6,7 +6,13 @@
 <script lang="ts">
   import { SelectionPopover } from '../../../../components/src/index.ts';
 
-  let comments = $state<string[]>([]);
+  type Comment = { id: string; body: string };
+
+  let comments = $state<Comment[]>([]);
+
+  function addComment(body: string): void {
+    comments = [...comments, { id: crypto.randomUUID(), body }];
+  }
 </script>
 
 <div style="position: relative; min-height: 9rem;">
@@ -19,15 +25,15 @@
     id="playground-selection-popover"
     open
     position={{ x: 180, y: 96 }}
-    oncommentsubmit={(body) => (comments = [...comments, body])}
+    oncommentsubmit={addComment}
   />
 
   {#if comments.length > 0}
     <section class="comments-section" aria-label="Submitted comments">
       <h3 class="comments-title">Submitted comments</h3>
-      {#each comments as comment (comment)}
+      {#each comments as comment (comment.id)}
         <article class="comment-card">
-          {comment}
+          {comment.body}
         </article>
       {/each}
     </section>
