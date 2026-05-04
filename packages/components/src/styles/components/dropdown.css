@@ -104,9 +104,8 @@
   display: flex;
   align-items: center;
   gap: var(--cinder-space-2);
-  width: calc(100% - var(--cinder-space-1) * 2);
+  width: 100%;
   min-height: 2.75rem;
-  margin-inline: var(--cinder-space-1);
   padding-block: var(--cinder-space-2-5);
   padding-inline: var(--cinder-space-3);
   border: 0;
@@ -121,6 +120,15 @@
   transition:
     background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Scoped to the BEM-style menu (.cinder-dropdown__menu), which uses padding-block-only
+ * (no horizontal inset). Items inset themselves so the rounded hover/focus background
+ * doesn't bleed into the menu's outer corners. The flat-named .cinder-dropdown-menu
+ * variant already has padding on all sides — items there sit at full width. */
+.cinder-dropdown__menu .cinder-dropdown-item {
+  width: calc(100% - var(--cinder-space-1) * 2);
+  margin-inline: var(--cinder-space-1);
 }
 
 .cinder-dropdown-item[data-disabled] {
