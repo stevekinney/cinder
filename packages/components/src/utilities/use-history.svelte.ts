@@ -16,7 +16,7 @@
 
 export interface UseHistoryEntryMetadata {
   /** Human-readable description of the action that produced this entry. */
-  label?: string;
+  label?: string | undefined;
 }
 
 export interface UseHistoryCommitOptions extends UseHistoryEntryMetadata {
@@ -25,29 +25,29 @@ export interface UseHistoryCommitOptions extends UseHistoryEntryMetadata {
    * `coalesceMs` replace the stack top instead of pushing. Pass `undefined`
    * (or omit) for structural actions that should always push.
    */
-  coalesceKey?: string;
+  coalesceKey?: string | undefined;
 }
 
 export interface UseHistoryEntry<T> {
   value: T;
-  label?: string;
+  label?: string | undefined;
 }
 
 export interface UseHistoryOptions<T> {
   initial: T;
   /** Maximum number of entries retained in the stack. Default: 100. */
-  maxDepth?: number;
+  maxDepth?: number | undefined;
   /** Time window for coalescing rapid commits sharing a key. Default: 300ms. */
-  coalesceMs?: number;
+  coalesceMs?: number | undefined;
   /** Deep-clone strategy. Default: structuredClone. */
-  clone?: (value: T) => T;
+  clone?: ((value: T) => T) | undefined;
   /**
    * Equality predicate used to skip no-op commits. Default: stable JSON
    * serialise comparison (sorted keys). Reference identity is intentionally
    * NOT used as a sufficient signal — callers may mutate-then-commit the
    * same object reference and we should still push a new entry.
    */
-  equals?: (a: T, b: T) => boolean;
+  equals?: ((a: T, b: T) => boolean) | undefined;
 }
 
 export interface UseHistory<T> {
@@ -109,17 +109,17 @@ function defaultEquals<T>(a: T, b: T): boolean {
 }
 
 export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
-  const {
-    initial,
-    coalesceMs = 300,
-    clone = defaultClone,
-    equals = defaultEquals,
-  } = options;
+  const { initial, coalesceMs = 300, clone = defaultClone, equals = defaultEquals } = options;
 
   // Clamp maxDepth to at least 1 so the stack always has a committed entry.
   const maxDepth = Math.max(1, options.maxDepth ?? 100);
 
-  type Entry = UseHistoryEntry<T> & { coalesceKey?: string; committedAt: number };
+  type Entry = {
+    value: T;
+    label?: string | undefined;
+    coalesceKey?: string | undefined;
+    committedAt: number;
+  };
 
   // Use separate clones for the committed stack and the transient `current`
   // so direct mutation of `current` (via Svelte's deep reactivity) cannot
@@ -128,6 +128,17 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
   let stack = $state<Entry[]>([seed]);
   let pointer = $state(0);
   let current = $state<T>(clone(initial));
+
+  // Invariant: stack always contains at least one entry and pointer is always
+  // a valid index. Calls to this helper express that intent so we don't
+  // litter the implementation with `!` non-null assertions.
+  function entryAt(index: number): Entry {
+    const entry = stack[index];
+    if (!entry) {
+      throw new Error(`useHistory: stack index ${index} out of range (size ${stack.length})`);
+    }
+    return entry;
+  }
 
   function evictIfNeeded() {
     while (stack.length > maxDepth) {
@@ -147,7 +158,7 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
       return current;
     },
     get committedEntry(): UseHistoryEntry<T> {
-      return snapshotEntry(stack[pointer]);
+      return snapshotEntry(entryAt(pointer));
     },
     get canUndo() {
       return pointer > 0;
@@ -167,7 +178,7 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
     },
 
     commit(next: T, commitOptions?: UseHistoryCommitOptions) {
-      const top = stack[pointer];
+      const top = entryAt(pointer);
 
       // Clone before any decision so cloneable contract is enforced even when
       // the value happens to be equal to the committed top.
@@ -184,9 +195,6 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
       const coalesceKey = commitOptions?.coalesceKey;
       const label = commitOptions?.label;
 
-      // Coalesce: replace the stack top when the previous entry shares a key
-      // and we're inside the time window. Structural commits (no key) never
-      // coalesce.
       const canCoalesce =
         coalesceKey !== undefined &&
         top.coalesceKey === coalesceKey &&
@@ -201,7 +209,6 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
           committedAt: now,
         };
       } else {
-        // Truncate redo tail before pushing.
         if (pointer < stack.length - 1) {
           stack = stack.slice(0, pointer + 1);
         }
@@ -210,22 +217,21 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
         evictIfNeeded();
       }
 
-      // Give `current` its own clone, separate from the stack entry.
-      current = clone(stack[pointer].value);
+      current = clone(entryAt(pointer).value);
     },
 
     undo() {
       if (pointer === 0) return null;
-      const left = stack[pointer];
+      const left = entryAt(pointer);
       pointer -= 1;
-      current = clone(stack[pointer].value);
+      current = clone(entryAt(pointer).value);
       return snapshotEntry(left);
     },
 
     redo() {
       if (pointer >= stack.length - 1) return null;
       pointer += 1;
-      const moved = stack[pointer];
+      const moved = entryAt(pointer);
       current = clone(moved.value);
       return snapshotEntry(moved);
     },
