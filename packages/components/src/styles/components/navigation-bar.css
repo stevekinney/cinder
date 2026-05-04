@@ -19,11 +19,13 @@
  * ---------------------------------------- */
 
 .cinder-navigation-bar__brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   flex-shrink: 0;
   min-height: 2rem;
   padding-block: var(--cinder-space-1-5);
+  font-size: var(--cinder-text-lg);
+  font-weight: var(--cinder-font-semibold);
 }
 
 .cinder-navigation-bar__items {

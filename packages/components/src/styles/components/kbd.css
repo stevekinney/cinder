@@ -19,8 +19,16 @@
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-sm);
   box-shadow: inset 0 -1px 0 var(--cinder-border-muted);
-  box-sizing: border-box;
   vertical-align: middle;
+}
+
+/* Forced-colors mode suppresses box-shadow, so the keycap depth disappears.
+ * Restore the visual affordance with a real bottom border (which HCM keeps). */
+@media (forced-colors: active) {
+  .cinder-kbd {
+    border-bottom-width: 2px;
+    box-shadow: none;
+  }
 }
 
 .cinder-kbd[data-cinder-size='sm'] {

@@ -104,7 +104,7 @@
   display: flex;
   align-items: center;
   gap: var(--cinder-space-2);
-  width: 100%;
+  width: calc(100% - var(--cinder-space-1) * 2);
   min-height: 2.75rem;
   margin-inline: var(--cinder-space-1);
   padding-block: var(--cinder-space-2-5);
@@ -228,8 +228,8 @@
   }
 
   .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
-    right: anchor(right);
-    left: auto;
+    inset-inline-end: anchor(right);
+    inset-inline-start: auto;
   }
 }
 
