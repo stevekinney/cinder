@@ -5,12 +5,12 @@
  *   GET /              → 302 redirect to /c/<first-component>
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
- *   GET /page-bundle/:name.js → all-in-one bundle: component-page + every scenario
- *                              for one component, sharing one Svelte runtime
- *   GET /page-bundle/chunks/:filename.js → async code-split chunk emitted by
- *                              either bundle family (page-bundle or per-scenario).
- *                              Both families share publicPath: '/page-bundle/'
- *                              so all dynamic-import URLs resolve through this route.
+ *   GET /page-bundle/:name.js → page-bundle entry OR a hashed code-split chunk.
+ *                              Entry URLs are bare component names (e.g. chat.js);
+ *                              chunk URLs are hashed (e.g. core-abc123.js). Both
+ *                              artifact types share a flat namespace under /page-bundle/
+ *                              so all dynamic-import URLs from either bundle family
+ *                              resolve through this single route.
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
@@ -51,7 +51,10 @@ const bundleEntryByKey = new Map<string, string>();
 
 /**
  * Shared artifact contents: artifact.path → JS source. Holds entries from
- * BOTH bundle families plus all `chunks/<name>-<hash>.js` async chunks.
+ * BOTH bundle families plus all hashed async chunks (e.g. `core-abc123.js`).
+ * All artifacts share a flat namespace under `/page-bundle/` — there is no
+ * `chunks/` subdirectory; the Bun `naming` config emits everything as
+ * `[name]-[hash].js` at the same level as entries.
  *
  * Chunks are content-hashed, so when two builds emit the same chunk path
  * the bytes are identical — no overwrite hazard. Entries can never collide
@@ -433,7 +436,7 @@ mount(ComponentPage, { target });
       // No `outdir` — Bun returns artifacts via result.outputs[] and
       // doesn't write to disk. `publicPath` is the URL prefix the entry
       // will use for emitted dynamic-import statements; chunks resolve
-      // through GET /page-bundle/chunks/<name>-<hash>.js below.
+      // through GET /page-bundle/<name>-<hash>.js (same flat namespace).
       publicPath: '/page-bundle/',
       naming: {
         // Flat layout: every artifact (entry + async chunks + assets) lives

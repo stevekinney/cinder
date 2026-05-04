@@ -37,6 +37,7 @@ import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
+import type { Plugin, Processor } from 'unified';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 
@@ -59,18 +60,16 @@ import type { RenderOptions, RenderResult } from './types.js';
  * Math-free rendering parser. Constructed lazily so that the unified
  * pipeline machinery only initializes when something actually renders.
  *
- * `Processor<unknown>` is the loosest typing the unified API exposes
- * here — `.use(remarkParse).use(remarkGfm)` produces a parser whose
- * input/output types differ from the seed `unified()` and the two
- * representations aren't assignable to each other through the simpler
- * `ReturnType<typeof unified>` shape.
+ * Stored as `unknown` because unified's `.use()` return type is a
+ * narrowly-parameterised `Processor<P1, P2, ...>` that doesn't extend
+ * the zero-arg `Processor` interface. The single cast in `getBaseProcessor`
+ * documents the constraint; all consumers get a typed reference.
  */
 let baseProcessor: unknown = null;
-function getBaseProcessor(): { parse: (input: string) => unknown } {
-  if (baseProcessor === null) {
-    baseProcessor = unified().use(remarkParse).use(remarkGfm);
-  }
-  return baseProcessor as { parse: (input: string) => unknown };
+function getBaseProcessor(): Processor {
+  if (!baseProcessor) baseProcessor = unified().use(remarkParse).use(remarkGfm);
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  return baseProcessor as Processor;
 }
 
 /**
@@ -90,47 +89,42 @@ function getBaseProcessor(): { parse: (input: string) => unknown } {
 // the null disambiguation matters at call sites (no-math path).
 type RehypeKatexPlugin = object;
 type MathPluginLoader = () => Promise<{
-  remarkMath: unknown;
+  remarkMath: Plugin;
   rehypeKatex: RehypeKatexPlugin;
 }>;
+/** Resolved return type of MathPluginLoader, for the cached-promise annotation. */
+type MathPlugins = Awaited<ReturnType<MathPluginLoader>>;
 let mathPluginLoader: MathPluginLoader = async () => {
   const [remarkMathModule, rehypeKatexModule] = await Promise.all([
     import('remark-math'),
     import('rehype-katex'),
   ]);
   return {
-    remarkMath: remarkMathModule.default,
+    remarkMath: remarkMathModule.default as Plugin,
     rehypeKatex: rehypeKatexModule.default,
   };
 };
-let mathPluginsPromise: Promise<{ remarkMath: unknown; rehypeKatex: RehypeKatexPlugin }> | null =
-  null;
+let mathPluginsPromise: Promise<MathPlugins> | null = null;
 let mathProcessor: unknown = null;
 
 async function ensureMathPipeline(): Promise<{
-  processor: { parse: (input: string) => unknown };
+  processor: Processor;
   rehypeKatex: RehypeKatexPlugin;
 }> {
   mathPluginsPromise ??= mathPluginLoader();
   const { remarkMath, rehypeKatex } = await mathPluginsPromise;
-  if (mathProcessor === null) {
-    mathProcessor = unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- plugin shape is opaque after dynamic import
-      .use(remarkMath as any);
+  if (!mathProcessor) {
+    mathProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkMath);
   }
-  return {
-    processor: mathProcessor as { parse: (input: string) => unknown },
-    rehypeKatex,
-  };
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see baseProcessor note above
+  return { processor: mathProcessor as Processor, rehypeKatex };
 }
 
 /**
  * Test-only override of the math-plugin loader.
  *
  * Replaces `mathPluginLoader` AND clears the dependent singleton state
- * (`mathPluginsPromise`, `mathProcessor`, `cachedRehypeKatex`). Without
+ * (`mathPluginsPromise`, `mathProcessor`). Without
  * the singleton reset, a stub installed after a real load would never
  * be called because the cached promise would already be resolved.
  *
@@ -329,22 +323,6 @@ function stripLinkNodes(root: MdastRoot): void {
   });
 }
 
-/**
- * Render markdown to sanitized HTML.
- *
- * Pipeline:
- * 1. Parse markdown to mdast using existing CommonMark + GFM parser
- * 2. Remove raw HTML nodes (injection prevention)
- * 3. Sanitize URLs in link/image nodes
- * 4. Extract code block metadata
- * 5. Convert mdast to hast via remark-rehype
- * 6. Sanitize hast via rehype-sanitize
- * 7. Stringify hast to HTML
- *
- * @param markdown - Raw markdown string
- * @param options - Rendering options
- * @returns Render result with HTML, code blocks, and safety flags
- */
 /**
  * Internal core that does the rendering work, given a parsed mdast and an
  * already-loaded rehype-katex (or null for the no-math path). Shared by
