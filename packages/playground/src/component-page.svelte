@@ -146,7 +146,6 @@
     background-color: var(--cinder-surface);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
-    overflow: hidden;
   }
 
   .example-card-header {
@@ -173,6 +172,7 @@
     padding: var(--cinder-space-6);
     min-height: 4rem;
     display: block;
+    overflow: visible;
   }
 
   /* Scoped to .example-preview descendants so the helper can't leak into
