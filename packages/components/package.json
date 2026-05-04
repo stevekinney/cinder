@@ -338,7 +338,8 @@
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "conversationalist": "0.0.9",
-    "esm-env": "^1.2.0"
+    "esm-env": "^1.2.0",
+    "lucide-svelte": "^0.503.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
