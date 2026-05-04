@@ -113,10 +113,11 @@ function startWatcher(): FSWatcher[] {
         if (filename) {
           // Clear all caches on any src/ change. Each example imports from
           // the cinder workspace package which re-exports every component, so
-          // editing any component invalidates every cached bundle. Chunks are
-          // content-hashed but their *contents* may have changed even if the
-          // hash didn't (different hash inputs that collide aren't a real
-          // hazard, but stale chunk source is) — clear them too.
+          // editing any component invalidates every cached bundle. Content-hashed
+          // chunks whose content changed will have a new hash on the next build,
+          // so old cache entries would never be requested again — but clearing
+          // them proactively keeps memory bounded and avoids serving outdated
+          // bundles if a hash collision ever occurred.
           clearCaches();
           triggerReload();
         }
