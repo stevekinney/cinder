@@ -74,7 +74,6 @@
   import Button from '../button.svelte';
   import Checkbox from '../checkbox.svelte';
   import Input from '../input.svelte';
-  import Surface from '../surface.svelte';
   import Tooltip from '../tooltip.svelte';
 
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
@@ -219,11 +218,7 @@
   }
 </script>
 
-<Surface
-  tone="raised"
-  class={classNames('cinder-jse-property-editor', className)}
-  data-depth={depth}
->
+<div class={classNames('cinder-jse-property-editor', className)} data-cinder-jse-depth={depth}>
   {#if tooDeep}
     <Alert variant="info">
       Schema depth exceeded ({MAX_RENDER_DEPTH}). Edit deeper sections via the JSON view.
@@ -247,33 +242,8 @@
       </div>
     {/if}
 
-    <!-- Type section -->
-    <fieldset class="cinder-jse-section">
-      <legend class="cinder-jse-section__title">Type</legend>
-      <div class="cinder-jse-type-row">
-        <Checkbox
-          id={`${idPrefix}-type-any`}
-          checked={isAnyType}
-          label="Any"
-          disabled={readonly}
-          onchange={(event: Event) => setAny((event.target as HTMLInputElement).checked)}
-        />
-        {#each PRIMITIVE_TYPES as primitive (primitive)}
-          <Checkbox
-            id={`${idPrefix}-type-${primitive}`}
-            checked={selectedTypes.includes(primitive)}
-            label={primitive}
-            disabled={readonly || isAnyType}
-            onchange={(event: Event) =>
-              toggleType(primitive, (event.target as HTMLInputElement).checked)}
-          />
-        {/each}
-      </div>
-    </fieldset>
-
-    <!-- Common keywords -->
-    <fieldset class="cinder-jse-section">
-      <legend class="cinder-jse-section__title">Common</legend>
+    <!-- Common (Title + Description) leads at the top of every node — no section header. -->
+    <div class="cinder-jse-section cinder-jse-section--lead">
       <Input
         id={`${idPrefix}-title`}
         label="Title"
@@ -296,106 +266,36 @@
             { coalesceKey: `description:${path}`, label: 'edit description' },
           )}
       />
-    </fieldset>
+    </div>
 
-    <!-- String constraints -->
-    {#if showStringConstraints}
-      <fieldset class="cinder-jse-section">
-        <legend class="cinder-jse-section__title">String constraints</legend>
-        <Input
-          id={`${idPrefix}-minLength`}
-          label="Min length"
-          type="text"
-          value={objectValue.minLength?.toString() ?? ''}
+    <!-- Type section -->
+    <div class="cinder-jse-section">
+      <h4 class="cinder-jse-section__title">Type</h4>
+      <div class="cinder-jse-type-row">
+        <Checkbox
+          id={`${idPrefix}-type-any`}
+          checked={isAnyType}
+          label="Any"
           disabled={readonly}
-          oninput={(event: Event) => {
-            const raw = (event.target as HTMLInputElement).value;
-            const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
-            patch(
-              { minLength: Number.isNaN(parsed) ? undefined : parsed },
-              { coalesceKey: `minLength:${path}`, label: 'edit minLength' },
-            );
-          }}
+          onchange={(event: Event) => setAny((event.target as HTMLInputElement).checked)}
         />
-        <Input
-          id={`${idPrefix}-maxLength`}
-          label="Max length"
-          type="text"
-          value={objectValue.maxLength?.toString() ?? ''}
-          disabled={readonly}
-          oninput={(event: Event) => {
-            const raw = (event.target as HTMLInputElement).value;
-            const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
-            patch(
-              { maxLength: Number.isNaN(parsed) ? undefined : parsed },
-              { coalesceKey: `maxLength:${path}`, label: 'edit maxLength' },
-            );
-          }}
-        />
-        <Input
-          id={`${idPrefix}-pattern`}
-          label="Pattern (regex)"
-          value={objectValue.pattern ?? ''}
-          disabled={readonly}
-          oninput={(event: Event) =>
-            patch(
-              { pattern: (event.target as HTMLInputElement).value || undefined },
-              { coalesceKey: `pattern:${path}`, label: 'edit pattern' },
-            )}
-        />
-        <Input
-          id={`${idPrefix}-format`}
-          label="Format"
-          value={objectValue.format ?? ''}
-          disabled={readonly}
-          oninput={(event: Event) =>
-            patch(
-              { format: (event.target as HTMLInputElement).value || undefined },
-              { coalesceKey: `format:${path}`, label: 'edit format' },
-            )}
-        />
-      </fieldset>
-    {/if}
+        {#each PRIMITIVE_TYPES as primitive (primitive)}
+          <Checkbox
+            id={`${idPrefix}-type-${primitive}`}
+            checked={selectedTypes.includes(primitive)}
+            label={primitive}
+            disabled={readonly || isAnyType}
+            onchange={(event: Event) =>
+              toggleType(primitive, (event.target as HTMLInputElement).checked)}
+          />
+        {/each}
+      </div>
+    </div>
 
-    <!-- Number constraints -->
-    {#if showNumberConstraints}
-      <fieldset class="cinder-jse-section">
-        <legend class="cinder-jse-section__title">Number constraints</legend>
-        <Input
-          id={`${idPrefix}-minimum`}
-          label="Minimum"
-          value={objectValue.minimum?.toString() ?? ''}
-          disabled={readonly}
-          oninput={(event: Event) => {
-            const raw = (event.target as HTMLInputElement).value;
-            const parsed = raw === '' ? undefined : Number(raw);
-            patch(
-              { minimum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
-              { coalesceKey: `minimum:${path}`, label: 'edit minimum' },
-            );
-          }}
-        />
-        <Input
-          id={`${idPrefix}-maximum`}
-          label="Maximum"
-          value={objectValue.maximum?.toString() ?? ''}
-          disabled={readonly}
-          oninput={(event: Event) => {
-            const raw = (event.target as HTMLInputElement).value;
-            const parsed = raw === '' ? undefined : Number(raw);
-            patch(
-              { maximum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
-              { coalesceKey: `maximum:${path}`, label: 'edit maximum' },
-            );
-          }}
-        />
-      </fieldset>
-    {/if}
-
-    <!-- Object constraints -->
+    <!-- Object constraints (properties + required) — comes early because it's the heaviest. -->
     {#if showObjectConstraints}
-      <fieldset class="cinder-jse-section">
-        <legend class="cinder-jse-section__title">Object constraints</legend>
+      <div class="cinder-jse-section">
+        <h4 class="cinder-jse-section__title">Properties</h4>
         <PropertyList
           {idPrefix}
           {readonly}
@@ -405,13 +305,13 @@
           required={objectValue.required ?? []}
           onchange={patchProperties}
         />
-      </fieldset>
+      </div>
     {/if}
 
-    <!-- Array constraints -->
+    <!-- Array items -->
     {#if showArrayConstraints}
-      <fieldset class="cinder-jse-section">
-        <legend class="cinder-jse-section__title">Array items</legend>
+      <div class="cinder-jse-section">
+        <h4 class="cinder-jse-section__title">Array items</h4>
         <PropertyEditor
           idPrefix={`${idPrefix}-items`}
           path={`${path}/items`}
@@ -420,77 +320,202 @@
           value={objectValue.items ?? {}}
           onchange={(next) => setItems(next)}
         />
-      </fieldset>
+      </div>
     {/if}
 
-    <!-- Composition -->
+    <!-- String constraints — collapsed by default. -->
+    {#if showStringConstraints}
+      <details class="cinder-jse-section cinder-jse-section--collapsible">
+        <summary class="cinder-jse-section__title">String constraints</summary>
+        <div class="cinder-jse-section__body">
+          <Input
+            id={`${idPrefix}-minLength`}
+            label="Min length"
+            type="text"
+            value={objectValue.minLength?.toString() ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) => {
+              const raw = (event.target as HTMLInputElement).value;
+              const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
+              patch(
+                { minLength: Number.isNaN(parsed) ? undefined : parsed },
+                { coalesceKey: `minLength:${path}`, label: 'edit minLength' },
+              );
+            }}
+          />
+          <Input
+            id={`${idPrefix}-maxLength`}
+            label="Max length"
+            type="text"
+            value={objectValue.maxLength?.toString() ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) => {
+              const raw = (event.target as HTMLInputElement).value;
+              const parsed = raw === '' ? undefined : Number.parseInt(raw, 10);
+              patch(
+                { maxLength: Number.isNaN(parsed) ? undefined : parsed },
+                { coalesceKey: `maxLength:${path}`, label: 'edit maxLength' },
+              );
+            }}
+          />
+          <Input
+            id={`${idPrefix}-pattern`}
+            label="Pattern (regex)"
+            value={objectValue.pattern ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) =>
+              patch(
+                { pattern: (event.target as HTMLInputElement).value || undefined },
+                { coalesceKey: `pattern:${path}`, label: 'edit pattern' },
+              )}
+          />
+          <Input
+            id={`${idPrefix}-format`}
+            label="Format"
+            value={objectValue.format ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) =>
+              patch(
+                { format: (event.target as HTMLInputElement).value || undefined },
+                { coalesceKey: `format:${path}`, label: 'edit format' },
+              )}
+          />
+        </div>
+      </details>
+    {/if}
+
+    <!-- Number constraints — collapsed by default. -->
+    {#if showNumberConstraints}
+      <details class="cinder-jse-section cinder-jse-section--collapsible">
+        <summary class="cinder-jse-section__title">Number constraints</summary>
+        <div class="cinder-jse-section__body">
+          <Input
+            id={`${idPrefix}-minimum`}
+            label="Minimum"
+            value={objectValue.minimum?.toString() ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) => {
+              const raw = (event.target as HTMLInputElement).value;
+              const parsed = raw === '' ? undefined : Number(raw);
+              patch(
+                { minimum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
+                { coalesceKey: `minimum:${path}`, label: 'edit minimum' },
+              );
+            }}
+          />
+          <Input
+            id={`${idPrefix}-maximum`}
+            label="Maximum"
+            value={objectValue.maximum?.toString() ?? ''}
+            disabled={readonly}
+            oninput={(event: Event) => {
+              const raw = (event.target as HTMLInputElement).value;
+              const parsed = raw === '' ? undefined : Number(raw);
+              patch(
+                { maximum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
+                { coalesceKey: `maximum:${path}`, label: 'edit maximum' },
+              );
+            }}
+          />
+        </div>
+      </details>
+    {/if}
+
+    <!-- Composition (only when present) -->
     {#each ['allOf', 'anyOf', 'oneOf'] as const as keyword (keyword)}
       {#if Array.isArray(objectValue[keyword])}
-        <fieldset class="cinder-jse-section">
-          <legend class="cinder-jse-section__title">{keyword}</legend>
-          {#each objectValue[keyword] as branch, branchIndex (branchIndex)}
-            <PropertyEditor
-              idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
-              path={`${path}/${keyword}/${branchIndex}`}
-              depth={depth + 1}
-              {readonly}
-              value={branch}
-              onchange={(next) => {
-                const list = [...objectValue[keyword]!];
-                list[branchIndex] = next;
-                patchComposition(keyword, list);
-              }}
-            />
+        <details class="cinder-jse-section cinder-jse-section--collapsible" open>
+          <summary class="cinder-jse-section__title">{keyword}</summary>
+          <div class="cinder-jse-section__body">
+            {#each objectValue[keyword] as branch, branchIndex (branchIndex)}
+              <PropertyEditor
+                idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
+                path={`${path}/${keyword}/${branchIndex}`}
+                depth={depth + 1}
+                {readonly}
+                value={branch}
+                onchange={(next) => {
+                  const list = [...objectValue[keyword]!];
+                  list[branchIndex] = next;
+                  patchComposition(keyword, list);
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={readonly}
+                onclick={() => {
+                  const list = [...objectValue[keyword]!];
+                  list.splice(branchIndex, 1);
+                  patchComposition(keyword, list.length > 0 ? list : undefined);
+                }}
+              >
+                Remove branch
+              </Button>
+            {/each}
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               disabled={readonly}
               onclick={() => {
-                const list = [...objectValue[keyword]!];
-                list.splice(branchIndex, 1);
-                patchComposition(keyword, list.length > 0 ? list : undefined);
+                const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
+                list.push({});
+                patchComposition(keyword, list);
               }}
             >
-              Remove
+              Add {keyword} branch
             </Button>
-          {/each}
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={readonly}
-            onclick={() => {
-              const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
-              list.push({});
-              patchComposition(keyword, list);
-            }}
-          >
-            Add {keyword} branch
-          </Button>
-        </fieldset>
+          </div>
+        </details>
       {/if}
     {/each}
 
-    <!-- $ref -->
-    <fieldset class="cinder-jse-section">
-      <legend class="cinder-jse-section__title">$ref</legend>
-      <Input
-        id={`${idPrefix}-ref`}
-        label="$ref URI"
-        value={objectValue.$ref ?? ''}
-        disabled={readonly}
-        oninput={(event: Event) =>
-          patch(
-            { $ref: (event.target as HTMLInputElement).value || undefined },
-            { coalesceKey: `$ref:${path}`, label: 'edit $ref' },
-          )}
-      />
-    </fieldset>
+    <!-- $ref — visible only when set; otherwise an inline trigger to add one. -->
+    {#if objectValue.$ref !== undefined}
+      <div class="cinder-jse-section">
+        <h4 class="cinder-jse-section__title">$ref</h4>
+        <Input
+          id={`${idPrefix}-ref`}
+          label="$ref URI"
+          value={objectValue.$ref}
+          disabled={readonly}
+          oninput={(event: Event) =>
+            patch(
+              { $ref: (event.target as HTMLInputElement).value || undefined },
+              { coalesceKey: `$ref:${path}`, label: 'edit $ref' },
+            )}
+        />
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={readonly}
+          onclick={() => patch({ $ref: undefined }, { label: 'remove $ref' })}
+        >
+          Remove $ref
+        </Button>
+      </div>
+    {:else if !readonly}
+      <div class="cinder-jse-advanced-row">
+        <Button
+          variant="ghost"
+          size="xs"
+          onclick={() => patch({ $ref: '' }, { label: 'add $ref' })}
+        >
+          Add $ref
+        </Button>
+        {#if preservedKeys.length > 0}
+          <Tooltip text={`Preserved keys: ${preservedKeys.join(', ')}`}>
+            <Badge variant="info">+{preservedKeys.length} preserved</Badge>
+          </Tooltip>
+        {/if}
+      </div>
+    {/if}
 
-    <!-- Preserved keywords -->
-    {#if preservedKeys.length > 0}
+    <!-- Preserved-keywords badge for the readonly case (Add $ref is hidden). -->
+    {#if readonly && objectValue.$ref === undefined && preservedKeys.length > 0}
       <Tooltip text={`Preserved keys: ${preservedKeys.join(', ')}`}>
         <Badge variant="info">+{preservedKeys.length} preserved</Badge>
       </Tooltip>
     {/if}
   {/if}
-</Surface>
+</div>

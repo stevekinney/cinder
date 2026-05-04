@@ -15,7 +15,6 @@
 <script lang="ts">
   import Alert from '../alert.svelte';
   import Button from '../button.svelte';
-  import Checkbox from '../checkbox.svelte';
   import Input from '../input.svelte';
   import PropertyEditor from './property-editor.svelte';
 
@@ -29,16 +28,13 @@
     onchange,
   }: PropertyListProps = $props();
 
-  // Required-only names (in `required` but not in `properties`) round-trip via
-  // a separate advanced section. Editing this section never invents a
-  // `properties` entry.
   const propertyNames = $derived(Object.keys(properties));
   const requiredOnly = $derived(required.filter((name) => !propertyNames.includes(name)));
 
-  // Per-row draft names (separate from committed key) so a partial typed name
-  // doesn't reshape the parent on every keystroke.
+  // Per-row draft names so a partial typed name doesn't reshape the parent.
   let draftNames = $state<Record<string, string>>({});
   let renameError = $state<string | null>(null);
+  let expanded = $state<Record<string, boolean>>({});
 
   function getDraftName(key: string): string {
     return draftNames[key] ?? key;
@@ -71,7 +67,6 @@
     }
     renameError = null;
 
-    // Atomically rebuild properties preserving order and update `required`.
     const next: Record<string, JsonSchemaValue> = {};
     for (const k of propertyNames) {
       next[k === oldKey ? draft : k] = properties[k]!;
@@ -79,6 +74,10 @@
     const nextRequired = required.map((name) => (name === oldKey ? draft : name));
 
     delete draftNames[oldKey];
+    if (expanded[oldKey]) {
+      expanded[draft] = true;
+      delete expanded[oldKey];
+    }
     onchange(next, nextRequired);
   }
 
@@ -88,6 +87,7 @@
     delete next[key];
     const nextRequired = required.filter((name) => name !== key);
     delete draftNames[key];
+    delete expanded[key];
     onchange(next, nextRequired);
   }
 
@@ -104,11 +104,11 @@
     onchange(next, required);
   }
 
-  function toggleRequired(key: string, isRequired: boolean) {
+  function toggleRequired(key: string) {
     if (readonly) return;
     const set = new Set(required);
-    if (isRequired) set.add(key);
-    else set.delete(key);
+    if (set.has(key)) set.delete(key);
+    else set.add(key);
     onchange(properties, [...set]);
   }
 
@@ -121,6 +121,15 @@
     if (readonly) return;
     const key = uniqueNewKey();
     onchange({ ...properties, [key]: { type: 'string' } }, required);
+    expanded[key] = true;
+  }
+
+  function summariseType(schema: JsonSchemaValue): string {
+    if (typeof schema === 'boolean') return schema ? 'true' : 'false';
+    const t = schema.type;
+    if (t === undefined) return 'any';
+    if (Array.isArray(t)) return t.join(' | ');
+    return t;
   }
 
   // ===== Required-only chip editing =====
@@ -129,7 +138,10 @@
   function addRequiredOnly() {
     if (readonly) return;
     const name = newRequiredOnlyName.trim();
-    if (!name) return;
+    if (!name) {
+      newRequiredOnlyName = '';
+      return;
+    }
     if (required.includes(name)) {
       newRequiredOnlyName = '';
       return;
@@ -152,42 +164,103 @@
     <Alert variant="error">{renameError}</Alert>
   {/if}
 
-  {#each propertyNames as key (key)}
-    <div class="cinder-jse-property-row">
-      <Input
-        id={`${idPrefix}-${key}-name`}
-        label="Name"
-        value={getDraftName(key)}
-        disabled={readonly}
-        oninput={(event: Event) => (draftNames[key] = (event.target as HTMLInputElement).value)}
-        onblur={() => commitRename(key)}
-      />
-      <Checkbox
-        id={`${idPrefix}-${key}-required`}
-        label="Required"
-        checked={required.includes(key)}
-        disabled={readonly}
-        onchange={(event: Event) => toggleRequired(key, (event.target as HTMLInputElement).checked)}
-      />
-      <Button variant="ghost" size="sm" disabled={readonly} onclick={() => moveProperty(key, -1)}>
-        ↑
-      </Button>
-      <Button variant="ghost" size="sm" disabled={readonly} onclick={() => moveProperty(key, 1)}>
-        ↓
-      </Button>
-      <Button variant="danger" size="sm" disabled={readonly} onclick={() => deleteProperty(key)}>
-        Delete
-      </Button>
+  {#if propertyNames.length === 0}
+    <p class="cinder-jse-property-list__empty">No properties yet.</p>
+  {/if}
 
-      <PropertyEditor
-        idPrefix={`${idPrefix}-${key}-schema`}
-        path={`${path}/${key}`}
-        depth={depth + 1}
-        {readonly}
-        value={properties[key] ?? {}}
-        onchange={(next) => setPropertySchema(key, next)}
-      />
-    </div>
+  {#each propertyNames as key (key)}
+    {@const isRequired = required.includes(key)}
+    {@const isOpen = expanded[key] === true}
+    <details
+      class="cinder-jse-property-row"
+      data-cinder-required={isRequired ? '' : undefined}
+      open={isOpen}
+      ontoggle={(event: Event) => {
+        expanded[key] = (event.target as HTMLDetailsElement).open;
+      }}
+    >
+      <summary class="cinder-jse-property-row__summary">
+        <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
+        <span class="cinder-jse-property-row__name">{key}</span>
+        <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
+        {#if isRequired}
+          <span class="cinder-jse-property-row__required-marker">required</span>
+        {/if}
+        <span class="cinder-jse-property-row__spacer"></span>
+        <Button
+          variant={isRequired ? 'primary' : 'ghost'}
+          size="xs"
+          disabled={readonly}
+          aria-pressed={isRequired}
+          aria-label={isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}
+          onclick={(event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleRequired(key);
+          }}
+        >
+          {isRequired ? 'Required' : 'Optional'}
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={readonly}
+          aria-label="Move up"
+          onclick={(event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveProperty(key, -1);
+          }}
+        >
+          ↑
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={readonly}
+          aria-label="Move down"
+          onclick={(event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveProperty(key, 1);
+          }}
+        >
+          ↓
+        </Button>
+        <Button
+          variant="ghost-danger"
+          size="xs"
+          disabled={readonly}
+          aria-label={`Delete ${key}`}
+          onclick={(event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            deleteProperty(key);
+          }}
+        >
+          Delete
+        </Button>
+      </summary>
+
+      <div class="cinder-jse-property-row__panel">
+        <Input
+          id={`${idPrefix}-${key}-name`}
+          label="Name"
+          value={getDraftName(key)}
+          disabled={readonly}
+          oninput={(event: Event) => (draftNames[key] = (event.target as HTMLInputElement).value)}
+          onblur={() => commitRename(key)}
+        />
+        <PropertyEditor
+          idPrefix={`${idPrefix}-${key}-schema`}
+          path={`${path}/${key}`}
+          depth={depth + 1}
+          {readonly}
+          value={properties[key] ?? {}}
+          onchange={(next) => setPropertySchema(key, next)}
+        />
+      </div>
+    </details>
   {/each}
 
   <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>
@@ -195,34 +268,40 @@
   </Button>
 
   {#if requiredOnly.length > 0 || newRequiredOnlyName.length > 0}
-    <div class="cinder-jse-required-only">
-      <h4 class="cinder-jse-required-only__title">Required without property schema</h4>
-      {#each requiredOnly as name (name)}
-        <span class="cinder-jse-required-only__chip">
-          {name}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={readonly}
-            onclick={() => removeRequiredOnly(name)}
-          >
-            ×
-          </Button>
-        </span>
-      {/each}
-      <Input
-        id={`${idPrefix}-required-only-add`}
-        label="Add required name"
-        value={newRequiredOnlyName}
-        disabled={readonly}
-        oninput={(event: Event) => (newRequiredOnlyName = (event.target as HTMLInputElement).value)}
-        onkeydown={(event: KeyboardEvent) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addRequiredOnly();
-          }
-        }}
-      />
-    </div>
+    <details class="cinder-jse-required-only" open={requiredOnly.length > 0}>
+      <summary class="cinder-jse-required-only__summary">
+        Required without property schema ({requiredOnly.length})
+      </summary>
+      <div class="cinder-jse-required-only__panel">
+        {#each requiredOnly as name (name)}
+          <span class="cinder-jse-required-only__chip">
+            {name}
+            <Button
+              variant="ghost"
+              size="xs"
+              disabled={readonly}
+              aria-label={`Remove ${name}`}
+              onclick={() => removeRequiredOnly(name)}
+            >
+              ×
+            </Button>
+          </span>
+        {/each}
+        <Input
+          id={`${idPrefix}-required-only-add`}
+          label="Add required name"
+          value={newRequiredOnlyName}
+          disabled={readonly}
+          oninput={(event: Event) =>
+            (newRequiredOnlyName = (event.target as HTMLInputElement).value)}
+          onkeydown={(event: KeyboardEvent) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addRequiredOnly();
+            }
+          }}
+        />
+      </div>
+    </details>
   {/if}
 </div>
