@@ -167,7 +167,12 @@ export function probablyHasMath(markdown: string): boolean {
     .replace(/~~~[\s\S]*?~~~/g, '')
     .replace(/`[^`\n]*`/g, '');
   if (codeStripped.includes('$$')) return true;
-  return /(?<!\\)\$\S(?:[^$\n]*?\S)?\$/.test(codeStripped);
+  // Neutralise escaped backslashes (\\) before testing for an escaped dollar
+  // (\$). Without this, `\\$x$` — a literal backslash followed by inline
+  // math — is incorrectly rejected: the lookbehind sees the second `\` of
+  // `\\` and treats the `$` as escaped, producing a false negative.
+  const escaped = codeStripped.replace(/\\\\/g, '');
+  return /(?<!\\)\$\S(?:[^$\n]*?\S)?\$/.test(escaped);
 }
 
 /**

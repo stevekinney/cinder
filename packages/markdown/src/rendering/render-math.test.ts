@@ -290,6 +290,10 @@ describe('probablyHasMath', () => {
     ['display block', '$$\n\\sum_i\n$$'],
     ['compact display', '$$x$$'],
     ['inline after newline (single char)', 'line one\nthen $a$'],
+    // \\$x$ = escaped backslash followed by inline math. The lookbehind
+    // must not treat the second \ of \\ as escaping the $, or this is a
+    // false negative that silently drops math rendering.
+    ['escaped backslash before math (double-backslash)', '\\\\$x$'],
   ];
   for (const [name, input] of trueCases) {
     it(`returns true for ${name}: ${JSON.stringify(input)}`, () => {
