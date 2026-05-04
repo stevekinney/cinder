@@ -131,14 +131,14 @@ function startWatcher(): FSWatcher[] {
     created.push(
       watch(examplesPath, { recursive: true }, (_event, filename) => {
         if (filename) {
-          const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
-          if (match) {
-            // Clear entries that depend on this example. Chunks must be
-            // cleared globally because the entry's references may now be
-            // stale even though we can't tell which chunk paths changed.
-            bundleEntryByKey.delete(`${match[1]}/${match[2]}`);
-            pageEntryByName.delete(match[1]!);
-            artifactByPath.clear();
+          // Clear all caches. The partial approach (deleting only the changed
+          // component's entries while wiping all artifacts) left stale entry
+          // references in the lookup maps that pointed at deleted artifacts,
+          // causing spurious rebuilds on next request. A full clearCaches()
+          // is simpler and correct — rebuilds are cheap relative to the cost
+          // of serving stale content.
+          if (filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/)) {
+            clearCaches();
           }
           triggerReload();
         }
