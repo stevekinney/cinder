@@ -1,5 +1,5 @@
 /**
- * Reactive state container for JSONSchemaEditor.
+ * Reactive state container for JsonSchemaEditor.
  *
  * Holds distinct text representations so callers cannot conflate "what the
  * user is typing" with "what we've actually committed":
@@ -16,15 +16,15 @@
 import { useHistory, type UseHistory } from '../../utilities/use-history.svelte.ts';
 
 import type {
-  JSONSchemaDraft,
-  JSONSchemaEditorChangeEvent,
-  JSONSchemaEditorRevertEvent,
-  JSONSchemaEditorView,
-  JSONSchemaKnownDraft,
-  JSONSchemaValidationError,
-  JSONSchemaValidationResult,
-  JSONSchemaValidationStatus,
-  JSONSchemaValue,
+  JsonSchemaDraft,
+  JsonSchemaEditorChangeEvent,
+  JsonSchemaEditorRevertEvent,
+  JsonSchemaEditorView,
+  JsonSchemaKnownDraft,
+  JsonSchemaValidationError,
+  JsonSchemaValidationResult,
+  JsonSchemaValidationStatus,
+  JsonSchemaValue,
 } from './json-schema-editor-types.ts';
 import {
   detectDraft,
@@ -40,17 +40,17 @@ const COMPILE_DEBOUNCE_MS = 500;
 const COMPILE_DEFER_BYTES = 100_000;
 
 export interface CreateEditorStateOptions {
-  schema: JSONSchemaValue | string;
-  original?: JSONSchemaValue | string;
-  draftOverride?: JSONSchemaKnownDraft;
+  schema: JsonSchemaValue | string;
+  original?: JsonSchemaValue | string;
+  draftOverride?: JsonSchemaKnownDraft;
   readonly?: boolean;
   maxHistory?: number;
-  onchange?: (event: JSONSchemaEditorChangeEvent) => void;
-  onrevert?: (event: JSONSchemaEditorRevertEvent) => void;
-  onvalidate?: (result: JSONSchemaValidationResult) => void;
+  onchange?: (event: JsonSchemaEditorChangeEvent) => void;
+  onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
+  onvalidate?: (result: JsonSchemaValidationResult) => void;
 }
 
-function serialise(value: JSONSchemaValue): string {
+function serialise(value: JsonSchemaValue): string {
   return JSON.stringify(value, null, PRETTY_INDENT);
 }
 
@@ -73,31 +73,31 @@ export function createEditorState(options: CreateEditorStateOptions) {
   // ---- Original (baseline) ----
   let originalRawText = $state('');
   let originalCanonicalText = $state('');
-  let originalSchema = $state<JSONSchemaValue | null>(null);
+  let originalSchema = $state<JsonSchemaValue | null>(null);
   let originalLoadError = $state<string | null>(null);
 
   // ---- History / committed ----
   // history is wrapped in $state so derived values that read `history?.current`
   // re-evaluate when the history instance is replaced (revert, reload).
-  let history = $state<UseHistory<JSONSchemaValue> | null>(null);
+  let history = $state<UseHistory<JsonSchemaValue> | null>(null);
 
   // ---- Draft (JSON view) ----
   let jsonDraftText = $state('');
 
   // ---- View ----
-  let view = $state<JSONSchemaEditorView>('form');
+  let view = $state<JsonSchemaEditorView>('form');
 
   // ---- Settings ----
   const readonly = $state(Boolean(options.readonly));
-  let draftOverride = $state<JSONSchemaKnownDraft | undefined>(options.draftOverride);
+  let draftOverride = $state<JsonSchemaKnownDraft | undefined>(options.draftOverride);
 
   // ---- Validation status (debounced) ----
-  let metaResult = $state<{ valid: boolean; errors: JSONSchemaValidationError[] }>({
+  let metaResult = $state<{ valid: boolean; errors: JsonSchemaValidationError[] }>({
     valid: true,
     errors: [],
   });
   let compileResult = $state<{ ok: true } | { ok: false; error: string } | null>(null);
-  let validationStatus = $state<JSONSchemaValidationStatus>('valid');
+  let validationStatus = $state<JsonSchemaValidationStatus>('valid');
 
   let metaDebounceHandle: ReturnType<typeof setTimeout> | null = null;
   let compileDebounceHandle: ReturnType<typeof setTimeout> | null = null;
@@ -109,15 +109,15 @@ export function createEditorState(options: CreateEditorStateOptions) {
     compileDebounceHandle = null;
   }
 
-  function emitValidation(result: JSONSchemaValidationResult) {
+  function emitValidation(result: JsonSchemaValidationResult) {
     options.onvalidate?.(result);
   }
 
   function buildResult(
-    overrides: Partial<JSONSchemaValidationResult> = {},
-  ): JSONSchemaValidationResult {
+    overrides: Partial<JsonSchemaValidationResult> = {},
+  ): JsonSchemaValidationResult {
     const compilable = compileResult === null ? null : compileResult.ok;
-    const result: JSONSchemaValidationResult = {
+    const result: JsonSchemaValidationResult = {
       status: validationStatus,
       valid: metaResult.valid,
       errors: metaResult.errors,
@@ -129,7 +129,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return { ...result, ...overrides };
   }
 
-  function detectActiveDraft(schema: JSONSchemaValue | null): JSONSchemaDraft {
+  function detectActiveDraft(schema: JsonSchemaValue | null): JsonSchemaDraft {
     if (draftOverride) return draftOverride;
     if (schema === null) return '2020-12';
     return detectDraft(schema);
@@ -139,7 +139,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return text.length > COMPILE_DEFER_BYTES;
   }
 
-  function runMetaValidation(schema: JSONSchemaValue | null) {
+  function runMetaValidation(schema: JsonSchemaValue | null) {
     if (schema === null) {
       metaResult = { valid: false, errors: [] };
       return;
@@ -147,7 +147,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     metaResult = validateMetaSchema(schema, detectActiveDraft(schema));
   }
 
-  function runCompile(schema: JSONSchemaValue | null) {
+  function runCompile(schema: JsonSchemaValue | null) {
     if (schema === null) {
       compileResult = null;
       return;
@@ -209,8 +209,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
   }
 
   function loadFrom(
-    schemaInput: JSONSchemaValue | string,
-    originalInput?: JSONSchemaValue | string,
+    schemaInput: JsonSchemaValue | string,
+    originalInput?: JsonSchemaValue | string,
   ) {
     const schemaResult = normaliseSchemaInput(schemaInput);
     const baselineInput = originalInput ?? schemaInput;
@@ -229,11 +229,11 @@ export function createEditorState(options: CreateEditorStateOptions) {
     }
 
     if (schemaResult.ok) {
-      const useHistoryOptions: { initial: JSONSchemaValue; maxDepth?: number } = {
+      const useHistoryOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
         initial: schemaResult.schema,
       };
       if (options.maxHistory !== undefined) useHistoryOptions.maxDepth = options.maxHistory;
-      history = useHistory<JSONSchemaValue>(useHistoryOptions);
+      history = useHistory<JsonSchemaValue>(useHistoryOptions);
       jsonDraftText = schemaResult.canonicalText;
     } else {
       history = null;
@@ -269,7 +269,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get view() {
       return view;
     },
-    set view(next: JSONSchemaEditorView) {
+    set view(next: JsonSchemaEditorView) {
       view = next;
     },
     get readonly() {
@@ -323,15 +323,15 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get validationStatus() {
       return validationStatus;
     },
-    get validationResult(): JSONSchemaValidationResult {
+    get validationResult(): JsonSchemaValidationResult {
       return buildResult();
     },
-    get activeDraft(): JSONSchemaDraft {
+    get activeDraft(): JsonSchemaDraft {
       return detectActiveDraft(committedSchema);
     },
 
     // ---- Writes ----
-    setView(next: JSONSchemaEditorView) {
+    setView(next: JsonSchemaEditorView) {
       view = next;
     },
 
@@ -356,16 +356,16 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const value = parsed.value;
       if (typeof value !== 'boolean' && !isPlainRecord(value)) return false;
 
-      const schema = value as JSONSchemaValue;
+      const schema = value as JsonSchemaValue;
       const meta = validateMetaSchema(schema, detectActiveDraft(schema));
       if (!meta.valid) return false;
 
       if (history) {
         history.commit(schema, { label: 'apply JSON' });
       } else {
-        const applyOptions: { initial: JSONSchemaValue; maxDepth?: number } = { initial: schema };
+        const applyOptions: { initial: JsonSchemaValue; maxDepth?: number } = { initial: schema };
         if (options.maxHistory !== undefined) applyOptions.maxDepth = options.maxHistory;
-        history = useHistory<JSONSchemaValue>(applyOptions);
+        history = useHistory<JsonSchemaValue>(applyOptions);
       }
       jsonDraftText = serialise(history.current);
       runMetaValidation(history.current);
@@ -377,7 +377,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     commitFromForm(
-      next: JSONSchemaValue,
+      next: JsonSchemaValue,
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
@@ -419,11 +419,11 @@ export function createEditorState(options: CreateEditorStateOptions) {
     revert() {
       if (readonly) return;
       if (originalSchema !== null) {
-        const revertOptions: { initial: JSONSchemaValue; maxDepth?: number } = {
+        const revertOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
           initial: originalSchema,
         };
         if (options.maxHistory !== undefined) revertOptions.maxDepth = options.maxHistory;
-        history = useHistory<JSONSchemaValue>(revertOptions);
+        history = useHistory<JsonSchemaValue>(revertOptions);
         jsonDraftText = originalCanonicalText;
         runMetaValidation(history.current);
         runCompile(history.current);
@@ -450,7 +450,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     /** Update the active draft override; recomputes validation. */
-    setDraftOverride(next: JSONSchemaKnownDraft | undefined) {
+    setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
       draftOverride = next;
       runMetaValidation(history?.current ?? null);
       runCompile(history?.current ?? null);
@@ -459,7 +459,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
-    reload(schemaInput: JSONSchemaValue | string, originalInput?: JSONSchemaValue | string) {
+    reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
       clearTimers();
       loadFrom(schemaInput, originalInput);
     },

@@ -18,10 +18,10 @@ import Ajv2019 from 'ajv/dist/2019.js';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 import type {
-  JSONSchemaDraft,
-  JSONSchemaKnownDraft,
-  JSONSchemaValidationError,
-  JSONSchemaValue,
+  JsonSchemaDraft,
+  JsonSchemaKnownDraft,
+  JsonSchemaValidationError,
+  JsonSchemaValue,
 } from './json-schema-editor-types.ts';
 
 const DRAFT_2020_IDS = new Set([
@@ -54,7 +54,7 @@ function getSchemaId(schema: unknown): string | undefined {
  * absent (newest stable). Returns 'unknown' for unrecognised values so
  * callers can fall back deliberately.
  */
-export function detectDraft(schema: unknown): JSONSchemaDraft {
+export function detectDraft(schema: unknown): JsonSchemaDraft {
   const id = getSchemaId(schema);
   if (!id) return '2020-12';
   if (DRAFT_2020_IDS.has(id)) return '2020-12';
@@ -63,7 +63,7 @@ export function detectDraft(schema: unknown): JSONSchemaDraft {
   return 'unknown';
 }
 
-function resolveDraft(draft: JSONSchemaDraft | undefined): JSONSchemaKnownDraft {
+function resolveDraft(draft: JsonSchemaDraft | undefined): JsonSchemaKnownDraft {
   if (!draft || draft === 'unknown') return '2020-12';
   return draft;
 }
@@ -74,7 +74,7 @@ let metaAjv2020: Ajv2020 | null = null;
 let metaAjv2019: Ajv2019 | null = null;
 let metaAjv07: Ajv | null = null;
 
-function getMetaValidator(draft: JSONSchemaKnownDraft): Ajv | Ajv2020 | Ajv2019 {
+function getMetaValidator(draft: JsonSchemaKnownDraft): Ajv | Ajv2020 | Ajv2019 {
   if (draft === '2020-12') {
     if (!metaAjv2020) metaAjv2020 = new Ajv2020({ strict: false, allErrors: true });
     return metaAjv2020;
@@ -89,7 +89,7 @@ function getMetaValidator(draft: JSONSchemaKnownDraft): Ajv | Ajv2020 | Ajv2019 
 
 function ajvErrorsToValidationErrors(
   errors: { instancePath?: string; message?: string; keyword?: string }[] | null | undefined,
-): JSONSchemaValidationError[] {
+): JsonSchemaValidationError[] {
   if (!errors) return [];
   return errors.map((error) => ({
     path: error.instancePath ?? '',
@@ -104,8 +104,8 @@ function ajvErrorsToValidationErrors(
  */
 export function validateMetaSchema(
   schema: unknown,
-  draft?: JSONSchemaDraft,
-): { valid: boolean; errors: JSONSchemaValidationError[] } {
+  draft?: JsonSchemaDraft,
+): { valid: boolean; errors: JsonSchemaValidationError[] } {
   if (typeof schema === 'boolean') return { valid: true, errors: [] };
   if (!isObject(schema)) {
     return {
@@ -133,7 +133,7 @@ export function validateMetaSchema(
  */
 export function tryCompile(
   schema: unknown,
-  draft?: JSONSchemaDraft,
+  draft?: JsonSchemaDraft,
 ): { ok: true } | { ok: false; error: string } {
   if (typeof schema === 'boolean') return { ok: true };
   if (!isObject(schema)) {
@@ -276,9 +276,9 @@ const PRETTY_INDENT = 2;
  * the editor needs.
  */
 export function normaliseSchemaInput(
-  input: JSONSchemaValue | string,
+  input: JsonSchemaValue | string,
 ):
-  | { ok: true; rawText: string; canonicalText: string; schema: JSONSchemaValue }
+  | { ok: true; rawText: string; canonicalText: string; schema: JsonSchemaValue }
   | { ok: false; rawText: string; error: string } {
   if (typeof input === 'string') {
     const parsed = tryParseJson(input);
@@ -292,7 +292,7 @@ export function normaliseSchemaInput(
         error: 'Top-level schema must be an object or boolean',
       };
     }
-    const schema = parsed.value as JSONSchemaValue;
+    const schema = parsed.value as JsonSchemaValue;
     return {
       ok: true,
       rawText: input,

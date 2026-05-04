@@ -83,6 +83,22 @@ export type { EmptyStateProps } from './components/empty-state.svelte';
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 
+export { default as JsonSchemaEditor } from './components/json-schema-editor.svelte';
+export type {
+  JsonSchemaDraft,
+  JsonSchemaEditorChangeEvent,
+  JsonSchemaEditorMode,
+  JsonSchemaEditorProps,
+  JsonSchemaEditorRevertEvent,
+  JsonSchemaEditorView,
+  JsonSchemaKnownDraft,
+  JsonSchemaTypeName,
+  JsonSchemaValidationError,
+  JsonSchemaValidationResult,
+  JsonSchemaValidationStatus,
+  JsonSchemaValue,
+} from './components/json-schema-editor.svelte';
+
 export { default as Kbd } from './components/kbd.svelte';
 export type { KbdProps } from './components/kbd.svelte';
 
@@ -212,6 +228,15 @@ export type {
   ToastOptions,
   ToastVariant,
 } from './components/toast-region.svelte';
+
+export { useHistory } from './utilities/use-history.svelte.ts';
+export type {
+  UseHistory,
+  UseHistoryCommitOptions,
+  UseHistoryEntry,
+  UseHistoryEntryMetadata,
+  UseHistoryOptions,
+} from './utilities/use-history.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
 

@@ -145,6 +145,10 @@
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
     },
+    "./json-schema-editor": {
+      "svelte": "./src/components/json-schema-editor.svelte",
+      "types": "./dist/components/json-schema-editor.svelte.d.ts"
+    },
     "./kbd": {
       "svelte": "./src/components/kbd.svelte",
       "types": "./dist/components/kbd.svelte.d.ts"

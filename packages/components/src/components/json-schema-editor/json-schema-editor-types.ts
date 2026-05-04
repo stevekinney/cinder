@@ -1,12 +1,12 @@
 /**
- * Public types for the JSONSchemaEditor component.
+ * Public types for the JsonSchemaEditor component.
  *
- * Naming rule: every type referenced from JSONSchemaEditorProps is prefixed
- * with `JSONSchema*` or `JSONSchemaEditor*` and exported from the package
+ * Naming rule: every type referenced from JsonSchemaEditorProps is prefixed
+ * with `JsonSchema*` or `JsonSchemaEditor*` and exported from the package
  * barrel.
  */
 
-export type JSONSchemaTypeName =
+export type JsonSchemaTypeName =
   | 'string'
   | 'number'
   | 'integer'
@@ -16,95 +16,95 @@ export type JSONSchemaTypeName =
   | 'array';
 
 /** Drafts the editor can validate against. */
-export type JSONSchemaKnownDraft = '2020-12' | '2019-09' | 'draft-07';
+export type JsonSchemaKnownDraft = '2020-12' | '2019-09' | 'draft-07';
 
 /** All draft states, including the unknown-but-encountered case. */
-export type JSONSchemaDraft = JSONSchemaKnownDraft | 'unknown';
+export type JsonSchemaDraft = JsonSchemaKnownDraft | 'unknown';
 
-export type JSONSchemaEditorView = 'form' | 'json' | 'diff';
+export type JsonSchemaEditorView = 'form' | 'json' | 'diff';
 
-export type JSONSchemaEditorMode = 'edit' | 'readonly';
+export type JsonSchemaEditorMode = 'edit' | 'readonly';
 
 /**
  * A JSON Schema document. May be a boolean (allow-all / deny-all) or an
  * object with editable + preserved keywords.
  */
-export type JSONSchemaValue = boolean | JSONSchemaObject;
+export type JsonSchemaValue = boolean | JsonSchemaObject;
 
 /**
  * Structural shape of an object-form schema. We type the keywords the editor
  * edits explicitly; everything else round-trips through the index signature.
  */
-export interface JSONSchemaObject {
-  $schema?: string;
-  $id?: string;
-  $ref?: string;
-  type?: JSONSchemaTypeName | JSONSchemaTypeName[];
-  title?: string;
-  description?: string;
+export interface JsonSchemaObject {
+  $schema?: string | undefined;
+  $id?: string | undefined;
+  $ref?: string | undefined;
+  type?: JsonSchemaTypeName | JsonSchemaTypeName[] | undefined;
+  title?: string | undefined;
+  description?: string | undefined;
   default?: unknown;
-  examples?: unknown[];
-  enum?: unknown[];
+  examples?: unknown[] | undefined;
+  enum?: unknown[] | undefined;
   const?: unknown;
 
   // String constraints
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: string;
+  minLength?: number | undefined;
+  maxLength?: number | undefined;
+  pattern?: string | undefined;
+  format?: string | undefined;
 
   // Number constraints
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  multipleOf?: number;
+  minimum?: number | undefined;
+  maximum?: number | undefined;
+  exclusiveMinimum?: number | undefined;
+  exclusiveMaximum?: number | undefined;
+  multipleOf?: number | undefined;
 
   // Object constraints
-  properties?: Record<string, JSONSchemaValue>;
-  required?: string[];
-  additionalProperties?: JSONSchemaValue;
+  properties?: Record<string, JsonSchemaValue> | undefined;
+  required?: string[] | undefined;
+  additionalProperties?: JsonSchemaValue | undefined;
 
   // Array constraints
-  items?: JSONSchemaValue;
-  minItems?: number;
-  maxItems?: number;
-  uniqueItems?: boolean;
+  items?: JsonSchemaValue | undefined;
+  minItems?: number | undefined;
+  maxItems?: number | undefined;
+  uniqueItems?: boolean | undefined;
 
   // Composition
-  oneOf?: JSONSchemaValue[];
-  anyOf?: JSONSchemaValue[];
-  allOf?: JSONSchemaValue[];
-  not?: JSONSchemaValue;
+  oneOf?: JsonSchemaValue[] | undefined;
+  anyOf?: JsonSchemaValue[] | undefined;
+  allOf?: JsonSchemaValue[] | undefined;
+  not?: JsonSchemaValue | undefined;
 
   // Round-trip bag for unmodeled keywords. The editor reads and writes the
   // typed slots above; everything else is preserved verbatim.
   [key: string]: unknown;
 }
 
-export type JSONSchemaValidationError = {
+export type JsonSchemaValidationError = {
   path: string;
   message: string;
   keyword: string;
 };
 
-export type JSONSchemaValidationStatus = 'valid' | 'invalid' | 'pending' | 'compile-deferred';
+export type JsonSchemaValidationStatus = 'valid' | 'invalid' | 'pending' | 'compile-deferred';
 
-export type JSONSchemaValidationResult = {
-  status: JSONSchemaValidationStatus;
+export type JsonSchemaValidationResult = {
+  status: JsonSchemaValidationStatus;
   /** Meta-schema valid. Always meaningful, even when status is `pending`. */
   valid: boolean;
-  errors: JSONSchemaValidationError[];
+  errors: JsonSchemaValidationError[];
   /** `null` when compile is deferred or not yet run. */
   compilable: boolean | null;
   compileError?: string;
 };
 
-export type JSONSchemaEditorChangeEvent = {
-  schema: JSONSchemaValue;
+export type JsonSchemaEditorChangeEvent = {
+  schema: JsonSchemaValue;
   jsonString: string;
 };
 
-export type JSONSchemaEditorRevertEvent = {
+export type JsonSchemaEditorRevertEvent = {
   restoredFrom: 'original-schema' | 'original-text';
 };
