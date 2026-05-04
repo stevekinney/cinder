@@ -39,6 +39,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import Tab from '../tab.svelte';
+  import TabList from '../tab-list.svelte';
   import TabPanel from '../tab-panel.svelte';
   import Tabs from '../tabs.svelte';
 
@@ -151,9 +152,11 @@
   <JsonSchemaToolbar {state} onUndo={handleUndo} onRedo={handleRedo} onRevert={handleRevert} />
 
   <Tabs bind:value={view}>
-    <Tab value="form">Form</Tab>
-    <Tab value="json">JSON</Tab>
-    <Tab value="diff">Diff{state.hasChanges ? ' •' : ''}</Tab>
+    <TabList label="Editor view">
+      <Tab value="form">Form</Tab>
+      <Tab value="json">JSON</Tab>
+      <Tab value="diff">Diff{state.hasChanges ? ' •' : ''}</Tab>
+    </TabList>
 
     <TabPanel value="form">
       <FormView {state} idPrefix={`${id}-form`} />

@@ -1,0 +1,235 @@
+/**
+ * Layout and spacing for the JsonSchemaEditor component.
+ * Uses Cinder tokens — no hard-coded colors or spacing.
+ */
+
+.cinder-jse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+}
+
+/* ===== Toolbar ===== */
+.cinder-jse-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-3);
+  flex-wrap: wrap;
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+}
+
+.cinder-jse-toolbar__left,
+.cinder-jse-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  flex-wrap: wrap;
+}
+
+/* ===== Property editor (recursive node) ===== */
+.cinder-jse-property-editor {
+  padding: var(--cinder-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+/* Tone down nested raised surfaces so deeper nodes don't keep stacking shadows. */
+.cinder-jse-property-editor .cinder-jse-property-editor {
+  box-shadow: none;
+  background: var(--cinder-surface);
+}
+
+.cinder-jse-section {
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-sm);
+  padding: var(--cinder-space-3);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-jse-section__title {
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cinder-text-muted);
+  padding: 0 var(--cinder-space-1);
+}
+
+/* Type checkbox row sits horizontal; Cinder's Checkbox owns its own row, so we wrap with flex-wrap. */
+.cinder-jse-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-2) var(--cinder-space-4);
+  align-items: center;
+}
+
+.cinder-jse-type-row .cinder-checkbox-field {
+  flex: 0 0 auto;
+}
+
+/* Boolean-schema short-circuit ===== */
+.cinder-jse-boolean-schema {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-3);
+  border: 1px dashed var(--cinder-border);
+  border-radius: var(--cinder-radius-sm);
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+}
+
+/* ===== Collapsed deep-node summary ===== */
+.cinder-jse-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+  background: transparent;
+  border: 1px dashed var(--cinder-border);
+  border-radius: var(--cinder-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+.cinder-jse-collapsed:hover {
+  background: var(--cinder-surface-raised);
+}
+
+.cinder-jse-collapsed__hint {
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+}
+
+/* ===== Property list ===== */
+.cinder-jse-property-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+}
+
+.cinder-jse-property-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto auto auto auto;
+  grid-template-areas:
+    'name required up down delete'
+    'schema schema schema schema schema';
+  gap: var(--cinder-space-2) var(--cinder-space-3);
+  align-items: end;
+  padding: var(--cinder-space-3);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface);
+}
+
+.cinder-jse-property-row > .cinder-input-field:first-child {
+  grid-area: name;
+}
+
+.cinder-jse-property-row > .cinder-checkbox-field {
+  grid-area: required;
+  align-self: center;
+}
+
+.cinder-jse-property-row > .cinder-button:nth-of-type(1) {
+  grid-area: up;
+}
+
+.cinder-jse-property-row > .cinder-button:nth-of-type(2) {
+  grid-area: down;
+}
+
+.cinder-jse-property-row > .cinder-button:nth-of-type(3) {
+  grid-area: delete;
+}
+
+.cinder-jse-property-row > .cinder-jse-property-editor {
+  grid-area: schema;
+}
+
+/* Required-only chip area */
+.cinder-jse-required-only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-2);
+  align-items: center;
+}
+
+.cinder-jse-required-only__title {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  color: var(--cinder-text-muted);
+}
+
+.cinder-jse-required-only__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  padding: var(--cinder-space-1) var(--cinder-space-2);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-full);
+  font-size: var(--cinder-text-sm);
+  background: var(--cinder-surface-raised);
+}
+
+/* ===== JSON view ===== */
+.cinder-jse-json-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-jse-json-view__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  flex-wrap: wrap;
+}
+
+.cinder-jse-json-view__textarea textarea {
+  font-family: var(--cinder-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--cinder-text-sm);
+  line-height: 1.5;
+  min-height: 16rem;
+}
+
+.cinder-jse-json-view__errors {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--cinder-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--cinder-text-xs);
+}
+
+/* ===== Diff view ===== */
+.cinder-jse-diff-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+/* ===== Form view ===== */
+.cinder-jse-form-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-jse-dirty-actions {
+  display: flex;
+  gap: var(--cinder-space-2);
+  margin-top: var(--cinder-space-2);
+}
