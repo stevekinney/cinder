@@ -37,6 +37,15 @@ import {
 const PRETTY_INDENT = 2;
 const META_DEBOUNCE_MS = 250;
 const COMPILE_DEBOUNCE_MS = 500;
+/**
+ * Skip Ajv compile for drafts larger than this byte threshold. Compile is
+ * the expensive step (it walks every keyword and synthesises a validator
+ * function) and on the main thread a 100KB+ schema can stall typing for
+ * hundreds of milliseconds per debounce cycle. We still run parse + meta
+ * validation; only the compile pass is silently deferred. The user sees
+ * `status: 'pending'` while the gate is active.
+ */
+const COMPILE_DEFER_BYTES = 100_000;
 
 export interface CreateEditorStateOptions {
   schema: JsonSchemaValue | string;
@@ -134,14 +143,10 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return { ...result, ...overrides };
   }
 
-  function detectActiveDraft(schema: JsonSchemaValue | null): JsonSchemaDraft {
+  function detectActiveDraft(schema: unknown): JsonSchemaDraft {
     if (draftOverride) return draftOverride;
     if (schema === null) return '2020-12';
     return detectDraft(schema);
-  }
-
-  function isJsonSchemaShape(value: unknown): value is JsonSchemaValue {
-    return typeof value === 'boolean' || isPlainRecord(value);
   }
 
   /**
@@ -157,12 +162,12 @@ export function createEditorState(options: CreateEditorStateOptions) {
    * `jsonDraftIsDirty` $derived because this function is called from
    * `loadFrom`, which runs before the $derived expressions are set up.
    */
-  function schemaToValidate(): JsonSchemaValue | null {
+  function schemaToValidate(): unknown {
     const committed = history?.current ?? null;
     const committedText = committed === null ? '' : serialise(committed);
     if (jsonDraftText !== committedText) {
       const parsed = tryParseJson(jsonDraftText);
-      if (parsed.ok && isJsonSchemaShape(parsed.value)) {
+      if (parsed.ok) {
         return parsed.value;
       }
     }
@@ -220,6 +225,16 @@ export function createEditorState(options: CreateEditorStateOptions) {
       recomputeStatus();
       emitValidation(buildResult());
     }, META_DEBOUNCE_MS);
+
+    // Skip compile for very large drafts — Ajv.compile is O(schema-size)
+    // synchronous main-thread work and at 100KB+ it stalls typing badly.
+    // Status stays 'pending' (compileResult never resolves) until the user
+    // applies the draft and we have committed text to validate. Reset the
+    // result so a previously-compiled smaller draft doesn't poison us.
+    if (jsonDraftText.length > COMPILE_DEFER_BYTES) {
+      compileResult = null;
+      return;
+    }
 
     compileDebounceHandle = setTimeout(() => {
       runCompile();
@@ -353,7 +368,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       return buildResult();
     },
     get activeDraft(): JsonSchemaDraft {
-      return detectActiveDraft(committedSchema);
+      return detectActiveDraft(schemaToValidate());
     },
 
     // ---- Writes ----
@@ -417,7 +432,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     undo(): string | undefined {
-      if (!history) return undefined;
+      if (!history || readonly) return undefined;
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
@@ -430,7 +445,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     redo(): string | undefined {
-      if (!history) return undefined;
+      if (!history || readonly) return undefined;
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);

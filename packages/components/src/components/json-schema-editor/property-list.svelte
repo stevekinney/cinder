@@ -258,7 +258,7 @@
     Add property
   </Button>
 
-  {#if requiredOnly.length > 0 || newRequiredOnlyName.length > 0}
+  {#if !readonly || requiredOnly.length > 0}
     <details class="cinder-jse-required-only" open={requiredOnly.length > 0}>
       <summary class="cinder-jse-required-only__summary">
         Required without property schema ({requiredOnly.length})
@@ -292,6 +292,9 @@
             }
           }}
         />
+        <Button variant="secondary" size="sm" disabled={readonly} onclick={addRequiredOnly}>
+          Add required name
+        </Button>
       </div>
     </details>
   {/if}

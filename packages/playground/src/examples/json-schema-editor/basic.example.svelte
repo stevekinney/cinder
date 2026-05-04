@@ -5,8 +5,9 @@
 
 <script lang="ts">
   import { JsonSchemaEditor } from '../../../../components/src/index.ts';
+  import type { JsonSchemaValue } from '../../../../components/src/index.ts';
 
-  const personSchema = {
+  const personSchema: JsonSchemaValue = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'Person',
     type: 'object',

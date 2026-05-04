@@ -193,4 +193,12 @@ describe('normaliseSchemaInput', () => {
       expect(result.error).toContain('object or boolean');
     }
   });
+
+  test('rejects a top-level array value (not a valid schema shape)', () => {
+    const result = normaliseSchemaInput([1, 2, 3] as never);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain('object or boolean');
+    }
+  });
 });

@@ -310,6 +310,14 @@ export function normaliseSchemaInput(
     };
   }
 
+  if (!isObject(input)) {
+    return {
+      ok: false,
+      rawText: '',
+      error: 'Top-level schema must be an object or boolean',
+    };
+  }
+
   const incompatibility = findJsonIncompatibility(input, '', new Set());
   if (incompatibility) {
     return { ok: false, rawText: '', error: incompatibility };

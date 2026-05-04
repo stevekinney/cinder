@@ -66,27 +66,20 @@
   /** Hard recursion limit — deeper nodes show a placeholder. */
   export const MAX_RENDER_DEPTH = 30;
 
-  /**
-   * Stable identity keys for composition branches and array items.
-   *
-   * Plain JSON objects have no built-in identity. If we use the array index
-   * as the {#each} key, removing a non-last branch makes Svelte diff by
-   * index — surviving branches inherit the wrong PropertyEditor instance
-   * (and its local $state, like `userExpanded`). We assign each branch
-   * object a monotonic ID the first time it's rendered and remember it via
-   * a WeakMap so re-renders of the same object reuse the same key.
-   */
-  const branchKeys = new WeakMap<object, number>();
-  let nextBranchKey = 1;
+  export const NUMBER_CONSTRAINT_FIELDS = [
+    { key: 'minimum', label: 'Minimum' },
+    { key: 'maximum', label: 'Maximum' },
+    { key: 'exclusiveMinimum', label: 'Exclusive minimum' },
+    { key: 'exclusiveMaximum', label: 'Exclusive maximum' },
+    { key: 'multipleOf', label: 'Multiple of' },
+  ] as const;
 
-  export function keyForBranch(branch: unknown, fallbackIndex: number): string {
-    if (branch === null || typeof branch !== 'object') return `value-${fallbackIndex}`;
-    const existing = branchKeys.get(branch);
-    if (existing !== undefined) return `id-${existing}`;
-    const fresh = nextBranchKey++;
-    branchKeys.set(branch, fresh);
-    return `id-${fresh}`;
-  }
+  export type NumberConstraintKeyword = (typeof NUMBER_CONSTRAINT_FIELDS)[number]['key'];
+
+  // The branch-keying helper is extracted to a `.ts` sibling because TypeScript's
+  // ambient `*.svelte` shape doesn't surface module-block named exports cleanly,
+  // and we want it directly unit-testable.
+  export { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
 </script>
 
 <script lang="ts">
@@ -98,6 +91,7 @@
   import Input from '../input.svelte';
   import Tooltip from '../tooltip.svelte';
 
+  import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';
   import PropertyEditor from './property-editor.svelte';
   import PropertyList from './property-list.svelte';
@@ -187,6 +181,24 @@
     onchange({}, { label: 'convert to object schema' });
   }
 
+  function parseOptionalFiniteNumber(raw: string): number | undefined {
+    if (raw === '') return undefined;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  function numberConstraintValue(key: NumberConstraintKeyword): string {
+    const value = objectValue[key];
+    return typeof value === 'number' ? value.toString() : '';
+  }
+
+  function patchNumberConstraint(key: NumberConstraintKeyword, raw: string) {
+    patch({ [key]: parseOptionalFiniteNumber(raw) } as Partial<JsonSchemaObject>, {
+      coalesceKey: `${key}:${path}`,
+      label: `edit ${key}`,
+    });
+  }
+
   // ===== Visibility flags for type-specific sections =====
   const showStringConstraints = $derived(selectedTypes.includes('string'));
   const showNumberConstraints = $derived(
@@ -237,6 +249,49 @@
     patch({ [keyword]: next } as Partial<JsonSchemaObject>, {
       label: `edit ${keyword}`,
     });
+  }
+
+  let nextCompositionBranchKey = $state(1);
+  let compositionBranchKeys = $state<Record<'allOf' | 'anyOf' | 'oneOf', string[]>>({
+    allOf: [],
+    anyOf: [],
+    oneOf: [],
+  });
+
+  function createCompositionBranchKey(): string {
+    const key = `branch-${nextCompositionBranchKey}`;
+    nextCompositionBranchKey += 1;
+    return key;
+  }
+
+  function keysForComposition(
+    keyword: 'allOf' | 'anyOf' | 'oneOf',
+    branches: JsonSchemaValue[],
+  ): string[] {
+    const reconciled = reconcileCompositionBranchKeys(
+      compositionBranchKeys[keyword],
+      branches.length,
+      createCompositionBranchKey,
+    );
+    compositionBranchKeys[keyword] = reconciled;
+    return reconciled;
+  }
+
+  function removeCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf', branchIndex: number) {
+    const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
+    list.splice(branchIndex, 1);
+    compositionBranchKeys[keyword] = compositionBranchKeys[keyword].toSpliced(branchIndex, 1);
+    patchComposition(keyword, list.length > 0 ? list : undefined);
+  }
+
+  function addCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf') {
+    const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
+    list.push({});
+    compositionBranchKeys[keyword] = [
+      ...compositionBranchKeys[keyword],
+      createCompositionBranchKey(),
+    ];
+    patchComposition(keyword, list);
   }
 </script>
 
@@ -411,34 +466,16 @@
       <details class="cinder-jse-section cinder-jse-section--collapsible">
         <summary class="cinder-jse-section__title">Number constraints</summary>
         <div class="cinder-jse-section__body">
-          <Input
-            id={`${idPrefix}-minimum`}
-            label="Minimum"
-            value={objectValue.minimum?.toString() ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) => {
-              const raw = (event.target as HTMLInputElement).value;
-              const parsed = raw === '' ? undefined : Number(raw);
-              patch(
-                { minimum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
-                { coalesceKey: `minimum:${path}`, label: 'edit minimum' },
-              );
-            }}
-          />
-          <Input
-            id={`${idPrefix}-maximum`}
-            label="Maximum"
-            value={objectValue.maximum?.toString() ?? ''}
-            disabled={readonly}
-            oninput={(event: Event) => {
-              const raw = (event.target as HTMLInputElement).value;
-              const parsed = raw === '' ? undefined : Number(raw);
-              patch(
-                { maximum: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined },
-                { coalesceKey: `maximum:${path}`, label: 'edit maximum' },
-              );
-            }}
-          />
+          {#each NUMBER_CONSTRAINT_FIELDS as field (field.key)}
+            <Input
+              id={`${idPrefix}-${field.key}`}
+              label={field.label}
+              value={numberConstraintValue(field.key)}
+              disabled={readonly}
+              oninput={(event: Event) =>
+                patchNumberConstraint(field.key, (event.target as HTMLInputElement).value)}
+            />
+          {/each}
         </div>
       </details>
     {/if}
@@ -446,10 +483,11 @@
     <!-- Composition (only when present) -->
     {#each ['allOf', 'anyOf', 'oneOf'] as const as keyword (keyword)}
       {#if Array.isArray(objectValue[keyword])}
+        {@const branchKeys = keysForComposition(keyword, objectValue[keyword])}
         <details class="cinder-jse-section cinder-jse-section--collapsible" open>
           <summary class="cinder-jse-section__title">{keyword}</summary>
           <div class="cinder-jse-section__body">
-            {#each objectValue[keyword] as branch, branchIndex (keyForBranch(branch, branchIndex))}
+            {#each objectValue[keyword] as branch, branchIndex (branchKeys[branchIndex])}
               <PropertyEditor
                 idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
                 path={`${path}/${keyword}/${branchIndex}`}
@@ -466,11 +504,7 @@
                 variant="ghost"
                 size="xs"
                 disabled={readonly}
-                onclick={() => {
-                  const list = [...objectValue[keyword]!];
-                  list.splice(branchIndex, 1);
-                  patchComposition(keyword, list.length > 0 ? list : undefined);
-                }}
+                onclick={() => removeCompositionBranch(keyword, branchIndex)}
               >
                 Remove branch
               </Button>
@@ -479,11 +513,7 @@
               variant="secondary"
               size="sm"
               disabled={readonly}
-              onclick={() => {
-                const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
-                list.push({});
-                patchComposition(keyword, list);
-              }}
+              onclick={() => addCompositionBranch(keyword)}
             >
               Add {keyword} branch
             </Button>

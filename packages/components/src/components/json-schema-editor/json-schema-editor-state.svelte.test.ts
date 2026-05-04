@@ -2,6 +2,20 @@ import { describe, expect, test } from 'bun:test';
 
 import { createEditorState } from './json-schema-editor-state.svelte.ts';
 
+function withImmediateTimers<T>(run: () => T): T {
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((handler: TimerHandler, _timeout?: number, ...args: unknown[]) => {
+    if (typeof handler === 'function') handler(...args);
+    return 0 as unknown as ReturnType<typeof setTimeout>;
+  }) as unknown as typeof setTimeout;
+
+  try {
+    return run();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+}
+
 describe('createEditorState — initial load', () => {
   test('parses a string schema and seeds canonical text', () => {
     const state = createEditorState({ schema: '{"type":"string"}' });
@@ -294,6 +308,25 @@ describe('createEditorState — readonly guards', () => {
     state.setReadonly(true);
     expect(state.isFormEditable).toBe(false);
   });
+
+  test('setReadonly blocks undo and redo live', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.commitFromForm({ type: 'number' }, { label: 'change type' });
+
+    expect(state.canUndo).toBe(true);
+    state.setReadonly(true);
+
+    expect(state.undo()).toBeUndefined();
+    expect(state.committedSchema).toEqual({ type: 'number' });
+
+    state.setReadonly(false);
+    state.undo();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+
+    state.setReadonly(true);
+    expect(state.redo()).toBeUndefined();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
 });
 
 describe('createEditorState — onvalidate callback', () => {
@@ -319,5 +352,64 @@ describe('createEditorState — onvalidate callback', () => {
     state.commitFromForm({ type: 'number' });
 
     expect(events.length).toBeGreaterThan(baseline);
+  });
+
+  test('fires invalid status for a dirty top-level array draft', () => {
+    const events: { status: string; valid: boolean }[] = [];
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onvalidate: (result) => events.push(result),
+    });
+
+    withImmediateTimers(() => {
+      state.setJsonDraftText('[1,2,3]');
+    });
+
+    expect(state.validationStatus).toBe('invalid');
+    expect(state.validationResult.valid).toBe(false);
+    expect(events.at(-1)).toMatchObject({ status: 'invalid', valid: false });
+  });
+
+  test('does not synchronously compile a large draft (size gate)', () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+
+    // Build a draft larger than the compile-defer threshold (100KB) by
+    // padding the description. This exercises the size gate in
+    // scheduleValidation: the compile timer should never fire, leaving
+    // status 'pending' instead of 'valid'. The test relies on the fact
+    // that scheduleValidation's compile branch is skipped synchronously
+    // when the draft exceeds the size threshold.
+    const largeDescription = 'x'.repeat(120_000);
+    state.setJsonDraftText(`{"type":"string","description":"${largeDescription}"}`);
+
+    // After the synchronous portion of scheduleValidation, compileResult
+    // is reset to null and no timer is scheduled. Status is 'pending'.
+    expect(state.validationStatus).toBe('pending');
+    expect(state.validationResult.compilable).toBe(null);
+  });
+
+  test('activeDraft reflects a parseable dirty JSON draft', () => {
+    const state = createEditorState({
+      schema: { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'string' },
+    });
+
+    expect(state.activeDraft).toBe('2020-12');
+
+    state.setJsonDraftText('{"$schema":"http://json-schema.org/draft-07/schema#","type":"string"}');
+
+    expect(state.activeDraft).toBe('draft-07');
+  });
+
+  test('draftOverride wins for parseable dirty JSON drafts', () => {
+    const state = createEditorState({
+      schema: { type: 'string' },
+      draftOverride: 'draft-07',
+    });
+
+    state.setJsonDraftText(
+      '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"string"}',
+    );
+
+    expect(state.activeDraft).toBe('draft-07');
   });
 });

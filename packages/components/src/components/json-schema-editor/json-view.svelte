@@ -26,7 +26,7 @@
   const draftParse = $derived(tryParseJson(state.jsonDraftText));
   const draftMeta = $derived.by(() => {
     if (!draftParse.ok) return null;
-    return validateMetaSchema(draftParse.value);
+    return validateMetaSchema(draftParse.value, state.activeDraft);
   });
 
   const draftErrorMessage = $derived.by(() => {

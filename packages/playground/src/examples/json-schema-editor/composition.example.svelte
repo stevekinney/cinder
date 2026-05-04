@@ -6,8 +6,9 @@
 
 <script lang="ts">
   import { JsonSchemaEditor } from '../../../../components/src/index.ts';
+  import type { JsonSchemaValue } from '../../../../components/src/index.ts';
 
-  const schema = {
+  const schema: JsonSchemaValue = {
     type: 'object',
     properties: {
       identifier: {
