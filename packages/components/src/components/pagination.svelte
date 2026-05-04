@@ -123,7 +123,7 @@
     </button>
 
     <!-- Page number buttons -->
-    <ul class="cinder-pagination__pages">
+    <ul class="cinder-pagination__pages" role="list">
       {#each pageItems as item (typeof item === 'string' ? item : `page-${item}`)}
         {#if typeof item === 'string'}
           <li class="cinder-pagination__ellipsis-item" aria-hidden="true">
