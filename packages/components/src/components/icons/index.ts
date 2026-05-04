@@ -38,3 +38,5 @@ export {
   Unlink,
   X,
 } from 'lucide-svelte';
+
+export type { IconProps } from 'lucide-svelte';
