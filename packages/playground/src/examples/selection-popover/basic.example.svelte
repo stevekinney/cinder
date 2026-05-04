@@ -23,19 +23,36 @@
   />
 
   {#if comments.length > 0}
-    <section style="margin: 1rem 0 0;" aria-label="Submitted comments">
-      <h4
-        style="margin: 0 0 0.5rem; font-size: var(--cinder-text-xs); color: var(--cinder-text-muted); text-transform: uppercase; letter-spacing: 0.04em;"
-      >
-        Submitted comments
-      </h4>
-      {#each comments as comment, i (i)}
-        <article
-          style="padding: 0.5rem 0.75rem; border: 1px solid var(--cinder-border-muted); border-radius: 0.375rem; margin-bottom: 0.375rem; background: var(--cinder-surface);"
-        >
+    <section class="comments-section" aria-label="Submitted comments">
+      <h3 class="comments-title">Submitted comments</h3>
+      {#each comments as comment (comment)}
+        <article class="comment-card">
           {comment}
         </article>
       {/each}
     </section>
   {/if}
 </div>
+
+<style>
+  .comments-section {
+    margin: 1rem 0 0;
+  }
+
+  .comments-title {
+    margin: 0 0 0.5rem;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .comment-card {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.375rem;
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+  }
+</style>
