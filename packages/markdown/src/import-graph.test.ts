@@ -33,7 +33,19 @@ import { describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const RENDERING_MARKERS = ['@shikijs/langs', 'shiki/core', 'rehype-katex', 'katex/dist'] as const;
+// Markers that the rendering bundle MUST contain. The sanity check below
+// asserts every marker is present in the rendering bundle; the leanness
+// tests assert none are present in lean bundles. Markers must be strings
+// that survive bundling — module-specifier paths (e.g. `shiki/core`) get
+// inlined and don't appear as literals, but identifier names from the
+// modules' source DO appear because Bun emits the module bodies inline.
+//
+// `scopeName` is a TextMate grammar property used heavily by shiki's
+// language registrations; `katex` appears in CSS class generation
+// throughout the KaTeX library body. Both are stable across versions.
+// `@shikijs` and `shiki` are present in passthrough strings the libraries
+// reference internally (worker comm, error messages, etc.).
+const RENDERING_MARKERS = ['scopeName', 'katex', '@shikijs', 'shiki'] as const;
 
 // Resolve the markdown package root from this test file's location:
 // __tests__ live under packages/markdown/src/, so two levels up is the
@@ -124,16 +136,30 @@ describe('import-graph leanness', () => {
   });
 
   describe('rendering subpath does pull in shiki/katex (sanity check)', () => {
-    // This is the inverse: if this assertion fails, the markers above
-    // are wrong. Importing the rendering namespace MUST contain at
-    // least one rendering marker — otherwise the test above couldn't
-    // catch a regression even if one existed.
-    it('@cinder/markdown/rendering contains rendering markers', async () => {
+    // Inverse assertion: importing the rendering namespace MUST contain
+    // EVERY rendering marker. We require all-present rather than
+    // any-present because a subset would let the leanness tests pass
+    // vacuously: if a future bundler change inlines `shiki/core` so the
+    // string no longer appears literally in bundle text, the leanness
+    // tests would also stop seeing it for the lean subpaths — they'd
+    // pass for the wrong reason. Requiring `=== RENDERING_MARKERS.length`
+    // here forces the test suite to fail loudly if a marker becomes
+    // undetectable, prompting an update to the marker list.
+    it('@cinder/markdown/rendering contains every rendering marker', async () => {
       const bundle = await bundleSnippet(
         `import * as m from '@cinder/markdown/rendering';\nglobalThis.__leanGuard__ = m;\n`,
       );
-      const found = RENDERING_MARKERS.filter((marker) => bundle.includes(marker));
-      expect(found.length).toBeGreaterThan(0);
+      const missing = RENDERING_MARKERS.filter((marker) => !bundle.includes(marker));
+      if (missing.length > 0) {
+        throw new Error(
+          `Sanity check failed: rendering bundle is missing markers ${missing.join(', ')}. ` +
+            `The marker list in import-graph.test.ts (RENDERING_MARKERS) is stale relative ` +
+            `to the actual bundle output — likely because of a shiki/katex/bundler version ` +
+            `change. Update RENDERING_MARKERS to use strings that still appear literally ` +
+            `in the rendering bundle, otherwise the leanness tests above can pass vacuously.`,
+        );
+      }
+      expect(missing.length).toBe(0);
     }, 30_000);
   });
 });

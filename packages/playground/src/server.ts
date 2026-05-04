@@ -22,7 +22,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { rmdirSync, unlinkSync, watch, type FSWatcher } from 'node:fs';
+import { rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
@@ -210,9 +210,13 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
   const shim = `export { default } from '../examples/${componentName}/${scenario}.example.svelte';\n`;
-  await Bun.write(entryTempPath, shim);
 
   try {
+    // Bun.write auto-creates parent directories. We keep the write inside
+    // the try so a write failure still hits the finally cleanup (rmSync
+    // is idempotent for a missing dir).
+    await Bun.write(entryTempPath, shim);
+
     const result = await Bun.build({
       entrypoints: [entryTempPath],
       plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
@@ -272,12 +276,9 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     bundleEntryByKey.set(cacheKey, entryArtifactPath);
     return entryCode;
   } finally {
-    try {
-      unlinkSync(entryTempPath);
-      rmdirSync(entryTempDir);
-    } catch {
-      // Ignore — file or directory may already be gone or never written.
-    }
+    // Recursive remove handles intermediate files Bun might emit and is
+    // idempotent if the dir was never created.
+    rmSync(entryTempDir, { recursive: true, force: true });
   }
 }
 
@@ -286,11 +287,17 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
  * use as a cache key.
  *
  * When `outdir` is omitted, Bun returns paths as either basenames
- * (`page-chat.js`) or with the `chunk` template prefix (`chunks/foo-ab12.js`).
- * Older or different Bun versions may prefix with `./` — strip that.
+ * (`page-chat.js`) or with the `chunk` template prefix
+ * (`chunks/foo-ab12.js`). Older or different Bun versions may prefix with
+ * `./` (or `.\\` on Windows). We:
+ *
+ *   1. Strip a leading `./` or `.\\` so cache keys don't carry a redundant
+ *      relative-path prefix.
+ *   2. Normalize backslashes to forward slashes — Bun on Windows can emit
+ *      `dir\\file.js`, but URL paths and our regex routes use `/`.
  */
 function artifactRelativePath(path: string): string {
-  return path.replace(/^\.\//, '');
+  return path.replace(/^\.[\\/]/, '').replaceAll('\\', '/');
 }
 
 /**
@@ -410,9 +417,12 @@ if (target === null) {
 mount(ComponentPage, { target });
 `;
 
-  await Bun.write(entryTempPath, entrySource);
-
   try {
+    // Bun.write auto-creates parent directories. We keep the write inside
+    // the try so a write failure still hits the finally cleanup (rmSync
+    // is idempotent for a missing dir).
+    await Bun.write(entryTempPath, entrySource);
+
     const result = await Bun.build({
       entrypoints: [entryTempPath],
       plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
@@ -472,12 +482,9 @@ mount(ComponentPage, { target });
     pageEntryByName.set(componentName, entryArtifactPath);
     return entryCode;
   } finally {
-    try {
-      unlinkSync(entryTempPath);
-      rmdirSync(entryTempDir);
-    } catch {
-      // Ignore — file or directory may already be gone or never written.
-    }
+    // Recursive remove handles intermediate files Bun might emit and is
+    // idempotent if the dir was never created.
+    rmSync(entryTempDir, { recursive: true, force: true });
   }
 }
 
