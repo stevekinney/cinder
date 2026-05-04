@@ -23,10 +23,19 @@
   />
 
   {#if comments.length > 0}
-    <ul style="margin: 1rem 0 0; padding-left: 1.25rem;">
-      {#each comments as comment}
-        <li>{comment}</li>
+    <section style="margin: 1rem 0 0;" aria-label="Submitted comments">
+      <h4
+        style="margin: 0 0 0.5rem; font-size: var(--cinder-text-xs); color: var(--cinder-text-muted); text-transform: uppercase; letter-spacing: 0.04em;"
+      >
+        Submitted comments
+      </h4>
+      {#each comments as comment, i (i)}
+        <article
+          style="padding: 0.5rem 0.75rem; border: 1px solid var(--cinder-border-muted); border-radius: 0.375rem; margin-bottom: 0.375rem; background: var(--cinder-surface);"
+        >
+          {comment}
+        </article>
       {/each}
-    </ul>
+    </section>
   {/if}
 </div>
