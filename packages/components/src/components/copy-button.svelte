@@ -38,7 +38,7 @@
     value,
     confirmDuration = 1500,
     label,
-    iconOnly,
+    iconOnly = false,
     class: className,
     children,
     confirmation,
@@ -70,22 +70,20 @@
   aria-live="polite"
   onclick={handleClick}
 >
+  <!-- Accessible name for every branch comes from `aria-label` on the button.
+       In iconOnly mode the icon is decorative — `aria-hidden` keeps it out of the
+       accessibility tree. The `aria-live` region on the button announces state
+       changes (Copy → Copied) without needing a redundant sr-only label. -->
   {#if copied && confirmation}
     {@render confirmation()}
   {:else if copied && iconOnly}
-    <span aria-hidden="true">
-      <Check class="icon-sm" />
-    </span>
-    <span class="sr-only">Copied</span>
+    <Check class="icon-sm" aria-hidden="true" />
   {:else if copied}
     Copied
   {:else if children}
     {@render children()}
   {:else if iconOnly}
-    <span aria-hidden="true">
-      <Copy class="icon-sm" />
-    </span>
-    <span class="sr-only">{label ?? 'Copy to clipboard'}</span>
+    <Copy class="icon-sm" aria-hidden="true" />
   {:else}
     Copy
   {/if}

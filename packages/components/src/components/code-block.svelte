@@ -2,9 +2,11 @@
   /**
    * Props for the CodeBlock component.
    *
-   * Renders preformatted code in a `<pre><code>` element. No syntax
-   * highlighting is applied by default. Consumers can provide a highlighter when they
-   * own the syntax-highlighting dependency and output sanitization contract.
+   * Renders preformatted code in a `<pre><code>` element. Plain code is
+   * Svelte-text-interpolated so HTML entities are escaped automatically.
+   * Syntax highlighting is opt-in via the `highlighter` prop — when provided,
+   * the highlighter's HTML output replaces the entire `<pre><code>` block and
+   * is rendered via `{@html}`, so the caller owns the sanitization contract.
    */
   export type CodeBlockProps = {
     /** The code to render. */
@@ -13,7 +15,22 @@
     language?: string;
     /** When true, render a copy button in the header. */
     copyable?: boolean;
-    /** @param highlighter — function that returns syntax-highlighted HTML. Return value is rendered with `{@html}` and is the caller's responsibility to ensure it is safe (e.g. that input code is escaped). Shiki's `codeToHtml` is a safe default. */
+    /**
+     * Optional syntax highlighter. Receives the raw `code` and `lang` and must
+     * return an HTML string (sync or async). The return value is rendered with
+     * `{@html}` and replaces the default `<pre><code>` markup — including the
+     * `cinder-code-block__pre` / `__code` classes — so the caller is also
+     * responsible for matching any structural CSS the consumer relies on
+     * (Shiki's own `<pre class="shiki ...">` output covers most cases).
+     *
+     * The return value is rendered verbatim with `{@html}`. It is the caller's
+     * responsibility to ensure the output is safe — specifically, that the
+     * input `code` is escaped. Shiki's `codeToHtml` escapes input by default
+     * and is the recommended choice.
+     *
+     * Only invoked when `language` is also set. Theme/color-scheme selection
+     * is the caller's responsibility — pass it through closure.
+     */
     highlighter?: (code: string, lang: string) => string | Promise<string>;
     /** Additional class names merged with `.cinder-code-block`. */
     class?: string;
@@ -39,14 +56,24 @@
       highlighted = null;
       return;
     }
+    // Drop any stale highlighted output before starting a new request so
+    // a code/lang change can't leave the previous render visible while the
+    // new request is in flight.
+    highlighted = null;
     let cancelled = false;
-    Promise.resolve(highlighter(code, language))
-      .then((html) => {
+    // The highlighter may throw synchronously OR reject. Promise.resolve()
+    // alone wouldn't catch a sync throw — wrap it in an async IIFE so
+    // both failure modes hit the same .catch.
+    void (async () => {
+      try {
+        const html = await highlighter(code, language);
         if (!cancelled) highlighted = html;
-      })
-      .catch(() => {
+      } catch (error) {
         if (!cancelled) highlighted = null;
-      });
+        // Surface to the developer without breaking the graceful fallback.
+        console.warn('[cinder/CodeBlock] highlighter threw:', error);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -69,8 +96,11 @@
       {/if}
     </header>
   {/if}
+  <!-- The svelte:boundary catches errors thrown during render of {@html highlighted}
+       (e.g. a malformed HTML string that breaks Svelte's reconciliation). Sync/async
+       errors from the highlighter ITSELF are caught above; this is the secondary net. -->
   <svelte:boundary>
-    {#if highlighted}
+    {#if highlighted !== null}
       {@html highlighted}
     {:else}
       <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>

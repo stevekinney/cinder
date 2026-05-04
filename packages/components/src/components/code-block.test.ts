@@ -8,8 +8,8 @@ setupHappyDom();
 const { render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
 
-async function renderHighlightedCode() {
-  return '<pre><code class="highlighted">const x = 1;</code></pre>';
+async function renderHighlightedCode(code: string, _lang: string): Promise<string> {
+  return `<pre class="shiki"><code><span class="highlighted-token">${code}</span></code></pre>`;
 }
 
 describe('CodeBlock', () => {
@@ -42,25 +42,43 @@ describe('CodeBlock', () => {
     expect(container.querySelector('pre code')?.textContent).toBe('const x = 1;');
   });
 
-  test('highlighter prop output is rendered verbatim via html', async () => {
+  test('plain code path escapes HTML special characters', () => {
+    // Svelte text interpolation `{code}` escapes by default. This regression test
+    // catches a future refactor that accidentally moves the no-highlighter path
+    // into an `{@html}` render and exposes XSS.
+    const { container } = render(CodeBlock, { code: '<script>alert(1)</script>' });
+    const code = container.querySelector('.cinder-code-block__code');
+    expect(code?.textContent).toBe('<script>alert(1)</script>');
+    // No actual <script> element should be present in the rendered DOM.
+    expect(container.querySelector('script')).toBeNull();
+  });
+
+  test('highlighter output replaces the plain pre/code and renders verbatim', async () => {
     const { container } = render(CodeBlock, {
       code: 'const x = 1;',
       language: 'js',
       highlighter: renderHighlightedCode,
     });
     await waitFor(() => {
-      expect(container.querySelector('.highlighted')).not.toBeNull();
+      const token = container.querySelector('.highlighted-token');
+      expect(token).not.toBeNull();
+      expect(token?.textContent).toBe('const x = 1;');
+      // The Shiki-style <pre.shiki> replaces the default cinder-code-block__pre.
+      expect(container.querySelector('.cinder-code-block__pre')).toBeNull();
     });
   });
 
-  test('highlighter prop documents the trust boundary in source', async () => {
-    // The component renders highlighter output via {@html} without sanitization.
-    // The JSDoc comment on the highlighter prop is the contract that tells
-    // consumers they own the safety boundary. If this comment goes missing,
-    // a future contributor might forget the trust boundary and add a "sanitize
-    // before render" path that would silently break Shiki's spans.
-    const source = await Bun.file(new URL('./code-block.svelte', import.meta.url).pathname).text();
-    expect(source).toContain('rendered with `{@html}`');
-    expect(source).toContain("caller's responsibility");
+  test('synchronous highlighter exception falls back to plain code', async () => {
+    const { container } = render(CodeBlock, {
+      code: 'const x = 1;',
+      language: 'js',
+      highlighter: () => {
+        throw new Error('boom');
+      },
+    });
+    // The async wrapper inside the effect catches sync throws and flips back to plain.
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('const x = 1;');
+    });
   });
 });
