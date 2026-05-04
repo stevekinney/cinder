@@ -111,7 +111,16 @@ async function ensureMathPipeline(): Promise<{
   processor: Processor;
   rehypeKatex: RehypeKatexPlugin;
 }> {
-  mathPluginsPromise ??= mathPluginLoader();
+  // Guard against caching a rejected promise. Without this, a transient
+  // network error on the first dynamic import would permanently prevent
+  // math rendering for the page lifetime, because a rejected Promise is
+  // not null and ??= would never attempt a retry.
+  if (!mathPluginsPromise) {
+    mathPluginsPromise = mathPluginLoader().catch((error) => {
+      mathPluginsPromise = null; // allow retry on next render
+      throw error;
+    });
+  }
   const { remarkMath, rehypeKatex } = await mathPluginsPromise;
   if (!mathProcessor) {
     mathProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkMath);

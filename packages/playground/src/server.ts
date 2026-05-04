@@ -25,10 +25,12 @@ import { randomUUID } from 'node:crypto';
 import { rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
+import type { BuildArtifact } from 'bun';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
+
 import type { ComponentManifest } from './types.ts';
 
 export const PORT = 4173;
@@ -172,6 +174,53 @@ function startWatcher(): FSWatcher[] {
 }
 
 /**
+ * Shared Bun.build options for both bundle families.
+ *
+ * All artifacts use a flat namespace under `/page-bundle/` so that
+ * dynamic-import URLs emitted by either family resolve through one route.
+ * Putting chunks in a `chunks/` subdir triggers a Bun publicPath quirk
+ * where peer-chunk imports get the subdirectory stripped from their URL.
+ */
+const SHARED_BUILD_OPTIONS = {
+  plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
+  target: 'browser',
+  format: 'esm',
+  conditions: ['bun'],
+  splitting: true,
+  publicPath: '/page-bundle/',
+  naming: {
+    entry: '[name]-[hash].js',
+    chunk: '[name]-[hash].js',
+    asset: '[name]-[hash][ext]',
+  },
+};
+
+/**
+ * Walk `result.outputs`, store every artifact in `artifactByPath`, and
+ * return the `kind === 'entry-point'` artifact's path and source.
+ *
+ * Returns `null` if no entry-point artifact was found (shouldn't happen
+ * with a valid Bun.build result, but handled defensively).
+ */
+async function collectBuildArtifacts(
+  outputs: BuildArtifact[],
+): Promise<{ entryPath: string; entryCode: string } | null> {
+  let entryCode: string | null = null;
+  let entryPath: string | null = null;
+  for (const output of outputs) {
+    const path = artifactRelativePath(output.path);
+    const code = await output.text();
+    artifactByPath.set(path, code);
+    if (output.kind === 'entry-point') {
+      entryCode = code;
+      entryPath = path;
+    }
+  }
+  if (entryPath === null || entryCode === null) return null;
+  return { entryPath, entryCode };
+}
+
+/**
  * Compile a per-scenario example bundle with code splitting enabled.
  *
  * Stores the entry artifact path in `bundleEntryByKey` and every artifact's
@@ -220,64 +269,21 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     // is idempotent for a missing dir).
     await Bun.write(entryTempPath, shim);
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-      splitting: true,
-      // No `outdir` — Bun returns artifacts in result.outputs[] without
-      // writing to disk. `publicPath` controls the URL that emitted
-      // dynamic imports reference; both bundle families share the
-      // /page-bundle/ prefix so chunks resolve through one route.
-      publicPath: '/page-bundle/',
-      naming: {
-        // Flat layout: every artifact (entry + async chunks + assets) lives
-        // at the bundle prefix root. This sidesteps a Bun quirk where
-        // chunk-to-chunk imports get publicPath-joined with relative
-        // paths — putting chunks in a `chunks/` subdir produces URLs like
-        // `/page-bundle/foo.js` (missing `chunks/`) when a chunk imports
-        // another peer chunk. With everything flat, every artifact
-        // resolves to `/page-bundle/<name>-<hash>.js` regardless of who
-        // imports it.
-        //
-        // [hash] is required because `splitting: true` produces both an
-        // entry and additional chunks that would otherwise share `[name]`.
-        // The hash makes the entry path unpredictable from outside the
-        // build, so we record the actual emitted entry path in
-        // `pageEntryByName` / `bundleEntryByKey` and look it up at request
-        // time rather than reconstructing the URL from a template.
-        entry: '[name]-[hash].js',
-        chunk: '[name]-[hash].js',
-        asset: '[name]-[hash][ext]',
-      },
-    });
+    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
 
     if (!result.success) {
       console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);
       return null;
     }
 
-    let entryCode: string | null = null;
-    let entryArtifactPath: string | null = null;
-    for (const output of result.outputs) {
-      const path = artifactRelativePath(output.path);
-      const code = await output.text();
-      artifactByPath.set(path, code);
-      if (output.kind === 'entry-point') {
-        entryCode = code;
-        entryArtifactPath = path;
-      }
-    }
-
-    if (entryArtifactPath === null || entryCode === null) {
+    const entry = await collectBuildArtifacts(result.outputs);
+    if (entry === null) {
       console.error(`[playground] Bundle for ${componentName}/${scenario} produced no entry chunk`);
       return null;
     }
 
-    bundleEntryByKey.set(cacheKey, entryArtifactPath);
-    return entryCode;
+    bundleEntryByKey.set(cacheKey, entry.entryPath);
+    return entry.entryCode;
   } finally {
     // Recursive remove handles intermediate files Bun might emit and is
     // idempotent if the dir was never created.
@@ -426,64 +432,21 @@ mount(ComponentPage, { target });
     // is idempotent for a missing dir).
     await Bun.write(entryTempPath, entrySource);
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-      splitting: true,
-      // No `outdir` — Bun returns artifacts via result.outputs[] and
-      // doesn't write to disk. `publicPath` is the URL prefix the entry
-      // will use for emitted dynamic-import statements; chunks resolve
-      // through GET /page-bundle/<name>-<hash>.js (same flat namespace).
-      publicPath: '/page-bundle/',
-      naming: {
-        // Flat layout: every artifact (entry + async chunks + assets) lives
-        // at the bundle prefix root. This sidesteps a Bun quirk where
-        // chunk-to-chunk imports get publicPath-joined with relative
-        // paths — putting chunks in a `chunks/` subdir produces URLs like
-        // `/page-bundle/foo.js` (missing `chunks/`) when a chunk imports
-        // another peer chunk. With everything flat, every artifact
-        // resolves to `/page-bundle/<name>-<hash>.js` regardless of who
-        // imports it.
-        //
-        // [hash] is required because `splitting: true` produces both an
-        // entry and additional chunks that would otherwise share `[name]`.
-        // The hash makes the entry path unpredictable from outside the
-        // build, so we record the actual emitted entry path in
-        // `pageEntryByName` / `bundleEntryByKey` and look it up at request
-        // time rather than reconstructing the URL from a template.
-        entry: '[name]-[hash].js',
-        chunk: '[name]-[hash].js',
-        asset: '[name]-[hash][ext]',
-      },
-    });
+    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
 
     if (!result.success) {
       console.error(`[playground] page bundle failed for ${componentName}:`, result.logs);
       return null;
     }
 
-    let entryCode: string | null = null;
-    let entryArtifactPath: string | null = null;
-    for (const output of result.outputs) {
-      const path = artifactRelativePath(output.path);
-      const code = await output.text();
-      artifactByPath.set(path, code);
-      if (output.kind === 'entry-point') {
-        entryCode = code;
-        entryArtifactPath = path;
-      }
-    }
-
-    if (entryArtifactPath === null || entryCode === null) {
+    const entry = await collectBuildArtifacts(result.outputs);
+    if (entry === null) {
       console.error(`[playground] page bundle for ${componentName} produced no entry chunk`);
       return null;
     }
 
-    pageEntryByName.set(componentName, entryArtifactPath);
-    return entryCode;
+    pageEntryByName.set(componentName, entry.entryPath);
+    return entry.entryCode;
   } finally {
     // Recursive remove handles intermediate files Bun might emit and is
     // idempotent if the dir was never created.
