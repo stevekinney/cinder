@@ -32,7 +32,12 @@
  */
 
 // Core rendering function
-export { clearRenderCache, renderMarkdown } from './render.js';
+export {
+  clearRenderCache,
+  probablyHasMath,
+  renderMarkdown,
+  renderMarkdownWithMath,
+} from './render.js';
 
 // Types
 export type { CodeBlockInfo, RenderOptions, RenderResult } from './types.js';

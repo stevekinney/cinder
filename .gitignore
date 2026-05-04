@@ -104,6 +104,10 @@ tmp/
 
 # Playground server temporary wrapper files
 scripts/playground/.controls-*.svelte
+# Per-build UUID temp dirs created by buildBundle/buildPageBundle.
+**/.tmp-*/
+# Import-graph leanness test scratch dirs.
+**/.import-graph-*/
 
 # Hydration-test temporary SSR-compiled component files
 **/.cinder-ssr-*.mjs

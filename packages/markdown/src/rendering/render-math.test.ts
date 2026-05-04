@@ -1,16 +1,24 @@
 /**
  * Unit tests for LaTeX/math rendering in the markdown pipeline.
  *
- * Verifies that remark-math + rehype-katex are correctly integrated:
- * - Inline math ($...$) is rendered via KaTeX
- * - Display/block math ($$...$$) is rendered as a block equation
- * - Mixed content (math + code blocks) does not interfere
- * - Invalid LaTeX falls back gracefully without throwing
- * - Existing markdown features (GFM, code fences) are not broken
+ * Math rendering goes through `renderMarkdownWithMath`, which dynamically
+ * imports remark-math + rehype-katex on first math input. The sync
+ * `renderMarkdown` deliberately does not handle math — math input passes
+ * through as raw text. These tests cover both: math through the async
+ * entry, and the no-math behavior on the sync entry.
+ *
+ * Also covers `probablyHasMath` — the cheap pre-check that decides
+ * whether the math chunk needs to load.
  */
 
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { clearRenderCache, renderMarkdown } from './render.js';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import {
+  __setMathPluginLoaderForTests,
+  clearRenderCache,
+  probablyHasMath,
+  renderMarkdown,
+  renderMarkdownWithMath,
+} from './render.js';
 
 describe('math rendering', () => {
   beforeEach(() => {
@@ -18,8 +26,8 @@ describe('math rendering', () => {
   });
 
   describe('inline math', () => {
-    it('renders inline math with KaTeX output', () => {
-      const result = renderMarkdown('The formula $E=mc^2$ is famous.');
+    it('renders inline math with KaTeX output', async () => {
+      const result = await renderMarkdownWithMath('The formula $E=mc^2$ is famous.');
 
       // KaTeX wraps output in a span with class="katex"
       expect(result.html).toContain('katex');
@@ -27,15 +35,15 @@ describe('math rendering', () => {
       expect(result.html).not.toContain('$E=mc^2$');
     });
 
-    it('inline math is wrapped inside a paragraph', () => {
-      const result = renderMarkdown('Inline: $x^2$');
+    it('inline math is wrapped inside a paragraph', async () => {
+      const result = await renderMarkdownWithMath('Inline: $x^2$');
 
       expect(result.html).toContain('<p>');
       expect(result.html).toContain('katex');
     });
 
-    it('renders multiple inline math expressions independently', () => {
-      const result = renderMarkdown('First $a+b$ and second $c-d$.');
+    it('renders multiple inline math expressions independently', async () => {
+      const result = await renderMarkdownWithMath('First $a+b$ and second $c-d$.');
 
       // Two KaTeX wrappers should be present
       const katexCount = (result.html.match(/class="katex"/g) ?? []).length;
@@ -44,22 +52,15 @@ describe('math rendering', () => {
   });
 
   describe('display (block) math', () => {
-    it('renders display math as a block-level element', () => {
-      // Block math requires the multi-line $$ delimiter format:
-      // $$
-      // expression
-      // $$
-      // Single-line $$...$$ is treated as inline math by remark-math.
-      const result = renderMarkdown('$$\n\\int_0^1 x^2 dx\n$$');
+    it('renders display math as a block-level element', async () => {
+      const result = await renderMarkdownWithMath('$$\n\\int_0^1 x^2 dx\n$$');
 
-      // KaTeX marks display math with katex-display class
       expect(result.html).toContain('katex-display');
-      // The block math node value should not appear as raw delimiters
       expect(result.html).not.toContain('$$\n');
     });
 
-    it('renders display math surrounded by paragraphs', () => {
-      const result = renderMarkdown(
+    it('renders display math surrounded by paragraphs', async () => {
+      const result = await renderMarkdownWithMath(
         'Before.\n\n$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$\n\nAfter.',
       );
 
@@ -70,23 +71,19 @@ describe('math rendering', () => {
   });
 
   describe('MathML accessibility output', () => {
-    it('includes MathML markup for screen readers', () => {
-      const result = renderMarkdown('$x^2$');
-
-      // KaTeX always emits a <math> MathML element alongside the HTML rendering
+    it('includes MathML markup for screen readers', async () => {
+      const result = await renderMarkdownWithMath('$x^2$');
       expect(result.html).toContain('<math');
     });
 
-    it('preserves the LaTeX source in annotation for accessibility', () => {
-      const result = renderMarkdown('$E=mc^2$');
-
-      // KaTeX includes the original source inside <annotation encoding="application/x-tex">
+    it('preserves the LaTeX source in annotation for accessibility', async () => {
+      const result = await renderMarkdownWithMath('$E=mc^2$');
       expect(result.html).toContain('annotation');
     });
   });
 
   describe('mixed content', () => {
-    it('renders math alongside code blocks without interference', () => {
+    it('renders math alongside code blocks without interference', async () => {
       const markdown = [
         'Use the formula $E=mc^2$ for energy.',
         '',
@@ -101,22 +98,18 @@ describe('math rendering', () => {
         '$$',
       ].join('\n');
 
-      const result = renderMarkdown(markdown);
+      const result = await renderMarkdownWithMath(markdown);
 
-      // Inline math rendered
       expect(result.html).toContain('katex');
-      // Display math rendered
       expect(result.html).toContain('katex-display');
-      // Code block rendered
       expect(result.html).toContain('<pre');
       expect(result.html).toContain('<code');
       expect(result.html).toContain('energy');
-      // Code block metadata extracted
       expect(result.codeBlocks).toHaveLength(1);
       expect(result.codeBlocks[0].language).toBe('typescript');
     });
 
-    it('renders math alongside GFM tables without interference', () => {
+    it('renders math alongside GFM tables without interference', async () => {
       const markdown = [
         '| Variable | Formula |',
         '|----------|---------|',
@@ -127,17 +120,15 @@ describe('math rendering', () => {
         '$$',
       ].join('\n');
 
-      const result = renderMarkdown(markdown);
+      const result = await renderMarkdownWithMath(markdown);
 
       expect(result.html).toContain('<table>');
-      // Inline math in table cell
       expect(result.html).toContain('katex');
-      // Block math after table
       expect(result.html).toContain('katex-display');
     });
 
-    it('renders math alongside emphasis and inline code', () => {
-      const result = renderMarkdown('**Bold** and `code` and $x = y$.');
+    it('renders math alongside emphasis and inline code', async () => {
+      const result = await renderMarkdownWithMath('**Bold** and `code` and $x = y$.');
 
       expect(result.html).toContain('<strong>Bold</strong>');
       expect(result.html).toContain('<code>code</code>');
@@ -146,80 +137,78 @@ describe('math rendering', () => {
   });
 
   describe('invalid LaTeX', () => {
-    it('does not throw on invalid LaTeX — renders error markup instead', () => {
+    it('does not throw on invalid LaTeX — renders error markup instead', async () => {
       // rehype-katex sets throwOnError=false by default
-      expect(() => renderMarkdown('$\\invalidcommand{broken$')).not.toThrow();
+      await expect(renderMarkdownWithMath('$\\invalidcommand{broken$')).resolves.toBeDefined();
     });
 
-    it('produces output even for malformed LaTeX', () => {
-      const result = renderMarkdown('$\\invalidcommand$');
-
-      // Should return an HTML string (possibly with error markup), not empty
+    it('produces output even for malformed LaTeX', async () => {
+      const result = await renderMarkdownWithMath('$\\invalidcommand$');
       expect(result.html.length).toBeGreaterThan(0);
       expect(result.html).not.toBe('');
     });
 
-    it('renders surrounding content correctly even when LaTeX is invalid', () => {
-      const result = renderMarkdown('Before $\\broken{$ after.');
-
-      // Surrounding text should still appear
+    it('renders surrounding content correctly even when LaTeX is invalid', async () => {
+      const result = await renderMarkdownWithMath('Before $\\broken{$ after.');
       expect(result.html).toContain('Before');
       expect(result.html).toContain('after');
     });
   });
 
   describe('existing rendering is not broken', () => {
-    it('still renders headings correctly', () => {
-      const result = renderMarkdown('# Heading 1\n\n## Heading 2');
+    it('still renders headings correctly', async () => {
+      const result = await renderMarkdownWithMath('# Heading 1\n\n## Heading 2');
       expect(result.html).toContain('<h1>Heading 1</h1>');
       expect(result.html).toContain('<h2>Heading 2</h2>');
     });
 
-    it('still renders GFM tables correctly', () => {
-      const result = renderMarkdown('| A | B |\n|---|---|\n| 1 | 2 |');
+    it('still renders GFM tables correctly', async () => {
+      const result = await renderMarkdownWithMath('| A | B |\n|---|---|\n| 1 | 2 |');
       expect(result.html).toContain('<table>');
       expect(result.html).toContain('<th>A</th>');
       expect(result.html).toContain('<td>1</td>');
     });
 
-    it('still renders code fences correctly', () => {
-      const result = renderMarkdown('```js\nconsole.log("hello");\n```');
+    it('still renders code fences correctly', async () => {
+      const result = await renderMarkdownWithMath('```js\nconsole.log("hello");\n```');
       expect(result.html).toContain('<pre');
       expect(result.html).toContain('<code');
       expect(result.html).toContain('console');
       expect(result.html).toContain('log');
     });
 
-    it('still renders task lists correctly', () => {
-      const result = renderMarkdown('- [ ] Unchecked\n- [x] Checked');
+    it('still renders task lists correctly', async () => {
+      const result = await renderMarkdownWithMath('- [ ] Unchecked\n- [x] Checked');
       expect(result.html).toContain('type="checkbox"');
       expect(result.html).toContain('disabled');
     });
 
-    it('still renders strikethrough correctly', () => {
-      const result = renderMarkdown('~~deleted~~');
+    it('still renders strikethrough correctly', async () => {
+      const result = await renderMarkdownWithMath('~~deleted~~');
       expect(result.html).toContain('<del>deleted</del>');
     });
 
-    it('still sanitizes raw HTML', () => {
-      const result = renderMarkdown('<script>alert("xss")</script>');
+    it('still sanitizes raw HTML', async () => {
+      const result = await renderMarkdownWithMath('<script>alert("xss")</script>');
       expect(result.html).not.toContain('<script>');
       expect(result.hadUnsafeContent).toBe(true);
     });
 
-    it('still strips unsafe URLs', () => {
-      const result = renderMarkdown('[click](javascript:alert(1))');
+    it('still strips unsafe URLs', async () => {
+      const result = await renderMarkdownWithMath('[click](javascript:alert(1))');
       expect(result.html).not.toContain('javascript:');
     });
 
-    it('still preserves rawMarkdown', () => {
+    it('still preserves rawMarkdown', async () => {
       const input = '$E=mc^2$';
-      const result = renderMarkdown(input);
+      const result = await renderMarkdownWithMath(input);
       expect(result.rawMarkdown).toBe(input);
     });
 
-    it('still returns code block metadata', () => {
-      const result = renderMarkdown('```python title=example.py\nprint("hello")\n```');
+    it('still returns code block metadata', async () => {
+      const result = await renderMarkdownWithMath(
+        '```python title=example.py\nprint("hello")\n```',
+      );
       expect(result.codeBlocks).toHaveLength(1);
       expect(result.codeBlocks[0].language).toBe('python');
       expect(result.codeBlocks[0].meta).toBe('title=example.py');
@@ -227,60 +216,137 @@ describe('math rendering', () => {
   });
 
   describe('sanitization of KaTeX output', () => {
-    it('allows KaTeX span elements through sanitization', () => {
-      const result = renderMarkdown('$a+b$');
-
-      // KaTeX output should survive sanitization (spans with katex classes)
+    it('allows KaTeX span elements through sanitization', async () => {
+      const result = await renderMarkdownWithMath('$a+b$');
       expect(result.html).toContain('span');
       expect(result.html).toContain('katex');
     });
 
-    it('allows MathML math element through sanitization', () => {
-      const result = renderMarkdown('$x^2$');
-
+    it('allows MathML math element through sanitization', async () => {
+      const result = await renderMarkdownWithMath('$x^2$');
       expect(result.html).toContain('<math');
     });
 
-    it('allows display math attribute through sanitization', () => {
-      // Block math requires multi-line $$ delimiters
-      const result = renderMarkdown('$$\nx^2\n$$');
-
-      // KaTeX sets display="block" on the MathML math element for block equations
+    it('allows display math attribute through sanitization', async () => {
+      const result = await renderMarkdownWithMath('$$\nx^2\n$$');
       expect(result.html).toContain('display="block"');
     });
   });
 
   describe('edge cases', () => {
-    it('does not throw on empty display math delimiters', () => {
-      expect(() => renderMarkdown('$$')).not.toThrow();
+    it('does not throw on empty display math delimiters', async () => {
+      await expect(renderMarkdownWithMath('$$')).resolves.toBeDefined();
     });
 
-    it('does not treat dollar signs inside code fences as math', () => {
+    it('does not treat dollar signs inside code fences as math', async () => {
       const markdown = '```\nconst price = $100;\n```';
-      const result = renderMarkdown(markdown);
+      const result = await renderMarkdownWithMath(markdown);
 
       expect(result.html).toContain('$100');
       expect(result.html).not.toContain('katex');
     });
 
-    it('does not treat dollar signs inside inline code as math', () => {
-      const result = renderMarkdown('Use `$variable` in your shell.');
+    it('does not treat dollar signs inside inline code as math', async () => {
+      const result = await renderMarkdownWithMath('Use `$variable` in your shell.');
 
       expect(result.html).toContain('<code>$variable</code>');
       expect(result.html).not.toContain('katex');
     });
 
-    it('renders error markup for unclosed braces without crashing', () => {
-      const result = renderMarkdown('$\\frac{$');
-
+    it('renders error markup for unclosed braces without crashing', async () => {
+      const result = await renderMarkdownWithMath('$\\frac{$');
       expect(result.html.length).toBeGreaterThan(0);
     });
 
-    it('renders consecutive inline math expressions independently', () => {
-      const result = renderMarkdown('$a$ then $b$ then $c$');
+    it('renders consecutive inline math expressions independently', async () => {
+      const result = await renderMarkdownWithMath('$a$ then $b$ then $c$');
 
       const katexCount = (result.html.match(/class="katex"/g) ?? []).length;
       expect(katexCount).toBeGreaterThanOrEqual(3);
     });
+  });
+
+  describe('sync renderMarkdown does NOT render math (deliberate behavior change)', () => {
+    it('passes inline $…$ through as raw text', () => {
+      const result = renderMarkdown('Inline: $x^2$');
+      expect(result.html).not.toContain('katex');
+      // Math source passes through escaped/literal somewhere in the body.
+      expect(result.html).toContain('x^2');
+    });
+
+    it('passes display $$…$$ through without rendering math', () => {
+      const result = renderMarkdown('$$\n\\sum_i\n$$');
+      expect(result.html).not.toContain('katex-display');
+    });
+  });
+});
+
+describe('probablyHasMath', () => {
+  // Required true cases — failures here would silently break math rendering.
+  const trueCases: Array<[string, string]> = [
+    ['inline single-character body', 'inline $x$ math'],
+    ['inline multi-character body', '$x^2$'],
+    ['inline math mid-string', 'a $f(x)$ b'],
+    ['display block', '$$\n\\sum_i\n$$'],
+    ['compact display', '$$x$$'],
+    ['inline after newline (single char)', 'line one\nthen $a$'],
+  ];
+  for (const [name, input] of trueCases) {
+    it(`returns true for ${name}: ${JSON.stringify(input)}`, () => {
+      expect(probablyHasMath(input)).toBe(true);
+    });
+  }
+
+  // Required false cases — these would otherwise force unnecessary chunk loads.
+  const falseCases: Array<[string, string]> = [
+    ['no $ at all', 'plain text'],
+    ['lone currency $5', '$5'],
+    ['currency in sentence', 'costs $5 today'],
+    ['shell prompt', 'shell prompt: $ ls'],
+    ['escaped dollar', '\\$escaped'],
+    ['inline code', '`$inline code`'],
+    ['fenced code', '```\n$x\n```'],
+    ['tilde-fenced code', '~~~\n$x\n~~~'],
+    ['trailing $', '$ at end'],
+  ];
+  for (const [name, input] of falseCases) {
+    it(`returns false for ${name}: ${JSON.stringify(input)}`, () => {
+      expect(probablyHasMath(input)).toBe(false);
+    });
+  }
+});
+
+describe('math-plugin loader is called only on math input', () => {
+  let restore: () => void;
+  let calls: number;
+
+  beforeEach(() => {
+    calls = 0;
+    restore = __setMathPluginLoaderForTests(async () => {
+      calls += 1;
+      const [m, k] = await Promise.all([import('remark-math'), import('rehype-katex')]);
+      return { remarkMath: m.default, rehypeKatex: k.default };
+    });
+    clearRenderCache();
+  });
+
+  afterEach(() => {
+    restore();
+  });
+
+  it('does not call the loader for math-free input', async () => {
+    await renderMarkdownWithMath('# hello');
+    expect(calls).toBe(0);
+  });
+
+  it('calls the loader exactly once for the first math render', async () => {
+    await renderMarkdownWithMath('$x^2$');
+    expect(calls).toBe(1);
+  });
+
+  it('does not re-call the loader for a second math render (singleton survives)', async () => {
+    await renderMarkdownWithMath('$x^2$');
+    await renderMarkdownWithMath('$y^3$');
+    expect(calls).toBe(1);
   });
 });

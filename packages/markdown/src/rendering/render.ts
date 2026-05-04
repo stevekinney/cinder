@@ -32,15 +32,17 @@ import type {
   Root as MdastRoot,
   Parent,
 } from 'mdast';
-import rehypeKatex from 'rehype-katex';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
+
+// rehype-katex and remark-math are loaded lazily via mathPluginLoader
+// below — they only enter the graph when probablyHasMath() returns true
+// for a given input. Static imports here would defeat the lazy split.
 
 // NOTE: KaTeX requires its CSS to be loaded by the consuming application for
 // correct visual rendering. Import the stylesheet in your app entry point:
@@ -54,14 +56,125 @@ import { transformUrls } from './transform-urls.js';
 import type { RenderOptions, RenderResult } from './types.js';
 
 /**
- * Rendering-specific markdown parser with GFM and math support.
+ * Math-free rendering parser. Constructed lazily so that the unified
+ * pipeline machinery only initializes when something actually renders.
  *
- * This processor is separate from the shared document pipeline parser so that
- * math syntax ($...$ and $$...$$) is recognized only in the rendering path.
- * The document editing pipeline intentionally does not parse math, preserving
- * raw LaTeX in the AST for copy/export operations.
+ * `Processor<unknown>` is the loosest typing the unified API exposes
+ * here — `.use(remarkParse).use(remarkGfm)` produces a parser whose
+ * input/output types differ from the seed `unified()` and the two
+ * representations aren't assignable to each other through the simpler
+ * `ReturnType<typeof unified>` shape.
  */
-const renderingParser = unified().use(remarkParse).use(remarkGfm).use(remarkMath);
+let baseProcessor: unknown = null;
+function getBaseProcessor(): { parse: (input: string) => unknown } {
+  if (baseProcessor === null) {
+    baseProcessor = unified().use(remarkParse).use(remarkGfm);
+  }
+  return baseProcessor as { parse: (input: string) => unknown };
+}
+
+/**
+ * Lazy math-plugin loader and the cached math-aware processor.
+ *
+ * These exist so that markdown without `$` or `$$` never imports
+ * `remark-math` or `rehype-katex` — both are >100 KB once their
+ * dependencies are resolved. The loader is module-scoped so the chunk
+ * is fetched at most once per page-lifetime; subsequent math renders
+ * reuse the cached processor.
+ *
+ * For test injection, see `__setMathPluginLoaderForTests` below.
+ */
+// rehype-katex's plugin shape isn't statically known after dynamic
+// import, so we treat it opaquely. We use `object` rather than `unknown`
+// so that `RehypeKatexPlugin | null` doesn't collapse to `unknown` —
+// the null disambiguation matters at call sites (no-math path).
+type RehypeKatexPlugin = object;
+type MathPluginLoader = () => Promise<{
+  remarkMath: unknown;
+  rehypeKatex: RehypeKatexPlugin;
+}>;
+let mathPluginLoader: MathPluginLoader = async () => {
+  const [remarkMathModule, rehypeKatexModule] = await Promise.all([
+    import('remark-math'),
+    import('rehype-katex'),
+  ]);
+  return {
+    remarkMath: remarkMathModule.default,
+    rehypeKatex: rehypeKatexModule.default,
+  };
+};
+let mathPluginsPromise: Promise<{ remarkMath: unknown; rehypeKatex: RehypeKatexPlugin }> | null =
+  null;
+let mathProcessor: unknown = null;
+
+async function ensureMathPipeline(): Promise<{
+  processor: { parse: (input: string) => unknown };
+  rehypeKatex: RehypeKatexPlugin;
+}> {
+  mathPluginsPromise ??= mathPluginLoader();
+  const { remarkMath, rehypeKatex } = await mathPluginsPromise;
+  if (mathProcessor === null) {
+    mathProcessor = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- plugin shape is opaque after dynamic import
+      .use(remarkMath as any);
+  }
+  return {
+    processor: mathProcessor as { parse: (input: string) => unknown },
+    rehypeKatex,
+  };
+}
+
+/**
+ * Test-only override of the math-plugin loader.
+ *
+ * Replaces `mathPluginLoader` AND clears the dependent singleton state
+ * (`mathPluginsPromise`, `mathProcessor`, `cachedRehypeKatex`). Without
+ * the singleton reset, a stub installed after a real load would never
+ * be called because the cached promise would already be resolved.
+ *
+ * Returns a cleanup function that restores the previous loader and
+ * clears the singleton state again, so subsequent tests start fresh.
+ *
+ * Not re-exported from packages/markdown/src/rendering/index.ts. Test
+ * code imports it via the deep specifier `./render.js` from inside the
+ * markdown package's tests.
+ */
+export function __setMathPluginLoaderForTests(loader: MathPluginLoader): () => void {
+  const previous = mathPluginLoader;
+  mathPluginLoader = loader;
+  mathPluginsPromise = null;
+  mathProcessor = null;
+  return () => {
+    mathPluginLoader = previous;
+    mathPluginsPromise = null;
+    mathProcessor = null;
+  };
+}
+
+/**
+ * Cheap pre-check: does this markdown probably contain math?
+ *
+ * Strips fenced and inline code first (where `$` is not math), then
+ * looks for a `$$` display block or a `$…$` inline-math pair. The
+ * inline regex requires the body to start AND end with non-whitespace
+ * — that lets us reject prose like "$5 today" while still accepting
+ * single-character bodies like `$x$`.
+ *
+ * False positives (extra chunk load) are tolerable; false negatives
+ * silently break math rendering, so the regex errs toward `true` when
+ * in doubt.
+ */
+export function probablyHasMath(markdown: string): boolean {
+  if (!markdown.includes('$')) return false;
+  const codeStripped = markdown
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '')
+    .replace(/`[^`\n]*`/g, '');
+  if (codeStripped.includes('$$')) return true;
+  return /(?<!\\)\$\S(?:[^$\n]*?\S)?\$/.test(codeStripped);
+}
 
 /**
  * LRU cache for rendered results.
@@ -232,32 +345,18 @@ function stripLinkNodes(root: MdastRoot): void {
  * @param options - Rendering options
  * @returns Render result with HTML, code blocks, and safety flags
  */
-export function renderMarkdown(markdown: string, options: RenderOptions = {}): RenderResult {
-  // Handle empty/null input
-  if (!markdown || typeof markdown !== 'string') {
-    return {
-      rawMarkdown: markdown ?? '',
-      html: '',
-      codeBlocks: [],
-      hadUnsafeContent: false,
-    };
-  }
-
-  // Check cache (include highlighter state to prevent caching unhighlighted results)
-  const hasHighlighter = getHighlighterSync() !== null;
-  const cacheKey = getCacheKey(markdown, options, hasHighlighter);
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    // Move to end (LRU behavior)
-    cache.delete(cacheKey);
-    cache.set(cacheKey, cached);
-    // Return a clone to prevent caller mutations from corrupting the cache
-    return cloneResult(cached);
-  }
-
-  // Parse markdown to mdast using the rendering-specific parser (includes math)
-  const mdast = renderingParser.parse(markdown);
-
+/**
+ * Internal core that does the rendering work, given a parsed mdast and an
+ * already-loaded rehype-katex (or null for the no-math path). Shared by
+ * the sync `renderMarkdown` and async `renderMarkdownWithMath` entry points
+ * so the pipeline only lives in one place.
+ */
+function renderFromMdast(
+  markdown: string,
+  options: RenderOptions,
+  mdast: MdastRoot,
+  rehypeKatex: RehypeKatexPlugin | null,
+): RenderResult {
   // Remove raw HTML nodes
   const hadHtmlNodes = removeRawHtmlNodes(mdast);
 
@@ -282,13 +381,20 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
   // Convert mdast to hast
   const hast = unified().use(remarkRehype, { allowDangerousHtml: false }).runSync(mdast);
 
-  // Render math nodes (inlineMath / math) to KaTeX HTML.
-  // rehype-katex defaults: throwOnError=false (invalid LaTeX becomes error markup)
-  const mathRenderedHast = unified().use(rehypeKatex).runSync(hast);
+  // Render math nodes (inlineMath / math) to KaTeX HTML, only if the math
+  // pipeline has been loaded. rehype-katex defaults: throwOnError=false
+  // (invalid LaTeX becomes error markup).
+  const mathRenderedHast =
+    rehypeKatex === null
+      ? hast
+      : // eslint-disable-next-line @typescript-eslint/no-explicit-any -- plugin shape is opaque after dynamic import
+        unified()
+          .use(rehypeKatex as any)
+          .runSync(hast);
 
-  // Apply syntax highlighting to code blocks
-  // Note: If the highlighter isn't initialized yet, code blocks are left unhighlighted
-  // The highlighter is initialized at app startup via hooks.server.ts
+  // Apply syntax highlighting to code blocks. If the highlighter isn't
+  // initialized yet, code blocks are left unhighlighted — the highlighter
+  // initializes lazily on first getHighlighter() call.
   const highlightedHast = unified()
     .use(rehypeShikiSync, { theme: 'depict', defaultLanguage: 'plaintext' })
     .runSync(mathRenderedHast as HastRoot);
@@ -303,12 +409,66 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
   // Stringify the sanitized hast to HTML
   const html = unified().use(rehypeStringify).stringify(sanitizedHast);
 
-  const result: RenderResult = {
+  return {
     rawMarkdown: markdown,
     html: String(html),
     codeBlocks,
     hadUnsafeContent: hadHtmlNodes || hadUnsafeUrls,
   };
+}
+
+/**
+ * Render markdown to sanitized HTML — synchronous, no math.
+ *
+ * Math syntax (`$…$`, `$$…$$`) passes through as raw text. Callers that
+ * need math support must use `renderMarkdownWithMath` instead, which gates
+ * the math plugins behind a dynamic import.
+ *
+ * This is an intentional internal behavior change: before code splitting,
+ * sync `renderMarkdown` rendered math eagerly because remark-math and
+ * rehype-katex were statically imported. Switching to async shaves ~200 KB
+ * off the chat entry chunk for math-free messages, which is the common case.
+ *
+ * Pipeline:
+ * 1. Parse markdown to mdast using CommonMark + GFM (no math)
+ * 2. Remove raw HTML nodes (injection prevention)
+ * 3. Sanitize URLs in link/image nodes
+ * 4. Extract code block metadata
+ * 5. Convert mdast to hast via remark-rehype
+ * 6. Apply Shiki syntax highlighting (if highlighter is initialized)
+ * 7. Sanitize hast via rehype-sanitize
+ * 8. Stringify hast to HTML
+ *
+ * @param markdown - Raw markdown string
+ * @param options - Rendering options
+ * @returns Render result with HTML, code blocks, and safety flags
+ */
+export function renderMarkdown(markdown: string, options: RenderOptions = {}): RenderResult {
+  // Handle empty/null input
+  if (!markdown || typeof markdown !== 'string') {
+    return {
+      rawMarkdown: markdown ?? '',
+      html: '',
+      codeBlocks: [],
+      hadUnsafeContent: false,
+    };
+  }
+
+  // Check cache (include highlighter state to prevent caching unhighlighted results)
+  const hasHighlighter = getHighlighterSync() !== null;
+  const cacheKey = getCacheKey(markdown, options, hasHighlighter);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    // Move to end (LRU behavior)
+    cache.delete(cacheKey);
+    cache.set(cacheKey, cached);
+    // Return a clone to prevent caller mutations from corrupting the cache
+    return cloneResult(cached);
+  }
+
+  // Parse markdown to mdast (no math).
+  const mdast = getBaseProcessor().parse(markdown) as MdastRoot;
+  const result = renderFromMdast(markdown, options, mdast, null);
 
   // Add to cache (with LRU eviction)
   if (cache.size >= CACHE_SIZE) {
@@ -321,7 +481,64 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
   cache.set(cacheKey, result);
 
   // Return a clone to prevent caller mutations from corrupting the cache
-  // (same protection as cache-hit path at line 151)
+  // (same protection as cache-hit path)
+  return cloneResult(result);
+}
+
+/**
+ * Render markdown to sanitized HTML — async, with math support.
+ *
+ * Behaves identically to `renderMarkdown` for math-free input. When the
+ * input contains `$…$` or `$$…$$`, dynamically imports `remark-math` and
+ * `rehype-katex` (one-time, cached for the page lifetime), parses with
+ * the math-aware processor, and renders math nodes via KaTeX.
+ *
+ * This is the entry point chat / preview surfaces should call when math
+ * may be in the content. The dynamic import is what keeps the math
+ * pipeline out of the initial bundle.
+ *
+ * @param markdown - Raw markdown string
+ * @param options - Rendering options
+ * @returns Promise resolving to a render result
+ */
+export async function renderMarkdownWithMath(
+  markdown: string,
+  options: RenderOptions = {},
+): Promise<RenderResult> {
+  if (!markdown || typeof markdown !== 'string') {
+    return {
+      rawMarkdown: markdown ?? '',
+      html: '',
+      codeBlocks: [],
+      hadUnsafeContent: false,
+    };
+  }
+
+  // Fast path: no math → use the sync, no-math pipeline. The caller still
+  // pays the await/microtask cost but no math chunk loads.
+  if (!probablyHasMath(markdown)) {
+    return renderMarkdown(markdown, options);
+  }
+
+  // Cache check (math-aware key — math output differs from the no-math one).
+  const hasHighlighter = getHighlighterSync() !== null;
+  const cacheKey = `math::${getCacheKey(markdown, options, hasHighlighter)}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    cache.delete(cacheKey);
+    cache.set(cacheKey, cached);
+    return cloneResult(cached);
+  }
+
+  const { processor, rehypeKatex } = await ensureMathPipeline();
+  const mdast = processor.parse(markdown) as MdastRoot;
+  const result = renderFromMdast(markdown, options, mdast, rehypeKatex);
+
+  if (cache.size >= CACHE_SIZE) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey !== undefined) cache.delete(firstKey);
+  }
+  cache.set(cacheKey, result);
   return cloneResult(result);
 }
 
