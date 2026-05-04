@@ -512,7 +512,15 @@ export async function renderMarkdownWithMath(
     return renderMarkdown(markdown, options);
   }
 
-  // Cache check (math-aware key — math output differs from the no-math one).
+  const { processor, rehypeKatex } = await ensureMathPipeline();
+
+  // Sample hasHighlighter AFTER the math-pipeline await. If the Shiki
+  // highlighter initialised during that await, the cache key must reflect the
+  // post-await state so that the stored result matches what renderFromMdast
+  // actually produced. Sampling before the await would key the result as
+  // "unhighlighted" even when the render was highlighted, causing a stale
+  // cache hit on the next pre-init call and a spurious cache miss on the
+  // first post-init call.
   const hasHighlighter = getHighlighterSync() !== null;
   const cacheKey = `math::${getCacheKey(markdown, options, hasHighlighter)}`;
   const cached = cache.get(cacheKey);
@@ -522,7 +530,6 @@ export async function renderMarkdownWithMath(
     return cloneResult(cached);
   }
 
-  const { processor, rehypeKatex } = await ensureMathPipeline();
   const mdast = processor.parse(markdown) as MdastRoot;
   const result = renderFromMdast(markdown, options, mdast, rehypeKatex);
 
