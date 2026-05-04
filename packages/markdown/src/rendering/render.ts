@@ -522,7 +522,12 @@ export async function renderMarkdownWithMath(
   // cache hit on the next pre-init call and a spurious cache miss on the
   // first post-init call.
   const hasHighlighter = getHighlighterSync() !== null;
-  const cacheKey = `math::${getCacheKey(markdown, options, hasHighlighter)}`;
+  // Use a null-byte separator (\0) to prevent the math-path key from
+  // colliding with the sync-path key for markdown that starts with "math::".
+  // Null bytes cannot appear in user-supplied markdown strings, so \0math\0
+  // is a guaranteed-disjoint namespace from the bare getCacheKey() keys used
+  // by renderMarkdown.
+  const cacheKey = `\0math\0${getCacheKey(markdown, options, hasHighlighter)}`;
   const cached = cache.get(cacheKey);
   if (cached) {
     cache.delete(cacheKey);
