@@ -67,6 +67,7 @@
   z-index: var(--cinder-z-dropdown, 40);
   min-width: 12rem;
   padding: var(--cinder-space-1) 0;
+  overflow: hidden;
 
   border-radius: var(--cinder-radius-lg);
   border: 1px solid var(--cinder-border);
@@ -105,9 +106,11 @@
   gap: var(--cinder-space-2);
   width: 100%;
   min-height: 2.75rem;
+  margin-inline: var(--cinder-space-1);
   padding-block: var(--cinder-space-2-5);
   padding-inline: var(--cinder-space-3);
   border: 0;
+  border-radius: var(--cinder-radius-sm);
   background: transparent;
   color: var(--cinder-text);
   cursor: pointer;
@@ -225,7 +228,8 @@
   }
 
   .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
-    inset-inline-end: calc(100vw - anchor(right));
+    right: anchor(right);
+    left: auto;
   }
 }
 

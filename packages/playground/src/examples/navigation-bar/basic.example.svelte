@@ -11,7 +11,7 @@
 
 <NavigationBar>
   {#snippet brand()}
-    <strong style="font-size: 1.1rem;">Acme</strong>
+    <strong>Acme</strong>
   {/snippet}
   {#snippet items()}
     <NavigationItem onClick={() => (active = 'home')} active={active === 'home'}>
