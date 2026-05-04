@@ -37,7 +37,6 @@ import {
 const PRETTY_INDENT = 2;
 const META_DEBOUNCE_MS = 250;
 const COMPILE_DEBOUNCE_MS = 500;
-const COMPILE_DEFER_BYTES = 100_000;
 
 export interface CreateEditorStateOptions {
   schema: JsonSchemaValue | string;
@@ -88,8 +87,14 @@ export function createEditorState(options: CreateEditorStateOptions) {
   let view = $state<JsonSchemaEditorView>('form');
 
   // ---- Settings ----
-  const readonly = $state(Boolean(options.readonly));
+  // readonly and draftOverride are reactive so the component can sync them to
+  // current prop values via $effect after mount.
+  let readonly = $state(Boolean(options.readonly));
   let draftOverride = $state<JsonSchemaKnownDraft | undefined>(options.draftOverride);
+
+  function setReadonly(next: boolean) {
+    readonly = next;
+  }
 
   // ---- Validation status (debounced) ----
   let metaResult = $state<{ valid: boolean; errors: JsonSchemaValidationError[] }>({
@@ -135,11 +140,37 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return detectDraft(schema);
   }
 
-  function shouldDeferCompile(text: string): boolean {
-    return text.length > COMPILE_DEFER_BYTES;
+  function isJsonSchemaShape(value: unknown): value is JsonSchemaValue {
+    return typeof value === 'boolean' || isPlainRecord(value);
   }
 
-  function runMetaValidation(schema: JsonSchemaValue | null) {
+  /**
+   * Pick the schema we want validation to reflect.
+   *
+   * When the JSON draft is dirty and parseable, validate that — the toolbar
+   * status mirrors what the user is editing. When the draft is unparseable,
+   * fall back to the committed schema (so the existing status remains
+   * meaningful) and let `recomputeStatus` mark `'invalid'` based on the
+   * parse error.
+   *
+   * Computes the "is dirty" check inline rather than reading the
+   * `jsonDraftIsDirty` $derived because this function is called from
+   * `loadFrom`, which runs before the $derived expressions are set up.
+   */
+  function schemaToValidate(): JsonSchemaValue | null {
+    const committed = history?.current ?? null;
+    const committedText = committed === null ? '' : serialise(committed);
+    if (jsonDraftText !== committedText) {
+      const parsed = tryParseJson(jsonDraftText);
+      if (parsed.ok && isJsonSchemaShape(parsed.value)) {
+        return parsed.value;
+      }
+    }
+    return committed;
+  }
+
+  function runMetaValidation() {
+    const schema = schemaToValidate();
     if (schema === null) {
       metaResult = { valid: false, errors: [] };
       return;
@@ -147,7 +178,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
     metaResult = validateMetaSchema(schema, detectActiveDraft(schema));
   }
 
-  function runCompile(schema: JsonSchemaValue | null) {
+  function runCompile() {
+    const schema = schemaToValidate();
     if (schema === null) {
       compileResult = null;
       return;
@@ -166,8 +198,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       return;
     }
     if (compileResult === null) {
-      // Compile not yet run. If draft is large, we deferred; otherwise pending.
-      validationStatus = shouldDeferCompile(jsonDraftText) ? 'compile-deferred' : 'pending';
+      validationStatus = 'pending';
       return;
     }
     if (!compileResult.ok) {
@@ -185,18 +216,13 @@ export function createEditorState(options: CreateEditorStateOptions) {
     emitValidation(buildResult({ status: 'pending' }));
 
     metaDebounceHandle = setTimeout(() => {
-      runMetaValidation(history?.current ?? null);
+      runMetaValidation();
       recomputeStatus();
       emitValidation(buildResult());
     }, META_DEBOUNCE_MS);
 
-    if (shouldDeferCompile(jsonDraftText)) {
-      compileResult = null;
-      return;
-    }
-
     compileDebounceHandle = setTimeout(() => {
-      runCompile(history?.current ?? null);
+      runCompile();
       recomputeStatus();
       emitValidation(buildResult());
     }, COMPILE_DEBOUNCE_MS);
@@ -240,8 +266,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       jsonDraftText = schemaResult.rawText || '';
     }
 
-    runMetaValidation(history?.current ?? null);
-    runCompile(history?.current ?? null);
+    runMetaValidation();
+    runCompile();
     recomputeStatus();
     emitValidation(buildResult());
   }
@@ -343,7 +369,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     discardJsonDraft() {
       jsonDraftText = committedCanonicalText;
-      runMetaValidation(history?.current ?? null);
+      runMetaValidation();
       recomputeStatus();
       emitValidation(buildResult());
     },
@@ -368,8 +394,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
         history = useHistory<JsonSchemaValue>(applyOptions);
       }
       jsonDraftText = serialise(history.current);
-      runMetaValidation(history.current);
-      runCompile(history.current);
+      runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitChange();
       emitValidation(buildResult());
@@ -383,8 +409,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (!history || readonly || jsonDraftIsDirty) return;
       history.commit(next, commitOptions);
       jsonDraftText = serialise(history.current);
-      runMetaValidation(history.current);
-      runCompile(history.current);
+      runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitChange();
       emitValidation(buildResult());
@@ -395,8 +421,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
-      runMetaValidation(history.current);
-      runCompile(history.current);
+      runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitChange();
       emitValidation(buildResult());
@@ -408,8 +434,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);
-      runMetaValidation(history.current);
-      runCompile(history.current);
+      runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitChange();
       emitValidation(buildResult());
@@ -425,8 +451,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
         if (options.maxHistory !== undefined) revertOptions.maxDepth = options.maxHistory;
         history = useHistory<JsonSchemaValue>(revertOptions);
         jsonDraftText = originalCanonicalText;
-        runMetaValidation(history.current);
-        runCompile(history.current);
+        runMetaValidation();
+        runCompile();
         recomputeStatus();
         emitChange();
         emitValidation(buildResult());
@@ -442,21 +468,17 @@ export function createEditorState(options: CreateEditorStateOptions) {
       }
     },
 
-    /** Force compile validation now — used after the user clicks the deferred-compile button. */
-    runCompileNow() {
-      runCompile(history?.current ?? null);
+    /** Update the active draft override; recomputes validation. */
+    setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
+      draftOverride = next;
+      runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitValidation(buildResult());
     },
 
-    /** Update the active draft override; recomputes validation. */
-    setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
-      draftOverride = next;
-      runMetaValidation(history?.current ?? null);
-      runCompile(history?.current ?? null);
-      recomputeStatus();
-      emitValidation(buildResult());
-    },
+    /** Live-update the readonly flag (used to re-sync the prop after mount). */
+    setReadonly,
 
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {

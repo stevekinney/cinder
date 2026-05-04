@@ -26,8 +26,6 @@
         return 'danger' as const;
       case 'pending':
         return 'neutral' as const;
-      case 'compile-deferred':
-        return 'warning' as const;
     }
   });
 
@@ -39,8 +37,6 @@
         return `Invalid${state.validationResult.errors.length > 0 ? ` — ${state.validationResult.errors.length} errors` : ''}`;
       case 'pending':
         return 'Validating…';
-      case 'compile-deferred':
-        return 'Validation deferred';
     }
   });
 </script>

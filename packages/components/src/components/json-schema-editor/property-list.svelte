@@ -171,21 +171,26 @@
   {#each propertyNames as key (key)}
     {@const isRequired = required.includes(key)}
     {@const isOpen = expanded[key] === true}
-    <details
-      class="cinder-jse-property-row"
-      data-cinder-required={isRequired ? '' : undefined}
-      open={isOpen}
-      ontoggle={(event: Event) => {
-        expanded[key] = (event.target as HTMLDetailsElement).open;
-      }}
-    >
-      <summary class="cinder-jse-property-row__summary">
-        <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
-        <span class="cinder-jse-property-row__name">{key}</span>
-        <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
-        {#if isRequired}
-          <span class="cinder-jse-property-row__required-marker">required</span>
-        {/if}
+    {@const panelId = `${idPrefix}-${key}-panel`}
+    <!--
+      Custom disclosure (not <details>/<summary>) so the action buttons can
+      live as siblings of the trigger rather than nested inside it.
+      <button> inside <summary> creates an ARIA "interactive within
+      interactive" violation.
+    -->
+    <div class="cinder-jse-property-row" data-cinder-required={isRequired ? '' : undefined}>
+      <div class="cinder-jse-property-row__summary">
+        <button
+          type="button"
+          class="cinder-jse-property-row__trigger"
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          onclick={() => (expanded[key] = !isOpen)}
+        >
+          <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
+          <span class="cinder-jse-property-row__name">{key}</span>
+          <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
+        </button>
         <span class="cinder-jse-property-row__spacer"></span>
         <Button
           variant={isRequired ? 'primary' : 'ghost'}
@@ -193,11 +198,7 @@
           disabled={readonly}
           aria-pressed={isRequired}
           aria-label={isRequired ? 'Required (toggle off)' : 'Optional (toggle required)'}
-          onclick={(event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggleRequired(key);
-          }}
+          onclick={() => toggleRequired(key)}
         >
           {isRequired ? 'Required' : 'Optional'}
         </Button>
@@ -206,11 +207,7 @@
           size="xs"
           disabled={readonly}
           aria-label="Move up"
-          onclick={(event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            moveProperty(key, -1);
-          }}
+          onclick={() => moveProperty(key, -1)}
         >
           ↑
         </Button>
@@ -219,11 +216,7 @@
           size="xs"
           disabled={readonly}
           aria-label="Move down"
-          onclick={(event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            moveProperty(key, 1);
-          }}
+          onclick={() => moveProperty(key, 1)}
         >
           ↓
         </Button>
@@ -232,35 +225,33 @@
           size="xs"
           disabled={readonly}
           aria-label={`Delete ${key}`}
-          onclick={(event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            deleteProperty(key);
-          }}
+          onclick={() => deleteProperty(key)}
         >
           Delete
         </Button>
-      </summary>
-
-      <div class="cinder-jse-property-row__panel">
-        <Input
-          id={`${idPrefix}-${key}-name`}
-          label="Name"
-          value={getDraftName(key)}
-          disabled={readonly}
-          oninput={(event: Event) => (draftNames[key] = (event.target as HTMLInputElement).value)}
-          onblur={() => commitRename(key)}
-        />
-        <PropertyEditor
-          idPrefix={`${idPrefix}-${key}-schema`}
-          path={`${path}/${key}`}
-          depth={depth + 1}
-          {readonly}
-          value={properties[key] ?? {}}
-          onchange={(next) => setPropertySchema(key, next)}
-        />
       </div>
-    </details>
+
+      {#if isOpen}
+        <div id={panelId} class="cinder-jse-property-row__panel">
+          <Input
+            id={`${idPrefix}-${key}-name`}
+            label="Name"
+            value={getDraftName(key)}
+            disabled={readonly}
+            oninput={(event: Event) => (draftNames[key] = (event.target as HTMLInputElement).value)}
+            onblur={() => commitRename(key)}
+          />
+          <PropertyEditor
+            idPrefix={`${idPrefix}-${key}-schema`}
+            path={`${path}/${key}`}
+            depth={depth + 1}
+            {readonly}
+            value={properties[key] ?? {}}
+            onchange={(next) => setPropertySchema(key, next)}
+          />
+        </div>
+      {/if}
+    </div>
   {/each}
 
   <Button variant="secondary" size="sm" disabled={readonly} onclick={addProperty}>

@@ -88,7 +88,7 @@ export type JsonSchemaValidationError = {
   keyword: string;
 };
 
-export type JsonSchemaValidationStatus = 'valid' | 'invalid' | 'pending' | 'compile-deferred';
+export type JsonSchemaValidationStatus = 'valid' | 'invalid' | 'pending';
 
 export type JsonSchemaValidationResult = {
   status: JsonSchemaValidationStatus;

@@ -65,6 +65,28 @@
 
   /** Hard recursion limit — deeper nodes show a placeholder. */
   export const MAX_RENDER_DEPTH = 30;
+
+  /**
+   * Stable identity keys for composition branches and array items.
+   *
+   * Plain JSON objects have no built-in identity. If we use the array index
+   * as the {#each} key, removing a non-last branch makes Svelte diff by
+   * index — surviving branches inherit the wrong PropertyEditor instance
+   * (and its local $state, like `userExpanded`). We assign each branch
+   * object a monotonic ID the first time it's rendered and remember it via
+   * a WeakMap so re-renders of the same object reuse the same key.
+   */
+  const branchKeys = new WeakMap<object, number>();
+  let nextBranchKey = 1;
+
+  export function keyForBranch(branch: unknown, fallbackIndex: number): string {
+    if (branch === null || typeof branch !== 'object') return `value-${fallbackIndex}`;
+    const existing = branchKeys.get(branch);
+    if (existing !== undefined) return `id-${existing}`;
+    const fresh = nextBranchKey++;
+    branchKeys.set(branch, fresh);
+    return `id-${fresh}`;
+  }
 </script>
 
 <script lang="ts">
@@ -427,7 +449,7 @@
         <details class="cinder-jse-section cinder-jse-section--collapsible" open>
           <summary class="cinder-jse-section__title">{keyword}</summary>
           <div class="cinder-jse-section__body">
-            {#each objectValue[keyword] as branch, branchIndex (branchIndex)}
+            {#each objectValue[keyword] as branch, branchIndex (keyForBranch(branch, branchIndex))}
               <PropertyEditor
                 idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
                 path={`${path}/${keyword}/${branchIndex}`}

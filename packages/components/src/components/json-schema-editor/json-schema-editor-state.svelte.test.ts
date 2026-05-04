@@ -240,3 +240,84 @@ describe('createEditorState — change events', () => {
     expect(calls).toBe(0);
   });
 });
+
+describe('createEditorState — onrevert callback', () => {
+  test('fires with restoredFrom: original-schema when the original parsed', () => {
+    const events: { restoredFrom: string }[] = [];
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onrevert: (event) => events.push(event),
+    });
+
+    state.commitFromForm({ type: 'number' });
+    state.revert();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.restoredFrom).toBe('original-schema');
+  });
+
+  test('fires with restoredFrom: original-text when the original was unparseable', () => {
+    const events: { restoredFrom: string }[] = [];
+    const state = createEditorState({
+      schema: '{not-valid',
+      onrevert: (event) => events.push(event),
+    });
+
+    state.setJsonDraftText('{"type":"string"}');
+    state.applyJsonDraft();
+    state.revert();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.restoredFrom).toBe('original-text');
+  });
+});
+
+describe('createEditorState — readonly guards', () => {
+  test('revert is a no-op in readonly mode', () => {
+    const state = createEditorState({ schema: { type: 'string' }, readonly: true });
+
+    // commitFromForm is also blocked, so we can't build divergent state to
+    // observe a "restoration" — assert revert doesn't throw and committed
+    // remains the initial value.
+    state.revert();
+    expect(state.committedSchema).toEqual({ type: 'string' });
+    expect(state.canUndo).toBe(false);
+  });
+
+  test('setReadonly toggles editability live', () => {
+    const state = createEditorState({ schema: { type: 'string' }, readonly: true });
+    expect(state.isFormEditable).toBe(false);
+
+    state.setReadonly(false);
+    expect(state.isFormEditable).toBe(true);
+
+    state.setReadonly(true);
+    expect(state.isFormEditable).toBe(false);
+  });
+});
+
+describe('createEditorState — onvalidate callback', () => {
+  test('fires on initial mount with the loaded schema status', () => {
+    const events: { status: string; valid: boolean }[] = [];
+    createEditorState({
+      schema: { type: 'string' },
+      onvalidate: (result) => events.push(result),
+    });
+
+    expect(events.length).toBeGreaterThanOrEqual(1);
+    expect(events[0]?.valid).toBe(true);
+  });
+
+  test('fires after every committed schema change', () => {
+    const events: { status: string }[] = [];
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onvalidate: (result) => events.push(result),
+    });
+    const baseline = events.length;
+
+    state.commitFromForm({ type: 'number' });
+
+    expect(events.length).toBeGreaterThan(baseline);
+  });
+});

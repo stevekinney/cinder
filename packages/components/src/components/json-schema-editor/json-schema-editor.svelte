@@ -33,6 +33,26 @@
   };
 
   export type { JsonSchemaEditorMode, JsonSchemaEditorView };
+
+  /**
+   * Mac detection for keyboard-shortcut routing. `navigator.platform` is
+   * deprecated; prefer `navigator.userAgentData?.platform` and fall back to
+   * `platform` only when the modern accessor is unavailable (Firefox, Safari).
+   * Hoisted out of the keydown handler so it isn't re-evaluated per keystroke.
+   */
+  function detectMacPlatform(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    const navigatorWithUserAgentData = navigator as Navigator & {
+      userAgentData?: { platform?: string };
+    };
+    const modernPlatform = navigatorWithUserAgentData.userAgentData?.platform;
+    if (typeof modernPlatform === 'string' && modernPlatform.length > 0) {
+      return /Mac/.test(modernPlatform);
+    }
+    return /Mac/.test(navigator.platform);
+  }
+
+  const isMacPlatform = detectMacPlatform();
 </script>
 
 <script lang="ts">
@@ -66,21 +86,47 @@
 
   const announcer = useAnnouncer();
 
-  // Build state container once. We deliberately pass through the snapshot of
-  // initial props; further updates flow through `state.reload` when
-  // `schemaKey` changes (round-3 finding #10).
+  // Build state container once. Schema reloads happen via `schemaKey`. Other
+  // mutable props (readonly, draftOverride, callback handlers) are kept in
+  // sync after mount via the $effects below — without that, parents passing
+  // inline lambdas would have their handlers captured stale at construction.
   const stateOptions: Parameters<typeof createEditorState>[0] = {
     schema,
     readonly,
+    onchange: (event) => onchange?.(event),
+    onrevert: (event) => onrevert?.(event),
+    onvalidate: (result) => onvalidate?.(result),
   };
   if (original !== undefined) stateOptions.original = original;
   if (maxHistory !== undefined) stateOptions.maxHistory = maxHistory;
   if (draftOverride !== undefined) stateOptions.draftOverride = draftOverride;
-  if (onchange) stateOptions.onchange = onchange;
-  if (onrevert) stateOptions.onrevert = onrevert;
-  if (onvalidate) stateOptions.onvalidate = onvalidate;
 
   const state = createEditorState(stateOptions);
+
+  // Sync mutable props into the state container when the *prop* changes.
+  // We track the last applied value locally so the effect only calls the
+  // setter on real prop transitions — without that, the effect re-runs on
+  // every reactive read inside setReadonly/setDraftOverride and loops.
+  let lastReadonly = readonly;
+  let lastDraftOverride: JsonSchemaKnownDraft | undefined = draftOverride;
+  $effect(() => {
+    if (readonly !== lastReadonly) {
+      lastReadonly = readonly;
+      state.setReadonly(readonly);
+    }
+  });
+  $effect(() => {
+    if (draftOverride !== lastDraftOverride) {
+      lastDraftOverride = draftOverride;
+      state.setDraftOverride(draftOverride);
+    }
+  });
+
+  // Tear down debounce timers on unmount so stale callbacks don't fire after
+  // the parent unmounts the editor.
+  $effect(() => {
+    return () => state.destroy();
+  });
 
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
   // reload on initial mount (state was already seeded above) or on re-renders
@@ -125,8 +171,7 @@
   }
 
   function onKeyDown(event: KeyboardEvent) {
-    const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
-    const meta = isMac ? event.metaKey : event.ctrlKey;
+    const meta = isMacPlatform ? event.metaKey : event.ctrlKey;
     if (!meta) return;
     if (isEditableTarget(event.target)) return;
 

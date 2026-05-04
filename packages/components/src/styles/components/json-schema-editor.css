@@ -180,32 +180,49 @@
   color: var(--cinder-text-subtle);
 }
 
-/* Each property is a <details>. The summary is a fixed-height single line so
-   all controls share a baseline. The panel renders below. */
+/* Each property is a custom disclosure (not <details>/<summary> — putting the
+   action buttons inside <summary> creates an ARIA "interactive within
+   interactive" violation). One top divider per row; no per-row card chrome.
+   The Required pill's primary/ghost variant conveys required state, so we
+   don't render a separate text marker. */
 .cinder-jse-property-row {
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-sm);
-  background: var(--cinder-surface);
-  overflow: hidden;
+  border-top: 1px solid var(--cinder-border-muted);
+  background: transparent;
 }
 
-.cinder-jse-property-row[open] {
-  background: var(--cinder-surface-raised);
+.cinder-jse-property-row:first-child {
+  border-top: 0;
 }
 
 .cinder-jse-property-row__summary {
   display: flex;
   align-items: center;
   gap: var(--cinder-space-2);
-  list-style: none;
-  cursor: pointer;
   padding: var(--cinder-space-1-5) var(--cinder-space-3);
   min-height: var(--cinder-button-height-md);
-  user-select: none;
 }
 
-.cinder-jse-property-row__summary::-webkit-details-marker {
-  display: none;
+/* The chevron + name + type form a single clickable disclosure trigger.
+   Action buttons live as siblings inside __summary so they keep the
+   single-baseline layout without nesting interactive elements. */
+.cinder-jse-property-row__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.cinder-jse-property-row__trigger:focus-visible {
+  outline: 2px solid var(--cinder-accent);
+  outline-offset: 2px;
+  border-radius: var(--cinder-radius-sm);
 }
 
 .cinder-jse-property-row__chevron {
@@ -217,9 +234,7 @@
   text-align: center;
 }
 
-.cinder-jse-property-row[open]
-  > .cinder-jse-property-row__summary
-  > .cinder-jse-property-row__chevron {
+.cinder-jse-property-row__trigger[aria-expanded='true'] > .cinder-jse-property-row__chevron {
   transform: rotate(90deg);
 }
 
@@ -236,14 +251,6 @@
   padding: 0 var(--cinder-space-1-5);
 }
 
-.cinder-jse-property-row__required-marker {
-  font-size: var(--cinder-text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cinder-text-muted);
-  font-weight: 600;
-}
-
 .cinder-jse-property-row__spacer {
   flex: 1 1 auto;
 }
@@ -252,9 +259,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--cinder-space-3);
-  padding: var(--cinder-space-3);
-  border-top: 1px solid var(--cinder-border-muted);
-  background: var(--cinder-surface);
+  padding: var(--cinder-space-3) var(--cinder-space-3) var(--cinder-space-4);
+  background: transparent;
 }
 
 /* The nested PropertyEditor inside an open property panel doesn't get a card. */
