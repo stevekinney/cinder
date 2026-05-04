@@ -6,7 +6,7 @@
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
  *   GET /page-bundle/:name.js → all-in-one bundle: component-page + every scenario
- *                              + controls for one component, sharing one Svelte runtime
+ *                              for one component, sharing one Svelte runtime
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
@@ -19,14 +19,13 @@
 
 import { randomUUID } from 'node:crypto';
 import { unlinkSync, watch, type FSWatcher } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
 import type { ComponentManifest } from './types.ts';
-import { generateWrapper } from './wrapper-generator.ts';
 
 export const PORT = 4173;
 // import.meta.dirname is packages/playground/src/
@@ -102,6 +101,25 @@ function startWatcher(): FSWatcher[] {
         }
       }),
     );
+
+    // Watch the playground src tree (component-page.svelte, render-shell.ts,
+    // analyze.ts, etc.) — these are baked into every page bundle, so any edit
+    // must invalidate every cached bundle.
+    const playgroundSrcPath = join(PLAYGROUND_ROOT, 'src');
+    created.push(
+      watch(playgroundSrcPath, { recursive: true }, (_event, filename) => {
+        if (
+          filename &&
+          !filename.startsWith('examples/') &&
+          !filename.endsWith('.test.ts') &&
+          !filename.startsWith('.')
+        ) {
+          bundleCache.clear();
+          pageBundleCache.clear();
+          triggerReload();
+        }
+      }),
+    );
   } catch (error) {
     // Close any watchers already created before rethrowing.
     for (const watcher of created) {
@@ -133,7 +151,7 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
 
   const result = await Bun.build({
     entrypoints: [examplePath],
-    plugins: [sveltePlugin({ generate: 'client' })],
+    plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
     target: 'browser',
     format: 'esm',
     conditions: ['bun'],
@@ -208,18 +226,23 @@ function unescapeStringLiteral(raw: string): string {
 
 /**
  * Build the all-in-one page bundle for a single component: component-page.svelte
- * plus every scenario, all in one `Bun.build` invocation so they share a single
- * Svelte runtime instance in the browser.
+ * plus every scenario, all in one `Bun.build` invocation so they share a
+ * single Svelte runtime instance in the browser.
  *
  * Scenarios register themselves on `window.__CINDER_SCENARIOS__`, and
- * `component-page.svelte` reads that global on mount — no per-scenario dynamic
- * import needed. The controls panel is loaded as a separate bundle via
- * `/bundle/:name/controls.js`.
+ * `component-page.svelte` reads that global on mount.
  */
 async function buildPageBundle(componentName: string): Promise<string | null> {
   if (pageBundleCache.has(componentName)) {
     return pageBundleCache.get(componentName)!;
   }
+
+  // Validate that this is an actual component before building. A bundle for a
+  // bogus name still compiles (empty scenario list + the no-examples fallback)
+  // and would 200, hiding typos behind a "No examples found" UI. The
+  // componentName must correspond to a real `.svelte` under components/src/.
+  const components = await discoverComponents();
+  if (!components.includes(componentName)) return null;
 
   const scenarios = await discoverExamples(componentName);
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
@@ -264,7 +287,7 @@ mount(ComponentPage, { target });
   try {
     const result = await Bun.build({
       entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client' })],
+      plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
       target: 'browser',
       format: 'esm',
       conditions: ['bun'],
@@ -303,67 +326,6 @@ async function getManifests(): Promise<ComponentManifest[]> {
     return manifestCache;
   } finally {
     manifestPromise = null;
-  }
-}
-
-/**
- * Compile a controls wrapper bundle for the given component and cache the result
- * under the key `${componentName}/controls`.
- */
-async function buildControlsBundle(componentName: string): Promise<string | null> {
-  const cacheKey = `${componentName}/controls`;
-  if (bundleCache.has(cacheKey)) {
-    return bundleCache.get(cacheKey)!;
-  }
-
-  const manifests = await getManifests();
-  const manifest = manifests.find((m) => m.kebabName === componentName);
-  if (manifest === undefined) return null;
-
-  // Use manifest.file (absolute source path) as importPath so Bun.build can
-  // resolve it from the temp wrapper file without needing the cinder package installed.
-  const wrapperSource = generateWrapper({
-    ...manifest,
-    name: manifest.kebabName,
-    importPath: manifest.file,
-  });
-
-  // Write the temp wrapper inside the repo so Bun's module resolver can find
-  // 'svelte' and other local deps (tmpdir is outside the module graph).
-  const tempPath = join(
-    PLAYGROUND_ROOT,
-    'src',
-    `.controls-${componentName}-${randomUUID()}.svelte`,
-  );
-  await Bun.write(tempPath, wrapperSource);
-
-  try {
-    const result = await Bun.build({
-      entrypoints: [tempPath],
-      plugins: [sveltePlugin({ generate: 'client' })],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-    });
-
-    if (!result.success) {
-      console.error(`[playground] controls bundle failed for ${componentName}:`, result.logs);
-      return null;
-    }
-
-    const output = result.outputs[0];
-    if (!output) return null;
-
-    const code = await output.text();
-    bundleCache.set(cacheKey, code);
-    return code;
-  } finally {
-    // Best-effort synchronous cleanup of the temp file.
-    try {
-      unlinkSync(tempPath);
-    } catch {
-      // Ignore — file may already be gone or never written.
-    }
   }
 }
 
@@ -473,25 +435,19 @@ export async function handleRequest(request: Request): Promise<Response> {
     // Reject path-traversal attempts.
     if (relative.includes('..') || relative.startsWith('/')) return notFound();
     const cssPath = join(STYLES_ROOT, relative);
-    if (!cssPath.startsWith(STYLES_ROOT)) return notFound();
+    // Guard against traversal that survives the includes('..') pre-filter via
+    // canonicalization quirks. `relative()` keeps this check platform-safe:
+    // POSIX paths use `/`, Windows paths use `\`, and adjacent-prefix bypasses
+    // still resolve outside the styles root.
+    const cssRelativePath = relativePath(STYLES_ROOT, cssPath);
+    if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
     const cssFile = Bun.file(cssPath);
     if (!(await cssFile.exists())) return notFound(`${relative} not found`);
     const css = await cssFile.text();
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
-  // GET /bundle/:name/controls.js — compiled wrapper bundle (must precede the generic route)
-  const controlsBundleMatch = pathname.match(/^\/bundle\/([^/]+)\/controls\.js$/);
-  if (controlsBundleMatch) {
-    const componentName = controlsBundleMatch[1]!;
-    if (!isSafeSegment(componentName)) return notFound();
-    const code = await buildControlsBundle(componentName);
-    if (code === null)
-      return notFound(`Controls bundle for "${componentName}" not found or failed to build`);
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
-  }
-
-  // GET /bundle/:name/:scenario.js (scenario must not be "controls" — handled above)
+  // GET /bundle/:name/:scenario.js
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
     const componentName = bundleMatch[1]!;

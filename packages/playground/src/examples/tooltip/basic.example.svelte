@@ -4,9 +4,9 @@
 </script>
 
 <script lang="ts">
-  import { Tooltip } from '../../../../components/src/index.ts';
+  import { Button, Tooltip } from '../../../../components/src/index.ts';
 </script>
 
 <Tooltip text="This is a helpful explanation.">
-  <button type="button">Hover me</button>
+  <Button variant="secondary">Hover me</Button>
 </Tooltip>

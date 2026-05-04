@@ -37,6 +37,15 @@
   box-shadow: 0 0 0 2px var(--cinder-ring-color);
 }
 
+@media (forced-colors: active) {
+  /* box-shadow is suppressed in Windows High Contrast Mode, so paint a
+   * solid outline that respects ButtonText for visible focus. */
+  .cinder-dropdown-trigger:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 2px;
+  }
+}
+
 .cinder-dropdown-trigger[aria-expanded='true'] {
   background: var(--cinder-surface-pressed);
 }
@@ -145,6 +154,14 @@
 
 .cinder-dropdown-item[data-cinder-variant='danger']:active {
   background: color-mix(in oklch, var(--cinder-danger), transparent 86%);
+}
+
+@media (forced-colors: active) {
+  /* Inset box-shadow rings vanish in HCM — paint a solid outline instead. */
+  .cinder-dropdown-item:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: -2px;
+  }
 }
 
 .cinder-dropdown-item--inset {

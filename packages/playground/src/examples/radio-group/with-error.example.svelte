@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Radio, RadioGroup } from '../../../../components/src/index.ts';
+  import { Button, Radio, RadioGroup } from '../../../../components/src/index.ts';
 
   let role = $state('');
   let submitted = $state(false);
@@ -38,11 +38,5 @@
     </RadioGroup>
   {/if}
 
-  <button
-    type="button"
-    style="padding: 0.4rem 0.75rem; border: 1px solid #c8c8c8; background: #fafafa; cursor: pointer;"
-    onclick={() => (submitted = true)}
-  >
-    Try to submit
-  </button>
+  <Button variant="secondary" onclick={() => (submitted = true)}>Try to submit</Button>
 </div>

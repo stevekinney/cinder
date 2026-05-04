@@ -31,6 +31,7 @@
 
 .cinder-toast {
   pointer-events: auto;
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: var(--cinder-space-3);
@@ -67,21 +68,38 @@
   }
 }
 
-/* Variant-specific accent colors */
+/* Variant accent stripe — drawn as a ::before pseudo so it sits inside the
+ * toast's border-radius without fighting border-left's miter corners. The
+ * stripe rounds its own start-side corners (matching the toast's outer
+ * radius minus the 1px border) so the parent toast does not need
+ * `overflow: hidden`, which would clip the dismiss button's 44×44 ::after
+ * hit-area pseudo-element. */
+.cinder-toast[data-cinder-variant]::before {
+  content: '';
+  position: absolute;
+  /* Sit just inside the toast's 1px border so the stripe doesn't cover it. */
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--_cinder-toast-accent, transparent);
+  border-start-start-radius: calc(var(--cinder-radius-md) - 1px);
+  border-end-start-radius: calc(var(--cinder-radius-md) - 1px);
+}
+
 .cinder-toast[data-cinder-variant='info'] {
-  border-left: 3px solid var(--cinder-info);
+  --_cinder-toast-accent: var(--cinder-info);
 }
 
 .cinder-toast[data-cinder-variant='success'] {
-  border-left: 3px solid var(--cinder-success);
+  --_cinder-toast-accent: var(--cinder-success);
 }
 
 .cinder-toast[data-cinder-variant='warning'] {
-  border-left: 3px solid var(--cinder-warning);
+  --_cinder-toast-accent: var(--cinder-warning);
 }
 
 .cinder-toast[data-cinder-variant='danger'] {
-  border-left: 3px solid var(--cinder-danger);
+  --_cinder-toast-accent: var(--cinder-danger);
 }
 
 .cinder-toast__message {
@@ -119,11 +137,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
+  position: relative;
 }
 
 .cinder-toast__dismiss svg {
   width: 1rem;
   height: 1rem;
+}
+
+/*
+ * Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting
+ * layout. Mirrors the alert dismiss treatment.
+ */
+.cinder-toast__dismiss::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 .cinder-toast__dismiss:hover {
@@ -134,4 +167,11 @@
 .cinder-toast__dismiss:focus-visible {
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .cinder-toast__action:focus-visible,
+  .cinder-toast__dismiss:focus-visible {
+    outline-color: ButtonText;
+  }
 }

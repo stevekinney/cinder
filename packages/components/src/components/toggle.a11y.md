@@ -40,9 +40,9 @@ The `id` prop is placed on the `<button>` element. Because `aria-label` is prese
 
 Do not wrap the switch button in a `<label>`. Label activation forwards clicks to its labeled control and can create double-toggle behavior for a nested interactive button.
 
-## Legacy `pressed` Prop
+## Migration from `pressed`
 
-The former toggle-button API used a bindable `pressed` prop. When `pressed` is used without `checked`, the component preserves the old toggle-button semantics and renders `aria-pressed` rather than `role="switch"` / `aria-checked`. New code should use `checked` so the prop name matches the switch pattern and the rendered ARIA state.
+An earlier revision exposed a bindable `pressed` prop alongside `checked` that flipped the component's ARIA contract between `aria-pressed` and `aria-checked` based on which prop was bound. That dual contract has been removed: Toggle now exposes only `checked` and always renders `role="switch"` + `aria-checked`. Replace `bind:pressed={x}` with `bind:checked={x}`. For toggle-button affordances that should render `aria-pressed` (bold/italic/mute), use `Button` with `aria-pressed` directly.
 
 ## Screen Reader Announcements
 

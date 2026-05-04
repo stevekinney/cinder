@@ -7,10 +7,10 @@
 <script lang="ts">
   import { Toggle } from '../../../../components/src/index.ts';
 
-  let muted = $state(false);
+  let emailNotifications = $state(false);
 </script>
 
-<Toggle id="mute" bind:checked={muted} label="Mute audio" />
+<Toggle id="email-notifications" bind:checked={emailNotifications} label="Email notifications" />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
-  {muted ? 'Muted' : 'Unmuted'}
+  {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}
 </p>

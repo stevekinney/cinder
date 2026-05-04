@@ -8,7 +8,12 @@
 
 import { describe, expect, it } from 'bun:test';
 
-import { discoverAll, discoverComponents, discoverExamples } from './discover.ts';
+import {
+  discoverAll,
+  discoverComponents,
+  discoverExamples,
+  discoverSidebarComponents,
+} from './discover.ts';
 
 describe('discoverComponents', () => {
   it('returns an array of component kebab names', async () => {
@@ -107,5 +112,40 @@ describe('discoverAll', () => {
     expect(names).toContain('button');
     expect(names).toContain('alert');
     expect(names).toContain('modal');
+  });
+});
+
+describe('discoverSidebarComponents', () => {
+  it('returns only component names with at least one example', async () => {
+    const all = await discoverAll();
+    const sidebar = await discoverSidebarComponents();
+    const expected = all.filter(({ exampleCount }) => exampleCount > 0).map(({ name }) => name);
+    expect(sidebar).toEqual(expected);
+  });
+
+  it('includes button (which has examples)', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar).toContain('button');
+  });
+
+  it('returns an array of strings, no duplicates', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(Array.isArray(sidebar)).toBe(true);
+    expect(new Set(sidebar).size).toBe(sidebar.length);
+    for (const name of sidebar) {
+      expect(typeof name).toBe('string');
+    }
+  });
+
+  it('excludes compose-only subcomponents that have no example folder', async () => {
+    // accordion-item / radio / tab are explicitly compose-only — they should
+    // never appear in the sidebar regardless of being present on disk.
+    const sidebar = await discoverSidebarComponents();
+    const all = await discoverAll();
+    for (const { name, exampleCount } of all) {
+      if (exampleCount === 0) {
+        expect(sidebar).not.toContain(name);
+      }
+    }
   });
 });

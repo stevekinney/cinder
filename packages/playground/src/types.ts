@@ -1,8 +1,8 @@
 /**
- * Shared type definitions for the cinder playground analyzer, controls, and server.
+ * Shared type definitions for the cinder playground analyzer and server.
  *
- * Single source of truth — import from here everywhere. Do not re-declare these
- * types in analyze.ts, controls.ts, wrapper-generator.ts, or component-page.svelte.
+ * Single source of truth — import from here everywhere. Do not re-declare
+ * these types in analyze.ts or component-page.svelte.
  */
 
 /** Discriminated union describing the kind of UI control for a single prop. */

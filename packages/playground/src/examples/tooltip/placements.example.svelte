@@ -4,20 +4,20 @@
 </script>
 
 <script lang="ts">
-  import { Tooltip } from '../../../../components/src/index.ts';
+  import { Button, Tooltip } from '../../../../components/src/index.ts';
 </script>
 
 <div class="example-preview-row" style="padding: 1rem;">
   <Tooltip text="Appears above" placement="top">
-    <button type="button">Top</button>
+    <Button variant="secondary">Top</Button>
   </Tooltip>
   <Tooltip text="Appears to the right" placement="right">
-    <button type="button">Right</button>
+    <Button variant="secondary">Right</Button>
   </Tooltip>
   <Tooltip text="Appears below" placement="bottom">
-    <button type="button">Bottom</button>
+    <Button variant="secondary">Bottom</Button>
   </Tooltip>
   <Tooltip text="Appears to the left" placement="left">
-    <button type="button">Left</button>
+    <Button variant="secondary">Left</Button>
   </Tooltip>
 </div>

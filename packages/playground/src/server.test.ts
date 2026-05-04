@@ -89,6 +89,77 @@ describe('/c/:name', () => {
   });
 });
 
+describe('/page-bundle/:name.js', () => {
+  it('returns 200 application/javascript for a known component', async () => {
+    const response = await handleRequest(req(`/page-bundle/${FIXTURE_COMPONENT}.js`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/javascript');
+  }, 30_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/page-bundle/does-not-exist.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for segments with uppercase (blocked by isSafeSegment)', async () => {
+    const response = await handleRequest(req('/page-bundle/Button.js'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+});
+
+describe('/styles/* (path traversal guard)', () => {
+  it('returns 200 text/css for /styles/index.css', async () => {
+    const response = await handleRequest(req('/styles/index.css'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/css');
+  });
+
+  it('returns 200 text/css for /styles/foundation.css', async () => {
+    const response = await handleRequest(req('/styles/foundation.css'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/css');
+  });
+
+  it('returns 404 for a path-traversal attempt with `..` segments', async () => {
+    // Caught by the includes('..') pre-filter.
+    const response = await handleRequest(req('/styles/../../../etc/passwd'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when the request contains URL-encoded traversal sequences', async () => {
+    // WHATWG URL parsing preserves %2E (does not decode it to '.'), so the
+    // literal filename '%2E%2E%2F%2E%2E%2Fpasswd.css' never resolves to a
+    // real file under STYLES_ROOT — the file-existence check returns 404.
+    // Combined with the .css extension filter and the platform-safe
+    // relativePath()/isAbsolute() containment guard, encoded traversal is
+    // not a viable bypass.
+    const response = await handleRequest(req('/styles/%2E%2E%2F%2E%2E%2Fpasswd.css'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for null-byte injection attempts', async () => {
+    // The '.css'-extension guard rejects this before any file read happens
+    // because '%00.png' makes the relative path end in '.png', not '.css'.
+    const response = await handleRequest(req('/styles/index.css%00.png'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for an empty relative path', async () => {
+    const response = await handleRequest(req('/styles/'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when the requested path does not end in .css', async () => {
+    const response = await handleRequest(req('/styles/index.html'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 when the requested file does not exist', async () => {
+    const response = await handleRequest(req('/styles/this-file-does-not-exist.css'));
+    expect(response.status).toBe(404);
+  });
+});
+
 describe('/bundle/:name/:scenario.js', () => {
   it('returns 404 for a nonexistent example', async () => {
     const response = await handleRequest(req('/bundle/button/nonexistent.js'));
@@ -252,15 +323,16 @@ describe('/api/manifest/:name', () => {
   }, 30_000);
 });
 
-describe('/bundle/:name/controls.js', () => {
-  // The controls route is matched before the generic /bundle/:name/:scenario.js
-  // route so that "controls" is not treated as a scenario name.
+describe('/bundle/:name/controls.js (route retired)', () => {
+  // The Try-it controls bundle was removed alongside the controls panel —
+  // playground pages show only static authored scenarios. No route handles
+  // `controls.js`; the request falls through to the generic scenario
+  // bundler, which 404s because there is no `controls.example.svelte` file.
 
-  it('returns 200 application/javascript for button', async () => {
+  it('returns 404 — no scenario bundle by that name', async () => {
     const response = await handleRequest(req('/bundle/button/controls.js'));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('application/javascript');
-  }, 60_000);
+    expect(response.status).toBe(404);
+  }, 30_000);
 
   it('returns 404 for an unknown component', async () => {
     const response = await handleRequest(req('/bundle/does-not-exist/controls.js'));

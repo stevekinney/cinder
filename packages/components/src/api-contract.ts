@@ -370,12 +370,10 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      // Both `checked` and `pressed` are declared as `$bindable<boolean | undefined>(undefined)`
-      // so consumer code can disambiguate "not bound at all" from "bound to false". The component
-      // derives `usesLegacyPressedSemantics` from `checked === undefined && pressed !== undefined`,
-      // which means the runtime default must be `undefined`, not `false`.
-      checked: { optional: true, type_kind: 'TSBooleanKeyword', default: B(undefined) },
-      pressed: { optional: true, type_kind: 'TSBooleanKeyword', default: B(undefined) },
+      // `checked` is declared as `$bindable(false)` — bindable, with a default that
+      // applies when the prop is not bound. Encoded as `B(false)` so the contract
+      // analyzer sees the bindable shape (matches the runtime $bindable wrapper).
+      checked: { optional: true, type_kind: 'TSBooleanKeyword', default: B(false) },
       label: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },

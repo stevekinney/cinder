@@ -154,9 +154,18 @@
   });
 
   function handleKeydown(event: KeyboardEvent) {
+    // The inner DropdownMenu's keydown handler closes the menu and calls
+    // preventDefault. When defaultPrevented is true, the menu already
+    // handled this keystroke — skip to avoid a second close+focus pass.
+    // Svelte 5 delegates onkeydown to the document, so the child handler
+    // runs first when the event path traverses the menu element.
+    if (event.defaultPrevented) return;
+
     if (event.key === 'Escape' && open) {
       open = false;
     } else if (event.key === 'Escape' && compoundOpen) {
+      // Compound fallback path: focus was outside the menu (e.g. on the
+      // trigger), so the menu's onkeydown never fired. Close from here.
       closeCompoundMenu();
       focusCompoundTrigger();
     }
