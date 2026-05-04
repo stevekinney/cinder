@@ -2,11 +2,9 @@
   /**
    * Props for the CodeBlock component.
    *
-   * Renders preformatted code in a `<pre><code>` element. **No syntax
-   * highlighting** — that's a consumer concern (depict already owns Shiki).
-   * If you want highlighting, run the consumer's highlighter on the source
-   * and pass the resulting HTML through a different surface, or compose
-   * your own component on top of these primitives.
+   * Renders preformatted code in a `<pre><code>` element. No syntax
+   * highlighting is applied by default. Consumers can provide a highlighter when they
+   * own the syntax-highlighting dependency and output sanitization contract.
    */
   export type CodeBlockProps = {
     /** The code to render. */
@@ -15,6 +13,8 @@
     language?: string;
     /** When true, render a copy button in the header. */
     copyable?: boolean;
+    /** @param highlighter — function that returns syntax-highlighted HTML. Return value is rendered with `{@html}` and is the caller's responsibility to ensure it is safe (e.g. that input code is escaped). Shiki's `codeToHtml` is a safe default. */
+    highlighter?: (code: string, lang: string) => string | Promise<string>;
     /** Additional class names merged with `.cinder-code-block`. */
     class?: string;
   };
@@ -24,7 +24,33 @@
   import CopyButton from './copy-button.svelte';
   import { cn } from '../utilities/class-names.ts';
 
-  let { code, language, copyable = false, class: className }: CodeBlockProps = $props();
+  let {
+    code,
+    language,
+    copyable = false,
+    highlighter,
+    class: className,
+  }: CodeBlockProps = $props();
+
+  let highlighted = $state<string | null>(null);
+
+  $effect(() => {
+    if (!language || !highlighter) {
+      highlighted = null;
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve(highlighter(code, language))
+      .then((html) => {
+        if (!cancelled) highlighted = html;
+      })
+      .catch(() => {
+        if (!cancelled) highlighted = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 </script>
 
 <div class={cn('cinder-code-block', className)}>
@@ -34,9 +60,23 @@
         <span class="cinder-code-block__language">{language}</span>
       {/if}
       {#if copyable}
-        <CopyButton value={code} class="cinder-code-block__copy" label="Copy code" />
+        <CopyButton
+          value={code}
+          class="cinder-code-block__copy"
+          label="Copy code"
+          iconOnly={true}
+        />
       {/if}
     </header>
   {/if}
-  <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>
+  <svelte:boundary>
+    {#if highlighted}
+      {@html highlighted}
+    {:else}
+      <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>
+    {/if}
+    {#snippet failed()}
+      <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>
+    {/snippet}
+  </svelte:boundary>
 </div>

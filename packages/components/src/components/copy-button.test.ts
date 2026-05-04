@@ -47,4 +47,41 @@ describe('CopyButton', () => {
       expect(button.textContent?.trim()).toBe('Copied');
     });
   });
+
+  test('iconOnly mode renders Copy icon in idle state', () => {
+    const { container } = render(CopyButton, { value: 'hello', iconOnly: true });
+    const button = container.querySelector('button');
+    // Should contain an SVG (the Copy icon) and a screen-reader span
+    expect(button?.querySelector('svg')).not.toBeNull();
+    expect(button?.querySelector('.sr-only')?.textContent).toBe('Copy to clipboard');
+  });
+
+  test('iconOnly mode renders Check icon after click', async () => {
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async () => {} },
+    });
+    const { container } = render(CopyButton, { value: 'hello', iconOnly: true });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    await fireEvent.click(button);
+    await waitFor(() => {
+      expect(button.querySelector('svg')).not.toBeNull();
+      expect(button.querySelector('.sr-only')?.textContent).toBe('Copied');
+    });
+  });
+
+  test('custom children with no confirmation shows "Copied" text when copied', async () => {
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async () => {} },
+    });
+    // Render without confirmation snippet — children are provided but confirmation is not
+    // After click, should show "Copied" (regression for bug where children+no-confirmation never showed copied feedback)
+    const { container } = render(CopyButton, { value: 'hello' });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    await fireEvent.click(button);
+    await waitFor(() => {
+      expect(button.textContent?.trim()).toBe('Copied');
+    });
+  });
 });

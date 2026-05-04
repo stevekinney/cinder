@@ -12,7 +12,8 @@
     "validate": "bun run src/validate-playground.ts"
   },
   "dependencies": {
-    "cinder": "workspace:*"
+    "cinder": "workspace:*",
+    "shiki": "^3.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11",

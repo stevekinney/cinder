@@ -15,6 +15,9 @@
     confirmDuration?: number;
     /** Accessible label for the button when no children are supplied. */
     label?: string;
+    /** Render the button with only an icon and a visually hidden label.
+     * When true, defaults to a Copy icon (idle) and a Check icon (copied). */
+    iconOnly?: boolean;
     /** Additional class names merged with `.cinder-copy-button`. */
     class?: string;
     /** Default content (idle state). */
@@ -27,6 +30,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
 
+  import { Check, Copy } from './icons/index.ts';
   import { copyToClipboard } from '../utilities/clipboard.ts';
   import { cn } from '../utilities/class-names.ts';
 
@@ -34,6 +38,7 @@
     value,
     confirmDuration = 1500,
     label,
+    iconOnly,
     class: className,
     children,
     confirmation,
@@ -67,10 +72,20 @@
 >
   {#if copied && confirmation}
     {@render confirmation()}
+  {:else if copied && iconOnly}
+    <span aria-hidden="true">
+      <Check class="icon-sm" />
+    </span>
+    <span class="sr-only">Copied</span>
   {:else if copied}
     Copied
   {:else if children}
     {@render children()}
+  {:else if iconOnly}
+    <span aria-hidden="true">
+      <Copy class="icon-sm" />
+    </span>
+    <span class="sr-only">{label ?? 'Copy to clipboard'}</span>
   {:else}
     Copy
   {/if}

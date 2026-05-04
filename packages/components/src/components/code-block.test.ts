@@ -5,8 +5,12 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
+
+async function renderHighlightedCode() {
+  return '<pre><code class="highlighted">const x = 1;</code></pre>';
+}
 
 describe('CodeBlock', () => {
   test('renders code in a <pre><code> pair', () => {
@@ -31,5 +35,32 @@ describe('CodeBlock', () => {
     const { container } = render(CodeBlock, { code: 'x', copyable: true });
     expect(container.querySelector('.cinder-code-block__header')).not.toBeNull();
     expect(container.querySelector('.cinder-copy-button')).not.toBeNull();
+  });
+
+  test('no highlighter prop renders plain unhighlighted code', () => {
+    const { container } = render(CodeBlock, { code: 'const x = 1;' });
+    expect(container.querySelector('pre code')?.textContent).toBe('const x = 1;');
+  });
+
+  test('highlighter prop output is rendered verbatim via html', async () => {
+    const { container } = render(CodeBlock, {
+      code: 'const x = 1;',
+      language: 'js',
+      highlighter: renderHighlightedCode,
+    });
+    await waitFor(() => {
+      expect(container.querySelector('.highlighted')).not.toBeNull();
+    });
+  });
+
+  test('highlighter prop documents the trust boundary in source', async () => {
+    // The component renders highlighter output via {@html} without sanitization.
+    // The JSDoc comment on the highlighter prop is the contract that tells
+    // consumers they own the safety boundary. If this comment goes missing,
+    // a future contributor might forget the trust boundary and add a "sanitize
+    // before render" path that would silently break Shiki's spans.
+    const source = await Bun.file(new URL('./code-block.svelte', import.meta.url).pathname).text();
+    expect(source).toContain('rendered with `{@html}`');
+    expect(source).toContain("caller's responsibility");
   });
 });
