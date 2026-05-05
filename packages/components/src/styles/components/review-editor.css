@@ -83,6 +83,16 @@
 }
 
 /*
+ * Focus indicator for the editor view.
+ * .markdown-editor-wrapper owns the :focus-within border accent (via MarkdownEditor's own
+ * scoped CSS), but inside review-editor-main its border is reset to none. Transfer the
+ * focus accent to review-editor-main so users see the same visual feedback.
+ */
+.review-editor-container[data-view='editor'] .review-editor-main:focus-within {
+  border-color: var(--cinder-accent);
+}
+
+/*
  * Make the markdown-editor-wrapper fill the main content area.
  * Border/radius/overflow are reset in review-editor.svelte via a :global() rule
  * at (0,3,0) specificity, which wins over the Svelte-scoped rule on the wrapper.
