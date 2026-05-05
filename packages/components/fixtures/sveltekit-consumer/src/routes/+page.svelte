@@ -22,6 +22,7 @@
     Textarea,
     Toggle,
     Tooltip,
+    useHistory,
   } from 'cinder';
   import '../app.css';
 
@@ -33,9 +34,10 @@
   let modalOpen = $state(false);
   let dropdownOpen = $state(false);
   let expandedIds = $state<string[]>([]);
+  const useHistoryExportIsFunction = typeof useHistory === 'function';
 </script>
 
-<main>
+<main data-use-history-import={useHistoryExportIsFunction ? 'available' : 'missing'}>
   <h1>cinder sveltekit consumer fixture — barrel imports</h1>
 
   <section aria-label="Alert">

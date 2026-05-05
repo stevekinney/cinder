@@ -67,7 +67,7 @@
     void (async () => {
       try {
         const html = await highlighter(code, language);
-        if (!cancelled) highlighted = html;
+        if (!cancelled) highlighted = html === '' ? null : html;
       } catch (error) {
         if (!cancelled) highlighted = null;
         // Surface to the developer without breaking the graceful fallback.

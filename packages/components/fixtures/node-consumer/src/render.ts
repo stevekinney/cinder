@@ -25,6 +25,7 @@ import {
   Textarea,
   Toggle,
   Tooltip,
+  useHistory,
 } from 'cinder';
 
 // Minimal no-op snippet for components that require children.
@@ -89,3 +90,10 @@ for (const { name, component } of snippetComponents) {
   }
   process.stdout.write(`<!-- ${name} imported OK -->\n`);
 }
+
+if (typeof useHistory !== 'function') {
+  process.stderr.write('useHistory is not a function — import failed\n');
+  process.exit(1);
+}
+
+process.stdout.write('<!-- useHistory imported OK -->\n');
