@@ -36,7 +36,18 @@
   import LiveRegion from './live-region.svelte';
   import ExportActions from './export-actions.svelte';
   import CommentSidebar from './comment-sidebar.svelte';
+  import FrontMatterFields from './front-matter-fields.svelte';
   import ReviewEditorControls from './review-editor-controls.svelte';
+  import {
+    bodyAnchorToDocumentAnchor,
+    bodyAnchorUpdateToDocumentAnchorUpdate,
+    combineFrontMatterAndBody,
+    documentAnchorToBodyAnchor,
+    documentPositionToBodyPosition,
+    parseReviewEditorFrontMatter,
+    replaceFrontMatterData,
+    reviewStateToMarkdown,
+  } from './review-editor-front-matter.ts';
   import type {
     ReviewEditorDiffViewMode as DiffViewMode,
     ReviewEditorViewType as ViewType,
@@ -112,6 +123,14 @@
 
   // Comment sidebar toggle state
   let sidebarOpen = $state(false);
+
+  const currentDocument = $derived(parseReviewEditorFrontMatter(value));
+  const editorValue = $derived(currentDocument.body);
+  const viewPanelIds = $derived({
+    editor: `${id}-editor-panel`,
+    diff: `${id}-diff-panel`,
+    summary: `${id}-summary-panel`,
+  });
 
   // =========================================================================
   // View Switching State (DEP-47)
@@ -365,7 +384,9 @@
     if (!view) return null;
 
     try {
-      const coords = view.coordsAtPos(from);
+      const coords = view.coordsAtPos(
+        documentPositionToBodyPosition(from, currentDocument.bodyOffset),
+      );
       if (coords) {
         // coords are already viewport-relative from ProseMirror
         return {
@@ -403,6 +424,10 @@
       .join('|');
   }
 
+  function createPluginSyncFingerprint(threadsToSync: Thread[]): string {
+    return `${currentDocument.bodyOffset}|${createSyncFingerprint(threadsToSync)}`;
+  }
+
   /**
    * Handle anchor position updates from the plugin.
    * Called when the plugin detects position changes.
@@ -412,16 +437,20 @@
     threads = threads.map((thread) => {
       const update = updates.find((u) => u.threadId === thread.id);
       if (update) {
+        const documentUpdate = bodyAnchorUpdateToDocumentAnchorUpdate(
+          update,
+          currentDocument.bodyOffset,
+        );
         return {
           ...thread,
           anchor: {
             ...thread.anchor,
-            from: update.from,
-            to: update.to,
-            quote: update.quote,
-            prefix: update.prefix,
-            suffix: update.suffix,
-            lastKnownOffset: update.lastKnownOffset,
+            from: documentUpdate.from,
+            to: documentUpdate.to,
+            quote: documentUpdate.quote,
+            prefix: documentUpdate.prefix,
+            suffix: documentUpdate.suffix,
+            lastKnownOffset: documentUpdate.lastKnownOffset,
           },
         };
       }
@@ -429,7 +458,7 @@
     });
 
     // Update fingerprint to skip re-sync
-    lastSyncedFingerprint = createSyncFingerprint(threads);
+    lastSyncedFingerprint = createPluginSyncFingerprint(threads);
   }
 
   // Create anchor plugin in instance script (per-instance, before mount)
@@ -476,7 +505,7 @@
     const view = editorRef?.getView();
     if (!view) return;
 
-    const fingerprint = createSyncFingerprint(threadsToSync);
+    const fingerprint = createPluginSyncFingerprint(threadsToSync);
 
     // Skip if already synced
     if (fingerprint === lastSyncedFingerprint) return;
@@ -485,7 +514,10 @@
     view.dispatch(
       view.state.tr.setMeta(anchorPluginKey, {
         type: 'sync',
-        threads: threadsToSync,
+        threads: threadsToSync.map((thread) => ({
+          ...thread,
+          anchor: documentAnchorToBodyAnchor(thread.anchor, currentDocument.bodyOffset),
+        })),
         source: 'external',
       }),
     );
@@ -505,7 +537,8 @@
 
     // Compare markdown using contentEquals (handles normalization)
     const currentMarkdown = editorRef?.getMarkdown() ?? '';
-    const expectedMarkdown = pendingState.content;
+    const pendingDocument = parseReviewEditorFrontMatter(pendingState.content);
+    const expectedMarkdown = pendingDocument.body;
 
     if (!contentEquals(currentMarkdown, expectedMarkdown)) {
       // Content not synced yet - will retry when editor updates
@@ -522,7 +555,17 @@
     const reanchoredThreads: Thread[] = [];
 
     for (const persistedThread of state.threads) {
-      const result = reanchorQuote(documentText, persistedThread.anchor);
+      const bodyPersistedAnchor = {
+        ...persistedThread.anchor,
+        lastKnownOffset:
+          persistedThread.anchor.lastKnownOffset === undefined
+            ? undefined
+            : documentPositionToBodyPosition(
+                persistedThread.anchor.lastKnownOffset,
+                pendingDocument.bodyOffset,
+              ),
+      };
+      const result = reanchorQuote(documentText, bodyPersistedAnchor);
 
       // If anchor text not found, skip this thread (auto-delete)
       if (!result.found) {
@@ -550,13 +593,13 @@
           ...persistedThread,
           anchor: {
             ...persistedThread.anchor,
-            from,
-            to,
+            from: from + pendingDocument.bodyOffset,
+            to: to + pendingDocument.bodyOffset,
             quote: matchedQuote,
             prefix: newPrefix,
             suffix: newSuffix,
             status: 'anchored',
-            lastKnownOffset: result.from,
+            lastKnownOffset: result.from + pendingDocument.bodyOffset,
           },
         });
       }
@@ -610,7 +653,7 @@
    */
   const changeTracker = createChangeTracker({
     debounceMs: 300,
-    includeFrontMatter: false,
+    includeFrontMatter: true,
   });
 
   // Wire baseline and current values to the tracker
@@ -627,9 +670,6 @@
 
   /** Debounce delay for selection position calculation (ms) */
   const SELECTION_DEBOUNCE_MS = 20;
-
-  /** Reference to the main editor area (for scoping selection popover to editor DOM only) */
-  let mainRef = $state<HTMLElement | null>(null);
 
   // Listen to browser's native selectionchange event
   // This is more reliable than ProseMirror's selection events for detecting visual selection
@@ -673,10 +713,11 @@
         return;
       }
 
-      // Check if selection is within the main editor area (not the sidebar or controls)
-      // This prevents the selection popover from appearing when selecting text in the sidebar
+      // Check if selection is within the actual editor DOM (not front matter controls,
+      // sidebar, or toolbar content).
       const anchorNode = browserSelection.anchorNode;
-      if (!mainRef || !anchorNode || !mainRef.contains(anchorNode)) {
+      const editorDom = editorRef?.getView()?.dom;
+      if (!editorDom || !anchorNode || !editorDom.contains(anchorNode)) {
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
@@ -747,6 +788,14 @@
     onchange?.(newValue);
   }
 
+  function handleEditorBodyChange(newBody: string) {
+    handleChange(combineFrontMatterAndBody(currentDocument, newBody));
+  }
+
+  function handleFrontMatterChange(data: Record<string, unknown> | null) {
+    handleChange(replaceFrontMatterData(value, data));
+  }
+
   // =========================================================================
   // Imperative Methods
   // =========================================================================
@@ -758,12 +807,14 @@
 
   /** Get current markdown content */
   export function getMarkdown(): string {
-    return editorRef?.getMarkdown() ?? value;
+    const body = editorRef?.getMarkdown() ?? currentDocument.body;
+    return combineFrontMatterAndBody(currentDocument, body);
   }
 
   /** Set markdown content */
   export function setMarkdown(content: string): void {
-    editorRef?.setMarkdown(content);
+    value = content;
+    editorRef?.setMarkdown(parseReviewEditorFrontMatter(content).body);
   }
 
   /** Get current AST */
@@ -773,7 +824,13 @@
 
   /** Get current selection */
   export function getSelection(): EditorSelection | null {
-    return editorRef?.getSelection() ?? null;
+    const selection = editorRef?.getSelection();
+    if (!selection) return null;
+    return {
+      ...selection,
+      from: selection.from + currentDocument.bodyOffset,
+      to: selection.to + currentDocument.bodyOffset,
+    };
   }
 
   /** Scroll to a specific thread's anchor position in the editor */
@@ -784,7 +841,9 @@
     const view = editorRef?.getView();
     if (view && thread.anchor.from !== undefined) {
       // Scroll the anchor position into view
-      const coords = view.coordsAtPos(thread.anchor.from);
+      const coords = view.coordsAtPos(
+        documentPositionToBodyPosition(thread.anchor.from, currentDocument.bodyOffset),
+      );
       if (coords) {
         view.dom.scrollTo({
           top: coords.top - 100, // Offset from top
@@ -812,7 +871,9 @@
     setTimeout(() => {
       const view = editorRef?.getView();
       if (view && thread.anchor.from !== undefined) {
-        const coords = view.coordsAtPos(thread.anchor.from);
+        const coords = view.coordsAtPos(
+          documentPositionToBodyPosition(thread.anchor.from, currentDocument.bodyOffset),
+        );
         if (coords) {
           popoverPosition = { x: coords.left + 16, y: coords.top };
           popoverThreadId = threadId;
@@ -838,9 +899,7 @@
    * Get serializable review state.
    * Threads are converted to persisted format for re-anchoring.
    *
-   * Note: This simplified ReviewEditor does not support review sessions
-   * or front matter. These fields are included as undefined for schema compatibility,
-   * ensuring setState(getState()) round-trip fidelity.
+   * Content is preserved as the complete Markdown document, including front matter.
    */
   export function getState(): ReviewState {
     const persistedThreads: PersistedThread[] = threads.map((thread) => ({
@@ -862,11 +921,9 @@
       content: value,
       original: original || undefined,
       threads: persistedThreads,
-      // Note: reviewSession, frontMatter are not supported in this
-      // simplified editor but included for schema v4 compatibility
       reviewSession: undefined,
-      frontMatter: undefined,
-      frontMatterRaw: undefined,
+      frontMatter: currentDocument.data,
+      frontMatterRaw: currentDocument.raw,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -879,12 +936,13 @@
    * ensuring subsequent diffs and exports use the correct baseline.
    */
   export function setState(state: ReviewState): void {
-    value = state.content;
+    const nextValue = reviewStateToMarkdown(state);
+    value = nextValue;
     // Update original baseline if provided in state, so diffs work correctly
     if (state.original !== undefined) {
       original = state.original;
     }
-    pendingState = state;
+    pendingState = { ...state, content: nextValue };
 
     // Attempt re-anchoring immediately if editor is ready
     attemptReanchoring();
@@ -1083,7 +1141,11 @@
     }
 
     // Build anchor using shared helper
-    const anchor = buildAnchorFromSelection(view, from, to);
+    const anchor = bodyAnchorToDocumentAnchor(
+      buildAnchorFromSelection(view, from, to),
+      currentDocument.bodyOffset,
+      value,
+    );
 
     // Generate requestId for correlating optimistic updates
     const requestId = generateId();
@@ -1170,7 +1232,11 @@
     const { from, to } = currentSelection;
 
     // Build anchor using shared helper
-    const anchor = buildAnchorFromSelection(view, from, to);
+    const anchor = bodyAnchorToDocumentAnchor(
+      buildAnchorFromSelection(view, from, to),
+      currentDocument.bodyOffset,
+      value,
+    );
 
     // Extract mentions from comment body
     const mentions = extractMentions(body);
@@ -1403,7 +1469,11 @@
       const blockTo = resolvedPos.end(depth);
 
       // Build anchor for the entire block
-      const anchor = buildAnchorFromSelection(view, blockFrom, blockTo);
+      const anchor = bodyAnchorToDocumentAnchor(
+        buildAnchorFromSelection(view, blockFrom, blockTo),
+        currentDocument.bodyOffset,
+        value,
+      );
 
       // Extract mentions and generate requestId
       const mentions = extractMentions(body);
@@ -1521,6 +1591,7 @@
   <ReviewEditorControls
     id="{id}-controls"
     {activeView}
+    {viewPanelIds}
     onViewChange={(view) => {
       // Clear selection popover state when leaving editor view
       // Otherwise stale expanded state blocks new selections when returning
@@ -1549,51 +1620,81 @@
   />
 
   <!-- Main content area -->
-  <div bind:this={mainRef} class="review-editor-main">
+  <div class="review-editor-main">
     {#if activeView === 'editor'}
       <!-- Editor view: formatting toolbar + editor content -->
-      <MarkdownEditor
-        {id}
-        bind:this={editorRef}
-        {value}
-        mode="wysiwyg"
-        readonly={isReadonly}
-        {placeholder}
-        plugins={[anchorPlugin]}
-        onchange={handleChange}
-        onReady={() => {
-          if (!editorViewReady) {
-            editorViewReady = true;
-          }
-        }}
-        onSelectionChange={handleSelectionChange}
-      />
+      <div
+        id={viewPanelIds.editor}
+        class="review-editor-view-panel"
+        role="tabpanel"
+        aria-label="Editor view"
+      >
+        {#if currentDocument.hasFrontMatter}
+          <FrontMatterFields
+            id={`${id}-front-matter`}
+            data={currentDocument.data}
+            raw={currentDocument.raw}
+            readonly={isReadonly}
+            onchange={handleFrontMatterChange}
+          />
+        {/if}
+        <MarkdownEditor
+          {id}
+          bind:this={editorRef}
+          value={editorValue}
+          mode="wysiwyg"
+          readonly={isReadonly}
+          {placeholder}
+          plugins={[anchorPlugin]}
+          onchange={handleEditorBodyChange}
+          onReady={() => {
+            if (!editorViewReady) {
+              editorViewReady = true;
+            }
+          }}
+          onSelectionChange={handleSelectionChange}
+        />
+      </div>
     {:else if activeView === 'diff'}
       <!-- Diff view content -->
-      <DiffViewer {original} current={value} bind:viewMode={diffViewMode} readonly={isReadonly}>
-        {#snippet toolbar()}
-          <!-- Empty toolbar - controls are in the unified bar above -->
-        {/snippet}
-      </DiffViewer>
+      <div
+        id={viewPanelIds.diff}
+        class="review-editor-view-panel"
+        role="tabpanel"
+        aria-label="Diff view"
+      >
+        <DiffViewer {original} current={value} bind:viewMode={diffViewMode} readonly={isReadonly}>
+          {#snippet toolbar()}
+            <!-- Empty toolbar - controls are in the unified bar above -->
+          {/snippet}
+        </DiffViewer>
+      </div>
     {:else}
       <!-- Summary view (auto-generated, readonly preview) -->
-      {#if hasContentChanges || threads.length > 0}
-        <MarkdownEditor
-          id="{id}-summary"
-          value={summaryContent}
-          mode="wysiwyg"
-          readonly
-          showToolbar={false}
-          placeholder=""
-        />
-      {:else}
-        <div class="summary-view" role="region" aria-label="Review summary">
-          <div class="summary-empty">
-            <p>No changes or comments to summarize.</p>
-            <p class="summary-hint">Edit the document or add comments to generate a summary.</p>
+      <div
+        id={viewPanelIds.summary}
+        class="review-editor-view-panel"
+        role="tabpanel"
+        aria-label="Summary view"
+      >
+        {#if hasContentChanges || threads.length > 0}
+          <MarkdownEditor
+            id="{id}-summary"
+            value={summaryContent}
+            mode="wysiwyg"
+            readonly
+            showToolbar={false}
+            placeholder=""
+          />
+        {:else}
+          <div class="summary-view" role="region" aria-label="Review summary">
+            <div class="summary-empty">
+              <p>No changes or comments to summarize.</p>
+              <p class="summary-hint">Edit the document or add comments to generate a summary.</p>
+            </div>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     {/if}
   </div>
 
@@ -1652,5 +1753,9 @@
     border: none;
     border-radius: 0;
     overflow: visible;
+  }
+
+  .review-editor-view-panel {
+    min-width: 0;
   }
 </style>

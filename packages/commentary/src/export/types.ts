@@ -51,9 +51,8 @@ export interface UnifiedDiffOptions {
   /**
    * Include front matter in diff output. Default: false
    *
-   * Note: ReviewState only stores current front matter (`frontMatterRaw`), not
-   * the original's. When enabled, front matter will appear as all additions
-   * unless the original had no front matter. Disabled by default for accurate diffs.
+   * Modern ReviewState content may already include front matter. When enabled,
+   * this option only prepends `frontMatterRaw` for older body-only state payloads.
    */
   includeFrontMatter?: boolean | undefined;
 }

@@ -615,21 +615,6 @@
     {:else}
       <!-- Default toolbar with optional extension points -->
       <div class="editor-toolbar-wrapper">
-        {#if showModeToggle}
-          <div class="toolbar-mode-toggle">
-            <SegmentedControl
-              id={`${id}-mode-toggle`}
-              bind:value={mode}
-              options={[
-                { value: 'wysiwyg', label: 'Rich' },
-                { value: 'source', label: 'Raw' },
-              ]}
-              label={modeLabel}
-              hideLabel
-            />
-          </div>
-        {/if}
-
         {#if toolbarLeading}
           <div class="toolbar-leading">
             {@render toolbarLeading(toolbarContext)}
@@ -655,6 +640,21 @@
             {@render toolbarActions(toolbarContext)}
           </div>
         {/if}
+
+        {#if showModeToggle}
+          <div class="toolbar-mode-toggle">
+            <SegmentedControl
+              id={`${id}-mode-toggle`}
+              bind:value={mode}
+              options={[
+                { value: 'wysiwyg', label: 'Rich' },
+                { value: 'source', label: 'Raw' },
+              ]}
+              label={modeLabel}
+              hideLabel
+            />
+          </div>
+        {/if}
       </div>
     {/if}
   {/if}
@@ -665,7 +665,7 @@
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
         {id}
-        class="prose markdown-editor surface"
+        class="cinder-markdown-content prose markdown-editor surface"
         data-readonly={readonly || undefined}
         style:--editor-placeholder="'{escapedPlaceholder}'"
         role="application"
@@ -722,22 +722,32 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2);
+    border-bottom: 1px solid var(--cinder-border);
+    background: var(--cinder-surface-raised);
+    flex-wrap: wrap;
   }
 
   .editor-toolbar-wrapper :global(.editor-toolbar) {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 16rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .toolbar-mode-toggle {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    margin-inline-start: auto;
   }
 
   /* Compact mode toggle styling for toolbar context */
-  .toolbar-mode-toggle :global(.segmented-control) {
+  .toolbar-mode-toggle :global(.cinder-segmented-control) {
     font-size: var(--cinder-text-xs);
   }
 
-  .toolbar-mode-toggle :global(.segmented-control-option) {
+  .toolbar-mode-toggle :global(.cinder-segmented-control-option) {
     padding: var(--cinder-space-1) var(--cinder-space-2);
     min-height: auto;
   }
@@ -768,7 +778,6 @@
    */
   .markdown-editor-wrapper[data-has-toolbar] :global(.editor-toolbar) {
     border: none;
-    border-bottom: 1px solid var(--cinder-border);
     border-radius: 0;
   }
 
@@ -809,7 +818,7 @@
 
   /* ProseMirror content area */
   .markdown-editor :global(.ProseMirror) {
-    padding: var(--cinder-space-4);
+    padding: var(--cinder-space-5);
     outline: none;
     min-height: 100%;
   }

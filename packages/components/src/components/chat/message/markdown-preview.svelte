@@ -75,7 +75,7 @@
   });
 </script>
 
-<div class={classNames('message-content-preview', className)} {...rest}>
+<div class={classNames('cinder-markdown-content message-content-preview', className)} {...rest}>
   {#if renderedHtml}
     {@html renderedHtml}
   {:else}

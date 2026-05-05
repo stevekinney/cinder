@@ -109,6 +109,46 @@
   flex: 1;
 }
 
+.review-editor-front-matter {
+  border-bottom: 1px solid var(--cinder-border-muted);
+  background: var(--cinder-surface);
+}
+
+.review-editor-front-matter__header {
+  padding: var(--cinder-space-3) var(--cinder-space-4) 0;
+}
+
+.review-editor-front-matter__title {
+  margin: 0;
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-editor-front-matter__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-3) var(--cinder-space-4) var(--cinder-space-4);
+}
+
+.review-editor-front-matter__field {
+  min-width: 0;
+}
+
+.review-editor-front-matter__field .cinder-textarea {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-sm);
+}
+
+.review-editor-front-matter__empty {
+  margin: 0;
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-sm);
+}
+
 .review-editor-main > .diff-viewer {
   border: none;
   border-radius: 0;

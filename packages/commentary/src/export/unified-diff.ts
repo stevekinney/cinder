@@ -4,7 +4,7 @@
  * Produces output that can be applied with `git apply` or `patch` command.
  */
 
-import { normalize } from '@cinder/markdown/pipeline';
+import { normalize, parseFrontMatter } from '@cinder/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
 
@@ -44,19 +44,22 @@ export function generateUnifiedDiff(
     originalPath = 'a/document.md',
     currentPath = 'b/document.md',
     contextLines = 3,
-    // Default to false: ReviewState only stores current front matter (frontMatterRaw),
-    // not the original's front matter. Including it would incorrectly show all front
-    // matter lines as additions since we can't diff what we don't have.
+    // Default to false for backwards-compatible caller control. Modern ReviewState
+    // content may already include front matter, so this option only prepends raw
+    // front matter for older body-only states.
     includeFrontMatter = false,
   } = options;
 
   const originalContent = state.original ?? '';
   let currentContent = state.content;
 
-  // Optionally prepend front matter to current content.
-  // Note: This only works correctly when the original document had no front matter,
-  // otherwise the diff will incorrectly show all front matter as additions.
-  if (includeFrontMatter && state.frontMatterRaw) {
+  // Optionally prepend front matter for older body-only state payloads. Avoid
+  // duplicating front matter when state.content is already full Markdown.
+  if (
+    includeFrontMatter &&
+    state.frontMatterRaw &&
+    !parseFrontMatter(currentContent).hasFrontMatter
+  ) {
     currentContent = `---\n${state.frontMatterRaw}\n---\n\n${currentContent}`;
   }
 

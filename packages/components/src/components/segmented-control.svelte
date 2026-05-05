@@ -1,15 +1,18 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
+  import type { IconComponent } from './icons/index.ts';
 
   export type SegmentedControlOption<T extends string = string> = {
     value: T;
     label: string;
+    icon?: IconComponent;
+    controls?: string | undefined;
     disabled?: boolean;
   };
 
   export type SegmentedControlProps<T extends string = string> = Omit<
     HTMLAttributes<HTMLDivElement>,
-    'id'
+    'id' | 'onchange'
   > & {
     /** Unique identifier for the control. */
     id: string;
@@ -23,8 +26,12 @@
     hideLabel?: boolean;
     /** Disable the whole control. */
     disabled?: boolean;
+    /** ARIA interaction pattern. Use `tablist` when options switch visible panels. */
+    variant?: 'radiogroup' | 'tablist';
     /** Additional class names merged with `.cinder-segmented-control`. */
     class?: string;
+    /** Called when the selected value changes. */
+    onchange?: (value: T) => void;
   };
 </script>
 
@@ -39,7 +46,9 @@
     label,
     hideLabel = false,
     disabled = false,
+    variant = 'radiogroup',
     class: customClassName,
+    onchange,
     ...rest
   }: SegmentedControlProps<T> = $props();
 
@@ -55,6 +64,7 @@
     const option = options[index];
     if (!option || disabled || option.disabled) return;
     value = option.value;
+    onchange?.(option.value);
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -74,6 +84,9 @@
     focusedIndex = nextIndex;
     document.getElementById(`${id}-option-${nextIndex}`)?.focus();
   }
+
+  const groupRole = $derived(variant === 'tablist' ? 'tablist' : 'radiogroup');
+  const optionRole = $derived(variant === 'tablist' ? 'tab' : 'radio');
 </script>
 
 <div class="cinder-segmented-control-container">
@@ -85,11 +98,13 @@
   </span>
   <div
     {id}
-    role="radiogroup"
+    role={groupRole}
     aria-labelledby={`${id}-label`}
     aria-disabled={disabled ? 'true' : undefined}
+    aria-orientation="horizontal"
     class={classNames('cinder-segmented-control', customClassName)}
     data-cinder-disabled={disabled ? '' : undefined}
+    data-cinder-variant={variant}
     onkeydown={handleKeydown}
     {...rest}
   >
@@ -99,8 +114,10 @@
       <button
         id={`${id}-option-${index}`}
         type="button"
-        role="radio"
-        aria-checked={isSelected}
+        role={optionRole}
+        aria-checked={variant === 'radiogroup' ? isSelected : undefined}
+        aria-selected={variant === 'tablist' ? isSelected : undefined}
+        aria-controls={variant === 'tablist' ? option.controls : undefined}
         aria-disabled={isDisabled ? 'true' : undefined}
         disabled={isDisabled}
         tabindex={index === focusableIndex ? 0 : -1}
@@ -110,6 +127,9 @@
         onfocus={() => (focusedIndex = index)}
         onblur={() => (focusedIndex = null)}
       >
+        {#if option.icon}
+          <option.icon class="icon-xs cinder-segmented-control-option-icon" aria-hidden="true" />
+        {/if}
         {option.label}
       </button>
     {/each}

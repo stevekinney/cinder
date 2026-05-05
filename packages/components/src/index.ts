@@ -246,9 +246,6 @@ export type { ToggleProps } from './components/toggle.svelte';
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
 
-export { default as ViewSwitcher } from './components/view-switcher.svelte';
-export type { ViewOption, ViewSwitcherProps, ViewType } from './components/view-switcher.svelte';
-
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their
 // APIs may change between minor versions until they meet the canonical

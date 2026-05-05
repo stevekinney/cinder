@@ -276,10 +276,6 @@
     "./tooltip": {
       "svelte": "./src/components/tooltip.svelte",
       "types": "./dist/components/tooltip.svelte.d.ts"
-    },
-    "./view-switcher": {
-      "svelte": "./src/components/view-switcher.svelte",
-      "types": "./dist/components/view-switcher.svelte.d.ts"
     }
   },
   "main": "./dist/server/index.js",

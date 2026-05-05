@@ -17,6 +17,8 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { stringify } from '../../../utilities/stringify.ts';
+  import { Check, ChevronDown, MoreHorizontal, X } from '../../icons/index.ts';
+  import ToolPayloadCode from './tool-payload-code.svelte';
 
   let {
     pair,
@@ -58,42 +60,11 @@
   >
     <span class="tool-call-icon" aria-hidden="true">
       {#if isError}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="15" y1="9" x2="9" y2="15" />
-          <line x1="9" y1="9" x2="15" y2="15" />
-        </svg>
+        <X class="icon-xs" />
       {:else if isSuccess}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="9 12 12 15 16 10" />
-        </svg>
+        <Check class="icon-xs" />
       {:else}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <MoreHorizontal class="icon-xs" />
       {/if}
     </span>
     <span class="tool-call-name">{pair.call.name}</span>
@@ -107,16 +78,7 @@
       {/if}
     </span>
     <span class="tool-call-chevron" aria-hidden="true" data-expanded={expanded}>
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
+      <ChevronDown class="icon-xs" />
     </span>
   </button>
 
@@ -124,8 +86,7 @@
     <div class="tool-call-details">
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <pre class="tool-call-code" tabindex="0"><code>{formattedArguments}</code></pre>
+        <ToolPayloadCode code={formattedArguments} />
       </div>
 
       {#if hasResult}
@@ -136,8 +97,7 @@
               {pair.result.error}
             </div>
           {:else if formattedResult !== null}
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-            <pre class="tool-call-code" tabindex="0"><code>{formattedResult}</code></pre>
+            <ToolPayloadCode code={formattedResult} />
           {/if}
         </div>
       {/if}
@@ -147,6 +107,9 @@
 
 <style>
   .tool-call-group {
+    inline-size: max-content;
+    min-inline-size: min(18rem, 100%);
+    max-inline-size: 100%;
     border-radius: var(--cinder-radius-md);
     border: 1px solid var(--cinder-border-muted);
     overflow: hidden;
@@ -187,7 +150,7 @@
   }
 
   .tool-call-icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
@@ -259,19 +222,6 @@
     margin: 0 0 var(--cinder-space-2);
   }
 
-  .tool-call-code {
-    margin: 0;
-    padding: var(--cinder-space-3);
-    background: var(--cinder-surface-inset);
-    border-radius: var(--cinder-radius-md);
-    overflow-x: auto;
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    line-height: 1.5;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
   .tool-call-error {
     padding: var(--cinder-space-3);
     background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
@@ -280,9 +230,7 @@
     font-size: var(--cinder-text-sm);
   }
 
-  /* Apply error styling to content when outcome is error but no error message */
-  .tool-call-section[data-error] .tool-call-code {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
-    color: var(--cinder-danger);
+  .tool-call-section[data-error] :global(.cinder-code-block) {
+    border-color: color-mix(in oklch, var(--cinder-danger), transparent 40%);
   }
 </style>

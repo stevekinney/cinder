@@ -34,6 +34,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--cinder-space-1);
   min-height: 1.25rem;
   padding: 0 var(--cinder-space-2);
   border: 0;
@@ -72,4 +73,8 @@
   background: var(--cinder-accent);
   color: var(--cinder-accent-contrast);
   box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+}
+
+.cinder-segmented-control-option-icon {
+  opacity: 0.9;
 }

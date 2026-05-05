@@ -138,7 +138,7 @@ export interface ReviewState {
   /** Schema version for migrations (all versions are additive, no breaking changes) */
   schemaVersion: 1 | 2 | 3 | 4;
 
-  /** Current document content (Markdown body, without front matter) */
+  /** Current document content as full Markdown, including front matter when present */
   content: string;
 
   /** Original/baseline content for diff comparison */

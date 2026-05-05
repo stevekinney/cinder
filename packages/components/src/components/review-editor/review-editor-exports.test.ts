@@ -2,14 +2,18 @@ import { describe, expect, test } from 'bun:test';
 
 import type { ReviewState, Thread } from '@cinder/commentary/comments';
 
-import {
+import { setupHappyDom } from '../../test/happy-dom.ts';
+
+setupHappyDom();
+
+const {
   buildFormData,
   buildFormDataFromValues,
   exportCommentsMarkdown,
   exportMarkdownSummary,
   exportUnifiedDiff,
   getSummaryContentWithoutHeading,
-} from './review-editor-exports.ts';
+} = await import('./review-editor-exports.ts');
 
 function createReviewState(overrides: Partial<ReviewState> = {}): ReviewState {
   return {
