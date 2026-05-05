@@ -219,6 +219,7 @@ const tarballExpectations: TarballExpectations = {
     'package/package.json',
     'package/src/index.ts',
     'package/src/utilities/class-names.ts',
+    'package/src/utilities/use-history.svelte.ts',
     'package/src/styles/index.css',
     'package/src/styles/tokens.css',
     'package/src/styles/tokens-base.css',
@@ -536,6 +537,9 @@ async function runNodeFixture(): Promise<void> {
     // Verify snippet-only components were imported (marked "OK" in render.ts output).
     if (!renderedOutput.includes('Card imported OK')) {
       fail(`node render output missing "Card imported OK" — subpath import failed`);
+    }
+    if (!renderedOutput.includes('useHistory imported OK')) {
+      fail(`node render output missing "useHistory imported OK" — barrel utility import failed`);
     }
   } finally {
     restoreManifest();

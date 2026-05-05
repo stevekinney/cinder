@@ -108,4 +108,28 @@ describe('CodeBlock', () => {
       expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('const y = 2;');
     });
   });
+
+  test('empty highlighter output falls back to plain code', async () => {
+    let resolveHighlightedCode: ((html: string) => void) | undefined;
+    const { container } = render(CodeBlock, {
+      code: 'const visible = true;',
+      language: 'js',
+      highlighter: async () => {
+        return await new Promise<string>((resolve) => {
+          resolveHighlightedCode = resolve;
+        });
+      },
+    });
+
+    await waitFor(() => {
+      expect(resolveHighlightedCode).toBeDefined();
+    });
+    resolveHighlightedCode?.('');
+
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(
+        'const visible = true;',
+      );
+    });
+  });
 });

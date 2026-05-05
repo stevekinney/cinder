@@ -311,6 +311,7 @@
     "src/utilities/stringify.ts",
     "src/utilities/truncate.ts",
     "src/utilities/use-announcer.svelte.ts",
+    "src/utilities/use-history.svelte.ts",
     "src/utilities/use-id.ts",
     "src/utilities/use-toast.ts",
     "README.md"
