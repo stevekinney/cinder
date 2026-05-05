@@ -115,6 +115,24 @@
     border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
   }
 
+  /*
+   * Inline variant: align the header to the diff gutter layout.
+   * The chevron icon occupies a 2rem slot (matching .diff-gutter width),
+   * so "Front Matter" text starts at the same x-position as diff text.
+   * No outer horizontal padding — the gutter slot provides the left indent.
+   */
+  .front-matter-header[data-variant='inline'] {
+    padding: var(--cinder-space-1-5) var(--cinder-space-3) var(--cinder-space-1-5) 0;
+    gap: var(--cinder-space-2);
+  }
+
+  .front-matter-header[data-variant='inline'] .front-matter-icon {
+    width: 2rem;
+    flex-shrink: 0;
+    justify-content: center;
+    padding: 0;
+  }
+
   .front-matter-header:hover {
     background: var(--cinder-surface-hover);
   }

@@ -1,5 +1,4 @@
 <script lang="ts" module>
-  import './review-editor.css';
   import type { EditorSelection } from '@cinder/editor';
   import type {
     Thread,
@@ -1640,3 +1639,21 @@
     />
   {/if}
 </div>
+
+<style>
+  /*
+   * Strip the outer border/radius/overflow from the markdown-editor-wrapper
+   * inside the review-editor's main content area. After the E1 fix the wrapper
+   * gained its own border + border-radius + overflow: hidden; the review-editor
+   * already provides the outer shape via .review-editor-main, so we reset here.
+   *
+   * :global() is required because .markdown-editor-wrapper is rendered by a
+   * child component (MarkdownEditor) and would not match a scoped selector.
+   * Three-class specificity (0,3,0) beats the two-class Svelte scoped rule.
+   */
+  :global(.review-editor-container .review-editor-main .markdown-editor-wrapper) {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+</style>
