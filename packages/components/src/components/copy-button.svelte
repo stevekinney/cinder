@@ -13,8 +13,13 @@
     value: string;
     /** Duration in ms to show the confirmation state. Default 1500. */
     confirmDuration?: number;
-    /** Accessible label for the button when no children are supplied. */
+    /** Accessible label for the idle state. Defaults to "Copy to clipboard". */
     label?: string;
+    /** Accessible label for the copied state — what `aria-live="polite"` announces
+     * when the copy succeeds. Defaults to "Copied". Override this when `label` is
+     * customized so the live-region announcement reflects what just happened
+     * (e.g. label="Copy code" + copiedLabel="Code copied"). */
+    copiedLabel?: string;
     /** Render the button with only an icon and a visually hidden label.
      * When true, defaults to a Copy icon (idle) and a Check icon (copied). */
     iconOnly?: boolean;
@@ -38,6 +43,7 @@
     value,
     confirmDuration = 1500,
     label,
+    copiedLabel,
     iconOnly = false,
     class: className,
     children,
@@ -62,11 +68,14 @@
   });
 </script>
 
+<!-- aria-label MUST flip on `copied` so the polite live region announces the
+     state change. Without that flip, screen readers receive no feedback when
+     copy succeeds in iconOnly mode (the visible icon is aria-hidden). -->
 <button
   type="button"
   class={cn('cinder-copy-button', className)}
   data-cinder-copied={copied || undefined}
-  aria-label={label ?? (copied ? 'Copied' : 'Copy to clipboard')}
+  aria-label={copied ? (copiedLabel ?? 'Copied') : (label ?? 'Copy to clipboard')}
   aria-live="polite"
   onclick={handleClick}
 >

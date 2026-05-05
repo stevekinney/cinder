@@ -55,9 +55,41 @@ describe('CopyButton', () => {
     expect(container.querySelector('button')?.textContent?.trim()).toBe('Copy');
   });
 
-  test('custom label overrides aria-label', () => {
+  test('custom label sets the idle aria-label', () => {
     const { container } = render(CopyButton, { value: 'x', label: 'Copy snippet' });
     expect(container.querySelector('button')?.getAttribute('aria-label')).toBe('Copy snippet');
+  });
+
+  test('aria-label flips to copiedLabel after click even when label is set', async () => {
+    // Regression test for the bug Cursor Bugbot caught: when a consumer passes
+    // a static `label`, the `aria-label` short-circuited and never changed to
+    // "Copied". Combined with iconOnly (icons are aria-hidden), screen readers
+    // received no feedback when copy succeeded. The fix: aria-label flips on
+    // copied state regardless of whether label is set.
+    mockClipboard();
+    const { container } = render(CopyButton, {
+      value: 'x',
+      label: 'Copy code',
+      copiedLabel: 'Code copied',
+      iconOnly: true,
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Copy code');
+    await fireEvent.click(button);
+    await waitFor(() => {
+      expect(button.getAttribute('aria-label')).toBe('Code copied');
+    });
+  });
+
+  test('aria-label flips to default "Copied" when no copiedLabel provided', async () => {
+    mockClipboard();
+    const { container } = render(CopyButton, { value: 'x', label: 'Copy code' });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Copy code');
+    await fireEvent.click(button);
+    await waitFor(() => {
+      expect(button.getAttribute('aria-label')).toBe('Copied');
+    });
   });
 
   test('clicking the button writes value to the clipboard and flashes confirmation', async () => {
