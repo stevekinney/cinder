@@ -83,17 +83,14 @@
 }
 
 /*
- * Strip the outer border/radius from the markdown-editor-wrapper inside review-editor-main.
- * After the E1 fix, the wrapper now has its own border + border-radius + overflow: hidden.
- * Here we override those back to nothing so review-editor-main provides the outer shape.
+ * Make the markdown-editor-wrapper fill the main content area.
+ * Border/radius/overflow are reset in review-editor.svelte via a :global() rule
+ * at (0,3,0) specificity, which wins over the Svelte-scoped rule on the wrapper.
  */
 .review-editor-main .markdown-editor-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: none;
-  border-radius: 0;
-  overflow: visible;
 }
 
 .review-editor-main .markdown-editor-wrapper .markdown-editor.surface {

@@ -1642,14 +1642,11 @@
 
 <style>
   /*
-   * Strip the outer border/radius/overflow from the markdown-editor-wrapper
-   * inside the review-editor's main content area. After the E1 fix the wrapper
-   * gained its own border + border-radius + overflow: hidden; the review-editor
-   * already provides the outer shape via .review-editor-main, so we reset here.
+   * Reset outer border/radius/overflow on the markdown-editor-wrapper when
+   * nested inside review-editor-main (.review-editor-main provides the outer shape).
    *
-   * :global() is required because .markdown-editor-wrapper is rendered by a
-   * child component (MarkdownEditor) and would not match a scoped selector.
-   * Three-class specificity (0,3,0) beats the two-class Svelte scoped rule.
+   * :global() is required because .markdown-editor-wrapper is rendered by
+   * MarkdownEditor (a child component) and would not match a scoped selector.
    */
   :global(.review-editor-container .review-editor-main .markdown-editor-wrapper) {
     border: none;
