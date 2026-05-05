@@ -26,6 +26,9 @@ export function reconcileCompositionBranchKeys(
   branchCount: number,
   createKey: () => string,
 ): string[] {
+  // Return the same reference when no change is needed — callers that assign
+  // the result back to $state won't trigger re-renders in that case.
+  if (existingKeys.length === branchCount) return existingKeys as string[];
   const nextKeys = existingKeys.slice(0, branchCount);
   while (nextKeys.length < branchCount) nextKeys.push(createKey());
   return nextKeys;

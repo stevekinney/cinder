@@ -27,6 +27,15 @@ describe('reconcileCompositionBranchKeys', () => {
     expect(next).toEqual(original);
   });
 
+  test('returns the same array reference when count is unchanged (no $state re-render)', () => {
+    const createKey = keyGenerator();
+    const original = reconcileCompositionBranchKeys([], 2, createKey);
+
+    const next = reconcileCompositionBranchKeys(original, 2, createKey);
+
+    expect(next).toBe(original);
+  });
+
   test('truncates stale keys after removals', () => {
     const createKey = keyGenerator();
 

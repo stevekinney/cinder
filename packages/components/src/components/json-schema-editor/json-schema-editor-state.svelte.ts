@@ -296,6 +296,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
   );
   const jsonDraftIsDirty = $derived(jsonDraftText !== committedCanonicalText);
   const hasChanges = $derived.by(() => {
+    // Both null means invalid initial schema with no edits yet — not "changed".
+    if (originalSchema === null && committedSchema === null) return false;
     if (originalSchema === null) {
       return originalRawText !== committedCanonicalText;
     }
@@ -385,6 +387,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     discardJsonDraft() {
       jsonDraftText = committedCanonicalText;
       runMetaValidation();
+      runCompile();
       recomputeStatus();
       emitValidation(buildResult());
     },

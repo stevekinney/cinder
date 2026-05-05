@@ -251,46 +251,62 @@
     });
   }
 
-  let nextCompositionBranchKey = $state(1);
-  let compositionBranchKeys = $state<Record<'allOf' | 'anyOf' | 'oneOf', string[]>>({
-    allOf: [],
-    anyOf: [],
-    oneOf: [],
-  });
-
+  // Stable identity keys for composition branches. Plain counter (not $state) so
+  // generating a new key never writes reactive state.
+  let nextCompositionBranchKey = 1;
   function createCompositionBranchKey(): string {
-    const key = `branch-${nextCompositionBranchKey}`;
-    nextCompositionBranchKey += 1;
-    return key;
+    return `branch-${nextCompositionBranchKey++}`;
   }
 
-  function keysForComposition(
-    keyword: 'allOf' | 'anyOf' | 'oneOf',
-    branches: JsonSchemaValue[],
-  ): string[] {
-    const reconciled = reconcileCompositionBranchKeys(
-      compositionBranchKeys[keyword],
-      branches.length,
-      createCompositionBranchKey,
-    );
-    compositionBranchKeys[keyword] = reconciled;
-    return reconciled;
+  // Per-keyword key arrays as separate $state values so the template reacts to
+  // add/remove operations. $effect.pre reconciles them before the DOM updates.
+  // Writing only when the count actually changed avoids an infinite loop.
+  let allOfKeys = $state<string[]>([]);
+  let anyOfKeys = $state<string[]>([]);
+  let oneOfKeys = $state<string[]>([]);
+
+  $effect.pre(() => {
+    const allOfCount = objectValue.allOf?.length ?? 0;
+    if (allOfKeys.length !== allOfCount) {
+      allOfKeys = reconcileCompositionBranchKeys(allOfKeys, allOfCount, createCompositionBranchKey);
+    }
+  });
+  $effect.pre(() => {
+    const anyOfCount = objectValue.anyOf?.length ?? 0;
+    if (anyOfKeys.length !== anyOfCount) {
+      anyOfKeys = reconcileCompositionBranchKeys(anyOfKeys, anyOfCount, createCompositionBranchKey);
+    }
+  });
+  $effect.pre(() => {
+    const oneOfCount = objectValue.oneOf?.length ?? 0;
+    if (oneOfKeys.length !== oneOfCount) {
+      oneOfKeys = reconcileCompositionBranchKeys(oneOfKeys, oneOfCount, createCompositionBranchKey);
+    }
+  });
+
+  const compositionBranchKeys = $derived({
+    allOf: allOfKeys,
+    anyOf: anyOfKeys,
+    oneOf: oneOfKeys,
+  });
+
+  function setKeywordKeys(keyword: 'allOf' | 'anyOf' | 'oneOf', keys: string[]) {
+    if (keyword === 'allOf') allOfKeys = keys;
+    else if (keyword === 'anyOf') anyOfKeys = keys;
+    else oneOfKeys = keys;
   }
 
   function removeCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf', branchIndex: number) {
     const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
     list.splice(branchIndex, 1);
-    compositionBranchKeys[keyword] = compositionBranchKeys[keyword].toSpliced(branchIndex, 1);
+    setKeywordKeys(keyword, compositionBranchKeys[keyword].toSpliced(branchIndex, 1));
     patchComposition(keyword, list.length > 0 ? list : undefined);
   }
 
   function addCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf') {
     const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
     list.push({});
-    compositionBranchKeys[keyword] = [
-      ...compositionBranchKeys[keyword],
-      createCompositionBranchKey(),
-    ];
+    setKeywordKeys(keyword, [...compositionBranchKeys[keyword], createCompositionBranchKey()]);
     patchComposition(keyword, list);
   }
 </script>
@@ -483,11 +499,10 @@
     <!-- Composition (only when present) -->
     {#each ['allOf', 'anyOf', 'oneOf'] as const as keyword (keyword)}
       {#if Array.isArray(objectValue[keyword])}
-        {@const branchKeys = keysForComposition(keyword, objectValue[keyword])}
         <details class="cinder-jse-section cinder-jse-section--collapsible" open>
           <summary class="cinder-jse-section__title">{keyword}</summary>
           <div class="cinder-jse-section__body">
-            {#each objectValue[keyword] as branch, branchIndex (branchKeys[branchIndex])}
+            {#each objectValue[keyword] as branch, branchIndex (compositionBranchKeys[keyword][branchIndex])}
               <PropertyEditor
                 idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
                 path={`${path}/${keyword}/${branchIndex}`}
