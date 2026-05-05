@@ -88,7 +88,7 @@
   <Dropdown {id}>
     <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard">
       <Copy class="icon-sm" />
-      <span class="sr-only">Copy</span>
+      <span class="cinder-sr-only">Copy</span>
     </DropdownTrigger>
     <DropdownMenu>
       <!-- Plain content (current markdown) -->

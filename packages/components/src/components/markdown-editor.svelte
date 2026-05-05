@@ -711,6 +711,10 @@
     flex-direction: column;
     min-height: var(--editor-min-height);
     gap: var(--cinder-space-2);
+    /* Single outer border for the whole editor card */
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    overflow: hidden;
   }
 
   /* Toolbar wrapper for extension points */
@@ -753,20 +757,28 @@
     min-height: var(--editor-min-height);
   }
 
-  /* When toolbar is present, connect it visually */
+  /* When toolbar is present, collapse the gap so toolbar and editor are flush */
   .markdown-editor-wrapper[data-has-toolbar] {
     gap: 0;
   }
 
+  /*
+   * When the wrapper provides the outer border, the toolbar only needs
+   * a bottom separator — no own border, no own radius.
+   */
   .markdown-editor-wrapper[data-has-toolbar] :global(.editor-toolbar) {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-bottom: none;
+    border: none;
+    border-bottom: 1px solid var(--cinder-border);
+    border-radius: 0;
   }
 
-  .markdown-editor-wrapper[data-has-toolbar] .markdown-editor {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+  /*
+   * The editor content area sits inside the wrapper's border, so it
+   * needs no own border or radius.
+   */
+  .markdown-editor-wrapper .markdown-editor {
+    border: none;
+    border-radius: 0;
   }
 
   .markdown-editor[data-readonly] {
@@ -792,7 +804,7 @@
 
   textarea.markdown-editor.source-mode:focus {
     outline: none;
-    border-color: var(--cinder-accent);
+    /* Border is on the wrapper; no own border to update */
   }
 
   /* ProseMirror content area */
@@ -811,10 +823,10 @@
     height: 0;
   }
 
-  /* Focus indicator - subtle border change, not a thick ring.
+  /* Focus indicator — move to the wrapper since it now owns the outer border.
      Rich text editors already show a blinking cursor for focus,
      so a prominent ring around the entire container is redundant. */
-  .markdown-editor:focus-within {
+  .markdown-editor-wrapper:focus-within {
     border-color: var(--cinder-accent);
   }
 

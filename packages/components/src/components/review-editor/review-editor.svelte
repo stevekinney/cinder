@@ -1,5 +1,4 @@
 <script lang="ts" module>
-  import './review-editor.css';
   import type { EditorSelection } from '@cinder/editor';
   import type {
     Thread,
@@ -1640,3 +1639,18 @@
     />
   {/if}
 </div>
+
+<style>
+  /*
+   * Reset outer border/radius/overflow on the markdown-editor-wrapper when
+   * nested inside review-editor-main (.review-editor-main provides the outer shape).
+   *
+   * :global() is required because .markdown-editor-wrapper is rendered by
+   * MarkdownEditor (a child component) and would not match a scoped selector.
+   */
+  :global(.review-editor-container .review-editor-main .markdown-editor-wrapper) {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+</style>

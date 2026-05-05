@@ -268,7 +268,7 @@ These are `@cinder/*` scoped packages that live in the cinder monorepo but are n
 ### Out of scope
 
 - **Mermaid, charts**—domain widgets with heavy peer deps that don't have multi-consumer demand; stay in consuming apps.
-- **Syntax-highlighted code blocks shipped as a primitive**—Shiki is heavy and consumers like depict already own it; `cinder/code-block` ships without highlighting, consumers add Shiki at their boundary if they want it.
+- **Syntax highlighting bundled into cinder/code-block**—Shiki is heavy and consumers like depict already own it; `cinder/code-block` ships with opt-in highlighting via a `highlighter` async callback prop, so consumers wire in Shiki (or any highlighter) at their boundary without pulling the dependency into the library itself.
 - **Form wrapper with validation orchestration**—deferred until two consumers ask.
 - **VerificationCodeInput**—single-consumer-specific, specialized.
 - **Multi-select / async combobox, virtualized table**—explicit non-goals for v1.
