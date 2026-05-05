@@ -13,8 +13,16 @@
     value: string;
     /** Duration in ms to show the confirmation state. Default 1500. */
     confirmDuration?: number;
-    /** Accessible label for the button when no children are supplied. */
+    /** Accessible label for the idle state. Defaults to "Copy to clipboard". */
     label?: string;
+    /** Accessible label for the copied state — what `aria-live="polite"` announces
+     * when the copy succeeds. Defaults to "Copied". Override this when `label` is
+     * customized so the live-region announcement reflects what just happened
+     * (e.g. label="Copy code" + copiedLabel="Code copied"). */
+    copiedLabel?: string;
+    /** Render the button with only an icon and a visually hidden label.
+     * When true, defaults to a Copy icon (idle) and a Check icon (copied). */
+    iconOnly?: boolean;
     /** Additional class names merged with `.cinder-copy-button`. */
     class?: string;
     /** Default content (idle state). */
@@ -27,6 +35,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
 
+  import { Check, Copy } from './icons/index.ts';
   import { copyToClipboard } from '../utilities/clipboard.ts';
   import { cn } from '../utilities/class-names.ts';
 
@@ -34,6 +43,8 @@
     value,
     confirmDuration = 1500,
     label,
+    copiedLabel,
+    iconOnly = false,
     class: className,
     children,
     confirmation,
@@ -57,20 +68,31 @@
   });
 </script>
 
+<!-- aria-label MUST flip on `copied` so the polite live region announces the
+     state change. Without that flip, screen readers receive no feedback when
+     copy succeeds in iconOnly mode (the visible icon is aria-hidden). -->
 <button
   type="button"
   class={cn('cinder-copy-button', className)}
   data-cinder-copied={copied || undefined}
-  aria-label={label ?? (copied ? 'Copied' : 'Copy to clipboard')}
+  aria-label={copied ? (copiedLabel ?? 'Copied') : (label ?? 'Copy to clipboard')}
   aria-live="polite"
   onclick={handleClick}
 >
+  <!-- Accessible name for every branch comes from `aria-label` on the button.
+       In iconOnly mode the icon is decorative — `aria-hidden` keeps it out of the
+       accessibility tree. The `aria-live` region on the button announces state
+       changes (Copy → Copied) without needing a redundant sr-only label. -->
   {#if copied && confirmation}
     {@render confirmation()}
+  {:else if copied && iconOnly}
+    <Check class="icon-sm" aria-hidden="true" />
   {:else if copied}
     Copied
   {:else if children}
     {@render children()}
+  {:else if iconOnly}
+    <Copy class="icon-sm" aria-hidden="true" />
   {:else}
     Copy
   {/if}

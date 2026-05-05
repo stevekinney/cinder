@@ -1,8 +1,10 @@
 /* ========================================
  * CODE BLOCK
  * Preformatted code with optional language label and copy button.
- * No syntax highlighting — consumers run their own highlighter and pass
- * highlighted HTML through a different surface if needed.
+ * Syntax highlighting is opt-in via the `highlighter` prop. Highlighter
+ * output replaces the __pre/__code markup entirely, so consumers using a
+ * non-Shiki highlighter are responsible for matching any structural CSS
+ * (overflow-x, mono font, padding) on their own <pre> element.
  * ======================================== */
 
 .cinder-code-block {
