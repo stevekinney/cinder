@@ -145,6 +145,10 @@
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
     },
+    "./json-schema-editor": {
+      "svelte": "./src/components/json-schema-editor.svelte",
+      "types": "./dist/components/json-schema-editor.svelte.d.ts"
+    },
     "./kbd": {
       "svelte": "./src/components/kbd.svelte",
       "types": "./dist/components/kbd.svelte.d.ts"
@@ -337,6 +341,7 @@
     "@lasercat/homogenaize": "^1.2.41",
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
+    "ajv": "^8",
     "conversationalist": "0.0.9",
     "esm-env": "^1.2.0",
     "lucide-svelte": "^0.503.0"
