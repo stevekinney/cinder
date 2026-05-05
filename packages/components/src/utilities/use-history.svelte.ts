@@ -87,7 +87,8 @@ function isPlainObjectRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function stableSerialise(value: unknown): string {
+/** Stable JSON serialisation with sorted object keys — used for equality checks. */
+export function stableSerialise(value: unknown): string {
   return JSON.stringify(value, (_key, val) => {
     if (!isPlainObjectRecord(val)) return val;
     const sorted: Record<string, unknown> = {};

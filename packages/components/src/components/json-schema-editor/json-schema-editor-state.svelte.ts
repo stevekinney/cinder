@@ -13,7 +13,11 @@
  * schema (meta-schema) and compile (debounced).
  */
 
-import { useHistory, type UseHistory } from '../../utilities/use-history.svelte.ts';
+import {
+  stableSerialise,
+  useHistory,
+  type UseHistory,
+} from '../../utilities/use-history.svelte.ts';
 
 import type {
   JsonSchemaDraft,
@@ -64,17 +68,6 @@ function serialise(value: JsonSchemaValue): string {
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function stableKeySerialise(value: unknown): string {
-  return JSON.stringify(value, (_key, val) => {
-    if (!isPlainRecord(val)) return val;
-    const sorted: Record<string, unknown> = {};
-    for (const k of Object.keys(val).toSorted()) {
-      sorted[k] = val[k];
-    }
-    return sorted;
-  });
 }
 
 export function createEditorState(options: CreateEditorStateOptions) {
@@ -302,7 +295,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       return originalRawText !== committedCanonicalText;
     }
     if (committedSchema === null) return originalRawText.length > 0;
-    return stableKeySerialise(originalSchema) !== stableKeySerialise(committedSchema);
+    return stableSerialise(originalSchema) !== stableSerialise(committedSchema);
   });
   const isFormEditable = $derived(committedSchema !== null && !readonly && !jsonDraftIsDirty);
 
@@ -385,6 +378,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     discardJsonDraft() {
+      clearTimers();
       jsonDraftText = committedCanonicalText;
       runMetaValidation();
       runCompile();
@@ -394,6 +388,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     applyJsonDraft(): boolean {
       if (readonly) return false;
+      clearTimers();
       const parsed = tryParseJson(jsonDraftText);
       if (!parsed.ok) return false;
 
@@ -425,6 +420,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
+      clearTimers();
       history.commit(next, commitOptions);
       jsonDraftText = serialise(history.current);
       runMetaValidation();
@@ -436,6 +432,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     undo(): string | undefined {
       if (!history || readonly) return undefined;
+      clearTimers();
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
@@ -449,6 +446,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     redo(): string | undefined {
       if (!history || readonly) return undefined;
+      clearTimers();
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);
@@ -462,6 +460,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     revert() {
       if (readonly) return;
+      clearTimers();
       if (originalSchema !== null) {
         const revertOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
           initial: originalSchema,
