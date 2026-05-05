@@ -19,12 +19,17 @@ import './worker-dom-shim.js';
 
 import * as Comlink from 'comlink';
 import { initializeHighlighter } from './highlighter.js';
-import { renderMarkdown } from './render.js';
+import { renderMarkdownWithMath } from './render.js';
 import type { RenderOptions, RenderResult } from './types.js';
 
 const workerApi = {
-  renderMarkdown(markdown: string, options: RenderOptions = {}): RenderResult {
-    return renderMarkdown(markdown, options);
+  // Use the math-aware async entry. The sync `renderMarkdown` deliberately
+  // drops math support after the lazy-load refactor — wiring the worker to
+  // it would silently regress math rendering for any caller using the
+  // worker path. `renderMarkdownWithMath` pre-checks for math markers and
+  // only loads remark-math/rehype-katex when needed.
+  renderMarkdown(markdown: string, options: RenderOptions = {}): Promise<RenderResult> {
+    return renderMarkdownWithMath(markdown, options);
   },
   async initializeHighlighter(): Promise<void> {
     await initializeHighlighter();

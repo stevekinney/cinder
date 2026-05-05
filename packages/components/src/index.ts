@@ -227,7 +227,7 @@ export type { ViewOption, ViewSwitcherProps, ViewType } from './components/view-
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their
 // APIs may change between minor versions until they meet the canonical
-// promotion criteria documented in COMPONENT-COVERAGE-PLAN.md.
+// promotion criteria documented in the "Library boundary" section of README.md.
 // ---------------------------------------------------------------------------
 
 export { default as ConnectionIndicator } from './components/experimental/connection-indicator.svelte';

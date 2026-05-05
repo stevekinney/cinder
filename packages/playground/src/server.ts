@@ -5,8 +5,12 @@
  *   GET /              → 302 redirect to /c/<first-component>
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
- *   GET /page-bundle/:name.js → all-in-one bundle: component-page + every scenario
- *                              for one component, sharing one Svelte runtime
+ *   GET /page-bundle/:name.js → page-bundle entry OR a hashed code-split chunk.
+ *                              Entry URLs are bare component names (e.g. chat.js);
+ *                              chunk URLs are hashed (e.g. core-abc123.js). Both
+ *                              artifact types share a flat namespace under /page-bundle/
+ *                              so all dynamic-import URLs from either bundle family
+ *                              resolve through this single route.
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css
  *   GET /example-src/:name/:scenario → raw .example.svelte source
@@ -18,13 +22,15 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { unlinkSync, watch, type FSWatcher } from 'node:fs';
+import { rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
+import type { BuildArtifact } from 'bun';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { renderShell } from './render-shell.ts';
+
 import type { ComponentManifest } from './types.ts';
 
 export const PORT = 4173;
@@ -32,16 +38,49 @@ export const PORT = 4173;
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
 
-/** Compiled bundle cache: "componentName/scenario" → JS source string. */
-const bundleCache = new Map<string, string>();
+/**
+ * Page-bundle entries: keyed by component name → entry artifact path
+ * (e.g. "page-chat.js"). Per-family disjoint key-space prevents collisions
+ * with `bundleEntryByKey` since entries get prefix `page-` vs `bundle-`.
+ */
+const pageEntryByName = new Map<string, string>();
 
-/** Compiled per-component page-bundle cache: componentName → JS source string. */
-const pageBundleCache = new Map<string, string>();
+/**
+ * Per-scenario bundle entries: keyed by "<name>/<scenario>" → entry
+ * artifact path (e.g. "bundle-chat-basic.js").
+ */
+const bundleEntryByKey = new Map<string, string>();
+
+/**
+ * Shared artifact contents: artifact.path → JS source. Holds entries from
+ * BOTH bundle families plus all hashed async chunks (e.g. `core-abc123.js`).
+ * All artifacts share a flat namespace under `/page-bundle/` — there is no
+ * `chunks/` subdirectory; the Bun `naming` config emits everything as
+ * `[name]-[hash].js` at the same level as entries.
+ *
+ * Chunks are content-hashed, so when two builds emit the same chunk path
+ * the bytes are identical — no overwrite hazard. Entries can never collide
+ * because they use disjoint `page-` / `bundle-` prefixes.
+ */
+const artifactByPath = new Map<string, string>();
 
 /** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
 /** In-flight analyzeAll() promise — prevents duplicate concurrent analyses. */
 let manifestPromise: Promise<ComponentManifest[]> | null = null;
+
+/**
+ * Atomically clear every build-derived cache. The three artifact maps and
+ * the manifest cache are cleared in one synchronous call so a request can
+ * never observe a partially-cleared state.
+ */
+function clearCaches(): void {
+  pageEntryByName.clear();
+  bundleEntryByKey.clear();
+  artifactByPath.clear();
+  manifestCache = null;
+  manifestPromise = null;
+}
 
 /** Set of active SSE stream controllers. */
 const sseClients = new Set<ReadableStreamDefaultController<string>>();
@@ -72,30 +111,35 @@ function startWatcher(): FSWatcher[] {
     created.push(
       watch(srcPath, { recursive: true }, (_event, filename) => {
         if (filename) {
-          // Clear both caches on any src/ change. Each example imports from
+          // Clear all caches on any src/ change. Each example imports from
           // the cinder workspace package which re-exports every component, so
-          // editing any component invalidates all cached example bundles. Also
-          // clear the component-page bundle since it imports from svelte which
-          // may pull in updated code.
-          bundleCache.clear();
-          pageBundleCache.clear();
-          manifestCache = null;
-          manifestPromise = null;
+          // editing any component invalidates every cached bundle. Content-hashed
+          // chunks whose content changed will have a new hash on the next build,
+          // so old cache entries would never be requested again — but clearing
+          // them proactively keeps memory bounded and avoids serving outdated
+          // bundles if a hash collision ever occurred.
+          clearCaches();
           triggerReload();
         }
       }),
     );
 
     // Watch the examples directory so edits to .example.svelte files invalidate
-    // the cached bundle and trigger a browser reload.
+    // the cached bundle and trigger a browser reload. Examples are compiled
+    // into per-component page bundles AND per-scenario bundles, so we clear
+    // both family entries plus every chunk (chunks are shared across builds).
     const examplesPath = join(PLAYGROUND_ROOT, 'src', 'examples');
     created.push(
       watch(examplesPath, { recursive: true }, (_event, filename) => {
         if (filename) {
-          const match = filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/);
-          if (match) {
-            bundleCache.delete(`${match[1]}/${match[2]}`);
-            pageBundleCache.delete(match[1]!);
+          // Clear all caches. The partial approach (deleting only the changed
+          // component's entries while wiping all artifacts) left stale entry
+          // references in the lookup maps that pointed at deleted artifacts,
+          // causing spurious rebuilds on next request. A full clearCaches()
+          // is simpler and correct — rebuilds are cheap relative to the cost
+          // of serving stale content.
+          if (filename.match(/^([^/]+)\/([^/]+)\.example\.svelte$/)) {
+            clearCaches();
           }
           triggerReload();
         }
@@ -114,8 +158,7 @@ function startWatcher(): FSWatcher[] {
           !filename.endsWith('.test.ts') &&
           !filename.startsWith('.')
         ) {
-          bundleCache.clear();
-          pageBundleCache.clear();
+          clearCaches();
           triggerReload();
         }
       }),
@@ -131,11 +174,71 @@ function startWatcher(): FSWatcher[] {
   return created;
 }
 
-/** Compile an example bundle and cache the result. */
+/**
+ * Shared Bun.build options for both bundle families.
+ *
+ * All artifacts use a flat namespace under `/page-bundle/` so that
+ * dynamic-import URLs emitted by either family resolve through one route.
+ * Putting chunks in a `chunks/` subdir triggers a Bun publicPath quirk
+ * where peer-chunk imports get the subdirectory stripped from their URL.
+ */
+const SHARED_BUILD_OPTIONS = {
+  plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
+  target: 'browser',
+  format: 'esm',
+  conditions: ['bun'],
+  splitting: true,
+  publicPath: '/page-bundle/',
+  naming: {
+    entry: '[name]-[hash].js',
+    chunk: '[name]-[hash].js',
+    asset: '[name]-[hash][ext]',
+  },
+};
+
+/**
+ * Walk `result.outputs`, store every artifact in `artifactByPath`, and
+ * return the `kind === 'entry-point'` artifact's path and source.
+ *
+ * Returns `null` if no entry-point artifact was found (shouldn't happen
+ * with a valid Bun.build result, but handled defensively).
+ */
+async function collectBuildArtifacts(
+  outputs: BuildArtifact[],
+): Promise<{ entryPath: string; entryCode: string } | null> {
+  let entryCode: string | null = null;
+  let entryPath: string | null = null;
+  for (const output of outputs) {
+    const path = artifactRelativePath(output.path);
+    const code = await output.text();
+    artifactByPath.set(path, code);
+    if (output.kind === 'entry-point') {
+      entryCode = code;
+      entryPath = path;
+    }
+  }
+  if (entryPath === null || entryCode === null) return null;
+  return { entryPath, entryCode };
+}
+
+/**
+ * Compile a per-scenario example bundle with code splitting enabled.
+ *
+ * Stores the entry artifact path in `bundleEntryByKey` and every artifact's
+ * source in `artifactByPath`. Returns the entry's compiled JS, or null if
+ * the example file doesn't exist or the build fails.
+ *
+ * The entry is named `bundle-<componentName>-<scenario>.js` via a temp
+ * entry file basename (Bun's `naming` template uses the entrypoint's
+ * basename for `[name]`). This keeps it in a disjoint key-space from
+ * page-bundle entries (`page-<name>.js`).
+ */
 async function buildBundle(componentName: string, scenario: string): Promise<string | null> {
   const cacheKey = `${componentName}/${scenario}`;
-  if (bundleCache.has(cacheKey)) {
-    return bundleCache.get(cacheKey)!;
+  const cachedEntryPath = bundleEntryByKey.get(cacheKey);
+  if (cachedEntryPath) {
+    const cached = artifactByPath.get(cachedEntryPath);
+    if (cached !== undefined) return cached;
   }
 
   const examplePath = join(
@@ -149,25 +252,62 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   const exists = await file.exists();
   if (!exists) return null;
 
-  const result = await Bun.build({
-    entrypoints: [examplePath],
-    plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
-    target: 'browser',
-    format: 'esm',
-    conditions: ['bun'],
-  });
+  // Bun's `naming` template uses the entrypoint basename for `[name]`. To
+  // emit the entry as `bundle-<name>-<scenario>.js` (disjoint from the
+  // page-bundle family's `page-<name>.js`) we write a tiny re-export shim
+  // at exactly that basename. The shim lives under a UUID-tagged
+  // subdirectory under `src/` so concurrent builds don't clobber each
+  // other on disk; the basename itself stays stable so Bun's `[name]`
+  // resolves predictably.
+  const entryBasename = `bundle-${componentName}-${scenario}`;
+  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
+  const shim = `export { default } from '../examples/${componentName}/${scenario}.example.svelte';\n`;
 
-  if (!result.success) {
-    console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);
-    return null;
+  try {
+    // Bun.write auto-creates parent directories. We keep the write inside
+    // the try so a write failure still hits the finally cleanup (rmSync
+    // is idempotent for a missing dir).
+    await Bun.write(entryTempPath, shim);
+
+    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
+
+    if (!result.success) {
+      console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);
+      return null;
+    }
+
+    const entry = await collectBuildArtifacts(result.outputs);
+    if (entry === null) {
+      console.error(`[playground] Bundle for ${componentName}/${scenario} produced no entry chunk`);
+      return null;
+    }
+
+    bundleEntryByKey.set(cacheKey, entry.entryPath);
+    return entry.entryCode;
+  } finally {
+    // Recursive remove handles intermediate files Bun might emit and is
+    // idempotent if the dir was never created.
+    rmSync(entryTempDir, { recursive: true, force: true });
   }
+}
 
-  const output = result.outputs[0];
-  if (!output) return null;
-
-  const code = await output.text();
-  bundleCache.set(cacheKey, code);
-  return code;
+/**
+ * Normalize an artifact path returned by Bun.build to the relative form we
+ * use as a cache key.
+ *
+ * When `outdir` is omitted, Bun returns paths as either basenames
+ * (`page-chat.js`) or with the `chunk` template prefix
+ * (`chunks/foo-ab12.js`). Older or different Bun versions may prefix with
+ * `./` (or `.\\` on Windows). We:
+ *
+ *   1. Strip a leading `./` or `.\\` so cache keys don't carry a redundant
+ *      relative-path prefix.
+ *   2. Normalize backslashes to forward slashes — Bun on Windows can emit
+ *      `dir\\file.js`, but URL paths and our regex routes use `/`.
+ */
+function artifactRelativePath(path: string): string {
+  return path.replace(/^\.[\\/]/, '').replaceAll('\\', '/');
 }
 
 /**
@@ -233,8 +373,10 @@ function unescapeStringLiteral(raw: string): string {
  * `component-page.svelte` reads that global on mount.
  */
 async function buildPageBundle(componentName: string): Promise<string | null> {
-  if (pageBundleCache.has(componentName)) {
-    return pageBundleCache.get(componentName)!;
+  const cachedEntryPath = pageEntryByName.get(componentName);
+  if (cachedEntryPath) {
+    const cached = artifactByPath.get(cachedEntryPath);
+    if (cached !== undefined) return cached;
   }
 
   // Validate that this is an actual component before building. A bundle for a
@@ -249,16 +391,19 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   // which renders a "No examples found" fallback. Returning null here would
   // 404 the bundle URL and the iframe would silently fail to load.
 
-  const entryTempPath = join(
-    PLAYGROUND_ROOT,
-    'src',
-    `.page-entry-${componentName}-${randomUUID()}.ts`,
-  );
+  // Bun's `naming` template uses the entrypoint basename for `[name]`. We
+  // give the temp file the basename `page-<componentName>` so the emitted
+  // entry artifact is `page-<componentName>.js` — disjoint from the
+  // `bundle-*` family that buildBundle produces. The temp directory has
+  // a UUID for concurrent-build isolation.
+  const entryBasename = `page-${componentName}`;
+  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
 
   const scenarioImports = scenarios
     .map(
       (scenario, index) =>
-        `import Scenario_${index} from './examples/${componentName}/${scenario}.example.svelte';`,
+        `import Scenario_${index} from '../examples/${componentName}/${scenario}.example.svelte';`,
     )
     .join('\n');
   const scenarioRegistrations = scenarios
@@ -267,7 +412,7 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
 
   const entrySource = `import { mount } from 'svelte';
 
-import ComponentPage from './component-page.svelte';
+import ComponentPage from '../component-page.svelte';
 ${scenarioImports}
 const scenarios: Record<string, unknown> = {
 ${scenarioRegistrations}
@@ -282,34 +427,31 @@ if (target === null) {
 mount(ComponentPage, { target });
 `;
 
-  await Bun.write(entryTempPath, entrySource);
-
   try {
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-    });
+    // Bun.write auto-creates parent directories. We keep the write inside
+    // the try so a write failure still hits the finally cleanup (rmSync
+    // is idempotent for a missing dir).
+    await Bun.write(entryTempPath, entrySource);
+
+    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
 
     if (!result.success) {
       console.error(`[playground] page bundle failed for ${componentName}:`, result.logs);
       return null;
     }
 
-    const output = result.outputs[0];
-    if (!output) return null;
-
-    const code = await output.text();
-    pageBundleCache.set(componentName, code);
-    return code;
-  } finally {
-    try {
-      unlinkSync(entryTempPath);
-    } catch {
-      // Ignore — file may already be gone or never written.
+    const entry = await collectBuildArtifacts(result.outputs);
+    if (entry === null) {
+      console.error(`[playground] page bundle for ${componentName} produced no entry chunk`);
+      return null;
     }
+
+    pageEntryByName.set(componentName, entry.entryPath);
+    return entry.entryCode;
+  } finally {
+    // Recursive remove handles intermediate files Bun might emit and is
+    // idempotent if the dir was never created.
+    rmSync(entryTempDir, { recursive: true, force: true });
   }
 }
 
@@ -459,14 +601,31 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 
-  // GET /page-bundle/:name.js — the all-in-one page bundle for one component.
-  const pageBundleMatch = pathname.match(/^\/page-bundle\/([^/]+)\.js$/);
+  // GET /page-bundle/<filename>.js — covers two cases that share a flat
+  // artifact namespace:
+  //   1. The unhashed page-bundle entry URL `/page-bundle/<component>.js`
+  //      (the request the iframe makes, where <component> is a safe
+  //      segment like `chat`). We look that up via `pageEntryByName` and
+  //      serve the actual hashed entry artifact.
+  //   2. A hashed chunk URL the entry references, like
+  //      `/page-bundle/page-chat-abc123.js` or `/page-bundle/core-def456.js`.
+  //      These appear directly in `artifactByPath` and don't need a build.
+  //
+  // Resolution order: artifactByPath first (cheap lookup, no build), then
+  // entry-name lookup with a build fallback.
+  const pageBundleMatch = pathname.match(/^\/page-bundle\/([A-Za-z0-9_-]+)\.js$/);
   if (pageBundleMatch) {
-    const componentName = pageBundleMatch[1]!;
-    if (!isSafeSegment(componentName)) return notFound();
-    const code = await buildPageBundle(componentName);
+    const filename = pageBundleMatch[1]!;
+    const directHit = artifactByPath.get(`${filename}.js`);
+    if (directHit !== undefined) {
+      return new Response(directHit, {
+        headers: { 'Content-Type': 'application/javascript' },
+      });
+    }
+    if (!isSafeSegment(filename)) return notFound();
+    const code = await buildPageBundle(filename);
     if (code === null)
-      return notFound(`Page bundle for "${componentName}" not found or failed to build`);
+      return notFound(`Page bundle for "${filename}" not found or failed to build`);
     return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
   }
 

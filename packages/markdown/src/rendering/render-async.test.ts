@@ -3,9 +3,12 @@
  *
  * DEP-687: Move rendering pipeline to a Web Worker.
  *
- * Vitest runs in Node where Worker is not available, so these tests
- * verify the synchronous fallback path and confirm it produces
- * identical output to direct `renderMarkdown()` calls.
+ * Worker is not available in the test environment, so these tests
+ * verify the synchronous fallback path. The baseline for comparison is
+ * `renderMarkdownWithMath` (not `renderMarkdown`) because the fallback
+ * calls `renderMarkdownWithMath` — for math-containing input the two
+ * functions produce different output and only `renderMarkdownWithMath`
+ * matches what users will see in production.
  */
 
 import { beforeEach, describe, expect, it } from 'bun:test';
@@ -14,7 +17,7 @@ import {
   renderMarkdownAsync,
   terminateMarkdownWorker,
 } from './render-async.js';
-import { clearRenderCache, renderMarkdown } from './render.js';
+import { clearRenderCache, renderMarkdownWithMath } from './render.js';
 
 describe('renderMarkdownAsync', () => {
   beforeEach(() => {
@@ -24,7 +27,7 @@ describe('renderMarkdownAsync', () => {
 
   it('falls back to synchronous rendering when Worker is unavailable', async () => {
     const result = await renderMarkdownAsync('# Hello World');
-    const expected = renderMarkdown('# Hello World');
+    const expected = await renderMarkdownWithMath('# Hello World');
 
     expect(result.html).toBe(expected.html);
     expect(result.rawMarkdown).toBe(expected.rawMarkdown);
@@ -35,7 +38,7 @@ describe('renderMarkdownAsync', () => {
   it('produces identical output for GFM content', async () => {
     const markdown = '| A | B |\n|---|---|\n| 1 | 2 |\n\n- [x] done\n- [ ] todo';
     const result = await renderMarkdownAsync(markdown);
-    const expected = renderMarkdown(markdown);
+    const expected = await renderMarkdownWithMath(markdown);
 
     expect(result.html).toBe(expected.html);
   });
@@ -43,7 +46,7 @@ describe('renderMarkdownAsync', () => {
   it('produces identical output for code blocks', async () => {
     const markdown = '```typescript\nconst x: number = 1;\n```';
     const result = await renderMarkdownAsync(markdown);
-    const expected = renderMarkdown(markdown);
+    const expected = await renderMarkdownWithMath(markdown);
 
     expect(result.html).toBe(expected.html);
     expect(result.codeBlocks).toEqual(expected.codeBlocks);
@@ -51,7 +54,7 @@ describe('renderMarkdownAsync', () => {
 
   it('handles empty input', async () => {
     const result = await renderMarkdownAsync('');
-    const expected = renderMarkdown('');
+    const expected = await renderMarkdownWithMath('');
 
     expect(result.html).toBe(expected.html);
     expect(result.rawMarkdown).toBe('');
@@ -60,7 +63,7 @@ describe('renderMarkdownAsync', () => {
   it('forwards render options to fallback', async () => {
     const markdown = '[link](https://example.com)';
     const result = await renderMarkdownAsync(markdown, { stripLinks: true });
-    const expected = renderMarkdown(markdown, { stripLinks: true });
+    const expected = await renderMarkdownWithMath(markdown, { stripLinks: true });
 
     expect(result.html).toBe(expected.html);
   });
@@ -68,7 +71,7 @@ describe('renderMarkdownAsync', () => {
   it('detects unsafe content in fallback path', async () => {
     const markdown = '<script>alert("xss")</script>\n\nSafe text';
     const result = await renderMarkdownAsync(markdown);
-    const expected = renderMarkdown(markdown);
+    const expected = await renderMarkdownWithMath(markdown);
 
     expect(result.hadUnsafeContent).toBe(expected.hadUnsafeContent);
     expect(result.hadUnsafeContent).toBe(true);

@@ -14,7 +14,7 @@
 import type { Remote } from 'comlink';
 import * as Comlink from 'comlink';
 import type { MarkdownWorkerApi } from './render-worker.js';
-import { renderMarkdown } from './render.js';
+import { renderMarkdownWithMath } from './render.js';
 import type { RenderOptions, RenderResult } from './types.js';
 
 // Minimal Worker declarations for this module. The package tsconfig uses
@@ -75,7 +75,12 @@ export async function renderMarkdownAsync(
   options: RenderOptions = {},
 ): Promise<RenderResult> {
   const p = getProxy();
-  if (!p) return renderMarkdown(markdown, options);
+  // Worker unavailable (SSR, creation failed, etc.) — fall back to the
+  // main-thread async path that handles both math-free and math-bearing
+  // content by lazy-loading remark-math/rehype-katex on demand. The sync
+  // renderMarkdown deliberately drops math, so falling back to it would
+  // silently regress math rendering.
+  if (!p) return renderMarkdownWithMath(markdown, options);
 
   try {
     return await p.renderMarkdown(markdown, options);
@@ -89,7 +94,7 @@ export async function renderMarkdownAsync(
     proxy = null;
     workerFailed = true;
     highlighterInitialized = false;
-    return renderMarkdown(markdown, options);
+    return renderMarkdownWithMath(markdown, options);
   }
 }
 

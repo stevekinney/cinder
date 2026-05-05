@@ -407,7 +407,10 @@ export function renderTemplate(template: string, values: Record<string, unknown>
   // Resolve placeholders using the hardened path resolution from Phase 1
   const { text } = resolveTemplatePlaceholders(template, values);
 
-  // Render markdown to sanitized HTML using the existing secure pipeline
+  // Render markdown to sanitized HTML using the secure pipeline. The sync
+  // entry point intentionally does not handle KaTeX math — templates use
+  // Markdown for formatting but never LaTeX, and avoiding the math pipeline
+  // here keeps the editor bundle from pulling katex (~200 KB).
   const result = renderMarkdown(text);
 
   return result.html;

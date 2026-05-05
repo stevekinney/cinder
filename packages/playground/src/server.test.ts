@@ -107,6 +107,73 @@ describe('/page-bundle/:name.js', () => {
   }, 30_000);
 });
 
+// Code-split chunks. Both bundle families (page-bundle and per-scenario
+// bundle) emit dynamic-import URLs through publicPath: '/page-bundle/'.
+// Entry artifacts and async chunks share that flat namespace; chunks are
+// content-hashed (`<name>-<hash>.js`) so they never collide with the
+// unhashed entry URL `<name>.js` the iframe asks for.
+describe('chunks under /page-bundle/<filename>.js', () => {
+  it('returns 404 for an unknown chunk filename that fails isSafeSegment', async () => {
+    // Names with uppercase fail the safe-segment guard before any lookup.
+    const response = await handleRequest(req('/page-bundle/Does-Not-Exist.js'));
+    expect(response.status).toBe(404);
+  });
+
+  it("entry's hashed chunk URLs all resolve to JS", async () => {
+    // Build a page bundle that's known to have dynamic imports (chat
+    // does — markdown-preview lazy-loads @cinder/markdown/rendering). The
+    // entry response body must reference at least one hashed chunk URL,
+    // and every referenced URL must resolve to 200 application/javascript.
+    const entryResponse = await handleRequest(req('/page-bundle/chat.js'));
+    expect(entryResponse.status).toBe(200);
+    const body = await entryResponse.text();
+    // Hashed chunks contain a hash segment after the last `-`; the
+    // unhashed entry URL is just `<component>.js`. Match the hashed
+    // shape with at least one dash and an alphanumeric tail.
+    const chunkUrls = Array.from(
+      body.matchAll(/\/page-bundle\/[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)+\.js/g),
+      (match) => match[0],
+    );
+    expect(chunkUrls.length).toBeGreaterThan(0);
+    const unique = Array.from(new Set(chunkUrls));
+    for (const url of unique) {
+      const chunkResponse = await handleRequest(req(url));
+      expect(chunkResponse.status).toBe(200);
+      expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
+    }
+  }, 60_000);
+});
+
+// Bundle artifact paths must follow the predictable shapes the route
+// handlers depend on. If Bun changes its no-`outdir` artifact path
+// behavior (absolute paths, synthetic names), this test fails first and
+// gives the maintainer a clear pointer to the route mapping.
+describe('build artifact paths', () => {
+  it('page-bundle entry response is non-empty JS', async () => {
+    const response = await handleRequest(req('/page-bundle/chat.js'));
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body.length).toBeGreaterThan(0);
+    // Sanity: this is JavaScript, not HTML.
+    expect(body).not.toMatch(/^<!doctype html/i);
+  }, 60_000);
+
+  it('chat entry chunk does not eagerly contain @shikijs/langs grammar payloads', async () => {
+    // Phase 3 verification proxy: with code splitting on, the highlighter
+    // stack should land in chunks, not in the entry. If a future change
+    // reverts the lazy import or splitting breaks, the entry will balloon
+    // back to multi-MB. This is a structural, not size-based, assertion.
+    const response = await handleRequest(req('/page-bundle/chat.js'));
+    const body = await response.text();
+    // The bundled grammar files have a stable string fingerprint —
+    // every @shikijs/langs/<lang>.mjs starts with `var <lang>_default = ...`
+    // and references "scopeName". The entry should not contain a Shiki
+    // language grammar inlined.
+    const grammarMarkers = body.match(/scopeName/g) ?? [];
+    expect(grammarMarkers.length).toBe(0);
+  }, 60_000);
+});
+
 describe('/styles/* (path traversal guard)', () => {
   it('returns 200 text/css for /styles/index.css', async () => {
     const response = await handleRequest(req('/styles/index.css'));

@@ -202,4 +202,58 @@ describe('highlighter', () => {
       expect(html).toContain('class="shiki depict"');
     });
   });
+
+  describe('fine-grained bundle (per-language loader)', () => {
+    beforeAll(async () => {
+      resetHighlighter();
+      await initializeHighlighter();
+    });
+
+    // Catches regressions if a language loader fails to register the grammar
+    // — e.g. if a future shiki version moves a subpath or the grammar
+    // identifier diverges from the @shikijs/langs subpath name. A failure
+    // here means the language is in BUNDLED_LANGUAGES but does not
+    // initialize, which would silently drop syntax highlighting in
+    // production.
+    it('every language in BUNDLED_LANGUAGES initializes and highlights', () => {
+      const highlighter = getHighlighterSync()!;
+      const samples: Record<(typeof BUNDLED_LANGUAGES)[number], string> = {
+        typescript: 'const x: number = 1;',
+        javascript: 'const x = 1;',
+        python: 'x = 1',
+        sql: 'SELECT 1;',
+        bash: 'echo hello',
+        json: '{"a":1}',
+        yaml: 'a: 1',
+        markdown: '# hello',
+        svelte: '<div>hi</div>',
+        css: '.a { color: red; }',
+        html: '<p>hi</p>',
+        diff: '+added',
+      };
+      for (const lang of BUNDLED_LANGUAGES) {
+        const html = highlighter.codeToHtml(samples[lang], { lang, theme: 'depict' });
+        expect(html).toContain('class="shiki depict"');
+      }
+    });
+
+    it('concurrent calls to getHighlighter return the same instance', async () => {
+      resetHighlighter();
+      const [a, b, c] = await Promise.all([
+        getHighlighter(),
+        getHighlighter(),
+        initializeHighlighter(),
+      ]);
+      expect(a).toBe(b);
+      expect(b).toBe(c);
+    });
+
+    it('after reset, sync getter returns null and async getter re-initializes', async () => {
+      resetHighlighter();
+      expect(getHighlighterSync()).toBeNull();
+      const fresh = await getHighlighter();
+      expect(fresh).not.toBeNull();
+      expect(getHighlighterSync()).toBe(fresh);
+    });
+  });
 });

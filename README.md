@@ -206,6 +206,74 @@ The migration touches a large number of files (import paths, tsconfigs, `bunfig.
 
 The two existing consumer fixtures (`fixtures/sveltekit-consumer/` and `fixtures/node-consumer/`) both resolve via the `"svelte"` condition; neither requires a pre-compiled client bundle. No external consumer has raised a specific need for a `"browser"` export condition. Revisit if a real consuming application fails to resolve cinder through its bundler, or if a concrete use case (e.g. usage in a non-Svelte-aware build pipeline) is documented in an issue.
 
+## Library boundary
+
+Cinder has **three admission tiers** within two import namespaces. The import namespaces are `cinder/<name>` (stable and domain-suite both use this shape) and `cinder/experimental/<name>` (experimental). The _tier_ determines the admission rule and stability guarantee; the _import shape_ is what consumers use. A consumer importing `cinder/chat` and a consumer importing `cinder/button` use the same import pattern—but `chat` is a domain-suite component admitted under a weaker rule with different churn expectations than a stable primitive.
+
+### Stability guarantees by tier
+
+- **Stable**: public API is considered production-ready; changes follow the deprecation cycle (minor bump with notice, removal in a later major).
+- **Experimental** (`cinder/experimental/<name>`): API may change in any minor bump; documented as unstable.
+- **Domain-suite** (`cinder/<name>`): ships under the stable subpath shape for import convenience, but follows the experimental stability contract—API may change in any minor bump until the component earns promotion to the stable tier. Consumers importing domain-suite components must opt in with the awareness that heavy dep upgrades (ProseMirror, Milkdown, remark) may force API changes.
+
+### Stable admission rules
+
+A component is admitted directly to **stable** only if **either**:
+
+- **Multi-consumer rule**: requested by two or more reference consumers, AND independent of any single consumer's domain model, AND has a public API stable enough that adopters can rely on prerelease bumps.
+- **Universal-primitive rule**: it is a low-risk visual primitive with a well-established API in the wider Svelte/web ecosystem and minimal API-stability risk: Label, Avatar, Breadcrumbs, Kbd, CopyButton, Progress, CodeBlock. **Overlay components are explicitly excluded** from this rule because their API surface (modality, focus, positioning, hydration) is high-churn regardless of ecosystem precedent.
+
+Components that meet neither rule—including all overlays without multi-consumer demand and all observability components—start in the **experimental** namespace.
+
+### Promotion from experimental to stable
+
+The single canonical promotion rule:
+
+- Multi-consumer demand from at least two reference consumers, AND
+- One real consumer-replacement landed (deleted local component in any **currently-Svelte** consumer in favor of the Cinder version), AND
+- No API change in the last release cycle, AND
+- Accessibility, keyboard, and hydration tests passing.
+
+The replacement gate is a quality signal—it requires a real Cinder component running in a real Svelte app. The demand gate is a roadmap signal—it ranks priority across all named consumers.
+
+**Stable status, once granted, is permanent** unless the component's API is found to be technically wrong. Stable does not get revoked because of downstream scheduling. Adoption gates entry into stable; it does not threaten exit. If a stable component's API turns out to be wrong, it goes through a normal deprecation cycle (minor bump with deprecation notice, removal in a later major), not a demotion.
+
+### Domain-suite tier
+
+The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives—chat surfaces, diff viewers, markdown editors, review editors. They ship under `cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from 'cinder/chat'`). They are tree-shaken: a consumer that imports only `cinder/button` does not pay for ProseMirror, remark, or shiki. Install size grows; runtime cost does not.
+
+**Domain-suite admission rule**: requested by **at least one reference consumer** with the heavy peer-dep chain accepted by both Cinder maintainers and that consumer. The single-consumer threshold (vs the multi-consumer threshold for stable) is intentional—these components are too specialized to expect uniform demand, but too valuable to leave in consuming apps to re-implement.
+
+**Domain-suite carve-outs** (scoped, allowlisted, removable):
+
+- The "no `<style>` blocks" rule does not apply. Components in this tier may carry per-component `<style>` blocks and co-located `.css` files. The exemption is enforced by a hard-coded allowlist in `convention.test.ts`: `chat`, `diff-viewer`, `review-editor`, `markdown-editor`. Adding a new domain-suite component requires explicit allowlist update; new names attempting `<style>` blocks fail the test.
+- **Removal criteria**: a component leaves the allowlist when its CSS migrates to a partial under `src/styles/components/`. The allowlist is a transitional accommodation, not a permanent license.
+
+**Consumer-facing components** (current `cinder/<name>` allowlist):
+
+- `chat`—`conversationalist` runtime dep.
+- `diff-viewer`—`@cinder/diff` + `@cinder/markdown/diff` runtime deps.
+- `markdown-editor`—`@cinder/editor` + `@cinder/markdown` + `@milkdown/kit` + `prosemirror-*` runtime deps.
+- `review-editor`—everything above plus `@cinder/commentary`.
+
+**Supporting workspace packages** (not consumer-facing `cinder/<name>` components):
+
+These are `@cinder/*` scoped packages that live in the cinder monorepo but are not imported as `cinder/<name>`. They are implementation dependencies of the consumer-facing components above.
+
+- `@cinder/diff`—standalone diff algorithm; `diff-match-patch` only dep.
+- `@cinder/markdown`—markdown pipeline, rendering, and utilities; 18 npm deps (unified, remark-_, rehype-_, shiki, etc.).
+- `@cinder/editor`—ProseMirror + Milkdown integration; depends on `@cinder/markdown` + `@milkdown/kit`.
+- `@cinder/commentary`—comment threads, anchoring, and export; depends on `@cinder/editor` + `@cinder/markdown`.
+
+### Out of scope
+
+- **Mermaid, charts**—domain widgets with heavy peer deps that don't have multi-consumer demand; stay in consuming apps.
+- **Syntax-highlighted code blocks shipped as a primitive**—Shiki is heavy and consumers like depict already own it; `cinder/code-block` ships without highlighting, consumers add Shiki at their boundary if they want it.
+- **Form wrapper with validation orchestration**—deferred until two consumers ask.
+- **VerificationCodeInput**—single-consumer-specific, specialized.
+- **Multi-select / async combobox, virtualized table**—explicit non-goals for v1.
+- **React port of cinder**—cross-framework needs are tracked at the vocabulary level; the port itself is not in scope.
+
 ## License
 
 MIT
