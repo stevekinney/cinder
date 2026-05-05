@@ -173,7 +173,13 @@
   }
 
   function setAny(any: boolean) {
-    if (any) setTypeFromCheckboxes([]);
+    if (any) {
+      setTypeFromCheckboxes([]);
+    } else {
+      // Unchecking "Any" with no specific type selected would leave the schema
+      // typeless again — default to 'object' so the user has something to work with.
+      if (selectedTypes.length === 0) setTypeFromCheckboxes(['object']);
+    }
   }
 
   function convertBooleanToObject() {
@@ -377,7 +383,7 @@
             id={`${idPrefix}-type-${primitive}`}
             checked={selectedTypes.includes(primitive)}
             label={primitive}
-            disabled={readonly || isAnyType}
+            disabled={readonly}
             onchange={(event: Event) =>
               toggleType(primitive, (event.target as HTMLInputElement).checked)}
           />
