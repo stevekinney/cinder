@@ -392,6 +392,7 @@
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-lg) var(--cinder-radius-lg) var(--cinder-radius-lg)
       var(--cinder-radius-sm);
+    box-shadow: var(--cinder-shadow-sm);
   }
 
   .chat-message-wrapper[data-role='system'] {
