@@ -26,6 +26,9 @@
     ...rest
   }: ToolCallGroupProps = $props();
 
+  // Stable ID for the disclosed region so the toggle can reference it via aria-controls.
+  const detailsId = `tool-call-details-${pair.call.id}`;
+
   // Determine result status
   const hasResult = $derived(!!pair.result);
   const isError = $derived(pair.result?.outcome === 'error');
@@ -53,6 +56,7 @@
     type="button"
     class="tool-call-header"
     aria-expanded={expanded}
+    aria-controls={detailsId}
     aria-label={`Toggle tool call details for ${pair.call.name}`}
     onclick={handleToggle}
   >
@@ -121,7 +125,7 @@
   </button>
 
   {#if expanded}
-    <div class="tool-call-details">
+    <div id={detailsId} class="tool-call-details" role="region" aria-label="Tool details">
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->

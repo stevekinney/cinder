@@ -196,10 +196,17 @@
   data-hidden={message.hidden || undefined}
   data-failed={isFailed || undefined}
   data-search-match={searchMatch || undefined}
+  data-tool-pair={isToolUse && toolPair ? '' : undefined}
   {...rest}
 >
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <article id={messageId} class="chat-message" aria-labelledby={roleId} {tabindex}>
+  <article
+    id={messageId}
+    class="chat-message"
+    aria-labelledby={isToolUse && toolPair ? undefined : roleId}
+    aria-label={isToolUse && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
+    {tabindex}
+  >
     <header class="chat-message-header">
       <span id={roleId} class="chat-message-role">{roleLabel}</span>
       {#if status}
@@ -415,6 +422,27 @@
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
+  }
+
+  /* When a tool-use has a paired result, ToolCallGroup is the canonical card.
+   * Strip the outer bubble shell (background, border, padding, role label, footer)
+   * so the unified card is the only visible boundary. */
+  .chat-message-wrapper[data-tool-pair] .chat-message {
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    gap: 0;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .chat-message-wrapper[data-tool-pair] .chat-message-header {
+    display: none;
+  }
+
+  .chat-message-wrapper[data-tool-pair] .chat-message-footer {
+    display: none;
   }
 
   .chat-message-wrapper[data-role='snapshot'] {
