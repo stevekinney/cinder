@@ -603,16 +603,32 @@
   }
 
   /* Footer — absolutely positioned outside the bubble's flow so revealing it on
-   * hover/focus does not change the bubble's height (which would cause the
-   * "shake" the user reported). Geometry is set by Issue 3 rules below. */
+   * hover/focus does not change the bubble's height. Default geometry: vertically
+   * centered against the bubble, just outside its center-facing edge.
+   * LTR-only: the left/right physical properties below assume left-to-right layout.
+   * RTL support is a follow-up that swaps to inset-inline-start/end. */
   .chat-message-footer {
     position: absolute;
-    top: 100%;
-    margin-top: var(--cinder-space-1);
+    top: 50%;
+    transform: translateY(-50%);
     width: max-content;
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* User bubbles are right-aligned; copy icon sits to their LEFT (toward chat center).
+   * padding (not margin) creates a hover bridge so the pointer never leaves a
+   * hovered surface while crossing from bubble to icon. */
+  .chat-message-wrapper[data-role='user'] .chat-message-footer {
+    right: 100%;
+    padding-right: var(--cinder-space-1);
+  }
+
+  /* Assistant bubbles are left-aligned; copy icon sits to their RIGHT. */
+  .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
+    left: 100%;
+    padding-left: var(--cinder-space-1);
   }
 
   .chat-message-wrapper:hover .chat-message-footer,
@@ -624,7 +640,20 @@
   .chat-message-actions {
     display: flex;
     gap: var(--cinder-space-1);
-    padding: var(--cinder-space-0-5);
+  }
+
+  /* Narrow viewports: fall back to below-bubble where horizontal space is tight. */
+  @media (max-width: 480px) {
+    .chat-message-wrapper[data-role='user'] .chat-message-footer,
+    .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
+      top: 100%;
+      left: 0;
+      right: auto;
+      transform: none;
+      padding-left: 0;
+      padding-right: 0;
+      margin-top: var(--cinder-space-1);
+    }
   }
 
   /* Touch devices: always show actions */
@@ -635,12 +664,14 @@
     }
   }
 
-  /* Copy button */
+  /* Copy button — small icon-only affordance. The visible icon is `icon-xs`;
+   * min-width/height meet the WCAG 2.2 AA tap target without enlarging the icon. */
   .chat-message-copy {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--cinder-space-1);
+    display: grid;
+    place-items: center;
+    min-width: var(--cinder-touch-target-min);
+    min-height: var(--cinder-touch-target-min);
+    padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--cinder-radius-sm);
@@ -672,10 +703,11 @@
 
   /* Edit button (icon action button, visually identical to copy button) */
   .chat-message-edit-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--cinder-space-1);
+    display: grid;
+    place-items: center;
+    min-width: var(--cinder-touch-target-min);
+    min-height: var(--cinder-touch-target-min);
+    padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--cinder-radius-sm);
