@@ -1,0 +1,34 @@
+/* ========================================
+ * JSON syntax highlight tokens
+ * Used by `highlightJson()` (utilities/json-highlight.ts) when rendering
+ * tool-call arguments and results, or any other JSON value passed through
+ * the highlighter. Token classes are stable; the markup is `{@html}`-rendered
+ * by the helper, which HTML-escapes every character of input.
+ *
+ * Every token color is verified to meet WCAG AA against --cinder-surface-inset
+ * (the surface where this markup renders inside tool-call-group's <pre>).
+ * ======================================== */
+
+.cinder-json-token-key {
+  color: var(--cinder-accent);
+}
+
+.cinder-json-token-string {
+  color: var(--cinder-success);
+}
+
+.cinder-json-token-number {
+  color: var(--cinder-warning);
+}
+
+.cinder-json-token-boolean,
+/* `null` is a semantic value (not decoration); use the same color as boolean. */
+.cinder-json-token-null {
+  color: var(--cinder-info);
+}
+
+/* JSON punctuation is rendered text; --cinder-text-muted meets AA on the
+ * inset surface (light: oklch 32% on 94%, dark: oklch 82% on 12%). */
+.cinder-json-token-punctuation {
+  color: var(--cinder-text-muted);
+}

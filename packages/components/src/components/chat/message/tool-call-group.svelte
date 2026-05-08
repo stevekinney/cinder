@@ -16,6 +16,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
+  import { highlightJson } from '../../../utilities/json-highlight.ts';
   import { stringify } from '../../../utilities/stringify.ts';
 
   let {
@@ -129,7 +130,9 @@
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <pre class="tool-call-code" tabindex="0"><code>{formattedArguments}</code></pre>
+        <pre class="tool-call-code cinder-code-block__pre" tabindex="0">{@html highlightJson(
+            formattedArguments,
+          )}</pre>
       </div>
 
       {#if hasResult}
@@ -141,7 +144,9 @@
             </div>
           {:else if formattedResult !== null}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-            <pre class="tool-call-code" tabindex="0"><code>{formattedResult}</code></pre>
+            <pre class="tool-call-code cinder-code-block__pre" tabindex="0">{@html highlightJson(
+                formattedResult,
+              )}</pre>
           {/if}
         </div>
       {/if}
