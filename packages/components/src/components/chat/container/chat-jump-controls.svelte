@@ -85,7 +85,9 @@
     width: var(--cinder-touch-target-min);
     height: var(--cinder-touch-target-min);
     padding: 0;
-    background: var(--cinder-surface-raised);
+    /* --cinder-surface-raised does not exist in tokens; use --cinder-surface and
+     * lean on the shadow + border for elevation against the inset chat timeline. */
+    background: var(--cinder-surface);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     box-shadow: var(--cinder-shadow-md);
