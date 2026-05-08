@@ -284,47 +284,47 @@
 
   {#if actions || (showDefaultActions && textContent) || canEdit}
     <footer class="chat-message-footer" role="none">
-      <div class="chat-message-actions-clip">
-        <div class="chat-message-actions" role="group" aria-label="Message actions">
-          {#if actions}
-            {@render actions()}
-          {/if}
-          {#if showDefaultActions && textContent}
-            <button
-              type="button"
-              class="chat-message-copy"
-              class:chat-message-copy-success={copyState === 'copied'}
-              onclick={handleCopy}
-              aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
-            >
-              {#if copyState === 'copied'}
-                <Check class="icon-xs" />
-              {:else}
-                <Copy class="icon-xs" />
-              {/if}
-            </button>
-          {/if}
-          {#if canEdit}
-            <button
-              type="button"
-              class="chat-message-edit-button"
-              onclick={startEditing}
-              aria-label="Edit message"
-            >
-              <Pencil class="icon-xs" />
-            </button>
-          {/if}
-        </div>
+      <div class="chat-message-actions" role="group" aria-label="Message actions">
+        {#if actions}
+          {@render actions()}
+        {/if}
+        {#if showDefaultActions && textContent}
+          <button
+            type="button"
+            class="chat-message-copy"
+            class:chat-message-copy-success={copyState === 'copied'}
+            onclick={handleCopy}
+            aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
+          >
+            {#if copyState === 'copied'}
+              <Check class="icon-xs" />
+            {:else}
+              <Copy class="icon-xs" />
+            {/if}
+          </button>
+        {/if}
+        {#if canEdit}
+          <button
+            type="button"
+            class="chat-message-edit-button"
+            onclick={startEditing}
+            aria-label="Edit message"
+          >
+            <Pencil class="icon-xs" />
+          </button>
+        {/if}
       </div>
     </footer>
   {/if}
 </div>
 
 <style>
-  /* Wrapper — handles layout positioning, width constraints, and hover delegation */
+  /* Wrapper — handles layout positioning, width constraints, and hover delegation.
+   * position: relative anchors the absolutely-positioned action footer below. */
   .chat-message-wrapper {
     display: flex;
     flex-direction: column;
+    position: relative;
     width: fit-content;
     /* Cap at 80% of container OR 48rem (768px) for readability on wide screens */
     max-width: min(80%, 48rem);
@@ -602,53 +602,36 @@
     outline-offset: 2px;
   }
 
-  /* Footer — lives outside the bubble to avoid inflating its height.
-   * width:0 + min-width:100% prevents the footer from contributing to
-   * the wrapper's fit-content width (short message bubbles stay compact).
-   * Uses grid-template-rows for smooth height collapse/expand. */
+  /* Footer — absolutely positioned outside the bubble's flow so revealing it on
+   * hover/focus does not change the bubble's height (which would cause the
+   * "shake" the user reported). Geometry is set by Issue 3 rules below. */
   .chat-message-footer {
-    display: grid;
+    position: absolute;
+    top: 100%;
     margin-top: var(--cinder-space-1);
-    width: 0;
-    min-width: 100%;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--cinder-duration-fast) var(--cinder-ease-standard);
+    width: max-content;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .chat-message-wrapper:hover .chat-message-footer,
   .chat-message-wrapper:focus-within .chat-message-footer {
-    grid-template-rows: 1fr;
-  }
-
-  /* Clip container for grid animation — keeps overflow: hidden away from
-   * focusable buttons so focus rings are not cut off by keyboard users. */
-  .chat-message-actions-clip {
-    overflow: hidden;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .chat-message-actions {
     display: flex;
     gap: var(--cinder-space-1);
-    /* Small padding ensures focus-ring outlines on buttons are not clipped
-     * by the parent overflow: hidden on .chat-message-actions-clip. */
     padding: var(--cinder-space-0-5);
-    opacity: 0;
-    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
-  .chat-message-wrapper:hover .chat-message-actions,
-  .chat-message-wrapper:focus-within .chat-message-actions {
-    opacity: 1;
   }
 
   /* Touch devices: always show actions */
   @media (hover: none) or (pointer: coarse) {
     .chat-message-footer {
-      grid-template-rows: 1fr;
-    }
-
-    .chat-message-actions {
       opacity: 1;
+      pointer-events: auto;
     }
   }
 
