@@ -672,8 +672,8 @@
     }
   }
 
-  /* Copy button — small icon-only affordance. The visible icon is `icon-xs`;
-   * min-width/height meet the WCAG 2.2 AA tap target without enlarging the icon. */
+  /* Copy button — small icon-only affordance. The icon size comes from the
+   * `icon-xs` class on the SVG (defined in styles/utilities.css). */
   .chat-message-copy {
     display: grid;
     place-items: center;
