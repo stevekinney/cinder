@@ -427,7 +427,14 @@
 
   /* When a tool-use has a paired result, ToolCallGroup is the canonical card.
    * Strip the outer bubble shell (background, border, padding, role label, footer)
-   * so the unified card is the only visible boundary. */
+   * so the unified card is the only visible boundary. The wrapper expands
+   * within the same readability cap as regular bubbles — chat bubbles hug
+   * their content, but a tool-call card is structural data that benefits
+   * from horizontal room without stretching across the entire timeline. */
+  .chat-message-wrapper[data-tool-pair] {
+    width: min(80%, 48rem);
+  }
+
   .chat-message-wrapper[data-tool-pair] .chat-message {
     background: none;
     border: none;

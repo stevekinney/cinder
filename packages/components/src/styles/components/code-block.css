@@ -32,7 +32,12 @@
   letter-spacing: var(--cinder-tracking-wide);
 }
 
-.cinder-code-block__pre {
+.cinder-code-block__pre,
+/* Highlighter output (e.g. Shiki) replaces __pre with its own markup
+ * (typically <pre class="shiki ...">). Match it so the highlighted variant
+ * inherits the same padding / font / line-height as the plain variant —
+ * this is what Issue 6 was supposed to fix originally. */
+.cinder-code-block > pre {
   margin: 0;
   padding: var(--cinder-space-4);
   overflow-x: auto;

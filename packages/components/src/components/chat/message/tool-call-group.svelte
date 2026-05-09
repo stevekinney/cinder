@@ -130,9 +130,7 @@
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <pre class="tool-call-code cinder-code-block__pre" tabindex="0">{@html highlightJson(
-            formattedArguments,
-          )}</pre>
+        <pre class="tool-call-code" tabindex="0">{@html highlightJson(formattedArguments)}</pre>
       </div>
 
       {#if hasResult}
@@ -144,9 +142,7 @@
             </div>
           {:else if formattedResult !== null}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-            <pre class="tool-call-code cinder-code-block__pre" tabindex="0">{@html highlightJson(
-                formattedResult,
-              )}</pre>
+            <pre class="tool-call-code" tabindex="0">{@html highlightJson(formattedResult)}</pre>
           {/if}
         </div>
       {/if}
@@ -186,13 +182,17 @@
     color: inherit;
   }
 
+  /* Hover: subtle inset tint instead of the full surface-hover gray, which
+   * looked harsh against the colored card border. */
   .tool-call-header:hover {
-    background: var(--cinder-surface-hover);
+    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
   }
 
+  /* Focus: ring travels via box-shadow, not outline, so it sits inside the
+   * card's colored border instead of doubling up on top of it. */
   .tool-call-header:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--cinder-ring-color);
   }
 
   .tool-call-icon {
@@ -256,7 +256,13 @@
     background: var(--cinder-surface-inset);
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-space-2);
+  }
+
+  .tool-call-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
   }
 
   .tool-call-section-title {
@@ -265,20 +271,22 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--cinder-text-muted);
-    margin: 0 0 var(--cinder-space-2);
+    margin: 0;
   }
 
   .tool-call-code {
     margin: 0;
-    padding: var(--cinder-space-3);
-    background: var(--cinder-surface-inset);
-    border-radius: var(--cinder-radius-md);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    background: var(--cinder-surface);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
     overflow-x: auto;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
-    line-height: 1.5;
+    line-height: 1.4;
     max-height: 300px;
     overflow-y: auto;
+    color: var(--cinder-text);
   }
 
   .tool-call-error {
