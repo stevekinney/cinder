@@ -48,22 +48,25 @@
 }
 
 /* Compact, borderless copy button when nested inside a code block header.
- * Scoped to this exact compound selector so the standalone CopyButton
- * keeps its bordered default everywhere else in the app. */
-.cinder-code-block__header .cinder-copy-button {
+ * Specificity bump (`.cinder-code-block .cinder-code-block__header .cinder-copy-button`)
+ * is required because copy-button.css imports AFTER code-block.css in components.css;
+ * with equal specificity the later import would win and the bordered default would
+ * leak through. Scoped so the standalone CopyButton keeps its bordered default
+ * everywhere else in the app. */
+.cinder-code-block .cinder-code-block__header .cinder-copy-button {
   border: none;
   background: transparent;
   padding: var(--cinder-space-1);
   color: var(--cinder-text-subtle);
 }
 
-.cinder-code-block__header .cinder-copy-button:hover {
+.cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
   background: var(--cinder-surface-hover);
   color: var(--cinder-text);
-  border: none;
+  border-color: transparent;
 }
 
-.cinder-code-block__header .cinder-copy-button:focus-visible {
+.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
   outline: 2px solid var(--cinder-ring-color);
   outline-offset: 2px;
 }
