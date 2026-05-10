@@ -41,7 +41,10 @@ describe('highlightJson — valid JSON', () => {
 
   test('whitespace between tokens is preserved verbatim', () => {
     const html = highlightJson('{\n  "a": 1\n}');
-    expect(html).toContain('}</span>\n  <span'.length === 0 ? 'never' : '');
+    // Newline + two-space indent between the value token and the closing brace.
+    expect(html).toContain(
+      '<span class="cinder-json-token cinder-json-token-number">1</span>\n<span class="cinder-json-token cinder-json-token-punctuation">}',
+    );
     // Indentation is the two literal spaces between the opener and the key span.
     expect(html).toContain('>{</span>\n  <span class="cinder-json-token cinder-json-token-key"');
     // Newline before the closing brace is preserved.

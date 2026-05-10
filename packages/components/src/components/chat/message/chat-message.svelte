@@ -611,15 +611,19 @@
   }
 
   /* Footer — absolutely positioned outside the bubble's flow so revealing it on
-   * hover/focus does not change the bubble's height. Default geometry: vertically
-   * centered against the bubble, just outside its center-facing edge.
+   * hover/focus does not change the bubble's height. Default geometry: below the
+   * bubble at the leading edge, which works for any role. The user/assistant
+   * rules below override this to put the icon beside the bubble on the
+   * center-facing edge. Roles like developer / system / unpaired tool-result
+   * inherit this default and place the footer below the bubble.
    * LTR-only: the left/right physical properties below assume left-to-right layout.
    * RTL support is a follow-up that swaps to inset-inline-start/end. */
   .chat-message-footer {
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 100%;
+    left: 0;
     width: max-content;
+    margin-top: var(--cinder-space-1);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -629,14 +633,22 @@
    * padding (not margin) creates a hover bridge so the pointer never leaves a
    * hovered surface while crossing from bubble to icon. */
   .chat-message-wrapper[data-role='user'] .chat-message-footer {
+    top: 50%;
+    left: auto;
     right: 100%;
+    margin-top: 0;
     padding-right: var(--cinder-space-1);
+    transform: translateY(-50%);
   }
 
   /* Assistant bubbles are left-aligned; copy icon sits to their RIGHT. */
   .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
+    top: 50%;
     left: 100%;
+    right: auto;
+    margin-top: 0;
     padding-left: var(--cinder-space-1);
+    transform: translateY(-50%);
   }
 
   .chat-message-wrapper:hover .chat-message-footer,
@@ -650,10 +662,12 @@
     gap: var(--cinder-space-1);
   }
 
-  /* Narrow viewports: fall back to below-bubble where horizontal space is tight. */
+  /* Narrow viewports: every role falls back to below-bubble where horizontal
+   * space is tight. Targets all wrapper data-roles via the .chat-message-footer
+   * descendant so user / assistant / developer / system / tool-result all
+   * collapse to the same compact below-bubble layout. */
   @media (max-width: 480px) {
-    .chat-message-wrapper[data-role='user'] .chat-message-footer,
-    .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
+    .chat-message-wrapper .chat-message-footer {
       top: 100%;
       left: 0;
       right: auto;
