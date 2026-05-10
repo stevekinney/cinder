@@ -5,8 +5,11 @@
  * the highlighter. Token classes are stable; the markup is `{@html}`-rendered
  * by the helper, which HTML-escapes every character of input.
  *
- * Every token color is verified to meet WCAG AA against --cinder-surface-inset
- * (the surface where this markup renders inside tool-call-group's <pre>).
+ * Token colors target WCAG AA against --cinder-surface (the actual <pre>
+ * background in tool-call-group; previously documented as --cinder-surface-inset
+ * before the surface was changed in a follow-up commit). The number token uses
+ * a darkened warning shade because raw --cinder-warning is borderline against
+ * the lighter --cinder-surface in light mode.
  * ======================================== */
 
 .cinder-json-token-key {
@@ -17,8 +20,9 @@
   color: var(--cinder-success);
 }
 
+/* Darkened warning shade to clear AA against --cinder-surface in light mode. */
 .cinder-json-token-number {
-  color: var(--cinder-warning);
+  color: color-mix(in oklch, var(--cinder-warning), oklch(0% 0 0) 15%);
 }
 
 .cinder-json-token-boolean,
@@ -27,8 +31,8 @@
   color: var(--cinder-info);
 }
 
-/* JSON punctuation is rendered text; --cinder-text-muted meets AA on the
- * inset surface (light: oklch 32% on 94%, dark: oklch 82% on 12%). */
+/* JSON punctuation is rendered text; --cinder-text-muted meets AA in both
+ * themes (light: oklch 32% on ≥94%, dark: oklch 82% on ≤20%). */
 .cinder-json-token-punctuation {
   color: var(--cinder-text-muted);
 }

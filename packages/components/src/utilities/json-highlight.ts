@@ -73,11 +73,18 @@ function readNumberLiteral(source: string, startIndex: number): string {
 /**
  * Tokenize a well-formed JSON source string into highlighted markup.
  * Caller has already verified `JSON.parse(source)` succeeds.
+ *
+ * `openerStack` tracks the currently-open container kinds left-to-right.
+ * After a comma, the top of the stack tells us whether we're inside an
+ * object (next string is a key) or an array (next string is a value).
+ * Avoids the previous O(n²) backward scan and naturally handles strings
+ * with escaped quotes — no scan that could misread `\"` as a real boundary.
  */
 function tokenize(source: string): string {
   let output = '';
   let index = 0;
   let pendingKey = false; // tracks whether the next string is an object key
+  const openerStack: Array<'{' | '['> = [];
 
   while (index < source.length) {
     const character = source[index];
@@ -92,31 +99,30 @@ function tokenize(source: string): string {
 
     if (character === '{') {
       output += span('punctuation', '{');
+      openerStack.push('{');
       pendingKey = true;
-      index += 1;
-      continue;
-    }
-
-    if (character === '}' || character === ']') {
-      output += span('punctuation', character);
       index += 1;
       continue;
     }
 
     if (character === '[') {
       output += span('punctuation', '[');
+      openerStack.push('[');
       pendingKey = false;
+      index += 1;
+      continue;
+    }
+
+    if (character === '}' || character === ']') {
+      output += span('punctuation', character);
+      openerStack.pop();
       index += 1;
       continue;
     }
 
     if (character === ',') {
       output += span('punctuation', ',');
-      // The preceding context determines whether the next string is a key.
-      // We can't know without looking back; instead, re-set pendingKey based on
-      // the most recent unmatched opener. A cheap proxy: scan backward for the
-      // nearest `{` or `[` ignoring nested structures already emitted as spans.
-      pendingKey = mostRecentOpenerIsObject(source, index);
+      pendingKey = openerStack[openerStack.length - 1] === '{';
       index += 1;
       continue;
     }
@@ -170,40 +176,6 @@ function tokenize(source: string): string {
   }
 
   return `<code class="cinder-json">${output}</code>`;
-}
-
-/**
- * Walk backward from `index` to find the nearest unmatched `{` or `[` and
- * return true when it's `{` (object context where strings are keys).
- */
-function mostRecentOpenerIsObject(source: string, index: number): boolean {
-  let depth = 0;
-  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-    const character = source[cursor];
-    if (character === '"') {
-      // skip over the string literal we just passed
-      cursor -= 1;
-      while (cursor >= 0 && source[cursor] !== '"') {
-        cursor -= 1;
-      }
-      continue;
-    }
-    if (character === '}' || character === ']') {
-      depth += 1;
-      continue;
-    }
-    if (character === '{') {
-      if (depth === 0) return true;
-      depth -= 1;
-      continue;
-    }
-    if (character === '[') {
-      if (depth === 0) return false;
-      depth -= 1;
-      continue;
-    }
-  }
-  return false;
 }
 
 /**

@@ -70,6 +70,16 @@ describe('highlightJson — valid JSON', () => {
     expect(html).toContain('cinder-json-token-key">"a"');
     expect(html).toContain('cinder-json-token-key">"b"');
   });
+
+  test('keys after a value containing escaped quotes still classify as keys', () => {
+    // Regression: the previous backward-scan implementation skipped strings by
+    // walking back to the next `"`, treating an escaped `\"` as the boundary.
+    // For {"a": "foo\"bar", "b": 1} that produced a mis-classification of "b"
+    // as a value string. The forward-stack tokenizer is immune.
+    const html = highlightJson(JSON.stringify({ a: 'foo"bar', b: 1 }));
+    expect(html).toContain('cinder-json-token-key">"b"');
+    expect(html).not.toContain('cinder-json-token-string">"b"');
+  });
 });
 
 describe('highlightJson — fallback paths', () => {
