@@ -28,7 +28,8 @@
   }: ToolCallGroupProps = $props();
 
   // Stable ID for the disclosed region so the toggle can reference it via aria-controls.
-  const detailsId = `tool-call-details-${pair.call.id}`;
+  // Reactive so the ID tracks the current pair when the component instance is reused.
+  const detailsId = $derived(`tool-call-details-${pair.call.id}`);
 
   // Determine result status
   const hasResult = $derived(!!pair.result);

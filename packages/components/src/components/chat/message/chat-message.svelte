@@ -663,11 +663,17 @@
   }
 
   /* Narrow viewports: every role falls back to below-bubble where horizontal
-   * space is tight. Targets all wrapper data-roles via the .chat-message-footer
-   * descendant so user / assistant / developer / system / tool-result all
-   * collapse to the same compact below-bubble layout. */
+   * space is tight. Each selector explicitly matches the same specificity as
+   * the role-specific desktop rules above ([data-role='…'] = 0-1-1), so the
+   * media query actually wins inside its breakpoint. */
   @media (max-width: 480px) {
-    .chat-message-wrapper .chat-message-footer {
+    .chat-message-wrapper[data-role='user'] .chat-message-footer,
+    .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
+    .chat-message-wrapper[data-role='system'] .chat-message-footer,
+    .chat-message-wrapper[data-role='developer'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-use'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
+    .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;
       left: 0;
       right: auto;
