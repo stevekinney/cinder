@@ -114,13 +114,12 @@ const ENTRY_PREFIXES: Record<ArtifactFamily, string> = {
  * match.
  */
 function findArtifactForFamily(family: ArtifactFamily, path: string): string | undefined {
-  const ownMap =
-    family === 'page'
-      ? pageArtifactByPath
-      : family === 'shell'
-        ? shellArtifactByPath
-        : scenarioArtifactByPath;
-  const ownHit = ownMap.get(path);
+  const allMaps: Record<ArtifactFamily, Map<string, string>> = {
+    page: pageArtifactByPath,
+    shell: shellArtifactByPath,
+    scenario: scenarioArtifactByPath,
+  };
+  const ownHit = allMaps[family].get(path);
   if (ownHit !== undefined) return ownHit;
 
   // Cross-family fallback is restricted to chunk-style artifacts (no entry
@@ -131,11 +130,13 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
   );
   if (isEntryName) return undefined;
 
-  return (
-    pageArtifactByPath.get(path) ??
-    shellArtifactByPath.get(path) ??
-    scenarioArtifactByPath.get(path)
-  );
+  // Search every map *except* the requesting family's own (already checked).
+  for (const otherFamily of Object.keys(allMaps) as ArtifactFamily[]) {
+    if (otherFamily === family) continue;
+    const hit = allMaps[otherFamily].get(path);
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
 }
 
 /** Resolved manifest array — cached after first analysis. */
@@ -747,8 +748,16 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   const entry = await compilePageBundleArtifacts(componentName);
   if (entry === null) return null;
 
+  // We always publish the artifacts: the entry code we're about to return
+  // statically imports content-hashed chunk URLs, and if those chunks aren't
+  // in the cache, the browser's chunk requests will 404. Chunk filenames are
+  // content-hashed, so writing them is safe even if a newer watcher rebuild
+  // already wrote the same chunks — the bytes are identical.
+  for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
+  // Only update the entry-by-name mapping when we're not racing a newer
+  // rebuild. Stale generations skip this so the watcher's atomic publish
+  // remains authoritative for the entry-name → hashed-entry mapping.
   if (generationAtStart === rebuildGeneration && currentRebuild === null) {
-    for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
     pageEntryByName.set(componentName, entry.entryPath);
   }
   return entry.entryCode;
@@ -823,8 +832,11 @@ async function buildShellBundle(): Promise<string | null> {
   const entry = await compileShellBundleArtifacts();
   if (entry === null) return null;
 
+  // Always publish chunks (see buildPageBundle's comment for the rationale —
+  // the entry we're returning has static imports to content-hashed chunks
+  // that must be servable).
+  for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
   if (generationAtStart === rebuildGeneration && currentRebuild === null) {
-    for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
     shellEntryByName.set('shell', entry.entryPath);
   }
   return entry.entryCode;
