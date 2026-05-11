@@ -76,22 +76,26 @@
   }
 
   let announcement = $state<string>('');
+  let announceTimeout: ReturnType<typeof setTimeout> | null = null;
 
   function announce(text: string): void {
     // Clear first, then set on the next tick. Assigning the same string twice
     // in a row to a Svelte reactive value is a no-op and the aria-live region
     // never updates the DOM, so an AT user clicking the same control twice
     // would not hear the second announcement. Empty-then-set forces a DOM
-    // change every time.
+    // change every time. clearTimeout ensures back-to-back announce() calls
+    // resolve deterministically — the latest call wins, in order.
+    if (announceTimeout !== null) clearTimeout(announceTimeout);
     announcement = '';
-    setTimeout(() => {
+    announceTimeout = setTimeout(() => {
       announcement = text;
+      announceTimeout = null;
     }, 50);
   }
 
   function selectViewport(preset: (typeof VIEWPORT_PRESETS)[number]): void {
     store.previewWidth = preset.value;
-    announce(`Viewport: ${preset.label}${preset.value ? `, ${preset.value} pixels` : ''}`);
+    announce(`Viewport: ${preset.label}${preset.value !== null ? `, ${preset.value} pixels` : ''}`);
   }
 
   function selectTheme(option: (typeof THEME_OPTIONS)[number]): void {
@@ -117,21 +121,20 @@
 </script>
 
 <header class="top-bar">
-  <nav aria-label="Preview controls">
+  <div class="controls" role="group" aria-label="Preview controls">
     <div class="breadcrumb" title={store.currentComponent}>
       {store.currentComponent || ' '}
     </div>
 
-    <div role="radiogroup" aria-label="Viewport width" class="cluster">
+    <div role="group" aria-label="Viewport width" class="cluster">
       {#each VIEWPORT_PRESETS as preset (preset.abbrev)}
         {@const active = presetIsActive(preset.value)}
         <button
           type="button"
           class="segment"
           class:active
-          role="radio"
-          aria-checked={active}
-          aria-label={`${preset.label}${preset.value ? ` (${preset.value} pixels)` : ''}`}
+          aria-pressed={active}
+          aria-label={`${preset.label}${preset.value !== null ? ` (${preset.value} pixels)` : ''}`}
           title={preset.label}
           onclick={() => selectViewport(preset)}
         >
@@ -159,15 +162,14 @@
       <span class="unit" aria-hidden="true">px</span>
     </div>
 
-    <div role="radiogroup" aria-label="Color scheme" class="cluster">
+    <div role="group" aria-label="Color scheme" class="cluster">
       {#each THEME_OPTIONS as option (option.value)}
         {@const active = store.theme === option.value}
         <button
           type="button"
           class="segment icon-segment"
           class:active
-          role="radio"
-          aria-checked={active}
+          aria-pressed={active}
           aria-label={`${option.label} theme`}
           title={`${option.label} theme`}
           onclick={() => selectTheme(option)}
@@ -177,15 +179,14 @@
       {/each}
     </div>
 
-    <div role="radiogroup" aria-label="Preview background" class="cluster">
+    <div role="group" aria-label="Preview background" class="cluster">
       {#each BACKGROUND_OPTIONS as option (option.value)}
         {@const active = store.background === option.value}
         <button
           type="button"
           class="segment icon-segment"
           class:active
-          role="radio"
-          aria-checked={active}
+          aria-pressed={active}
           aria-label={`${option.label} background`}
           title={`${option.label} background`}
           onclick={() => selectBackground(option)}
@@ -217,7 +218,7 @@
         <span aria-hidden="true">{copiedFlash ? '✓' : '⎘'}</span>
       </button>
     </div>
-  </nav>
+  </div>
   <span class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
 </header>
 
@@ -233,7 +234,7 @@
     flex-shrink: 0;
   }
 
-  nav {
+  .controls {
     display: flex;
     align-items: center;
     gap: 12px;

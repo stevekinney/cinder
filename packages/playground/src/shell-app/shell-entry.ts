@@ -26,16 +26,18 @@ type InitialData = { component: string; components: string[] };
 function isInitialData(value: unknown): value is InitialData {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as Record<string, unknown>;
-  if (typeof record.component !== 'string') return false;
-  if (!Array.isArray(record.components)) return false;
+  const component = record['component'];
+  const components = record['components'];
+  if (typeof component !== 'string') return false;
+  if (!Array.isArray(components)) return false;
   const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
-  for (const item of record.components) {
+  for (const item of components) {
     if (typeof item !== 'string' || !componentNamePattern.test(item)) return false;
   }
   // The initial component must either be empty (no-component placeholder) or
   // present in the validated components list — otherwise the sidebar's
   // current-selection state would point at an unknown entry.
-  if (record.component !== '' && !record.components.includes(record.component)) return false;
+  if (component !== '' && !components.includes(component)) return false;
   return true;
 }
 
