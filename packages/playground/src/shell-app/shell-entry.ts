@@ -31,13 +31,16 @@ function isInitialData(value: unknown): value is InitialData {
   if (typeof component !== 'string') return false;
   if (!Array.isArray(components)) return false;
   const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
+  // The active component can legitimately be absent from `components`: the
+  // server lists only sidebar-eligible components there (those with at least
+  // one .example.svelte), but `/c/<name>` accepts any discovered component.
+  // So we validate the component name's shape but NOT membership in the
+  // sidebar list — that would wipe the sidebar for a perfectly valid URL
+  // like /c/radio.
+  if (component !== '' && !componentNamePattern.test(component)) return false;
   for (const item of components) {
     if (typeof item !== 'string' || !componentNamePattern.test(item)) return false;
   }
-  // The initial component must either be empty (no-component placeholder) or
-  // present in the validated components list — otherwise the sidebar's
-  // current-selection state would point at an unknown entry.
-  if (component !== '' && !components.includes(component)) return false;
   return true;
 }
 
