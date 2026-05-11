@@ -109,6 +109,17 @@ describe('CodeBlock', () => {
     });
   });
 
+  test('header is structurally present on the code-block when copyable', () => {
+    // Padding parity (Issue 6): with a header, the __pre still renders inside the
+    // same .cinder-code-block container as the headerless variant, so they share
+    // the same padding rules from code-block.css. Assert the relationship rather
+    // than computed styles since happy-dom doesn't apply external stylesheets.
+    const { container } = render(CodeBlock, { code: 'x', copyable: true, language: 'sql' });
+    const block = container.querySelector('.cinder-code-block');
+    expect(block?.querySelector('.cinder-code-block__header')).not.toBeNull();
+    expect(block?.querySelector('.cinder-code-block__pre')).not.toBeNull();
+  });
+
   test('empty highlighter output falls back to plain code', async () => {
     let resolveHighlightedCode: ((html: string) => void) | undefined;
     const { container } = render(CodeBlock, {

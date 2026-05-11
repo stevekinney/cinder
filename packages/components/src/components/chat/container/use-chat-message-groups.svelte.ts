@@ -92,13 +92,24 @@ export function useChatMessageGroups(
     return map;
   });
 
-  // Group messages by date for date separators
+  // Group messages by date for date separators.
+  // Paired tool-result messages are filtered out: when a tool-use renders, ToolCallGroup
+  // already shows the result inline. Rendering the tool-result as its own bubble produces
+  // a duplicate "TOOL RESULT" card next to the unified ToolCallGroup card.
   const messagesWithDates = $derived.by(() => {
     const messages = getMessages();
     const result: MessageWithDateItem[] = [];
     let lastDate: string | null = null;
 
     for (const message of messages) {
+      if (message.role === 'tool-result' && message.toolResult?.callId) {
+        const pairs = toolCallPairsByCallId.get(message.toolResult.callId);
+        const isPaired = pairs?.some((pair) => pair.call && pair.result);
+        if (isPaired) {
+          continue;
+        }
+      }
+
       const timestamp = message.createdAt ?? message.metadata?.['timestamp'];
       if (timestamp != null) {
         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Date is created fresh each derivation, not mutated

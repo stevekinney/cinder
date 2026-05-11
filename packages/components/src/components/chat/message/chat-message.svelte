@@ -196,10 +196,17 @@
   data-hidden={message.hidden || undefined}
   data-failed={isFailed || undefined}
   data-search-match={searchMatch || undefined}
+  data-tool-pair={isToolUse && toolPair ? '' : undefined}
   {...rest}
 >
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <article id={messageId} class="chat-message" aria-labelledby={roleId} {tabindex}>
+  <article
+    id={messageId}
+    class="chat-message"
+    aria-labelledby={isToolUse && toolPair ? undefined : roleId}
+    aria-label={isToolUse && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
+    {tabindex}
+  >
     <header class="chat-message-header">
       <span id={roleId} class="chat-message-role">{roleLabel}</span>
       {#if status}
@@ -277,47 +284,47 @@
 
   {#if actions || (showDefaultActions && textContent) || canEdit}
     <footer class="chat-message-footer" role="none">
-      <div class="chat-message-actions-clip">
-        <div class="chat-message-actions" role="group" aria-label="Message actions">
-          {#if actions}
-            {@render actions()}
-          {/if}
-          {#if showDefaultActions && textContent}
-            <button
-              type="button"
-              class="chat-message-copy"
-              class:chat-message-copy-success={copyState === 'copied'}
-              onclick={handleCopy}
-              aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
-            >
-              {#if copyState === 'copied'}
-                <Check class="icon-xs" />
-              {:else}
-                <Copy class="icon-xs" />
-              {/if}
-            </button>
-          {/if}
-          {#if canEdit}
-            <button
-              type="button"
-              class="chat-message-edit-button"
-              onclick={startEditing}
-              aria-label="Edit message"
-            >
-              <Pencil class="icon-xs" />
-            </button>
-          {/if}
-        </div>
+      <div class="chat-message-actions" role="group" aria-label="Message actions">
+        {#if actions}
+          {@render actions()}
+        {/if}
+        {#if showDefaultActions && textContent}
+          <button
+            type="button"
+            class="chat-message-copy"
+            class:chat-message-copy-success={copyState === 'copied'}
+            onclick={handleCopy}
+            aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
+          >
+            {#if copyState === 'copied'}
+              <Check class="icon-xs" />
+            {:else}
+              <Copy class="icon-xs" />
+            {/if}
+          </button>
+        {/if}
+        {#if canEdit}
+          <button
+            type="button"
+            class="chat-message-edit-button"
+            onclick={startEditing}
+            aria-label="Edit message"
+          >
+            <Pencil class="icon-xs" />
+          </button>
+        {/if}
       </div>
     </footer>
   {/if}
 </div>
 
 <style>
-  /* Wrapper — handles layout positioning, width constraints, and hover delegation */
+  /* Wrapper — handles layout positioning, width constraints, and hover delegation.
+   * position: relative anchors the absolutely-positioned action footer below. */
   .chat-message-wrapper {
     display: flex;
     flex-direction: column;
+    position: relative;
     width: fit-content;
     /* Cap at 80% of container OR 48rem (768px) for readability on wide screens */
     max-width: min(80%, 48rem);
@@ -385,6 +392,7 @@
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-lg) var(--cinder-radius-lg) var(--cinder-radius-lg)
       var(--cinder-radius-sm);
+    box-shadow: var(--cinder-shadow-sm);
   }
 
   .chat-message-wrapper[data-role='system'] {
@@ -415,6 +423,34 @@
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
+  }
+
+  /* When a tool-use has a paired result, ToolCallGroup is the canonical card.
+   * Strip the outer bubble shell (background, border, padding, role label, footer)
+   * so the unified card is the only visible boundary. The wrapper expands
+   * within the same readability cap as regular bubbles — chat bubbles hug
+   * their content, but a tool-call card is structural data that benefits
+   * from horizontal room without stretching across the entire timeline. */
+  .chat-message-wrapper[data-tool-pair] {
+    width: min(80%, 48rem);
+  }
+
+  .chat-message-wrapper[data-tool-pair] .chat-message {
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    gap: 0;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .chat-message-wrapper[data-tool-pair] .chat-message-header {
+    display: none;
+  }
+
+  .chat-message-wrapper[data-tool-pair] .chat-message-footer {
+    display: none;
   }
 
   .chat-message-wrapper[data-role='snapshot'] {
@@ -574,62 +610,96 @@
     outline-offset: 2px;
   }
 
-  /* Footer — lives outside the bubble to avoid inflating its height.
-   * width:0 + min-width:100% prevents the footer from contributing to
-   * the wrapper's fit-content width (short message bubbles stay compact).
-   * Uses grid-template-rows for smooth height collapse/expand. */
+  /* Footer — absolutely positioned outside the bubble's flow so revealing it on
+   * hover/focus does not change the bubble's height. Default geometry: below the
+   * bubble at the leading edge, which works for any role. The user/assistant
+   * rules below override this to put the icon beside the bubble on the
+   * center-facing edge. Roles like developer / system / unpaired tool-result
+   * inherit this default and place the footer below the bubble.
+   * LTR-only: the left/right physical properties below assume left-to-right layout.
+   * RTL support is a follow-up that swaps to inset-inline-start/end. */
   .chat-message-footer {
-    display: grid;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: max-content;
     margin-top: var(--cinder-space-1);
-    width: 0;
-    min-width: 100%;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--cinder-duration-fast) var(--cinder-ease-standard);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* User bubbles are right-aligned; copy icon sits to their LEFT (toward chat center).
+   * padding (not margin) creates a hover bridge so the pointer never leaves a
+   * hovered surface while crossing from bubble to icon. */
+  .chat-message-wrapper[data-role='user'] .chat-message-footer {
+    top: 50%;
+    left: auto;
+    right: 100%;
+    margin-top: 0;
+    padding-right: var(--cinder-space-1);
+    transform: translateY(-50%);
+  }
+
+  /* Assistant bubbles are left-aligned; copy icon sits to their RIGHT. */
+  .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
+    top: 50%;
+    left: 100%;
+    right: auto;
+    margin-top: 0;
+    padding-left: var(--cinder-space-1);
+    transform: translateY(-50%);
   }
 
   .chat-message-wrapper:hover .chat-message-footer,
   .chat-message-wrapper:focus-within .chat-message-footer {
-    grid-template-rows: 1fr;
-  }
-
-  /* Clip container for grid animation — keeps overflow: hidden away from
-   * focusable buttons so focus rings are not cut off by keyboard users. */
-  .chat-message-actions-clip {
-    overflow: hidden;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .chat-message-actions {
     display: flex;
     gap: var(--cinder-space-1);
-    /* Small padding ensures focus-ring outlines on buttons are not clipped
-     * by the parent overflow: hidden on .chat-message-actions-clip. */
-    padding: var(--cinder-space-0-5);
-    opacity: 0;
-    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-wrapper:hover .chat-message-actions,
-  .chat-message-wrapper:focus-within .chat-message-actions {
-    opacity: 1;
+  /* Narrow viewports: every role falls back to below-bubble where horizontal
+   * space is tight. Each selector explicitly matches the same specificity as
+   * the role-specific desktop rules above ([data-role='…'] = 0-1-1), so the
+   * media query actually wins inside its breakpoint. */
+  @media (max-width: 480px) {
+    .chat-message-wrapper[data-role='user'] .chat-message-footer,
+    .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
+    .chat-message-wrapper[data-role='system'] .chat-message-footer,
+    .chat-message-wrapper[data-role='developer'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-use'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
+    .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
+      top: 100%;
+      left: 0;
+      right: auto;
+      transform: none;
+      padding-left: 0;
+      padding-right: 0;
+      margin-top: var(--cinder-space-1);
+    }
   }
 
   /* Touch devices: always show actions */
   @media (hover: none) or (pointer: coarse) {
     .chat-message-footer {
-      grid-template-rows: 1fr;
-    }
-
-    .chat-message-actions {
       opacity: 1;
+      pointer-events: auto;
     }
   }
 
-  /* Copy button */
+  /* Copy button — small icon-only affordance. The icon size comes from the
+   * `icon-xs` class on the SVG (defined in styles/utilities.css). */
   .chat-message-copy {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--cinder-space-1);
+    display: grid;
+    place-items: center;
+    min-width: var(--cinder-touch-target-min);
+    min-height: var(--cinder-touch-target-min);
+    padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--cinder-radius-sm);
@@ -661,10 +731,11 @@
 
   /* Edit button (icon action button, visually identical to copy button) */
   .chat-message-edit-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--cinder-space-1);
+    display: grid;
+    place-items: center;
+    min-width: var(--cinder-touch-target-min);
+    min-height: var(--cinder-touch-target-min);
+    padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--cinder-radius-sm);
