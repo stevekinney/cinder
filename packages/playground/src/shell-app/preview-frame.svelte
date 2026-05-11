@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-
   import { getPreviewStore } from './preview-store.svelte.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';
 
@@ -55,10 +53,16 @@
     syncBackground();
   }
 
-  onMount(() => {
-    if (iframeEl) iframeEl.addEventListener('load', handleLoad);
+  // The iframe lives inside {#if componentName}, so its DOM element is
+  // destroyed and recreated when the user selects their first component (or
+  // any subsequent transition between placeholder and iframe). Use $effect
+  // tracking iframeEl so the load listener re-attaches on every remount.
+  $effect(() => {
+    const element = iframeEl;
+    if (element === null) return;
+    element.addEventListener('load', handleLoad);
     return () => {
-      iframeEl?.removeEventListener('load', handleLoad);
+      element.removeEventListener('load', handleLoad);
     };
   });
 
