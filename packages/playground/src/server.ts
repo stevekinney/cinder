@@ -263,9 +263,15 @@ async function repopulateBundleCaches(
       console.error('[playground] shell rebuild failed:', error);
     }
 
-    // Page bundles with per-component failure isolation.
+    // Page bundles with per-component failure isolation. Sidebar components
+    // are a subset of all components, so we can pass the same set as the
+    // validation list — saves N redundant filesystem scans from
+    // compilePageBundleArtifacts re-discovering on each call.
     const components = await discoverSidebarComponents();
-    const results = await Promise.allSettled(components.map(compilePageBundleArtifacts));
+    const knownComponents = new Set(components);
+    const results = await Promise.allSettled(
+      components.map((name) => compilePageBundleArtifacts(name, knownComponents)),
+    );
     for (let i = 0; i < results.length; i++) {
       const result = results[i]!;
       const name = components[i]!;
@@ -657,12 +663,21 @@ function unescapeStringLiteral(raw: string): string {
  */
 async function compilePageBundleArtifacts(
   componentName: string,
+  knownComponents?: ReadonlySet<string>,
 ): Promise<{ entryPath: string; entryCode: string; artifacts: Map<string, string> } | null> {
   // Validate that this is an actual component before building. A bundle for a
   // bogus name still compiles (empty scenario list + the no-examples fallback)
   // and would 200, hiding typos behind a "No examples found" UI.
-  const components = await discoverComponents();
-  if (!components.includes(componentName)) return null;
+  //
+  // The watcher rebuild already knows the component list (it discovered them
+  // a moment ago), so it passes `knownComponents` to skip the redundant glob
+  // scan. The lazy-build path falls through to discoverComponents().
+  if (knownComponents !== undefined) {
+    if (!knownComponents.has(componentName)) return null;
+  } else {
+    const components = await discoverComponents();
+    if (!components.includes(componentName)) return null;
+  }
 
   const scenarios = await discoverExamples(componentName);
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
@@ -738,7 +753,10 @@ mount(ComponentPage, { target });
  * that triggered the lazy build is served correctly; only the shared cache
  * is left alone in the race-loss case.
  */
-async function buildPageBundle(componentName: string): Promise<string | null> {
+async function buildPageBundle(
+  componentName: string,
+  knownComponents?: ReadonlySet<string>,
+): Promise<string | null> {
   const cachedEntryPath = pageEntryByName.get(componentName);
   if (cachedEntryPath) {
     const cached = pageArtifactByPath.get(cachedEntryPath);
@@ -746,7 +764,7 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
   }
 
   const generationAtStart = rebuildGeneration;
-  const entry = await compilePageBundleArtifacts(componentName);
+  const entry = await compilePageBundleArtifacts(componentName, knownComponents);
   if (entry === null) return null;
 
   // We always publish the artifacts: the entry code we're about to return
@@ -1218,7 +1236,13 @@ async function eagerPrebuildAll(): Promise<{
     return null;
   });
   const components = await discoverSidebarComponents();
-  const pagePromise = Promise.allSettled(components.map(buildPageBundle));
+  // Sidebar components are a subset of all components, so each is a valid
+  // bundle target. Passing the set avoids N redundant glob scans during the
+  // eager pre-build.
+  const knownComponents = new Set(components);
+  const pagePromise = Promise.allSettled(
+    components.map((name) => buildPageBundle(name, knownComponents)),
+  );
 
   const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
 
