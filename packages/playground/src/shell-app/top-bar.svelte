@@ -229,8 +229,8 @@
     box-sizing: border-box;
     height: 48px;
     padding: 0 12px;
-    background: #fff;
-    border-bottom: 1px solid #e5e5e5;
+    background: var(--cinder-surface);
+    border-bottom: 1px solid var(--cinder-border);
     display: flex;
     align-items: center;
     flex-shrink: 0;
@@ -247,21 +247,21 @@
   .breadcrumb {
     font-size: 13px;
     font-weight: 600;
-    color: #333;
+    color: var(--cinder-text);
     flex: 0 1 240px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     padding-right: 12px;
-    border-right: 1px solid #e5e5e5;
+    border-right: 1px solid var(--cinder-border);
   }
 
   .cluster {
     display: flex;
     align-items: center;
     gap: 2px;
-    border-right: 1px solid #e5e5e5;
+    border-right: 1px solid var(--cinder-border);
     padding-right: 12px;
   }
 
@@ -274,7 +274,7 @@
     appearance: none;
     background: transparent;
     border: 1px solid transparent;
-    color: #444;
+    color: var(--cinder-text-muted);
     padding: 4px 10px;
     font: inherit;
     font-size: 12px;
@@ -291,13 +291,13 @@
   }
 
   .segment:hover {
-    background: #f0f0f0;
+    background: var(--cinder-surface-hover);
   }
 
   .segment.active {
-    background: #e8f0fe;
-    color: #1a56db;
-    border-color: rgba(26, 86, 219, 0.2);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
+    color: var(--cinder-accent);
+    border-color: color-mix(in oklch, var(--cinder-accent), transparent 80%);
     font-weight: 600;
   }
 
@@ -308,7 +308,7 @@
   }
 
   .segment:focus-visible {
-    outline: 2px solid #1a56db;
+    outline: 2px solid var(--cinder-accent);
     outline-offset: 1px;
   }
 
@@ -316,25 +316,25 @@
     width: 64px;
     height: 28px;
     margin-left: 6px;
-    border: 1px solid #d4d4d4;
+    border: 1px solid var(--cinder-border-strong);
     border-radius: 4px;
     padding: 0 6px;
     font: inherit;
     font-size: 12px;
     text-align: right;
-    background: #fff;
-    color: #333;
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
   }
 
   .width-input:focus-visible {
-    outline: 2px solid #1a56db;
+    outline: 2px solid var(--cinder-accent);
     outline-offset: 1px;
     border-color: transparent;
   }
 
   .unit {
     font-size: 11px;
-    color: #888;
+    color: var(--cinder-text-subtle);
     padding-left: 4px;
   }
 

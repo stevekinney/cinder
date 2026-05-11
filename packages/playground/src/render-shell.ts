@@ -89,6 +89,7 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
+    <link rel="stylesheet" href="/styles.css" />
     <style>
       *, *::before, *::after {
         box-sizing: border-box;
@@ -110,10 +111,10 @@ export function renderShell(activeComponent: string | null, components: string[]
       }
 
       body {
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-        background: light-dark(#f5f5f5, #1a1a1a);
-        color: light-dark(#111, #eee);
+        font-family: var(--cinder-font-sans);
+        font-size: var(--cinder-text-base);
+        background: var(--cinder-bg);
+        color: var(--cinder-text);
       }
     </style>
   </head>
