@@ -274,9 +274,6 @@ async function repopulateBundleCaches(
         failedPages.push(name);
       }
     }
-    // Manifest cache also needs invalidation since the watcher saw a src change.
-    manifestCache = null;
-    manifestPromise = null;
   } catch (error) {
     console.error('[playground] rebuild fatal error:', error);
     fatalRebuildFailed = true;
@@ -287,6 +284,12 @@ async function repopulateBundleCaches(
   if (generation !== rebuildGeneration) return;
   // Fatal error: do NOT touch caches at all.
   if (fatalRebuildFailed) return;
+
+  // Manifest cache invalidation is part of the publish step — a stale
+  // rebuild that lost the generation race must NOT clear it, since a newer
+  // rebuild may already have populated a fresh manifest.
+  manifestCache = null;
+  manifestPromise = null;
 
   // Atomic per-family swap. We .clear() then re-populate the existing Map
   // instances so any reference captured by a route handler stays valid.
@@ -419,12 +422,18 @@ function startWatcher(): FSWatcher[] {
 }
 
 /**
- * Shared Bun.build options for both bundle families.
+ * Shared Bun.build options used by every family.
  *
- * All artifacts use a flat namespace under `/page-bundle/` so that
- * dynamic-import URLs emitted by either family resolve through one route.
- * Putting chunks in a `chunks/` subdir triggers a Bun publicPath quirk
- * where peer-chunk imports get the subdirectory stripped from their URL.
+ * Each compile site supplies its own `publicPath` so that dynamic-import URLs
+ * emitted by the splitter resolve through the matching route. The shell entry
+ * has no dynamic imports today, but parameterizing `publicPath` keeps the
+ * route boundary honest the moment a shell descendant ever uses `import()`,
+ * rather than relying on `findArtifactForFamily`'s cross-family fallback to
+ * paper over chunks that bake in the wrong URL.
+ *
+ * Putting chunks in a `chunks/` subdir triggers a Bun publicPath quirk where
+ * peer-chunk imports get the subdirectory stripped from their URL, so the
+ * naming template stays flat.
  */
 const SHARED_BUILD_OPTIONS = {
   plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
@@ -432,13 +441,26 @@ const SHARED_BUILD_OPTIONS = {
   format: 'esm',
   conditions: ['bun'],
   splitting: true,
-  publicPath: '/page-bundle/',
   naming: {
     entry: '[name]-[hash].js',
     chunk: '[name]-[hash].js',
     asset: '[name]-[hash][ext]',
   },
-} as const satisfies Omit<Parameters<typeof Bun.build>[0], 'entrypoints'>;
+} as const satisfies Omit<Parameters<typeof Bun.build>[0], 'entrypoints' | 'publicPath'>;
+
+/**
+ * Per-family `publicPath` baked into each emitted chunk's import URL.
+ *
+ * The page and scenario families share `/page-bundle/` because scenario chunks
+ * have always resolved through that route — there is no separate scenario
+ * bundle route. Shell gets its own `/shell-bundle/` so any future dynamic
+ * import in the shell tree resolves through the shell route.
+ */
+const PUBLIC_PATH_BY_FAMILY: Record<ArtifactFamily, string> = {
+  page: '/page-bundle/',
+  shell: '/shell-bundle/',
+  scenario: '/page-bundle/',
+};
 
 /**
  * Walk `result.outputs` and return the entry path/code plus a map of EVERY
@@ -520,7 +542,11 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     // is idempotent for a missing dir).
     await Bun.write(entryTempPath, shim);
 
-    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
+    const result = await Bun.build({
+      entrypoints: [entryTempPath],
+      publicPath: PUBLIC_PATH_BY_FAMILY.scenario,
+      ...SHARED_BUILD_OPTIONS,
+    });
 
     if (!result.success) {
       console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);
@@ -674,7 +700,11 @@ mount(ComponentPage, { target });
   try {
     await Bun.write(entryTempPath, entrySource);
 
-    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
+    const result = await Bun.build({
+      entrypoints: [entryTempPath],
+      publicPath: PUBLIC_PATH_BY_FAMILY.page,
+      ...SHARED_BUILD_OPTIONS,
+    });
 
     if (!result.success) {
       console.error(`[playground] page bundle failed for ${componentName}:`, result.logs);
@@ -752,7 +782,11 @@ async function compileShellBundleArtifacts(): Promise<{
   try {
     await Bun.write(entryTempPath, shim);
 
-    const result = await Bun.build({ entrypoints: [entryTempPath], ...SHARED_BUILD_OPTIONS });
+    const result = await Bun.build({
+      entrypoints: [entryTempPath],
+      publicPath: PUBLIC_PATH_BY_FAMILY.shell,
+      ...SHARED_BUILD_OPTIONS,
+    });
 
     if (!result.success) {
       console.error('[playground] shell bundle failed:', result.logs);
