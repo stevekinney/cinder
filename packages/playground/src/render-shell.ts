@@ -96,6 +96,15 @@ export function renderShell(activeComponent: string | null, components: string[]
         padding: 0;
       }
 
+      /* light-dark() needs an active color-scheme to know which value to
+         return. Without this declaration, light-dark() always returns its
+         first argument, so system-preference dark-mode users see a light
+         flash before the SPA mounts. The pre-paint script overrides this
+         to a concrete light/dark for explicit theme choices. */
+      html {
+        color-scheme: light dark;
+      }
+
       html, body, #shell-root {
         height: 100%;
       }
