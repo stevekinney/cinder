@@ -149,11 +149,13 @@
       <input
         id="viewport-width-input"
         class="width-input"
-        type="number"
-        min="200"
-        max="3840"
-        step="1"
+        type="text"
         inputmode="numeric"
+        pattern="[0-9]*"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="4"
+        aria-label="Custom viewport width in pixels (200 to 3840)"
         placeholder="Full"
         bind:value={customWidthDraft}
         onkeydown={handleCustomKeydown}
@@ -311,7 +313,6 @@
   }
 
   .width-input {
-    appearance: textfield;
     width: 64px;
     height: 28px;
     margin-left: 6px;
@@ -323,12 +324,6 @@
     text-align: right;
     background: #fff;
     color: #333;
-  }
-
-  .width-input::-webkit-outer-spin-button,
-  .width-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
   }
 
   .width-input:focus-visible {
