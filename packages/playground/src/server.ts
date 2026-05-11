@@ -203,21 +203,22 @@ function scheduleRebuild(shellSourceChanged: boolean): void {
  */
 function startRebuild(shellSourceChanged: boolean): void {
   const generation = ++rebuildGeneration;
-  const promise = repopulateBundleCaches(generation, shellSourceChanged);
-  currentRebuild = { generation, promise };
-  // The rebuild promise is held in `currentRebuild` for route handlers to
-  // await; the chain below is just for unhandled-rejection safety and the
-  // finally-clear hook. Explicit `void` discards the resulting promise.
-  void promise
+  // The caught chain — NOT the raw rebuild promise — is what route handlers
+  // await via `awaitWarmCache`. If we stored the raw promise and it rejected,
+  // every blocked route handler would see the rejection re-thrown into its
+  // own `await`. Attaching `.catch()` to a forked branch doesn't prevent
+  // that — only the chain that owns the catch swallows the error. So we
+  // store the chained version where the catch lives.
+  const settled = repopulateBundleCaches(generation, shellSourceChanged)
     .catch((error: unknown) => {
-      // repopulateBundleCaches() already handles its own errors and logs them.
-      // The catch here exists so we don't trigger an unhandled-rejection on
-      // the promise we hand back to route handlers via currentRebuild.
+      // repopulateBundleCaches() already handles its own errors and logs them;
+      // an unexpected throw past those handlers gets logged here.
       console.error('[playground] rebuild promise rejected unexpectedly:', error);
     })
     .finally(() => {
       if (currentRebuild?.generation === generation) currentRebuild = null;
     });
+  currentRebuild = { generation, promise: settled };
 }
 
 /**
