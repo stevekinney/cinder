@@ -189,7 +189,9 @@
   }
 
   .example-source-toggle {
-    display: block;
+    display: flex;
+    align-items: center;
+    min-height: var(--cinder-touch-target-min);
     padding: var(--cinder-space-2) var(--cinder-space-6);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
