@@ -886,11 +886,26 @@ async function renderComponentPage(componentName: string): Promise<string> {
         transition: background 0.1s, color 0.1s;
       }
       #app { display: contents; }
-      body[data-cinder-bg="inverse"] {
+      /* Inverse flips relative to the currently effective scheme. The
+         authoritative signal is html[data-cinder-theme], set by the pre-paint
+         script and the postMessage handler. For "system", the effective
+         scheme depends on the OS preference, so we branch on the media
+         query instead of sniffing inline style. */
+      html[data-cinder-theme="dark"] body[data-cinder-bg="inverse"] {
         color-scheme: light;
       }
-      html[style*="color-scheme: light"] body[data-cinder-bg="inverse"] {
+      html[data-cinder-theme="light"] body[data-cinder-bg="inverse"] {
         color-scheme: dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        html[data-cinder-theme="system"] body[data-cinder-bg="inverse"] {
+          color-scheme: light;
+        }
+      }
+      @media (prefers-color-scheme: light) {
+        html[data-cinder-theme="system"] body[data-cinder-bg="inverse"] {
+          color-scheme: dark;
+        }
       }
       body[data-cinder-bg="checker"] {
         background-image:
@@ -915,8 +930,10 @@ async function renderComponentPage(componentName: string): Promise<string> {
         if (data.type === 'cinder:set-theme') {
           if (data.value === 'light' || data.value === 'dark') {
             document.documentElement.style.colorScheme = data.value;
+            document.documentElement.dataset.cinderTheme = data.value;
           } else if (data.value === 'system') {
             document.documentElement.style.colorScheme = '';
+            document.documentElement.dataset.cinderTheme = 'system';
           }
         } else if (data.type === 'cinder:set-background') {
           if (data.value === 'surface' || data.value === 'inverse' || data.value === 'checker') {

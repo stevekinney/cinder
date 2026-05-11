@@ -47,12 +47,18 @@ export function jsonForScriptTag(value: unknown): string {
  */
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
+        var theme = 'system';
         try {
-          var theme = localStorage.getItem('cinder-playground-theme');
-          if (theme === 'light' || theme === 'dark') {
-            document.documentElement.style.colorScheme = theme;
-          }
+          var stored = localStorage.getItem('cinder-playground-theme');
+          if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
         } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.style.colorScheme = theme;
+        }
+        // data-cinder-theme is the authoritative theme-choice signal — read it
+        // from CSS instead of sniffing the inline color-scheme style. Reflects
+        // 'system' explicitly so CSS can branch on prefers-color-scheme.
+        document.documentElement.dataset.cinderTheme = theme;
       })();
     `;
 

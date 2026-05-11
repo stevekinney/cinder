@@ -122,7 +122,7 @@ describe('writePersistedTheme', () => {
 
 function makeFakeDocument(): Document {
   return {
-    documentElement: { style: { colorScheme: '' } },
+    documentElement: { style: { colorScheme: '' }, dataset: {} as Record<string, string> },
   } as unknown as Document;
 }
 
@@ -146,5 +146,13 @@ describe('applyThemeToDocument', () => {
     doc.documentElement.style.colorScheme = 'dark';
     applyThemeToDocument(doc, 'system');
     expect(doc.documentElement.style.colorScheme).toBe('');
+  });
+
+  it('writes data-cinder-theme for every choice including "system"', () => {
+    for (const choice of ['light', 'dark', 'system'] as const) {
+      const doc = makeFakeDocument();
+      applyThemeToDocument(doc, choice);
+      expect(doc.documentElement.dataset['cinderTheme']).toBe(choice);
+    }
   });
 });

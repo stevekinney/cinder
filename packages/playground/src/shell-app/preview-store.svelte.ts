@@ -47,12 +47,18 @@ export function writePersistedTheme(value: ThemeChoice): void {
 }
 
 /**
- * Apply a theme choice to a document's root element by setting `color-scheme`.
- * 'system' clears the inline value so the base CSS declaration of
- * `color-scheme: light dark` takes effect (the default behavior).
+ * Apply a theme choice to a document's root element.
+ *
+ * - `color-scheme`: 'system' clears the inline value so the base CSS
+ *   declaration of `color-scheme: light dark` takes effect.
+ * - `data-cinder-theme`: always set to the explicit choice, including
+ *   'system'. This is the authoritative signal CSS reads when deciding
+ *   things like the inverse-background flip — sniffing inline style breaks
+ *   the moment a user selects 'system'.
  */
 export function applyThemeToDocument(doc: Document, theme: ThemeChoice): void {
   doc.documentElement.style.colorScheme = theme === 'system' ? '' : theme;
+  doc.documentElement.dataset['cinderTheme'] = theme;
 }
 
 export class PreviewStore {
