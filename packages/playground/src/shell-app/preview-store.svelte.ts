@@ -11,13 +11,14 @@
 
 import { getContext, setContext } from 'svelte';
 
+import type { BackgroundChoice, ThemeChoice } from './routing.ts';
+
+export type { BackgroundChoice, ThemeChoice };
+
 const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
-/** Persisted theme key — must match the inline pre-paint scripts in render-shell.ts and server.ts. */
+/** Persisted theme key — must match `PRE_PAINT_THEME_SCRIPT` in render-shell.ts. */
 export const THEME_STORAGE_KEY = 'cinder-playground-theme';
-
-export type ThemeChoice = 'light' | 'dark' | 'system';
-export type BackgroundChoice = 'surface' | 'inverse' | 'checker';
 
 const THEME_VALUES: ReadonlySet<ThemeChoice> = new Set(['light', 'dark', 'system']);
 

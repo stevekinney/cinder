@@ -25,8 +25,10 @@ const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
  * have terminated script bodies in some historical parsers). Replacing these
  * with `\uXXXX` escapes keeps the payload valid JSON AND safe inside a script
  * tag.
+ *
+ * Exported so the same escaping policy can be verified by unit tests.
  */
-function jsonForScriptTag(value: unknown): string {
+export function jsonForScriptTag(value: unknown): string {
   return JSON.stringify(value)
     .replaceAll('<', '\\u003c')
     .replaceAll('>', '\\u003e')
@@ -34,6 +36,25 @@ function jsonForScriptTag(value: unknown): string {
     .replaceAll(LINE_SEPARATOR, '\\u2028')
     .replaceAll(PARAGRAPH_SEPARATOR, '\\u2029');
 }
+
+/**
+ * Inline script body that applies a persisted theme to `:root` before any
+ * stylesheet or bundle runs. Same source of truth for both the shell scaffold
+ * and the iframe page (`renderComponentPage`) so the localStorage key, the
+ * try/catch policy, and the validation rules stay in sync. If you change the
+ * theme storage key, change `THEME_STORAGE_KEY` in `preview-store.svelte.ts`
+ * to match.
+ */
+export const PRE_PAINT_THEME_SCRIPT = `
+      (function () {
+        try {
+          var theme = localStorage.getItem('cinder-playground-theme');
+          if (theme === 'light' || theme === 'dark') {
+            document.documentElement.style.colorScheme = theme;
+          }
+        } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
+      })();
+    `;
 
 /** Escape a string for safe use in HTML text content and attribute values. */
 function escapeHtml(text: string): string {
@@ -61,20 +82,7 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-    <script>
-      // Pre-paint theme application. Runs synchronously before the shell
-      // bundle loads so the user never sees a flash of system-default theme
-      // when they have a persisted preference. Falls back silently to
-      // "system" if localStorage is unavailable (private browsing, etc.).
-      (function () {
-        try {
-          var theme = localStorage.getItem('cinder-playground-theme');
-          if (theme === 'light' || theme === 'dark') {
-            document.documentElement.style.colorScheme = theme;
-          }
-        } catch (e) { /* ignore */ }
-      })();
-    </script>
+    <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       *, *::before, *::after {
         box-sizing: border-box;

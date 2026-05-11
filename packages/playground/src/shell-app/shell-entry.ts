@@ -16,19 +16,35 @@ import Shell from './shell.svelte';
 
 type InitialData = { component: string; components: string[] };
 
+/**
+ * Validate that the parsed JSON payload matches the expected `InitialData`
+ * shape and that every component name in the list satisfies the kebab-case
+ * invariant the server enforces. This is defense-in-depth: render-shell
+ * already validates server-side, but treating the data island as untrusted
+ * input keeps the boundary explicit.
+ */
+function isInitialData(value: unknown): value is InitialData {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  if (typeof record.component !== 'string') return false;
+  if (!Array.isArray(record.components)) return false;
+  const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
+  for (const item of record.components) {
+    if (typeof item !== 'string' || !componentNamePattern.test(item)) return false;
+  }
+  // The initial component must either be empty (no-component placeholder) or
+  // present in the validated components list — otherwise the sidebar's
+  // current-selection state would point at an unknown entry.
+  if (record.component !== '' && !record.components.includes(record.component)) return false;
+  return true;
+}
+
 function readInitialData(): InitialData {
   const node = document.getElementById('cinder-initial');
   if (!node) return { component: '', components: [] };
   try {
-    const parsed = JSON.parse(node.textContent ?? '{}') as unknown;
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      typeof (parsed as InitialData).component === 'string' &&
-      Array.isArray((parsed as InitialData).components)
-    ) {
-      return parsed as InitialData;
-    }
+    const parsed: unknown = JSON.parse(node.textContent ?? '{}');
+    if (isInitialData(parsed)) return parsed;
   } catch (error) {
     console.error('[cinder playground] failed to parse #cinder-initial:', error);
   }

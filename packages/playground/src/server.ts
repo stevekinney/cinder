@@ -29,7 +29,7 @@ import type { BuildArtifact } from 'bun';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
-import { renderShell } from './render-shell.ts';
+import { PRE_PAINT_THEME_SCRIPT, renderShell } from './render-shell.ts';
 
 import type { ComponentManifest } from './types.ts';
 
@@ -78,10 +78,59 @@ const shellArtifactByPath = new Map<string, string>();
 const scenarioArtifactByPath = new Map<string, string>();
 
 /**
- * Look up an artifact across every family. Used by route handlers that need
- * to serve any compiled chunk regardless of which build produced it.
+ * Family identifier used by `findArtifactForFamily` to constrain which
+ * artifacts a given route may serve. Each family corresponds to one of the
+ * three artifact maps.
  */
-function findArtifact(path: string): string | undefined {
+type ArtifactFamily = 'page' | 'shell' | 'scenario';
+
+/**
+ * Prefixes that identify a hashed entry artifact for each bundle family.
+ * Bun's `naming` template uses the entrypoint basename for `[name]`, and
+ * each family's compile step writes its entry basename with one of these
+ * prefixes (see `compilePageBundleArtifacts`, `compileShellBundleArtifacts`,
+ * and `buildBundle`). Content-hashed peer chunks (e.g. `core-abc123.js`,
+ * `commonmark-def456.js`) do NOT have any of these prefixes — they're
+ * emitted by Bun's code-splitter without a family label.
+ */
+const ENTRY_PREFIXES: Record<ArtifactFamily, string> = {
+  page: 'page-',
+  shell: 'shell-',
+  scenario: 'bundle-',
+};
+
+/**
+ * Look up an artifact for a specific bundle family route.
+ *
+ * Rules:
+ * - The requesting family's own map is searched first.
+ * - On miss, other family maps are searched ONLY for chunk-style artifacts
+ *   (names that don't begin with any family's entry prefix). This allows
+ *   shared content-hashed chunks to be served regardless of which build
+ *   produced them, while preventing `/shell-bundle/page-button-abc.js`
+ *   from being satisfied by a page-bundle entry artifact in the page map.
+ *
+ * Returns the artifact source, or `undefined` if no family has a permitted
+ * match.
+ */
+function findArtifactForFamily(family: ArtifactFamily, path: string): string | undefined {
+  const ownMap =
+    family === 'page'
+      ? pageArtifactByPath
+      : family === 'shell'
+        ? shellArtifactByPath
+        : scenarioArtifactByPath;
+  const ownHit = ownMap.get(path);
+  if (ownHit !== undefined) return ownHit;
+
+  // Cross-family fallback is restricted to chunk-style artifacts (no entry
+  // prefix). Entries belong to their family and must not be served under
+  // another family's route.
+  const isEntryName = (Object.values(ENTRY_PREFIXES) as readonly string[]).some((prefix) =>
+    path.startsWith(prefix),
+  );
+  if (isEntryName) return undefined;
+
   return (
     pageArtifactByPath.get(path) ??
     shellArtifactByPath.get(path) ??
@@ -263,8 +312,17 @@ async function repopulateBundleCaches(
   if (failedPages.length > 0) {
     console.error(`[playground] rebuild: failed components: ${failedPages.join(', ')}`);
   }
+  if (shellSourceChanged && !shellBuildSucceeded) {
+    // The user edited a shell-app source but the rebuild produced no new
+    // shell bundle. Surface a prominent warning so it's clear from the
+    // terminal why the browser didn't pick up their change.
+    console.error(
+      '[playground] shell source changed but shell rebuild failed — running shell preserved; no shell-reload emitted',
+    );
+  }
 
-  // Emit exactly one event per successful publish.
+  // Emit exactly one event per publish. `shell-reload` only fires when shell
+  // sources actually changed AND the new shell bundle is in the cache.
   if (shellSourceChanged && shellBuildSucceeded) triggerReload('shell-reload');
   else triggerReload('reload');
 }
@@ -640,6 +698,13 @@ mount(ComponentPage, { target });
  * Used by the `/page-bundle/:filename.js` route as a fallback when an
  * eagerly-pre-built bundle isn't already in the cache (e.g. a component
  * whose pre-build failed, or a brand-new component added after server start).
+ *
+ * Concurrency: captures `rebuildGeneration` before the build starts and
+ * skips publishing if the watcher rebuilt during the compile (the watcher's
+ * atomic publish is newer and shouldn't be overwritten by our older result).
+ * The compiled artifacts are still returned to the caller, so the request
+ * that triggered the lazy build is served correctly; only the shared cache
+ * is left alone in the race-loss case.
  */
 async function buildPageBundle(componentName: string): Promise<string | null> {
   const cachedEntryPath = pageEntryByName.get(componentName);
@@ -648,11 +713,14 @@ async function buildPageBundle(componentName: string): Promise<string | null> {
     if (cached !== undefined) return cached;
   }
 
+  const generationAtStart = rebuildGeneration;
   const entry = await compilePageBundleArtifacts(componentName);
   if (entry === null) return null;
 
-  for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
-  pageEntryByName.set(componentName, entry.entryPath);
+  if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+    for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
+    pageEntryByName.set(componentName, entry.entryPath);
+  }
   return entry.entryCode;
 }
 
@@ -675,7 +743,11 @@ async function compileShellBundleArtifacts(): Promise<{
   const entryBasename = 'shell-shell';
   const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
-  const shim = `export {} from '../shell-app/shell-entry.ts';\n`;
+  // Side-effect import: `shell-entry.ts` calls `mount(Shell, ...)` at module
+  // top level and exports nothing. `export {} from` is a re-export of named
+  // bindings and is eligible for tree-shaking when the source exports no
+  // names; a bare side-effect import preserves the module's evaluation.
+  const shim = `import '../shell-app/shell-entry.ts';\n`;
 
   try {
     await Bun.write(entryTempPath, shim);
@@ -702,7 +774,9 @@ async function compileShellBundleArtifacts(): Promise<{
 /**
  * Lazy-build wrapper: compile the shell bundle and publish into shared
  * caches. Used by `/shell-bundle/shell.js` as a fallback when the shell
- * bundle isn't already cached.
+ * bundle isn't already cached. Same race-discipline as `buildPageBundle`
+ * (see the doc-comment there): skip the shared-cache publish if the
+ * watcher rebuilt during the compile.
  */
 async function buildShellBundle(): Promise<string | null> {
   const cachedEntryPath = shellEntryByName.get('shell');
@@ -711,11 +785,14 @@ async function buildShellBundle(): Promise<string | null> {
     if (cached !== undefined) return cached;
   }
 
+  const generationAtStart = rebuildGeneration;
   const entry = await compileShellBundleArtifacts();
   if (entry === null) return null;
 
-  for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
-  shellEntryByName.set('shell', entry.entryPath);
+  if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+    for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
+    shellEntryByName.set('shell', entry.entryPath);
+  }
   return entry.entryCode;
 }
 
@@ -761,18 +838,7 @@ async function renderComponentPage(componentName: string): Promise<string> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${componentName} — cinder playground</title>
     <link rel="stylesheet" href="/styles/index.css" />
-    <script>
-      // Pre-paint theme. Same origin as the shell, so we read the same key.
-      // Same-origin postMessage replays via the shell after the iframe loads.
-      (function () {
-        try {
-          var theme = localStorage.getItem('cinder-playground-theme');
-          if (theme === 'light' || theme === 'dark') {
-            document.documentElement.style.colorScheme = theme;
-          }
-        } catch (e) { /* ignore */ }
-      })();
-    </script>
+    <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
@@ -937,7 +1003,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     // half-cleared cache. Cheap (sync null check) when warm.
     await awaitWarmCache();
     const filename = pageBundleMatch[1]!;
-    const directHit = findArtifact(`${filename}.js`);
+    const directHit = findArtifactForFamily('page', `${filename}.js`);
     if (directHit !== undefined) {
       return new Response(directHit, {
         headers: { 'Content-Type': 'application/javascript' },
@@ -960,12 +1026,15 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (shellBundleMatch) {
     await awaitWarmCache();
     const filename = shellBundleMatch[1]!;
-    const directHit = findArtifact(`${filename}.js`);
+    const directHit = findArtifactForFamily('shell', `${filename}.js`);
     if (directHit !== undefined) {
       return new Response(directHit, {
         headers: { 'Content-Type': 'application/javascript' },
       });
     }
+    // Canonical entry URL is `/shell-bundle/shell.js`. Other filenames must
+    // be hashed chunks served from the cache above; we never lazily build
+    // anything other than the entry on this route.
     if (filename !== 'shell') return notFound();
     const code = await buildShellBundle();
     if (code === null) return notFound('Shell bundle failed to build');

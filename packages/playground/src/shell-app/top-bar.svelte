@@ -58,13 +58,14 @@
   }
 
   function handleCustomKeydown(event: KeyboardEvent): void {
+    const input = event.currentTarget;
     if (event.key === 'Enter') {
       event.preventDefault();
       commitCustomWidth();
-      (event.currentTarget as HTMLInputElement).blur();
+      if (input instanceof HTMLInputElement) input.blur();
     } else if (event.key === 'Escape') {
       customWidthDraft = store.previewWidth === null ? '' : String(store.previewWidth);
-      (event.currentTarget as HTMLInputElement).blur();
+      if (input instanceof HTMLInputElement) input.blur();
     }
   }
 
@@ -77,11 +78,14 @@
   let announcement = $state<string>('');
 
   function announce(text: string): void {
-    announcement = text;
-    // Force a refresh of the live region for AT — same text in a row won't
-    // re-announce, so we briefly clear then set.
+    // Clear first, then set on the next tick. Assigning the same string twice
+    // in a row to a Svelte reactive value is a no-op and the aria-live region
+    // never updates the DOM, so an AT user clicking the same control twice
+    // would not hear the second announcement. Empty-then-set forces a DOM
+    // change every time.
+    announcement = '';
     setTimeout(() => {
-      if (announcement === text) announcement = text;
+      announcement = text;
     }, 50);
   }
 
@@ -102,8 +106,14 @@
 
   function toggleFocusMode(): void {
     store.isFocusMode = !store.isFocusMode;
-    announce(store.isFocusMode ? 'Focus mode on' : 'Focus mode off');
+    announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
+
+  // When the copy-link parent flips copiedFlash to true, announce success
+  // for AT users — the visual glyph swap alone is not perceivable.
+  $effect(() => {
+    if (copiedFlash) announce('Link copied to clipboard');
+  });
 </script>
 
 <header class="top-bar">
@@ -112,17 +122,23 @@
       {store.currentComponent || ' '}
     </div>
 
-    <div role="group" aria-label="Viewport width" class="cluster">
+    <div role="radiogroup" aria-label="Viewport width" class="cluster">
       {#each VIEWPORT_PRESETS as preset (preset.abbrev)}
         {@const active = presetIsActive(preset.value)}
         <button
           type="button"
           class="segment"
           class:active
-          aria-pressed={active}
+          role="radio"
+          aria-checked={active}
           aria-label={`${preset.label}${preset.value ? ` (${preset.value} pixels)` : ''}`}
+          title={preset.label}
           onclick={() => selectViewport(preset)}
         >
+          <!-- Always-visible abbrev so the button has content at every
+               width. The friendly label shows in addition when the bar
+               has room (see the .segment-label media query). -->
+          <span class="segment-abbrev" aria-hidden="true">{preset.abbrev}</span>
           <span class="segment-label">{preset.label}</span>
         </button>
       {/each}
@@ -136,22 +152,22 @@
         step="1"
         inputmode="numeric"
         placeholder="Full"
-        aria-describedby="viewport-width-unit"
         bind:value={customWidthDraft}
         onkeydown={handleCustomKeydown}
         onblur={commitCustomWidth}
       />
-      <span id="viewport-width-unit" class="unit" aria-hidden="true">px</span>
+      <span class="unit" aria-hidden="true">px</span>
     </div>
 
-    <div role="group" aria-label="Color scheme" class="cluster">
+    <div role="radiogroup" aria-label="Color scheme" class="cluster">
       {#each THEME_OPTIONS as option (option.value)}
         {@const active = store.theme === option.value}
         <button
           type="button"
           class="segment icon-segment"
           class:active
-          aria-pressed={active}
+          role="radio"
+          aria-checked={active}
           aria-label={`${option.label} theme`}
           title={`${option.label} theme`}
           onclick={() => selectTheme(option)}
@@ -161,14 +177,15 @@
       {/each}
     </div>
 
-    <div role="group" aria-label="Preview background" class="cluster">
+    <div role="radiogroup" aria-label="Preview background" class="cluster">
       {#each BACKGROUND_OPTIONS as option (option.value)}
         {@const active = store.background === option.value}
         <button
           type="button"
           class="segment icon-segment"
           class:active
-          aria-pressed={active}
+          role="radio"
+          aria-checked={active}
           aria-label={`${option.label} background`}
           title={`${option.label} background`}
           onclick={() => selectBackground(option)}
@@ -184,8 +201,8 @@
         class="segment icon-segment"
         class:active={store.isFocusMode}
         aria-pressed={store.isFocusMode}
-        aria-label="Focus mode"
-        title="Focus mode (hide chrome)"
+        aria-label="Focus mode (press Escape to exit)"
+        title="Focus mode — hide sidebar and top bar"
         onclick={toggleFocusMode}
       >
         <span aria-hidden="true">⛶</span>
@@ -193,8 +210,8 @@
       <button
         type="button"
         class="segment icon-segment"
-        aria-label="Copy component link"
-        title="Copy component link"
+        aria-label={copiedFlash ? 'Link copied to clipboard' : 'Copy component link'}
+        title={copiedFlash ? 'Copied!' : 'Copy component link'}
         onclick={onCopyLink}
       >
         <span aria-hidden="true">{copiedFlash ? '✓' : '⎘'}</span>
@@ -337,9 +354,24 @@
     border: 0;
   }
 
+  /* Viewport preset buttons render an abbrev (numeric width or "Full") that
+     is ALWAYS visible, plus a friendly label that appears only when there's
+     room. The aria-label on the button carries the full accessible name. */
+  .segment-abbrev {
+    display: inline-block;
+  }
+
+  .segment-label {
+    display: inline-block;
+    margin-left: 4px;
+  }
+
   @media (max-width: 1279px) {
     .segment-label {
       display: none;
+    }
+    .segment-abbrev {
+      margin-left: 0;
     }
   }
 </style>

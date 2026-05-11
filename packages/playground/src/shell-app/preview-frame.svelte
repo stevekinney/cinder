@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
 
   import { getPreviewStore } from './preview-store.svelte.ts';
-  import { buildIframeSrc, createPreviewMessage } from './routing.ts';
+  import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';
 
   type Props = {
     componentName: string;
@@ -17,28 +17,33 @@
   let src = $derived(buildIframeSrc(componentName));
 
   /**
-   * Send a validated message to the iframe with an explicit target origin.
-   * Never uses '*' — the message goes only to the page we control.
+   * Send a typed message to the iframe with an explicit target origin.
+   * Never uses '*' — the message goes only to the page we control. The
+   * message must come from `createPreviewMessage` so its shape and value
+   * have already been validated against the protocol allowlist.
    */
-  function postToFrame(type: 'cinder:set-theme' | 'cinder:set-background', value: string): void {
+  function postToFrame(message: PreviewMessage): void {
     const win = iframeEl?.contentWindow;
     if (!win) return;
-    let message;
-    if (type === 'cinder:set-theme') {
-      message = createPreviewMessage(type, value as 'light' | 'dark' | 'system');
-    } else {
-      message = createPreviewMessage(type, value as 'surface' | 'inverse' | 'checker');
-    }
-    if (message === null) return;
     win.postMessage(message, window.location.origin);
+  }
+
+  function syncTheme(): void {
+    const message = createPreviewMessage('cinder:set-theme', store.theme);
+    if (message !== null) postToFrame(message);
+  }
+
+  function syncBackground(): void {
+    const message = createPreviewMessage('cinder:set-background', store.background);
+    if (message !== null) postToFrame(message);
   }
 
   // Reactive: theme/background changes push to the iframe immediately.
   $effect(() => {
-    postToFrame('cinder:set-theme', store.theme);
+    syncTheme();
   });
   $effect(() => {
-    postToFrame('cinder:set-background', store.background);
+    syncBackground();
   });
 
   function handleLoad(): void {
@@ -46,8 +51,8 @@
     // iframe's inline pre-paint script already reads localStorage for theme,
     // but background is session-only and lives in the shell — we need to
     // sync it after each navigation/reload.
-    postToFrame('cinder:set-theme', store.theme);
-    postToFrame('cinder:set-background', store.background);
+    syncTheme();
+    syncBackground();
   }
 
   onMount(() => {
@@ -82,23 +87,34 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    /* Don't let the host scroll itself — the iframe owns its own scrolling.
+       This also keeps the iframe's height stable when previewWidth narrows
+       the wrapper. */
+    overflow: hidden;
     background: #f5f5f5;
+    min-height: 0;
   }
 
   .preview-frame-wrapper {
-    flex: 1;
+    /* Definite height seed for the column-direction parent so the iframe
+       (flex: 1) inside us has a non-zero height to grow into. Without this,
+       constraining width via inline style would let the wrapper collapse
+       vertically in some browsers. */
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    min-height: 0;
   }
 
   iframe {
     flex: 1;
     width: 100%;
+    height: 100%;
     border: none;
     background: #fff;
     display: block;
+    min-height: 0;
   }
 
   .placeholder {

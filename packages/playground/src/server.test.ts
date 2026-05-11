@@ -337,6 +337,41 @@ describe('triggerReload', () => {
     await reader.cancel();
     expect(() => triggerReload()).not.toThrow();
   });
+
+  // The shell SPA's EventSource listener branches on the event-type line of
+  // the SSE record. If the wire format ever drifts (typo, casing, missing
+  // newlines), live-reload silently breaks. These tests pin the format.
+  it("emits the literal 'event: reload' line for the default event type", async () => {
+    const response = await handleRequest(req('/events'));
+    const reader = response.body!.getReader();
+    await reader.read(); // consume handshake comment
+
+    triggerReload();
+
+    const { value } = await reader.read();
+    const text = value instanceof Uint8Array ? new TextDecoder().decode(value) : String(value);
+    expect(text).toContain('event: reload');
+    expect(text).toContain('data: {}');
+    await reader.cancel();
+  });
+
+  it("emits 'event: shell-reload' when called with shell-reload", async () => {
+    const response = await handleRequest(req('/events'));
+    const reader = response.body!.getReader();
+    await reader.read();
+
+    triggerReload('shell-reload');
+
+    const { value } = await reader.read();
+    const text = value instanceof Uint8Array ? new TextDecoder().decode(value) : String(value);
+    expect(text).toContain('event: shell-reload');
+    expect(text).toContain('data: {}');
+    await reader.cancel();
+  });
+
+  it('does not throw when shell-reload is dispatched with no connected clients', () => {
+    expect(() => triggerReload('shell-reload')).not.toThrow();
+  });
 });
 
 describe('unknown routes', () => {

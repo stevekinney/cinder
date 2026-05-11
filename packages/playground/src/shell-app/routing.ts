@@ -54,6 +54,15 @@ export function buildIframeSrc(componentName: string): string {
 }
 
 /**
+ * Theme and background value unions are defined here (and re-exported by
+ * `preview-store.svelte.ts`) so this pure-helper module has no import from
+ * any Svelte file. That keeps it cleanly unit-testable from `bun:test`
+ * without paying the `.svelte.ts` compilation cost in test boot.
+ */
+export type ThemeChoice = 'light' | 'dark' | 'system';
+export type BackgroundChoice = 'surface' | 'inverse' | 'checker';
+
+/**
  * Message types exchanged between the shell SPA and the iframe page. The
  * `cinder:` prefix scopes the protocol so future iframe content can't
  * accidentally collide with unrelated messages on the same channel.
@@ -63,11 +72,23 @@ export function buildIframeSrc(componentName: string): string {
  * allowed set before applying any effect.
  */
 export type PreviewMessage =
-  | { type: 'cinder:set-theme'; value: 'light' | 'dark' | 'system' }
-  | { type: 'cinder:set-background'; value: 'surface' | 'inverse' | 'checker' };
+  | { type: 'cinder:set-theme'; value: ThemeChoice }
+  | { type: 'cinder:set-background'; value: BackgroundChoice };
 
-const PREVIEW_THEMES: ReadonlySet<PreviewMessage['value']> = new Set(['light', 'dark', 'system']);
-const PREVIEW_BACKGROUNDS: ReadonlySet<string> = new Set(['surface', 'inverse', 'checker']);
+const PREVIEW_THEMES: ReadonlySet<ThemeChoice> = new Set<ThemeChoice>(['light', 'dark', 'system']);
+const PREVIEW_BACKGROUNDS: ReadonlySet<BackgroundChoice> = new Set<BackgroundChoice>([
+  'surface',
+  'inverse',
+  'checker',
+]);
+
+function isThemeChoice(value: string): value is ThemeChoice {
+  return PREVIEW_THEMES.has(value as ThemeChoice);
+}
+
+function isBackgroundChoice(value: string): value is BackgroundChoice {
+  return PREVIEW_BACKGROUNDS.has(value as BackgroundChoice);
+}
 
 /**
  * Construct a typed preview message. Returns `null` if the value doesn't
@@ -76,18 +97,18 @@ const PREVIEW_BACKGROUNDS: ReadonlySet<string> = new Set(['surface', 'inverse', 
  */
 export function createPreviewMessage(
   type: 'cinder:set-theme',
-  value: 'light' | 'dark' | 'system',
+  value: ThemeChoice,
 ): PreviewMessage | null;
 export function createPreviewMessage(
   type: 'cinder:set-background',
-  value: 'surface' | 'inverse' | 'checker',
+  value: BackgroundChoice,
 ): PreviewMessage | null;
 export function createPreviewMessage(type: string, value: string): PreviewMessage | null {
-  if (type === 'cinder:set-theme' && PREVIEW_THEMES.has(value as PreviewMessage['value'])) {
-    return { type, value: value as 'light' | 'dark' | 'system' };
+  if (type === 'cinder:set-theme' && isThemeChoice(value)) {
+    return { type, value };
   }
-  if (type === 'cinder:set-background' && PREVIEW_BACKGROUNDS.has(value)) {
-    return { type, value: value as 'surface' | 'inverse' | 'checker' };
+  if (type === 'cinder:set-background' && isBackgroundChoice(value)) {
+    return { type, value };
   }
   return null;
 }
