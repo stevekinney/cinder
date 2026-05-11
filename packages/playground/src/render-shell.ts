@@ -1,3 +1,40 @@
+/**
+ * Renders the minimal HTML scaffold for the cinder playground shell.
+ *
+ * The scaffold is intentionally tiny: it sets up a `#shell-root` mount point,
+ * embeds initial data via a `<script type="application/json">` data island,
+ * and loads the compiled shell-app bundle. Everything else — sidebar, top
+ * control bar, iframe — is rendered by the Svelte 5 SPA that boots from
+ * `shell-app/shell-entry.ts`.
+ *
+ * The data-island pattern (instead of `window.__GLOBAL__ = JSON.stringify(...)`)
+ * eliminates `</script>` injection vectors and is the standard SSR-hydration
+ * shape. The JSON body still gets defensive escaping for `<`, `>`, `&`, and
+ * the Unicode line separators U+2028/U+2029, which are valid in JSON but
+ * terminate a script body in some parsers.
+ */
+
+const LINE_SEPARATOR = String.fromCharCode(0x2028);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
+
+/**
+ * Escape a string value so it's safe to embed inside the body of a
+ * `<script type="application/json">` tag. JSON.stringify alone is not enough
+ * because the resulting string may contain literal `</script>` substrings (if
+ * a value embedded a tag close) or U+2028/U+2029 (which are valid in JSON but
+ * have terminated script bodies in some historical parsers). Replacing these
+ * with `\uXXXX` escapes keeps the payload valid JSON AND safe inside a script
+ * tag.
+ */
+function jsonForScriptTag(value: unknown): string {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')
+    .replaceAll('&', '\\u0026')
+    .replaceAll(LINE_SEPARATOR, '\\u2028')
+    .replaceAll(PARAGRAPH_SEPARATOR, '\\u2029');
+}
+
 /** Escape a string for safe use in HTML text content and attribute values. */
 function escapeHtml(text: string): string {
   return text
@@ -8,35 +45,15 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/**
- * Renders the full HTML shell for the cinder component playground.
- *
- * Returns a plain HTML string — no framework, no bundler dependency.
- * The shell consists of a fixed sidebar nav listing all components
- * alphabetically and a main area containing an iframe for the active component.
- * A small inline script establishes a Server-Sent Events connection to `/events`
- * and reloads the page on a `reload` message.
- */
 export function renderShell(activeComponent: string | null, components: string[]): string {
   const title = activeComponent
     ? `cinder playground — ${escapeHtml(activeComponent)}`
     : 'cinder playground';
 
-  const navItems = components
-    .map((name) => {
-      const isActive = name === activeComponent;
-      const ariaCurrent = isActive ? ' aria-current="page"' : '';
-      // Component names are validated by isSafeSegment (/^[a-z0-9][a-z0-9-]*$/),
-      // so they're safe in URL paths. Escape only the visible text node.
-      return `      <li><a href="/c/${name}"${ariaCurrent}>${escapeHtml(name)}</a></li>`;
-    })
-    .join('\n');
-
-  // The iframe targets /page/:name (the component page content route), not /c/:name
-  // (the shell route). Pointing an iframe at its own shell URL would cause recursive loading.
-  const mainContent = activeComponent
-    ? `<iframe src="/page/${activeComponent}" title="${escapeHtml(activeComponent)} preview"></iframe>`
-    : `<div class="placeholder"><p>Select a component from the sidebar to preview it.</p></div>`;
+  const initialData = {
+    component: activeComponent ?? '',
+    components,
+  };
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -44,6 +61,20 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
+    <script>
+      // Pre-paint theme application. Runs synchronously before the shell
+      // bundle loads so the user never sees a flash of system-default theme
+      // when they have a persisted preference. Falls back silently to
+      // "system" if localStorage is unavailable (private browsing, etc.).
+      (function () {
+        try {
+          var theme = localStorage.getItem('cinder-playground-theme');
+          if (theme === 'light' || theme === 'dark') {
+            document.documentElement.style.colorScheme = theme;
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
     <style>
       *, *::before, *::after {
         box-sizing: border-box;
@@ -51,111 +82,22 @@ export function renderShell(activeComponent: string | null, components: string[]
         padding: 0;
       }
 
-      html, body {
+      html, body, #shell-root {
         height: 100%;
       }
 
       body {
-        display: flex;
         font-family: system-ui, -apple-system, sans-serif;
         font-size: 14px;
-        background: #f5f5f5;
-        color: #111;
-      }
-
-      nav {
-        width: 220px;
-        min-width: 220px;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        background: #fff;
-        border-right: 1px solid #e5e5e5;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-      }
-
-      nav .nav-header {
-        padding: 16px;
-        font-weight: 700;
-        font-size: 13px;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: #666;
-        border-bottom: 1px solid #e5e5e5;
-      }
-
-      nav ul {
-        list-style: none;
-        padding: 8px 0;
-        flex: 1;
-      }
-
-      nav ul li a {
-        display: block;
-        padding: 6px 16px;
-        text-decoration: none;
-        color: #333;
-        border-radius: 4px;
-        margin: 1px 8px;
-        transition: background 0.1s;
-      }
-
-      nav ul li a:hover {
-        background: #f0f0f0;
-      }
-
-      nav ul li a[aria-current="page"] {
-        background: #e8f0fe;
-        color: #1a56db;
-        font-weight: 600;
-      }
-
-      main {
-        margin-left: 220px;
-        flex: 1;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-
-      main iframe {
-        flex: 1;
-        width: 100%;
-        height: 100%;
-        border: none;
-        background: #fff;
-      }
-
-      main .placeholder {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #888;
-      }
-
-      main .placeholder p {
-        font-size: 16px;
+        background: light-dark(#f5f5f5, #1a1a1a);
+        color: light-dark(#111, #eee);
       }
     </style>
   </head>
   <body>
-    <nav>
-      <div class="nav-header">cinder</div>
-      <ul>
-${navItems}
-      </ul>
-    </nav>
-    <main>
-      ${mainContent}
-    </main>
-    <script>
-      const es = new EventSource('/events');
-      es.addEventListener('reload', () => location.reload());
-    </script>
+    <script type="application/json" id="cinder-initial">${jsonForScriptTag(initialData)}</script>
+    <div id="shell-root"></div>
+    <script type="module" src="/shell-bundle/shell.js"></script>
   </body>
 </html>`;
 }

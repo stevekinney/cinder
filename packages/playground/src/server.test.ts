@@ -70,7 +70,23 @@ describe('/c/:name', () => {
     expect(response.headers.get('Content-Type')).toBe('text/html');
     const html = await response.text();
     expect(html).toContain('<!DOCTYPE html>');
-    expect(html).toContain('<nav>');
+    // Shell SPA scaffolding: mount point, data island, and bundle tag.
+    expect(html).toContain('id="shell-root"');
+    expect(html).toContain('id="cinder-initial"');
+    expect(html).toContain('/shell-bundle/shell.js');
+  });
+
+  it('embeds the active component name in the cinder-initial data island', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+    const match = html.match(
+      /<script type="application\/json" id="cinder-initial">([^<]+)<\/script>/,
+    );
+    expect(match).not.toBeNull();
+    const payload = JSON.parse(match![1]!) as { component: string; components: string[] };
+    expect(payload.component).toBe('button');
+    expect(payload.components).toContain('button');
+    expect(payload.components).toContain('avatar');
   });
 
   it('returns 404 for an unknown component', async () => {
@@ -85,6 +101,23 @@ describe('/c/:name', () => {
 
   it('returns 404 for segments starting with a hyphen', async () => {
     const response = await handleRequest(req('/c/-bad'));
+    expect(response.status).toBe(404);
+  });
+});
+
+describe('/shell-bundle/:filename.js', () => {
+  it('returns 200 application/javascript for the canonical /shell.js entry', async () => {
+    const response = await handleRequest(req('/shell-bundle/shell.js'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/javascript');
+    const body = await response.text();
+    // Shell bundle must mount the SPA — the mount target ID is part of the
+    // public contract between the bundle and render-shell.ts.
+    expect(body).toContain('shell-root');
+  }, 30_000);
+
+  it('returns 404 for an unknown shell-bundle filename', async () => {
+    const response = await handleRequest(req('/shell-bundle/does-not-exist.js'));
     expect(response.status).toBe(404);
   });
 });
