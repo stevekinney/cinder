@@ -141,9 +141,11 @@ export class SortableController<Item> {
       return;
     }
 
+    // Always clamp liftedTo — items may have been removed from the end of the list
+    // even when the lifted item's own index hasn't changed.
+    this.liftedTo = Math.max(0, Math.min(items.length - 1, this.liftedTo));
     if (currentIndex !== this.liftedFrom) {
       this.liftedFrom = currentIndex;
-      this.liftedTo = Math.max(0, Math.min(items.length - 1, this.liftedTo));
     }
   }
 

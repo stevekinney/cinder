@@ -183,6 +183,11 @@
         recomputeTarget();
       });
     }
+    // Restart auto-scroll loop if it has stopped (e.g. pointer entered edge zone
+    // after starting from the middle of the page).
+    if (scrollRafHandle === null) {
+      scheduleAutoScroll();
+    }
   }
 
   function handlePointerUp(_event: PointerEvent): void {

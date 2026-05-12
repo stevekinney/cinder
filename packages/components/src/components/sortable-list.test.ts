@@ -204,6 +204,31 @@ describe('SortableController', () => {
     expect(announce).toHaveBeenCalledTimes(0);
   });
 
+  test('reconcileLiftedKey clamps liftedTo when list shrinks from the end (index unchanged)', () => {
+    const announce = mock();
+    const controller = new SortableController<Item>({ announce });
+    const items: Item[] = [
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'Beta' },
+      { id: 'c', label: 'Gamma' },
+    ];
+    // Lift 'a' and move it to position 2 (last).
+    controller.lift('a', 0, 'Alpha', 3);
+    controller.move(2, 'Alpha', 3);
+    expect(controller.liftedTo).toBe(2);
+
+    // Parent removes 'c' from the end; 'a' is still at index 0 so currentIndex === liftedFrom.
+    const shrunk: Item[] = [
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'Beta' },
+    ];
+    controller.reconcileLiftedKey(shrunk, getKey);
+
+    expect(controller.phase).toBe('lifted');
+    // liftedTo must be clamped to the new last index (1), not left at 2.
+    expect(controller.liftedTo).toBe(1);
+  });
+
   test('custom announcements override defaults', () => {
     const announce = mock();
     const controller = new SortableController({
