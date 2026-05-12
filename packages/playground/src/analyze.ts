@@ -466,6 +466,8 @@ export async function analyzeAll(componentsDir: string): Promise<ComponentManife
   const filePaths: string[] = [];
 
   for await (const file of glob.scan({ cwd: componentsDir })) {
+    // Skip _-prefixed files — they are internal helpers, not public components.
+    if (file.startsWith('_')) continue;
     filePaths.push(join(componentsDir, file));
   }
 

@@ -147,7 +147,10 @@
         controller.signal.aborted ||
         (error instanceof DOMException && error.name === 'AbortError')
       ) {
-        busy = false;
+        // Only clear busy if this is still the active load. If a newer load
+        // has already started (expand→collapse→expand race), clearing busy
+        // here would cause the $effect to re-fire and start a load cascade.
+        if (activeController === controller) busy = false;
         return;
       }
       busy = false;
