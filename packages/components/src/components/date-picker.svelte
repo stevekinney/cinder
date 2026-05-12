@@ -330,12 +330,9 @@
   // Focus management
   function focusDay(date: Date): void {
     if (!gridEl) return;
-    const iso = serializeDate(date);
-    const btn = gridEl.querySelector<HTMLElement>(`[data-date="${iso}"]`);
-    btn?.focus();
     focusedDate = date;
 
-    // If the date is outside the current anchor month, navigate
+    // If the date is outside the current anchor month, navigate and focus after re-render
     if (date.getFullYear() !== anchor.getFullYear() || date.getMonth() !== anchor.getMonth()) {
       const newAnchor = new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0, 0);
       anchor = newAnchor;
@@ -343,7 +340,18 @@
         month: 'long',
         year: 'numeric',
       }).format(newAnchor);
+      void tick().then(() => {
+        if (!gridEl) return;
+        const iso = serializeDate(date);
+        const btn = gridEl.querySelector<HTMLElement>(`[data-date="${iso}"]`);
+        btn?.focus();
+      });
+      return;
     }
+
+    const iso = serializeDate(date);
+    const btn = gridEl.querySelector<HTMLElement>(`[data-date="${iso}"]`);
+    btn?.focus();
   }
 
   let releaseEscape: (() => void) | null = null;
@@ -771,8 +779,8 @@
         <thead>
           <tr>
             {#each headers as header, i (i)}
-              <th scope="col" abbr={header} class="cinder-date-picker__weekday-header">
-                {header}
+              <th scope="col" abbr={header.full} class="cinder-date-picker__weekday-header">
+                {header.label}
               </th>
             {/each}
           </tr>

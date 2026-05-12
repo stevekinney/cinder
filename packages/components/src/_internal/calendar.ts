@@ -159,21 +159,26 @@ export function firstDayOfWeek(locale: string | undefined): Weekday {
   return 1;
 }
 
+export type WeekdayHeader = { label: string; full: string };
+
 /**
  * Returns seven localized weekday headers, rotated to the locale's first day of week.
+ * Each entry has a short `label` for display and a full `full` name for the `abbr` attribute.
  */
-export function dayOfWeekHeaders(locale: string | undefined): string[] {
+export function dayOfWeekHeaders(locale: string | undefined): WeekdayHeader[] {
   const canonicalLocale = validateLocale(locale);
-  const formatter = new Intl.DateTimeFormat(canonicalLocale, { weekday: 'short' });
+  const shortFormatter = new Intl.DateTimeFormat(canonicalLocale, { weekday: 'short' });
+  const longFormatter = new Intl.DateTimeFormat(canonicalLocale, { weekday: 'long' });
   const monday = createLocalNoonDate(2024, 0, 1);
-  const headersByWeekday = Array.from({ length: daysPerWeek }, (_, weekday) =>
-    formatter.format(addDays(monday, weekday === 0 ? 6 : weekday - 1)),
-  );
+  const headersByWeekday = Array.from({ length: daysPerWeek }, (_, weekday) => {
+    const day = addDays(monday, weekday === 0 ? 6 : weekday - 1);
+    return { label: shortFormatter.format(day), full: longFormatter.format(day) };
+  });
   const firstDay = firstDayOfWeek(canonicalLocale);
 
   return Array.from(
     { length: daysPerWeek },
-    (_, offset) => headersByWeekday[(firstDay + offset) % daysPerWeek] ?? '',
+    (_, offset) => headersByWeekday[(firstDay + offset) % daysPerWeek] ?? { label: '', full: '' },
   );
 }
 

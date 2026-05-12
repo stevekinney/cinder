@@ -40,23 +40,31 @@ describe('firstDayOfWeek', () => {
 });
 
 describe('dayOfWeekHeaders', () => {
-  test('returns exactly seven strings', () => {
+  test('returns exactly seven entries with label and full', () => {
     const headers = dayOfWeekHeaders('en-US');
 
     expect(headers).toHaveLength(7);
-    expect(headers.every((header) => typeof header === 'string')).toBe(true);
+    expect(headers.every((h) => typeof h.label === 'string' && typeof h.full === 'string')).toBe(
+      true,
+    );
   });
 
   test('starts with Monday for de-DE', () => {
     const [firstHeader] = dayOfWeekHeaders('de-DE');
 
-    expect(firstHeader).toContain('Mo');
+    expect(firstHeader?.label).toContain('Mo');
   });
 
   test('starts with Sunday for en-US', () => {
     const [firstHeader] = dayOfWeekHeaders('en-US');
 
-    expect(firstHeader === 'Su' || firstHeader?.includes('Sun')).toBe(true);
+    expect(firstHeader?.label === 'Su' || firstHeader?.label?.includes('Sun')).toBe(true);
+  });
+
+  test('full name is longer than short label', () => {
+    const [firstHeader] = dayOfWeekHeaders('en-US');
+
+    expect((firstHeader?.full?.length ?? 0) > (firstHeader?.label?.length ?? 0)).toBe(true);
   });
 });
 
