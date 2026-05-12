@@ -42,6 +42,9 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 
+export { default as Drawer } from './components/drawer.svelte';
+export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer.svelte';
+
 export { default as DiffStatistics } from './components/diff-statistics.svelte';
 export type {
   DiffStatisticsProps,
