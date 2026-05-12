@@ -68,7 +68,7 @@
 
   let {
     id,
-    value = $bindable(null),
+    value = $bindable<DatePickerValue | undefined>(),
     defaultValue = null,
     mode = 'single' as DatePickerMode,
     label,
@@ -123,26 +123,14 @@
   let anchor = $state<Date>(new Date());
   let focusedDate = $state<Date>(new Date());
 
-  // Internal value (uncontrolled path)
-  let internalValue = $state<DatePickerValue>(
-    value !== undefined ? (value as DatePickerValue) : (defaultValue as DatePickerValue),
-  );
-
-  // Range draft state machine — NOT synced from internalValue via effect
+  // Range draft state machine — NOT synced from value via effect
   // (doing so causes an effect_update_depth_exceeded loop).
   // Instead, range display helpers read currentValue directly.
   type RangeDraft = { stage: 'idle' } | { stage: 'picking-end'; start: Date; hover: Date | null };
 
   let rangeDraft = $state<RangeDraft>({ stage: 'idle' });
 
-  // Keep internalValue in sync when controlled value changes
-  $effect(() => {
-    if (value !== undefined) {
-      internalValue = value as DatePickerValue;
-    }
-  });
-
-  const currentValue = $derived(value !== undefined ? value : internalValue);
+  const currentValue = $derived(value === undefined ? (defaultValue as DatePickerValue) : value);
 
   // Derived helpers
   const descriptionId = $derived(describeId(id, !!description));
@@ -391,12 +379,8 @@
 
     if (initialMode === 'single') {
       const newValue = date as Date;
-      if (value !== undefined) {
-        (onchange as ((v: Date | null) => void) | undefined)?.(newValue);
-      } else {
-        internalValue = newValue;
-        (onchange as ((v: Date | null) => void) | undefined)?.(newValue);
-      }
+      value = newValue;
+      (onchange as ((v: Date | null) => void) | undefined)?.(newValue);
       closePopover();
     } else {
       if (rangeDraft.stage === 'idle') {
@@ -409,13 +393,8 @@
           isBefore(start, end) || isSameDay(start, end) ? [start, end] : [end, start];
 
         rangeDraft = { stage: 'idle' };
-
-        if (value !== undefined) {
-          (onchange as ((v: [Date, Date] | null) => void) | undefined)?.(sorted);
-        } else {
-          internalValue = sorted;
-          (onchange as ((v: [Date, Date] | null) => void) | undefined)?.(sorted);
-        }
+        value = sorted;
+        (onchange as ((v: [Date, Date] | null) => void) | undefined)?.(sorted);
         closePopover();
       }
     }
@@ -571,12 +550,8 @@
       });
 
       const resetValue = defaultValue as DatePickerValue;
-      if (value !== undefined) {
-        (onchange as ((v: DatePickerValue) => void) | undefined)?.(resetValue);
-      } else {
-        internalValue = resetValue;
-        (onchange as ((v: DatePickerValue) => void) | undefined)?.(resetValue);
-      }
+      value = resetValue;
+      (onchange as ((v: DatePickerValue) => void) | undefined)?.(resetValue);
       if (initialMode === 'range') {
         rangeDraft = { stage: 'idle' };
       }
