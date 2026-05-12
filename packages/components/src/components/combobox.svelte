@@ -5,8 +5,16 @@
   export type ComboboxOption = {
     /** Submitted value. */
     value: string;
-    /** Visible label. */
+    /** Visible label (primary line). */
     label: string;
+    /** Optional secondary description rendered beneath the label inside the option. */
+    description?: string;
+    /**
+     * Optional avatar image URL rendered to the left of the label.
+     * The avatar is decorative — its alt text is empty because the
+     * option's accessible name already includes the label.
+     */
+    avatar?: string;
     /** When true, the option is non-selectable. */
     disabled?: boolean;
   };
@@ -89,7 +97,11 @@
 
   const defaultFilter = (option: ComboboxOption, query: string): boolean => {
     if (!query) return true;
-    return option.label.toLowerCase().includes(query.toLowerCase());
+    const q = query.toLowerCase();
+    return (
+      option.label.toLowerCase().includes(q) ||
+      (option.description?.toLowerCase().includes(q) ?? false)
+    );
   };
 
   const filteredOptions = $derived.by(() => {
@@ -232,6 +244,7 @@
           class="cinder-combobox__option"
           aria-selected={value === option.value}
           aria-disabled={option.disabled || undefined}
+          aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
           data-cinder-active={index === activeIndex || undefined}
           onmousedown={(event) => {
             // mousedown rather than click so the option fires before the
@@ -243,7 +256,15 @@
             activeIndex = index;
           }}
         >
-          {option.label}
+          {#if option.avatar?.trim()}
+            <img class="cinder-combobox__option-avatar" src={option.avatar} alt="" loading="lazy" />
+          {/if}
+          <span class="cinder-combobox__option-text">
+            <span class="cinder-combobox__option-label">{option.label}</span>
+            {#if option.description}
+              <span class="cinder-combobox__option-description">{option.description}</span>
+            {/if}
+          </span>
         </li>
       {/each}
     </ul>

@@ -4,16 +4,34 @@
   export type SelectOption = { value: string; label: string; disabled?: boolean };
 
   export type SelectProps = HTMLSelectAttributes & {
+    /** Unique identifier — required for label association and ARIA wiring. */
     id: string;
+    /** Bound selected value. */
     value: string;
+    /** Options to render as `<option>` children. */
     options: SelectOption[];
+    /** Visible label rendered in a `<label>` associated via `for`. */
     label?: string;
+    /** Helper text rendered below the control; wired via `aria-describedby`. */
+    description?: string;
+    /** Validation error message; sets `aria-invalid="true"` and is wired via `aria-describedby`. */
+    error?: string;
+    /** Marks the control required and sets the native `required` attribute. */
+    required?: boolean;
+    /** Disables the control. */
     disabled?: boolean;
+    /** Extra class names merged with `.cinder-select-field`. */
     class?: string;
   };
 </script>
 
 <script lang="ts">
+  import {
+    ariaInvalid,
+    composeDescribedBy,
+    describeId,
+    errorId as buildErrorId,
+  } from '../_internal/field-control.ts';
   import { classNames } from '../utilities/class-names.ts';
 
   let {
@@ -21,10 +39,19 @@
     value = $bindable(),
     options,
     label,
+    description,
+    error,
+    required = false,
     disabled = false,
     class: className,
+    'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerInvalid,
     ...rest
   }: SelectProps = $props();
+
+  const descriptionId = $derived(describeId(id, !!description));
+  const errId = $derived(buildErrorId(id, !!error));
+  const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
   // Guard runs only in the browser after mount so SSR render doesn't pollute
   // server output with warnings. $effect never runs on the server in Svelte 5.
@@ -40,12 +67,36 @@
     <label for={id}>{label}</label>
   {/if}
   {#if options.length === 0}
-    <select {id} class="cinder-select" {disabled} data-cinder-empty="true" {...rest}></select>
+    <select
+      {id}
+      class="cinder-select"
+      {disabled}
+      {required}
+      data-cinder-empty="true"
+      {...rest}
+      aria-describedby={describedBy}
+      aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+    ></select>
   {:else}
-    <select {id} class="cinder-select" {disabled} bind:value {...rest}>
+    <select
+      {id}
+      class="cinder-select"
+      {disabled}
+      {required}
+      bind:value
+      {...rest}
+      aria-describedby={describedBy}
+      aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+    >
       {#each options as option (option.value)}
         <option value={option.value} disabled={option.disabled}>{option.label}</option>
       {/each}
     </select>
+  {/if}
+  {#if description}
+    <p id={descriptionId} class="cinder-select-field__description">{description}</p>
+  {/if}
+  {#if error}
+    <p id={errId} class="cinder-select-field__error" aria-live="polite">{error}</p>
   {/if}
 </div>

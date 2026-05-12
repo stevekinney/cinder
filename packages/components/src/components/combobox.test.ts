@@ -197,3 +197,102 @@ describe('Combobox aria wiring', () => {
     expect(describedBy).toContain('fruit-description');
   });
 });
+
+describe('Combobox rich option rows', () => {
+  const richFruits = [
+    {
+      value: 'apple',
+      label: 'Apple',
+      description: 'A crisp red fruit',
+      avatar: 'https://example.com/apple.png',
+    },
+    { value: 'banana', label: 'Banana', description: 'A yellow curved fruit' },
+    { value: 'cherry', label: 'Cherry' },
+  ];
+
+  test('option with avatar renders an <img> with empty alt', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]');
+    const img = appleOption?.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('alt')).toBe('');
+    expect(img!.getAttribute('src')).toBe('https://example.com/apple.png');
+  });
+
+  test('option with empty-string avatar does not render an <img>', async () => {
+    const options = [{ value: 'x', label: 'X', avatar: '' }];
+    const { container } = render(Combobox, { id: 'rich', options });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = container.querySelector('[role="option"]');
+    expect(option?.querySelector('img')).toBeNull();
+  });
+
+  test('option with whitespace-only avatar does not render an <img>', async () => {
+    const options = [{ value: 'x', label: 'X', avatar: '   ' }];
+    const { container } = render(Combobox, { id: 'rich', options });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = container.querySelector('[role="option"]');
+    expect(option?.querySelector('img')).toBeNull();
+  });
+
+  test('option with description renders the description text inside the <li>', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]');
+    const desc = appleOption?.querySelector('.cinder-combobox__option-description');
+    expect(desc).not.toBeNull();
+    expect(desc!.textContent).toBe('A crisp red fruit');
+  });
+
+  test('option with description carries aria-label composed from label and description', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const appleOption = options[0];
+    expect(appleOption?.getAttribute('aria-label')).toBe('Apple, A crisp red fruit');
+  });
+
+  test('plain option (no description) has no aria-label', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const cherryOption = options[2];
+    expect(cherryOption?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('plain option renders only label, no avatar or description nodes', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const cherryOption = options[2];
+    expect(cherryOption?.querySelector('img')).toBeNull();
+    expect(cherryOption?.querySelector('.cinder-combobox__option-description')).toBeNull();
+  });
+
+  test('selecting a rich option sets value and inputValue from value/label only', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]') as Element;
+    await fireEvent.mouseDown(appleOption);
+    expect(input.value).toBe('Apple');
+  });
+
+  test('default filter matches description substring (case-insensitive)', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'curved' } });
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(1);
+    expect(options[0]?.querySelector('.cinder-combobox__option-label')?.textContent).toBe('Banana');
+  });
+});

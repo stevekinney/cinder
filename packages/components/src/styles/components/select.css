@@ -89,3 +89,33 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ----------------------------------------
+ * Error / invalid state
+ * ---------------------------------------- */
+
+.cinder-select[aria-invalid='true'] {
+  border-color: var(--cinder-danger);
+}
+
+.cinder-select[aria-invalid='true']:hover:not(:disabled) {
+  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+}
+
+/* ----------------------------------------
+ * Supporting text
+ * ---------------------------------------- */
+
+.cinder-select-field__description {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  margin: 0;
+}
+
+.cinder-select-field__error {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-danger);
+  margin: 0;
+}
