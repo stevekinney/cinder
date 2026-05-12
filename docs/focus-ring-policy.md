@@ -6,12 +6,12 @@ This document defines the two approved strategies for `:focus-visible` rings in 
 
 Four tokens in `packages/components/src/styles/tokens-base.css` (the `/* Focus ring */` block) are the only inputs either strategy should consume.
 
-| Token                        | Default                | Role                                                                                                                                                                |
-| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--cinder-ring-width`        | `3px`                  | Accent ring thickness. Never hard-code `2px` or `3px` — use this token.                                                                                             |
-| `--cinder-ring-offset`       | `1px`                  | Distance between element edge and accent ring. Used as `outline-offset` in Strategy A and as the offset-band thickness in Strategy B. Not used in Strategy B-inset. |
-| `--cinder-ring-offset-color` | `var(--cinder-bg)`     | Color of the offset band in Strategy B. Matches the page background so the ring visually floats off the control. Not used in A or B-inset.                          |
-| `--cinder-ring-color`        | `light-dark(…)` accent | The ring color. Per-variant overrides should use a private `--_cinder-<component>-ring` custom property whose fallback is `var(--cinder-ring-color)`.               |
+| Token                        | Default                | Role                                                                                                                                                                                                         |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--cinder-ring-width`        | `3px`                  | Accent ring thickness. Never hard-code `2px` or `3px` in new rules — use this token. Pre-existing fallbacks (e.g. `var(--cinder-ring-width, 2px)`) are tolerated but should be cleaned up opportunistically. |
+| `--cinder-ring-offset`       | `1px`                  | Distance between element edge and accent ring. Used as `outline-offset` in Strategy A and as the offset-band thickness in Strategy B. Not used in Strategy B-inset.                                          |
+| `--cinder-ring-offset-color` | `var(--cinder-bg)`     | Color of the offset band in Strategy B. Matches the page background so the ring visually floats off the control. Not used in A or B-inset.                                                                   |
+| `--cinder-ring-color`        | `light-dark(…)` accent | The ring color. Per-variant overrides should use a private `--_cinder-<component>-ring` custom property whose fallback is `var(--cinder-ring-color)`.                                                        |
 
 ## Strategy A — Outline ring
 
