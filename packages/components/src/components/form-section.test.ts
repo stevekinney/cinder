@@ -47,6 +47,20 @@ describe('FormSection rendering — section (default)', () => {
     expect(container.querySelector('h4')).not.toBeNull();
   });
 
+  test('renders <h5> when headingLevel=5', () => {
+    const { container } = render(FormSection, {
+      props: { heading: 'Section', headingLevel: 5, children: emptySnippet },
+    });
+    expect(container.querySelector('h5')).not.toBeNull();
+  });
+
+  test('renders <h6> when headingLevel=6', () => {
+    const { container } = render(FormSection, {
+      props: { heading: 'Section', headingLevel: 6, children: emptySnippet },
+    });
+    expect(container.querySelector('h6')).not.toBeNull();
+  });
+
   test('does not render heading element when heading is omitted', () => {
     const { container } = render(FormSection, {
       props: { children: emptySnippet },
@@ -150,6 +164,27 @@ describe('FormSection rendering — fieldset', () => {
       props: { as: 'fieldset', heading: 'Group', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-form-section__grid')).not.toBeNull();
+  });
+
+  test('renders description <p> inside fieldset when description is provided', () => {
+    const { container } = render(FormSection, {
+      props: {
+        as: 'fieldset',
+        heading: 'Group',
+        description: 'Group description.',
+        children: emptySnippet,
+      },
+    });
+    const descEl = container.querySelector('.cinder-form-section__description');
+    expect(descEl).not.toBeNull();
+    expect(descEl?.textContent).toContain('Group description.');
+  });
+
+  test('data-columns default is "2" in fieldset mode', () => {
+    const { container } = render(FormSection, {
+      props: { as: 'fieldset', heading: 'Group', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-form-section')?.getAttribute('data-columns')).toBe('2');
   });
 });
 
