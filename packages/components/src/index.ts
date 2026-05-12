@@ -48,6 +48,13 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 
+export { default as DescriptionList } from './components/description-list.svelte';
+export type {
+  DescriptionListItem,
+  DescriptionListProps,
+  DescriptionListVariant,
+} from './components/description-list.svelte';
+
 export { default as DiffStatistics } from './components/diff-statistics.svelte';
 export type {
   DiffStatisticsProps,

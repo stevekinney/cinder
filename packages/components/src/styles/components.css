@@ -18,6 +18,7 @@
 @import './components/command-palette.css';
 @import './components/copy-button.css';
 @import './components/data-list.css';
+@import './components/description-list.css';
 @import './components/diff-statistics.css';
 @import './components/drawer.css';
 @import './components/dropdown.css';
