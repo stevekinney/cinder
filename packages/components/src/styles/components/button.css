@@ -301,6 +301,12 @@
   opacity: 0.6;
 }
 
+.cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading] {
+  background: transparent;
+  color: var(--cinder-danger);
+  border-color: transparent;
+}
+
 .cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
 .cinder-button[data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
     [data-cinder-loading]

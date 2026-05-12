@@ -25,7 +25,7 @@ When `iconOnly={true}`, `children` is also wrapped in an `aria-hidden` span and 
 
 ## Touch targets
 
-- `md` (default): 44px minimum height—meets WCAG 2.5.5 AAA touch-target requirement out of the box.
+- `md` (default): 44px minimum height—meets [WCAG 2.5.5 AAA touch-target](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html) requirement out of the box.
 - `lg`, `xl`: exceed 44px.
 - `sm` (32px) and `xs` (24px): **intentionally below AAA**. Use these sizes only in dense UI contexts (toolbars, compact tables, developer tools) where space is at a premium and the surrounding context makes smaller targets acceptable. Do not use `sm` or `xs` as the primary action button for a touch-first surface.
 
@@ -35,7 +35,7 @@ The `md` size bumped from 36px to 44px to meet AAA sizing out of the box. Fixed-
 
 ### Follow-up
 
-A Playwright check for rendered `md`/`lg`/`xl` heights is tracked as a future task once the playground has Playwright coverage.
+A [Playwright](https://playwright.dev/) check for rendered `md`/`lg`/`xl` heights is tracked as a future task once the playground has browser coverage.
 
 ## Loading state
 
@@ -43,7 +43,7 @@ The spinner is a CSS `::after` pseudo-element—not a DOM node. Pseudo-elements 
 
 The button's label text (`label` prop or `children`) remains in the DOM throughout the loading state and continues to serve as the accessible name. `aria-busy="true"` communicates the loading state to assistive technology. `aria-disabled="true"` signals that the button is not interactive during loading.
 
-## Forced-colors (Windows High Contrast)
+## Forced-colors ([Windows High Contrast](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/high-contrast-themes))
 
 The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `@media (forced-colors: active)`—guaranteed to contrast against the button surface.
 
@@ -51,7 +51,7 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 
 ## Soft variant contrast
 
-`soft` and `soft-danger` use `color-mix(in oklch, var(--cinder-accent|danger), transparent 88%)` as the background. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the WebAIM contrast checker. Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-color-accent-soft-bg`/`-fg` tokens with explicit values that meet the threshold.
+`soft` and `soft-danger` use `color-mix(in oklch, var(--cinder-accent|danger), transparent 88%)` as the background. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-color-accent-soft-bg`/`-fg` tokens with explicit values that meet the threshold.
 
 ## Variant guidance
 

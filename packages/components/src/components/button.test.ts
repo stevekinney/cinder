@@ -148,7 +148,7 @@ describe('Button sizes — xl', () => {
 describe('Button iconOnly', () => {
   test('iconOnly=true applies data-cinder-icon-only=""', () => {
     const { container } = render(Button, {
-      props: { iconOnly: true, 'aria-label': 'Close', label: 'Close' },
+      props: { iconOnly: true, 'aria-label': 'Close', label: 'Close' } as any,
     });
     expect(container.querySelector('button')?.getAttribute('data-cinder-icon-only')).toBe('');
   });
@@ -176,7 +176,7 @@ describe('Button loading state', () => {
 describe('Button iconOnly sr-only label', () => {
   test('iconOnly=true with label renders label text in a sr-only span (no aria-label override)', () => {
     const { container, getByText } = render(Button, {
-      props: { iconOnly: true, label: 'Close' },
+      props: { iconOnly: true, label: 'Close' } as any,
     });
     // Label text must be queryable — it's in a visually-hidden span.
     const labelNode = getByText('Close');
@@ -188,7 +188,7 @@ describe('Button iconOnly sr-only label', () => {
 
   test('iconOnly=true with aria-label does NOT render a sr-only span for label', () => {
     const { container } = render(Button, {
-      props: { iconOnly: true, 'aria-label': 'Close dialog', label: 'Close' },
+      props: { iconOnly: true, 'aria-label': 'Close dialog', label: 'Close' } as any,
     });
     // When aria-label is set it is the accessible name; sr-only label span should not appear.
     const button = container.querySelector('button');
@@ -196,6 +196,28 @@ describe('Button iconOnly sr-only label', () => {
     // label text should NOT be rendered as sr-only span when aria-label supplies the name
     const srOnlySpan = container.querySelector('.cinder-sr-only');
     expect(srOnlySpan).toBeNull();
+  });
+
+  test('iconOnly=true with whitespace aria-label falls back to sr-only label', () => {
+    const { container } = render(Button, {
+      props: { iconOnly: true, 'aria-label': '   ', label: 'Close' } as any,
+    });
+
+    const srOnlySpan = container.querySelector('.cinder-sr-only');
+    expect(srOnlySpan).not.toBeNull();
+    expect(srOnlySpan?.textContent).toBe('Close');
+    expect(container.querySelector('button')?.getAttribute('aria-label')).toBeNull();
+  });
+
+  test('iconOnly=true with whitespace aria-labelledby falls back to sr-only label', () => {
+    const { container } = render(Button, {
+      props: { iconOnly: true, 'aria-labelledby': '   ', label: 'Close' } as any,
+    });
+
+    const srOnlySpan = container.querySelector('.cinder-sr-only');
+    expect(srOnlySpan).not.toBeNull();
+    expect(srOnlySpan?.textContent).toBe('Close');
+    expect(container.querySelector('button')?.getAttribute('aria-labelledby')).toBeNull();
   });
 });
 
@@ -245,7 +267,7 @@ describe('Button dev warnings', () => {
   });
 
   test('iconOnly=true with aria-label: no iconOnly name warning', () => {
-    render(Button, { props: { iconOnly: true, 'aria-label': 'Close' } });
+    render(Button, { props: { iconOnly: true, 'aria-label': 'Close' } as any });
     const iconOnlyWarnings = warnMessages.filter((m) =>
       m.includes('iconOnly=true requires aria-label'),
     );
@@ -253,7 +275,7 @@ describe('Button dev warnings', () => {
   });
 
   test('iconOnly=true with label: no iconOnly name warning', () => {
-    render(Button, { props: { iconOnly: true, label: 'Close' } });
+    render(Button, { props: { iconOnly: true, label: 'Close' } as any });
     const iconOnlyWarnings = warnMessages.filter((m) =>
       m.includes('iconOnly=true requires aria-label'),
     );
@@ -269,13 +291,13 @@ describe('Button dev warnings', () => {
   });
 
   test('iconOnly=true + aria-label + no visual icon: visible-icon warning IS emitted', () => {
-    render(Button, { props: { iconOnly: true, 'aria-label': 'Close' } });
+    render(Button, { props: { iconOnly: true, 'aria-label': 'Close' } as any });
     const visualWarnings = warnMessages.filter((m) => m.includes('requires a visible icon'));
     expect(visualWarnings.length).toBeGreaterThan(0);
   });
 
   test('baseline guard: aria-label alone satisfies name requirement, no baseline warning', () => {
-    render(Button, { props: { 'aria-label': 'Close', iconOnly: true, label: 'Close' } });
+    render(Button, { props: { 'aria-label': 'Close' } as any });
     const baselineWarnings = warnMessages.filter((m) =>
       m.includes('rendered without an accessible name'),
     );

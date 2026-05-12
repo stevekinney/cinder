@@ -57,9 +57,17 @@
   // `WithChildren` genuinely forbids `iconOnly={true}`, and `WithIconOnly` requires it.
   type WithLabel = { label: string; children?: Snippet; iconOnly?: false };
   type WithChildren = { label?: string; children: Snippet; iconOnly?: false };
-  // Icon-only buttons may have a label (rendered sr-only) or rely on aria-label/aria-labelledby
-  // passed via rest props. `children` is accepted as the visual icon (not a name source).
-  type WithIconOnly = { iconOnly: true; label?: string; children?: Snippet };
+  type IconOnlyAccessibleName =
+    | { label: string; 'aria-label'?: string; 'aria-labelledby'?: string }
+    | { label?: string; 'aria-label': string; 'aria-labelledby'?: string }
+    | { label?: string; 'aria-label'?: string; 'aria-labelledby': string };
+  type IconOnlyVisual =
+    | { children: Snippet; leadingIcon?: Snippet; trailingIcon?: Snippet }
+    | { children?: Snippet; leadingIcon: Snippet; trailingIcon?: Snippet }
+    | { children?: Snippet; leadingIcon?: Snippet; trailingIcon: Snippet };
+  // Icon-only buttons require a name source and a visual icon source at compile time.
+  // `children` is accepted as the visual icon only; it is not a name source in this mode.
+  type WithIconOnly = { iconOnly: true } & IconOnlyAccessibleName & IconOnlyVisual;
   type SharedProps = SharedBase & (WithLabel | WithChildren | WithIconOnly);
 
   type ButtonOnlyProps = SharedProps & Omit<HTMLButtonAttributes, 'class'> & { href?: undefined };
@@ -119,6 +127,20 @@
   // doesn't silently erase their intent.
   const resolvedAriaDisabled = $derived(loading ? 'true' : consumerAriaDisabled);
   const resolvedAriaBusy = $derived(loading ? 'true' : consumerAriaBusy);
+
+  // Normalize ARIA label props: an empty string `aria-label=""` suppresses text-content fallback
+  // in the accessible-name computation (ARIA spec §4.3) without providing a name. Convert empty
+  // strings to `undefined` so the DOM attribute is omitted and the fallback (sr-only label text,
+  // or button text content) remains the accessible name. Guards and sr-only suppression use the
+  // normalized values for consistency.
+  const resolvedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const resolvedAriaLabelledBy = $derived(
+    typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0
+      ? ariaLabelledBy
+      : undefined,
+  );
 
   // `rest` is typed as the union of both branches' attribute sets minus the keys we
   // destructured. TypeScript can't narrow a destructured remainder per branch, so each
@@ -191,13 +213,11 @@
     if (!DEV) return;
 
     // Guard 1 — Updated baseline: warn when the button has no accessible name at all.
-    // aria-label/aria-labelledby (via rest props) are now valid name sources alongside label and
-    // children, so iconOnly + aria-label + leadingIcon no longer falsely triggers this warning.
+    // Use the normalized resolved values so an empty aria-label="" doesn't falsely satisfy the check.
     const hasLabel = typeof label === 'string' && label.trim().length > 0;
     const hasChildren = Boolean(children);
-    const hasAriaLabel = typeof ariaLabel === 'string' && ariaLabel.trim().length > 0;
-    const hasAriaLabelledBy =
-      typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0;
+    const hasAriaLabel = resolvedAriaLabel !== undefined;
+    const hasAriaLabelledBy = resolvedAriaLabelledBy !== undefined;
     if (!hasLabel && !hasChildren && !hasAriaLabel && !hasAriaLabelledBy) {
       console.warn(
         '[cinder/Button] rendered without an accessible name — pass a non-empty `label`, `children`, `aria-label`, or `aria-labelledby`.',
@@ -226,7 +246,7 @@
     <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
   {/if}
   {#if iconOnly}
-    {#if !ariaLabel && !ariaLabelledBy && label}
+    {#if !resolvedAriaLabel && !resolvedAriaLabelledBy && label}
       <span class="cinder-sr-only">{label}</span>
     {/if}
     {#if children}
@@ -251,8 +271,8 @@
     {...dataAttributes}
     aria-disabled={resolvedAriaDisabled}
     aria-busy={resolvedAriaBusy}
-    aria-label={ariaLabel}
-    aria-labelledby={ariaLabelledBy}
+    aria-label={resolvedAriaLabel}
+    aria-labelledby={resolvedAriaLabelledBy}
     onclick={handleClick}
   >
     {@render buttonContent()}
@@ -266,8 +286,8 @@
     disabled={buttonDisabled || loading}
     aria-disabled={resolvedAriaDisabled}
     aria-busy={resolvedAriaBusy}
-    aria-label={ariaLabel}
-    aria-labelledby={ariaLabelledBy}
+    aria-label={resolvedAriaLabel}
+    aria-labelledby={resolvedAriaLabelledBy}
     onclick={handleClick}
   >
     {@render buttonContent()}
