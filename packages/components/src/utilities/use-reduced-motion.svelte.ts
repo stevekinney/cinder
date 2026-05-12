@@ -10,20 +10,29 @@ export type UseReducedMotion = {
  * Returns an object with a `.current` boolean that updates whenever the OS-level
  * preference changes.
  *
- * SSR-safe: on the server, `svelte/reactivity` resolves to a stub that returns the
- * fallback (`false` — motion ok by default; CSS handles reduced-motion presentation
- * independently). On the client, `.current` is a live reactive value.
+ * SSR-safe: on the server, `svelte/reactivity` resolves to a stub that returns
+ * `false` because the user's preference is unavailable. Use this hook for
+ * client-side imperative behavior; keep SSR-visible presentation in CSS media
+ * queries and duration tokens.
  *
  * @example
  * ```svelte
  * <script lang="ts">
  *   import { useReducedMotion } from 'cinder';
+ *
  *   const motion = useReducedMotion();
+ *   let viewport: HTMLDivElement;
+ *
+ *   function scrollToEnd() {
+ *     viewport.scrollTo({
+ *       top: viewport.scrollHeight,
+ *       behavior: motion.current ? 'auto' : 'smooth',
+ *     });
+ *   }
  * </script>
  *
- * {#if !motion.current}
- *   <AnimatedWidget />
- * {/if}
+ * <div bind:this={viewport}>...</div>
+ * <button type="button" on:click={scrollToEnd}>Scroll to end</button>
  * ```
  */
 export function useReducedMotion(): UseReducedMotion {

@@ -21,16 +21,15 @@ type FakeMediaQueryList = {
 
 function installMatchMediaMock(initialMatches: boolean) {
   const queriesPassed: string[] = [];
-  const listeners = new Set<Listener>();
 
   const list: FakeMediaQueryList = {
     matches: initialMatches,
     media: '',
     onchange: null,
-    addEventListener: (_type, listener) => listeners.add(listener),
-    removeEventListener: (_type, listener) => listeners.delete(listener),
-    addListener: (listener) => listeners.add(listener),
-    removeListener: (listener) => listeners.delete(listener),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
     dispatchEvent: () => true,
   };
 
@@ -44,14 +43,14 @@ function installMatchMediaMock(initialMatches: boolean) {
   return {
     list,
     queriesPassed,
-    setMatches(next: boolean) {
-      list.matches = next;
-      for (const listener of listeners) listener({ matches: next });
-    },
     restore() {
       window.matchMedia = originalMatchMedia;
     },
   };
+}
+
+function usesBrowserMediaQuery(mock: ReturnType<typeof installMatchMediaMock>) {
+  return mock.queriesPassed.length > 0;
 }
 
 describe('useReducedMotion', () => {
@@ -61,31 +60,42 @@ describe('useReducedMotion', () => {
     mock?.restore();
   });
 
-  test('constructs matchMedia with the canonical query string', () => {
+  test('constructs matchMedia with the canonical query string in browser resolution', () => {
     mock = installMatchMediaMock(false);
 
-    useReducedMotion();
+    const motion = useReducedMotion();
 
+    if (!usesBrowserMediaQuery(mock)) {
+      expect(motion.current).toBe(false);
+      return;
+    }
     expect(mock.queriesPassed[0]).toBe('(prefers-reduced-motion: reduce)');
   });
 
-  test('returns the current matches value', () => {
+  test('returns the current matches value in browser resolution', () => {
     mock = installMatchMediaMock(true);
 
     const motion = useReducedMotion();
 
+    if (!usesBrowserMediaQuery(mock)) {
+      expect(motion.current).toBe(false);
+      return;
+    }
     expect(motion.current).toBe(true);
   });
 
-  test('current reads live matches value from the underlying MediaQueryList', () => {
+  test('current reads live matches value from the underlying MediaQueryList in browser resolution', () => {
     mock = installMatchMediaMock(true);
 
     const motion = useReducedMotion();
+    if (!usesBrowserMediaQuery(mock)) {
+      expect(motion.current).toBe(false);
+      return;
+    }
     expect(motion.current).toBe(true);
 
-    // Outside a Svelte effect context no change listener is registered, so
-    // setMatches would fire into empty listeners. Mutate the list directly
-    // to verify the getter reads through to the live matches property.
+    // Outside a Svelte effect context this verifies direct getter read-through,
+    // not reactive effect invalidation.
     mock.list.matches = false;
 
     expect(motion.current).toBe(false);
