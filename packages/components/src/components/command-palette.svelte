@@ -202,19 +202,19 @@
       event.preventDefault();
       if (ids.length === 0) return;
       if (activeItemId === null) {
-        activeItemId = ids[0];
+        activeItemId = ids[0] ?? null;
       } else {
         const index = ids.indexOf(activeItemId);
-        activeItemId = ids[(index + 1) % ids.length];
+        activeItemId = ids[(index + 1) % ids.length] ?? null;
       }
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       if (ids.length === 0) return;
       if (activeItemId === null) {
-        activeItemId = ids[ids.length - 1];
+        activeItemId = ids[ids.length - 1] ?? null;
       } else {
         const index = ids.indexOf(activeItemId);
-        activeItemId = ids[index <= 0 ? ids.length - 1 : index - 1];
+        activeItemId = ids[index <= 0 ? ids.length - 1 : index - 1] ?? null;
       }
     } else if (event.key === 'Home') {
       event.preventDefault();

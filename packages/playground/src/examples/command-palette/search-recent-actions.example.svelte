@@ -41,8 +41,6 @@
       : [],
   );
 
-  const showRecent = $derived(!query);
-  const showActions = $derived(!query || actions.some((a) => a.label.toLowerCase().includes(query.toLowerCase())));
   const filteredActions = $derived(
     query
       ? actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase()))
@@ -95,7 +93,7 @@
 </div>
 
 <CommandPalette bind:open bind:query label="Command palette" {triggerRef}>
-  {#snippet items({ query })}
+  {#snippet items({ query: paletteQuery })}
     <!--
       Search results section — only shown while typing.
       `query` here shadows the outer state variable with the same value;
@@ -114,7 +112,7 @@
       Recent section — shown only when query is empty.
       Uses `role="none"` for the group label (purely visual; children remain in the AT).
     -->
-    {#if showRecent}
+    {#if !paletteQuery}
       <li role="none" class="palette-section-header">Recent</li>
       {#each recentItems as item (item.id)}
         <CommandItem value={item.id} onselect={() => select(item.label)}>
@@ -126,7 +124,7 @@
     <!--
       Actions section — always visible (filtered when typing).
     -->
-    {#if showActions && filteredActions.length > 0}
+    {#if (!paletteQuery || filteredActions.length > 0) && filteredActions.length > 0}
       <li role="none" class="palette-section-header">Actions</li>
       {#each filteredActions as action (action.id)}
         <CommandItem value={action.id} onselect={() => select(action.label)}>
