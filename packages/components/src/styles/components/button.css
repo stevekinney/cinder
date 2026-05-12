@@ -301,6 +301,16 @@
   opacity: 0.6;
 }
 
+.cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
+.cinder-button[data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
+    [data-cinder-loading]
+  ) {
+  background: transparent;
+  color: var(--cinder-danger);
+  border-color: transparent;
+  opacity: 0.6;
+}
+
 /* soft — tinted accent background, accent foreground, no border.
  * Background uses color-mix so it resolves against the theme-aware --cinder-accent token
  * in both light and dark themes. Contrast ratios must be verified mechanically (WebAIM

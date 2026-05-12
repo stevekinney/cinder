@@ -35,9 +35,6 @@
     fullWidth?: boolean;
     /** Disable the button and show a spinner. */
     loading?: boolean;
-    /** Render as a square icon-only button. Requires an explicit accessible name
-     *  via `aria-label`, `aria-labelledby`, or `label`. Enforced in dev. */
-    iconOnly?: boolean;
     /** DECORATIVE icon rendered before the label/children. Always wrapped in aria-hidden.
      *  If the icon conveys meaning, supply accessible text via `label`/`aria-label` instead. */
     leadingIcon?: Snippet;
@@ -55,7 +52,10 @@
   // analyzer reads this two-variant shape to generate correct prop-control UI for each branch.
   // Runtime limitation: `string` includes `""`, so a literal empty label still satisfies
   // `WithLabel`. The dev-mode guard in the instance script catches that case.
-  type WithLabel = { label: string; children?: Snippet; iconOnly?: boolean };
+  //
+  // `iconOnly` lives only in the union branches (not SharedBase) so the discriminant is real:
+  // `WithChildren` genuinely forbids `iconOnly={true}`, and `WithIconOnly` requires it.
+  type WithLabel = { label: string; children?: Snippet; iconOnly?: false };
   type WithChildren = { label?: string; children: Snippet; iconOnly?: false };
   // Icon-only buttons may have a label (rendered sr-only) or rely on aria-label/aria-labelledby
   // passed via rest props. `children` is accepted as the visual icon (not a name source).
@@ -221,6 +221,27 @@
   });
 </script>
 
+{#snippet buttonContent()}
+  {#if leadingIcon}
+    <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
+  {/if}
+  {#if iconOnly}
+    {#if !ariaLabel && !ariaLabelledBy && label}
+      <span class="cinder-sr-only">{label}</span>
+    {/if}
+    {#if children}
+      <span class="cinder-button__icon" aria-hidden="true">{@render children()}</span>
+    {/if}
+  {:else if children}
+    {@render children()}
+  {:else}
+    {label}
+  {/if}
+  {#if trailingIcon}
+    <span class="cinder-button__icon" aria-hidden="true">{@render trailingIcon()}</span>
+  {/if}
+{/snippet}
+
 {#if href !== undefined}
   <a
     {...anchorAttributes}
@@ -234,26 +255,7 @@
     aria-labelledby={ariaLabelledBy}
     onclick={handleClick}
   >
-    {#if leadingIcon}
-      <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
-    {/if}
-    {#if iconOnly}
-      {#if !ariaLabel && !ariaLabelledBy && label}
-        <span class="cinder-sr-only">{label}</span>
-      {/if}
-      {#if children && !leadingIcon && !trailingIcon}
-        <span class="cinder-button__icon" aria-hidden="true">{@render children()}</span>
-      {:else if children}
-        {@render children()}
-      {/if}
-    {:else if children}
-      {@render children()}
-    {:else}
-      {label}
-    {/if}
-    {#if trailingIcon}
-      <span class="cinder-button__icon" aria-hidden="true">{@render trailingIcon()}</span>
-    {/if}
+    {@render buttonContent()}
   </a>
 {:else}
   <button
@@ -268,25 +270,6 @@
     aria-labelledby={ariaLabelledBy}
     onclick={handleClick}
   >
-    {#if leadingIcon}
-      <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
-    {/if}
-    {#if iconOnly}
-      {#if !ariaLabel && !ariaLabelledBy && label}
-        <span class="cinder-sr-only">{label}</span>
-      {/if}
-      {#if children && !leadingIcon && !trailingIcon}
-        <span class="cinder-button__icon" aria-hidden="true">{@render children()}</span>
-      {:else if children}
-        {@render children()}
-      {/if}
-    {:else if children}
-      {@render children()}
-    {:else}
-      {label}
-    {/if}
-    {#if trailingIcon}
-      <span class="cinder-button__icon" aria-hidden="true">{@render trailingIcon()}</span>
-    {/if}
+    {@render buttonContent()}
   </button>
 {/if}

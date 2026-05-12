@@ -140,19 +140,10 @@ describe('Button sizes — xl', () => {
   });
 });
 
-describe('Button icon slots', () => {
-  test('leadingIcon renders inside .cinder-button__icon with aria-hidden="true" before label', () => {
-    // Snippet-based icon slots are verified via the iconOnly and dev-warning tests below.
-    // Here we confirm the baseline: a label-only button renders its label text.
-    const { container } = render(Button, { props: { label: 'Save' } });
-    expect(container.querySelector('button')?.textContent?.trim()).toBe('Save');
-  });
-
-  test('trailingIcon renders inside .cinder-button__icon with aria-hidden="true" after label', () => {
-    const { container } = render(Button, { props: { label: 'Next' } });
-    expect(container.querySelector('button')?.textContent?.trim()).toBe('Next');
-  });
-});
+// NOTE: leadingIcon/trailingIcon snippet rendering (DOM order, aria-hidden wrapper) cannot be
+// tested with @testing-library/svelte in happy-dom because the test harness cannot pass Svelte
+// snippet props. Those paths are covered by manual playground inspection and tracked for a
+// future Playwright test once the playground has browser test coverage.
 
 describe('Button iconOnly', () => {
   test('iconOnly=true applies data-cinder-icon-only=""', () => {
@@ -208,6 +199,35 @@ describe('Button iconOnly sr-only label', () => {
   });
 });
 
+describe('Button accessible name precedence', () => {
+  test('aria-label takes precedence over label as the accessible name', () => {
+    const { container } = render(Button, {
+      props: { label: 'Close', 'aria-label': 'Close dialog' },
+    });
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('aria-label')).toBe('Close dialog');
+  });
+
+  test('aria-labelledby is passed through to the element', () => {
+    const { container } = render(Button, {
+      props: { label: 'Close', 'aria-labelledby': 'dialog-title' },
+    });
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('aria-labelledby')).toBe('dialog-title');
+  });
+});
+
+describe('Button ghost-danger disabled state', () => {
+  test('ghost-danger disabled button preserves data attributes', () => {
+    const { container } = render(Button, {
+      props: { label: 'Delete', variant: 'ghost-danger', 'aria-disabled': 'true' },
+    });
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('data-cinder-variant')).toBe('ghost-danger');
+    expect(button?.getAttribute('aria-disabled')).toBe('true');
+  });
+});
+
 describe('Button dev warnings', () => {
   let warnMessages: string[] = [];
   let originalWarn: typeof console.warn;
@@ -238,18 +258,6 @@ describe('Button dev warnings', () => {
       m.includes('iconOnly=true requires aria-label'),
     );
     expect(iconOnlyWarnings).toHaveLength(0);
-  });
-
-  test('iconOnly=true with only children: iconOnly name warning IS emitted', () => {
-    // children alone does not satisfy the iconOnly name guard
-    render(Button, {
-      props: { iconOnly: true, children: undefined as any },
-    });
-    const iconOnlyWarnings = warnMessages.filter((m) =>
-      m.includes('iconOnly=true requires aria-label'),
-    );
-    // No label, no aria-label, no aria-labelledby → warning must fire
-    expect(iconOnlyWarnings.length).toBeGreaterThan(0);
   });
 
   test('iconOnly=true with neither label nor aria-label: iconOnly name warning IS emitted', () => {
