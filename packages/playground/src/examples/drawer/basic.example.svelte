@@ -68,16 +68,23 @@
   />
 </div>
 
-<Drawer bind:open {side} {size} title="Drawer panel" triggerRef={useTriggerRef ? triggerRef : null}>
+<Drawer
+  bind:open
+  {side}
+  {size}
+  title="Drawer panel"
+  triggerRef={useTriggerRef ? triggerRef : null}
+  {footer}
+>
   <p>This is the drawer body. You can put any content here.</p>
   <p>Current settings: side={side}, size={size}.</p>
-
-  {#if showFooter}
-    {#snippet footer()}
-      <div style="display: flex; gap: 0.5rem;">
-        <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
-        <Button label="Confirm" onclick={() => (open = false)} />
-      </div>
-    {/snippet}
-  {/if}
 </Drawer>
+
+{#snippet footer()}
+  {#if showFooter}
+    <div style="display: flex; gap: 0.5rem;">
+      <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
+      <Button label="Confirm" onclick={() => (open = false)} />
+    </div>
+  {/if}
+{/snippet}

@@ -82,7 +82,6 @@
   }: DrawerProps = $props();
 
   const titleId = useId('cinder-drawer-title');
-  const effectiveLabelledBy = $derived(ariaLabelledBy ?? titleId);
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
@@ -159,60 +158,44 @@
     bind:this={dialogElement}
     class={cn('cinder-drawer', className)}
     aria-modal="true"
-    aria-labelledby={effectiveLabelledBy}
+    aria-labelledby={ariaLabelledBy ?? titleId}
     onclose={handleClose}
     onclick={handleBackdropClick}
   >
+    {#snippet closeButton()}
+      <button
+        type="button"
+        class="cinder-drawer__close"
+        aria-label="Close drawer"
+        onclick={() => dialogElement?.close()}
+      >
+        <svg
+          class="cinder-drawer__close-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+          />
+        </svg>
+      </button>
+    {/snippet}
+
     {#if open}
       <div class="cinder-drawer__panel" data-cinder-side={side} data-cinder-size={size}>
-        {#if header}
-          <header class="cinder-drawer__header">
+        <header class="cinder-drawer__header">
+          {#if header}
             {#if !ariaLabelledBy}
               <h2 id={titleId} class="cinder-sr-only">{title}</h2>
             {/if}
             {@render header()}
-            <button
-              type="button"
-              class="cinder-drawer__close"
-              aria-label="Close drawer"
-              onclick={() => dialogElement?.close()}
-            >
-              <svg
-                class="cinder-drawer__close-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                />
-              </svg>
-            </button>
-          </header>
-        {:else}
-          <header class="cinder-drawer__header">
+          {:else}
             <h2 id={titleId} class="cinder-drawer__title">{title}</h2>
-            <button
-              type="button"
-              class="cinder-drawer__close"
-              aria-label="Close drawer"
-              onclick={() => dialogElement?.close()}
-            >
-              <svg
-                class="cinder-drawer__close-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                />
-              </svg>
-            </button>
-          </header>
-        {/if}
+          {/if}
+          {@render closeButton()}
+        </header>
 
         <div bind:this={bodyElement} class="cinder-drawer__body" tabindex="-1">
           {@render children()}
