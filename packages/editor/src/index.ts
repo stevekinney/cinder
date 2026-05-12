@@ -27,13 +27,42 @@ export type {
   EditorState,
 } from './types.js';
 
-export { DEFAULT_DEBOUNCE_MS } from './types.js';
+// Browser-safe surface — single canonical re-export path.
+// Symbols overlapping with `./component-runtime.js` flow through that module
+// so Bun's bundler sees one re-export path per name (see comment in
+// `./component-runtime.ts` for the duplicate-export-on-Linux background).
+export {
+  DEFAULT_DEBOUNCE_MS,
+  applyLinkToSelection,
+  createEditorAttachment,
+  getActiveBlockType,
+  getActiveMarks,
+  getLinkAtCursor,
+  getLinkRangeAtCursor,
+  getLinkTextAtCursor,
+  getShortcutDisplay,
+  insertLinkAtCursor,
+  isSelectionCollapsed,
+  redo,
+  removeLink,
+  setEditorReadonly,
+  setHeading,
+  setParagraph,
+  toggleBlockquote,
+  toggleBold,
+  toggleBulletList,
+  toggleCode,
+  toggleItalic,
+  toggleOrderedList,
+  toggleStrikethrough,
+  undo,
+  updateLinkAtCursor,
+  type ActiveBlockType,
+  type ActiveMarks,
+} from './component-runtime.js';
 
-// Core editor
-export { createEditor, destroyEditor, setEditorReadonly } from './editor.js';
-
-// Svelte integration
-export { createEditorAttachment } from './attach.js';
+// Server-or-advanced surface — names not in component-runtime.
+export { createEditor, destroyEditor } from './editor.js';
 
 // Position mapping (DEP-39)
 export {
@@ -46,50 +75,20 @@ export {
   textOffsetToProseMirrorPosition,
 } from './bridge.js';
 
-// Commands (DEP-37)
+// Commands not in component-runtime
 export {
-  applyLinkToSelection,
-  getActiveBlockType,
-  getActiveMarks,
-  getLinkAtCursor,
-  getLinkRangeAtCursor,
-  getLinkTextAtCursor,
   getSelectedText,
   indentListItem,
   insertHorizontalRule,
-  // Link commands
-  insertLinkAtCursor,
-  // State queries
   isMarkActive,
-  isSelectionCollapsed,
   outdentListItem,
-  redo,
-  removeLink,
-  // Block commands
-  setHeading,
-  setParagraph,
-  toggleBlockquote,
-  // Mark commands
-  toggleBold,
-  toggleBulletList,
-  toggleCode,
-  toggleItalic,
-  toggleOrderedList,
-  toggleStrikethrough,
-  // History commands
-  undo,
-  updateLinkAtCursor,
-  type ActiveBlockType,
-  // Types
-  type ActiveMarks,
 } from './commands.js';
 
-// Keymap plugin (DEP-37)
+// Keymap plugin extras (DEP-37) — getShortcutDisplay comes from component-runtime
 export {
   createEditorKeymap,
   editorKeymap,
   getShortcutDefinitions,
-  getShortcutDisplay,
   type EditorKeymapOptions,
   type ShortcutDefinition,
 } from './keymap-plugin.js';

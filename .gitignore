@@ -114,3 +114,9 @@ scripts/playground/.controls-*.svelte
 
 **/.claude/worktrees/**
 .claude/scheduled_tasks.lock
+
+# Playwright browser-test artifacts
+packages/testing/screenshots/
+packages/testing/playwright-report/
+packages/testing/test-results/
+packages/testing/.playwright/

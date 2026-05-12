@@ -1,0 +1,21 @@
+{
+  "name": "@cinder/testing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install-browsers": "playwright install chromium",
+    "install-browsers:ci": "playwright install --with-deps chromium",
+    "report": "playwright show-report ./playwright-report",
+    "test:playwright": "bun run scripts/start-server.ts",
+    "test:playwright:headed": "bun run scripts/start-server.ts -- --headed",
+    "test:playwright:ui": "bun run scripts/start-server.ts -- --ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "axe-core": "^4.10.0",
+    "typescript": "^5.6.0"
+  }
+}

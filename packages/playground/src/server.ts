@@ -451,7 +451,16 @@ const SHARED_BUILD_OPTIONS = {
   splitting: true,
   naming: {
     entry: '[name]-[hash].js',
-    chunk: '[name]-[hash].js',
+    // Use a distinct prefix for shared chunks so they cannot collide with
+    // the entry's `[name]` template. Some Bun builds on Linux emit shared
+    // chunks where `[name]` resolves to the entry basename (e.g.
+    // `page-code-block`), and when multiple such chunks exist in one build
+    // they share the entry's name and race to the same output path. A
+    // distinct `chunk-` prefix sidesteps this entirely while keeping chunks
+    // in the flat top-level layout (a `chunks/` subdir triggers a separate
+    // Bun publicPath quirk where the subdir is stripped from peer-chunk
+    // import URLs).
+    chunk: 'chunk-[hash].js',
     asset: '[name]-[hash][ext]',
   },
 } as const satisfies Omit<Parameters<typeof Bun.build>[0], 'entrypoints' | 'publicPath'>;
