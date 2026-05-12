@@ -18,7 +18,7 @@
      * each open should reset it in their `onclose` callback.
      */
     query?: string;
-    /** Fired after the palette closes (Escape or backdrop). */
+    /** Fired after any close path routed through the palette close lifecycle. */
     onclose?: () => void;
     /** Element to restore focus to on close. Falls back to `captureFocus()`. */
     triggerRef?: HTMLElement | null;

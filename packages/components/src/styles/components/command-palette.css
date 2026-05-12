@@ -4,7 +4,7 @@
 
 .cinder-command-palette {
   /* Reset browser <dialog> defaults */
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   border: none;
   background: transparent;
@@ -160,6 +160,16 @@
   color: var(--cinder-text);
   /* Non-color indicator for users with color vision deficiencies */
   box-shadow: inset 3px 0 0 var(--cinder-accent);
+}
+
+@media (forced-colors: active) {
+  .cinder-command-item[data-cinder-active] {
+    background: Highlight;
+    color: HighlightText;
+    box-shadow: none;
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .cinder-command-item[data-cinder-disabled] {

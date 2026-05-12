@@ -70,7 +70,7 @@ Panel enter/exit transitions are gated behind `@media (prefers-reduced-motion: n
 
 ## Grouped Sections (v1)
 
-v1 ships the flat-list pattern only. Consumers can render visually-styled "section header" `<li role="presentation">` elements between groups. Group affiliation is purely visual — all items remain direct children of the same `<ul role="listbox">` and are announced as options of that listbox.
+v1 ships the flat-list pattern only. Consumers can render visually-styled "section header" `<li role="none">` elements between groups. Group affiliation is purely visual — all items remain direct children of the same `<ul role="listbox">` and are announced as options of that listbox.
 
 Nested `role="group"` semantics are explicitly out of scope for v1. They require real screen-reader verification before being declared canonical.
 
