@@ -176,6 +176,9 @@ export {
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
 
+export { default as SectionHeading } from './components/section-heading.svelte';
+export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
+
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
 export type {
