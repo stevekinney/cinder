@@ -4,34 +4,38 @@
 
   export type InputType = 'text' | 'email' | 'password' | 'search' | 'tel' | 'url';
 
-  export type InputProps = HTMLInputAttributes & {
-    id: string;
-    value: string;
-    label?: string;
-    description?: string;
-    error?: string;
-    disabled?: boolean;
-    type?: InputType;
-    class?: string;
+  type InputAddonProps =
+    | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }
+    | {
+        leading: Snippet<[]>;
+        leadingInteractive?: boolean;
+        trailing?: never;
+        trailingInteractive?: never;
+      }
+    | {
+        leading?: never;
+        leadingInteractive?: never;
+        trailing: Snippet<[]>;
+        trailingInteractive?: boolean;
+      }
+    | {
+        leading: Snippet<[]>;
+        leadingInteractive?: boolean;
+        trailing: Snippet<[]>;
+        trailingInteractive?: boolean;
+      };
 
-    /** Content rendered before the input (e.g. "$", search icon). The container
-     *  is `aria-hidden="true"` by default — set `leadingInteractive={true}` if
-     *  the snippet contains a focusable control. */
-    leading?: Snippet<[]>;
-
-    /** Content rendered after the input. Same a11y contract as `leading`. */
-    trailing?: Snippet<[]>;
-
-    /** When true, the leading addon container is NOT `aria-hidden`. Use for
-     *  snippets that render an interactive control (e.g. a unit toggle button).
-     *  The consumer's control must carry its own accessible name. */
-    leadingInteractive?: boolean;
-
-    /** When true, the trailing addon container is NOT `aria-hidden`. Use for
-     *  clear buttons, password-reveal toggles, etc. The consumer's control must
-     *  carry its own accessible name. */
-    trailingInteractive?: boolean;
-  };
+  export type InputProps = HTMLInputAttributes &
+    InputAddonProps & {
+      id: string;
+      value: string;
+      label?: string;
+      description?: string;
+      error?: string;
+      disabled?: boolean;
+      type?: InputType;
+      class?: string;
+    };
 </script>
 
 <script lang="ts">
@@ -66,10 +70,26 @@
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));
 
   const hasGroup = $derived(!!leading || !!trailing);
+  // grammar/spelling aria-invalid values are intentionally excluded — the visual error
+  // treatment (danger border + ring) only applies to the boolean invalid state, matching
+  // the standalone .cinder-input[aria-invalid='true'] rule which also ignores grammar/spelling.
   const isInvalid = $derived(
     !!error || rest['aria-invalid'] === 'true' || rest['aria-invalid'] === true,
   );
 </script>
+
+{#snippet inputElement()}
+  <input
+    {id}
+    {type}
+    {disabled}
+    bind:value
+    class={cn('cinder-input', className)}
+    aria-invalid={ariaInvalid(!!error)}
+    aria-describedby={describedBy}
+    {...rest}
+  />
+{/snippet}
 
 <div class="cinder-input-field">
   {#if label}
@@ -93,16 +113,7 @@
         >
       {/if}
 
-      <input
-        {id}
-        {type}
-        {disabled}
-        bind:value
-        class={cn('cinder-input', className)}
-        aria-invalid={ariaInvalid(!!error)}
-        aria-describedby={describedBy}
-        {...rest}
-      />
+      {@render inputElement()}
 
       {#if trailing}
         <span
@@ -112,16 +123,7 @@
       {/if}
     </div>
   {:else}
-    <input
-      {id}
-      {type}
-      {disabled}
-      bind:value
-      class={cn('cinder-input', className)}
-      aria-invalid={ariaInvalid(!!error)}
-      aria-describedby={describedBy}
-      {...rest}
-    />
+    {@render inputElement()}
   {/if}
 
   {#if description}

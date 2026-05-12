@@ -232,8 +232,10 @@
   text-overflow: ellipsis;
 }
 
-/* Interactive addons get a tighter wrapper so the consumer's control owns the inset. */
+/* Interactive addons get a tighter wrapper so the consumer's control owns the inset.
+   overflow: visible allows the inner control's focus ring to paint outside the container. */
 .cinder-input-group__leading:not([aria-hidden]),
 .cinder-input-group__trailing:not([aria-hidden]) {
   padding-inline: var(--cinder-space-1);
+  overflow: visible;
 }

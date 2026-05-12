@@ -286,6 +286,19 @@ describe('Input group (leading/trailing addons)', () => {
     expect(input?.getAttribute('aria-invalid')).toBe('true');
   });
 
+  test('aria-invalid={true} (boolean) via rest props sets data-invalid on group', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'bool-invalid',
+        value: '',
+        leading: textSnippet('$'),
+        'aria-invalid': true,
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.getAttribute('data-invalid')).toBe('');
+  });
+
   test('aria-invalid with non-"true" value does NOT set data-invalid on group', () => {
     const { container } = render(Input, {
       props: {
