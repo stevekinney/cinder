@@ -95,14 +95,14 @@
 </div>
 
 <CommandPalette bind:open bind:query label="Command palette" {triggerRef}>
-  {#snippet items({ query: q })}
+  {#snippet items({ query })}
     <!--
       Search results section — only shown while typing.
-      The items snippet receives `query` so consumers can filter.
-      Here we use the outer `filteredPages` derived which closes over `query`.
+      `query` here shadows the outer state variable with the same value;
+      using the snippet parameter keeps the pattern explicit for consumers.
     -->
     {#if filteredPages.length > 0}
-      <li role="presentation" class="palette-section-header">Pages</li>
+      <li role="none" class="palette-section-header">Pages</li>
       {#each filteredPages as page (page.id)}
         <CommandItem value={page.id} onselect={() => select(page.label)}>
           {page.label}
@@ -112,10 +112,10 @@
 
     <!--
       Recent section — shown only when query is empty.
-      Uses `role="presentation"` for the group label (purely visual, no group semantics).
+      Uses `role="none"` for the group label (purely visual; children remain in the AT).
     -->
     {#if showRecent}
-      <li role="presentation" class="palette-section-header">Recent</li>
+      <li role="none" class="palette-section-header">Recent</li>
       {#each recentItems as item (item.id)}
         <CommandItem value={item.id} onselect={() => select(item.label)}>
           {item.label}
@@ -127,7 +127,7 @@
       Actions section — always visible (filtered when typing).
     -->
     {#if showActions && filteredActions.length > 0}
-      <li role="presentation" class="palette-section-header">Actions</li>
+      <li role="none" class="palette-section-header">Actions</li>
       {#each filteredActions as action (action.id)}
         <CommandItem value={action.id} onselect={() => select(action.label)}>
           {action.label}

@@ -14,6 +14,8 @@
     /**
      * Bindable search query. Mutated by the input's oninput handler.
      * Exposed to the items snippet so consumers can filter.
+     * Note: query is NOT reset on close — consumers who want a fresh query on
+     * each open should reset it in their `onclose` callback.
      */
     query?: string;
     /** Fired after the palette closes (Escape or backdrop). */
@@ -110,19 +112,47 @@
   // open or when a query change causes a full key-swap of items. It is set
   // true after one microtask (giving children's $effect registrations time to
   // settle), and reset on every query change.
+  //
+  // A cycle counter guards against stale microtasks: if the query changes
+  // twice in quick succession, only the most recent microtask sets ready=true.
   let registrationsReady = $state(false);
+  let readyCycle = 0;
 
   $effect(() => {
     // Track query so this re-runs on every query change.
     void query;
     registrationsReady = false;
+    const cycle = ++readyCycle;
     queueMicrotask(() => {
-      registrationsReady = true;
+      if (cycle === readyCycle) registrationsReady = true;
     });
   });
 
   // ── Escape stack ──────────────────────────────────────────────────────────
   let releaseEscape: (() => void) | null = null;
+
+  // ── Focus restoration ─────────────────────────────────────────────────────
+  function returnFocus() {
+    if (triggerRef) {
+      restoreFocusTo(triggerRef);
+    } else {
+      restoreFocusTo(capturedFocus);
+    }
+    capturedFocus = null;
+  }
+
+  // ── Close ─────────────────────────────────────────────────────────────────
+  // Single authoritative close path. All close triggers (Escape stack,
+  // backdrop click, `close` event, programmatic open=false) route through here.
+  function closePalette() {
+    if (!open && !dialogElement?.open) return;
+    open = false;
+    releaseEscape?.();
+    releaseEscape = null;
+    if (dialogElement?.open) dialogElement.close();
+    returnFocus();
+    onclose?.();
+  }
 
   // ── Open/close lifecycle ──────────────────────────────────────────────────
   $effect(() => {
@@ -133,26 +163,11 @@
       inputElement?.focus();
       releaseEscape = pushEscapeHandler(closePalette);
     } else if (!open && dialogElement.open) {
-      dialogElement.close();
+      // Programmatic close: open was set to false externally.
+      // closePalette handles everything; call it to ensure focus is restored.
+      closePalette();
     }
   });
-
-  function returnFocus() {
-    if (triggerRef) {
-      restoreFocusTo(triggerRef);
-    } else {
-      restoreFocusTo(capturedFocus);
-    }
-    capturedFocus = null;
-  }
-
-  function closePalette() {
-    open = false;
-    releaseEscape?.();
-    releaseEscape = null;
-    returnFocus();
-    onclose?.();
-  }
 
   // Release escape handler on component destroy to prevent leaks.
   onDestroy(() => {
@@ -162,19 +177,15 @@
 
   // ── Dialog event handlers ─────────────────────────────────────────────────
 
-  // The native <dialog> fires `close` when it closes (including via Escape).
-  // We wire `oncancel` and call preventDefault so the native cancel path does
-  // not race with our escape-stack handler — closePalette() is the single
-  // source of truth for closing.
+  // The native <dialog> fires `cancel` before `close` when Escape is pressed.
+  // Prevent the native cancel so our escape-stack handler is the sole close path.
   function handleCancel(event: Event) {
     event.preventDefault();
   }
 
-  // The `close` event fires when the dialog actually closes. Mirror open state.
+  // The `close` event fires when the dialog actually closes (any path).
   function handleClose() {
-    if (open) {
-      closePalette();
-    }
+    closePalette();
   }
 
   function handleBackdropClick(event: MouseEvent) {
@@ -239,7 +250,10 @@
     },
     register(input: CommandItemRegistrationInput) {
       const id = `${listboxId}-item-${++itemCounter}`;
-      registrations = [...registrations, { id, ...input }];
+      registrations = [
+        ...registrations,
+        { id, getValue: input.getValue, getOnselect: input.getOnselect, getDisabled: input.getDisabled },
+      ];
       return {
         id,
         unregister: () => {
@@ -285,6 +299,7 @@
               clip-rule="evenodd"
             />
           </svg>
+          <label for={inputId} class="cinder-visually-hidden">{label}</label>
           <input
             bind:this={inputElement}
             id={inputId}
@@ -309,7 +324,6 @@
           id={listboxId}
           role="listbox"
           class="cinder-command-palette__listbox"
-          aria-label={label}
         >
           {@render items({ query })}
         </ul>

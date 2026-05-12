@@ -285,53 +285,66 @@ describe('CommandItem — context guard', () => {
           children: textSnippet('Item'),
         },
       });
-    }).toThrow('CommandItem must be used within a CommandPalette');
+    }).toThrow('CommandItem must be used within a CommandPalette.');
   });
 });
 
 // ── Keyboard routing ───────────────────────────────────────────────────────
 
-describe('CommandPalette — keyboard routing', () => {
-  /**
-   * Build a palette with three items using a snippet that renders
-   * CommandItem components. We rely on the palette being open so children mount.
-   *
-   * Note: in this test harness we synthesize the items snippet inline using
-   * a component-level helper rather than mounting sub-components directly,
-   * because @testing-library/svelte does not support mounting child components
-   * into parent context in a single render call. Instead, we fire keyboard
-   * events directly on the input and assert on ARIA attributes.
-   */
+describe('CommandPalette — keyboard routing (no registered items)', () => {
+  // These tests verify the handlers fire without throwing and produce correct
+  // ARIA state when no CommandItem children have registered.
 
-  test('ArrowDown moves aria-activedescendant forward', async () => {
-    const { container } = render(CommandPalette, {
-      props: {
-        open: true,
-        items: createRawSnippet(() => ({
-          render: () =>
-            `<li id="item-1" role="option" aria-selected="false">A</li>` +
-            `<li id="item-2" role="option" aria-selected="false">B</li>` +
-            `<li id="item-3" role="option" aria-selected="false">C</li>`,
-          setup: () => {},
-        })),
-      },
-    });
-    const input = container.querySelector('input') as HTMLInputElement;
-    // No items are registered via context (raw snippet doesn't use CommandItem),
-    // so we test that the keyboard handler fires without throwing.
-    await fireEvent.keyDown(input, { key: 'ArrowDown' });
-    // With no registered items, activeItemId stays null; no error.
-    expect(input?.getAttribute('aria-activedescendant')).toBeNull();
-  });
-
-  test('Enter does not throw when no items are registered', async () => {
+  test('ArrowDown with no registered items leaves aria-activedescendant absent', async () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
     const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('ArrowUp with no registered items leaves aria-activedescendant absent', async () => {
+    const { container } = render(CommandPalette, {
+      props: { open: true, items: emptySnippet },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('Enter with no registered items does not invoke onclose', async () => {
+    let closed = false;
+    const { container } = render(CommandPalette, {
+      props: {
+        open: true,
+        onclose: () => {
+          closed = true;
+        },
+        items: emptySnippet,
+      },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
     await fireEvent.keyDown(input, { key: 'Enter' });
-    // No error thrown.
-    expect(true).toBe(true);
+    expect(closed).toBe(false);
+  });
+
+  test('Home with no registered items leaves aria-activedescendant absent', async () => {
+    const { container } = render(CommandPalette, {
+      props: { open: true, items: emptySnippet },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.keyDown(input, { key: 'Home' });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('End with no registered items leaves aria-activedescendant absent', async () => {
+    const { container } = render(CommandPalette, {
+      props: { open: true, items: emptySnippet },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.keyDown(input, { key: 'End' });
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
 
   test('Escape fires oncancel with preventDefault', async () => {
@@ -348,15 +361,51 @@ describe('CommandPalette — keyboard routing', () => {
     await tick();
     expect(cancelPrevented).toBe(true);
   });
+});
 
-  test('Home and End keys do not throw when no items registered', async () => {
+// ── Empty state timing ────────────────────────────────────────────────────
+
+describe('CommandPalette — empty state timing', () => {
+  test('empty snippet is NOT shown synchronously on open (before microtask)', () => {
     const { container } = render(CommandPalette, {
-      props: { open: true, items: emptySnippet },
+      props: {
+        open: true,
+        items: emptySnippet,
+        empty: textSnippet('Nothing here'),
+      },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
-    await fireEvent.keyDown(input, { key: 'Home' });
-    await fireEvent.keyDown(input, { key: 'End' });
-    expect(true).toBe(true);
+    // registrationsReady has not yet been set to true (queueMicrotask pending)
+    expect(container.querySelector('.cinder-command-palette__empty')).toBeNull();
+  });
+
+  test('empty snippet appears after microtask when no items are registered', async () => {
+    const { container } = render(CommandPalette, {
+      props: {
+        open: true,
+        items: emptySnippet,
+        empty: textSnippet('Nothing here'),
+      },
+    });
+    // Drain the microtask queue
+    await Promise.resolve();
+    await tick();
+    const emptyEl = container.querySelector('.cinder-command-palette__empty');
+    expect(emptyEl).not.toBeNull();
+    expect(emptyEl?.textContent).toContain('Nothing here');
+  });
+
+  test('empty snippet has role="status" for screen reader announcement', async () => {
+    const { container } = render(CommandPalette, {
+      props: {
+        open: true,
+        items: emptySnippet,
+        empty: textSnippet('No results'),
+      },
+    });
+    await Promise.resolve();
+    await tick();
+    const emptyEl = container.querySelector('.cinder-command-palette__empty');
+    expect(emptyEl?.getAttribute('role')).toBe('status');
   });
 });
 

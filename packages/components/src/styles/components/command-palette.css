@@ -4,19 +4,20 @@
 
 .cinder-command-palette {
   /* Reset browser <dialog> defaults */
-  margin: 0 auto;
+  margin: 0;
   padding: 0;
   border: none;
   background: transparent;
   color: var(--cinder-text);
-  /* Anchor near the top of the viewport, not centered */
+  /* Anchor near the top of the viewport — top-layer elements use fixed
+     positioning relative to the viewport. z-index is intentionally absent:
+     showModal() places the dialog in the top layer, which is above all
+     stacking contexts. */
   position: fixed;
-  inset-block-start: 12vh;
+  inset-block-start: max(4rem, 20vh);
   inset-inline: 0;
   max-width: min(90vw, 40rem);
   width: 100%;
-  /* Ensure it appears above other overlays */
-  z-index: var(--cinder-z-modal, 1200);
 }
 
 .cinder-command-palette::backdrop {
@@ -59,6 +60,20 @@
   flex-shrink: 0;
 }
 
+/* Focus ring on the search row when the input is focused. The input itself
+   has outline:none; the ring is provided here so it stays inside the panel
+   border rather than overflowing the rounded corners. */
+.cinder-command-palette__search:focus-within {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+  .cinder-command-palette__search:focus-within {
+    outline: var(--cinder-ring-width) solid ButtonText;
+  }
+}
+
 .cinder-command-palette__search-icon {
   width: 1.125rem;
   height: 1.125rem;
@@ -74,6 +89,7 @@
   font-size: var(--cinder-text-base);
   line-height: 1;
   padding-block: var(--cinder-space-4);
+  /* Focus ring is provided by the parent .cinder-command-palette__search:focus-within */
   outline: none;
 }
 
@@ -140,8 +156,10 @@
 }
 
 .cinder-command-item[data-cinder-active] {
-  background: color-mix(in oklch, var(--cinder-accent) 12%, transparent);
+  background: color-mix(in oklch, var(--cinder-accent) 15%, transparent);
   color: var(--cinder-text);
+  /* Non-color indicator for users with color vision deficiencies */
+  box-shadow: inset 3px 0 0 var(--cinder-accent);
 }
 
 .cinder-command-item[data-cinder-disabled] {

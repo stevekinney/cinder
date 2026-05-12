@@ -39,10 +39,6 @@ export type { CommandItemProps } from './components/command-item.svelte';
 
 export { default as CommandPalette } from './components/command-palette.svelte';
 export type { CommandPaletteProps } from './components/command-palette.svelte';
-export type {
-  CommandItemRegistrationInput,
-  CommandPaletteContext,
-} from './components/_internal/command-palette-context.ts';
 
 export { default as CopyButton } from './components/copy-button.svelte';
 export type { CopyButtonProps } from './components/copy-button.svelte';

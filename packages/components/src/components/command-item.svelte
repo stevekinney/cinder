@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-  import { getContext, hasContext, onDestroy } from 'svelte';
+  import { getContext, hasContext } from 'svelte';
 
   import { cn } from '../utilities/class-names.ts';
   import {
@@ -60,11 +60,6 @@
       unregister();
       itemId = null;
     };
-  });
-
-  onDestroy(() => {
-    // Belt-and-suspenders: ensure unregistration even if $effect cleanup
-    // doesn't fire (e.g. in some SSR teardown paths).
   });
 
   const isActive = $derived(itemId !== null && palette.activeItemId === itemId);
