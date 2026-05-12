@@ -44,7 +44,6 @@ function installMatchMediaMock(initialMatches: boolean) {
   return {
     list,
     queriesPassed,
-    listenerCount: () => listeners.size,
     setMatches(next: boolean) {
       list.matches = next;
       for (const listener of listeners) listener({ matches: next });
