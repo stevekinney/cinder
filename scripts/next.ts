@@ -78,6 +78,12 @@ type RunOptions = {
   cwd?: string;
   stdin?: string;
   env?: Record<string, string>;
+  /**
+   * When true, tee the child's stdout and stderr to our own stderr in real
+   * time so the operator isn't flying blind during a long-running command.
+   * The captured strings are still returned. Default: false (silent capture).
+   */
+  tee?: boolean;
 };
 
 type RunResult = {
@@ -102,6 +108,34 @@ async function run(args: string[], options: RunOptions = {}): Promise<RunResult>
   }
 
   try {
+    if (options.tee) {
+      // Stream both pipes to our stderr while accumulating into strings.
+      // Both pipes must be drained concurrently — serial reads deadlock once
+      // either pipe buffer fills.
+      const decoderOut = new TextDecoder();
+      const decoderErr = new TextDecoder();
+      let stdout = '';
+      let stderr = '';
+      const drainOut = (async () => {
+        for await (const chunk of child.stdout) {
+          const text = decoderOut.decode(chunk, { stream: true });
+          process.stderr.write(text);
+          stdout += text;
+        }
+        stdout += decoderOut.decode();
+      })();
+      const drainErr = (async () => {
+        for await (const chunk of child.stderr) {
+          const text = decoderErr.decode(chunk, { stream: true });
+          process.stderr.write(text);
+          stderr += text;
+        }
+        stderr += decoderErr.decode();
+      })();
+      await Promise.all([drainOut, drainErr]);
+      const exitCode = await child.exited;
+      return { exitCode, stdout, stderr };
+    }
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(child.stdout).text(),
       new Response(child.stderr).text(),
@@ -120,6 +154,11 @@ async function runOk(args: string[], options: RunOptions = {}): Promise<string> 
     throw new Error(`Command failed: ${args.join(' ')}\n${detail}`);
   }
   return result.stdout;
+}
+
+/** Sugar: run a command with tee output and throw on non-zero. */
+async function runOkVisible(args: string[], options: RunOptions = {}): Promise<string> {
+  return runOk(args, { ...options, tee: true });
 }
 
 async function runStreaming(args: string[], options: RunOptions = {}): Promise<{ exitCode: number; captured: string }> {
@@ -413,7 +452,7 @@ async function resolveRepoRoot(): Promise<string> {
  */
 async function fetchBase(baseBranch: string): Promise<void> {
   log('PHASE', `Fetching origin/${baseBranch}`);
-  await runOk(['git', 'fetch', 'origin', baseBranch], { cwd: repoRoot });
+  await runOkVisible(['git', 'fetch', 'origin', baseBranch], { cwd: repoRoot });
   log('OK', `origin/${baseBranch} fetched`);
 }
 
@@ -446,7 +485,7 @@ async function createWorktree(taskId: string, branch: string, baseBranch: string
   // will surface when `git worktree add` rejects the branch below.
   await run(['git', 'branch', '-D', branch], { cwd: repoRoot });
 
-  await runOk(['git', 'worktree', 'add', directory, '-b', branch, `origin/${baseBranch}`], { cwd: repoRoot });
+  await runOkVisible(['git', 'worktree', 'add', directory, '-b', branch, `origin/${baseBranch}`], { cwd: repoRoot });
   activeWorktrees.add(directory);
   log('OK', `Worktree at ${palette.dim(directory)} on branch ${palette.task(branch)}`);
   return directory;
@@ -480,7 +519,7 @@ async function countCommitsAhead(worktree: string, baseBranch: string): Promise<
 }
 
 async function pushBranch(worktree: string, branch: string): Promise<void> {
-  await runOk(['git', 'push', '-u', 'origin', branch], { cwd: worktree });
+  await runOkVisible(['git', 'push', '-u', 'origin', branch], { cwd: worktree });
 }
 
 // =============================================================================
@@ -630,7 +669,7 @@ function isReviewStatePayload(value: unknown): value is ReviewStatePayload {
 }
 
 async function mergePr(prNumber: number): Promise<void> {
-  await runOk(['gh', 'pr', 'merge', String(prNumber), '--squash', '--delete-branch'], { cwd: repoRoot });
+  await runOkVisible(['gh', 'pr', 'merge', String(prNumber), '--squash', '--delete-branch'], { cwd: repoRoot });
 }
 
 // =============================================================================
@@ -739,7 +778,7 @@ async function ensurePr(task: Task, worktree: string, branch: string): Promise<P
   const body = `## Summary\n\n${task.description ?? task.title}\n\nTask: \`${task.id}\`\n`;
   const created = await run(
     ['gh', 'pr', 'create', '--head', branch, '--base', 'main', '--title', title, '--body', body],
-    { cwd: worktree },
+    { cwd: worktree, tee: true },
   );
 
   // committee-review (or any concurrent process) may have opened the PR
@@ -1296,7 +1335,7 @@ async function preflightChecks(): Promise<void> {
   log('INFO', 'Validating claude -p invocation (cheap smoke test)…');
   const claudeCheck = await run(
     ['claude', '-p', '--dangerously-skip-permissions', '--model', 'sonnet', 'reply with the single word: ok'],
-    { env: { ...process.env, CLAUDE_BUDGET_MS: '30000' } },
+    { env: { ...process.env, CLAUDE_BUDGET_MS: '30000' }, tee: true },
   );
   if (claudeCheck.exitCode !== 0) {
     throw new Error(
