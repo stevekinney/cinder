@@ -149,7 +149,7 @@ export function firstDayOfWeek(locale: string | undefined): Weekday {
         }
       }
     } catch {
-      return 1;
+      // fall through to region-based table on getWeekInfo() failure
     }
   }
 
