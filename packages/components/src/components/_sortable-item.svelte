@@ -50,7 +50,9 @@
   // drive template rendering or $derived expressions; they are bookkeeping only.
   let pointerActive = false;
   let pointerId: number | null = null;
-  let rafHandle: number | null = null;
+  // Two separate rAF handles so move-recompute and auto-scroll don't compete.
+  let moveRafHandle: number | null = null;
+  let scrollRafHandle: number | null = null;
   let latestPointerY = 0;
   let listEl: HTMLElement | null = null;
 
@@ -80,9 +82,13 @@
   const handleLabel = $derived(formatHandleLabel(itemLabel));
 
   function endPointerSession(reason: 'drop' | 'cancel'): void {
-    if (rafHandle !== null) {
-      cancelAnimationFrame(rafHandle);
-      rafHandle = null;
+    if (moveRafHandle !== null) {
+      cancelAnimationFrame(moveRafHandle);
+      moveRafHandle = null;
+    }
+    if (scrollRafHandle !== null) {
+      cancelAnimationFrame(scrollRafHandle);
+      scrollRafHandle = null;
     }
 
     if (pointerId !== null && handleEl?.hasPointerCapture(pointerId)) {
@@ -95,6 +101,7 @@
 
     pointerActive = false;
     pointerId = null;
+    listEl = null;
 
     if (reason === 'drop') {
       context.commitDrop(itemKey, itemLabel);
@@ -110,12 +117,14 @@
     const SCROLL_SPEED = 8;
     const viewportHeight = window.innerHeight;
 
-    rafHandle = requestAnimationFrame(() => {
-      rafHandle = null;
+    scrollRafHandle = requestAnimationFrame(() => {
+      scrollRafHandle = null;
       if (!pointerActive) return;
 
       if (latestPointerY < SCROLL_ZONE) {
         window.scrollBy(0, -SCROLL_SPEED);
+        // getBoundingClientRect forces a layout flush after scrollBy — intentional,
+        // so midpoints reflect the post-scroll positions.
         recomputeTarget();
         scheduleAutoScroll();
       } else if (latestPointerY > viewportHeight - SCROLL_ZONE) {
@@ -144,6 +153,8 @@
   }
 
   function handlePointerDown(event: PointerEvent): void {
+    // Ignore re-entry while already tracking a drag (e.g., second touch point).
+    if (pointerActive) return;
     // Only primary button (left click / touch).
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     if (!handleEl) return;
@@ -165,9 +176,10 @@
     if (!pointerActive) return;
     latestPointerY = event.clientY;
     // Gate DOM reads to one per animation frame to avoid layout thrash on every event.
-    if (rafHandle === null) {
-      rafHandle = requestAnimationFrame(() => {
-        rafHandle = null;
+    // Uses a separate handle from scrollRafHandle so auto-scroll and move don't compete.
+    if (moveRafHandle === null) {
+      moveRafHandle = requestAnimationFrame(() => {
+        moveRafHandle = null;
         recomputeTarget();
       });
     }
@@ -227,12 +239,20 @@
 
       case 'Escape':
         event.preventDefault();
-        context.cancel(itemLabel);
+        if (pointerActive) {
+          endPointerSession('cancel');
+        } else {
+          context.cancel(itemLabel);
+        }
         break;
 
       case 'Tab':
         // Cancel but allow native focus movement.
-        context.cancel(itemLabel);
+        if (pointerActive) {
+          endPointerSession('cancel');
+        } else {
+          context.cancel(itemLabel);
+        }
         break;
     }
   }
@@ -243,13 +263,17 @@
       if (!pointerActive) return;
 
       if (context.controller.phase === 'lifted' && context.controller.liftedKey === itemKey) {
-        // Full cancel — stops auto-scroll, releases capture, announces cancelled.
+        // Full cancel — stops rAFs, releases capture, announces cancelled.
         endPointerSession('cancel');
       } else {
         // Controller already auto-cancelled; only do local cleanup.
-        if (rafHandle !== null) {
-          cancelAnimationFrame(rafHandle);
-          rafHandle = null;
+        if (moveRafHandle !== null) {
+          cancelAnimationFrame(moveRafHandle);
+          moveRafHandle = null;
+        }
+        if (scrollRafHandle !== null) {
+          cancelAnimationFrame(scrollRafHandle);
+          scrollRafHandle = null;
         }
         if (pointerId !== null && handleEl?.hasPointerCapture(pointerId)) {
           try {
@@ -260,6 +284,7 @@
         }
         pointerActive = false;
         pointerId = null;
+        listEl = null;
       }
     };
   });

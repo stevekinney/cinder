@@ -131,8 +131,9 @@
   <!--
     Instructions live inside the <ul> as a visually hidden <li> so the element is
     present in the DOM before any handle buttons that reference it via aria-describedby.
-    aria-hidden keeps it out of the reading order but the id is still resolved by AT
-    for aria-describedby (ARIA spec §6.6.1).
+    role="presentation" removes the implicit listitem role so this element does not
+    count toward the list's item count. cinder-sr-only visually hides it with the
+    clip pattern (not display:none), so browsers resolve its id for aria-describedby.
   -->
   <li role="presentation" id={instructionsId} class="cinder-sr-only">
     Press Space to lift, then arrow keys to move, Space to drop, Escape to cancel.

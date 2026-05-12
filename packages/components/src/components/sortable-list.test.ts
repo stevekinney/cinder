@@ -326,24 +326,28 @@ describe('SortableList', () => {
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('Arrow Down at last position does not crash or re-announce', async () => {
+  test('Arrow Down at last position clamps — item stays at last slot', async () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const lastHandle = handles[handles.length - 1] as HTMLElement;
+    const lastHandle = handles[handles.length - 1] as HTMLElement; // Gamma at index 2.
 
     await fireEvent.keyDown(lastHandle, { key: ' ' });
-    await fireEvent.keyDown(lastHandle, { key: 'ArrowDown' }); // At last — clamps, no error.
+    await fireEvent.keyDown(lastHandle, { key: 'ArrowDown' }); // At last — clamps.
 
+    const rows = container.querySelectorAll('[data-sortable-row]');
+    expect(rows[2].getAttribute('data-key')).toBe('c'); // Gamma stays at index 2.
     expect(lastHandle.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('Arrow Up at first position does not crash', async () => {
+  test('Arrow Up at first position clamps — item stays at first slot', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement; // Alpha at index 0.
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowUp' }); // Already at 0 — clamps.
 
+    const rows = container.querySelectorAll('[data-sortable-row]');
+    expect(rows[0].getAttribute('data-key')).toBe('a'); // Alpha stays at index 0.
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -458,7 +462,9 @@ describe('SortableList', () => {
 
   test('announcements prop flows to live region on lift', async () => {
     const { container } = renderList({
-      announcements: { lifted: (label: string) => `CUSTOM ${label} LIFTED` },
+      announcements: {
+        lifted: (label: string, _position: number, _total: number) => `CUSTOM ${label} LIFTED`,
+      },
     });
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
