@@ -113,3 +113,4 @@ scripts/playground/.controls-*.svelte
 **/.cinder-ssr-*.mjs
 
 **/.claude/worktrees/**
+.claude/scheduled_tasks.lock
