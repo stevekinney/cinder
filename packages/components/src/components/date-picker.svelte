@@ -301,14 +301,24 @@
 
   function isRangeStart(date: Date): boolean {
     if (initialMode !== 'range') return false;
-    if (rangeDraft.stage === 'picking-end') return isSameDay(date, rangeDraft.start);
+    if (rangeDraft.stage === 'picking-end') {
+      const hover = rangeDraft.hover;
+      if (!hover) return isSameDay(date, rangeDraft.start);
+      const visualStart = isBefore(rangeDraft.start, hover) ? rangeDraft.start : hover;
+      return isSameDay(date, visualStart);
+    }
     if (currentValue === null) return false;
     return isSameDay(date, (currentValue as [Date, Date])[0]);
   }
 
   function isRangeEnd(date: Date): boolean {
     if (initialMode !== 'range') return false;
-    if (rangeDraft.stage === 'picking-end') return false;
+    if (rangeDraft.stage === 'picking-end') {
+      const hover = rangeDraft.hover;
+      if (!hover) return false;
+      const visualEnd = isAfter(rangeDraft.start, hover) ? rangeDraft.start : hover;
+      return isSameDay(date, visualEnd);
+    }
     if (currentValue === null) return false;
     return isSameDay(date, (currentValue as [Date, Date])[1]);
   }
