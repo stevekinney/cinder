@@ -80,6 +80,14 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte'
 export { default as EmptyState } from './components/empty-state.svelte';
 export type { EmptyStateProps } from './components/empty-state.svelte';
 
+export { default as FormField } from './components/form-field.svelte';
+export type { FormFieldProps } from './components/form-field.svelte';
+
+export { default as FormSection } from './components/form-section.svelte';
+export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section.svelte';
+
+export type { FormFieldContext } from './_internal/form-field-context.ts';
+
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 

@@ -1,0 +1,56 @@
+/* ========================================
+ * FORM FIELD
+ * ======================================== */
+
+.cinder-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1-5);
+  inline-size: 100%;
+}
+
+/* ----------------------------------------
+ * Label
+ * ---------------------------------------- */
+
+.cinder-form-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  line-height: 1;
+  color: var(--cinder-text);
+}
+
+.cinder-form-field__label[data-disabled] {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------
+ * Required marker
+ * ---------------------------------------- */
+
+.cinder-form-field__required {
+  color: var(--cinder-danger);
+  font-weight: var(--cinder-font-medium);
+}
+
+/* ----------------------------------------
+ * Supporting text
+ * ---------------------------------------- */
+
+.cinder-form-field__description {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  margin: 0;
+}
+
+.cinder-form-field__error {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-danger);
+  margin: 0;
+}

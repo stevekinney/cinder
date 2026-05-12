@@ -141,6 +141,14 @@
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
     },
+    "./form-field": {
+      "svelte": "./src/components/form-field.svelte",
+      "types": "./dist/components/form-field.svelte.d.ts"
+    },
+    "./form-section": {
+      "svelte": "./src/components/form-section.svelte",
+      "types": "./dist/components/form-section.svelte.d.ts"
+    },
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"

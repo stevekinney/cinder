@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -10,6 +10,10 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Input } = await import('./input.svelte');
+const { default: FormFieldInputFixture } =
+  await import('../test/fixtures/form-field-input-fixture.svelte');
+const { default: FormFieldIdMismatchFixture } =
+  await import('../test/fixtures/form-field-id-mismatch-fixture.svelte');
 
 describe('Input rendering', () => {
   test('renders with required id prop', () => {
@@ -146,5 +150,120 @@ describe('Input rendering', () => {
       props: { id: 'rest', value: '', 'data-testid': 'my-input' },
     });
     expect(container.querySelector('[data-testid="my-input"]')).not.toBeNull();
+  });
+});
+
+describe('Input context inheritance from FormField', () => {
+  test('inherits aria-describedby from FormField context when own description/error are absent', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldDescription: 'Helper text' },
+    });
+    const input = container.querySelector('#ctx-field');
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-description');
+  });
+
+  test('inherits aria-invalid from FormField context when own error is absent', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldError: 'Something went wrong' },
+    });
+    const input = container.querySelector('#ctx-field');
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test("own description prop wins over context's description", () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldDescription: 'Field description',
+        inputDescription: 'Input description',
+      },
+    });
+    const input = container.querySelector('#ctx-field');
+    // Should use input's own description id, not the field's
+    expect(input?.getAttribute('aria-describedby')).toContain('ctx-field-description');
+  });
+
+  test('partial override: Input description + FormField error produces joint aria-describedby', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldError: 'Field error',
+        inputDescription: 'Input helper',
+      },
+    });
+    const input = container.querySelector('#ctx-field');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    // Input's own description id + FormField's error id
+    expect(describedBy).toContain('ctx-field-description');
+    expect(describedBy).toContain('ctx-field-error');
+  });
+
+  test('inherits required from FormField context when own required is absent', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldRequired: true },
+    });
+    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    expect(input?.required).toBe(true);
+  });
+
+  test('explicit required={false} overrides context required=true', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldRequired: true,
+        inputRequired: false,
+      },
+    });
+    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    expect(input?.required).toBe(false);
+  });
+
+  test('inherits disabled from FormField context when own disabled is absent', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldDisabled: true },
+    });
+    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    expect(input?.disabled).toBe(true);
+  });
+
+  test('explicit disabled={false} overrides context disabled=true', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldDisabled: true,
+        inputDisabled: false,
+      },
+    });
+    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    expect(input?.disabled).toBe(false);
+  });
+
+  test('id mismatch fires console.warn', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(FormFieldIdMismatchFixture, {});
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const msg = (warnSpy.mock.calls[0] as string[])[0];
+      expect(msg).toContain('field-id');
+      expect(msg).toContain('mismatched-input-id');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('matching ids do not fire console.warn', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(FormFieldInputFixture, {
+        props: { fieldId: 'matching-field', fieldLabel: 'Label' },
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
