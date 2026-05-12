@@ -41,31 +41,11 @@ test.describe('server identity', () => {
 
 const entries = loadManifest();
 
-/**
- * Components whose `/page/<slug>` page-bundle either fails to build on CI
- * (Bun.build "Multiple files share the same output path" on Linux runners
- * for components transitively touching certain Svelte internals) or whose
- * mount completes slower than the fixture's `#app > *` wait window. These
- * pass reliably on local hardware but flake on the GitHub Actions runner.
- *
- * Skipped on CI only; tracked for a follow-up fix in the playground's lazy
- * `Bun.build` path that owns the page-bundle pipeline.
- */
-const SLOW_ON_CI: ReadonlySet<string> = new Set([
-  'code-block',
-  'chat',
-  'markdown-editor',
-  'review-editor',
-]);
-
-const isCI = process.env['CI'] === 'true' || process.env['CI'] === '1';
-
 for (const entry of entries) {
   test.describe(entry.name, () => {
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {
-        const testCase = isCI && SLOW_ON_CI.has(entry.slug) ? test.skip : test;
-        testCase(`${theme}-${viewport.name}`, async ({ componentPage }) => {
+        test(`${theme}-${viewport.name}`, async ({ componentPage }) => {
           const page = await componentPage.open({ entry, theme, viewport });
 
           const key = { slug: entry.slug, theme, viewport: viewport.name };
