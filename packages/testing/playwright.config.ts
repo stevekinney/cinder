@@ -9,7 +9,12 @@ export default defineConfig({
   // Milkdown-backed) can take 15-25s to mount on slower CI runners. Default
   // 30s test timeout leaves no room for the fixture wait plus axe + screenshot.
   timeout: 60_000,
-  ...(process.env['CI'] ? { workers: 2 } : {}),
+  // CI runs serially: the playground server's lazy `Bun.build` for page bundles
+  // doesn't dedupe concurrent requests for the same component, so parallel
+  // tests can race on the build's output path. One worker eliminates the race
+  // and the slower runner has more headroom for heavy components. Local stays
+  // parallel (default = cores).
+  ...(process.env['CI'] ? { workers: 1 } : {}),
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],
