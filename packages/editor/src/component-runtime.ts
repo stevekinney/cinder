@@ -4,57 +4,28 @@
  * This subpath intentionally excludes template rendering helpers that load the
  * markdown rendering pipeline at module-evaluation time.
  *
- * Symbols are imported and re-exported (not `export ... from`) so that, when a
- * bundle's transitive graph reaches both `@cinder/editor` and
- * `@cinder/editor/component-runtime`, Bun's re-export inlining doesn't emit
- * parallel `export { foo } from './commands.js'` statements that collapse to
- * a duplicate-export SyntaxError at module load. The two entry surfaces still
- * resolve to the same `./commands.js` module instance under ESM semantics.
+ * This module is the **single canonical re-export source** for the symbols
+ * listed below. `./index.ts` (the package root) re-exports these names from
+ * here rather than from `./commands.js` directly, so every consumer of the
+ * package sees one re-export path per name. Bun's bundler on Linux emits a
+ * `Duplicate export of '<name>'` SyntaxError at module evaluation when both
+ * package entry points re-export the same name from `./commands.js`
+ * independently — routing index through component-runtime collapses those
+ * two paths into one and eliminates the duplicate.
  */
 
-import { createEditorAttachment } from './attach.js';
-import {
-  applyLinkToSelection,
-  getActiveBlockType,
-  getActiveMarks,
-  getLinkAtCursor,
-  getLinkRangeAtCursor,
-  getLinkTextAtCursor,
-  insertLinkAtCursor,
-  isSelectionCollapsed,
-  redo,
-  removeLink,
-  setHeading,
-  setParagraph,
-  toggleBlockquote,
-  toggleBold,
-  toggleBulletList,
-  toggleCode,
-  toggleItalic,
-  toggleOrderedList,
-  toggleStrikethrough,
-  undo,
-  updateLinkAtCursor,
-} from './commands.js';
-import { setEditorReadonly } from './editor.js';
-import { getShortcutDisplay } from './keymap-plugin.js';
-import { DEFAULT_DEBOUNCE_MS } from './types.js';
-
+export { createEditorAttachment } from './attach.js';
 export {
   applyLinkToSelection,
-  createEditorAttachment,
-  DEFAULT_DEBOUNCE_MS,
   getActiveBlockType,
   getActiveMarks,
   getLinkAtCursor,
   getLinkRangeAtCursor,
   getLinkTextAtCursor,
-  getShortcutDisplay,
   insertLinkAtCursor,
   isSelectionCollapsed,
   redo,
   removeLink,
-  setEditorReadonly,
   setHeading,
   setParagraph,
   toggleBlockquote,
@@ -66,10 +37,12 @@ export {
   toggleStrikethrough,
   undo,
   updateLinkAtCursor,
-};
-
-export type { ActiveBlockType, ActiveMarks } from './commands.js';
-
+  type ActiveBlockType,
+  type ActiveMarks,
+} from './commands.js';
+export { setEditorReadonly } from './editor.js';
+export { getShortcutDisplay } from './keymap-plugin.js';
+export { DEFAULT_DEBOUNCE_MS } from './types.js';
 export type {
   EditorHandle,
   EditorSelection,
