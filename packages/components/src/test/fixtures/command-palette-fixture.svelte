@@ -89,13 +89,13 @@
   bind:query
   label="Fixture palette"
   {triggerRef}
-  onclose={onClosed}
+  {...onClosed !== undefined ? { onclose: onClosed } : {}}
 >
   {#snippet items()}
     {#each visibleItems as item (item.value)}
       <CommandItem
         value={item.value}
-        disabled={item.disabled}
+        {...item.disabled !== undefined ? { disabled: item.disabled } : {}}
         onselect={() => {
           onSelected?.(item.value);
         }}
