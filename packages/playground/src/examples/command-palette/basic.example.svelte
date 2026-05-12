@@ -32,7 +32,7 @@
 </div>
 
 <CommandPalette bind:open label="Basic palette" {triggerRef}>
-  {#snippet items({ query: _unusedQuery })}
+  {#snippet items()}
     <CommandItem
       value="new-file"
       onselect={() => {
