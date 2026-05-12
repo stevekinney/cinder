@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { PLAYGROUND_URL } from './src/helpers/playground-url.ts';
 
 export default defineConfig({
   testDir: './tests',
@@ -11,7 +12,7 @@ export default defineConfig({
     ['json', { outputFile: './test-results/results.json' }],
   ],
   use: {
-    baseURL: process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173',
+    baseURL: PLAYGROUND_URL,
     trace: 'retain-on-failure',
     screenshot: 'off',
     video: 'off',

@@ -7,8 +7,8 @@ import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 test.describe('server identity', () => {
   test('cached manifest matches live /api/manifest', async ({ request }) => {
-    // `request` honors playwright.config.ts's `use.baseURL`, which is
-    // `process.env.PLAYGROUND_URL ?? 'http://localhost:4173'`.
+    // `request` honors playwright.config.ts's `use.baseURL`, which resolves
+    // via `src/helpers/playground-url.ts`.
     const response = await request.get('/api/manifest');
     expect(response.ok()).toBeTruthy();
 

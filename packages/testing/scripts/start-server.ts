@@ -1,17 +1,17 @@
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '..');
 const repoRoot = resolve(here, '../../..');
-const playgroundUrl = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
 const readinessPath = '/api/manifest';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 
 async function ping(): Promise<boolean> {
   try {
-    const response = await fetch(playgroundUrl + readinessPath);
+    const response = await fetch(PLAYGROUND_URL + readinessPath);
     return response.ok;
   } catch {
     return false;
@@ -32,15 +32,15 @@ async function main(): Promise<void> {
 
   if (alreadyUp && reuseOptOut) {
     console.error(
-      `Playground server already responding at ${playgroundUrl}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
+      `Playground server already responding at ${PLAYGROUND_URL}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
     );
     process.exit(1);
   }
 
   if (alreadyUp) {
-    console.log(`Reusing playground server at ${playgroundUrl}.`);
+    console.log(`Reusing playground server at ${PLAYGROUND_URL}.`);
   } else {
-    console.log(`Starting playground server (target: ${playgroundUrl})...`);
+    console.log(`Starting playground server (target: ${PLAYGROUND_URL})...`);
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
       cwd: repoRoot,
       stdio: ['ignore', 'inherit', 'inherit'],
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
       if (await ping()) break;
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
-        console.log(`Waiting for playground at ${playgroundUrl} (${elapsed}s elapsed)...`);
+        console.log(`Waiting for playground at ${PLAYGROUND_URL} (${elapsed}s elapsed)...`);
         lastLog = Date.now();
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
@@ -61,7 +61,7 @@ async function main(): Promise<void> {
 
     if (!(await ping())) {
       serverProcess.kill('SIGTERM');
-      console.error(`Playground server did not become ready within 120s at ${playgroundUrl}.`);
+      console.error(`Playground server did not become ready within 120s at ${PLAYGROUND_URL}.`);
       process.exit(1);
     }
   }

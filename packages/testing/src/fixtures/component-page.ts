@@ -1,5 +1,6 @@
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
 import type { ComponentEntry, Theme, Viewport } from '../helpers/manifest.ts';
+import { PLAYGROUND_URL } from '../helpers/playground-url.ts';
 import { THEME_STORAGE_KEY, themeContextOptions } from '../helpers/theme.ts';
 
 export type OpenArgs = { entry: ComponentEntry; theme: Theme; viewport: Viewport };
@@ -15,11 +16,10 @@ export const test = base.extend<Fixtures>({
 
     const componentPage: ComponentPage = {
       async open({ entry, theme, viewport }) {
-        const baseURL = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
         const context = await browser.newContext({
           ...themeContextOptions(theme),
           viewport: { width: viewport.width, height: viewport.height },
-          baseURL,
+          baseURL: PLAYGROUND_URL,
         });
         await context.addInitScript(
           ([key, value]) => {
@@ -34,7 +34,10 @@ export const test = base.extend<Fixtures>({
         contexts.push(context);
         const page = await context.newPage();
         await page.goto(entry.route, { waitUntil: 'load' });
-        await page.waitForSelector('#app > *', { state: 'visible', timeout: 15_000 });
+        // 30s accommodates heavier editor components (Chat, MarkdownEditor,
+        // ReviewEditor) on slower CI runners; on local hardware the wait is
+        // typically under 2s.
+        await page.waitForSelector('#app > *', { state: 'visible', timeout: 30_000 });
         return page;
       },
     };

@@ -4,10 +4,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComponentEntry } from '../src/helpers/manifest.ts';
+import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '..');
-const playgroundUrl = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
 
 type RawManifestEntry = {
   name: string;
@@ -18,7 +18,7 @@ type RawManifestEntry = {
 };
 
 async function main(): Promise<void> {
-  const response = await fetch(`${playgroundUrl}/api/manifest`);
+  const response = await fetch(`${PLAYGROUND_URL}/api/manifest`);
   if (!response.ok) {
     throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
   }
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
 
   if (raw.length === 0) {
     throw new Error(
-      `Manifest at ${playgroundUrl}/api/manifest returned zero entries. The playground discovered no components.`,
+      `Manifest at ${PLAYGROUND_URL}/api/manifest returned zero entries. The playground discovered no components.`,
     );
   }
 
