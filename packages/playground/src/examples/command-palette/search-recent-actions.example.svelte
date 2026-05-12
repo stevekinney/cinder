@@ -96,7 +96,7 @@
   {#snippet items({ query: paletteQuery })}
     <!--
       Search results section — only shown while typing.
-      `query` here shadows the outer state variable with the same value;
+      `paletteQuery` comes from the snippet parameter and mirrors CommandPalette's query.
       using the snippet parameter keeps the pattern explicit for consumers.
     -->
     {#if filteredPages.length > 0}
