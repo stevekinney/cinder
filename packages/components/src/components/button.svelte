@@ -2,11 +2,29 @@
   import type { Snippet } from 'svelte';
   import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
-  /** Visual style of the button. */
-  export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'ghost-danger';
+  /**
+   * Visual style of the button.
+   *
+   * `secondary` is an outline-style button (filled surface + border). It is kept as `secondary`
+   * rather than `outline` because: (a) today's `secondary` is already outline-flavored, (b) `ghost`
+   * covers the transparent-background case, and (c) 27+ call sites depend on `secondary` today.
+   *
+   * `soft` / `soft-danger` use a tinted fill with no border — mid-emphasis between `ghost` and
+   * `primary`/`danger`. Background is `color-mix(in oklch, accent, transparent 88%)` so it
+   * resolves against the current theme's accent/danger color in both light and dark modes.
+   */
+  export type ButtonVariant =
+    | 'primary'
+    | 'secondary'
+    | 'soft'
+    | 'danger'
+    | 'soft-danger'
+    | 'ghost'
+    | 'ghost-danger';
 
-  /** Size of the button. */
-  export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
+  /** Size of the button. `xs` and `sm` are below WCAG AAA touch-target (44px) and are intended
+   * for dense UI contexts only. `md` meets WCAG AAA (44px). See button.a11y.md for rationale. */
+  export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
   type SharedBase = {
     /** Visual style. */
@@ -17,6 +35,15 @@
     fullWidth?: boolean;
     /** Disable the button and show a spinner. */
     loading?: boolean;
+    /** Render as a square icon-only button. Requires an explicit accessible name
+     *  via `aria-label`, `aria-labelledby`, or `label`. Enforced in dev. */
+    iconOnly?: boolean;
+    /** DECORATIVE icon rendered before the label/children. Always wrapped in aria-hidden.
+     *  If the icon conveys meaning, supply accessible text via `label`/`aria-label` instead. */
+    leadingIcon?: Snippet;
+    /** DECORATIVE icon rendered after the label/children. Always wrapped in aria-hidden.
+     *  Same accessible-name guidance as `leadingIcon`. */
+    trailingIcon?: Snippet;
     /** Custom class merged with `.cinder-button`. */
     class?: string;
   };
@@ -28,9 +55,12 @@
   // analyzer reads this two-variant shape to generate correct prop-control UI for each branch.
   // Runtime limitation: `string` includes `""`, so a literal empty label still satisfies
   // `WithLabel`. The dev-mode guard in the instance script catches that case.
-  type WithLabel = { label: string; children?: Snippet };
-  type WithChildren = { label?: string; children: Snippet };
-  type SharedProps = SharedBase & (WithLabel | WithChildren);
+  type WithLabel = { label: string; children?: Snippet; iconOnly?: boolean };
+  type WithChildren = { label?: string; children: Snippet; iconOnly?: false };
+  // Icon-only buttons may have a label (rendered sr-only) or rely on aria-label/aria-labelledby
+  // passed via rest props. `children` is accepted as the visual icon (not a name source).
+  type WithIconOnly = { iconOnly: true; label?: string; children?: Snippet };
+  type SharedProps = SharedBase & (WithLabel | WithChildren | WithIconOnly);
 
   type ButtonOnlyProps = SharedProps & Omit<HTMLButtonAttributes, 'class'> & { href?: undefined };
   type LinkButtonProps = SharedProps & Omit<HTMLAnchorAttributes, 'class'> & { href: string };
@@ -58,6 +88,9 @@
     size = 'md',
     fullWidth = false,
     loading = false,
+    iconOnly = false,
+    leadingIcon,
+    trailingIcon,
     children,
     label,
     class: customClassName,
@@ -65,6 +98,8 @@
     onclick: consumerOnClick,
     'aria-disabled': consumerAriaDisabled,
     'aria-busy': consumerAriaBusy,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
     ...rest
   }: ButtonProps = $props();
 
@@ -76,6 +111,7 @@
     'data-cinder-size': size,
     'data-cinder-full-width': fullWidth ? '' : undefined,
     'data-cinder-loading': loading ? '' : undefined,
+    'data-cinder-icon-only': iconOnly ? '' : undefined,
   });
 
   // When loading, force aria-disabled/aria-busy to 'true' so assistive tech always hears the
@@ -92,11 +128,25 @@
   // the underlying `rest` object is itself reactive, so consumers see prop changes flow through.
   const anchorAttributes = rest as Omit<
     HTMLAnchorAttributes,
-    'class' | 'href' | 'tabindex' | 'onclick' | 'aria-disabled' | 'aria-busy'
+    | 'class'
+    | 'href'
+    | 'tabindex'
+    | 'onclick'
+    | 'aria-disabled'
+    | 'aria-busy'
+    | 'aria-label'
+    | 'aria-labelledby'
   >;
   const buttonAttributes = rest as Omit<
     HTMLButtonAttributes,
-    'class' | 'type' | 'disabled' | 'onclick' | 'aria-disabled' | 'aria-busy'
+    | 'class'
+    | 'type'
+    | 'disabled'
+    | 'onclick'
+    | 'aria-disabled'
+    | 'aria-busy'
+    | 'aria-label'
+    | 'aria-labelledby'
   >;
 
   // Branch-specific prop reads still need `$derived` because `loading` prop flips must
@@ -134,21 +184,38 @@
     }
   }
 
-  // Dev-mode guard: TypeScript's `label: string` lets `""` through. Warn when the button
-  // would render without an accessible name so the bug surfaces in local dev. `DEV` from
-  // `esm-env` is a bundler-replaced constant: `true` in dev builds, `false` in prod — so
-  // the whole `$effect` body is tree-shaken in production. Safe in Vite, SvelteKit, Bun, Node.
-  //
-  // The check runs reactively via `$effect` (not once at mount) so prop changes after mount
-  // also surface the issue — e.g., a consumer binding `label` to a reactive source that flips
-  // to `""` mid-session will warn at the point the problem shows up.
+  // Dev-mode guards. DEV from esm-env is a bundler-replaced constant: true in dev, false in
+  // prod — the whole $effect body is tree-shaken in production. Guards run reactively so prop
+  // changes after mount also surface issues.
   $effect(() => {
     if (!DEV) return;
+
+    // Guard 1 — Updated baseline: warn when the button has no accessible name at all.
+    // aria-label/aria-labelledby (via rest props) are now valid name sources alongside label and
+    // children, so iconOnly + aria-label + leadingIcon no longer falsely triggers this warning.
     const hasLabel = typeof label === 'string' && label.trim().length > 0;
     const hasChildren = Boolean(children);
-    if (!hasLabel && !hasChildren) {
+    const hasAriaLabel = typeof ariaLabel === 'string' && ariaLabel.trim().length > 0;
+    const hasAriaLabelledBy =
+      typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0;
+    if (!hasLabel && !hasChildren && !hasAriaLabel && !hasAriaLabelledBy) {
       console.warn(
-        '[cinder/Button] rendered without an accessible name — pass a non-empty `label` or `children`.',
+        '[cinder/Button] rendered without an accessible name — pass a non-empty `label`, `children`, `aria-label`, or `aria-labelledby`.',
+      );
+    }
+
+    // Guard 2 — icon-only accessible name: children alone does not count because it may be a
+    // non-text SVG. Requires aria-label, aria-labelledby, or a non-empty label string.
+    if (iconOnly && !hasAriaLabel && !hasAriaLabelledBy && !hasLabel) {
+      console.warn(
+        '[cinder/Button] iconOnly=true requires aria-label, aria-labelledby, or a non-empty label.',
+      );
+    }
+
+    // Guard 3 — icon-only visual: a blank square is a real UI failure, not just an a11y issue.
+    if (iconOnly && !leadingIcon && !trailingIcon && !children) {
+      console.warn(
+        '[cinder/Button] iconOnly=true requires a visible icon — pass leadingIcon, trailingIcon, or children.',
       );
     }
   });
@@ -163,9 +230,30 @@
     {...dataAttributes}
     aria-disabled={resolvedAriaDisabled}
     aria-busy={resolvedAriaBusy}
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledBy}
     onclick={handleClick}
   >
-    {#if children}{@render children()}{:else}{label}{/if}
+    {#if leadingIcon}
+      <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
+    {/if}
+    {#if iconOnly}
+      {#if !ariaLabel && !ariaLabelledBy && label}
+        <span class="cinder-sr-only">{label}</span>
+      {/if}
+      {#if children && !leadingIcon && !trailingIcon}
+        <span class="cinder-button__icon" aria-hidden="true">{@render children()}</span>
+      {:else if children}
+        {@render children()}
+      {/if}
+    {:else if children}
+      {@render children()}
+    {:else}
+      {label}
+    {/if}
+    {#if trailingIcon}
+      <span class="cinder-button__icon" aria-hidden="true">{@render trailingIcon()}</span>
+    {/if}
   </a>
 {:else}
   <button
@@ -176,8 +264,29 @@
     disabled={buttonDisabled || loading}
     aria-disabled={resolvedAriaDisabled}
     aria-busy={resolvedAriaBusy}
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledBy}
     onclick={handleClick}
   >
-    {#if children}{@render children()}{:else}{label}{/if}
+    {#if leadingIcon}
+      <span class="cinder-button__icon" aria-hidden="true">{@render leadingIcon()}</span>
+    {/if}
+    {#if iconOnly}
+      {#if !ariaLabel && !ariaLabelledBy && label}
+        <span class="cinder-sr-only">{label}</span>
+      {/if}
+      {#if children && !leadingIcon && !trailingIcon}
+        <span class="cinder-button__icon" aria-hidden="true">{@render children()}</span>
+      {:else if children}
+        {@render children()}
+      {/if}
+    {:else if children}
+      {@render children()}
+    {:else}
+      {label}
+    {/if}
+    {#if trailingIcon}
+      <span class="cinder-button__icon" aria-hidden="true">{@render trailingIcon()}</span>
+    {/if}
   </button>
 {/if}
