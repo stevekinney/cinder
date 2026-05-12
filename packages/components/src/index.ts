@@ -173,11 +173,23 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
+export { default as SectionHeading } from './components/section-heading.svelte';
+export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
+
+export { default as SegmentedControl } from './components/segmented-control.svelte';
+export type {
+  SegmentedControlOption,
+  SegmentedControlProps,
+} from './components/segmented-control.svelte';
+
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
 
-export { default as SectionHeading } from './components/section-heading.svelte';
-export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
+export { default as SelectionPopover } from './components/selection-popover.svelte';
+export type {
+  SelectionPopoverPosition,
+  SelectionPopoverProps,
+} from './components/selection-popover.svelte';
 
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
@@ -186,18 +198,6 @@ export type {
   SortableItemContext,
   SortableReorderChange,
 } from './utilities/sortable-controller.svelte.ts';
-
-export { default as SegmentedControl } from './components/segmented-control.svelte';
-export type {
-  SegmentedControlOption,
-  SegmentedControlProps,
-} from './components/segmented-control.svelte';
-
-export { default as SelectionPopover } from './components/selection-popover.svelte';
-export type {
-  SelectionPopoverPosition,
-  SelectionPopoverProps,
-} from './components/selection-popover.svelte';
 
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
