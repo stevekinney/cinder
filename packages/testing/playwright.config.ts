@@ -5,6 +5,10 @@ export default defineConfig({
   testDir: './tests',
   outputDir: './test-results/playwright',
   fullyParallel: true,
+  // Heavy editor components (Chat, MarkdownEditor, ReviewEditor — all
+  // Milkdown-backed) can take 15-25s to mount on slower CI runners. Default
+  // 30s test timeout leaves no room for the fixture wait plus axe + screenshot.
+  timeout: 60_000,
   ...(process.env['CI'] ? { workers: 2 } : {}),
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
