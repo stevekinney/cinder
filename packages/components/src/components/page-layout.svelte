@@ -44,12 +44,6 @@
 
 <div class={classNames('cinder-page-layout', className)}>
   <header class="cinder-page-layout-header">
-    {#if breadcrumbs}
-      <div class="cinder-page-layout-breadcrumbs">
-        {@render breadcrumbs()}
-      </div>
-    {/if}
-
     <div class="cinder-page-layout-header-row">
       {#if avatar}
         <div class="cinder-page-layout-avatar">
@@ -78,6 +72,12 @@
       {/if}
     </div>
   </header>
+
+  {#if breadcrumbs}
+    <div class="cinder-page-layout-breadcrumbs">
+      {@render breadcrumbs()}
+    </div>
+  {/if}
 
   <div class="cinder-page-layout-content">
     {@render children()}

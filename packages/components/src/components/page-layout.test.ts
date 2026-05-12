@@ -79,6 +79,13 @@ describe('PageLayout rendering', () => {
     expect(container.querySelector('.cinder-page-layout-actions')).toBeNull();
   });
 
+  test('header landmark wraps the title row', () => {
+    const { container } = render(PageLayout, {
+      props: { title: 'Page', children },
+    });
+    expect(container.querySelector('header.cinder-page-layout-header')).not.toBeNull();
+  });
+
   test('applies class prop to root element', () => {
     const { container } = render(PageLayout, {
       props: {
@@ -95,7 +102,7 @@ describe('PageLayout rendering', () => {
 });
 
 describe('PageLayout breadcrumbs slot', () => {
-  test('breadcrumbs snippet renders above the title row', () => {
+  test('breadcrumbs snippet renders below the sticky header and above the content', () => {
     const breadcrumbs = createRawSnippet(() => ({
       render: () => '<nav aria-label="Breadcrumb">Home</nav>',
     }));
@@ -105,12 +112,18 @@ describe('PageLayout breadcrumbs slot', () => {
     });
 
     const breadcrumbsEl = container.querySelector('.cinder-page-layout-breadcrumbs');
-    const headerRow = container.querySelector('.cinder-page-layout-header-row');
+    const header = container.querySelector('.cinder-page-layout-header');
+    const content = container.querySelector('.cinder-page-layout-content');
     expect(breadcrumbsEl).not.toBeNull();
-    expect(headerRow).not.toBeNull();
-    // breadcrumbs must precede the header row in DOM order
-    const position = breadcrumbsEl!.compareDocumentPosition(headerRow!);
-    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(header).not.toBeNull();
+    expect(content).not.toBeNull();
+    // breadcrumbs must be outside (after) the sticky header and before content
+    const afterHeader =
+      header!.compareDocumentPosition(breadcrumbsEl!) & Node.DOCUMENT_POSITION_FOLLOWING;
+    const beforeContent =
+      breadcrumbsEl!.compareDocumentPosition(content!) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(afterHeader).toBeTruthy();
+    expect(beforeContent).toBeTruthy();
   });
 
   test('breadcrumbs slot is absent when not provided', () => {
@@ -187,6 +200,9 @@ describe('PageLayout title as snippet', () => {
 
     expect(container.querySelector('[data-testid="custom-h1"]')).not.toBeNull();
     expect(container.querySelector('.cinder-page-layout-title')).toBeNull();
+    // snippet must render inside the title column
+    const column = container.querySelector('.cinder-page-layout-title-column');
+    expect(column?.querySelector('[data-testid="custom-h1"]')).not.toBeNull();
   });
 
   test('title as string still renders default h1', () => {
@@ -204,10 +220,8 @@ describe('PageLayout actions row CSS', () => {
   test('actions row min-block-size is declared in the stylesheet', async () => {
     const cssPath = new URL('../styles/components/page-layout.css', import.meta.url);
     const css = await Bun.file(cssPath).text();
-    // Match .cinder-page-layout-header-row block containing min-block-size: 2.75rem
-    const headerRowBlockMatch = css.match(/\.cinder-page-layout-header-row\s*\{([^}]+)\}/);
-    expect(headerRowBlockMatch).not.toBeNull();
-    expect(headerRowBlockMatch![1]).toMatch(/min-block-size\s*:\s*2\.75rem/);
+    // Match the selector and then min-block-size: 2.75rem anywhere after it
+    expect(css).toMatch(/\.cinder-page-layout-header-row[\s\S]*?min-block-size\s*:\s*2\.75rem/);
   });
 
   test('actions align to the inline-end of the title row', async () => {
@@ -227,17 +241,15 @@ describe('PageLayout actions row CSS', () => {
     // (a) actions must be the last child of the header row
     expect(headerRow!.lastElementChild).toBe(actionsEl);
 
-    // (b) CSS declares margin-inline-start: auto inside .cinder-page-layout-actions
+    // (b) CSS declares margin-inline-start: auto linked to .cinder-page-layout-actions
     const cssPath = new URL('../styles/components/page-layout.css', import.meta.url);
     const css = await Bun.file(cssPath).text();
-    const actionsBlockMatch = css.match(/\.cinder-page-layout-actions\s*\{([^}]+)\}/);
-    expect(actionsBlockMatch).not.toBeNull();
-    expect(actionsBlockMatch![1]).toMatch(/margin-inline-start\s*:\s*auto/);
+    expect(css).toMatch(/\.cinder-page-layout-actions[\s\S]*?margin-inline-start\s*:\s*auto/);
   });
 });
 
 describe('PageLayout DOM order', () => {
-  test('DOM order is breadcrumbs → header-row → content', () => {
+  test('DOM order is header → breadcrumbs → content', () => {
     const breadcrumbs = createRawSnippet(() => ({
       render: () => '<nav>Breadcrumbs</nav>',
     }));
@@ -246,21 +258,21 @@ describe('PageLayout DOM order', () => {
       props: { title: 'Page', children, breadcrumbs },
     });
 
+    const header = container.querySelector('.cinder-page-layout-header')!;
     const breadcrumbsEl = container.querySelector('.cinder-page-layout-breadcrumbs')!;
-    const headerRow = container.querySelector('.cinder-page-layout-header-row')!;
     const content = container.querySelector('.cinder-page-layout-content')!;
 
+    expect(header).not.toBeNull();
     expect(breadcrumbsEl).not.toBeNull();
-    expect(headerRow).not.toBeNull();
     expect(content).not.toBeNull();
 
-    // breadcrumbs precedes header-row
+    // sticky header precedes breadcrumbs (breadcrumbs outside the banner landmark)
     expect(
-      breadcrumbsEl.compareDocumentPosition(headerRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+      header.compareDocumentPosition(breadcrumbsEl) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    // header-row precedes content
+    // breadcrumbs precedes page content
     expect(
-      headerRow.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
+      breadcrumbsEl.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 });
@@ -311,12 +323,13 @@ describe('PageLayout integration: all slots simultaneously', () => {
     // Default .cinder-page-layout-title class must not appear when title is a snippet
     expect(container.querySelector('.cinder-page-layout-title')).toBeNull();
 
-    // DOM order: breadcrumbs → avatar → title → meta → actions → content
+    // Document order: avatar → title → meta → actions (inside header) → breadcrumbs → content
+    // Breadcrumbs sits outside the sticky <header>, between it and the page content.
     const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(breadcrumbsEl.compareDocumentPosition(avatarEl) & FOLLOWING).toBeTruthy();
     expect(avatarEl.compareDocumentPosition(customTitle) & FOLLOWING).toBeTruthy();
     expect(customTitle.compareDocumentPosition(metaEl) & FOLLOWING).toBeTruthy();
     expect(metaEl.compareDocumentPosition(actionsEl) & FOLLOWING).toBeTruthy();
-    expect(actionsEl.compareDocumentPosition(contentEl) & FOLLOWING).toBeTruthy();
+    expect(actionsEl.compareDocumentPosition(breadcrumbsEl) & FOLLOWING).toBeTruthy();
+    expect(breadcrumbsEl.compareDocumentPosition(contentEl) & FOLLOWING).toBeTruthy();
   });
 });

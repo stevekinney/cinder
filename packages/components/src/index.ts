@@ -132,7 +132,7 @@ export { default as NavigationItem } from './components/navigation-item.svelte';
 export type { NavigationItemProps } from './components/navigation-item.svelte';
 
 export { default as PageLayout } from './components/page-layout.svelte';
-export type { PageLayoutProps } from './components/page-layout.svelte';
+export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout.svelte';
 
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';

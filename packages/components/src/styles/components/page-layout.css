@@ -25,7 +25,7 @@
 }
 
 /* ----------------------------------------
- * Breadcrumbs row (optional, above header-row)
+ * Breadcrumbs row (optional, below sticky header, above content)
  * ---------------------------------------- */
 
 .cinder-page-layout-breadcrumbs {
@@ -49,6 +49,7 @@
   display: flex;
   align-items: center;
   gap: var(--cinder-space-3);
+  /* 2.75rem = 44px — WCAG 2.5.5 minimum touch target row height */
   min-block-size: 2.75rem;
   max-width: 72rem;
   margin-inline: auto;
@@ -97,6 +98,11 @@
 .cinder-page-layout-meta {
   font-size: var(--cinder-text-sm);
   color: var(--cinder-text-muted);
+}
+
+.cinder-page-layout-meta > * {
+  /* Suppress browser default margins on <dl> and other block-level meta elements */
+  margin-block: 0;
 }
 
 /* ----------------------------------------
