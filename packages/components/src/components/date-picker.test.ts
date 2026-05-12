@@ -8,6 +8,7 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: DatePicker } = await import('./date-picker.svelte');
+const { tick } = await import('svelte');
 
 // Clean up the global escape stack after each test so a popover left open
 // by one test does not leak its close handler into the next.
@@ -85,12 +86,13 @@ describe('DatePicker structure', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
-  test('calendar icon button is present and is aria-hidden (mouse-only affordance)', () => {
+  test('calendar icon is decorative and hidden from assistive technology', () => {
     const { container } = render(DatePicker, { id: 'dp', label: 'Date' });
-    const iconBtn = container.querySelector<HTMLElement>('.cinder-date-picker__icon-button');
+    const icon = container.querySelector<HTMLElement>('.cinder-date-picker__icon-button');
 
-    expect(iconBtn).not.toBeNull();
-    expect(iconBtn?.getAttribute('aria-hidden')).toBe('true');
+    expect(icon).not.toBeNull();
+    expect(icon?.tagName).toBe('SPAN');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
   });
 });
 
@@ -442,6 +444,7 @@ describe('DatePicker keyboard navigation', () => {
 
     // After Home, the focused cell should be Sunday (en-US first day)
     const focused = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    expect(focused).not.toBeNull();
     const date = new Date(focused!.getAttribute('data-date')!);
     expect(date.getDay()).toBe(0); // Sunday for en-US
   });
@@ -455,6 +458,7 @@ describe('DatePicker keyboard navigation', () => {
 
     // After End, the focused cell should be Saturday (en-US last day)
     const focused = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    expect(focused).not.toBeNull();
     const date = new Date(focused!.getAttribute('data-date')!);
     expect(date.getDay()).toBe(6); // Saturday
   });
@@ -738,12 +742,12 @@ describe('DatePicker form integration', () => {
     expect(hidden?.value).toBe('');
   });
 
-  test('selection fires onchange with a Date instance', async () => {
+  test('form reset reverts internalValue to defaultValue and fires onchange', async () => {
     const defaultDate = new Date(2026, 0, 1, 12, 0, 0, 0);
     const emitted: Array<Date | null> = [];
+    const form = document.createElement('form');
+    document.body.appendChild(form);
 
-    // Render the component first, then manually fire a reset on the input's form.
-    // The $effect form-reset listener attaches when the input's .form is available.
     const { container } = render(DatePicker, {
       id: 'dp',
       label: 'Date',
@@ -753,8 +757,9 @@ describe('DatePicker form integration', () => {
         emitted.push(v);
       },
     });
+    form.appendChild(container);
+    await tick();
 
-    // Select a value first
     await openCalendar(container);
     const cells = Array.from(container.querySelectorAll<HTMLElement>('[role="gridcell"]'));
     const enabled = cells.filter((c) => !c.getAttribute('aria-disabled'));
@@ -762,11 +767,22 @@ describe('DatePicker form integration', () => {
       await fireEvent.click(enabled[0]!);
     }
 
-    // Verify a selection was made (onchange fired)
-    expect(emitted.length).toBeGreaterThan(0);
+    const selectionEmitCount = emitted.length;
+    expect(selectionEmitCount).toBeGreaterThan(0);
 
-    // The last emitted value should be a Date
-    expect(emitted[emitted.length - 1]).toBeInstanceOf(Date);
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    expect(emitted.length).toBeGreaterThan(selectionEmitCount);
+    const lastEmit = emitted[emitted.length - 1];
+    expect(lastEmit).not.toBeNull();
+    if (lastEmit) {
+      expect(lastEmit.getFullYear()).toBe(defaultDate.getFullYear());
+      expect(lastEmit.getMonth()).toBe(defaultDate.getMonth());
+      expect(lastEmit.getDate()).toBe(defaultDate.getDate());
+    }
+
+    document.body.removeChild(form);
   });
 
   test('required + null value: aria-invalid is set', () => {

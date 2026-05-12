@@ -349,7 +349,7 @@
   let releaseEscape: (() => void) | null = null;
 
   function openPopover(): void {
-    if (disabled) return;
+    if (disabled || open) return;
     open = true;
     const initial = computeInitialFocus();
     focusedDate = initial;
@@ -550,9 +550,18 @@
   // Form reset
   $effect(() => {
     const input = triggerInput;
-    if (!input?.form) return;
+    if (!input) return;
+    const resetInput = input;
+    let currentForm: HTMLFormElement | null = null;
+    let handledResetEvent: Event | null = null;
 
-    function handleReset(): void {
+    function resetToDefault(event: Event): void {
+      if (handledResetEvent === event) return;
+      handledResetEvent = event;
+      queueMicrotask(() => {
+        if (handledResetEvent === event) handledResetEvent = null;
+      });
+
       const resetValue = defaultValue as DatePickerValue;
       if (value !== undefined) {
         (onchange as ((v: DatePickerValue) => void) | undefined)?.(resetValue);
@@ -565,8 +574,28 @@
       }
     }
 
-    input.form.addEventListener('reset', handleReset);
-    return () => input.form?.removeEventListener('reset', handleReset);
+    function handleDocumentReset(event: Event): void {
+      if (!(event.target instanceof HTMLFormElement)) return;
+      if (resetInput.form !== event.target) return;
+      resetToDefault(event);
+    }
+
+    function attachCurrentForm(): void {
+      const nextForm = resetInput.form;
+      if (nextForm === currentForm) return;
+      currentForm?.removeEventListener('reset', resetToDefault);
+      currentForm = nextForm;
+      currentForm?.addEventListener('reset', resetToDefault);
+    }
+
+    attachCurrentForm();
+    void tick().then(attachCurrentForm);
+    document.addEventListener('reset', handleDocumentReset, { capture: true });
+
+    return () => {
+      currentForm?.removeEventListener('reset', resetToDefault);
+      document.removeEventListener('reset', handleDocumentReset, { capture: true });
+    };
   });
 
   // setCustomValidity
@@ -642,14 +671,7 @@
       onclick={openPopover}
     />
 
-    <button
-      type="button"
-      class="cinder-date-picker__icon-button"
-      {disabled}
-      tabindex="-1"
-      aria-hidden="true"
-      onclick={openPopover}
-    >
+    <span class="cinder-date-picker__icon-button" aria-hidden="true">
       <svg
         aria-hidden="true"
         xmlns="http://www.w3.org/2000/svg"
@@ -667,7 +689,7 @@
         <line x1="8" y1="2" x2="8" y2="6"></line>
         <line x1="3" y1="10" x2="21" y2="10"></line>
       </svg>
-    </button>
+    </span>
   </div>
 
   {#if name}
