@@ -39,6 +39,7 @@
 @import './components/segmented-control.css';
 @import './components/selection-popover.css';
 @import './components/skeleton.css';
+@import './components/sortable-list.css';
 @import './components/spinner.css';
 @import './components/surface.css';
 @import './components/tab.css';

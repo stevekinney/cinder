@@ -167,6 +167,14 @@ export {
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
 
+export { default as SortableList } from './components/sortable-list.svelte';
+export type { SortableListProps } from './components/sortable-list.svelte';
+export type {
+  SortableAnnouncements,
+  SortableItemContext,
+  SortableReorderChange,
+} from './utilities/sortable-controller.svelte.ts';
+
 export { default as SegmentedControl } from './components/segmented-control.svelte';
 export type {
   SegmentedControlOption,
