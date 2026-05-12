@@ -13,11 +13,13 @@
   export type SectionHeadingProps = {
     /** Section title text. Rendered inside the dynamic heading element. */
     title: string;
-    /** Optional supporting description rendered below the title. */
+    /** Optional supporting description. Supplementary body text, not a heading
+     *  subtitle — rendered after the heading but outside `<hgroup>`. */
     description?: string;
-    /** Heading level for the title element. Defaults to `2`. */
+    /** Heading level for the title element. Defaults to `2`. The correct level
+     *  relative to the surrounding document outline is the consumer's responsibility. */
     level?: SectionHeadingLevel;
-    /** Additional class names merged onto the outer `.cinder-section-heading`. */
+    /** Additional class names merged onto the root `<header>`. */
     class?: string;
     /** Optional small uppercase "eyebrow" label. When present, the label is
      *  rendered as a `<p>` inside an `<hgroup>` that also contains the heading.
@@ -51,11 +53,13 @@
     tabs,
   }: SectionHeadingProps = $props();
 
-  const headingTag = $derived(`h${level}` as const);
-  const variant = $derived(actions && tabs ? 'actions-and-tabs' : undefined);
+  const headingTag = $derived(`h${level}` satisfies `h${SectionHeadingLevel}`);
 </script>
 
-<header class={classNames('cinder-section-heading', className)} data-cinder-variant={variant}>
+<header
+  class={classNames('cinder-section-heading', className)}
+  data-cinder-variant={actions && tabs ? 'actions-and-tabs' : undefined}
+>
   <div class="cinder-section-heading__row">
     <div class="cinder-section-heading__primary">
       {#if label}

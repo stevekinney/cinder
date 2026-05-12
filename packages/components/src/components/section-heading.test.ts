@@ -25,6 +25,12 @@ describe('SectionHeading', () => {
     expect(titleEl?.tagName).toBe('H2');
   });
 
+  test('level 2 renders h2 when explicitly provided', () => {
+    const { container } = render(SectionHeading, { props: { title: 'Level 2', level: 2 } });
+    const titleEl = container.querySelector('.cinder-section-heading__title');
+    expect(titleEl?.tagName).toBe('H2');
+  });
+
   test('level 3 renders h3', () => {
     const { container } = render(SectionHeading, { props: { title: 'Level 3', level: 3 } });
     const titleEl = container.querySelector('.cinder-section-heading__title');
@@ -54,6 +60,7 @@ describe('SectionHeading', () => {
   test('hgroup is rendered when label snippet is provided', () => {
     const labelSnippet = createRawSnippet(() => ({
       render: () => `<span>Beta</span>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -77,9 +84,31 @@ describe('SectionHeading', () => {
     expect(container.querySelector('hgroup')).toBeNull();
   });
 
+  test('description renders outside hgroup when label and description are both provided', () => {
+    const labelSnippet = createRawSnippet(() => ({
+      render: () => `<span>Beta</span>`,
+      setup: () => {},
+    }));
+
+    const { container } = render(SectionHeading, {
+      props: { title: 'Title', description: 'Desc text', label: labelSnippet },
+    });
+
+    const hgroup = container.querySelector('hgroup');
+    expect(hgroup).not.toBeNull();
+
+    const descEl = container.querySelector('.cinder-section-heading__description');
+    expect(descEl).not.toBeNull();
+    expect(descEl?.textContent?.trim()).toBe('Desc text');
+
+    // description must be outside (not a descendant of) the hgroup
+    expect(hgroup?.contains(descEl)).toBe(false);
+  });
+
   test('actions snippet renders inside __actions', () => {
     const actionsSnippet = createRawSnippet(() => ({
       render: () => `<button>Edit</button>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -94,6 +123,7 @@ describe('SectionHeading', () => {
   test('tabs snippet renders inside __tabs', () => {
     const tabsSnippet = createRawSnippet(() => ({
       render: () => `<div role="tablist"><button role="tab">Tab 1</button></div>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -108,6 +138,7 @@ describe('SectionHeading', () => {
   test('tabs-only: __tabs is always below __row (never inline)', () => {
     const tabsSnippet = createRawSnippet(() => ({
       render: () => `<div role="tablist"><button role="tab">Tab 1</button></div>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -122,9 +153,13 @@ describe('SectionHeading', () => {
   });
 
   test('variant attribute is set to actions-and-tabs when both are present', () => {
-    const actionsSnippet = createRawSnippet(() => ({ render: () => `<button>Edit</button>` }));
+    const actionsSnippet = createRawSnippet(() => ({
+      render: () => `<button>Edit</button>`,
+      setup: () => {},
+    }));
     const tabsSnippet = createRawSnippet(() => ({
       render: () => `<div role="tablist"></div>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -132,7 +167,7 @@ describe('SectionHeading', () => {
     });
 
     const header = container.querySelector('header');
-    expect(header?.dataset['cinderVariant']).toBe('actions-and-tabs');
+    expect(header?.getAttribute('data-cinder-variant')).toBe('actions-and-tabs');
 
     const row = header?.querySelector('.cinder-section-heading__row');
     const tabsEl = header?.querySelector('.cinder-section-heading__tabs');
@@ -140,19 +175,23 @@ describe('SectionHeading', () => {
   });
 
   test('variant attribute is absent when only actions is present', () => {
-    const actionsSnippet = createRawSnippet(() => ({ render: () => `<button>Edit</button>` }));
+    const actionsSnippet = createRawSnippet(() => ({
+      render: () => `<button>Edit</button>`,
+      setup: () => {},
+    }));
 
     const { container } = render(SectionHeading, {
       props: { title: 'Title', actions: actionsSnippet },
     });
 
     const header = container.querySelector('header');
-    expect(header?.dataset['cinderVariant']).toBeUndefined();
+    expect(header?.getAttribute('data-cinder-variant')).toBeNull();
   });
 
   test('variant attribute is absent when only tabs is present', () => {
     const tabsSnippet = createRawSnippet(() => ({
       render: () => `<div role="tablist"></div>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {
@@ -160,13 +199,17 @@ describe('SectionHeading', () => {
     });
 
     const header = container.querySelector('header');
-    expect(header?.dataset['cinderVariant']).toBeUndefined();
+    expect(header?.getAttribute('data-cinder-variant')).toBeNull();
   });
 
   test('only one header landmark is rendered regardless of variant', () => {
-    const actionsSnippet = createRawSnippet(() => ({ render: () => `<button>Edit</button>` }));
+    const actionsSnippet = createRawSnippet(() => ({
+      render: () => `<button>Edit</button>`,
+      setup: () => {},
+    }));
     const tabsSnippet = createRawSnippet(() => ({
       render: () => `<div role="tablist"></div>`,
+      setup: () => {},
     }));
 
     const { container } = render(SectionHeading, {

@@ -26,6 +26,9 @@
   margin: 0;
 }
 
+/* Label contrast: --cinder-text-muted at --cinder-text-xs (12px uppercase) against
+   cinder surface tokens passes WCAG AA (4.5:1). Placing this on non-token
+   backgrounds (custom colored surfaces) is the consumer's responsibility. */
 .cinder-section-heading__label {
   margin: 0;
   font-size: var(--cinder-text-xs);
