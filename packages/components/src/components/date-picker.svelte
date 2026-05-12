@@ -463,13 +463,8 @@
 
   function handleTriggerKeydown(event: KeyboardEvent): void {
     if (event.key === 'ArrowDown' || event.key === ' ' || event.key === 'Enter') {
-      if (event.altKey || event.key === 'ArrowDown') {
-        event.preventDefault();
-        openPopover();
-      } else if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        openPopover();
-      }
+      event.preventDefault();
+      openPopover();
     }
   }
 
