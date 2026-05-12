@@ -120,6 +120,3 @@ packages/testing/screenshots/
 packages/testing/playwright-report/
 packages/testing/test-results/
 packages/testing/.playwright/
-
-**/.claude/worktrees/**
-.claude/scheduled_tasks.lock
