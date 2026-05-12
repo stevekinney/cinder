@@ -65,6 +65,14 @@
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
     },
+    "./command-item": {
+      "svelte": "./src/components/command-item.svelte",
+      "types": "./dist/components/command-item.svelte.d.ts"
+    },
+    "./command-palette": {
+      "svelte": "./src/components/command-palette.svelte",
+      "types": "./dist/components/command-palette.svelte.d.ts"
+    },
     "./copy-button": {
       "svelte": "./src/components/copy-button.svelte",
       "types": "./dist/components/copy-button.svelte.d.ts"
