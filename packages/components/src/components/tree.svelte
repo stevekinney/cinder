@@ -100,11 +100,12 @@
   });
 
   // effectiveFocusedId: use focusedId only if it is currently visible;
-  // otherwise fall back to initialFocusId so collapsing a focused subtree
-  // doesn't leave the roving tabindex pointing at an invisible item.
+  // otherwise fall back to initialFocusId. initialFocusId is itself derived
+  // from visibleIds (it returns the first *visible* selected item, or
+  // visibleIds[0], or null) so the fallback is always visible-or-null.
   const effectiveFocusedId = $derived.by(() => {
     if (focusedId !== null && visibleIds.includes(focusedId)) return focusedId;
-    return initialFocusId;
+    return initialFocusId; // always in visibleIds or null — see initialFocusId above
   });
 
   // ---------------------------------------------------------------------------

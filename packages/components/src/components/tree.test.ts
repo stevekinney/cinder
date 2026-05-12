@@ -301,6 +301,45 @@ describe('Tree — roving tabindex', () => {
     const b = container.querySelector('[role="treeitem"][aria-label="B"]');
     expect(b?.getAttribute('tabindex')).toBe('0');
   });
+
+  test('focus falls back to a visible item when focused item becomes invisible (parent collapses)', async () => {
+    let expandedIds: string[] = ['parent'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+          { id: 'sibling', label: 'Sibling' },
+        ]),
+      },
+    });
+    // Focus the child (inside the expanded parent)
+    const child = container.querySelector('[role="treeitem"][aria-label="Child"]') as HTMLElement;
+    child.focus();
+    // Collapse the parent — child becomes invisible
+    const parent = container.querySelector('[role="treeitem"][aria-label="Parent"]') as HTMLElement;
+    parent.focus();
+    await fireEvent.keyDown(parent, { key: 'ArrowLeft' });
+    // After collapse, exactly one visible item should have tabindex=0
+    const tabbables = [...container.querySelectorAll('[role="treeitem"]')].filter(
+      (el) => el.getAttribute('tabindex') === '0',
+    );
+    expect(tabbables.length).toBe(1);
+    // The focused item must be a root-level item (child is now hidden)
+    const focused = tabbables[0];
+    expect(focused?.getAttribute('aria-level')).toBe('1');
+  });
 });
 
 // ---------------------------------------------------------------------------
