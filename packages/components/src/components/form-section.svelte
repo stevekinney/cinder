@@ -45,8 +45,6 @@
     5: 'h5',
     6: 'h6',
   };
-
-  export { DEV };
 </script>
 
 <script lang="ts">
@@ -76,7 +74,9 @@
 
 {#if as === 'fieldset'}
   <fieldset class={classNames('cinder-form-section', className)} data-columns={columns}>
-    <legend class="cinder-form-section__legend">{heading}</legend>
+    {#if heading}
+      <legend class="cinder-form-section__legend">{heading}</legend>
+    {/if}
     {#if description}
       <p class="cinder-form-section__description">{description}</p>
     {/if}

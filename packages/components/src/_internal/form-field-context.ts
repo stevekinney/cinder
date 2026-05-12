@@ -36,11 +36,18 @@ export function setFormFieldContext(context: FormFieldContext): void {
 
 export function getFormFieldContext(): FormFieldContext | undefined {
   try {
+    // getContext returns undefined when called with a key that has no parent
+    // setContext, so a missing FormField ancestor simply gives undefined.
+    //
+    // The try-catch handles a specific test environment constraint: the
+    // SSR hydration test compiles input.svelte with generate:'server' but
+    // resolves 'svelte' to the client build due to --conditions browser.
+    // That combination causes the client getContext to throw
+    // lifecycle_outside_component because component_context is null in the
+    // server rendering path. In a normal browser or SSR-only environment
+    // this code path is unreachable, so the catch is a no-op.
     return getContext<FormFieldContext | undefined>(FORM_FIELD_CONTEXT_KEY);
   } catch {
-    // getContext throws when called outside component initialisation (e.g. in
-    // SSR environments where the client/server module boundary is not aligned).
-    // Return undefined so callers fall back to their own prop values.
     return undefined;
   }
 }

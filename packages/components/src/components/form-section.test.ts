@@ -157,8 +157,14 @@ describe('FormSection dev warnings', () => {
   test('as="fieldset" without heading fires console.warn', () => {
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
+      // Testing the runtime dev-warning path. TypeScript's discriminated union
+      // prevents as="fieldset" without heading at compile time, but JS
+      // consumers can bypass it. svelte-check catches the missing heading
+      // prop; tsc doesn't (render() props are typed loosely in tsc but
+      // strictly in the Svelte language server), so @ts-ignore suppresses both.
       render(FormSection, {
-        props: { as: 'fieldset', children: emptySnippet } as never,
+        // @ts-ignore — intentionally invalid: fieldset without required heading
+        props: { as: 'fieldset', children: emptySnippet },
       });
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect((warnSpy.mock.calls[0] as string[])[0]).toContain('heading');
