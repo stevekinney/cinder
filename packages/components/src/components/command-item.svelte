@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-  import { getContext, hasContext } from 'svelte';
+  import { getContext, hasContext, onMount } from 'svelte';
 
   import { cn } from '../utilities/class-names.ts';
   import {
@@ -47,9 +47,9 @@
   // Stable id assigned by the palette on registration.
   let itemId = $state<string | null>(null);
 
-  // Register on mount using live getters so prop changes are reflected without
-  // re-registration. Matches the pattern in tab.svelte.
-  $effect(() => {
+  // Register once on mount using live getters so prop changes are reflected
+  // without re-registration churn.
+  onMount(() => {
     const { id, unregister } = palette.register({
       getValue: () => value,
       getOnselect: () => onselect,

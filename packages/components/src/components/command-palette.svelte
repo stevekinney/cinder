@@ -36,11 +36,7 @@
 <script lang="ts">
   import { setContext, onDestroy } from 'svelte';
 
-  import {
-    captureFocus,
-    pushEscapeHandler,
-    restoreFocusTo,
-  } from '../_internal/overlay.ts';
+  import { captureFocus, pushEscapeHandler, restoreFocusTo } from '../_internal/overlay.ts';
   import { cn } from '../utilities/class-names.ts';
   import { useId } from '../utilities/use-id.ts';
   import {
@@ -263,7 +259,12 @@
       const id = `${listboxId}-item-${++itemCounter}`;
       registrations = [
         ...registrations,
-        { id, getValue: input.getValue, getOnselect: input.getOnselect, getDisabled: input.getDisabled },
+        {
+          id,
+          getValue: input.getValue,
+          getOnselect: input.getOnselect,
+          getDisabled: input.getDisabled,
+        },
       ];
       return {
         id,
@@ -279,9 +280,7 @@
 
   setContext<CommandPaletteContext>(COMMAND_PALETTE_CONTEXT, context);
 
-  const showEmpty = $derived(
-    mounted && registrationsReady && registrations.length === 0,
-  );
+  const showEmpty = $derived(mounted && registrationsReady && registrations.length === 0);
 </script>
 
 {#if mounted || open}
@@ -331,11 +330,7 @@
           />
         </div>
 
-        <ul
-          id={listboxId}
-          role="listbox"
-          class="cinder-command-palette__listbox"
-        >
+        <ul id={listboxId} role="listbox" class="cinder-command-palette__listbox">
           {@render items({ query })}
         </ul>
 

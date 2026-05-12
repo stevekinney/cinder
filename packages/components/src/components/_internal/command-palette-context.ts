@@ -35,7 +35,7 @@ export type CommandPaletteContext = {
   /** Id of the currently active (virtually focused) item, or null. */
   readonly activeItemId: string | null;
   /**
-   * Called by each CommandItem in a `$effect` on mount.
+   * Called by each CommandItem when it mounts.
    * Returns a stable id and an unregister function.
    */
   register: (input: CommandItemRegistrationInput) => { id: string; unregister: () => void };
