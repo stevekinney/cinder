@@ -815,7 +815,7 @@ async function ensurePr(task: Task, worktree: string, branch: string): Promise<P
 // =============================================================================
 
 const CHECK_POLL_INTERVAL_MS = 30_000;
-const CHECK_POLL_MAX_ATTEMPTS = 20; // 10 minutes
+const CHECK_POLL_MAX_ATTEMPTS = 120; // 60 minutes — Playwright suites can run long
 const REVIEW_BOT_WAIT_MS = 60_000;
 const REVIEW_BOT_MAX_ATTEMPTS = 5; // 5 minutes
 const ADDRESS_PR_MAX_ROUNDS = 5;
@@ -937,20 +937,32 @@ async function pollPrUntilReady(prNumber: number, worktree: string, expectedBots
   for (let round = 1; round <= ADDRESS_PR_MAX_ROUNDS; round++) {
     log('PHASE', `PR readiness check ${round}/${ADDRESS_PR_MAX_ROUNDS} for PR #${prNumber}`);
 
-    let snapshot = await waitForChecks(prNumber, expectedBots);
-    snapshot = await waitForReviewBots(prNumber, expectedBots, snapshot);
+    let snapshot = await getReadiness(prNumber, expectedBots);
     log('INFO', formatSnapshot(snapshot));
 
-    if (isReady(snapshot)) {
-      log('OK', `PR #${prNumber} is ready to merge`);
-      return;
-    }
-
+    // Act on any actionable signal immediately — a single failing check or a
+    // single unresolved thread is enough to dispatch /address-pr. Don't wait
+    // for the rest of CI to settle before starting work on what's already
+    // broken. The address-pr skill itself loops until everything it can fix
+    // is fixed, so partial signal is fine to start on.
     if (snapshot.checks.failing === 0 && snapshot.unresolvedThreads === 0) {
-      // Only blockers were "bots not yet reviewed" or "checks still pending" —
-      // both already exhausted their waits. Nothing for /address-pr to do.
-      log('WARN', `PR #${prNumber} not fully clean but has no actionable feedback — accepting`);
-      return;
+      // Nothing actionable yet. Wait for pending checks / bots so we either
+      // converge on ready, or surface failures/threads that we can act on.
+      snapshot = await waitForChecks(prNumber, expectedBots);
+      snapshot = await waitForReviewBots(prNumber, expectedBots, snapshot);
+      log('INFO', formatSnapshot(snapshot));
+
+      if (isReady(snapshot)) {
+        log('OK', `PR #${prNumber} is ready to merge`);
+        return;
+      }
+
+      if (snapshot.checks.failing === 0 && snapshot.unresolvedThreads === 0) {
+        // Only blockers were "bots not yet reviewed" or "checks still pending" —
+        // both already exhausted their waits. Nothing for /address-pr to do.
+        log('WARN', `PR #${prNumber} not fully clean but has no actionable feedback — accepting`);
+        return;
+      }
     }
 
     log(
@@ -959,7 +971,9 @@ async function pollPrUntilReady(prNumber: number, worktree: string, expectedBots
     );
     const prompt = `/address-pr ${prNumber}
 
-Use the \`address-pr\` skill via the Skill tool. The driving script has already verified that this PR has ${snapshot.checks.failing} failing check(s) and ${snapshot.unresolvedThreads} unresolved review thread(s) — there IS work to do.
+Use the \`address-pr\` skill via the Skill tool. The driving script has detected actionable work on this PR right now: ${snapshot.checks.failing} failing check(s) and ${snapshot.unresolvedThreads} unresolved review thread(s).
+
+Work on whatever is actionable — even a single failing check or a single unresolved thread is enough to start. Do not wait for other pending checks or bots before acting on what's already broken.
 
 Loop until ALL conditions are met:
 - Zero unresolved review threads
@@ -1035,6 +1049,13 @@ async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null
     const expectedBots = parseExpectedBots(process.env.NEXT_EXPECTED_BOTS) ?? DEFAULT_EXPECTED_BOTS;
     await pollPrUntilReady(pr.number, worktree, expectedBots);
 
+    // Tear down the worktree before merging so `gh pr merge --delete-branch`
+    // can drop the local branch. Otherwise git refuses with "branch used by
+    // worktree" and gh exits non-zero even though the remote merge succeeded.
+    log('PHASE', `Removing worktree before merge`);
+    await cleanupWorktree(worktree);
+    worktree = null;
+
     log('PHASE', `Merging PR #${pr.number}`);
     await mergePr(pr.number);
 
@@ -1060,6 +1081,11 @@ async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null
       // paths we want to keep the local branch around so an operator can
       // inspect it.
       await cleanupWorktree(worktree, completed ? branch : undefined);
+    } else if (completed) {
+      // Worktree was already removed pre-merge. `gh pr merge --delete-branch`
+      // should have dropped the local branch, but a partial failure could
+      // have left it behind — best-effort cleanup.
+      await run(['git', 'branch', '-d', branch], { cwd: repoRoot });
     }
     releaseLock(lockPath);
   }
