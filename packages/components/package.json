@@ -209,6 +209,10 @@
       "svelte": "./src/components/review-editor.svelte",
       "types": "./dist/components/review-editor.svelte.d.ts"
     },
+    "./section-heading": {
+      "svelte": "./src/components/section-heading.svelte",
+      "types": "./dist/components/section-heading.svelte.d.ts"
+    },
     "./segmented-control": {
       "svelte": "./src/components/segmented-control.svelte",
       "types": "./dist/components/segmented-control.svelte.d.ts"
