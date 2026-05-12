@@ -1,0 +1,331 @@
+<script lang="ts" module>
+  import type { Snippet } from 'svelte';
+
+  export type CommandPaletteProps = {
+    /**
+     * Bindable open state. The component mutates `open = false` on Escape,
+     * backdrop click, or any explicit close path, then fires `onclose`.
+     */
+    open: boolean;
+    /** Placeholder rendered inside the search input. */
+    placeholder?: string;
+    /** Accessible name for the dialog, wired via `aria-label`. */
+    label?: string;
+    /**
+     * Bindable search query. Mutated by the input's oninput handler.
+     * Exposed to the items snippet so consumers can filter.
+     */
+    query?: string;
+    /** Fired after the palette closes (Escape or backdrop). */
+    onclose?: () => void;
+    /** Element to restore focus to on close. Falls back to `captureFocus()`. */
+    triggerRef?: HTMLElement | null;
+    /** Receives the current query so consumers can filter. */
+    items: Snippet<[{ query: string }]>;
+    /** Rendered when zero items are registered after filtering. */
+    empty?: Snippet;
+    /** Optional footer, e.g. for keybinding hints. Not part of the listbox. */
+    footer?: Snippet;
+    /** Class merged onto the palette panel. */
+    class?: string;
+  };
+</script>
+
+<script lang="ts">
+  import { setContext, onDestroy } from 'svelte';
+
+  import {
+    captureFocus,
+    pushEscapeHandler,
+    restoreFocusTo,
+  } from '../_internal/overlay.ts';
+  import { cn } from '../utilities/class-names.ts';
+  import { useId } from '../utilities/use-id.ts';
+  import {
+    COMMAND_PALETTE_CONTEXT,
+    type CommandItemRegistrationInput,
+    type CommandPaletteContext,
+  } from './_internal/command-palette-context.ts';
+
+  let {
+    open = $bindable(false),
+    placeholder = 'Search…',
+    label = 'Command palette',
+    query = $bindable(''),
+    onclose,
+    triggerRef = null,
+    items,
+    empty,
+    footer,
+    class: className,
+  }: CommandPaletteProps = $props();
+
+  // ── IDs ──────────────────────────────────────────────────────────────────
+  const listboxId = useId('cinder-command-palette-listbox');
+  const inputId = useId('cinder-command-palette-input');
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  let dialogElement: HTMLDialogElement | undefined = $state();
+  let inputElement: HTMLInputElement | undefined = $state();
+
+  // ── Hydration guard ───────────────────────────────────────────────────────
+  // `mounted` is false during SSR. The dialog is rendered only when mounted
+  // (client) or when already open (SSR open=true). Matching modal.svelte.
+  let mounted = $state(false);
+  $effect(() => {
+    mounted = true;
+  });
+
+  // ── Focus capture ─────────────────────────────────────────────────────────
+  let capturedFocus: HTMLElement | null = null;
+
+  // ── Item registration ─────────────────────────────────────────────────────
+  type RegistrationRecord = CommandItemRegistrationInput & { id: string };
+  let registrations = $state<RegistrationRecord[]>([]);
+
+  // Stable incrementing counter for item ids within this palette instance.
+  let itemCounter = 0;
+
+  // ── Active item (virtual focus) ───────────────────────────────────────────
+  let activeItemId = $state<string | null>(null);
+
+  // Ordered list of non-disabled item ids. Derived so arrow-key navigation
+  // always walks the current set, including after prop changes (e.g. toggling
+  // disabled on a mounted item).
+  const enabledIds = $derived.by(() => {
+    return registrations.filter((r) => !r.getDisabled()).map((r) => r.id);
+  });
+
+  // Repair activeItemId whenever the enabled set changes (registration churn,
+  // disabled toggled, query change). Preserve the current selection if it's
+  // still present and non-disabled; otherwise fall back to first enabled or null.
+  $effect(() => {
+    const ids = enabledIds;
+    if (activeItemId !== null && ids.includes(activeItemId)) return;
+    activeItemId = ids[0] ?? null;
+  });
+
+  // ── Empty-state flash prevention ─────────────────────────────────────────
+  // `registrationsReady` prevents the empty snippet from flashing on initial
+  // open or when a query change causes a full key-swap of items. It is set
+  // true after one microtask (giving children's $effect registrations time to
+  // settle), and reset on every query change.
+  let registrationsReady = $state(false);
+
+  $effect(() => {
+    // Track query so this re-runs on every query change.
+    void query;
+    registrationsReady = false;
+    queueMicrotask(() => {
+      registrationsReady = true;
+    });
+  });
+
+  // ── Escape stack ──────────────────────────────────────────────────────────
+  let releaseEscape: (() => void) | null = null;
+
+  // ── Open/close lifecycle ──────────────────────────────────────────────────
+  $effect(() => {
+    if (!dialogElement) return;
+    if (open && !dialogElement.open) {
+      capturedFocus = captureFocus();
+      dialogElement.showModal();
+      inputElement?.focus();
+      releaseEscape = pushEscapeHandler(closePalette);
+    } else if (!open && dialogElement.open) {
+      dialogElement.close();
+    }
+  });
+
+  function returnFocus() {
+    if (triggerRef) {
+      restoreFocusTo(triggerRef);
+    } else {
+      restoreFocusTo(capturedFocus);
+    }
+    capturedFocus = null;
+  }
+
+  function closePalette() {
+    open = false;
+    releaseEscape?.();
+    releaseEscape = null;
+    returnFocus();
+    onclose?.();
+  }
+
+  // Release escape handler on component destroy to prevent leaks.
+  onDestroy(() => {
+    releaseEscape?.();
+    releaseEscape = null;
+  });
+
+  // ── Dialog event handlers ─────────────────────────────────────────────────
+
+  // The native <dialog> fires `close` when it closes (including via Escape).
+  // We wire `oncancel` and call preventDefault so the native cancel path does
+  // not race with our escape-stack handler — closePalette() is the single
+  // source of truth for closing.
+  function handleCancel(event: Event) {
+    event.preventDefault();
+  }
+
+  // The `close` event fires when the dialog actually closes. Mirror open state.
+  function handleClose() {
+    if (open) {
+      closePalette();
+    }
+  }
+
+  function handleBackdropClick(event: MouseEvent) {
+    if (event.target === dialogElement) {
+      closePalette();
+    }
+  }
+
+  // ── Keyboard routing ──────────────────────────────────────────────────────
+  function handleKeydown(event: KeyboardEvent) {
+    const ids = enabledIds;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (ids.length === 0) return;
+      if (activeItemId === null) {
+        activeItemId = ids[0];
+      } else {
+        const index = ids.indexOf(activeItemId);
+        activeItemId = ids[(index + 1) % ids.length];
+      }
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (ids.length === 0) return;
+      if (activeItemId === null) {
+        activeItemId = ids[ids.length - 1];
+      } else {
+        const index = ids.indexOf(activeItemId);
+        activeItemId = ids[index <= 0 ? ids.length - 1 : index - 1];
+      }
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      activeItemId = ids[0] ?? null;
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      activeItemId = ids[ids.length - 1] ?? null;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (activeItemId === null) return;
+      const record = registrations.find((r) => r.id === activeItemId);
+      if (record && !record.getDisabled()) {
+        record.getOnselect()();
+      }
+    }
+  }
+
+  function handleInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    query = target.value;
+  }
+
+  // ── Context ───────────────────────────────────────────────────────────────
+  const context: CommandPaletteContext = {
+    get listboxId() {
+      return listboxId;
+    },
+    get query() {
+      return query;
+    },
+    get activeItemId() {
+      return activeItemId;
+    },
+    register(input: CommandItemRegistrationInput) {
+      const id = `${listboxId}-item-${++itemCounter}`;
+      registrations = [...registrations, { id, ...input }];
+      return {
+        id,
+        unregister: () => {
+          registrations = registrations.filter((r) => r.id !== id);
+        },
+      };
+    },
+    setActiveById(id: string) {
+      activeItemId = id;
+    },
+  };
+
+  setContext<CommandPaletteContext>(COMMAND_PALETTE_CONTEXT, context);
+
+  const showEmpty = $derived(
+    mounted && registrationsReady && registrations.length === 0,
+  );
+</script>
+
+{#if mounted || open}
+  <dialog
+    bind:this={dialogElement}
+    class="cinder-command-palette"
+    aria-label={label}
+    aria-modal="true"
+    oncancel={handleCancel}
+    onclose={handleClose}
+    onclick={handleBackdropClick}
+  >
+    {#if open}
+      <div class={cn('cinder-command-palette__panel', className)}>
+        <div class="cinder-command-palette__search">
+          <svg
+            class="cinder-command-palette__search-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <input
+            bind:this={inputElement}
+            id={inputId}
+            type="text"
+            class="cinder-command-palette__input"
+            role="combobox"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+            {placeholder}
+            value={query}
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls={listboxId}
+            aria-activedescendant={activeItemId ?? undefined}
+            oninput={handleInput}
+            onkeydown={handleKeydown}
+          />
+        </div>
+
+        <ul
+          id={listboxId}
+          role="listbox"
+          class="cinder-command-palette__listbox"
+          aria-label={label}
+        >
+          {@render items({ query })}
+        </ul>
+
+        {#if showEmpty && empty}
+          <div class="cinder-command-palette__empty" role="status">
+            {@render empty()}
+          </div>
+        {/if}
+
+        {#if footer}
+          <div class="cinder-command-palette__footer">
+            {@render footer()}
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </dialog>
+{/if}

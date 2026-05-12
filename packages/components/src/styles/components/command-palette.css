@@ -1,0 +1,216 @@
+/* ========================================
+ * COMMAND PALETTE
+ * ======================================== */
+
+.cinder-command-palette {
+  /* Reset browser <dialog> defaults */
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--cinder-text);
+  /* Anchor near the top of the viewport, not centered */
+  position: fixed;
+  inset-block-start: 12vh;
+  inset-inline: 0;
+  max-width: min(90vw, 40rem);
+  width: 100%;
+  /* Ensure it appears above other overlays */
+  z-index: var(--cinder-z-modal, 1200);
+}
+
+.cinder-command-palette::backdrop {
+  background: color-mix(in oklch, var(--cinder-text) 30%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .cinder-command-palette::backdrop {
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* ----------------------------------------
+ * Panel
+ * ---------------------------------------- */
+
+.cinder-command-palette__panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-xl);
+  overflow: hidden;
+  max-height: 60vh;
+  box-shadow:
+    0 4px 6px -1px color-mix(in oklch, var(--cinder-text) 8%, transparent),
+    0 10px 15px -3px color-mix(in oklch, var(--cinder-text) 12%, transparent);
+}
+
+/* ----------------------------------------
+ * Search row
+ * ---------------------------------------- */
+
+.cinder-command-palette__search {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3);
+  padding-inline: var(--cinder-space-4);
+  border-block-end: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+.cinder-command-palette__search-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  color: var(--cinder-text-muted);
+}
+
+.cinder-command-palette__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-base);
+  line-height: 1;
+  padding-block: var(--cinder-space-4);
+  outline: none;
+}
+
+.cinder-command-palette__input::placeholder {
+  color: var(--cinder-text-muted);
+}
+
+/* ----------------------------------------
+ * Listbox (scrollable items area)
+ * ---------------------------------------- */
+
+.cinder-command-palette__listbox {
+  list-style: none;
+  margin: 0;
+  padding: var(--cinder-space-1) 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+}
+
+/* ----------------------------------------
+ * Empty state
+ * ---------------------------------------- */
+
+.cinder-command-palette__empty {
+  padding: var(--cinder-space-8) var(--cinder-space-4);
+  text-align: center;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Footer
+ * ---------------------------------------- */
+
+.cinder-command-palette__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-2) var(--cinder-space-4);
+  border-block-start: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+/* ========================================
+ * COMMAND ITEM
+ * ======================================== */
+
+.cinder-command-item {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-2) var(--cinder-space-4);
+  cursor: pointer;
+  border-radius: var(--cinder-radius-md);
+  margin-inline: var(--cinder-space-1);
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+  user-select: none;
+  transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-command-item[data-cinder-active] {
+  background: color-mix(in oklch, var(--cinder-accent) 12%, transparent);
+  color: var(--cinder-text);
+}
+
+.cinder-command-item[data-cinder-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cinder-command-item__leading {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--cinder-text-muted);
+}
+
+.cinder-command-item[data-cinder-active] .cinder-command-item__leading {
+  color: var(--cinder-accent, currentColor);
+}
+
+.cinder-command-item__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cinder-command-item__trailing {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+}
+
+/* ----------------------------------------
+ * Reduced motion — panel enter animation
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-command-palette {
+    animation: cinder-command-palette-enter var(--cinder-duration-normal) var(--cinder-ease-spring)
+      forwards;
+  }
+
+  @keyframes cinder-command-palette-enter {
+    from {
+      opacity: 0;
+      translate: 0 -0.75rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-command-palette {
+    animation: cinder-command-palette-fade var(--cinder-duration-fast) linear forwards;
+  }
+
+  @keyframes cinder-command-palette-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
