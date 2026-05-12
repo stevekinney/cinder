@@ -78,23 +78,18 @@ describe('useReducedMotion', () => {
     expect(motion.current).toBe(true);
   });
 
-  test('reflects updated matches value after setMatches', () => {
+  test('current reads live matches value from the underlying MediaQueryList', () => {
     mock = installMatchMediaMock(true);
 
     const motion = useReducedMotion();
     expect(motion.current).toBe(true);
 
-    mock.setMatches(false);
+    // Outside a Svelte effect context no change listener is registered, so
+    // setMatches would fire into empty listeners. Mutate the list directly
+    // to verify the getter reads through to the live matches property.
+    mock.list.matches = false;
 
     expect(motion.current).toBe(false);
-  });
-
-  test('reads .current without throwing', () => {
-    mock = installMatchMediaMock(false);
-
-    const motion = useReducedMotion();
-
-    expect(() => motion.current).not.toThrow();
   });
 
   test('returns false when matchMedia does not match', () => {
