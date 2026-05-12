@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Basic drawer';
   export const description =
-    'An edge-anchored slide-in panel with controls for side, size, footer, and triggerRef.';
+    'An edge-anchored slide-in panel with controls for side, size, and triggerRef.';
 </script>
 
 <script lang="ts">
@@ -12,7 +12,6 @@
   let triggerRef: HTMLElement | null = $state(null);
   let side = $state<DrawerSide>('right');
   let size = $state<DrawerSize>('md');
-  let showFooter = $state(true);
   let useTriggerRef = $state(true);
 </script>
 
@@ -47,13 +46,6 @@
     <label
       style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; cursor: pointer;"
     >
-      <input type="checkbox" bind:checked={showFooter} />
-      Show footer
-    </label>
-
-    <label
-      style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; cursor: pointer;"
-    >
       <input type="checkbox" bind:checked={useTriggerRef} />
       Use triggerRef
     </label>
@@ -68,23 +60,14 @@
   />
 </div>
 
-<Drawer
-  bind:open
-  {side}
-  {size}
-  title="Drawer panel"
-  triggerRef={useTriggerRef ? triggerRef : null}
-  {footer}
->
+<Drawer bind:open {side} {size} title="Drawer panel" triggerRef={useTriggerRef ? triggerRef : null}>
   <p>This is the drawer body. You can put any content here.</p>
   <p>Current settings: side={side}, size={size}.</p>
-</Drawer>
 
-{#snippet footer()}
-  {#if showFooter}
+  {#snippet footer()}
     <div style="display: flex; gap: 0.5rem;">
       <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
       <Button label="Confirm" onclick={() => (open = false)} />
     </div>
-  {/if}
-{/snippet}
+  {/snippet}
+</Drawer>

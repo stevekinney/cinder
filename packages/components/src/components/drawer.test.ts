@@ -319,11 +319,12 @@ describe('Drawer', () => {
     expect(document.body.style.overflow).toBe('');
   });
 
-  // ---- 14. Escape key closes the drawer (tests actual Drawer ESC wiring) ----
-  test('Escape key dispatched on window closes the drawer via onclose', async () => {
-    // happy-dom does not simulate native dialog cancel/close from ESC;
-    // we replicate the browser sequence: ESC keydown → close event on the dialog.
-    // This tests the full chain: Drawer open → ESC → close event → handleClose → open=false.
+  // ---- 14. ESC key on dialog fires close event and sets open to false ----
+  test('Escape key on dialog fires close event and sets open to false', async () => {
+    // The native <dialog> handles ESC → cancel → close automatically with showModal().
+    // happy-dom does not fully emulate this native behaviour, so we fire the close
+    // event after dispatching Escape to replicate the browser sequence — same pattern
+    // as modal.test.ts. This tests the onclose → handleClose → open=false chain.
     let openValue = true;
     const { container } = render(Drawer, {
       props: {
@@ -340,8 +341,8 @@ describe('Drawer', () => {
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
     expect(dialog).not.toBeNull();
-    // Simulate browser ESC sequence: keydown on window, then close event on the dialog.
-    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    // Simulate browser ESC sequence: Escape keydown on dialog → close event fires.
+    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
     await fireEvent(dialog, new Event('close'));
     expect(openValue).toBe(false);
   });
