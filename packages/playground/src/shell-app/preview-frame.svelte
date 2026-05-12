@@ -95,7 +95,7 @@
        This also keeps the iframe's height stable when previewWidth narrows
        the wrapper. */
     overflow: hidden;
-    background: #f5f5f5;
+    background: var(--cinder-bg);
     min-height: 0;
   }
 
@@ -116,7 +116,7 @@
     width: 100%;
     height: 100%;
     border: none;
-    background: #fff;
+    background: var(--cinder-surface);
     display: block;
     min-height: 0;
   }
@@ -126,7 +126,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #888;
+    color: var(--cinder-text-subtle);
   }
 
   .placeholder p {

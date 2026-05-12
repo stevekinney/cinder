@@ -94,13 +94,10 @@
   .shell {
     display: flex;
     height: 100vh;
-    font-family:
-      system-ui,
-      -apple-system,
-      sans-serif;
-    font-size: 14px;
-    background: #f5f5f5;
-    color: #111;
+    font-family: var(--cinder-font-sans);
+    font-size: var(--cinder-text-base);
+    background: var(--cinder-bg);
+    color: var(--cinder-text);
   }
 
   main {

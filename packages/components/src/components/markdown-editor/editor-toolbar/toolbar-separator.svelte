@@ -24,7 +24,11 @@
   .toolbar-separator {
     width: 1px;
     height: 1rem;
-    background: var(--cinder-border-muted);
+    /* Use --cinder-border (not --cinder-border-muted) so the separator
+       clears the 3:1 contrast floor against the toolbar surface (which
+       uses --cinder-surface-raised). The muted variant looked invisible
+       in dark mode (~1.4:1 against surface-raised). */
+    background: var(--cinder-border);
     margin-inline: var(--cinder-space-1);
     flex-shrink: 0;
   }

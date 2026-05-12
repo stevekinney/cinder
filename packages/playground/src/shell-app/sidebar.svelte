@@ -47,8 +47,8 @@
     position: fixed;
     top: 0;
     left: 0;
-    background: #fff;
-    border-right: 1px solid #e5e5e5;
+    background: var(--cinder-surface);
+    border-right: 1px solid var(--cinder-border);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -60,8 +60,8 @@
     font-size: 13px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #666;
-    border-bottom: 1px solid #e5e5e5;
+    color: var(--cinder-text-subtle);
+    border-bottom: 1px solid var(--cinder-border);
   }
 
   ul {
@@ -79,19 +79,19 @@
     display: block;
     padding: 6px 16px;
     text-decoration: none;
-    color: #333;
+    color: var(--cinder-text);
     border-radius: 4px;
     margin: 1px 8px;
     transition: background 0.1s;
   }
 
   ul li a:hover {
-    background: #f0f0f0;
+    background: var(--cinder-surface-hover);
   }
 
   ul li a[aria-current='page'] {
-    background: #e8f0fe;
-    color: #1a56db;
+    background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
+    color: var(--cinder-accent);
     font-weight: 600;
   }
 </style>
