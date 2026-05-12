@@ -20,9 +20,19 @@ async function ping(): Promise<boolean> {
 
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   return new Promise((resolve) => {
-    childProcess.on('exit', (code) => resolve(code ?? 1));
+    // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
+    // EACCES, etc.) the child emits `error` and may never emit `exit`,
+    // which would hang the script indefinitely.
+    childProcess.once('exit', (code) => resolve(code ?? 1));
+    childProcess.once('error', (error) => {
+      console.error('Child process error:', error);
+      resolve(1);
+    });
   });
 }
+
+const DEFAULT_PLAYGROUND_URL = 'http://localhost:4173';
+const isLocalDefault = PLAYGROUND_URL === DEFAULT_PLAYGROUND_URL;
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -39,6 +49,15 @@ async function main(): Promise<void> {
 
   if (alreadyUp) {
     console.log(`Reusing playground server at ${PLAYGROUND_URL}.`);
+  } else if (!isLocalDefault) {
+    // The local `bun run --filter=@cinder/playground dev` server binds to
+    // port 4173 unconditionally — starting it cannot satisfy readiness for
+    // a non-default `PLAYGROUND_URL`. Fail fast with an actionable message
+    // rather than spinning for 120s.
+    console.error(
+      `Playground server not responding at ${PLAYGROUND_URL}, and it differs from the local default (${DEFAULT_PLAYGROUND_URL}). Start the target server manually before running the suite, or unset PLAYGROUND_URL.`,
+    );
+    process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${PLAYGROUND_URL})...`);
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
@@ -60,7 +79,11 @@ async function main(): Promise<void> {
     }
 
     if (!(await ping())) {
-      serverProcess.kill('SIGTERM');
+      try {
+        serverProcess.kill('SIGTERM');
+      } catch (error) {
+        console.error('Failed to kill unready server process:', error);
+      }
       console.error(`Playground server did not become ready within 120s at ${PLAYGROUND_URL}.`);
       process.exit(1);
     }
@@ -71,7 +94,16 @@ async function main(): Promise<void> {
 
   const cleanup = (): void => {
     for (const child of children) {
-      if (!child.killed) child.kill('SIGTERM');
+      // Skip already-exited processes (exitCode/signalCode set) and wrap
+      // kill() in try/catch — ChildProcess.kill() can throw ESRCH if the
+      // PID has been reaped between the check and the call, and an
+      // uncaught throw would block cleanup of the remaining children.
+      if (child.killed || child.exitCode !== null || child.signalCode !== null) continue;
+      try {
+        child.kill('SIGTERM');
+      } catch (error) {
+        console.error('Failed to kill child process:', error);
+      }
     }
   };
 

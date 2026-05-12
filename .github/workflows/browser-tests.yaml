@@ -79,7 +79,10 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload screenshots
-        if: failure()
+        # Always upload: v1 is record-only, so the suite passes even when
+        # there's something visually interesting in the screenshots. The
+        # 7-day retention bounds the storage cost.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
