@@ -124,7 +124,7 @@
     <!--
       Actions section — always visible (filtered when typing).
     -->
-    {#if (!paletteQuery || filteredActions.length > 0) && filteredActions.length > 0}
+    {#if filteredActions.length > 0}
       <li role="none" class="palette-section-header">Actions</li>
       {#each filteredActions as action (action.id)}
         <CommandItem value={action.id} onselect={() => select(action.label)}>
