@@ -89,6 +89,10 @@
       "svelte": "./src/components/diff-viewer.svelte",
       "types": "./dist/components/diff-viewer.svelte.d.ts"
     },
+    "./drawer": {
+      "svelte": "./src/components/drawer.svelte",
+      "types": "./dist/components/drawer.svelte.d.ts"
+    },
     "./dropdown-item": {
       "svelte": "./src/components/dropdown-item.svelte",
       "types": "./dist/components/dropdown-item.svelte.d.ts"

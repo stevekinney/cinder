@@ -19,6 +19,7 @@
 @import './components/copy-button.css';
 @import './components/data-list.css';
 @import './components/diff-statistics.css';
+@import './components/drawer.css';
 @import './components/dropdown.css';
 @import './components/empty-state.css';
 @import './components/experimental.css';

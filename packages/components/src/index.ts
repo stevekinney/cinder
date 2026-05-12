@@ -61,6 +61,9 @@ export type {
   ViewMode,
 } from './components/diff-viewer.svelte';
 
+export { default as Drawer } from './components/drawer.svelte';
+export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer.svelte';
+
 export { default as Dropdown } from './components/dropdown.svelte';
 export type {
   DropdownContext,
