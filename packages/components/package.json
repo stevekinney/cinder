@@ -65,6 +65,14 @@
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
     },
+    "./command-item": {
+      "svelte": "./src/components/command-item.svelte",
+      "types": "./dist/components/command-item.svelte.d.ts"
+    },
+    "./command-palette": {
+      "svelte": "./src/components/command-palette.svelte",
+      "types": "./dist/components/command-palette.svelte.d.ts"
+    },
     "./copy-button": {
       "svelte": "./src/components/copy-button.svelte",
       "types": "./dist/components/copy-button.svelte.d.ts"
@@ -84,6 +92,10 @@
     "./diff-viewer": {
       "svelte": "./src/components/diff-viewer.svelte",
       "types": "./dist/components/diff-viewer.svelte.d.ts"
+    },
+    "./drawer": {
+      "svelte": "./src/components/drawer.svelte",
+      "types": "./dist/components/drawer.svelte.d.ts"
     },
     "./dropdown-item": {
       "svelte": "./src/components/dropdown-item.svelte",
@@ -311,12 +323,14 @@
     "src/utilities/format-date.ts",
     "src/utilities/format-duration.ts",
     "src/utilities/format-number.ts",
+    "src/utilities/json-highlight.ts",
     "src/utilities/roving-tabindex.ts",
     "src/utilities/stringify.ts",
     "src/utilities/truncate.ts",
     "src/utilities/use-announcer.svelte.ts",
     "src/utilities/use-history.svelte.ts",
     "src/utilities/use-id.ts",
+    "src/utilities/use-reduced-motion.svelte.ts",
     "src/utilities/use-toast.ts",
     "README.md"
   ],
