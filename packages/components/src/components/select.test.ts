@@ -103,7 +103,7 @@ describe('Select field-control contract', () => {
     expect(selectEl!.getAttribute('aria-describedby')).toContain('sel-description');
   });
 
-  test('error renders a <p> and sets aria-invalid="true" on <select>', () => {
+  test('error renders a <p> with aria-live="polite" and sets aria-invalid="true" on <select>', () => {
     const { container } = render(Select, {
       props: { id: 'sel', value: 'a', options: defaultOptions, error: 'Required field' },
     });
@@ -111,6 +111,7 @@ describe('Select field-control contract', () => {
     const errEl = container.querySelector('#sel-error');
     expect(errEl).not.toBeNull();
     expect(errEl!.textContent).toBe('Required field');
+    expect(errEl!.getAttribute('aria-live')).toBe('polite');
     expect(selectEl!.getAttribute('aria-invalid')).toBe('true');
     expect(selectEl!.getAttribute('aria-describedby')).toContain('sel-error');
   });
@@ -172,6 +173,22 @@ describe('Select field-control contract', () => {
     const describedBy = selectEl!.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('sel-description');
     expect(describedBy).toContain('external-tooltip');
+    expect(describedBy.indexOf('sel-description')).toBeLessThan(
+      describedBy.indexOf('external-tooltip'),
+    );
+  });
+
+  test('consumer-supplied aria-describedby alone (no description prop) is forwarded', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        'aria-describedby': 'external-hint',
+      },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.getAttribute('aria-describedby')).toBe('external-hint');
   });
 
   test('consumer aria-invalid is preserved when no error prop is set', () => {

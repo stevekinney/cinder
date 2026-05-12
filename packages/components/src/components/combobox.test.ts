@@ -173,7 +173,7 @@ describe('Combobox selection', () => {
 });
 
 describe('Combobox aria wiring', () => {
-  test('error sets aria-invalid="true" and renders a labelled error', () => {
+  test('error sets aria-invalid="true" and renders an aria-live="polite" error region', () => {
     const { container } = render(Combobox, {
       id: 'fruit',
       options: fruits,
@@ -183,7 +183,9 @@ describe('Combobox aria wiring', () => {
     expect(input?.getAttribute('aria-invalid')).toBe('true');
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-error');
-    expect(container.querySelector('#fruit-error')?.textContent?.trim()).toBe('Pick one');
+    const errEl = container.querySelector('#fruit-error');
+    expect(errEl?.textContent?.trim()).toBe('Pick one');
+    expect(errEl?.getAttribute('aria-live')).toBe('polite');
   });
 
   test('description appears in aria-describedby', () => {
@@ -195,6 +197,32 @@ describe('Combobox aria wiring', () => {
     const input = container.querySelector(`#fruit`);
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-description');
+  });
+
+  test('consumer-supplied aria-describedby is composed with component-generated ids', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      description: 'Type to filter',
+      'aria-describedby': 'external-tooltip',
+    });
+    const input = container.querySelector('#fruit');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('fruit-description');
+    expect(describedBy).toContain('external-tooltip');
+    expect(describedBy.indexOf('fruit-description')).toBeLessThan(
+      describedBy.indexOf('external-tooltip'),
+    );
+  });
+
+  test('consumer-supplied aria-describedby alone (no description prop) is forwarded', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      'aria-describedby': 'external-hint',
+    });
+    const input = container.querySelector('#fruit');
+    expect(input?.getAttribute('aria-describedby')).toBe('external-hint');
   });
 });
 
@@ -283,7 +311,14 @@ describe('Combobox rich option rows', () => {
     await fireEvent.focus(input);
     const appleOption = container.querySelector('[role="option"]') as Element;
     await fireEvent.mouseDown(appleOption);
+    // input.value reflects the label (display text)
     expect(input.value).toBe('Apple');
+    // Re-open to check aria-selected reflects the internal value binding (option.value)
+    await fireEvent.focus(input);
+    const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
+    expect(selectedOption?.querySelector('.cinder-combobox__option-label')?.textContent).toBe(
+      'Apple',
+    );
   });
 
   test('default filter matches description substring (case-insensitive)', async () => {

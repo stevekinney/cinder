@@ -50,6 +50,8 @@
   }: SelectProps = $props();
 
   const descriptionId = $derived(describeId(id, !!description));
+  // errId is only included in aria-describedby when error is active — the element
+  // itself lives permanently in the DOM (always-present live region pattern).
   const errId = $derived(buildErrorId(id, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
@@ -96,7 +98,14 @@
   {#if description}
     <p id={descriptionId} class="cinder-select-field__description">{description}</p>
   {/if}
-  {#if error}
-    <p id={errId} class="cinder-select-field__error" aria-live="polite">{error}</p>
-  {/if}
+  <!-- Always in DOM so the live region is registered before text is injected;
+       freshly-mounted aria-live nodes are not reliably announced by NVDA/JAWS. -->
+  <p
+    id="{id}-error"
+    class="cinder-select-field__error"
+    aria-live="polite"
+    data-cinder-error={!!error || undefined}
+  >
+    {error ?? ''}
+  </p>
 </div>

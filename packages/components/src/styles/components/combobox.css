@@ -147,6 +147,16 @@
   z-index: var(--cinder-z-popover);
 }
 
+/* Hide when not active — visibility keeps the live region in the a11y tree. */
+.cinder-combobox__empty:not([data-cinder-active]) {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
 .cinder-combobox__description {
   font-size: var(--cinder-text-xs);
   line-height: var(--cinder-leading-normal);
@@ -159,4 +169,20 @@
   line-height: var(--cinder-leading-normal);
   color: var(--cinder-danger);
   margin: 0;
+}
+
+/* Hide the always-present error live region when no error is active. */
+.cinder-combobox__error:not([data-cinder-error]) {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Forced Colors Mode: restore outline-based focus ring for the combobox input
+ * because box-shadow is ignored in Windows High Contrast Mode. */
+@media (forced-colors: active) {
+  .cinder-combobox__input:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
 }

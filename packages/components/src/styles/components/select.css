@@ -119,3 +119,12 @@
   color: var(--cinder-danger);
   margin: 0;
 }
+
+/* Hide the always-present live region when no error is active. Uses visibility
+ * rather than display:none so the aria-live region stays in the accessibility
+ * tree and is ready to announce changes. */
+.cinder-select-field__error:not([data-cinder-error]) {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
