@@ -8,7 +8,8 @@
     "packages/diff",
     "packages/editor",
     "packages/markdown",
-    "packages/playground"
+    "packages/playground",
+    "packages/testing"
   ],
   "scripts": {
     "build": "bun run --filter=cinder build",
@@ -21,6 +22,9 @@
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
     "test": "bun run --filter='*' test",
+    "test:browser": "bun run --filter='@cinder/testing' test",
+    "test:browser:install": "bun run --filter='@cinder/testing' install-browsers",
+    "test:browser:ui": "bun run --filter='@cinder/testing' test:ui",
     "typecheck": "bun run --filter='*' typecheck",
     "validate": "bun run --filter='*' validate && bun run --filter=cinder validate:consumer",
     "validate:consumer": "bun run --filter=cinder validate:consumer",
