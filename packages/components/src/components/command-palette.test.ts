@@ -32,6 +32,9 @@ if (typeof HTMLDialogElement !== 'undefined') {
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: CommandPalette } = await import('./command-palette.svelte');
 const { default: CommandItem } = await import('./command-item.svelte');
+const { default: CommandPaletteFixture } = await import(
+  '../test/fixtures/command-palette-fixture.svelte'
+);
 
 // ── Snippet helpers ────────────────────────────────────────────────────────
 
@@ -46,6 +49,19 @@ const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
   setup: () => {},
 }));
+
+async function settleCommandPalette() {
+  await Promise.resolve();
+  await tick();
+}
+
+function getInput(container: HTMLElement) {
+  return container.querySelector('input[role="combobox"]') as HTMLInputElement;
+}
+
+function getSelectedOption(container: HTMLElement) {
+  return container.querySelector('[role="option"][aria-selected="true"]') as HTMLElement | null;
+}
 
 // ── Shared setup ───────────────────────────────────────────────────────────
 
@@ -81,44 +97,30 @@ describe('CommandPalette — lifecycle', () => {
     expect(dialog?.hasAttribute('open')).toBe(true);
   });
 
-  test('setting open=false closes the dialog', async () => {
-    let openValue = true;
-    const { container } = render(CommandPalette, {
-      props: {
-        get open() {
-          return openValue;
-        },
-        set open(v: boolean) {
-          openValue = v;
-        },
-        items: emptySnippet,
+  test('external open=false closes dialog, restores focus, and fires onclose once', async () => {
+    let closeCount = 0;
+    const { container, getByTestId } = render(CommandPaletteFixture, {
+      initialOpen: false,
+      onClosed: () => {
+        closeCount += 1;
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
-    expect(openValue).toBe(false);
-  });
+    const trigger = getByTestId('command-palette-trigger') as HTMLButtonElement;
+    trigger.focus();
 
-  test('fires onclose after open is mutated to false', async () => {
-    let closeFired = false;
-    let openValue = true;
-    const { container } = render(CommandPalette, {
-      props: {
-        get open() {
-          return openValue;
-        },
-        set open(v: boolean) {
-          openValue = v;
-        },
-        onclose: () => {
-          closeFired = true;
-        },
-        items: emptySnippet,
-      },
-    });
+    await fireEvent.click(trigger);
+    await settleCommandPalette();
+
+    const input = getInput(container);
+    expect(document.activeElement).toBe(input);
+
+    await fireEvent.click(getByTestId('command-palette-external-close'));
+    await settleCommandPalette();
+
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
-    expect(closeFired).toBe(true);
+    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    expect(closeCount).toBe(1);
   });
 });
 
@@ -179,6 +181,25 @@ describe('CommandPalette — combobox ARIA', () => {
     });
     const dialog = container.querySelector('dialog');
     expect(dialog?.getAttribute('aria-label')).toBe('Command palette');
+  });
+
+  test('search input has a <label> element associated via for/id', () => {
+    const { container } = render(CommandPalette, {
+      props: { open: true, items: emptySnippet },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    const inputId = input?.getAttribute('id');
+    expect(inputId).not.toBeNull();
+    const label = container.querySelector(`label[for="${inputId}"]`);
+    expect(label).not.toBeNull();
+  });
+
+  test('listbox has no aria-label (name provided via combobox aria-controls)', () => {
+    const { container } = render(CommandPalette, {
+      props: { open: true, items: emptySnippet },
+    });
+    const listbox = container.querySelector('[role="listbox"]');
+    expect(listbox?.getAttribute('aria-label')).toBeNull();
   });
 });
 
@@ -363,6 +384,55 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
   });
 });
 
+describe('CommandPalette — keyboard routing with registered items', () => {
+  test('arrow keys move aria-activedescendant through enabled items and skip disabled items', async () => {
+    const { container } = render(CommandPaletteFixture);
+    await settleCommandPalette();
+
+    const input = getInput(container);
+    expect(document.activeElement).toBe(input);
+
+    let selected = getSelectedOption(container);
+    expect(selected?.textContent).toContain('Alpha');
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected?.id);
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    selected = getSelectedOption(container);
+    expect(selected?.textContent).toContain('Gamma');
+    expect(input.getAttribute('aria-activedescendant')).toBe(selected?.id);
+    expect(container.querySelector('[aria-disabled="true"]')?.getAttribute('aria-selected')).toBe(
+      'false',
+    );
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    selected = getSelectedOption(container);
+    expect(selected?.textContent).toContain('Alpha');
+
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    await tick();
+    selected = getSelectedOption(container);
+    expect(selected?.textContent).toContain('Gamma');
+  });
+
+  test('Enter invokes the active registered item callback', async () => {
+    let selectedValue = '';
+    const { container } = render(CommandPaletteFixture, {
+      onSelected: (value: string) => {
+        selectedValue = value;
+      },
+    });
+    await settleCommandPalette();
+
+    const input = getInput(container);
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(selectedValue).toBe('gamma');
+  });
+});
+
 // ── Empty state timing ────────────────────────────────────────────────────
 
 describe('CommandPalette — empty state timing', () => {
@@ -406,6 +476,71 @@ describe('CommandPalette — empty state timing', () => {
     await tick();
     const emptyEl = container.querySelector('.cinder-command-palette__empty');
     expect(emptyEl?.getAttribute('role')).toBe('status');
+  });
+
+  test('stale query microtasks do not show empty state before the newest cycle settles', async () => {
+    const queuedMicrotasks: Array<() => void> = [];
+    const originalQueueMicrotask = globalThis.queueMicrotask;
+    globalThis.queueMicrotask = (callback) => {
+      queuedMicrotasks.push(callback);
+    };
+
+    try {
+      const { container } = render(CommandPaletteFixture, { filterItems: true });
+      await tick();
+
+      while (queuedMicrotasks.length > 0) {
+        queuedMicrotasks.shift()?.();
+      }
+      await tick();
+
+      const input = getInput(container);
+      await fireEvent.input(input, { target: { value: 'z' } });
+      await tick();
+      await fireEvent.input(input, { target: { value: 'zz' } });
+      await tick();
+
+      expect(queuedMicrotasks.length).toBe(2);
+      expect(container.querySelector('.cinder-command-palette__empty')).toBeNull();
+
+      queuedMicrotasks.shift()?.();
+      await tick();
+      expect(container.querySelector('.cinder-command-palette__empty')).toBeNull();
+
+      queuedMicrotasks.shift()?.();
+      await tick();
+      const emptyEl = container.querySelector('.cinder-command-palette__empty');
+      expect(emptyEl?.textContent).toContain('No results');
+    } finally {
+      globalThis.queueMicrotask = originalQueueMicrotask;
+    }
+  });
+});
+
+// ── Close idempotency ─────────────────────────────────────────────────────
+
+describe('CommandPalette — close idempotency', () => {
+  test('onclose fires exactly once when close event fires', async () => {
+    let closeCount = 0;
+    let openValue = true;
+    const { container } = render(CommandPalette, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(v: boolean) {
+          openValue = v;
+        },
+        onclose: () => {
+          closeCount++;
+        },
+        items: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent(dialog, new Event('close'));
+    await tick();
+    expect(closeCount).toBe(1);
   });
 });
 

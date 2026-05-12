@@ -144,14 +144,21 @@
   // ── Close ─────────────────────────────────────────────────────────────────
   // Single authoritative close path. All close triggers (Escape stack,
   // backdrop click, `close` event, programmatic open=false) route through here.
+  // The `isClosing` flag prevents double-invocation: setting `open = false`
+  // schedules the lifecycle $effect, which calls closePalette() again from the
+  // else branch. The flag ensures that second call is a no-op.
+  let isClosing = false;
   function closePalette() {
+    if (isClosing) return;
     if (!open && !dialogElement?.open) return;
+    isClosing = true;
     open = false;
     releaseEscape?.();
     releaseEscape = null;
     if (dialogElement?.open) dialogElement.close();
     returnFocus();
     onclose?.();
+    isClosing = false;
   }
 
   // ── Open/close lifecycle ──────────────────────────────────────────────────
@@ -303,7 +310,7 @@
               clip-rule="evenodd"
             />
           </svg>
-          <label for={inputId} class="cinder-visually-hidden">{label}</label>
+          <label for={inputId} class="cinder-sr-only">{label}</label>
           <input
             bind:this={inputElement}
             id={inputId}

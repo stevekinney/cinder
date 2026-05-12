@@ -14,8 +14,8 @@ Reference: [WAI-ARIA APG Combobox Pattern](https://www.w3.org/WAI/ARIA/apg/patte
 | Element | Role | Accessible Name Source |
 |---------|------|------------------------|
 | `<dialog>` | `dialog` (implicit) | `aria-label` from the `label` prop |
-| `<input>` | `combobox` (explicit) | Unlabelled — the dialog's `aria-label` provides context; consumers may add a visible `<label>` |
-| `<ul>` | `listbox` (explicit) | `aria-label` duplicated from the `label` prop |
+| `<input>` | `combobox` (explicit) | Visually-hidden `<label>` element (text from `label` prop) |
+| `<ul>` | `listbox` (explicit) | No `aria-label`; the combobox owns the listbox via `aria-controls`, and virtual focus is communicated via `aria-activedescendant` |
 | `<li>` | `option` (explicit) | Text content of the `children` snippet |
 
 ## Virtual Focus Model
