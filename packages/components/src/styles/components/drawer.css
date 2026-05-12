@@ -1,0 +1,194 @@
+/* ========================================
+ * DRAWER
+ * Edge-anchored (left/right) slide-in panel.
+ * The <dialog> fills the viewport so backdrop-click on dialog is reliable;
+ * the visible panel is a child absolutely positioned at the chosen edge.
+ * ======================================== */
+
+.cinder-drawer {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  z-index: var(--cinder-z-modal);
+}
+
+.cinder-drawer::backdrop {
+  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.cinder-drawer__panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  max-width: 100vw;
+  background: var(--cinder-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cinder-drawer__panel[data-cinder-side='right'] {
+  right: 0;
+  left: auto;
+  border-inline-start: 1px solid var(--cinder-border);
+}
+
+.cinder-drawer__panel[data-cinder-side='left'] {
+  left: 0;
+  right: auto;
+  border-inline-end: 1px solid var(--cinder-border);
+}
+
+.cinder-drawer__panel[data-cinder-size='sm'] {
+  width: min(20rem, 100vw);
+}
+.cinder-drawer__panel[data-cinder-size='md'] {
+  width: min(28rem, 100vw);
+}
+.cinder-drawer__panel[data-cinder-size='lg'] {
+  width: min(36rem, 100vw);
+}
+.cinder-drawer__panel[data-cinder-size='xl'] {
+  width: min(48rem, 100vw);
+}
+
+.cinder-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  padding: var(--cinder-space-5) var(--cinder-space-6);
+  border-block-end: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+.cinder-drawer__title {
+  margin: 0;
+  font-size: var(--cinder-text-lg);
+  font-weight: var(--cinder-font-semibold);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.cinder-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: var(--cinder-space-1);
+  border-radius: var(--cinder-radius-md);
+  border: none;
+  background: transparent;
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-drawer__close:hover {
+  background: color-mix(in oklch, currentColor, transparent 85%);
+  color: var(--cinder-text);
+}
+
+.cinder-drawer__close:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: var(--cinder-ring-offset);
+}
+
+@media (forced-colors: active) {
+  .cinder-drawer__close:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
+.cinder-drawer__close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cinder-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--cinder-space-6);
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+.cinder-drawer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-4) var(--cinder-space-6);
+  border-block-start: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Motion — slide from the anchored edge.
+ * Animation targets the panel, not the dialog (which is transparent).
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-drawer__panel[data-cinder-side='right'] {
+    animation: cinder-drawer-slide-right var(--cinder-duration-normal) var(--cinder-ease-spring)
+      forwards;
+  }
+
+  .cinder-drawer__panel[data-cinder-side='left'] {
+    animation: cinder-drawer-slide-left var(--cinder-duration-normal) var(--cinder-ease-spring)
+      forwards;
+  }
+
+  @keyframes cinder-drawer-slide-right {
+    from {
+      translate: 100% 0;
+      opacity: 0.85;
+    }
+    to {
+      translate: 0 0;
+      opacity: 1;
+    }
+  }
+
+  @keyframes cinder-drawer-slide-left {
+    from {
+      translate: -100% 0;
+      opacity: 0.85;
+    }
+    to {
+      translate: 0 0;
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-drawer__panel {
+    animation: cinder-drawer-fade var(--cinder-duration-fast) linear forwards;
+  }
+
+  @keyframes cinder-drawer-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

@@ -34,6 +34,12 @@ export type { CodeBlockProps } from './components/code-block.svelte';
 export { default as Combobox } from './components/combobox.svelte';
 export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
 
+export { default as CommandItem } from './components/command-item.svelte';
+export type { CommandItemProps } from './components/command-item.svelte';
+
+export { default as CommandPalette } from './components/command-palette.svelte';
+export type { CommandPaletteProps } from './components/command-palette.svelte';
+
 export { default as CopyButton } from './components/copy-button.svelte';
 export type { CopyButtonProps } from './components/copy-button.svelte';
 
@@ -54,6 +60,9 @@ export type {
   DiffViewerProps,
   ViewMode,
 } from './components/diff-viewer.svelte';
+
+export { default as Drawer } from './components/drawer.svelte';
+export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer.svelte';
 
 export { default as Dropdown } from './components/dropdown.svelte';
 export type {
@@ -237,6 +246,9 @@ export type {
   UseHistoryEntryMetadata,
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
+
+export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
 
