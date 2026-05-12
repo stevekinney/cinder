@@ -6,9 +6,10 @@ export default defineConfig({
   outputDir: './test-results/playwright',
   fullyParallel: true,
   // Heavy editor components (Chat, MarkdownEditor, ReviewEditor — all
-  // Milkdown-backed) can take 15-25s to mount on slower CI runners. Default
-  // 30s test timeout leaves no room for the fixture wait plus axe + screenshot.
-  timeout: 60_000,
+  // Milkdown-backed) can take 30-40s to mount on the GitHub Actions runner.
+  // The fixture caps its `#app > *` wait at 50s; this test-level timeout
+  // leaves ~30s of headroom for runAxe + captureScreenshot on the slow path.
+  timeout: 90_000,
   // CI runs serially: the playground server's lazy `Bun.build` for page bundles
   // doesn't dedupe concurrent requests for the same component, so parallel
   // tests can race on the build's output path. One worker eliminates the race
