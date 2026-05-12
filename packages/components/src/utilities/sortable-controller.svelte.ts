@@ -72,6 +72,8 @@ export class SortableController<Item> {
   }
 
   lift(key: string | number, fromIndex: number, itemLabel: string, total: number): void {
+    // Reject concurrent lifts — a second item must not overwrite an in-progress drag.
+    if (this.phase === 'lifted') return;
     this.phase = 'lifted';
     this.liftedKey = key;
     this.liftedLabel = itemLabel;

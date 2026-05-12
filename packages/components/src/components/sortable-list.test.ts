@@ -159,6 +159,22 @@ describe('SortableController', () => {
     expect(announce.mock.calls[0][0]).toContain('cancelled');
   });
 
+  test('lift while already lifted is a no-op (prevents concurrent drag corruption)', () => {
+    const announce = mock();
+    const controller = new SortableController({ announce });
+
+    controller.lift('a', 0, 'Alpha', 3);
+    announce.mockClear();
+
+    // Attempt to lift a second item while 'a' is still lifted.
+    controller.lift('b', 1, 'Beta', 3);
+
+    expect(announce).not.toHaveBeenCalled();
+    expect(controller.liftedKey).toBe('a');
+    expect(controller.liftedFrom).toBe(0);
+    expect(controller.phase).toBe('lifted');
+  });
+
   test('cancel in idle phase is a no-op', () => {
     const announce = mock();
     const controller = new SortableController({ announce });
