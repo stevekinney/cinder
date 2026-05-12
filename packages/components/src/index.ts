@@ -247,6 +247,9 @@ export type {
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
 
+export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+
 export { useToast } from './utilities/use-toast.ts';
 
 export { default as Toggle } from './components/toggle.svelte';
