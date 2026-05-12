@@ -66,9 +66,12 @@ async function main(): Promise<void> {
     }
   }
 
+  const children: Array<ReturnType<typeof spawn>> = [];
+  if (serverProcess !== null) children.push(serverProcess);
+
   const cleanup = (): void => {
-    if (serverProcess !== null && !serverProcess.killed) {
-      serverProcess.kill('SIGTERM');
+    for (const child of children) {
+      if (!child.killed) child.kill('SIGTERM');
     }
   };
 
@@ -85,6 +88,7 @@ async function main(): Promise<void> {
     cwd: packageRoot,
     stdio: 'inherit',
   });
+  children.push(prep);
   const prepCode = await waitForExit(prep);
   if (prepCode !== 0) {
     cleanup();
@@ -96,20 +100,26 @@ async function main(): Promise<void> {
     stdio: 'inherit',
     env: { ...process.env },
   });
+  children.push(playwright);
   const playwrightCode = await waitForExit(playwright);
 
   const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
   });
+  children.push(summary);
   const summaryCode = await waitForExit(summary);
   if (summaryCode !== 0) {
-    console.error(`summarize-axe exited with code ${summaryCode}.`);
+    console.error(
+      `summarize-axe exited with code ${summaryCode}. Suite exit code reflects Playwright only.`,
+    );
   }
 
   cleanup();
-  // Surface Playwright failures first; otherwise report summarize-axe failures.
-  process.exit(playwrightCode !== 0 ? playwrightCode : summaryCode);
+  // Summary generation is advisory — only Playwright's result drives the
+  // suite exit code so a green run never goes red because of summary
+  // failures.
+  process.exit(playwrightCode);
 }
 
 main().catch((error: unknown) => {

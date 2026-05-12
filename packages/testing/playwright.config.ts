@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: './test-results/results.json' }],
   ],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173',
     trace: 'retain-on-failure',
     screenshot: 'off',
     video: 'off',

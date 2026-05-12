@@ -5,33 +5,34 @@ import { runAxe } from '../src/helpers/axe.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
-const PLAYGROUND_URL = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
-
 test.describe('server identity', () => {
   test('cached manifest matches live /api/manifest', async ({ request }) => {
-    const response = await request.get(`${PLAYGROUND_URL}/api/manifest`);
+    // `request` honors playwright.config.ts's `use.baseURL`, which is
+    // `process.env.PLAYGROUND_URL ?? 'http://localhost:4173'`.
+    const response = await request.get('/api/manifest');
     expect(response.ok()).toBeTruthy();
 
     const live = (await response.json()) as Array<{ name: string; kebabName: string }>;
 
     const liveEntries = live
       .map((entry) => ({ name: entry.name, route: `/page/${entry.kebabName}` }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .toSorted((a, b) => a.name.localeCompare(b.name));
 
-    const liveDigest = createHash('sha256')
-      .update(JSON.stringify(liveEntries))
-      .digest('hex');
+    const liveDigest = createHash('sha256').update(JSON.stringify(liveEntries)).digest('hex');
 
     expect(
       liveDigest,
       [
         'Live manifest digest must match cached manifest digest.',
-        'Re-run scripts/prepare-manifest.ts to regenerate the cache.',
+        'Re-run `bun run test:browser` to regenerate the cache.',
         '',
-        `Live components:   ${live.map((entry) => entry.name).sort().join(', ')}`,
+        `Live components:   ${live
+          .map((entry) => entry.name)
+          .toSorted()
+          .join(', ')}`,
         `Cached components: ${loadManifest()
           .map((entry) => entry.name)
-          .sort()
+          .toSorted()
           .join(', ')}`,
       ].join('\n'),
     ).toBe(manifestDigest());
