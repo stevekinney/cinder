@@ -5,7 +5,8 @@ export type TreeNodeRegistration = {
   id: string;
   parentId: string | null;
   level: number;
-  disabled: boolean;
+  /** Getter so runtime prop changes stay in sync without re-registration. */
+  readonly disabled: boolean;
   isBranch: () => boolean;
   label: () => string;
   /** DOM-focus the outer role="treeitem" element. */
@@ -25,6 +26,12 @@ export class TreeRegistry {
   readonly #children = new SvelteMap<string | null, string[]>();
 
   register(node: TreeNodeRegistration): () => void {
+    if (this.#nodes.has(node.id)) {
+      throw new Error(
+        `[cinder-tree] Duplicate TreeItem id: "${node.id}". All node ids must be unique within the tree.`,
+      );
+    }
+
     this.#nodes.set(node.id, node);
 
     const siblings = this.#children.get(node.parentId) ?? [];
@@ -96,7 +103,9 @@ export class TreeRegistry {
     const lower = prefix.toLowerCase();
     const startIndex = visible.indexOf(currentId);
 
-    // Search from item after current, then wrap around to the start
+    // Search from item after current, then wrap around to the start.
+    // visible[index] is always defined: index = (startIndex + offset) % visible.length
+    // and we only enter this loop when visible.length > 0 (offset <= visible.length guard).
     for (let offset = 1; offset <= visible.length; offset++) {
       const index = (startIndex + offset) % visible.length;
       const id = visible[index]!;

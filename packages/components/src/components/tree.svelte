@@ -30,44 +30,9 @@
 <script lang="ts">
   import { setContext } from 'svelte';
 
-  import { TreeRegistry, type TreeNodeRegistration } from '../_internal/tree-registry.svelte.ts';
+  import type { TreeContext, TreeItemParentContext } from '../_internal/tree-context.ts';
+  import { TreeRegistry } from '../_internal/tree-registry.svelte.ts';
   import { classNames } from '../utilities/class-names.ts';
-
-  // ---------------------------------------------------------------------------
-  // Types (file-local — not exported from this module)
-  // ---------------------------------------------------------------------------
-
-  type TreeContext = {
-    readonly selectionMode: TreeSelectionMode;
-    readonly multiselectable: boolean;
-    readonly typeaheadEnabled: boolean;
-    /** Reactive getter — reading this inside $derived registers dependency. */
-    readonly expandedIds: readonly string[];
-    /** Reactive getter — reading this inside $derived registers dependency. */
-    readonly selectedIds: readonly string[];
-    /** Reactive getter — reading this inside $derived registers dependency. */
-    readonly focusedId: string | null;
-    isExpanded(id: string): boolean;
-    isSelected(id: string): boolean;
-    isFocused(id: string): boolean;
-    setExpanded(id: string, next: boolean): void;
-    toggleSelected(id: string, event: KeyboardEvent | MouseEvent | null): void;
-    register(node: TreeNodeRegistration): () => void;
-    focusVisibleDelta(currentId: string, delta: number): void;
-    focusFirstVisible(): void;
-    focusLastVisible(): void;
-    focusParent(currentId: string): void;
-    focusFirstChild(currentId: string): void;
-    handleTypeahead(char: string, currentId: string): void;
-    expandSiblings(currentId: string): void;
-    /** Called by TreeItem on native focus so focusedId stays in sync. */
-    notifyFocus(id: string): void;
-  };
-
-  type TreeItemParentContext = {
-    parentId: string | null;
-    level: number;
-  };
 
   // ---------------------------------------------------------------------------
   // Props
@@ -108,6 +73,16 @@
     }
   });
 
+  // Clear typeahead timer on unmount
+  $effect(() => {
+    return () => {
+      if (typeaheadTimer !== null) {
+        clearTimeout(typeaheadTimer);
+        typeaheadTimer = null;
+      }
+    };
+  });
+
   // ---------------------------------------------------------------------------
   // Derived visible list
   // ---------------------------------------------------------------------------
@@ -124,7 +99,13 @@
     return visibleIds[0] ?? null;
   });
 
-  const effectiveFocusedId = $derived(focusedId ?? initialFocusId);
+  // effectiveFocusedId: use focusedId only if it is currently visible;
+  // otherwise fall back to initialFocusId so collapsing a focused subtree
+  // doesn't leave the roving tabindex pointing at an invisible item.
+  const effectiveFocusedId = $derived.by(() => {
+    if (focusedId !== null && visibleIds.includes(focusedId)) return focusedId;
+    return initialFocusId;
+  });
 
   // ---------------------------------------------------------------------------
   // Helpers

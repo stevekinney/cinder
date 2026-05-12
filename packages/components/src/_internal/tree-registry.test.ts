@@ -57,6 +57,19 @@ describe('TreeRegistry', () => {
       registry.register(makeNode('c', null, 1));
       expect(registry.siblingsOf('a')).toEqual(['a', 'b', 'c']);
     });
+
+    test('registering a duplicate id throws', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('a', null, 1));
+      expect(() => registry.register(makeNode('a', null, 1))).toThrow('[cinder-tree]');
+    });
+
+    test('re-registering after unregister succeeds', () => {
+      const registry = new TreeRegistry();
+      const unregister = registry.register(makeNode('a', null, 1));
+      unregister();
+      expect(() => registry.register(makeNode('a', null, 1))).not.toThrow();
+    });
   });
 
   describe('getVisible', () => {
@@ -224,6 +237,14 @@ describe('TreeRegistry', () => {
       registry.register(makeNode('other', null, 1, { label: 'Zoom' }));
       // 'child' is not visible (parent collapsed), 'z' should match 'other'
       expect(registry.typeaheadMatch('z', 'parent', [])).toBe('other');
+    });
+
+    test('disabled items are not skipped by typeahead', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('a', null, 1, { label: 'Apple', disabled: true }));
+      registry.register(makeNode('b', null, 1, { label: 'Banana' }));
+      // 'a' is disabled but must still match
+      expect(registry.typeaheadMatch('a', 'b', [])).toBe('a');
     });
   });
 });

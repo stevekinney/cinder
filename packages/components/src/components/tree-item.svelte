@@ -36,48 +36,9 @@
 <script lang="ts">
   import { getContext, onMount, setContext } from 'svelte';
 
+  import type { TreeContext, TreeItemParentContext } from '../_internal/tree-context.ts';
   import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from './tree.svelte';
   import { classNames } from '../utilities/class-names.ts';
-
-  // ---------------------------------------------------------------------------
-  // Types (file-local)
-  // ---------------------------------------------------------------------------
-
-  type TreeContext = {
-    readonly selectionMode: string;
-    readonly multiselectable: boolean;
-    readonly typeaheadEnabled: boolean;
-    readonly expandedIds: readonly string[];
-    readonly selectedIds: readonly string[];
-    readonly focusedId: string | null;
-    isExpanded(id: string): boolean;
-    isSelected(id: string): boolean;
-    isFocused(id: string): boolean;
-    setExpanded(id: string, next: boolean): void;
-    toggleSelected(id: string, event: KeyboardEvent | MouseEvent | null): void;
-    register(node: {
-      id: string;
-      parentId: string | null;
-      level: number;
-      disabled: boolean;
-      isBranch: () => boolean;
-      label: () => string;
-      focus: () => void;
-    }): () => void;
-    focusVisibleDelta(currentId: string, delta: number): void;
-    focusFirstVisible(): void;
-    focusLastVisible(): void;
-    focusParent(currentId: string): void;
-    focusFirstChild(currentId: string): void;
-    handleTypeahead(char: string, currentId: string): void;
-    expandSiblings(currentId: string): void;
-    notifyFocus(id: string): void;
-  };
-
-  type TreeItemParentContext = {
-    parentId: string | null;
-    level: number;
-  };
 
   // ---------------------------------------------------------------------------
   // Props
@@ -142,12 +103,23 @@
       id,
       parentId,
       level,
-      disabled,
+      // disabled is a getter so runtime prop changes stay in sync with the registry
+      get disabled() {
+        return disabled;
+      },
       isBranch: () => isBranch,
       label: () => label,
       focus: () => outerElement?.focus(),
     });
-    return unregister;
+
+    return () => {
+      // Abort any in-flight async load when the item unmounts
+      if (activeController) {
+        activeController.abort();
+        activeController = null;
+      }
+      unregister();
+    };
   });
 
   // ---------------------------------------------------------------------------
@@ -371,11 +343,17 @@
     {#if row}
       {@render row({ expanded: isExpanded, selected: isSelected, busy, level })}
     {:else}
-      {label}
+      <!--
+        aria-hidden prevents the text node from being announced separately since
+        the parent treeitem already carries aria-label={label}. Without this,
+        some screen readers double-announce the label (once from aria-label and
+        once from walking the subtree text).
+      -->
+      <span aria-hidden="true">{label}</span>
     {/if}
   </div>
   {#if isBranch && isExpanded}
-    <div role="group" class="cinder-tree-item__children">
+    <div role="group" aria-labelledby={`tree-item-${id}`} class="cinder-tree-item__children">
       {@render children?.()}
     </div>
   {/if}

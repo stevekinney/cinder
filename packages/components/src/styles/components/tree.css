@@ -18,8 +18,14 @@
 }
 
 .cinder-tree-item:focus-visible {
-  outline: 2px solid var(--cinder-focus-ring, var(--cinder-border-focus));
-  outline-offset: -2px;
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: calc(-1 * var(--cinder-ring-width));
+}
+
+@media (forced-colors: active) {
+  .cinder-tree-item:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+  }
 }
 
 .cinder-tree-item__row {
@@ -40,9 +46,19 @@
   color: var(--cinder-accent-foreground, inherit);
 }
 
+@media (forced-colors: active) {
+  .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
+    background-color: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+}
+
 .cinder-tree-item[data-cinder-disabled] {
   opacity: 0.5;
-  cursor: not-allowed;
+  /* Use default cursor: disabled items can still be expanded/collapsed;
+     only selection is blocked. not-allowed would mislead mouse users. */
+  cursor: default;
 }
 
 .cinder-tree-item__children {
