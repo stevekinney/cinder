@@ -295,10 +295,13 @@ export const CONTRACT: Record<string, ComponentContract> = {
   'page-layout': {
     kind: 'literal',
     props: {
-      title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+      title: { optional: false, type_kind: 'TSTypeReference', default: REQUIRED },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {
+      breadcrumbs: s0(true),
+      avatar: s0(true),
+      meta: s0(true),
       actions: s0(true),
       children: s0(false),
     },
