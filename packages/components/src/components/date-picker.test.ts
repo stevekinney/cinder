@@ -1,12 +1,19 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
+import { _resetEscapeStack } from '../_internal/overlay.ts';
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: DatePicker } = await import('./date-picker.svelte');
+
+// Clean up the global escape stack after each test so a popover left open
+// by one test does not leak its close handler into the next.
+afterEach(() => {
+  _resetEscapeStack();
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,12 +85,12 @@ describe('DatePicker structure', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
-  test('calendar icon button is present and wired to the same popover', () => {
+  test('calendar icon button is present and is aria-hidden (mouse-only affordance)', () => {
     const { container } = render(DatePicker, { id: 'dp', label: 'Date' });
     const iconBtn = container.querySelector<HTMLElement>('.cinder-date-picker__icon-button');
 
     expect(iconBtn).not.toBeNull();
-    expect(iconBtn?.getAttribute('aria-controls')).toBe('dp-popover');
+    expect(iconBtn?.getAttribute('aria-hidden')).toBe('true');
   });
 });
 
@@ -385,7 +392,83 @@ describe('DatePicker keyboard navigation', () => {
 
     const focusedAfter = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
     const dateAfter = focusedAfter!.getAttribute('data-date')!;
-    expect(dateAfter).not.toBe(dateBefore);
+    expect(new Date(dateAfter).getTime()).toBeLessThan(new Date(dateBefore).getTime());
+  });
+
+  test('ArrowUp moves focus one week back (7 days)', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date', locale: 'en-US' });
+    await openCalendar(container);
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    const focusedBefore = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const dateBefore = focusedBefore!.getAttribute('data-date')!;
+
+    await fireEvent.keyDown(grid, { key: 'ArrowUp' });
+
+    const focusedAfter = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const dateAfter = focusedAfter!.getAttribute('data-date')!;
+    const diff = new Date(dateBefore).getTime() - new Date(dateAfter).getTime();
+    expect(diff).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  test('ArrowDown moves focus one week forward (7 days)', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date', locale: 'en-US' });
+    await openCalendar(container);
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    const focusedBefore = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const dateBefore = focusedBefore!.getAttribute('data-date')!;
+
+    await fireEvent.keyDown(grid, { key: 'ArrowDown' });
+
+    const focusedAfter = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const dateAfter = focusedAfter!.getAttribute('data-date')!;
+    const diff = new Date(dateAfter).getTime() - new Date(dateBefore).getTime();
+    expect(diff).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  test('Home moves focus to the start of the current week row', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date', locale: 'en-US' });
+    await openCalendar(container);
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+
+    // Move to a mid-week day first (ArrowRight several times)
+    await fireEvent.keyDown(grid, { key: 'ArrowRight' });
+    await fireEvent.keyDown(grid, { key: 'ArrowRight' });
+    await fireEvent.keyDown(grid, { key: 'ArrowRight' });
+
+    await fireEvent.keyDown(grid, { key: 'Home' });
+
+    // After Home, the focused cell should be Sunday (en-US first day)
+    const focused = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const date = new Date(focused!.getAttribute('data-date')!);
+    expect(date.getDay()).toBe(0); // Sunday for en-US
+  });
+
+  test('End moves focus to the end of the current week row', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date', locale: 'en-US' });
+    await openCalendar(container);
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    await fireEvent.keyDown(grid, { key: 'End' });
+
+    // After End, the focused cell should be Saturday (en-US last day)
+    const focused = container.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+    const date = new Date(focused!.getAttribute('data-date')!);
+    expect(date.getDay()).toBe(6); // Saturday
+  });
+
+  test('Ctrl+PageUp navigates to the previous year', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date', locale: 'en-US' });
+    await openCalendar(container);
+
+    const titleBefore = container.querySelector('#dp-title')?.textContent?.trim() ?? '';
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    await fireEvent.keyDown(grid, { key: 'PageUp', ctrlKey: true });
+
+    const titleAfter = container.querySelector('#dp-title')?.textContent?.trim() ?? '';
+    expect(titleAfter).not.toBe(titleBefore);
   });
 
   test('PageUp navigates to the previous month', async () => {
@@ -504,8 +587,8 @@ describe('DatePicker min/max', () => {
     });
     await openCalendar(container);
 
-    const grid = container.querySelector<HTMLElement>('[role="grid"]');
-    if (!grid) return; // Skip if popover didn't open
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    expect(grid).not.toBeNull();
 
     // All rendered cells should be disabled (invalidMinMax path)
     const enabledCells = container.querySelectorAll(
@@ -655,7 +738,7 @@ describe('DatePicker form integration', () => {
     expect(hidden?.value).toBe('');
   });
 
-  test('form reset reverts to defaultValue and fires onchange', async () => {
+  test('selection fires onchange with a Date instance', async () => {
     const defaultDate = new Date(2026, 0, 1, 12, 0, 0, 0);
     const emitted: Array<Date | null> = [];
 

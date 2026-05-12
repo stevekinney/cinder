@@ -50,6 +50,11 @@
   border-color: var(--cinder-border-strong);
 }
 
+.cinder-date-picker__input[readonly] {
+  background: var(--cinder-surface-inset);
+  cursor: pointer;
+}
+
 .cinder-date-picker__input:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow:

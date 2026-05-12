@@ -42,6 +42,7 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
+  import { tick } from 'svelte';
 
   import {
     addDays,
@@ -151,14 +152,11 @@
   const liveRegionId = `${id}-live`;
 
   // Invalid/required state
-  const isValueEmpty = $derived(() => {
-    if (initialMode === 'single') return currentValue === null;
-    return currentValue === null;
-  });
+  const isValueEmpty = $derived(currentValue === null);
 
   const invalid = $derived(
     !!error ||
-      (required && isValueEmpty()) ||
+      (required && isValueEmpty) ||
       (min !== undefined && max !== undefined && isBefore(max, min)),
   );
 
@@ -206,12 +204,21 @@
       month: '2-digit',
       day: '2-digit',
     });
-    // Format a reference date to get the locale-specific format hint
-    return formatter
-      .format(new Date(2000, 0, 15))
-      .replace('2000', 'YYYY')
-      .replace('01', 'MM')
-      .replace('15', 'DD');
+    const parts = formatter.formatToParts(new Date(2000, 0, 15));
+    return parts
+      .map((part) => {
+        switch (part.type) {
+          case 'year':
+            return 'YYYY';
+          case 'month':
+            return 'MM';
+          case 'day':
+            return 'DD';
+          default:
+            return part.value;
+        }
+      })
+      .join('');
   });
 
   // Calendar matrix
@@ -353,10 +360,10 @@
 
     releaseEscape = pushEscapeHandler(closePopover);
 
-    // Focus the correct day after DOM update
-    setTimeout(() => {
-      focusDay(initial);
-    }, 0);
+    // Focus the correct day after Svelte flushes the DOM update
+    void tick().then(() => {
+      if (open) focusDay(initial);
+    });
   }
 
   function closePopover(): void {
@@ -428,7 +435,9 @@
       0,
     );
     focusedDate = clamped;
-    setTimeout(() => focusDay(clamped), 0);
+    void tick().then(() => {
+      if (open) focusDay(clamped);
+    });
   }
 
   function navigateYear(delta: number): void {
@@ -452,7 +461,9 @@
       0,
     );
     focusedDate = clamped;
-    setTimeout(() => focusDay(clamped), 0);
+    void tick().then(() => {
+      if (open) focusDay(clamped);
+    });
   }
 
   function handleTriggerKeydown(event: KeyboardEvent): void {
@@ -564,7 +575,7 @@
     if (!input) return;
     if (invalidMinMax) {
       input.setCustomValidity('No valid date range available.');
-    } else if (required && isValueEmpty()) {
+    } else if (required && isValueEmpty) {
       input.setCustomValidity('Please select a date.');
     } else {
       input.setCustomValidity('');
@@ -591,7 +602,9 @@
   });
 
   function dayAriaLabel(date: Date): string {
-    if (!resolvedLocale) return String(date.getDate());
+    // Fall back to ISO date string (YYYY-MM-DD) so screen readers always get a
+    // full date context, not just a bare day number.
+    if (!resolvedLocale) return serializeDate(date);
     return new Intl.DateTimeFormat(resolvedLocale, {
       weekday: 'long',
       year: 'numeric',
@@ -633,10 +646,8 @@
       type="button"
       class="cinder-date-picker__icon-button"
       {disabled}
-      aria-label="Choose date"
-      aria-haspopup="dialog"
-      aria-controls={popoverId}
       tabindex="-1"
+      aria-hidden="true"
       onclick={openPopover}
     >
       <svg
@@ -701,7 +712,7 @@
           </svg>
         </button>
 
-        <h2 id={titleId} class="cinder-date-picker__month-title" aria-live="polite">
+        <h2 id={titleId} class="cinder-date-picker__month-title">
           {monthTitle}
         </h2>
 
@@ -785,6 +796,9 @@
                     }}
                     onfocus={() => {
                       focusedDate = day;
+                      if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
+                        rangeDraft = { ...rangeDraft, hover: day };
+                      }
                     }}
                   >
                     {#if dayContent}
@@ -844,7 +858,7 @@
     <p id="{id}-error" class="cinder-date-picker__error" role="alert">
       {#if invalidMinMax}
         No valid date range available.
-      {:else if required && isValueEmpty()}
+      {:else if required && isValueEmpty}
         Please select a date.
       {/if}
     </p>
