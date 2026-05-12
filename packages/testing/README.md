@@ -69,3 +69,12 @@ All gitignored. Paths are relative to `packages/testing/`:
 - No interaction-state testing — components are scanned in their default render. A modal that ships closed is scanned closed.
 - No visual regression / screenshot diffing — captures are for human review only.
 - No axe gating — violations are recorded but do not fail the suite. The baseline informs a follow-up plan that converts severity buckets into hard assertions.
+
+## Known CI flakes
+
+On the GitHub Actions Linux runner, four components are skipped via the `SLOW_ON_CI` set in `tests/components.spec.ts`: `code-block`, `chat`, `markdown-editor`, `review-editor`. Two failure modes are at play:
+
+1. `code-block` hits a `Bun.build` "Multiple files share the same output path" error in the playground's lazy page-bundle build path. Reproducible on Linux only.
+2. The three editor components (Chat, MarkdownEditor, ReviewEditor) take longer than the fixture's `#app > *` wait window to mount on the runner.
+
+Both manifest as `waitForSelector` timeouts in CI but pass cleanly on local hardware. The skip is gated on `process.env.CI` so local runs still exercise the full matrix. A follow-up will fix the playground build path and remove the skip.
