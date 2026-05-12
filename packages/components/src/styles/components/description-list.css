@@ -66,7 +66,10 @@
   }
 }
 
-/* Narrow variant: <dt> is sr-only; <dd> takes full visible width. */
+/* Narrow variant: <dt> is sr-only (position: absolute, out-of-flow) so <dd>
+ * fills the visible row. flex-direction: row here matches the intended reading
+ * direction if a future variant needs the dt in-flow; for now the sr-only dt
+ * has no layout footprint and the dd is visually full-width. */
 .cinder-description-list[data-cinder-variant='narrow'] .cinder-description-list__row {
   flex-direction: row;
   align-items: baseline;

@@ -31,6 +31,7 @@ describe('DescriptionList', () => {
     const dl = container.querySelector('.cinder-description-list');
     expect(dl).not.toBeNull();
     expect(dl?.tagName).toBe('DL');
+    expect(dl?.getAttribute('data-cinder-variant')).toBe('default');
 
     const rows = dl?.querySelectorAll('.cinder-description-list__row');
     expect(rows?.length).toBe(2);

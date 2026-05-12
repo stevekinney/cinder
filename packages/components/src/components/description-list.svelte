@@ -39,7 +39,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
   let {
     items,
@@ -50,7 +50,11 @@
   }: DescriptionListProps = $props();
 </script>
 
-<dl {...rest} class={cn('cinder-description-list', className)} data-cinder-variant={variant}>
+<dl
+  {...rest}
+  class={classNames('cinder-description-list', className)}
+  data-cinder-variant={variant}
+>
   {#each items as item (item.id ?? item.term)}
     <div class="cinder-description-list__row">
       <dt class={variant === 'narrow' ? 'cinder-sr-only' : undefined}>{item.term}</dt>
