@@ -3,9 +3,7 @@ name: browser-tests
 on:
   pull_request:
     paths:
-      - 'packages/components/**'
-      - 'packages/playground/**'
-      - 'packages/testing/**'
+      - 'packages/**'
       - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
@@ -13,9 +11,7 @@ on:
     branches:
       - main
     paths:
-      - 'packages/components/**'
-      - 'packages/playground/**'
-      - 'packages/testing/**'
+      - 'packages/**'
       - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
@@ -71,7 +67,7 @@ jobs:
           name: axe-results
           path: packages/testing/test-results/axe
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload axe summary
         if: always()
@@ -80,13 +76,13 @@ jobs:
           name: axe-summary
           path: packages/testing/test-results/axe-summary.json
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload screenshots
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: packages/testing/screenshots
           retention-days: 7
-          if-no-files-found: error
+          if-no-files-found: warn

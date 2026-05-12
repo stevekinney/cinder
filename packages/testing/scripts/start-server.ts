@@ -5,12 +5,13 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '..');
 const repoRoot = resolve(here, '../../..');
-const serverUrl = 'http://localhost:4173';
+const playgroundUrl = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
 const readinessPath = '/api/manifest';
+const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 
 async function ping(): Promise<boolean> {
   try {
-    const response = await fetch(serverUrl + readinessPath);
+    const response = await fetch(playgroundUrl + readinessPath);
     return response.ok;
   } catch {
     return false;
@@ -25,33 +26,42 @@ function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const reuseServer = process.env['PLAYWRIGHT_REUSE_SERVER'] === '1';
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
   const alreadyUp = await ping();
 
-  if (alreadyUp && !reuseServer) {
+  if (alreadyUp && reuseOptOut) {
     console.error(
-      'Port 4173 is already in use. Stop the running server or set PLAYWRIGHT_REUSE_SERVER=1 to reuse it.',
+      `Playground server already responding at ${playgroundUrl}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
     );
     process.exit(1);
   }
 
-  if (!alreadyUp) {
+  if (alreadyUp) {
+    console.log(`Reusing playground server at ${playgroundUrl}.`);
+  } else {
+    console.log(`Starting playground server (target: ${playgroundUrl})...`);
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
       cwd: repoRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['ignore', 'inherit', 'inherit'],
     });
 
-    const deadline = Date.now() + 120_000;
+    const startedAt = Date.now();
+    const deadline = startedAt + 120_000;
+    let lastLog = startedAt;
     while (Date.now() < deadline) {
       if (await ping()) break;
+      if (Date.now() - lastLog >= 10_000) {
+        const elapsed = Math.round((Date.now() - startedAt) / 1000);
+        console.log(`Waiting for playground at ${playgroundUrl} (${elapsed}s elapsed)...`);
+        lastLog = Date.now();
+      }
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
 
     if (!(await ping())) {
       serverProcess.kill('SIGTERM');
-      console.error('Playground server did not become ready within 120s.');
+      console.error(`Playground server did not become ready within 120s at ${playgroundUrl}.`);
       process.exit(1);
     }
   }
@@ -92,10 +102,14 @@ async function main(): Promise<void> {
     cwd: packageRoot,
     stdio: 'inherit',
   });
-  await waitForExit(summary);
+  const summaryCode = await waitForExit(summary);
+  if (summaryCode !== 0) {
+    console.error(`summarize-axe exited with code ${summaryCode}.`);
+  }
 
   cleanup();
-  process.exit(playwrightCode);
+  // Surface Playwright failures first; otherwise report summarize-axe failures.
+  process.exit(playwrightCode !== 0 ? playwrightCode : summaryCode);
 }
 
 main().catch((error: unknown) => {

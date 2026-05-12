@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export type ComponentEntry = { name: string; slug: string; route: string };
+import type { ComponentEntry } from '../src/helpers/manifest.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '..');
@@ -24,6 +24,12 @@ async function main(): Promise<void> {
   }
 
   const raw = (await response.json()) as RawManifestEntry[];
+
+  if (raw.length === 0) {
+    throw new Error(
+      `Manifest at ${playgroundUrl}/api/manifest returned zero entries. The playground discovered no components.`,
+    );
+  }
 
   const entries: ComponentEntry[] = raw.map((entry) => ({
     name: entry.name,
@@ -47,7 +53,7 @@ async function main(): Promise<void> {
     routesSeen.add(entry.route);
   }
 
-  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...entries].toSorted((a, b) => a.name.localeCompare(b.name));
   const digest = createHash('sha256')
     .update(JSON.stringify(sorted.map((entry) => ({ name: entry.name, route: entry.route }))))
     .digest('hex');

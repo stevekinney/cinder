@@ -15,9 +15,11 @@ export const test = base.extend<Fixtures>({
 
     const componentPage: ComponentPage = {
       async open({ entry, theme, viewport }) {
+        const baseURL = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
         const context = await browser.newContext({
           ...themeContextOptions(theme),
           viewport: { width: viewport.width, height: viewport.height },
+          baseURL,
         });
         await context.addInitScript(
           ([key, value]) => {

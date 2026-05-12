@@ -17,5 +17,9 @@ export default defineConfig({
     video: 'off',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  // No webServer: scripts/start-server.ts owns server lifecycle.
+  // Intentionally no `webServer` block. `scripts/start-server.ts` owns the
+  // dev-server lifecycle so that manifest preparation (which must run before
+  // Playwright resolves test names) and server startup share a single owner.
+  // Splitting them across Playwright's webServer + a pretest script
+  // re-introduces a sequencing race; keep them together.
 });

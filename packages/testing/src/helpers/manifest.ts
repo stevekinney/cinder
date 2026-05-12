@@ -32,7 +32,8 @@ function read(): ManifestFile {
     raw = readFileSync(path, 'utf-8');
   } catch (error) {
     throw new Error(
-      `Manifest cache missing at ${path}. Run \`bun run --filter='@cinder/testing' test\` (which invokes scripts/start-server.ts → scripts/prepare-manifest.ts) before loading this module.`,
+      `Manifest cache missing at ${path}. Run \`bun run test:browser\` (which invokes scripts/start-server.ts → scripts/prepare-manifest.ts) before loading this module.`,
+      { cause: error },
     );
   }
   cached = JSON.parse(raw) as ManifestFile;
