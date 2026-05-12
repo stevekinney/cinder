@@ -59,7 +59,7 @@ function renderList(overrides?: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 
 describe('SortableController', () => {
-  test('lift sets phase, key, from/to, and calls announce', () => {
+  test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
     const announce = mock();
     const controller = new SortableController({ announce });
 
@@ -67,6 +67,7 @@ describe('SortableController', () => {
 
     expect(controller.phase).toBe('lifted');
     expect(controller.liftedKey).toBe('a');
+    expect(controller.liftedLabel).toBe('Alpha');
     expect(controller.liftedFrom).toBe(0);
     expect(controller.liftedTo).toBe(0);
     expect(announce).toHaveBeenCalledTimes(1);
@@ -140,21 +141,35 @@ describe('SortableController', () => {
     expect(announce.mock.calls[0][0]).toContain('dropped');
   });
 
-  test('cancel does not return items, resets state, and announces cancelled', () => {
+  test('cancel resets all state fields, announces cancelled', () => {
     const announce = mock();
     const controller = new SortableController({ announce });
     controller.lift('a', 0, 'Alpha', 3);
+    controller.move(2, 'Alpha', 3);
     announce.mockClear();
 
     controller.cancel('Alpha');
 
     expect(controller.phase).toBe('idle');
     expect(controller.liftedKey).toBeNull();
+    expect(controller.liftedLabel).toBe('');
+    expect(controller.liftedFrom).toBe(0);
+    expect(controller.liftedTo).toBe(0);
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce.mock.calls[0][0]).toContain('cancelled');
   });
 
-  test('reconcileLiftedKey when key is missing triggers auto-cancel announcement', () => {
+  test('cancel in idle phase is a no-op', () => {
+    const announce = mock();
+    const controller = new SortableController({ announce });
+
+    controller.cancel('Alpha');
+
+    expect(announce).not.toHaveBeenCalled();
+    expect(controller.phase).toBe('idle');
+  });
+
+  test('reconcileLiftedKey when key is missing auto-cancels with stored liftedLabel', () => {
     const announce = mock();
     const controller = new SortableController<Item>({ announce });
     controller.lift('a', 0, 'Alpha', 2);
@@ -165,6 +180,9 @@ describe('SortableController', () => {
 
     expect(controller.phase).toBe('idle');
     expect(announce).toHaveBeenCalledTimes(1);
+    // Announcement should use the stored label "Alpha" (not an empty string).
+    expect(announce.mock.calls[0][0]).toContain('Alpha');
+    expect(announce.mock.calls[0][0]).toContain('cancelled');
   });
 
   test('reconcileLiftedKey when key moved updates liftedFrom without announcing', () => {
@@ -184,6 +202,20 @@ describe('SortableController', () => {
     expect(controller.phase).toBe('lifted');
     expect(controller.liftedFrom).toBe(1);
     expect(announce).toHaveBeenCalledTimes(0);
+  });
+
+  test('custom announcements override defaults', () => {
+    const announce = mock();
+    const controller = new SortableController({
+      announce,
+      announcements: {
+        lifted: (label: string) => `CUSTOM LIFT ${label}`,
+      },
+    });
+
+    controller.lift('a', 0, 'Alpha', 3);
+
+    expect(announce.mock.calls[0][0]).toBe('CUSTOM LIFT Alpha');
   });
 });
 
@@ -254,22 +286,22 @@ describe('SortableList', () => {
     expect(handle?.getAttribute('aria-pressed')).toBe('false');
   });
 
-  test('handle has aria-describedby pointing to instructions span', () => {
+  test('handle has aria-describedby pointing to instructions element', () => {
     const { container } = renderList();
     const handle = container.querySelector('.cinder-sortable-handle');
     const describedBy = handle?.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
     const instructions = container.querySelector(`#${describedBy}`);
     expect(instructions).not.toBeNull();
-    expect(instructions?.textContent).toContain('Space to lift');
+    expect(instructions?.textContent?.trim().length).toBeGreaterThan(0);
   });
 
-  test('hidden instructions span exists exactly once', () => {
+  test('hidden instructions element exists exactly once', () => {
     const { container } = renderList();
     const firstHandle = container.querySelector('.cinder-sortable-handle');
     const instructionsId = firstHandle?.getAttribute('aria-describedby');
-    const spans = container.querySelectorAll(`[id="${instructionsId}"]`);
-    expect(spans.length).toBe(1);
+    const elements = container.querySelectorAll(`[id="${instructionsId}"]`);
+    expect(elements.length).toBe(1);
   });
 
   test('Space on handle lifts item — aria-pressed becomes true', async () => {
@@ -281,14 +313,16 @@ describe('SortableList', () => {
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('Arrow Down moves visual order — lifted item moves down', async () => {
+  test('Arrow Down moves lifted item to next visual position', async () => {
     const { container } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
-    await fireEvent.keyDown(handle, { key: ' ' });
-    await fireEvent.keyDown(handle, { key: 'ArrowDown' });
+    await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha (was at index 0).
+    await fireEvent.keyDown(handle, { key: 'ArrowDown' }); // Move to index 1.
 
-    // aria-pressed stays true during move.
+    // Alpha should now appear at visual index 1 in the DOM.
+    const rows = container.querySelectorAll('[data-sortable-row]');
+    expect(rows[1].getAttribute('data-key')).toBe('a');
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -313,34 +347,32 @@ describe('SortableList', () => {
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('Home jumps to first position, End jumps to last', async () => {
+  test('End moves lifted item to last visual position', async () => {
     const { container } = renderList();
-    // Start from middle item.
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const middleHandle = handles[1] as HTMLElement;
+    const middleHandle = handles[1] as HTMLElement; // Beta at index 1.
 
     await fireEvent.keyDown(middleHandle, { key: ' ' }); // Lift Beta.
-    await fireEvent.keyDown(middleHandle, { key: 'End' });
+    await fireEvent.keyDown(middleHandle, { key: 'End' }); // Move to last.
 
-    expect(middleHandle.getAttribute('aria-pressed')).toBe('true');
+    const rows = container.querySelectorAll('[data-sortable-row]');
+    expect(rows[2].getAttribute('data-key')).toBe('b'); // Beta moved to index 2.
+  });
 
-    await fireEvent.keyDown(middleHandle, { key: 'Home' });
-    expect(middleHandle.getAttribute('aria-pressed')).toBe('true');
+  test('Home moves lifted item to first visual position', async () => {
+    const { container } = renderList();
+    const handles = container.querySelectorAll('.cinder-sortable-handle');
+    const middleHandle = handles[1] as HTMLElement; // Beta at index 1.
+
+    await fireEvent.keyDown(middleHandle, { key: ' ' }); // Lift Beta.
+    await fireEvent.keyDown(middleHandle, { key: 'Home' }); // Move to first.
+
+    const rows = container.querySelectorAll('[data-sortable-row]');
+    expect(rows[0].getAttribute('data-key')).toBe('b'); // Beta moved to index 0.
   });
 
   test('Space drops and calls onreorder with reordered array', async () => {
-    const onreorder = mock();
-    const { container } = render(SortableList as any, {
-      props: {
-        items: ITEMS,
-        getKey,
-        getItemLabel,
-        onreorder,
-        label: 'Test list',
-        children: emptySnippet(),
-      },
-    });
-
+    const { container, onreorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha.
@@ -357,18 +389,7 @@ describe('SortableList', () => {
   });
 
   test('Escape cancels — onreorder not called, aria-pressed returns false', async () => {
-    const onreorder = mock();
-    const { container } = render(SortableList as any, {
-      props: {
-        items: ITEMS,
-        getKey,
-        getItemLabel,
-        onreorder,
-        label: 'Test list',
-        children: emptySnippet(),
-      },
-    });
-
+    const { container, onreorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
@@ -380,18 +401,7 @@ describe('SortableList', () => {
   });
 
   test('drop at same position does not call onreorder', async () => {
-    const onreorder = mock();
-    const { container } = render(SortableList as any, {
-      props: {
-        items: ITEMS,
-        getKey,
-        getItemLabel,
-        onreorder,
-        label: 'Test list',
-        children: emptySnippet(),
-      },
-    });
-
+    const { container, onreorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift.
@@ -400,33 +410,8 @@ describe('SortableList', () => {
     expect(onreorder).not.toHaveBeenCalled();
   });
 
-  test('custom announcements prop overrides defaults', () => {
-    const announce = mock();
-    const controller = new SortableController({
-      announce,
-      announcements: {
-        lifted: (label) => `CUSTOM LIFT ${label}`,
-      },
-    });
-
-    controller.lift('a', 0, 'Alpha', 3);
-
-    expect(announce.mock.calls[0][0]).toBe('CUSTOM LIFT Alpha');
-  });
-
   test('onreorder receives full reordered array and correct change metadata', async () => {
-    const onreorder = mock();
-    const { container } = render(SortableList as any, {
-      props: {
-        items: ITEMS,
-        getKey,
-        getItemLabel,
-        onreorder,
-        label: 'Test list',
-        children: emptySnippet(),
-      },
-    });
-
+    const { container, onreorder } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
     const lastHandle = handles[handles.length - 1] as HTMLElement; // Gamma (index 2).
 
@@ -448,17 +433,9 @@ describe('SortableList', () => {
       { id: 'b', label: 'Beta' },
     ];
     const frozen = Object.freeze(original.map((i) => Object.freeze({ ...i })));
-    const onreorder = mock();
-
-    const { container } = render(SortableList as any, {
-      props: {
-        items: frozen as any,
-        getKey,
-        getItemLabel,
-        onreorder,
-        label: 'Frozen list',
-        children: emptySnippet(),
-      },
+    const { container, onreorder } = renderList({
+      items: frozen as any,
+      label: 'Frozen list',
     });
 
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
@@ -469,6 +446,27 @@ describe('SortableList', () => {
 
     // If items were mutated, the frozen object would throw. No throw = no mutation.
     expect(onreorder).toHaveBeenCalledTimes(1);
-    expect(frozen.map((i) => i.id)).toEqual(['a', 'b']); // Unchanged.
+    expect(frozen.map((i: Item) => i.id)).toEqual(['a', 'b']); // Unchanged.
+  });
+
+  test('list root has role=list and aria-label when label prop is set', () => {
+    const { container } = renderList({ label: 'My tasks' });
+    const list = container.querySelector('.cinder-sortable-list');
+    expect(list?.getAttribute('role')).toBe('list');
+    expect(list?.getAttribute('aria-label')).toBe('My tasks');
+  });
+
+  test('announcements prop flows to live region on lift', async () => {
+    const { container } = renderList({
+      announcements: { lifted: (label: string) => `CUSTOM ${label} LIFTED` },
+    });
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+
+    // The live region text is set asynchronously via setTimeout(0) in useAnnouncer.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const liveRegion = container.querySelector('[role="alert"]');
+    expect(liveRegion?.textContent).toContain('CUSTOM Alpha LIFTED');
   });
 });

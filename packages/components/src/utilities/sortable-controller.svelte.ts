@@ -56,6 +56,7 @@ const defaultAnnouncements: SortableAnnouncements = {
 export class SortableController<Item> {
   phase = $state<'idle' | 'lifted'>('idle');
   liftedKey = $state<string | number | null>(null);
+  liftedLabel = $state<string>('');
   liftedFrom = $state(0);
   liftedTo = $state(0);
 
@@ -73,6 +74,7 @@ export class SortableController<Item> {
   lift(key: string | number, fromIndex: number, itemLabel: string, total: number): void {
     this.phase = 'lifted';
     this.liftedKey = key;
+    this.liftedLabel = itemLabel;
     this.liftedFrom = fromIndex;
     this.liftedTo = fromIndex;
     this.#announce(this.#announcements.lifted(itemLabel, fromIndex + 1, total));
@@ -106,19 +108,26 @@ export class SortableController<Item> {
 
     if (fromIndex === toIndex) return null;
 
+    // Bounds check: liftedFrom should always be valid (reconcileLiftedKey keeps it current),
+    // but guard defensively so a stale index cannot corrupt the output array.
+    if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length) {
+      return null;
+    }
+
     const nextItems = reorder(items, fromIndex, toIndex);
     return { nextItems, change: { itemKey, fromIndex, toIndex } };
   }
 
-  cancel(itemLabel: string): void {
+  cancel(itemLabel?: string): void {
     if (this.phase !== 'lifted') return;
-    this.#announce(this.#announcements.cancelled(itemLabel));
+    this.#announce(this.#announcements.cancelled(itemLabel ?? this.liftedLabel));
     this.#reset();
   }
 
   /**
    * Called by SortableList in a $effect when items changes during a lift.
-   * If the lifted key is gone, auto-cancels. If it moved, updates liftedFrom.
+   * If the lifted key is gone, auto-cancels using the stored liftedLabel.
+   * If it moved, updates liftedFrom.
    */
   reconcileLiftedKey(items: Item[], getKey: (item: Item) => string | number): void {
     if (this.phase !== 'lifted' || this.liftedKey === null) return;
@@ -126,8 +135,8 @@ export class SortableController<Item> {
     const currentIndex = items.findIndex((it) => getKey(it) === this.liftedKey);
 
     if (currentIndex < 0) {
-      // Lifted item was removed by parent — auto cancel without announcement label
-      this.#announce(this.#announcements.cancelled(''));
+      // Lifted item was removed by parent — announce with the stored label
+      this.#announce(this.#announcements.cancelled(this.liftedLabel));
       this.#reset();
       return;
     }
@@ -141,6 +150,7 @@ export class SortableController<Item> {
   #reset(): void {
     this.phase = 'idle';
     this.liftedKey = null;
+    this.liftedLabel = '';
     this.liftedFrom = 0;
     this.liftedTo = 0;
   }

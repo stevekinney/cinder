@@ -4,6 +4,10 @@
 
   /** Internal props for SortableItem — not part of the public package API. */
   export type SortableItemProps<Item> = {
+    /**
+     * The item being rendered. Accepted for generic type symmetry with the parent's
+     * snippet, but not read directly — the component uses itemKey and itemLabel instead.
+     */
     item: Item;
     itemKey: string | number;
     index: number;
@@ -42,12 +46,13 @@
 
   let handleEl = $state<HTMLButtonElement | null>(null);
 
-  // Pointer session state — instance-local, never module-scope.
-  let pointerActive = $state(false);
-  let pointerId = $state<number | null>(null);
-  let rafHandle = $state<number | null>(null);
-  let latestPointerY = $state(0);
-  let listEl = $state<HTMLElement | null>(null);
+  // Pointer session state — plain let (not $state) since these values do not
+  // drive template rendering or $derived expressions; they are bookkeeping only.
+  let pointerActive = false;
+  let pointerId: number | null = null;
+  let rafHandle: number | null = null;
+  let latestPointerY = 0;
+  let listEl: HTMLElement | null = null;
 
   const isLifted = $derived(
     context.controller.phase === 'lifted' && context.controller.liftedKey === itemKey,
@@ -124,7 +129,9 @@
   function recomputeTarget(): void {
     if (!listEl || !pointerActive) return;
 
-    const rows = Array.from(listEl.querySelectorAll<HTMLElement>('[data-sortable-row]'));
+    // :scope > limits to direct children of the list — avoids picking up nested sortable rows
+    const rows = Array.from(listEl.querySelectorAll<HTMLElement>(':scope > [data-sortable-row]'));
+    // data-row-id → dataset.rowId via DOM camelCase conversion
     const nonLifted = rows.filter((r) => r.dataset['rowId'] !== String(rowId));
     const midpoints = nonLifted.map((r) => {
       const rect = r.getBoundingClientRect();
@@ -157,7 +164,13 @@
   function handlePointerMove(event: PointerEvent): void {
     if (!pointerActive) return;
     latestPointerY = event.clientY;
-    recomputeTarget();
+    // Gate DOM reads to one per animation frame to avoid layout thrash on every event.
+    if (rafHandle === null) {
+      rafHandle = requestAnimationFrame(() => {
+        rafHandle = null;
+        recomputeTarget();
+      });
+    }
   }
 
   function handlePointerUp(_event: PointerEvent): void {

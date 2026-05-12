@@ -13,8 +13,13 @@
     items: Item[];
     /** Returns a stable key for each item. Must not change across reorders. */
     getKey: (item: Item) => string | number;
-    /** Returns an accessible label for each item (e.g., "Buy milk"). Used in handle aria-label and announcements. */
-    getItemLabel: (item: Item, index: number) => string;
+    /**
+     * Returns an accessible label for each item (e.g., "Buy milk").
+     * The second argument is the item's original index in the `items` array
+     * (not its current visual position during a drag).
+     * Used in handle aria-label and announcements.
+     */
+    getItemLabel: (item: Item, originalIndex: number) => string;
     /** Optional formatter for the drag handle's accessible name. Default: "Reorder {itemLabel}". */
     formatHandleLabel?: (itemLabel: string) => string;
     /** Optional snippet rendered inside the drag-handle button. Receives { pressed, label }. */
@@ -62,7 +67,7 @@
     class: className,
   }: SortableListProps<Item> = $props();
 
-  const announcer = useAnnouncer();
+  const announcer = useAnnouncer({ clearDelay: 5000 });
   const controller = new SortableController<Item>({
     announce: (msg) => announcer.announce(msg),
     ...(announcements !== undefined ? { announcements } : {}),
@@ -79,8 +84,9 @@
   });
 
   // Reconcile lifted key when items changes externally during a lift.
+  // Reading each key forces deep tracking so in-place array mutations are caught.
   $effect(() => {
-    void items;
+    items.forEach((it) => getKey(it));
     controller.reconcileLiftedKey(items, getKey);
   });
 
@@ -92,7 +98,7 @@
     commitDrop(_itemKey, itemLabel) {
       const result = controller.drop(items, itemLabel);
       if (result) {
-        onreorder(result.nextItems as Item[], result.change);
+        onreorder(result.nextItems, result.change);
       }
     },
     cancel(itemLabel) {
@@ -106,10 +112,15 @@
     },
   });
 
-  // Escape while lifted — handled at window level.
+  // Window-level Escape handler: cancels the lift regardless of which element has focus.
+  // This covers the case where focus moved off the handle during a lift (pointer drag,
+  // programmatic focus change, etc.). The item-level Escape handler also calls cancel
+  // when the handle is focused, but the controller guard (phase !== 'lifted') makes
+  // double-cancel safe.
   function handleWindowKeydown(event: KeyboardEvent): void {
     if (controller.phase === 'lifted' && event.key === 'Escape') {
       event.preventDefault();
+      controller.cancel();
     }
   }
 </script>
@@ -117,8 +128,19 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <ul class={cn('cinder-sortable-list', className)} role="list" aria-label={label}>
+  <!--
+    Instructions live inside the <ul> as a visually hidden <li> so the element is
+    present in the DOM before any handle buttons that reference it via aria-describedby.
+    aria-hidden keeps it out of the reading order but the id is still resolved by AT
+    for aria-describedby (ARIA spec §6.6.1).
+  -->
+  <li role="presentation" id={instructionsId} class="cinder-sr-only">
+    Press Space to lift, then arrow keys to move, Space to drop, Escape to cancel.
+  </li>
+
   {#each visualItems as rowItem, visualIndex (getKey(rowItem))}
-    {@const rowItemLabel = getItemLabel(rowItem, visualIndex)}
+    {@const originalIndex = items.indexOf(rowItem)}
+    {@const rowItemLabel = getItemLabel(rowItem, originalIndex >= 0 ? originalIndex : visualIndex)}
     <SortableItem
       item={rowItem}
       itemKey={getKey(rowItem)}
@@ -136,12 +158,7 @@
   {/each}
 </ul>
 
-<!-- Live region for screen reader announcements -->
-<div aria-live="assertive" aria-atomic="true" class="cinder-sr-only" role="status">
+<!-- Live region — role="alert" (implicit assertive) avoids role/aria-live conflict -->
+<div role="alert" aria-atomic="true" class="cinder-sr-only">
   {announcer.message}
 </div>
-
-<!-- Single hidden instructions span referenced by handle aria-describedby -->
-<span id={instructionsId} class="cinder-sr-only">
-  Press Space to lift, then arrow keys to move, Space to drop, Escape to cancel.
-</span>
