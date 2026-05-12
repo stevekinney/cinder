@@ -209,7 +209,7 @@ describe('SortableController', () => {
     const controller = new SortableController({
       announce,
       announcements: {
-        lifted: (label: string) => `CUSTOM LIFT ${label}`,
+        lifted: (label: string, _position: number, _total: number) => `CUSTOM LIFT ${label}`,
       },
     });
 
@@ -320,9 +320,10 @@ describe('SortableList', () => {
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha (was at index 0).
     await fireEvent.keyDown(handle, { key: 'ArrowDown' }); // Move to index 1.
 
-    // Alpha should now appear at visual index 1 in the DOM.
+    // Alpha should now appear at visual index 1; Beta should have shifted to index 0.
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[1].getAttribute('data-key')).toBe('a');
+    expect(rows[0].getAttribute('data-key')).toBe('b'); // Beta shifted to first.
+    expect(rows[1].getAttribute('data-key')).toBe('a'); // Alpha at second.
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 

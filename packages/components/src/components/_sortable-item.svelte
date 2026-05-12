@@ -257,6 +257,32 @@
     }
   }
 
+  // Observe controller state: if the controller transitions to idle while a pointer
+  // session is active on this item (e.g., window Escape handler cancels from outside),
+  // clean up local pointer bookkeeping without calling context.cancel() again.
+  $effect(() => {
+    if (!pointerActive) return;
+    if (context.controller.phase === 'idle') {
+      // Controller was cancelled externally. Release capture and stop rAFs.
+      if (moveRafHandle !== null) {
+        cancelAnimationFrame(moveRafHandle);
+        moveRafHandle = null;
+      }
+      if (scrollRafHandle !== null) {
+        cancelAnimationFrame(scrollRafHandle);
+        scrollRafHandle = null;
+      }
+      if (pointerId !== null && handleEl?.hasPointerCapture(pointerId)) {
+        try {
+          handleEl.releasePointerCapture(pointerId);
+        } catch {}
+      }
+      pointerActive = false;
+      pointerId = null;
+      listEl = null;
+    }
+  });
+
   // Cleanup on component destroy (e.g., parent removes item mid-lift).
   $effect(() => {
     return () => {
