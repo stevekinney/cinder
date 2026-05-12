@@ -29,6 +29,7 @@
  * ---------------------------------------- */
 
 .cinder-page-layout-breadcrumbs {
+  width: 100%;
   max-width: 72rem;
   margin-inline: auto;
   padding-inline: var(--cinder-space-4);
