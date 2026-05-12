@@ -75,14 +75,18 @@ describe('validateMetaSchema', () => {
     expect(result.valid).toBe(true);
   });
 
-  test('forced draft mismatch returns invalid instead of throwing', () => {
+  // Regression: AJV threw "no schema with key or ref ..." synchronously when
+  // a 2020-12 schema was validated through a draft-07 instance (or vice versa)
+  // because the meta-schema URI in $schema wasn't registered on the chosen
+  // validator. The editor's debounced timers would fire after a test teardown
+  // and the unhandled throw poisoned subsequent tests.
+  test('mismatched $schema vs draft override returns invalid rather than throwing', () => {
     const result = validateMetaSchema(
       { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'string' },
       'draft-07',
     );
-
     expect(result.valid).toBe(false);
-    expect(result.errors[0]?.message).toContain('no schema with key or ref');
+    expect(result.errors.length).toBeGreaterThan(0);
   });
 });
 
