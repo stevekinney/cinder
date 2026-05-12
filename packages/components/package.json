@@ -277,6 +277,14 @@
       "svelte": "./src/components/tooltip.svelte",
       "types": "./dist/components/tooltip.svelte.d.ts"
     },
+    "./tree-item": {
+      "svelte": "./src/components/tree-item.svelte",
+      "types": "./dist/components/tree-item.svelte.d.ts"
+    },
+    "./tree": {
+      "svelte": "./src/components/tree.svelte",
+      "types": "./dist/components/tree.svelte.d.ts"
+    },
     "./view-switcher": {
       "svelte": "./src/components/view-switcher.svelte",
       "types": "./dist/components/view-switcher.svelte.d.ts"

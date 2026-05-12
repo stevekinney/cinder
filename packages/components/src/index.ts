@@ -243,6 +243,12 @@ export { useToast } from './utilities/use-toast.ts';
 export { default as Toggle } from './components/toggle.svelte';
 export type { ToggleProps } from './components/toggle.svelte';
 
+export { default as Tree } from './components/tree.svelte';
+export type { TreeProps, TreeSelectionMode } from './components/tree.svelte';
+
+export { default as TreeItem } from './components/tree-item.svelte';
+export type { TreeItemProps } from './components/tree-item.svelte';
+
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
 
