@@ -39,6 +39,7 @@
   import type { TreeContext, TreeItemParentContext } from '../_internal/tree-context.ts';
   import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from './tree.svelte';
   import { classNames } from '../utilities/class-names.ts';
+  import { useId } from '../utilities/use-id.ts';
 
   // ---------------------------------------------------------------------------
   // Props
@@ -84,6 +85,7 @@
   let activeController: AbortController | null = null;
 
   let outerElement: HTMLElement | undefined = $state();
+  const treeItemElementId = useId('cinder-tree-item');
 
   // ---------------------------------------------------------------------------
   // Derived state from context
@@ -268,8 +270,8 @@
         event.preventDefault();
         if (!disabled) {
           context.toggleSelected(id, event);
-          if (isBranch) context.setExpanded(id, !isExpanded);
         }
+        if (isBranch) context.setExpanded(id, !isExpanded);
         break;
 
       case ' ':
@@ -309,12 +311,11 @@
 
     outerElement?.focus();
 
-    if (!disabled) {
-      context.toggleSelected(id, event);
-      if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-        // Plain click on a branch row toggles expand
-        context.setExpanded(id, !isExpanded);
-      }
+    if (!disabled) context.toggleSelected(id, event);
+
+    if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      // Plain click on a branch row toggles expand, including disabled branches.
+      context.setExpanded(id, !isExpanded);
     }
   }
 </script>
@@ -322,9 +323,9 @@
 <div
   bind:this={outerElement}
   role="treeitem"
-  id={`tree-item-${id}`}
+  id={treeItemElementId}
   class={classNames('cinder-tree-item', className)}
-  aria-label={label}
+  aria-labelledby={`${treeItemElementId}-label`}
   aria-level={level}
   aria-expanded={isBranch ? isExpanded : undefined}
   aria-selected={context.selectionMode === 'none' ? undefined : isSelected}
@@ -339,21 +340,21 @@
   onkeydown={handleKeydown}
   onclick={handleClick}
 >
+  <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
     {#if row}
       {@render row({ expanded: isExpanded, selected: isSelected, busy, level })}
     {:else}
       <!--
-        aria-hidden prevents the text node from being announced separately since
-        the parent treeitem already carries aria-label={label}. Without this,
-        some screen readers double-announce the label (once from aria-label and
-        once from walking the subtree text).
+        aria-hidden prevents the visible default text from being announced
+        separately since the parent treeitem is labelled by the visually-hidden
+        label span above.
       -->
       <span aria-hidden="true">{label}</span>
     {/if}
   </div>
   {#if isBranch && isExpanded}
-    <div role="group" aria-labelledby={`tree-item-${id}`} class="cinder-tree-item__children">
+    <div role="group" aria-labelledby={treeItemElementId} class="cinder-tree-item__children">
       {@render children?.()}
     </div>
   {/if}

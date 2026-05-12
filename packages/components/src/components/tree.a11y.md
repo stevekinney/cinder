@@ -18,7 +18,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 - `aria-selected="true|false"` — present on every item when `selectionMode` is `'single'` or `'multiple'`. Omitted entirely in `'none'` mode. Assistive technologies announce "selected" alongside the item name.
 - `aria-busy="true"` — set on the `role="treeitem"` element of the actively-loading branch (not on the whole tree). Cleared when the async loader resolves or is cancelled.
 - `aria-disabled="true"` — present when `disabled={true}`. Per the Disabled Items section below, disabled items remain keyboard-reachable.
-- `aria-label={label}` — always set on the treeitem so the accessible name matches the typeahead key, regardless of what a custom `row` snippet renders.
+- `aria-labelledby` — points at a visually-hidden label span generated from `label`. This keeps the treeitem's accessible name aligned with the typeahead key without requiring custom row snippets to hide their visible text.
 
 ### Nested item groups
 
@@ -41,7 +41,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 | `Space`                                 | Toggle selection (same as `Enter` for selection only). Does **not** toggle expand on branches per APG guidance.                                                             |
 | `*` (asterisk)                          | Expand all sibling branches at the current level.                                                                                                                           |
 | Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `disableTypeahead`. |
-| `Shift+ArrowUp/Down`                    | Multi-select only: extend selection through the newly focused item.                                                                                                         |
+| `Shift+ArrowUp/Down`                    | Multi-select only: select the current anchor-to-current range, then move focus one item.                                                                                    |
 | `Ctrl/Cmd+A`                            | Multi-select only: select all currently visible, non-disabled items.                                                                                                        |
 
 ## Focus Management
@@ -50,7 +50,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 - **Initial focus:** When no explicit focus has been set, the first selected visible item gets `tabindex="0"` (if `selectionMode !== 'none'` and `selectedIds` is non-empty); otherwise the first visible item does. This matches the APG recommendation.
 - **Click:** Clicking an item sets `focusedId` and DOM-focuses the outer `role="treeitem"` element.
 - **Keyboard navigation:** Updates `focusedId` and calls `focus()` on the resolved registration, which focuses the outer treeitem element.
-- **Item unmounts:** If the focused item unregisters (e.g. its parent collapses), focus falls back to the nearest previous-visible item, then nearest next-visible, then null.
+- **Item unmounts:** If the focused item unregisters (e.g. its parent collapses), DOM focus moves to the visible parent when possible, then to the first selected visible item, then to the first visible item, then null.
 
 ## Disabled Items
 
@@ -58,9 +58,9 @@ A `disabled` item:
 
 - Carries `aria-disabled="true"` on its `role="treeitem"` element.
 - **Remains focusable via keyboard navigation** — APG guidance says disabled items should still be discoverable so users know they exist.
-- Does **not** participate in selection — click, `Enter`, and `Space` are no-ops.
+- Does **not** participate in selection — click, `Enter`, and `Space` do not select the item.
 - Is **not** skipped by typeahead.
-- For branches: expand/collapse still works. `disabled` means "cannot be selected," not "frozen."
+- For branches: arrow-key expand/collapse, `Enter`, and plain-click branch toggling still work. `disabled` means "cannot be selected," not "frozen."
 
 This is a deliberate departure from the flat-widget `roving-tabindex.ts` helper, which skips disabled items. That skip semantic suits menus and tabs but not trees.
 
@@ -69,7 +69,7 @@ This is a deliberate departure from the flat-widget `roving-tabindex.ts` helper,
 | Mode         | `aria-multiselectable` | `aria-selected`         | Interaction                                                                                                 |
 | ------------ | ---------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `'none'`     | omitted                | omitted                 | Selection state not updated.                                                                                |
-| `'single'`   | omitted                | present; `true`/`false` | Replaces selection with current id.                                                                         |
+| `'single'`   | omitted                | present; `true`/`false` | Toggles the current id; selecting a different item clears the previous selection.                           |
 | `'multiple'` | `"true"`               | present; `true`/`false` | Toggles current id. `Shift` extends range. `Ctrl/Cmd` toggles individual. `Ctrl/Cmd+A` selects all visible. |
 
 `selectedIds` is always an array (length 0–1 in single mode, 0–N in multiple). Disabled items are never added.

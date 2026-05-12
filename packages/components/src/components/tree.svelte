@@ -99,13 +99,20 @@
     return visibleIds[0] ?? null;
   });
 
-  // effectiveFocusedId: use focusedId only if it is currently visible;
-  // otherwise fall back to initialFocusId. initialFocusId is itself derived
-  // from visibleIds (it returns the first *visible* selected item, or
-  // visibleIds[0], or null) so the fallback is always visible-or-null.
+  function visibleFocusCandidate(id: string | null): string | null {
+    return id !== null && visibleIds.includes(id) ? id : null;
+  }
+
+  // Validate both candidates against the current visible registry. initialFocusId
+  // is derived from visibleIds, but keeping both paths explicit protects this
+  // invariant if the fallback logic changes later.
   const effectiveFocusedId = $derived.by(() => {
-    if (focusedId !== null && visibleIds.includes(focusedId)) return focusedId;
-    return initialFocusId; // always in visibleIds or null — see initialFocusId above
+    return (
+      visibleFocusCandidate(focusedId) ??
+      visibleFocusCandidate(initialFocusId) ??
+      visibleIds[0] ??
+      null
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -115,6 +122,23 @@
   function focusNode(id: string): void {
     focusedId = id;
     registry.getNode(id)?.focus();
+  }
+
+  function focusFallbackAfterUnregister(parentId: string | null): void {
+    const currentVisibleIds = registry.getVisible(expandedIds);
+    const selectedVisibleId =
+      selectionMode === 'none' ? null : currentVisibleIds.find((id) => selectedIds.includes(id));
+    const fallbackId =
+      (parentId && currentVisibleIds.includes(parentId) ? parentId : null) ??
+      selectedVisibleId ??
+      currentVisibleIds[0] ??
+      null;
+
+    if (fallbackId) {
+      focusNode(fallbackId);
+    } else {
+      focusedId = null;
+    }
   }
 
   function setExpandedInternal(id: string, next: boolean): void {
@@ -178,6 +202,7 @@
       return node && !node.disabled;
     });
     selectedIds = allVisible;
+    // Guarded by length, so the first selected id is present.
     if (allVisible.length > 0) selectionAnchorId = allVisible[0]!;
   }
 
@@ -216,19 +241,28 @@
     setExpanded: setExpandedInternal,
     toggleSelected: toggleSelectedInternal,
     register(node) {
-      return registry.register(node);
+      const unregister = registry.register(node);
+      return () => {
+        unregister();
+        if (focusedId === node.id) {
+          focusFallbackAfterUnregister(node.parentId);
+        }
+      };
     },
     focusVisibleDelta(currentId, delta) {
       const index = visibleIds.indexOf(currentId);
       if (index === -1) return;
       const nextIndex = index + delta;
       if (nextIndex < 0 || nextIndex >= visibleIds.length) return;
+      // Bounds checks above prove the requested visible id exists.
       focusNode(visibleIds[nextIndex]!);
     },
     focusFirstVisible() {
+      // Length check proves the first visible id exists.
       if (visibleIds.length > 0) focusNode(visibleIds[0]!);
     },
     focusLastVisible() {
+      // Length check proves the last visible id exists.
       if (visibleIds.length > 0) focusNode(visibleIds[visibleIds.length - 1]!);
     },
     focusParent(currentId) {
