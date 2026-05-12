@@ -100,10 +100,12 @@
 
   // Locale resolution — use $derived so no effect loop occurs.
   // On the server (no navigator), falls back to undefined.
-  // On the client, a navigator.language-based $derived is safe because
-  // navigator is stable per page load.
+  // If locale prop is truthy but invalid, fall through to navigator.language.
   const resolvedLocale = $derived.by(() => {
-    if (locale) return validateLocale(locale);
+    if (locale) {
+      const validated = validateLocale(locale);
+      if (validated) return validated;
+    }
     if (typeof navigator !== 'undefined') return validateLocale(navigator.language);
     return undefined;
   });
@@ -343,6 +345,12 @@
   }
 
   let releaseEscape: (() => void) | null = null;
+
+  // Release the escape handler if the component unmounts while the popover is open
+  $effect(() => () => {
+    releaseEscape?.();
+    releaseEscape = null;
+  });
 
   function openPopover(): void {
     if (disabled || open) return;
