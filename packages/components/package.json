@@ -73,6 +73,10 @@
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
     },
+    "./date-picker": {
+      "svelte": "./src/components/date-picker.svelte",
+      "types": "./dist/components/date-picker.svelte.d.ts"
+    },
     "./diff-statistics": {
       "svelte": "./src/components/diff-statistics.svelte",
       "types": "./dist/components/diff-statistics.svelte.d.ts"
