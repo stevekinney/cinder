@@ -107,4 +107,19 @@ describe('SideNavigation', () => {
     // label always wins.
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Sections');
   });
+
+  test('aria-label from ariaLabel prop is present even when aria-labelledby is passed in rest', () => {
+    // aria-labelledby is blocked at the TypeScript type level (Omit), so typed consumers
+    // cannot pass it. This test simulates an untyped JS consumer forcing it through a cast
+    // and verifies that aria-label is still correctly set on the nav element.
+    const { container } = render(SideNavigation, {
+      props: {
+        ariaLabel: 'Sections',
+        'aria-labelledby': 'external-label',
+        children: emptySnippet(),
+      } as unknown as Parameters<typeof render>[1]['props'],
+    });
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe('Sections');
+  });
 });
