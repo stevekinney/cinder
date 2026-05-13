@@ -235,7 +235,13 @@ export { default as TabPanel } from './components/tab-panel.svelte';
 export type { TabPanelProps } from './components/tab-panel.svelte';
 
 export { default as Table } from './components/table.svelte';
-export type { SortDirection, TableContext, TableProps, TableSort } from './components/table.svelte';
+export type {
+  SortDirection,
+  TableContext,
+  TableDensity,
+  TableProps,
+  TableSort,
+} from './components/table.svelte';
 
 export { default as TableBody } from './components/table-body.svelte';
 export type { TableBodyProps } from './components/table-body.svelte';
