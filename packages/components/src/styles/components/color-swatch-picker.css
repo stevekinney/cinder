@@ -1,0 +1,140 @@
+/* ========================================
+ * COLOR SWATCH PICKER
+ * ======================================== */
+
+.cinder-color-swatch-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cinder-color-swatch-picker[data-cinder-layout='stack'] {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+/* ── Size → swatch dimensions ───────────────────────────────────────────── */
+
+.cinder-color-swatch-picker[data-cinder-size='xs'] {
+  --swatch-size: 16px;
+}
+
+.cinder-color-swatch-picker[data-cinder-size='sm'] {
+  --swatch-size: 24px;
+}
+
+.cinder-color-swatch-picker[data-cinder-size='md'] {
+  --swatch-size: 32px;
+}
+
+.cinder-color-swatch-picker[data-cinder-size='lg'] {
+  --swatch-size: 36px;
+}
+
+.cinder-color-swatch-picker[data-cinder-size='xl'] {
+  --swatch-size: 40px;
+}
+
+/* ── Swatch base ─────────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker__swatch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--swatch-size, 32px);
+  height: var(--swatch-size, 32px);
+  cursor: pointer;
+  background-color: var(--swatch-color);
+  border: none;
+  padding: 0;
+  outline: none;
+  flex-shrink: 0;
+}
+
+/* ── Shape variants ─────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker[data-cinder-shape='circle'] .cinder-color-swatch-picker__swatch {
+  border-radius: 50%;
+}
+
+.cinder-color-swatch-picker[data-cinder-shape='square'] .cinder-color-swatch-picker__swatch {
+  border-radius: var(--cinder-radius-sm);
+}
+
+/* ── Alpha checkerboard — color layer on top, checkerboard beneath ──────── */
+
+.cinder-color-swatch-picker__swatch[data-cinder-alpha] {
+  background-color: #fff;
+  background-image:
+    linear-gradient(var(--swatch-color), var(--swatch-color)),
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size:
+    auto,
+    8px 8px,
+    8px 8px,
+    8px 8px,
+    8px 8px;
+  background-position:
+    0 0,
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0;
+}
+
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker__swatch:focus-visible {
+  outline: var(--cinder-ring-width, 2px) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset, 2px) var(--cinder-ring-offset-color, transparent),
+    0 0 0 calc(var(--cinder-ring-offset, 2px) + var(--cinder-ring-width, 2px))
+      var(--cinder-ring-color, currentColor);
+  z-index: 1;
+}
+
+/* ── Disabled item ──────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker__swatch[data-cinder-disabled] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* ── Disabled group ─────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Indicator icon ─────────────────────────────────────────────────────── */
+
+.cinder-color-swatch-picker__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* 60% of swatch size, clamped to 12px minimum for xs legibility */
+  width: max(12px, calc(var(--swatch-size, 32px) * 0.6));
+  height: max(12px, calc(var(--swatch-size, 32px) * 0.6));
+}
+
+/* ── Hover / focus scale — respects prefers-reduced-motion ─────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-color-swatch-picker__swatch {
+    transition: transform var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
+  }
+
+  .cinder-color-swatch-picker__swatch:hover:not([data-cinder-disabled]),
+  .cinder-color-swatch-picker__swatch:focus-visible {
+    transform: scale(1.06);
+  }
+}
