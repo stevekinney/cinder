@@ -28,6 +28,9 @@ export type { ChatProps } from './components/chat.svelte';
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
 
+export { default as CheckboxGroup } from './components/checkbox-group.svelte';
+export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
+
 export { default as CodeBlock } from './components/code-block.svelte';
 export type { CodeBlockProps } from './components/code-block.svelte';
 

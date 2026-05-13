@@ -1,0 +1,94 @@
+/* ========================================
+ * CHECKBOX GROUP
+ * Fieldset wrapper + child Checkbox items.
+ * ======================================== */
+
+.cinder-checkbox-group {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-checkbox-group__legend {
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  color: var(--cinder-text);
+  padding: 0;
+  margin: 0 0 var(--cinder-space-1) 0;
+}
+
+.cinder-checkbox-group[disabled] .cinder-checkbox-group__legend {
+  color: var(--cinder-text-disabled);
+}
+
+/* When the group is disabled via native fieldset cascade, dim the label.
+ * checkbox.css styles .cinder-checkbox-field__label via [data-disabled] which
+ * is set from the per-Checkbox prop — not from the inherited fieldset state.
+ * This companion rule fixes the gap without editing checkbox.css. */
+.cinder-checkbox-group[disabled] .cinder-checkbox-field__label {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+.cinder-checkbox-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-checkbox-group__description {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  margin: 0;
+}
+
+.cinder-checkbox-group__error {
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-danger);
+  margin: 0;
+}
+
+/* ========================================
+ * CARD VARIANT
+ * ======================================== */
+
+.cinder-checkbox-group[data-variant='card'] .cinder-checkbox-group__items > .cinder-checkbox-field {
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  padding: var(--cinder-space-3);
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    background var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-checkbox-group[data-variant='card']
+  .cinder-checkbox-group__items
+  > .cinder-checkbox-field:hover {
+  border-color: var(--cinder-border-strong);
+}
+
+/* Checked highlight — additive only; the check glyph is the canonical indicator. */
+.cinder-checkbox-group[data-variant='card']
+  .cinder-checkbox-group__items
+  > .cinder-checkbox-field:has(input:checked) {
+  border-color: var(--cinder-accent);
+}
+
+@media (forced-colors: active) {
+  .cinder-checkbox-group[data-variant='card']
+    .cinder-checkbox-group__items
+    > .cinder-checkbox-field {
+    border: 1px solid CanvasText;
+  }
+
+  .cinder-checkbox-group[data-variant='card']
+    .cinder-checkbox-group__items
+    > .cinder-checkbox-field:has(input:checked) {
+    border: 2px solid Highlight;
+  }
+}
