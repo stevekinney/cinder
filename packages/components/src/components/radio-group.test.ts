@@ -173,6 +173,28 @@ describe('RadioGroup', () => {
     expect(describedBy.split(' ')).toContain('r-a-description');
   });
 
+  test('aria-describedby is absent when there is no description and no consumer-supplied value', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  test('aria-describedby contains only the consumer value when there is no description', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A', ariaDescribedBy: 'external-help' }],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const value = input.getAttribute('aria-describedby');
+    expect(value).toBe('external-help');
+    expect(value).not.toContain('r-a-description');
+  });
+
   test('composes aria-describedby with consumer-supplied value', () => {
     const { container } = render(Wrapper, {
       name: 'choice',

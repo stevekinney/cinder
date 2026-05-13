@@ -219,4 +219,8 @@
   .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
     border: 2px solid Highlight;
   }
+
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+    border: 2px solid Mark;
+  }
 }
