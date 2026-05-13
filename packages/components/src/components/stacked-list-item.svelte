@@ -65,14 +65,16 @@
     ...rest
   }: StackedListItemProps = $props();
 
-  // Filter out any on* attributes that TypeScript already blocks but which could
+  // Filter out any attributes that TypeScript already blocks but which could
   // leak through at runtime (e.g. from dynamic spreads or JS consumers).
+  // Strips on* event handlers plus role and tabindex to prevent the <li> from
+  // becoming interactive — matching the accessibility contract in the a11y docs.
   // $derived so the filtered set re-evaluates when rest changes.
+  const BLOCKED_ATTRS = new Set(['role', 'tabindex']);
   const safeRest = $derived(
-    Object.fromEntries(Object.entries(rest).filter(([key]) => !key.startsWith('on'))) as Omit<
-      typeof rest,
-      `on${string}`
-    >,
+    Object.fromEntries(
+      Object.entries(rest).filter(([key]) => !key.startsWith('on') && !BLOCKED_ATTRS.has(key)),
+    ) as Omit<typeof rest, `on${string}`>,
   );
 
   // When target="_blank" and no rel is supplied, default to "noreferrer" to

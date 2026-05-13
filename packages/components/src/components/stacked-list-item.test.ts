@@ -171,6 +171,16 @@ describe('StackedListItem', () => {
     expect(li?.getAttribute('tabindex')).toBeNull();
   });
 
+  test('role and tabindex are stripped at runtime even when passed dynamically', () => {
+    const { container } = render(StackedListItem, {
+      props: { title: textSnippet('dynamic-spread'), role: 'button', tabindex: '0' } as any,
+    });
+
+    const li = container.querySelector('.cinder-stacked-list-item');
+    expect(li?.getAttribute('role')).toBeNull();
+    expect(li?.getAttribute('tabindex')).toBeNull();
+  });
+
   test('data-*, id, and aria-* attrs land on the <li>, not an anchor', () => {
     const { container } = render(StackedListItem, {
       props: {
