@@ -156,9 +156,13 @@ describe('CheckboxGroup', () => {
     const errorEl = container.querySelector('.cinder-checkbox-group__error');
     expect(descriptionEl).not.toBeNull();
     expect(errorEl).not.toBeNull();
+    // Assert IDs are non-empty before using them in containment checks,
+    // matching the pattern in Test 3. ?. + ?? '' would silently pass if IDs are empty.
+    expect(descriptionEl?.id).toBeTruthy();
+    expect(errorEl?.id).toBeTruthy();
     const parts = (fieldset.getAttribute('aria-describedby') ?? '').split(' ');
-    expect(parts).toContain(descriptionEl?.id ?? '');
-    expect(parts).toContain(errorEl?.id ?? '');
+    expect(parts).toContain(descriptionEl!.id);
+    expect(parts).toContain(errorEl!.id);
   });
 
   // Test 9: card variant DOM structure assertion
