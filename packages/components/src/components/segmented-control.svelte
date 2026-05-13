@@ -143,8 +143,8 @@
     const currentIndex = focusedIndex ?? (selectedIndex >= 0 ? selectedIndex : focusableIndex);
     const nextIndex = handleRovingKeydown(event, currentIndex, options.length, {
       isDisabled: isOptionDisabled,
-      vertical: orientation === 'vertical',
-      horizontal: orientation === 'horizontal',
+      vertical: true,
+      horizontal: true,
     });
 
     if (nextIndex === null) return;

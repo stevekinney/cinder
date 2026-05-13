@@ -105,9 +105,11 @@
 .cinder-segmented-control:not([data-cinder-detached])
   .cinder-segmented-control-option[data-cinder-pressed]:not(:first-child)::before,
 .cinder-segmented-control:not([data-cinder-detached])
-  .cinder-segmented-control-option:has(+ [data-cinder-selected])::before,
+  [data-cinder-selected]
+  + .cinder-segmented-control-option::before,
 .cinder-segmented-control:not([data-cinder-detached])
-  .cinder-segmented-control-option:has(+ [data-cinder-pressed])::before {
+  [data-cinder-pressed]
+  + .cinder-segmented-control-option::before {
   opacity: 0;
 }
 

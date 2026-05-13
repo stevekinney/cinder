@@ -80,6 +80,7 @@
     <SegmentedControl
       id="diff-view-mode"
       selectionMode="single"
+      size="sm"
       label="View mode"
       hideLabel
       bind:value={viewMode}
