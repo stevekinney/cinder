@@ -7,7 +7,16 @@
     description?: string;
     error?: string;
     disabled?: boolean;
-    options: Array<{ id: string; value: string; label: string; disabled?: boolean }>;
+    variant?: 'default' | 'card';
+    options: Array<{
+      id: string;
+      value: string;
+      label: string;
+      disabled?: boolean;
+      description?: string;
+      /** Caller-supplied describedby to test composition. Mapped to `aria-describedby`. */
+      ariaDescribedBy?: string;
+    }>;
   };
 </script>
 
@@ -22,6 +31,7 @@
     description,
     error,
     disabled = false,
+    variant,
     options,
   }: RadioGroupFixtureProps = $props();
 </script>
@@ -32,13 +42,19 @@
   {...legend !== undefined ? { legend } : {}}
   {...description !== undefined ? { description } : {}}
   {...error !== undefined ? { error } : {}}
+  {...variant !== undefined ? { variant } : {}}
   {disabled}
 >
   {#each options as option (option.id)}
-    {#if option.disabled !== undefined}
-      <Radio id={option.id} value={option.value} label={option.label} disabled={option.disabled} />
-    {:else}
-      <Radio id={option.id} value={option.value} label={option.label} />
-    {/if}
+    <Radio
+      id={option.id}
+      value={option.value}
+      label={option.label}
+      {...option.disabled !== undefined ? { disabled: option.disabled } : {}}
+      {...option.description !== undefined ? { description: option.description } : {}}
+      {...option.ariaDescribedBy !== undefined
+        ? { 'aria-describedby': option.ariaDescribedBy }
+        : {}}
+    />
   {/each}
 </RadioGroup>
