@@ -62,12 +62,12 @@ describe('Steps', () => {
     const { container } = render(Steps, {
       steps: defaultSteps,
       currentStep: 2,
-      completedLabel: 'Done',
+      completedLabel: 'Finished',
     });
     const srOnlySpans = container.querySelectorAll('.cinder-steps__sr-only');
     expect(srOnlySpans.length).toBe(2);
     for (const span of srOnlySpans) {
-      expect(span.textContent).toContain('Done');
+      expect(span.textContent).toContain('Finished');
     }
   });
 
@@ -148,6 +148,7 @@ describe('Steps', () => {
     const { container, rerender } = render(Steps, { steps: stepsABC, currentStep: 0 });
     const items = container.querySelectorAll('li');
     const betaNode = items[1];
+    expect(betaNode).not.toBeUndefined();
 
     await rerender({
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -156,7 +157,10 @@ describe('Steps', () => {
     });
 
     const reorderedItems = container.querySelectorAll('li');
-    // Beta was at index 1 (id="b"), now at index 1 in [c, b, a] — same DOM node
-    expect(reorderedItems[1]).toBe(betaNode);
+    const betaAfterReorder = reorderedItems[1];
+    expect(betaAfterReorder).not.toBeUndefined();
+    // Beta is at index 1 in [c, b, a] — verify content and stable DOM identity
+    expect(betaAfterReorder?.textContent).toContain('Beta');
+    expect(betaAfterReorder).toBe(betaNode);
   });
 });

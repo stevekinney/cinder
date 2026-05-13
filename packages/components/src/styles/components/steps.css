@@ -57,7 +57,6 @@
   width: 100%;
 }
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__sr-only,
 .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
   grid-column: 1 / -1;
   grid-row: 2;
@@ -90,7 +89,6 @@
   align-self: stretch;
 }
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__sr-only,
 .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__body {
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -114,13 +112,21 @@
 
 [data-cinder-state='complete'] .cinder-steps__marker {
   background: var(--cinder-accent);
-  color: white;
+  color: var(--cinder-accent-contrast);
 }
 
 [data-cinder-state='current'] .cinder-steps__marker {
   background: var(--cinder-surface);
   box-shadow: 0 0 0 2px var(--cinder-accent);
   color: var(--cinder-accent);
+}
+
+@media (forced-colors: active) {
+  [data-cinder-state='current'] .cinder-steps__marker {
+    outline: 2px solid ButtonText;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
 }
 
 [data-cinder-state='upcoming'] .cinder-steps__marker {

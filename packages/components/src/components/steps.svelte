@@ -80,10 +80,10 @@
             <span class="cinder-steps__index">{index + 1}</span>
           {/if}
         </span>
-        {#if isComplete}
-          <span class="cinder-steps__sr-only">{completedLabel},</span>
-        {/if}
         <span class="cinder-steps__body">
+          {#if isComplete}
+            <span class="cinder-steps__sr-only">{completedLabel}</span>
+          {/if}
           <span class="cinder-steps__label">{step.label}</span>
           {#if step.description}
             <span class="cinder-steps__description">{step.description}</span>
