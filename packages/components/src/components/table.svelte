@@ -36,6 +36,7 @@
     readonly someSelected: boolean;
     readonly onSelectAll: (next: boolean) => void;
     readonly selectAllLabel: string;
+    claimSelectionHeaderCell: () => void;
   };
 
   /**
@@ -52,7 +53,7 @@
     readonly sort: TableSort | undefined;
     onSortChange: (column: string) => void;
     /** Mirror of Table.selectable. Set synchronously at construction time. */
-    readonly selectionEnabled: boolean;
+    readonly selectionEnabled?: boolean;
   };
 
   /**

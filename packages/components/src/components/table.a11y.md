@@ -104,7 +104,7 @@ When `Table.selectable` is true, a body row that supplies none of the above thro
 
 ### `aria-selected`
 
-`aria-selected` is emitted only on body rows with the active selection trio. Rows with `selectionDisabled` do not receive `aria-selected` — they are not part of the selectable set, and emitting `"false"` would falsely include them.
+`aria-selected` is not emitted. The component renders a native `<table>`, not a `grid` or `treegrid`, and `aria-selected` is not valid on plain table rows.
 
 ### v1 constraint: single header row
 

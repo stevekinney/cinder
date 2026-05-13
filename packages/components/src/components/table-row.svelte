@@ -116,10 +116,17 @@
       selectAllInput.indeterminate = headerSelection.someSelected && !headerSelection.allSelected;
     }
   });
+
+  const shouldRenderHeaderSelectionCell =
+    selectionEnabled && section === 'header' && headerSelection !== undefined;
+
+  if (shouldRenderHeaderSelectionCell) {
+    headerSelection?.claimSelectionHeaderCell();
+  }
 </script>
 
 <tr class={cn('cinder-table__row', className)}>
-  {#if selectionEnabled && section === 'header' && headerSelection}
+  {#if shouldRenderHeaderSelectionCell && headerSelection}
     <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
       <input
         bind:this={selectAllInput}

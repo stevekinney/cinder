@@ -177,6 +177,39 @@ describe('Table selection — structure', () => {
       expect(cellCount).toBe(headerCellCount);
     }
   });
+
+  test('selectable header requires controlled select-all state', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        includeHeaderSelectionState: false,
+      }),
+    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+  });
+
+  test('selectable header requires a select-all handler', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        includeHeaderSelectionHandler: false,
+      }),
+    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+  });
+
+  test('selectable header throws when multiple header rows would duplicate select-all controls', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        renderSecondHeaderRow: true,
+      }),
+    ).toThrow(/supports exactly one TableRow inside TableHeader/);
+  });
 });
 
 describe('Table selection — row checkbox behavior', () => {

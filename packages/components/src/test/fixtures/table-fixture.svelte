@@ -8,6 +8,9 @@
     stickyHeader?: boolean;
     density?: TableDensity;
     selectable?: boolean;
+    includeHeaderSelectionState?: boolean;
+    includeHeaderSelectionHandler?: boolean;
+    renderSecondHeaderRow?: boolean;
     /** Set of selected row IDs when selection is enabled. */
     selectedIds?: Set<string>;
     /** Called when the user toggles a row; receives the new set. */
@@ -31,6 +34,9 @@
     stickyHeader = false,
     density,
     selectable = false,
+    includeHeaderSelectionState = true,
+    includeHeaderSelectionHandler = true,
+    renderSecondHeaderRow = false,
     selectedIds = new Set<string>(),
     onSelectedIds,
     columns,
@@ -69,7 +75,10 @@
   {stickyHeader}
   {selectable}
 >
-  <TableHeader {allSelected} {someSelected} {onSelectAll}>
+  <TableHeader
+    {...includeHeaderSelectionState ? { allSelected, someSelected } : {}}
+    {...includeHeaderSelectionHandler ? { onSelectAll } : {}}
+  >
     <TableRow>
       {#each columns as column (column.key)}
         {#if column.sortable}
@@ -79,6 +88,13 @@
         {/if}
       {/each}
     </TableRow>
+    {#if renderSecondHeaderRow}
+      <TableRow>
+        {#each columns as column (column.key)}
+          <TableHeaderCell>{column.label}</TableHeaderCell>
+        {/each}
+      </TableRow>
+    {/if}
   </TableHeader>
   <TableBody>
     {#each rows as row (row.id)}
