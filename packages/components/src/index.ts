@@ -285,7 +285,15 @@ export { default as TabPanel } from './components/tab-panel.svelte';
 export type { TabPanelProps } from './components/tab-panel.svelte';
 
 export { default as Table } from './components/table.svelte';
-export type { SortDirection, TableContext, TableProps, TableSort } from './components/table.svelte';
+export type {
+  SortDirection,
+  TableContext,
+  TableDensity,
+  TableHeaderSelectionContext,
+  TableProps,
+  TableSectionContext,
+  TableSort,
+} from './components/table.svelte';
 
 export { default as TableBody } from './components/table-body.svelte';
 export type { TableBodyProps } from './components/table-body.svelte';
@@ -300,7 +308,7 @@ export { default as TableHeaderCell } from './components/table-header-cell.svelt
 export type { TableHeaderCellProps } from './components/table-header-cell.svelte';
 
 export { default as TableRow } from './components/table-row.svelte';
-export type { TableRowProps } from './components/table-row.svelte';
+export type { TableRowProps, TableRowSelectionProps } from './components/table-row.svelte';
 
 export { default as Tabs } from './components/tabs.svelte';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs.svelte';

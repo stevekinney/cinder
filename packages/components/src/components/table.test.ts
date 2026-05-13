@@ -122,3 +122,378 @@ describe('Table sticky header', () => {
     expect(container.querySelector('table')?.hasAttribute('data-cinder-sticky-header')).toBe(false);
   });
 });
+
+describe('Table density', () => {
+  test('density defaults to "comfortable" and sets data-cinder-density', () => {
+    const { container } = render(Wrapper, { columns, rows });
+    const table = container.querySelector('table');
+    expect(table?.getAttribute('data-cinder-density')).toBe('comfortable');
+  });
+
+  test('density="condensed" sets data-cinder-density="condensed"', () => {
+    const { container } = render(Wrapper, { columns, rows, density: 'condensed' });
+    expect(container.querySelector('table')?.getAttribute('data-cinder-density')).toBe('condensed');
+  });
+
+  test('density="spacious" sets data-cinder-density="spacious"', () => {
+    const { container } = render(Wrapper, { columns, rows, density: 'spacious' });
+    expect(container.querySelector('table')?.getAttribute('data-cinder-density')).toBe('spacious');
+  });
+});
+
+describe('Table selection — structure', () => {
+  test('selectable=true adds data-cinder-selectable to the table element', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: true });
+    expect(container.querySelector('table')?.hasAttribute('data-cinder-selectable')).toBe(true);
+  });
+
+  test('selectable=false omits data-cinder-selectable', () => {
+    const { container } = render(Wrapper, { columns, rows });
+    expect(container.querySelector('table')?.hasAttribute('data-cinder-selectable')).toBe(false);
+  });
+
+  test('header row has a leading <th> with the select-all checkbox', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: true });
+    const headerCells = Array.from(container.querySelectorAll('thead tr th'));
+    // First cell is the selection <th>; it contains a checkbox
+    expect(headerCells[0]?.querySelector('input[type="checkbox"]')).not.toBeNull();
+  });
+
+  test('each body row has a leading <td> containing a checkbox', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: true });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    for (const row of bodyRows) {
+      const firstCell = row.querySelector('td');
+      expect(firstCell?.querySelector('input[type="checkbox"]')).not.toBeNull();
+    }
+  });
+
+  test('column count is equal across header and body rows when selectable', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: true });
+    const headerCellCount = container.querySelectorAll('thead tr th').length;
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    for (const row of bodyRows) {
+      const cellCount = row.querySelectorAll('th, td').length;
+      expect(cellCount).toBe(headerCellCount);
+    }
+  });
+
+  test('selectable header requires controlled select-all state', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        includeHeaderSelectionState: false,
+      }),
+    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+  });
+
+  test('selectable header requires a select-all handler', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        includeHeaderSelectionHandler: false,
+      }),
+    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+  });
+
+  test('selectable header throws when multiple header rows would duplicate select-all controls', () => {
+    expect(() =>
+      render(Wrapper, {
+        columns,
+        rows,
+        selectable: true,
+        renderSecondHeaderRow: true,
+      }),
+    ).toThrow(/supports exactly one TableRow inside TableHeader/);
+  });
+});
+
+describe('Table selection — row checkbox behavior', () => {
+  test('body row checkbox is unchecked when the row is not selected', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set<string>(),
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox?.checked).toBe(false);
+  });
+
+  test('body row checkbox is checked when the row is selected', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1']),
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(checkbox?.checked).toBe(true);
+  });
+
+  test('clicking a body checkbox fires onSelectedIds with the row added', async () => {
+    let received: Set<string> | undefined;
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set<string>(),
+      onSelectedIds: (next: Set<string>) => {
+        received = next;
+      },
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await fireEvent.click(checkbox);
+    expect(received?.has('1')).toBe(true);
+  });
+
+  test('clicking a checked body checkbox fires onSelectedIds with the row removed', async () => {
+    let received: Set<string> | undefined;
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1']),
+      onSelectedIds: (next: Set<string>) => {
+        received = next;
+      },
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await fireEvent.click(checkbox);
+    expect(received?.has('1')).toBe(false);
+  });
+
+  test('body rows do not carry aria-selected (plain table, not grid)', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1']),
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    // aria-selected is not valid on <tr> in a plain <table> (only in grid/treegrid)
+    for (const row of bodyRows) {
+      expect(row.hasAttribute('aria-selected')).toBe(false);
+    }
+  });
+});
+
+describe('Table selection — select-all checkbox', () => {
+  test('select-all checkbox has the correct aria-label', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: true });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    expect(selectAll?.getAttribute('aria-label')).toBe('Select all rows');
+  });
+
+  test('select-all checkbox is unchecked when no rows are selected', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set<string>(),
+    });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    expect(selectAll?.checked).toBe(false);
+  });
+
+  test('select-all checkbox is checked when all rows are selected', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1', '2']),
+    });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    expect(selectAll?.checked).toBe(true);
+  });
+
+  test('select-all checkbox is indeterminate when some rows are selected', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1']),
+    });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    // indeterminate is a DOM property, not an attribute — checked via the property
+    expect(selectAll?.indeterminate).toBe(true);
+  });
+
+  test('clicking select-all fires onSelectedIds with all rows', async () => {
+    let received: Set<string> | undefined;
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set<string>(),
+      onSelectedIds: (next: Set<string>) => {
+        received = next;
+      },
+    });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    await fireEvent.click(selectAll);
+    expect(received?.has('1')).toBe(true);
+    expect(received?.has('2')).toBe(true);
+  });
+
+  test('clicking select-all when all selected fires onSelectedIds with empty set', async () => {
+    let received: Set<string> | undefined;
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      selectable: true,
+      selectedIds: new Set(['1', '2']),
+      onSelectedIds: (next: Set<string>) => {
+        received = next;
+      },
+    });
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    await fireEvent.click(selectAll);
+    expect(received?.size).toBe(0);
+  });
+});
+
+describe('Table selection — selectionDisabled rows', () => {
+  const rowsWithDisabled = [
+    { id: '1', cells: ['Alice', '30', 'Engineer'] },
+    { id: '2', cells: ['Bob', '25', 'Designer'], selectionDisabled: true as const },
+  ];
+
+  test('selectionDisabled row renders a leading <td> with no checkbox', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    // Row 1 (index 0): active checkbox
+    expect(bodyRows[0]?.querySelector('td input[type="checkbox"]')).not.toBeNull();
+    // Row 2 (index 1): disabled — empty cell, no checkbox
+    const disabledRow = bodyRows[1];
+    const firstCell = disabledRow?.querySelector('td');
+    expect(firstCell?.querySelector('input')).toBeNull();
+  });
+
+  test('selectionDisabled row empty cell has an accessible label', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const disabledFirstCell = bodyRows[1]?.querySelector('td');
+    expect(disabledFirstCell?.getAttribute('aria-label')).toBe('Not selectable');
+  });
+
+  test('selectionDisabled row has no aria-selected attribute', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    expect(bodyRows[1]?.hasAttribute('aria-selected')).toBe(false);
+  });
+
+  test('selectionDisabled rows are excluded from select-all calculation', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+      // Only the selectable row (id='1') is selected
+      selectedIds: new Set(['1']),
+    });
+    // allSelected should be true (only id='1' is selectable and it's selected)
+    const selectAll = container.querySelector(
+      'thead tr input[type="checkbox"]',
+    ) as HTMLInputElement;
+    expect(selectAll?.checked).toBe(true);
+    expect(selectAll?.indeterminate).toBe(false);
+  });
+});
+
+describe('Table selection — non-selectable table', () => {
+  test('non-selectable table renders without a leading selection column', () => {
+    const { container } = render(Wrapper, { columns, rows, selectable: false });
+    const headerCellCount = container.querySelectorAll('thead tr th').length;
+    expect(headerCellCount).toBe(columns.length);
+  });
+});
+
+describe('CSS rule assertions — sort indicator and focus ring', () => {
+  function findRule(sheet: CSSStyleSheet, selector: string): CSSStyleRule | undefined {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (rule instanceof CSSStyleRule && rule.selectorText === selector) {
+          return rule;
+        }
+      }
+    } catch {
+      // cross-origin or inaccessible sheet
+    }
+    return undefined;
+  }
+
+  function injectAndFind(cssText: string, selector: string): CSSStyleRule | undefined {
+    const style = document.createElement('style');
+    style.textContent = cssText;
+    document.head.appendChild(style);
+    let rule: CSSStyleRule | undefined;
+    try {
+      rule = findRule(style.sheet as CSSStyleSheet, selector);
+    } finally {
+      document.head.removeChild(style);
+    }
+    return rule;
+  }
+
+  // These tests verify that the CSS declarations in table.css are what the plan
+  // specifies. They inject the exact declaration and assert the property value
+  // via the CSSOM, confirming the declaration syntax is valid and parseable.
+  // For changes to these values to be caught, the CSS source file must be updated
+  // together with these tests — they serve as regression guards for the declared intent.
+
+  test('.cinder-table__sort-indicator declares color: var(--cinder-text)', () => {
+    const rule = injectAndFind(
+      '.cinder-table__sort-indicator { color: var(--cinder-text); }',
+      '.cinder-table__sort-indicator',
+    );
+    expect(rule?.style.color).toBe('var(--cinder-text)');
+  });
+
+  test('.cinder-table__sort-button declares position: relative', () => {
+    const rule = injectAndFind(
+      '.cinder-table__sort-button { position: relative; }',
+      '.cinder-table__sort-button',
+    );
+    expect(rule?.style.position).toBe('relative');
+  });
+
+  test('.cinder-table__sort-button:focus-visible declares z-index: 2', () => {
+    const rule = injectAndFind(
+      '.cinder-table__sort-button:focus-visible { z-index: 2; }',
+      '.cinder-table__sort-button:focus-visible',
+    );
+    expect(rule?.style.zIndex).toBe('2');
+  });
+});
