@@ -60,7 +60,7 @@ A `size="lg"` button next to a `size="sm"` button will look broken inside a coll
 
 ## Public styling contract
 
-Direct children are tagged with `data-cinder-button-group-item=""` at mount. The attribute is namespaced to avoid collisions and is part of the public API — it will not be renamed without a deprecation cycle. Consumers can target this attribute for their own overrides when it lands on a direct child. Manually adding the attribute to a deep descendant is **not** a supported escape hatch.
+Direct children are tagged with `data-cinder-button-group-item` at mount. The attribute value is an opaque internal identifier used for ownership tracking — **consumers must match on attribute presence only** (`[data-cinder-button-group-item]`), never on a specific value. The attribute name is namespaced to avoid collisions and is part of the public API — it will not be renamed without a deprecation cycle. Consumers can target this attribute for their own overrides when it lands on a direct child. Manually adding the attribute to a deep descendant is **not** a supported escape hatch.
 
 ## Forced-colors / high-contrast mode
 
