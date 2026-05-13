@@ -392,6 +392,7 @@
     "src/_internal/collection.ts",
     "src/_internal/field-control.ts",
     "src/_internal/overlay.ts",
+    "src/_internal/surface-context.ts",
     "src/_internal/toast-context.ts",
     "src/_internal/tree-context.ts",
     "src/_internal/tree-registry.svelte.ts",
