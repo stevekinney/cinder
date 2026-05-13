@@ -7,7 +7,13 @@
    * - Active branch: supply `selected` + `onSelectedChange` + `selectionLabel`.
    * - Opt-out branch: supply `selectionDisabled: true` — renders an empty alignment cell.
    * - Inert branch: supply nothing — only valid when `Table.selectable` is false or
-   *   the row is inside `TableHeader` (which sources its select-all from header context).
+   *   the row is inside `TableHeader`.
+   *
+   * Note: Svelte 5's `$props()` merges discriminated union branches into a flat
+   * object at destructuring time. TypeScript cannot narrow the active vs inert
+   * branch after destructuring. Runtime validation enforces the contract when
+   * `Table.selectable` is true — both `selected` and `selectionLabel` are
+   * required together and `onSelectedChange` must be present.
    */
   export type TableRowSelectionProps =
     | {
@@ -40,13 +46,14 @@
 <script lang="ts">
   import { getContext } from 'svelte';
 
-  import { TABLE_CONTEXT_KEY, type TableContext } from './table.svelte';
   import {
+    TABLE_CONTEXT_KEY,
     TABLE_SECTION_CONTEXT_KEY,
     TABLE_HEADER_SELECTION_CONTEXT_KEY,
+    type TableContext,
     type TableSectionContext,
     type TableHeaderSelectionContext,
-  } from './table-header.svelte';
+  } from './table.svelte';
   import { cn } from '../utilities/class-names.ts';
 
   let {
@@ -68,14 +75,19 @@
 
   // Validate body rows when selection is enabled.
   if (selectionEnabled && section === 'body') {
-    const hasActiveTrio =
-      selected !== undefined && onSelectedChange !== undefined && selectionLabel !== undefined;
     const hasDisabled = selectionDisabled === true;
-    if (!hasActiveTrio && !hasDisabled) {
-      throw new Error(
-        '[Cinder] TableRow: when Table.selectable is true, each body row must supply ' +
-          'selected + onSelectedChange + selectionLabel, or set selectionDisabled={true}.',
-      );
+    if (!hasDisabled) {
+      // All three must be present — reject partial trios.
+      const hasSelected = selected !== undefined;
+      const hasOnChange = onSelectedChange !== undefined;
+      const hasLabel = selectionLabel !== undefined;
+      if (!hasSelected || !hasOnChange || !hasLabel) {
+        throw new Error(
+          '[Cinder] TableRow: when Table.selectable is true, each body row must supply ' +
+            'selected + onSelectedChange + selectionLabel together, or set selectionDisabled={true}. ' +
+            `Missing: ${[!hasSelected && 'selected', !hasOnChange && 'onSelectedChange', !hasLabel && 'selectionLabel'].filter(Boolean).join(', ')}.`,
+        );
+      }
     }
   }
 
@@ -86,22 +98,6 @@
         'The leading selection cell will not be rendered.',
     );
   }
-
-  // Header row registration (tracks count for multi-row header validation).
-  $effect(() => {
-    if (section === 'header' && headerSelection) {
-      const cleanup = headerSelection.registerHeaderRow();
-      return cleanup;
-    }
-    return undefined;
-  });
-
-  // aria-selected only on body rows with the active selection trio.
-  const ariaSelected = $derived(
-    selectionEnabled && section === 'body' && !selectionDisabled && selected !== undefined
-      ? selected
-      : undefined,
-  );
 
   function handleSelectAllChange(event: Event): void {
     const input = event.currentTarget as HTMLInputElement;
@@ -122,7 +118,7 @@
   });
 </script>
 
-<tr class={cn('cinder-table__row', className)} aria-selected={ariaSelected}>
+<tr class={cn('cinder-table__row', className)}>
   {#if selectionEnabled && section === 'header' && headerSelection}
     <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
       <input
@@ -139,6 +135,7 @@
     {#if selectionDisabled}
       <td
         class="cinder-table__cell cinder-table__cell--selection cinder-table__cell--selection-disabled"
+        aria-label="Not selectable"
       ></td>
     {:else}
       <td class="cinder-table__cell cinder-table__cell--selection">

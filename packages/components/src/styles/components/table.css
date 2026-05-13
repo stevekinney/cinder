@@ -36,6 +36,8 @@
 }
 
 .cinder-table__header-cell {
+  padding-block: var(--cinder-space-2);
+  padding-inline: var(--cinder-space-3);
   text-align: left;
   font-weight: var(--cinder-font-medium);
   color: var(--cinder-text-muted);
@@ -49,16 +51,11 @@
 }
 
 /* ----------------------------------------
- * Density — padding-block / padding-inline for header and body cells.
- * The baseline padding rules are replaced by these three density selectors;
- * every cell matches exactly one because density is always present.
+ * Density — padding overrides for header and body cells.
+ * Comfortable is the baseline (set on .cinder-table__cell / .cinder-table__header-cell).
+ * Only condensed and spacious need explicit overrides; any unknown density value
+ * falls back gracefully to comfortable padding.
  * ---------------------------------------- */
-
-.cinder-table[data-cinder-density='comfortable'] .cinder-table__cell,
-.cinder-table[data-cinder-density='comfortable'] .cinder-table__header-cell {
-  padding-block: var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3);
-}
 
 .cinder-table[data-cinder-density='condensed'] .cinder-table__cell,
 .cinder-table[data-cinder-density='condensed'] .cinder-table__header-cell {
@@ -167,6 +164,8 @@
 }
 
 .cinder-table__cell {
+  padding-block: var(--cinder-space-2);
+  padding-inline: var(--cinder-space-3);
   border-bottom: 1px solid var(--cinder-border-muted);
 }
 

@@ -12,7 +12,7 @@
 <script lang="ts">
   import { setContext } from 'svelte';
 
-  import { TABLE_SECTION_CONTEXT_KEY, type TableSectionContext } from './table-header.svelte';
+  import { TABLE_SECTION_CONTEXT_KEY, type TableSectionContext } from './table.svelte';
   import { cn } from '../utilities/class-names.ts';
 
   let { class: className, children }: TableBodyProps = $props();

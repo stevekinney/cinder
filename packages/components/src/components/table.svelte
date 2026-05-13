@@ -4,6 +4,12 @@
   /** Symbol key for the table Svelte context. */
   export const TABLE_CONTEXT_KEY = Symbol('cinder-table');
 
+  /** Symbol key for the section context (header vs body). */
+  export const TABLE_SECTION_CONTEXT_KEY = Symbol('cinder-table-section');
+
+  /** Symbol key for the header selection context (select-all data). */
+  export const TABLE_HEADER_SELECTION_CONTEXT_KEY = Symbol('cinder-table-header-selection');
+
   /** Sort direction. */
   export type SortDirection = 'ascending' | 'descending';
 
@@ -18,11 +24,29 @@
   /** Vertical padding density for all cells in the table. */
   export type TableDensity = 'comfortable' | 'condensed' | 'spacious';
 
+  /** Section context value — set by TableHeader and TableBody, read by TableRow. */
+  export type TableSectionContext = 'header' | 'body';
+
+  /**
+   * Context set by TableHeader with select-all state, read by the header TableRow
+   * to render the leading select-all checkbox cell.
+   */
+  export type TableHeaderSelectionContext = {
+    readonly allSelected: boolean;
+    readonly someSelected: boolean;
+    readonly onSelectAll: (next: boolean) => void;
+    readonly selectAllLabel: string;
+  };
+
   /**
    * Shape of the table context provided to child components. Header cells call
    * `onSortChange` with their column key when activated; the table propagates
    * the new sort state to its bindable `sort` prop. Children read
    * `selectionEnabled` to render the leading selection cell.
+   *
+   * @internal This type describes the context object produced by Table. It is
+   * not intended to be implemented or constructed by consumers — use `getContext`
+   * to read it, not `setContext` to provide it.
    */
   export type TableContext = {
     readonly sort: TableSort | undefined;

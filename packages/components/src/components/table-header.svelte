@@ -1,26 +1,6 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
 
-  /** Symbol key for the section context (header vs body). */
-  export const TABLE_SECTION_CONTEXT_KEY = Symbol('cinder-table-section');
-
-  /** Symbol key for the header selection context (select-all data + row registration). */
-  export const TABLE_HEADER_SELECTION_CONTEXT_KEY = Symbol('cinder-table-header-selection');
-
-  export type TableSectionContext = 'header' | 'body';
-
-  export type TableHeaderSelectionContext = {
-    readonly allSelected: boolean;
-    readonly someSelected: boolean;
-    readonly onSelectAll: (next: boolean) => void;
-    readonly selectAllLabel: string;
-    /**
-     * Called by the header TableRow on mount. Returns a cleanup function.
-     * TableHeader throws if more than one header row registers when selection is enabled.
-     */
-    registerHeaderRow: () => () => void;
-  };
-
   export type TableHeaderProps = {
     /** Additional class names merged with `.cinder-table__header`. */
     class?: string;
@@ -31,11 +11,17 @@
     /**
      * When true and `allSelected` is false, the select-all checkbox renders as indeterminate.
      * The browser exposes that as `aria-checked="mixed"` to assistive tech.
+     * Defaults to false. Required (alongside `allSelected` and `onSelectAll`) when
+     * `Table.selectable` is true for accurate checkbox state.
      */
     someSelected?: boolean;
     /** Called when the user activates the select-all checkbox. Required when `Table.selectable` is true. */
     onSelectAll?: (next: boolean) => void;
-    /** Accessible name for the select-all checkbox. Defaults to "Select all rows". */
+    /**
+     * Accessible name for the select-all checkbox. Defaults to "Select all rows".
+     * When the table contains rows with `selectionDisabled={true}`, pass a more
+     * accurate label such as "Select all selectable rows".
+     */
     selectAllLabel?: string;
   };
 </script>
@@ -43,7 +29,14 @@
 <script lang="ts">
   import { getContext, setContext } from 'svelte';
 
-  import { TABLE_CONTEXT_KEY, type TableContext } from './table.svelte';
+  import {
+    TABLE_CONTEXT_KEY,
+    TABLE_SECTION_CONTEXT_KEY,
+    TABLE_HEADER_SELECTION_CONTEXT_KEY,
+    type TableContext,
+    type TableSectionContext,
+    type TableHeaderSelectionContext,
+  } from './table.svelte';
   import { cn } from '../utilities/class-names.ts';
 
   let {
@@ -58,32 +51,10 @@
   const table = getContext<TableContext | undefined>(TABLE_CONTEXT_KEY);
   const selectionEnabled = table?.selectionEnabled ?? false;
 
-  if (selectionEnabled) {
-    if (allSelected === undefined || allSelected === null) {
-      throw new Error(
-        '[Cinder] TableHeader: `allSelected` is required when Table.selectable is true.',
-      );
-    }
-    if (!onSelectAll) {
-      throw new Error(
-        '[Cinder] TableHeader: `onSelectAll` is required when Table.selectable is true.',
-      );
-    }
-  }
-
-  // Plain (non-reactive) counter so mutations don't trigger the reactive graph.
-  let headerRowCount = 0;
-
-  function registerHeaderRow(): () => void {
-    headerRowCount += 1;
-    if (selectionEnabled && headerRowCount > 1) {
-      throw new Error(
-        '[Cinder] TableHeader: only one TableRow is supported inside TableHeader when Table.selectable is true.',
-      );
-    }
-    return () => {
-      headerRowCount -= 1;
-    };
+  if (selectionEnabled && !onSelectAll) {
+    throw new Error(
+      '[Cinder] TableHeader: `onSelectAll` is required when Table.selectable is true.',
+    );
   }
 
   setContext<TableSectionContext>(TABLE_SECTION_CONTEXT_KEY, 'header');
@@ -101,7 +72,6 @@
     get selectAllLabel() {
       return selectAllLabel;
     },
-    registerHeaderRow,
   });
 </script>
 
