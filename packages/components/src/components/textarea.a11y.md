@@ -54,7 +54,7 @@ The CSS removes `resize: vertical` for disabled textareas to prevent a confusing
 
 ## Character Count
 
-When `showCount` is true and `maxlength` is set, an `<output id="{id}-count" for="{id}" aria-live="polite" aria-atomic="true">` renders showing `{value.length}/{maxlength}`. The `<output>` element carries the implicit ARIA role `status` (a polite live region), and `aria-atomic="true"` ensures the full "42/500" text is announced rather than just the changed portion. The count element id is included in the textarea's `aria-describedby`, so:
+When `showCount` is true and `maxlength` is set to a valid non-negative integer, an `<output id="{id}-count" for="{id}" aria-live="polite" aria-atomic="true">` renders showing `{value.length}/{maxlength}`. The `<output>` element carries the implicit ARIA role `status` (a polite live region), and `aria-atomic="true"` ensures the full "42/500" text is announced rather than just the changed portion. The count element id is included in the textarea's `aria-describedby`, so:
 
 - On focus, screen readers announce the current count as part of the field's description.
 - During typing, the polite live region announces updates without interrupting the user.
@@ -63,7 +63,7 @@ Both wirings are intentional. The `aria-describedby` reference covers the focus-
 
 The count uses JavaScript string length (UTF-16 code units), matching the browser's own `maxlength` enforcement, so the displayed count never disagrees with the field's enforced limit.
 
-**Reactivity contract.** The counter only updates when the parent uses `bind:value`. Without binding, `value` stays at its initial state and the counter reflects that initial length throughout the interaction. This is the existing contract for the component, not a new limitation.
+**Reactivity contract.** The counter follows the component's local `value` state. User input updates the displayed count immediately; parent code should still use `bind:value` when it needs to observe or control the current value outside the component.
 
 **`showCount` without `maxlength`.** If `showCount` is `true` but `maxlength` is absent or invalid, the counter is silently omitted—the prop is advisory, not a requirement.
 
