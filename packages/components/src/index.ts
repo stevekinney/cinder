@@ -218,6 +218,15 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
+export { default as SideNavigation } from './components/side-navigation.svelte';
+export type { SideNavigationProps } from './components/side-navigation.svelte';
+
+export { default as SideNavigationGroup } from './components/side-navigation-group.svelte';
+export type { SideNavigationGroupProps } from './components/side-navigation-group.svelte';
+
+export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
+export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
+
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
 export type {
