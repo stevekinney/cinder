@@ -54,6 +54,15 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 
+export { default as DatePicker } from './components/date-picker.svelte';
+export type {
+  DatePickerMode,
+  DatePickerProps,
+  DatePickerRangeValue,
+  DatePickerSingleValue,
+  DatePickerValue,
+} from './components/date-picker.svelte';
+
 export { default as DescriptionList } from './components/description-list.svelte';
 export type {
   DescriptionListItem,
