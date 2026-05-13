@@ -125,6 +125,14 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
+    "./feed-event": {
+      "svelte": "./src/components/feed-event.svelte",
+      "types": "./dist/components/feed-event.svelte.d.ts"
+    },
+    "./feed": {
+      "svelte": "./src/components/feed.svelte",
+      "types": "./dist/components/feed.svelte.d.ts"
+    },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
       "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
@@ -152,6 +160,14 @@
     "./experimental/timeline": {
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
+    },
+    "./grid-list-item": {
+      "svelte": "./src/components/grid-list-item.svelte",
+      "types": "./dist/components/grid-list-item.svelte.d.ts"
+    },
+    "./grid-list": {
+      "svelte": "./src/components/grid-list.svelte",
+      "types": "./dist/components/grid-list.svelte.d.ts"
     },
     "./input": {
       "svelte": "./src/components/input.svelte",

@@ -35,6 +35,7 @@
   width: 100%;
   min-height: 6rem;
   resize: vertical;
+  field-sizing: content;
 
   padding: var(--cinder-space-2) var(--cinder-space-3);
 
@@ -125,4 +126,12 @@
 
 .cinder-textarea-error {
   color: var(--cinder-danger);
+}
+
+.cinder-textarea-count {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+  text-align: end;
 }
