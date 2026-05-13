@@ -22,9 +22,9 @@ describe('NavigationItem rendering', () => {
     expect(container.querySelector('button')).toBeNull();
   });
 
-  test('renders as <button> with onClick prop', () => {
+  test('renders as <button> with onclick prop', () => {
     const { container } = render(NavigationItem, {
-      props: { onClick: () => {}, children: (() => {}) as never },
+      props: { onclick: () => {}, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
     expect(button).not.toBeNull();
@@ -50,7 +50,7 @@ describe('NavigationItem rendering', () => {
 
   test('active button has aria-current="page"', () => {
     const { container } = render(NavigationItem, {
-      props: { onClick: () => {}, active: true, children: (() => {}) as never },
+      props: { onclick: () => {}, active: true, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
     expect(button?.getAttribute('aria-current')).toBe('page');
@@ -58,7 +58,7 @@ describe('NavigationItem rendering', () => {
 
   test('inactive button does not have aria-current', () => {
     const { container } = render(NavigationItem, {
-      props: { onClick: () => {}, active: false, children: (() => {}) as never },
+      props: { onclick: () => {}, active: false, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
     expect(button?.hasAttribute('aria-current')).toBe(false);
@@ -76,7 +76,7 @@ describe('NavigationItem rendering', () => {
     const anchor = container.querySelector('a');
     expect(anchor?.getAttribute('aria-disabled')).toBe('true');
     // Simulate click — the handler calls preventDefault so no navigation occurs.
-    // Since there is no consumer onClick on link arm, we just verify aria-disabled is present.
+    // Since there is no consumer onclick on link arm, we just verify aria-disabled is present.
     anchor?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     expect(clickCount).toBe(0);
   });
@@ -117,11 +117,11 @@ describe('NavigationItem rendering', () => {
     expect(anchor?.hasAttribute('tabindex')).toBe(false);
   });
 
-  test('disabled button has aria-disabled and blocks onClick', () => {
+  test('disabled button has aria-disabled and blocks onclick', () => {
     let clickCount = 0;
     const { container } = render(NavigationItem, {
       props: {
-        onClick: () => {
+        onclick: () => {
           clickCount += 1;
         },
         disabled: true,
@@ -162,11 +162,11 @@ describe('NavigationItem rendering', () => {
     expect(anchor?.classList.contains('my-custom-class')).toBe(true);
   });
 
-  test('non-disabled button invokes onClick on click', () => {
+  test('non-disabled button invokes onclick on click', () => {
     let clickCount = 0;
     const { container } = render(NavigationItem, {
       props: {
-        onClick: () => {
+        onclick: () => {
           clickCount += 1;
         },
         children: (() => {}) as never,
@@ -186,7 +186,7 @@ describe('NavigationItem rendering', () => {
 
   test('button arm emits data-variant="horizontal" by default', () => {
     const { container } = render(NavigationItem, {
-      props: { onClick: () => {}, children: (() => {}) as never },
+      props: { onclick: () => {}, children: (() => {}) as never },
     });
     expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('horizontal');
   });
@@ -200,7 +200,7 @@ describe('NavigationItem rendering', () => {
 
   test('button arm emits data-variant="mobile" when variant="mobile" is passed', () => {
     const { container } = render(NavigationItem, {
-      props: { onClick: () => {}, variant: 'mobile', children: (() => {}) as never },
+      props: { onclick: () => {}, variant: 'mobile', children: (() => {}) as never },
     });
     expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('mobile');
   });

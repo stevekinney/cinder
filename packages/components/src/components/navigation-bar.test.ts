@@ -296,16 +296,13 @@ describe('NavigationBar', () => {
     expect(capturedVariant).toBe('horizontal');
   });
 
-  test('items snippet receives variant="mobile" after opening on a collapsible bar', async () => {
-    // In Svelte's createRawSnippet, setup() runs once at mount and render() is called once
-    // to produce the initial HTML. Reactive parameter changes trigger a DOM update by
-    // unmounting/remounting the snippet element. We observe this via the items region
-    // data-open attribute (which Svelte's template binding updates reactively) combined
-    // with the initial variant capture confirming correct derivation logic.
-    //
-    // The variant derivation — $derived(menuToggle !== undefined && mobileMenuOpen ? 'mobile' : 'horizontal')
-    // — is deterministic: when mobileMenuOpen flips to true, variant must be 'mobile'.
-    // We verify the full chain: click → mobileMenuOpen=true → data-open='true' → variant='mobile'.
+  test('opening the menu sets data-open="true" on the items region (mobileMenuOpen=true drives variant="mobile")', async () => {
+    // In Svelte's createRawSnippet, setup() runs once at mount. Reactive snippet parameter
+    // changes cannot be directly observed via the setup closure. Instead we verify the
+    // full state chain: click → mobileMenuOpen=true → data-open='true' on the items region.
+    // The variant derivation ($derived(menuToggle !== undefined && mobileMenuOpen ? 'mobile' : 'horizontal'))
+    // is deterministic — when data-open='true', variant was 'mobile'. Initial variant='horizontal'
+    // is confirmed directly via the captured closure in the test above this one.
     let capturedVariant: string | undefined;
     const captureSnippet = createRawSnippet<[{ variant: string }]>((getCtx) => ({
       render: () => `<span></span>`,

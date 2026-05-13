@@ -20,13 +20,13 @@
     </button>
   {/snippet}
   {#snippet items({ variant })}
-    <NavigationItem {variant} onClick={() => (active = 'home')} active={active === 'home'}>
+    <NavigationItem {variant} onclick={() => (active = 'home')} active={active === 'home'}>
       Home
     </NavigationItem>
-    <NavigationItem {variant} onClick={() => (active = 'docs')} active={active === 'docs'}>
+    <NavigationItem {variant} onclick={() => (active = 'docs')} active={active === 'docs'}>
       Docs
     </NavigationItem>
-    <NavigationItem {variant} onClick={() => (active = 'blog')} active={active === 'blog'}>
+    <NavigationItem {variant} onclick={() => (active = 'blog')} active={active === 'blog'}>
       Blog
     </NavigationItem>
   {/snippet}

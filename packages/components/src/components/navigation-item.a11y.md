@@ -5,7 +5,7 @@
 NavigationItem renders as one of two native elements depending on the props passed:
 
 - **`<a href="...">`** — when the `href` prop is present (link arm). Use this when the item navigates to a URL.
-- **`<button type="button">`** — when the `onClick` prop is present (button arm). Use this when the item triggers an action (e.g., filtering, opening a panel) without changing the URL.
+- **`<button type="button">`** — when the `onclick` prop is present (button arm). Use this when the item triggers an action (e.g., filtering, opening a panel) without changing the URL.
 
 Choosing the semantically correct element is the foundation of accessible navigation: screen readers announce `<a>` as a "link" and `<button>` as a "button", which sets the correct expectation for keyboard and pointer users.
 

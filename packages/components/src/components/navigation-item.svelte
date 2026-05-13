@@ -11,9 +11,9 @@
   };
 
   type LinkArm = CommonArm & { href: string };
-  type ButtonArm = CommonArm & { onClick: (event: MouseEvent) => void };
+  type ButtonArm = CommonArm & { onclick: (event: MouseEvent) => void };
 
-  /** Props for the NavigationItem component. Pass `href` for a link, `onClick` for a button. */
+  /** Props for the NavigationItem component. Pass `href` for a link, `onclick` for a button. */
   export type NavigationItemProps = LinkArm | ButtonArm;
 </script>
 
@@ -35,7 +35,7 @@
       return;
     }
     if (!isLink) {
-      (props as { onClick: (event: MouseEvent) => void }).onClick(event);
+      (props as { onclick: (event: MouseEvent) => void }).onclick(event);
     }
   }
 </script>
