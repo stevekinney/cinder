@@ -87,7 +87,7 @@ describe('SurfaceContext', () => {
       const { container } = render(SurfaceWithProbe, {
         props: { tone },
       });
-      const probe = container.querySelector('[data-testid="probe-tone"]');
+      const probe = container.querySelector('.cinder-surface [data-testid="probe-tone"]');
       expect(probe?.getAttribute('data-tone')).toBe(tone);
     },
   );
