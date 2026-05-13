@@ -72,7 +72,7 @@
           dialogElement.querySelectorAll<HTMLElement>(
             'button, input, select, textarea, [tabindex]',
           ),
-        ).some((el) => (el as HTMLElement & { autofocus?: boolean }).autofocus === true);
+        ).some((el) => el.autofocus === true);
       if (!hasExplicitAutofocus && bodyElement) {
         bodyElement.focus();
       }

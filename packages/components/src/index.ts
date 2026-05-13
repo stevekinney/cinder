@@ -40,9 +40,6 @@ export type { CodeBlockProps } from './components/code-block.svelte';
 export { default as ColorSwatchPicker } from './components/color-swatch-picker.svelte';
 export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swatch-picker.svelte';
 
-export { default as ConfirmDialog } from './components/confirm-dialog.svelte';
-export type { ConfirmDialogProps } from './components/confirm-dialog.svelte';
-
 export { default as Combobox } from './components/combobox.svelte';
 export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
 
@@ -51,6 +48,9 @@ export type { CommandItemProps } from './components/command-item.svelte';
 
 export { default as CommandPalette } from './components/command-palette.svelte';
 export type { CommandPaletteProps } from './components/command-palette.svelte';
+
+export { default as ConfirmDialog } from './components/confirm-dialog.svelte';
+export type { ConfirmDialogProps } from './components/confirm-dialog.svelte';
 
 export { default as CopyButton } from './components/copy-button.svelte';
 export type { CopyButtonProps } from './components/copy-button.svelte';
