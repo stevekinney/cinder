@@ -19,7 +19,19 @@
 <script lang="ts">
   import { classNames } from '../utilities/class-names.ts';
 
-  let { ariaLabel, class: className, children, ...rest }: SideNavigationProps = $props();
+  type SideNavigationRuntimeProps = SideNavigationProps & {
+    'aria-label'?: unknown;
+    'aria-labelledby'?: unknown;
+  };
+
+  let {
+    ariaLabel,
+    class: className,
+    children,
+    'aria-label': _ariaLabelAttribute,
+    'aria-labelledby': _ariaLabelledbyAttribute,
+    ...rest
+  }: SideNavigationRuntimeProps = $props();
 
   const validatedLabel = $derived.by(() => {
     if (ariaLabel.trim() === '') {
