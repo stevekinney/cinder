@@ -40,7 +40,11 @@
     children: Snippet;
     /** Optional trailing CTA region (e.g., "Renew now" button). */
     actions?: Snippet;
-    /** Extra classes appended to the root element. */
+    /**
+     * Extra classes appended to the root element. Pass via the explicit
+     * `class` prop — it is excluded from rest-prop spread, so writing
+     * `class="x"` inside spread attributes will not reach the root.
+     */
     class?: string;
   };
 
@@ -55,6 +59,9 @@
 <script lang="ts">
   import { classNames } from '../utilities/class-names.ts';
 
+  const FOCUSABLE_SELECTOR =
+    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
   let {
     variant = 'info',
     dismissible = true,
@@ -66,21 +73,53 @@
   }: BannerProps = $props();
 
   let visible = $state(true);
+  let rootElement: HTMLDivElement | undefined = $state();
 
   function handleDismiss() {
+    restoreFocusAfterDismiss();
     visible = false;
     onDismiss?.();
   }
 
+  function restoreFocusAfterDismiss() {
+    if (!rootElement) return;
+    const bannerElement = rootElement;
+    const document = bannerElement.ownerDocument;
+    const activeElement = document.activeElement;
+    if (!(activeElement instanceof HTMLElement) || !bannerElement.contains(activeElement)) return;
+
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+    ).filter(
+      (element) =>
+        element !== activeElement &&
+        !bannerElement.contains(element) &&
+        !element.hidden &&
+        element.getAttribute('aria-hidden') !== 'true' &&
+        !element.closest('[hidden], [inert], [aria-hidden="true"]'),
+    );
+
+    const next = candidates.find((element) =>
+      Boolean(bannerElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    const previous = candidates.findLast((element) =>
+      Boolean(bannerElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
+    );
+
+    (next ?? previous ?? document.body).focus();
+  }
+
   // Strip live-region attributes from rest so a consumer cannot turn a
   // persistent landmark banner back into an assertive announcement (which
-  // would defeat the role="region" design — see banner.a11y.md).
+  // would defeat the role="region" design — see banner.a11y.md). `aria-busy`
+  // is intentionally NOT stripped: it is a status flag, not a live-region
+  // attribute, and is valid on `role="region"` to signal that banner
+  // content is updating.
   const restWithoutLiveRegion = $derived.by(() => {
     const {
       'aria-live': _ariaLive,
       'aria-atomic': _ariaAtomic,
       'aria-relevant': _ariaRelevant,
-      'aria-busy': _ariaBusy,
       ...filtered
     } = rest;
     return filtered;
@@ -93,6 +132,7 @@
 
 {#if visible}
   <div
+    bind:this={rootElement}
     {...restWithoutLiveRegion}
     class={classNames('cinder-banner', className)}
     data-cinder-variant={variant}

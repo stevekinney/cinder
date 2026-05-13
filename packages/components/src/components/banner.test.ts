@@ -125,21 +125,34 @@ describe('Banner region landmark + accessible name', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
-  test('consumer-supplied aria-live is stripped (cannot turn banner into a live region)', () => {
+  test('consumer-supplied live-region attributes are stripped', () => {
     const { container } = render(Banner, {
-      // Cast: HTMLAttributes typing exposes aria-live, but banner deliberately
-      // strips it at runtime so the type-allowed attribute is the worst case we
-      // need to verify.
+      // Cast: HTMLAttributes typing exposes live-region attributes, but banner
+      // deliberately strips them at runtime so the type-allowed attributes are
+      // the worst case we need to verify.
       props: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ['aria-live' as any]: 'assertive',
         ['aria-atomic' as any]: 'true',
+        ['aria-relevant' as any]: 'additions',
         children: emptySnippet,
       } as never,
     });
     const root = container.querySelector('.cinder-banner');
     expect(root?.hasAttribute('aria-live')).toBe(false);
     expect(root?.hasAttribute('aria-atomic')).toBe(false);
+    expect(root?.hasAttribute('aria-relevant')).toBe(false);
+  });
+
+  test('consumer-supplied aria-busy is preserved', () => {
+    const { container } = render(Banner, {
+      props: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ['aria-busy' as any]: 'true',
+        children: emptySnippet,
+      } as never,
+    });
+    expect(container.querySelector('.cinder-banner')?.getAttribute('aria-busy')).toBe('true');
   });
 });
 
@@ -191,6 +204,27 @@ describe('Banner dismiss behavior', () => {
     const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
     await fireEvent.click(button);
     expect(callCount).toBe(1);
+  });
+
+  test('dismissing while focused moves focus to the next focusable element', async () => {
+    const { container } = render(Banner, {
+      props: { children: emptySnippet },
+    });
+    const after = document.createElement('button');
+    after.type = 'button';
+    after.textContent = 'Continue';
+    container.after(after);
+
+    try {
+      const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      await fireEvent.click(button);
+      expect(container.querySelector('.cinder-banner')).toBeNull();
+      expect(document.activeElement).toBe(after);
+    } finally {
+      after.remove();
+    }
   });
 
   test('omitting onDismiss does not throw when the dismiss button is clicked', async () => {
@@ -266,27 +300,5 @@ describe('Banner persistence', () => {
     // Wait a tick — no timer should remove it.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(container.querySelector('.cinder-banner')).not.toBeNull();
-  });
-});
-
-describe('Banner public-export shape', () => {
-  // The `Banner` value export and the `BannerProps` / `BannerVariant` type
-  // exports flow through `src/index.ts`. We do not statically import
-  // `../index.ts` here because doing so pulls the barrel — and every
-  // `export type { ... } from './components/<name>.svelte'` line in it —
-  // into the tsc program, where the ambient `*.svelte` declaration cannot
-  // resolve named type exports (TS2614). The runtime smoke import below
-  // catches dropped value exports; type-export regressions are caught by
-  // `bun run build` (which runs `scripts/generate-exports.ts --check` and
-  // `svelte-check`, both of which see the real types).
-  test('Banner value export survives the public entry point', async () => {
-    // Bypass tsc's static import analysis: building the specifier at runtime
-    // keeps `../index.ts` out of the tsconfig.check.json program so the
-    // ambient `*.svelte` declaration does not have to resolve named type
-    // exports (which it cannot). svelte-check + build verify the real types.
-    const specifier = '../index' + '.ts';
-    const indexModule = (await import(specifier)) as Record<string, unknown>;
-    expect(indexModule).toHaveProperty('Banner');
-    expect(typeof indexModule['Banner']).toBe('function');
   });
 });

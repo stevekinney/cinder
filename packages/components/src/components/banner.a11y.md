@@ -9,7 +9,7 @@ interrupted by an assertive live-region announcement on every page load.
 
 The root element is a `<div>` with:
 
-- `role="region"` — marks the banner as a navigable landmark. ARIA's
+- `role="region"` — marks the banner as a navigable landmark. [ARIA](https://www.w3.org/TR/wai-aria-1.2/)'s
   `region` role only qualifies as a landmark when it has an accessible
   name; that is always supplied here.
 - `aria-label="{variant label}"` by default — derived from the `variant`
@@ -39,11 +39,13 @@ The component computes the accessible name in three tiers:
 `role` is intentionally locked. The component's `BannerProps` `Omit`s
 `role` from the underlying `HTMLAttributes`, so callers cannot silently
 turn the banner into `role="alert"`. The component also strips
-`aria-live`, `aria-atomic`, `aria-relevant`, and `aria-busy` from
-rest-props at runtime — the type system permits them (they live on
-`HTMLAttributes`), but the banner is a landmark, not a live region, and
-allowing those attributes through would reintroduce the assertive-
-announcement behavior `role="region"` was chosen to avoid.
+`aria-live`, `aria-atomic`, and `aria-relevant` from rest-props at
+runtime — the type system permits them (they live on `HTMLAttributes`),
+but the banner is a landmark, not a live region, and allowing those
+attributes through would reintroduce the assertive-announcement behavior
+`role="region"` was chosen to avoid. `aria-busy` is **not** stripped:
+it is a status flag, not a live-region attribute, and is valid on
+`role="region"` to signal that banner content is updating.
 
 ## Why not `role="alert"`?
 
@@ -86,16 +88,17 @@ Banner is not a focus trap. Tab order:
 3. The dismiss button (when `dismissible` is `true`).
 
 Enter or Space on the dismiss button fires the handler. Once dismissed,
-the banner is removed from the DOM; focus moves to the next focusable
-element in document order via the browser's default focus-recovery
-behavior.
+the banner is removed from the DOM. If focus was inside the banner, the
+component moves focus to the next focusable element in document order. If
+there is no later focusable element, it falls back to the nearest previous
+focusable element.
 
 ## Dismiss button
 
 - `<button type="button" aria-label="Dismiss banner">` with an inline
   SVG × icon marked `aria-hidden="true"`.
 - The interactive hit area is expanded to 44×44 px via a non-layout
-  `::after` pseudo-element (WCAG 2.5.5 Target Size).
+  `::after` pseudo-element ([WCAG 2.5.5 Target Size](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html)).
 - The visible focus ring uses a two-tone offset + colored ring derived
   from the active variant token.
 - The dismiss button's `aria-label` is hardcoded to English. Internationalization
@@ -108,7 +111,8 @@ behavior.
 Variant tokens mirror `alert.svelte`'s contrast model — same lightness
 and chroma derivations against `--cinder-info | success | warning |
 danger`. The package does not currently ship an automated contrast check
-for component variants, so this document does **not** assert WCAG AA
+for component variants, so this document does **not** assert
+[WCAG AA](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html)
 compliance: the colors are designed to mirror `alert.svelte`'s contrast
 model; verify manually against your specific background before shipping.
 
