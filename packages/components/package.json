@@ -53,6 +53,10 @@
       "svelte": "./src/components/chat.svelte",
       "types": "./dist/components/chat.svelte.d.ts"
     },
+    "./checkbox-group": {
+      "svelte": "./src/components/checkbox-group.svelte",
+      "types": "./dist/components/checkbox-group.svelte.d.ts"
+    },
     "./checkbox": {
       "svelte": "./src/components/checkbox.svelte",
       "types": "./dist/components/checkbox.svelte.d.ts"
@@ -125,14 +129,6 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
-    "./feed-event": {
-      "svelte": "./src/components/feed-event.svelte",
-      "types": "./dist/components/feed-event.svelte.d.ts"
-    },
-    "./feed": {
-      "svelte": "./src/components/feed.svelte",
-      "types": "./dist/components/feed.svelte.d.ts"
-    },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
       "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
@@ -168,6 +164,14 @@
     "./form-section": {
       "svelte": "./src/components/form-section.svelte",
       "types": "./dist/components/form-section.svelte.d.ts"
+    },
+    "./feed-event": {
+      "svelte": "./src/components/feed-event.svelte",
+      "types": "./dist/components/feed-event.svelte.d.ts"
+    },
+    "./feed": {
+      "svelte": "./src/components/feed.svelte",
+      "types": "./dist/components/feed.svelte.d.ts"
     },
     "./grid-list-item": {
       "svelte": "./src/components/grid-list-item.svelte",

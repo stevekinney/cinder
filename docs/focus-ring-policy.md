@@ -62,7 +62,7 @@ Use when:
 }
 ```
 
-**Why the transparent outline is load-bearing.** In Windows High Contrast Mode `box-shadow` is suppressed by the browser. Without an outline channel reserved, the focus indicator vanishes — a WCAG 2.4.7 failure. The forced-colors block repaints that channel with a system color. Never omit `outline: var(--cinder-ring-width) solid transparent` from a Strategy B rule.
+**Why the transparent outline is load-bearing.** In Windows High Contrast Mode `box-shadow` is suppressed by the browser. Without an outline channel reserved, the focus indicator vanishes — a [WCAG 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html) failure. The forced-colors block repaints that channel with a system color. Never omit `outline: var(--cinder-ring-width) solid transparent` from a Strategy B rule.
 
 **Forced-colors color choice.** Use `ButtonText` when the element is `<button>`-shaped or `role="menuitem"` — anything the user clicks or activates. Use `Highlight` for text-entry surfaces (`input`, `textarea`, `select`) and for selection states.
 

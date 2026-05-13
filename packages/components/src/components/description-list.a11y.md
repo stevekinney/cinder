@@ -28,7 +28,7 @@ Any interactive element rendered through the `actions` snippet **must** set an `
 {/snippet}
 ```
 
-Bare "Edit" or "Delete" labels violate WCAG 2.4.4 (Link Purpose in Context) when stripped from surrounding text. The `actions` snippet receives the full `DescriptionListItem` to make disambiguation ergonomic.
+Bare "Edit" or "Delete" labels violate [WCAG 2.4.4 Link Purpose in Context](https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html) when stripped from surrounding text. The `actions` snippet receives the full `DescriptionListItem` to make disambiguation ergonomic.
 
 ## Keying and Duplicate Terms
 

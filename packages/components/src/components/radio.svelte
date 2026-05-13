@@ -20,6 +20,8 @@
     value: string;
     /** Visible label rendered in a `<label>` element associated via `for`. */
     label: string;
+    /** Helper text rendered as `<p id="{id}-description">`, wired via aria-describedby. */
+    description?: string;
     /** Override the group's `disabled` for this single radio. */
     disabled?: boolean;
     /** Extra class names merged with `.cinder-radio`. */
@@ -30,11 +32,20 @@
 <script lang="ts">
   import { getContext } from 'svelte';
 
-  import { ariaInvalid } from '../_internal/field-control.ts';
+  import { ariaInvalid, composeDescribedBy, describeId } from '../_internal/field-control.ts';
   import { RADIO_GROUP_CONTEXT_KEY, type RadioGroupContext } from './radio-group.svelte';
   import { cn } from '../utilities/class-names.ts';
 
-  let { id, value, label, disabled, class: className, ...rest }: RadioProps = $props();
+  let {
+    id,
+    value,
+    label,
+    description,
+    disabled,
+    class: className,
+    'aria-describedby': consumerAriaDescribedBy,
+    ...rest
+  }: RadioProps = $props();
 
   const rawGroup = getContext<RadioGroupContext | undefined>(RADIO_GROUP_CONTEXT_KEY);
   if (!rawGroup) {
@@ -45,13 +56,22 @@
   const checked = $derived(group.value === value);
   const effectiveDisabled = $derived(disabled ?? group.disabled);
 
+  const descriptionId = $derived(describeId(id, !!description));
+  const describedBy = $derived(composeDescribedBy(descriptionId, consumerAriaDescribedBy));
+
   function handleChange(): void {
     if (effectiveDisabled) return;
     group.select(value);
   }
 </script>
 
-<div class="cinder-radio-row">
+<div
+  class="cinder-radio-row"
+  data-checked={checked || undefined}
+  data-disabled={effectiveDisabled || undefined}
+  data-invalid={group.invalid || undefined}
+  data-has-description={description ? '' : undefined}
+>
   <input
     {id}
     type="radio"
@@ -63,8 +83,18 @@
     onchange={handleChange}
     class={cn('cinder-radio', className)}
     {...rest}
+    aria-describedby={describedBy}
   />
   <label for={id} class="cinder-radio-row__label" data-disabled={effectiveDisabled || undefined}>
     {label}
   </label>
+  {#if description}
+    <p
+      id="{id}-description"
+      class="cinder-radio-row__description"
+      data-disabled={effectiveDisabled || undefined}
+    >
+      {description}
+    </p>
+  {/if}
 </div>
