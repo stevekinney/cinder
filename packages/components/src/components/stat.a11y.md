@@ -7,7 +7,8 @@
 - **`role="group"`** with **`aria-labelledby`** pointing at both the label span's `id` and the value span's `id`.
   - This makes the accessible name read as one unit — e.g., "Monthly Revenue 1,234,567" — so a screen reader user hears label and value together when navigating into the group.
   - Using `aria-label={label}` alone would hide the value from the accessible name, which is the wrong tradeoff for a statistic widget.
-  - The IDs are derived from a stable, deterministic prefix based on the `label` prop so they are consistent between SSR and hydration.
+  - IDs are generated via a counter (`useId`) so each instance is unique even when multiple stats share the same label. When you need a specific, predictable ID (e.g. for testing or for `aria-describedby` cross-references from another element), pass an explicit `id` prop — this overrides the auto-generated value and is forwarded as the base for all internal element IDs.
+  - **ID collision avoidance:** If you render two `<Stat label="Revenue">` components on the same page without passing `id`, the counter guarantees distinct IDs. But if you need deterministic, human-readable IDs (e.g. `"summary-revenue"` and `"detail-revenue"`), pass them explicitly so your tests and any external `aria-describedby` references remain stable.
 
 ### Change indicator (`.cinder-stat__change`)
 

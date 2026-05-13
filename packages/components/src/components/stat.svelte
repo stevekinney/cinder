@@ -42,6 +42,7 @@
 <script lang="ts">
   import { classNames } from '../utilities/class-names.ts';
   import { formatNumber } from '../utilities/format-number.ts';
+  import { useId } from '../utilities/use-id.ts';
 
   let {
     label,
@@ -55,7 +56,12 @@
     ...rest
   }: StatProps = $props();
 
-  const stableId = $derived(id ?? `cinder-stat-${label.toLowerCase().replace(/\s+/g, '-')}`);
+  // useId() generates a stable counter-based suffix so two <Stat> components with
+  // the same label on one page get distinct IDs. Pass an explicit `id` prop to
+  // control the base when a specific value is required (e.g. for testing or server
+  // rendering where instance order must be deterministic).
+  const instanceId = useId('cinder-stat');
+  const stableId = $derived(id ?? instanceId);
   const labelId = $derived(`${stableId}-label`);
   const valueId = $derived(`${stableId}-value`);
 
@@ -83,7 +89,6 @@
   class={classNames('cinder-stat', customClassName)}
   role="group"
   aria-labelledby={`${labelId} ${valueId}`}
-  data-cinder-direction={change?.direction}
 >
   {#if icon}
     <span class="cinder-stat__icon" aria-hidden="true">{@render icon()}</span>

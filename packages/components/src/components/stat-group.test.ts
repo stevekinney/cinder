@@ -1,11 +1,13 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
+
+afterEach(() => cleanup());
 const { default: StatGroup } = await import('./stat-group.svelte');
 const { createRawSnippet } = await import('svelte');
 

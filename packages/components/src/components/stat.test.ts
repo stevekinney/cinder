@@ -1,13 +1,15 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Stat } = await import('./stat.svelte');
 const { createRawSnippet } = await import('svelte');
+
+afterEach(() => cleanup());
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -57,6 +59,16 @@ describe('Stat', () => {
       valueFormatOptions: { style: 'percent', maximumFractionDigits: 1 },
     });
     expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('12.3%');
+  });
+
+  test('change element is not rendered when change prop is omitted', () => {
+    const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
+    expect(container.querySelector('.cinder-stat__change')).toBeNull();
+  });
+
+  test('icon wrapper is not rendered when icon prop is omitted', () => {
+    const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
+    expect(container.querySelector('.cinder-stat__icon')).toBeNull();
   });
 
   test('change without ariaLabel or description synthesizes sr-only text for up direction', () => {
@@ -205,5 +217,28 @@ describe('Stat', () => {
     });
     const root = container.querySelector('.cinder-stat');
     expect(root?.getAttribute('data-testid')).toBe('revenue-stat');
+  });
+
+  test('explicit id prop sets the base for labelId and valueId', () => {
+    const { container } = render(Stat, {
+      id: 'my-revenue-stat',
+      label: 'Revenue',
+      value: '$1,000',
+    });
+    const root = container.querySelector('.cinder-stat');
+    expect(root?.getAttribute('id')).toBe('my-revenue-stat');
+    const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
+    expect(ariaLabelledby).toBe('my-revenue-stat-label my-revenue-stat-value');
+    expect(container.querySelector('#my-revenue-stat-label')?.textContent).toContain('Revenue');
+    expect(container.querySelector('#my-revenue-stat-value')?.textContent).toContain('$1,000');
+  });
+
+  test('two Stat instances without an id prop get different auto-generated ids', () => {
+    const { container: c1 } = render(Stat, { label: 'Revenue', value: '$1,000' });
+    const { container: c2 } = render(Stat, { label: 'Revenue', value: '$2,000' });
+    const id1 = c1.querySelector('.cinder-stat')?.getAttribute('aria-labelledby');
+    const id2 = c2.querySelector('.cinder-stat')?.getAttribute('aria-labelledby');
+    // useId() counter ensures each instance gets unique IDs even with the same label.
+    expect(id1).not.toBe(id2);
   });
 });
