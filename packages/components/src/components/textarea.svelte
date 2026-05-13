@@ -18,6 +18,14 @@
     disabled?: boolean;
     /** Extra class names merged with `.cinder-textarea`. */
     class?: string;
+    /**
+     * When `true` AND `maxlength` is set, renders a live character counter
+     * (`{value.length}/{maxlength}`) below the textarea. The counter element
+     * is wired into `aria-describedby` so screen readers announce it as part
+     * of the field's description, and it is also placed inside an
+     * `aria-live="polite"` region so updates are announced as the user types.
+     */
+    showCount?: boolean;
   };
 </script>
 
@@ -29,6 +37,7 @@
     errorId as buildErrorId,
   } from '../_internal/field-control.ts';
   import { classNames } from '../utilities/class-names.ts';
+  import { resolveMaximumLength } from './textarea-count.ts';
 
   let {
     id,
@@ -39,12 +48,17 @@
     rows = 4,
     disabled = false,
     class: customClassName,
+    maxlength,
+    showCount = false,
     ...rest
   }: TextareaProps = $props();
 
   const descriptionId = $derived(describeId(id, !!description));
   const errId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+  const maximumLength = $derived(resolveMaximumLength(maxlength));
+  const countId = $derived(showCount && maximumLength !== undefined ? `${id}-count` : undefined);
+  const currentCount = $derived(value?.length ?? 0);
+  const describedBy = $derived(composeDescribedBy(descriptionId, countId, errId));
 </script>
 
 <div class="cinder-textarea-field">
@@ -55,6 +69,7 @@
     {id}
     {rows}
     {disabled}
+    {maxlength}
     class={classNames('cinder-textarea', customClassName)}
     aria-invalid={ariaInvalid(!!error)}
     aria-describedby={describedBy}
@@ -66,5 +81,10 @@
   {/if}
   {#if error}
     <p id={errId} class="cinder-textarea-error" aria-live="polite">{error}</p>
+  {/if}
+  {#if countId}
+    <p id={countId} class="cinder-textarea-count" aria-live="polite">
+      {currentCount}/{maximumLength}
+    </p>
   {/if}
 </div>
