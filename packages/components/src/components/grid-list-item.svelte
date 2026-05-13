@@ -1,30 +1,12 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
-  import type { HTMLAttributes } from 'svelte/elements';
+  import type { HTMLAnchorAttributes, HTMLAttributes } from 'svelte/elements';
 
-  export type GridListItemProps = Omit<HTMLAttributes<HTMLLIElement>, 'title'> & {
-    /**
-     * Optional URL. When present AND `title` is also provided, the title
-     * becomes a stretched link covering the entire item via a pseudo-element
-     * overlay. Only the `actions` snippet (and descendants marked with
-     * `data-cinder-stretched-link-escape`) remain pointer-operable above
-     * the overlay.
-     *
-     * If `href` is provided without `title`, no anchor is rendered.
-     */
-    href?: string;
-    /**
-     * Forwarded to the stretched-link anchor when `href` is set. When
-     * `target` matches `"_blank"` (case-insensitive), the component
-     * automatically composes `rel="noopener noreferrer"` with any
-     * consumer-supplied `rel` tokens to prevent reverse-tabnapping.
-     */
-    target?: string;
-    rel?: string;
+  type GridListItemBase = Omit<HTMLAttributes<HTMLLIElement>, 'title'> & {
     class?: string;
     /** Optional image region (avatar, thumbnail). */
     image?: Snippet;
-    /** Primary label. Required when `href` is set for accessible link text. */
+    /** Primary label. Provides the accessible name for the stretched link when `href` is set. */
     title?: Snippet;
     /** Secondary description. */
     subtitle?: Snippet;
@@ -36,6 +18,33 @@
      */
     actions?: Snippet;
   };
+
+  /** Non-linkified item — no stretched-link overlay. */
+  type GridListItemStatic = GridListItemBase & {
+    href?: never;
+    target?: never;
+    rel?: never;
+  };
+
+  /**
+   * Linkified item — `title` becomes a stretched link covering the entire card
+   * via a pseudo-element overlay. Only `actions` (and descendants marked with
+   * `data-cinder-stretched-link-escape`) remain pointer-operable above the overlay.
+   *
+   * If `title` is absent, no anchor is rendered even when `href` is set.
+   */
+  type GridListItemLinked = GridListItemBase & {
+    href: string;
+    /**
+     * When `target` matches `"_blank"` (case-insensitive), the component
+     * automatically composes `rel="noopener noreferrer"` with any
+     * consumer-supplied `rel` tokens to prevent reverse-tabnapping.
+     */
+    target?: HTMLAnchorAttributes['target'];
+    rel?: HTMLAnchorAttributes['rel'];
+  };
+
+  export type GridListItemProps = GridListItemStatic | GridListItemLinked;
 </script>
 
 <script lang="ts">

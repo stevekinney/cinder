@@ -40,12 +40,6 @@
     border-color 150ms ease;
 }
 
-/* Lift the whole tile when any interactive descendant takes keyboard focus. */
-.cinder-grid-list__item:focus-within {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: var(--cinder-ring-offset);
-}
-
 /* ----------------------------------------
  * Snippet wrappers — provide stable selectors and predictable layout.
  * All wrappers sit UNDER the stretched-link overlay except `.cinder-grid-list__actions`.
@@ -96,10 +90,22 @@
   z-index: 0;
 }
 
-/* Suppress the default :focus-visible outline on the anchor itself — the
-   :focus-within rule on the item already provides a focus ring. */
+/* Focus ring on the stretched-link anchor. Uses box-shadow offset technique
+   to float the ring outside the card's border, matching stacked-list-item.css. */
 .cinder-grid-list__link:focus-visible {
-  outline: none;
+  outline: var(--cinder-ring-width) solid transparent;
+  border-radius: var(--cinder-radius-lg);
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+/* Forced Colors Mode — box-shadow rings are invisible; use a real outline. */
+@media (forced-colors: active) {
+  .cinder-grid-list__link:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
 }
 
 /* ----------------------------------------

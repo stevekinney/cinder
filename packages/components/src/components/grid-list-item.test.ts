@@ -174,4 +174,29 @@ describe('GridListItem', () => {
     expect(li?.getAttribute('class')).toContain('cinder-grid-list__item');
     expect(li?.getAttribute('class')).toContain('my-custom-class');
   });
+
+  test('optional snippet wrappers are absent when snippets not provided', () => {
+    const { container } = render(GridListItem, { props: {} });
+    const li = container.querySelector('li.cinder-grid-list__item') as HTMLElement;
+    expect(li.querySelector('.cinder-grid-list__image')).toBeNull();
+    expect(li.querySelector('.cinder-grid-list__title')).toBeNull();
+    expect(li.querySelector('.cinder-grid-list__subtitle')).toBeNull();
+    expect(li.querySelector('.cinder-grid-list__meta')).toBeNull();
+    expect(li.querySelector('.cinder-grid-list__actions')).toBeNull();
+  });
+
+  test('non-_blank target does not inject security tokens', () => {
+    const { container } = render(GridListItem, {
+      props: {
+        href: '/people/jane',
+        title: textSnippet('Jane'),
+        target: '_self',
+        rel: 'external',
+      },
+    });
+    const anchor = container.querySelector('a.cinder-grid-list__link');
+    const relTokens = (anchor?.getAttribute('rel') ?? '').split(/\s+/);
+    expect(relTokens).not.toContain('noopener');
+    expect(relTokens).not.toContain('noreferrer');
+  });
 });
