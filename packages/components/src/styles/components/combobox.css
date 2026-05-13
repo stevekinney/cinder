@@ -83,11 +83,38 @@
 }
 
 .cinder-combobox__option {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
   padding: var(--cinder-space-1-5) var(--cinder-space-3);
   border-radius: var(--cinder-radius-sm);
   cursor: pointer;
   font-size: var(--cinder-text-sm);
   color: var(--cinder-text);
+}
+
+.cinder-combobox__option-avatar {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--cinder-radius-full);
+  object-fit: cover;
+}
+
+.cinder-combobox__option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cinder-combobox__option-label {
+  line-height: inherit;
+}
+
+.cinder-combobox__option-description {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+  line-height: var(--cinder-leading-snug);
 }
 
 .cinder-combobox__option[data-cinder-active] {
@@ -120,6 +147,16 @@
   z-index: var(--cinder-z-popover);
 }
 
+/* Hide when not active — visibility keeps the live region in the a11y tree. */
+.cinder-combobox__empty:not([data-cinder-active]) {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
 .cinder-combobox__description {
   font-size: var(--cinder-text-xs);
   line-height: var(--cinder-leading-normal);
@@ -132,4 +169,21 @@
   line-height: var(--cinder-leading-normal);
   color: var(--cinder-danger);
   margin: 0;
+}
+
+/* Hide the always-present error live region when no error is active. */
+.cinder-combobox__error:not([data-cinder-error]) {
+  position: absolute;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Forced Colors Mode: restore outline-based focus ring for the combobox input
+ * because box-shadow is ignored in Windows High Contrast Mode. */
+@media (forced-colors: active) {
+  .cinder-combobox__input:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
 }

@@ -5,8 +5,16 @@
   export type ComboboxOption = {
     /** Submitted value. */
     value: string;
-    /** Visible label. */
+    /** Visible label (primary line). */
     label: string;
+    /** Optional secondary description rendered beneath the label inside the option. */
+    description?: string;
+    /**
+     * Optional avatar image URL rendered to the left of the label.
+     * The avatar is decorative — its alt text is empty because the
+     * option's accessible name already includes the label.
+     */
+    avatar?: string;
     /** When true, the option is non-selectable. */
     disabled?: boolean;
   };
@@ -53,6 +61,13 @@
     disabled?: boolean;
     /** Hard cap on visible filtered options. Default 200. */
     maxVisibleOptions?: number;
+    /**
+     * External element id(s) to compose into `aria-describedby`. Composed
+     * after the component-generated description and error ids, matching the
+     * field-control contract in Select. Useful for tooltip ids, counter ids,
+     * or any external hint.
+     */
+    'aria-describedby'?: string;
     /** Additional class names merged with `.cinder-combobox`. */
     class?: string;
   };
@@ -80,16 +95,22 @@
     disabled = false,
     maxVisibleOptions = 200,
     class: className,
+    'aria-describedby': consumerDescribedBy,
   }: ComboboxProps = $props();
 
   const listboxId = `${id}-listbox`;
   const descriptionId = $derived(describeId(id, !!description));
+  // errId only included in aria-describedby when error is active.
   const errId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+  const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
   const defaultFilter = (option: ComboboxOption, query: string): boolean => {
     if (!query) return true;
-    return option.label.toLowerCase().includes(query.toLowerCase());
+    const q = query.toLowerCase();
+    return (
+      option.label.toLowerCase().includes(q) ||
+      (option.description?.toLowerCase().includes(q) ?? false)
+    );
   };
 
   const filteredOptions = $derived.by(() => {
@@ -232,6 +253,7 @@
           class="cinder-combobox__option"
           aria-selected={value === option.value}
           aria-disabled={option.disabled || undefined}
+          aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
           data-cinder-active={index === activeIndex || undefined}
           onmousedown={(event) => {
             // mousedown rather than click so the option fires before the
@@ -243,19 +265,41 @@
             activeIndex = index;
           }}
         >
-          {option.label}
+          {#if option.avatar?.trim()}
+            <img class="cinder-combobox__option-avatar" src={option.avatar} alt="" loading="lazy" />
+          {/if}
+          <span class="cinder-combobox__option-text">
+            <span class="cinder-combobox__option-label">{option.label}</span>
+            {#if option.description}
+              <span class="cinder-combobox__option-description">{option.description}</span>
+            {/if}
+          </span>
         </li>
       {/each}
     </ul>
-  {:else if open && filteredOptions.length === 0}
-    <div class="cinder-combobox__empty" role="status">No results</div>
   {/if}
+
+  <!-- Always in DOM so screen readers hear "No results" when text is injected.
+       Freshly-mounted role="status" nodes are not reliably announced by NVDA/JAWS. -->
+  <div
+    class="cinder-combobox__empty"
+    role="status"
+    data-cinder-active={(open && filteredOptions.length === 0) || undefined}
+  >
+    {open && filteredOptions.length === 0 ? 'No results' : ''}
+  </div>
 
   {#if description}
     <p id={descriptionId} class="cinder-combobox__description">{description}</p>
   {/if}
 
-  {#if error}
-    <p id={errId} class="cinder-combobox__error" aria-live="polite">{error}</p>
-  {/if}
+  <!-- Always in DOM for the same reason — live region must pre-exist before text is injected. -->
+  <p
+    id="{id}-error"
+    class="cinder-combobox__error"
+    aria-live="polite"
+    data-cinder-error={!!error || undefined}
+  >
+    {error ?? ''}
+  </p>
 </div>

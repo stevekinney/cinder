@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -14,6 +15,10 @@ const fruits = [
   { value: 'cherry', label: 'Cherry' },
   { value: 'durian', label: 'Durian', disabled: true },
 ];
+
+function readComboboxStyles(): string {
+  return readFileSync(new URL('../styles/components/combobox.css', import.meta.url), 'utf8');
+}
 
 describe('Combobox structure', () => {
   test('renders an input with role=combobox and aria-controls', () => {
@@ -173,7 +178,7 @@ describe('Combobox selection', () => {
 });
 
 describe('Combobox aria wiring', () => {
-  test('error sets aria-invalid="true" and renders a labelled error', () => {
+  test('error sets aria-invalid="true" and renders an aria-live="polite" error region', () => {
     const { container } = render(Combobox, {
       id: 'fruit',
       options: fruits,
@@ -183,7 +188,9 @@ describe('Combobox aria wiring', () => {
     expect(input?.getAttribute('aria-invalid')).toBe('true');
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-error');
-    expect(container.querySelector('#fruit-error')?.textContent?.trim()).toBe('Pick one');
+    const errEl = container.querySelector('#fruit-error');
+    expect(errEl?.textContent?.trim()).toBe('Pick one');
+    expect(errEl?.getAttribute('aria-live')).toBe('polite');
   });
 
   test('description appears in aria-describedby', () => {
@@ -195,5 +202,143 @@ describe('Combobox aria wiring', () => {
     const input = container.querySelector(`#fruit`);
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-description');
+  });
+
+  test('consumer-supplied aria-describedby is composed with component-generated ids', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      description: 'Type to filter',
+      'aria-describedby': 'external-tooltip',
+    });
+    const input = container.querySelector('#fruit');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('fruit-description');
+    expect(describedBy).toContain('external-tooltip');
+    expect(describedBy.indexOf('fruit-description')).toBeLessThan(
+      describedBy.indexOf('external-tooltip'),
+    );
+  });
+
+  test('consumer-supplied aria-describedby alone (no description prop) is forwarded', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      'aria-describedby': 'external-hint',
+    });
+    const input = container.querySelector('#fruit');
+    expect(input?.getAttribute('aria-describedby')).toBe('external-hint');
+  });
+
+  test('inactive error live region is removed from flex layout flow', () => {
+    expect(readComboboxStyles()).toContain(
+      '.cinder-combobox__error:not([data-cinder-error]) {\n  position: absolute;',
+    );
+  });
+});
+
+describe('Combobox rich option rows', () => {
+  const richFruits = [
+    {
+      value: 'apple',
+      label: 'Apple',
+      description: 'A crisp red fruit',
+      avatar: 'https://example.com/apple.png',
+    },
+    { value: 'banana', label: 'Banana', description: 'A yellow curved fruit' },
+    { value: 'cherry', label: 'Cherry' },
+  ];
+
+  test('option with avatar renders an <img> with empty alt', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]');
+    const img = appleOption?.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('alt')).toBe('');
+    expect(img!.getAttribute('src')).toBe('https://example.com/apple.png');
+  });
+
+  test('option with empty-string avatar does not render an <img>', async () => {
+    const options = [{ value: 'x', label: 'X', avatar: '' }];
+    const { container } = render(Combobox, { id: 'rich', options });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = container.querySelector('[role="option"]');
+    expect(option?.querySelector('img')).toBeNull();
+  });
+
+  test('option with whitespace-only avatar does not render an <img>', async () => {
+    const options = [{ value: 'x', label: 'X', avatar: '   ' }];
+    const { container } = render(Combobox, { id: 'rich', options });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = container.querySelector('[role="option"]');
+    expect(option?.querySelector('img')).toBeNull();
+  });
+
+  test('option with description renders the description text inside the <li>', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]');
+    const desc = appleOption?.querySelector('.cinder-combobox__option-description');
+    expect(desc).not.toBeNull();
+    expect(desc!.textContent).toBe('A crisp red fruit');
+  });
+
+  test('option with description carries aria-label composed from label and description', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const appleOption = options[0];
+    expect(appleOption?.getAttribute('aria-label')).toBe('Apple, A crisp red fruit');
+  });
+
+  test('plain option (no description) has no aria-label', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const cherryOption = options[2];
+    expect(cherryOption?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('plain option renders only label, no avatar or description nodes', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const options = container.querySelectorAll('[role="option"]');
+    const cherryOption = options[2];
+    expect(cherryOption?.querySelector('img')).toBeNull();
+    expect(cherryOption?.querySelector('.cinder-combobox__option-description')).toBeNull();
+  });
+
+  test('selecting a rich option sets value and inputValue from value/label only', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const appleOption = container.querySelector('[role="option"]') as Element;
+    await fireEvent.mouseDown(appleOption);
+    // input.value reflects the label (display text)
+    expect(input.value).toBe('Apple');
+    // Re-open to check aria-selected reflects the internal value binding (option.value)
+    await fireEvent.focus(input);
+    const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
+    expect(selectedOption?.querySelector('.cinder-combobox__option-label')?.textContent).toBe(
+      'Apple',
+    );
+  });
+
+  test('default filter matches description substring (case-insensitive)', async () => {
+    const { container } = render(Combobox, { id: 'rich', options: richFruits });
+    const input = container.querySelector('#rich') as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'curved' } });
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(1);
+    expect(options[0]?.querySelector('.cinder-combobox__option-label')?.textContent).toBe('Banana');
   });
 });

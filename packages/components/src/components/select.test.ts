@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, spyOn, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -22,6 +23,10 @@ const defaultOptions = [
   { value: 'b', label: 'Option B' },
   { value: 'c', label: 'Option C' },
 ];
+
+function readSelectStyles(): string {
+  return readFileSync(new URL('../styles/components/select.css', import.meta.url), 'utf8');
+}
 
 describe('Select', () => {
   test('renders <select id={id}> with one <option> per option in options array', () => {
@@ -88,5 +93,154 @@ describe('Select', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+describe('Select field-control contract', () => {
+  test('description renders a <p> and is referenced by aria-describedby', () => {
+    const { container } = render(Select, {
+      props: { id: 'sel', value: 'a', options: defaultOptions, description: 'Pick carefully' },
+    });
+    const selectEl = container.querySelector('select');
+    const descEl = container.querySelector('#sel-description');
+    expect(descEl).not.toBeNull();
+    expect(descEl!.textContent).toBe('Pick carefully');
+    expect(selectEl!.getAttribute('aria-describedby')).toContain('sel-description');
+  });
+
+  test('error renders a <p> with aria-live="polite" and sets aria-invalid="true" on <select>', () => {
+    const { container } = render(Select, {
+      props: { id: 'sel', value: 'a', options: defaultOptions, error: 'Required field' },
+    });
+    const selectEl = container.querySelector('select');
+    const errEl = container.querySelector('#sel-error');
+    expect(errEl).not.toBeNull();
+    expect(errEl!.textContent).toBe('Required field');
+    expect(errEl!.getAttribute('aria-live')).toBe('polite');
+    expect(selectEl!.getAttribute('aria-invalid')).toBe('true');
+    expect(selectEl!.getAttribute('aria-describedby')).toContain('sel-error');
+  });
+
+  test('both description and error present: aria-describedby contains both ids in order', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        description: 'Hint text',
+        error: 'Error text',
+      },
+    });
+    const selectEl = container.querySelector('select');
+    const describedBy = selectEl!.getAttribute('aria-describedby') ?? '';
+    const descIndex = describedBy.indexOf('sel-description');
+    const errIndex = describedBy.indexOf('sel-error');
+    expect(descIndex).toBeGreaterThanOrEqual(0);
+    expect(errIndex).toBeGreaterThanOrEqual(0);
+    expect(descIndex).toBeLessThan(errIndex);
+  });
+
+  test('required prop sets the native required attribute on <select>', () => {
+    const { container } = render(Select, {
+      props: { id: 'sel', value: 'a', options: defaultOptions, required: true },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.hasAttribute('required')).toBe(true);
+  });
+
+  test('no description / no error: aria-describedby is absent (not empty string)', () => {
+    const { container } = render(Select, {
+      props: { id: 'sel', value: 'a', options: defaultOptions },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  test('no error: aria-invalid is absent (not set to "false")', () => {
+    const { container } = render(Select, {
+      props: { id: 'sel', value: 'a', options: defaultOptions },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  test('consumer-supplied aria-describedby is composed with component-generated ids', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        description: 'Hint',
+        'aria-describedby': 'external-tooltip',
+      },
+    });
+    const selectEl = container.querySelector('select');
+    const describedBy = selectEl!.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('sel-description');
+    expect(describedBy).toContain('external-tooltip');
+    expect(describedBy.indexOf('sel-description')).toBeLessThan(
+      describedBy.indexOf('external-tooltip'),
+    );
+  });
+
+  test('consumer-supplied aria-describedby alone (no description prop) is forwarded', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        'aria-describedby': 'external-hint',
+      },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.getAttribute('aria-describedby')).toBe('external-hint');
+  });
+
+  test('consumer aria-invalid is preserved when no error prop is set', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        'aria-invalid': 'true' as const,
+      },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('error prop aria-invalid="true" wins over consumer aria-invalid="false"', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'sel',
+        value: 'a',
+        options: defaultOptions,
+        error: 'Bad value',
+        'aria-invalid': 'false' as const,
+      },
+    });
+    const selectEl = container.querySelector('select');
+    expect(selectEl!.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('empty options branch still carries aria-invalid and aria-describedby when error is set', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(Select, {
+        props: { id: 'empty-sel', value: '', options: [], error: 'Load failed' },
+      });
+      const selectEl = container.querySelector('select');
+      expect(selectEl!.getAttribute('data-cinder-empty')).toBe('true');
+      expect(selectEl!.getAttribute('aria-invalid')).toBe('true');
+      expect(selectEl!.getAttribute('aria-describedby')).toContain('empty-sel-error');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('inactive error live region is removed from flex layout flow', () => {
+    expect(readSelectStyles()).toContain(
+      '.cinder-select-field__error:not([data-cinder-error]) {\n  position: absolute;',
+    );
   });
 });
