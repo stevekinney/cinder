@@ -68,11 +68,9 @@
       // rather than the attribute). The attribute selector alone misses the Svelte case.
       const hasExplicitAutofocus =
         dialogElement.querySelector('[autofocus]') !== null ||
-        Array.from(
-          dialogElement.querySelectorAll<HTMLElement>(
-            'button, input, select, textarea, [tabindex]',
-          ),
-        ).some((el) => el.autofocus === true);
+        Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
+          (el) => el.autofocus === true,
+        );
       if (!hasExplicitAutofocus && bodyElement) {
         bodyElement.focus();
       }

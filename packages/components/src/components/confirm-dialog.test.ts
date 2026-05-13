@@ -32,13 +32,24 @@ const { render, fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 const { default: ConfirmDialog } = await import('./confirm-dialog.svelte');
 
-// Helpers to locate buttons inside the footer without repeated null-checks.
-// Test files may use non-null assertions per CLAUDE.md — test code accepts `any` and `!`.
 function footerButtons(container: HTMLElement): [HTMLButtonElement, HTMLButtonElement] {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const footer = container.querySelector('.cinder-modal__footer')!;
-  const btns = footer.querySelectorAll('button');
-  return [btns[0] as HTMLButtonElement, btns[1] as HTMLButtonElement];
+  const footer = container.querySelector('.cinder-modal__footer');
+  if (!(footer instanceof HTMLElement)) {
+    throw new Error('Expected ConfirmDialog to render a modal footer.');
+  }
+
+  const buttons = Array.from(footer.querySelectorAll('button'));
+  if (buttons.length !== 2) {
+    throw new Error(`Expected ConfirmDialog footer to render 2 buttons, found ${buttons.length}.`);
+  }
+
+  const cancelButton = buttons.at(0);
+  const confirmButton = buttons.at(1);
+  if (!cancelButton || !confirmButton) {
+    throw new Error('Expected ConfirmDialog footer buttons to be present.');
+  }
+
+  return [cancelButton, confirmButton];
 }
 
 describe('ConfirmDialog', () => {

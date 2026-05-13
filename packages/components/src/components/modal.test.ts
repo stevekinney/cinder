@@ -245,6 +245,37 @@ describe('Modal', () => {
     expect(body?.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {
+    const originalFocus = HTMLElement.prototype.focus;
+    const focusTargets: HTMLElement[] = [];
+    HTMLElement.prototype.focus = function focus() {
+      focusTargets.push(this);
+      return originalFocus.call(this);
+    };
+
+    try {
+      const children = createRawSnippet(() => ({
+        render: () => `<a href="/target">Autofocus link</a>`,
+        setup: (node: Element) => {
+          (node as HTMLElement).autofocus = true;
+        },
+      }));
+
+      const { container } = render(Modal, {
+        props: {
+          open: true,
+          title: 'Test Modal',
+          children,
+        },
+      });
+
+      const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+      expect(focusTargets).not.toContain(body);
+    } finally {
+      HTMLElement.prototype.focus = originalFocus;
+    }
+  });
+
   test('close button is the last focusable element inside the panel', () => {
     // The close button was deliberately moved to the end of the DOM so the
     // native <dialog>.showModal() autofocus fallback (first focusable) does
