@@ -79,6 +79,7 @@
   <div class="toolbar-left">
     <SegmentedControl
       id="diff-view-mode"
+      selectionMode="single"
       label="View mode"
       hideLabel
       bind:value={viewMode}
