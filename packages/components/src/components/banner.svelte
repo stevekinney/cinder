@@ -57,6 +57,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { classNames } from '../utilities/class-names.ts';
 
   const FOCUSABLE_SELECTOR =
@@ -75,21 +76,31 @@
   let visible = $state(true);
   let rootElement: HTMLDivElement | undefined = $state();
 
-  function handleDismiss() {
-    restoreFocusAfterDismiss();
+  async function handleDismiss() {
+    if (!visible) return;
+    const focusTarget = rootElement ? resolveFocusTarget(rootElement) : null;
     visible = false;
+    await tick();
     onDismiss?.();
+    focusTarget?.focus();
   }
 
-  function restoreFocusAfterDismiss() {
-    if (!rootElement) return;
-    const bannerElement = rootElement;
-    const document = bannerElement.ownerDocument;
-    const activeElement = document.activeElement;
-    if (!(activeElement instanceof HTMLElement) || !bannerElement.contains(activeElement)) return;
+  function resolveFocusTarget(bannerElement: HTMLElement): HTMLElement | null {
+    const bannerDocument = bannerElement.ownerDocument;
+    const activeElement = bannerDocument.activeElement;
+    if (!(activeElement instanceof HTMLElement) || !bannerElement.contains(activeElement)) {
+      return null;
+    }
+    return findFocusTarget(bannerElement, bannerDocument, activeElement);
+  }
 
+  function findFocusTarget(
+    bannerElement: HTMLElement,
+    bannerDocument: Document,
+    activeElement: HTMLElement,
+  ): HTMLElement {
     const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      bannerDocument.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
     ).filter(
       (element) =>
         element !== activeElement &&
@@ -106,7 +117,7 @@
       Boolean(bannerElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
     );
 
-    (next ?? previous ?? document.body).focus();
+    return next ?? previous ?? bannerDocument.body;
   }
 
   // Strip live-region attributes from rest so a consumer cannot turn a

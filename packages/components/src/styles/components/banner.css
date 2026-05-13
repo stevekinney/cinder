@@ -212,5 +212,6 @@
   .cinder-banner__dismiss:focus-visible {
     outline: var(--cinder-ring-width) solid ButtonText;
     outline-offset: 3px;
+    box-shadow: none;
   }
 }
