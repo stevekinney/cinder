@@ -96,6 +96,12 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte'
 export { default as EmptyState } from './components/empty-state.svelte';
 export type { EmptyStateProps } from './components/empty-state.svelte';
 
+export { default as FeedEvent } from './components/feed-event.svelte';
+export type { FeedEventProps, FeedEventVariant } from './components/feed-event.svelte';
+
+export { default as Feed } from './components/feed.svelte';
+export type { FeedProps } from './components/feed.svelte';
+
 export { default as GridList } from './components/grid-list.svelte';
 export type { GridListProps } from './components/grid-list.svelte';
 
