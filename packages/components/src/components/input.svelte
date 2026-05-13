@@ -1,19 +1,42 @@
 <script lang="ts" module>
+  import type { Snippet } from 'svelte';
   import type { HTMLInputAttributes } from 'svelte/elements';
 
   export type InputType = 'text' | 'email' | 'password' | 'search' | 'tel' | 'url';
 
-  export type InputProps = HTMLInputAttributes & {
-    id: string;
-    value: string;
-    label?: string;
-    description?: string;
-    error?: string;
-    disabled?: boolean;
-    required?: boolean;
-    type?: InputType;
-    class?: string;
-  };
+  type InputAddonProps =
+    | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }
+    | {
+        leading: Snippet<[]>;
+        leadingInteractive?: boolean;
+        trailing?: never;
+        trailingInteractive?: never;
+      }
+    | {
+        leading?: never;
+        leadingInteractive?: never;
+        trailing: Snippet<[]>;
+        trailingInteractive?: boolean;
+      }
+    | {
+        leading: Snippet<[]>;
+        leadingInteractive?: boolean;
+        trailing: Snippet<[]>;
+        trailingInteractive?: boolean;
+      };
+
+  export type InputProps = HTMLInputAttributes &
+    InputAddonProps & {
+      id: string;
+      value: string;
+      label?: string;
+      description?: string;
+      error?: string;
+      disabled?: boolean;
+      required?: boolean;
+      type?: InputType;
+      class?: string;
+    };
 </script>
 
 <script lang="ts">
@@ -38,6 +61,10 @@
     required,
     type = 'text',
     class: className,
+    leading,
+    trailing,
+    leadingInteractive = false,
+    trailingInteractive = false,
     ...rest
   }: InputProps = $props();
 
@@ -52,34 +79,22 @@
     }
   });
 
-  // Own-element ARIA IDs (only when this Input has its own description/error props)
   const ownDescriptionId = $derived(describeId(id, !!description));
   const ownErrorId = $derived(buildErrorId(id, !!error));
-
-  // Per-part resolution: own prop wins; context fills in when own is absent
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-
-  // Final composed aria-describedby
   const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
-
-  // aria-invalid: own error wins; context fills in when own error is absent
   const resolvedAriaInvalid = $derived(
-    error ? ariaInvalid(true) : (context?.invalid ?? ariaInvalid(false)),
+    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
   );
-
-  // required/disabled: explicit prop (including false) wins over context; context wins over absent
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+
+  const hasGroup = $derived(!!leading || !!trailing);
+  const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
 </script>
 
-<div class="cinder-input-field">
-  {#if label}
-    <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
-      {label}
-    </label>
-  {/if}
-
+{#snippet inputElement()}
   <input
     {id}
     {type}
@@ -91,6 +106,42 @@
     aria-describedby={describedBy}
     {...rest}
   />
+{/snippet}
+
+<div class="cinder-input-field">
+  {#if label}
+    <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
+      {label}
+    </label>
+  {/if}
+
+  {#if hasGroup}
+    <div
+      class="cinder-input-group"
+      data-leading={leading ? '' : undefined}
+      data-trailing={trailing ? '' : undefined}
+      data-disabled={resolvedDisabled ? '' : undefined}
+      data-invalid={isInvalid ? '' : undefined}
+    >
+      {#if leading}
+        <span
+          class="cinder-input-group__leading"
+          aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
+        >
+      {/if}
+
+      {@render inputElement()}
+
+      {#if trailing}
+        <span
+          class="cinder-input-group__trailing"
+          aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
+        >
+      {/if}
+    </div>
+  {:else}
+    {@render inputElement()}
+  {/if}
 
   {#if description}
     <p id={ownDescriptionId} class="cinder-input-field__description">{description}</p>

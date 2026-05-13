@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, spyOn, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -14,6 +15,13 @@ const { default: FormFieldInputFixture } =
   await import('../test/fixtures/form-field-input-fixture.svelte');
 const { default: FormFieldIdMismatchFixture } =
   await import('../test/fixtures/form-field-id-mismatch-fixture.svelte');
+
+function textSnippet(text: string) {
+  return createRawSnippet(() => ({
+    render: () => `<span>${text}</span>`,
+    setup: () => {},
+  }));
+}
 
 describe('Input rendering', () => {
   test('renders with required id prop', () => {
@@ -47,9 +55,9 @@ describe('Input rendering', () => {
     });
     const input = container.querySelector('#email');
     expect(input?.getAttribute('aria-describedby')).toBe('email-description');
-    const descriptionEl = container.querySelector('#email-description');
-    expect(descriptionEl).not.toBeNull();
-    expect(descriptionEl?.textContent).toContain('We will never share your email.');
+    const descriptionElement = container.querySelector('#email-description');
+    expect(descriptionElement).not.toBeNull();
+    expect(descriptionElement?.textContent).toContain('We will never share your email.');
   });
 
   test('error wires aria-invalid="true" on input', () => {
@@ -66,9 +74,9 @@ describe('Input rendering', () => {
     });
     const input = container.querySelector('#email');
     expect(input?.getAttribute('aria-describedby')).toBe('email-error');
-    const errorEl = container.querySelector('#email-error');
-    expect(errorEl).not.toBeNull();
-    expect(errorEl?.textContent).toContain('Enter a valid email address.');
+    const errorElement = container.querySelector('#email-error');
+    expect(errorElement).not.toBeNull();
+    expect(errorElement?.textContent).toContain('Enter a valid email address.');
   });
 
   test('both description and error are listed in aria-describedby', () => {
@@ -101,7 +109,6 @@ describe('Input rendering', () => {
     const input = container.querySelector('#name') as HTMLInputElement;
     expect(input).not.toBeNull();
     await fireEvent.input(input, { target: { value: 'Alice' } });
-    // After firing the input event, the native element value should reflect the change.
     expect(input.value).toBe('Alice');
   });
 
@@ -180,7 +187,6 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    // Should use input's own description id, not the field's
     expect(input?.getAttribute('aria-describedby')).toContain('ctx-field-description');
   });
 
@@ -195,7 +201,6 @@ describe('Input context inheritance from FormField', () => {
     });
     const input = container.querySelector('#ctx-field');
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
-    // Input's own description id + FormField's error id
     expect(describedBy).toContain('ctx-field-description');
     expect(describedBy).toContain('ctx-field-error');
   });
@@ -242,14 +247,38 @@ describe('Input context inheritance from FormField', () => {
     expect(input?.disabled).toBe(false);
   });
 
+  test('context error marks grouped input wrapper invalid', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldError: 'Field error',
+        inputLeading: textSnippet('$'),
+      },
+    });
+    expect(container.querySelector('.cinder-input-group')?.getAttribute('data-invalid')).toBe('');
+  });
+
+  test('context disabled marks grouped input wrapper disabled', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldDisabled: true,
+        inputLeading: textSnippet('$'),
+      },
+    });
+    expect(container.querySelector('.cinder-input-group')?.getAttribute('data-disabled')).toBe('');
+  });
+
   test('id mismatch fires console.warn', () => {
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
       render(FormFieldIdMismatchFixture, {});
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      const msg = (warnSpy.mock.calls[0] as string[])[0];
-      expect(msg).toContain('field-id');
-      expect(msg).toContain('mismatched-input-id');
+      const message = (warnSpy.mock.calls[0] as string[])[0];
+      expect(message).toContain('field-id');
+      expect(message).toContain('mismatched-input-id');
     } finally {
       warnSpy.mockRestore();
     }
@@ -265,5 +294,205 @@ describe('Input context inheritance from FormField', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+describe('Input group (leading/trailing addons)', () => {
+  test('no group wrapper when no addons provided', () => {
+    const { container } = render(Input, {
+      props: { id: 'plain', value: '' },
+    });
+    expect(container.querySelector('.cinder-input-group')).toBeNull();
+    expect(container.querySelector('.cinder-input')).not.toBeNull();
+  });
+
+  test('group with leading only — wrapper has data-leading, leading span present, trailing absent', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'leading-only',
+        value: '',
+        leading: textSnippet('$'),
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group).not.toBeNull();
+    expect(group?.hasAttribute('data-leading')).toBe(true);
+    expect(group?.hasAttribute('data-trailing')).toBe(false);
+    expect(container.querySelector('.cinder-input-group__leading')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group__trailing')).toBeNull();
+  });
+
+  test('group with trailing only — wrapper has data-trailing, trailing span present, leading absent', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'trailing-only',
+        value: '',
+        trailing: textSnippet('USD'),
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group).not.toBeNull();
+    expect(group?.hasAttribute('data-trailing')).toBe(true);
+    expect(group?.hasAttribute('data-leading')).toBe(false);
+    expect(container.querySelector('.cinder-input-group__trailing')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group__leading')).toBeNull();
+  });
+
+  test('group with both addons — both spans present, input inside group', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'both-addons',
+        value: '',
+        leading: textSnippet('$'),
+        trailing: textSnippet('.00'),
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group__leading')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group__trailing')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group > .cinder-input')).not.toBeNull();
+  });
+
+  test('decorative addon containers have aria-hidden="true" by default', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'decorative',
+        value: '',
+        leading: textSnippet('$'),
+        trailing: textSnippet('USD'),
+      },
+    });
+    const leadingSpan = container.querySelector('.cinder-input-group__leading');
+    const trailingSpan = container.querySelector('.cinder-input-group__trailing');
+    expect(leadingSpan?.getAttribute('aria-hidden')).toBe('true');
+    expect(trailingSpan?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('leadingInteractive=true omits aria-hidden on leading container', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'interactive-leading',
+        value: '',
+        leading: textSnippet('icon'),
+        leadingInteractive: true,
+      },
+    });
+    const leadingSpan = container.querySelector('.cinder-input-group__leading');
+    expect(leadingSpan?.hasAttribute('aria-hidden')).toBe(false);
+  });
+
+  test('trailingInteractive=true omits aria-hidden on trailing container', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'interactive-trailing',
+        value: '',
+        trailing: textSnippet('clear'),
+        trailingInteractive: true,
+      },
+    });
+    const trailingSpan = container.querySelector('.cinder-input-group__trailing');
+    expect(trailingSpan?.hasAttribute('aria-hidden')).toBe(false);
+  });
+
+  test('error prop sets data-invalid on group; inner input has aria-invalid="true"', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'invalid-group',
+        value: '',
+        leading: textSnippet('$'),
+        error: 'Amount is required.',
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.getAttribute('data-invalid')).toBe('');
+    const input = container.querySelector('#invalid-group');
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('aria-invalid="true" via rest props (no error prop) sets data-invalid on group', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'restprop-invalid',
+        value: '',
+        leading: textSnippet('$'),
+        'aria-invalid': 'true',
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.getAttribute('data-invalid')).toBe('');
+    const input = container.querySelector('#restprop-invalid');
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('aria-invalid={true} (boolean) via rest props sets data-invalid on group', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'bool-invalid',
+        value: '',
+        leading: textSnippet('$'),
+        'aria-invalid': true,
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.getAttribute('data-invalid')).toBe('');
+  });
+
+  test('aria-invalid with non-"true" value does NOT set data-invalid on group', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'grammar-invalid',
+        value: '',
+        leading: textSnippet('$'),
+        'aria-invalid': 'grammar',
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.hasAttribute('data-invalid')).toBe(false);
+  });
+
+  test('disabled prop sets data-disabled on group; inner input is disabled', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'disabled-group',
+        value: '',
+        trailing: textSnippet('USD'),
+        disabled: true,
+      },
+    });
+    const group = container.querySelector('.cinder-input-group');
+    expect(group?.getAttribute('data-disabled')).toBe('');
+    const input = container.querySelector('#disabled-group') as HTMLInputElement;
+    expect(input?.disabled).toBe(true);
+  });
+
+  test('bind:value works inside group', async () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'grouped-value',
+        value: '',
+        leading: textSnippet('$'),
+      },
+    });
+    const input = container.querySelector('#grouped-value') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    await fireEvent.input(input, { target: { value: '42' } });
+    expect(input.value).toBe('42');
+  });
+
+  test('aria-describedby still wires description and error ids when grouped', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'grouped-described',
+        value: '',
+        leading: textSnippet('$'),
+        description: 'Enter amount.',
+        error: 'Amount is required.',
+      },
+    });
+    const input = container.querySelector('#grouped-described');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('grouped-described-description');
+    expect(describedBy).toContain('grouped-described-error');
   });
 });

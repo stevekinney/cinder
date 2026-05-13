@@ -116,7 +116,21 @@ export function validateMetaSchema(
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
   const ajv = getMetaValidator(resolved);
-  const valid = ajv.validateSchema(schema);
+  let valid: boolean | Promise<unknown>;
+  try {
+    valid = ajv.validateSchema(schema);
+  } catch (error) {
+    return {
+      valid: false,
+      errors: [
+        {
+          path: '',
+          message: error instanceof Error ? error.message : String(error),
+          keyword: 'schema',
+        },
+      ],
+    };
+  }
 
   return {
     valid: Boolean(valid),

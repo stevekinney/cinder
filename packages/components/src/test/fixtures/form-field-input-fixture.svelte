@@ -1,4 +1,6 @@
 <script lang="ts" module>
+  import type { Snippet } from 'svelte';
+
   /**
    * Test fixture that wraps an Input inside a FormField, forwarding all the
    * props that tests need to vary. Used to test context inheritance — that an
@@ -17,6 +19,7 @@
     inputError?: string;
     inputRequired?: boolean;
     inputDisabled?: boolean;
+    inputLeading?: Snippet<[]>;
   };
 </script>
 
@@ -35,6 +38,7 @@
     inputError,
     inputRequired,
     inputDisabled,
+    inputLeading,
   }: FormFieldInputFixtureProps = $props();
 
   const fieldOptional = $derived({
@@ -53,5 +57,9 @@
 </script>
 
 <FormField id={fieldId} label={fieldLabel} {...fieldOptional}>
-  <Input id={fieldId} value="" {...inputOptional} />
+  {#if inputLeading}
+    <Input id={fieldId} value="" leading={inputLeading} {...inputOptional} />
+  {:else}
+    <Input id={fieldId} value="" {...inputOptional} />
+  {/if}
 </FormField>
