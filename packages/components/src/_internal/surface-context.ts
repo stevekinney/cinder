@@ -30,7 +30,7 @@ export type SurfaceContextValue = {
 };
 
 /** Symbol key for the surface Svelte context. Not exported from package root. */
-export const SURFACE_CONTEXT_KEY: unique symbol = Symbol('cinder.surface');
+export const SURFACE_CONTEXT_KEY = Symbol('cinder.surface');
 
 /**
  * Read the nearest enclosing `<Surface>` context. Returns `undefined` when no

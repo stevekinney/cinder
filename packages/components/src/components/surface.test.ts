@@ -113,7 +113,9 @@ describe('SurfaceContext', () => {
     await waitFor(() => expect(handle).not.toBeNull());
 
     const surface = container.querySelector('.cinder-surface');
+    const probe = container.querySelector('[data-testid="mutator-probe"]');
     expect(surface?.getAttribute('data-cinder-tone')).toBe('default');
+    expect(probe?.getAttribute('data-tone')).toBe('default');
 
     handle!.setTone('inset');
 
@@ -121,6 +123,9 @@ describe('SurfaceContext', () => {
       expect(container.querySelector('.cinder-surface')?.getAttribute('data-cinder-tone')).toBe(
         'inset',
       );
+      expect(
+        container.querySelector('[data-testid="mutator-probe"]')?.getAttribute('data-tone'),
+      ).toBe('inset');
     });
   });
 

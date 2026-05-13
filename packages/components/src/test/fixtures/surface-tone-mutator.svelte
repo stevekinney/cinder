@@ -6,6 +6,7 @@
   export type SurfaceToneMutatorProps = {
     initial: SurfaceTone;
     onReady: (handle: { setTone: (next: SurfaceTone) => void }) => void;
+    testid?: string;
     children?: Snippet;
   };
 </script>
@@ -14,8 +15,9 @@
   import { onMount } from 'svelte';
 
   import Surface from '../../components/surface.svelte';
+  import SurfaceContextProbe from './surface-context-probe.svelte';
 
-  let { initial, onReady, children }: SurfaceToneMutatorProps = $props();
+  let { initial, onReady, testid = 'mutator-probe', children }: SurfaceToneMutatorProps = $props();
 
   let tone = $state<SurfaceTone>(initial);
 
@@ -29,5 +31,6 @@
 </script>
 
 <Surface {tone}>
+  <SurfaceContextProbe {testid} />
   {@render children?.()}
 </Surface>
