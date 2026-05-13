@@ -63,7 +63,7 @@ stable across dark/light themes.
 ## Alpha checkerboard
 
 Alpha-bearing swatches (detected by parsing the `color` string's alpha channel) display a
-CSS `conic-gradient`/`linear-gradient` checkerboard behind the color so transparency is
+CSS `linear-gradient` checkerboard behind the color so transparency is
 visible without a DOM dependency. Alpha detection is regex-based — no `<canvas>` — so it
 works in SSR and avoids a per-swatch off-screen canvas cost.
 

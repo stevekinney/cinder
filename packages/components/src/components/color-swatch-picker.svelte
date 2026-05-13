@@ -147,6 +147,7 @@
     const { key } = event;
 
     if (key === 'Enter' || key === ' ') {
+      if (effectiveFocusIndex < 0) return;
       event.preventDefault();
       selectSwatch(effectiveFocusIndex);
       return;
@@ -158,11 +159,13 @@
       isDisabled: isItemDisabledForRoving,
     });
 
-    if (newIndex !== null && newIndex !== effectiveFocusIndex) {
+    if (newIndex !== null) {
       event.preventDefault();
-      userFocusIndex = newIndex;
-      await tick();
-      liRefs[newIndex]?.focus();
+      if (newIndex !== effectiveFocusIndex) {
+        userFocusIndex = newIndex;
+        await tick();
+        liRefs[newIndex]?.focus();
+      }
     }
   }
 

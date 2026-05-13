@@ -257,7 +257,7 @@ describe('pickContrastColor', () => {
   });
 
   test('near-crossover dark value → white', () => {
-    // #767676 has L just below 0.179
+    // #666666 has L ≈ 0.133, well below the 0.179 crossover
     expect(pickContrastColor('#666666')).toBe('white');
   });
 

@@ -65,21 +65,27 @@ function parseHex(hex: string): RgbaComponents | null {
 
 function parseChannelValue(raw: string): number {
   const trimmed = raw.trim();
+  // Reject slash-alpha syntax (e.g. "255 / 50%") — we only support comma-separated legacy syntax
+  if (trimmed.includes('/')) return NaN;
   if (trimmed.endsWith('%')) {
-    return (parseFloat(trimmed) / 100) * 255;
+    return Math.max(0, Math.min(255, (parseFloat(trimmed) / 100) * 255));
   }
-  return parseFloat(trimmed);
+  return Math.max(0, Math.min(255, parseFloat(trimmed)));
 }
 
 function parseAlphaValue(raw: string): number {
   const trimmed = raw.trim();
+  // Reject slash-alpha syntax
+  if (trimmed.includes('/')) return NaN;
   if (trimmed.endsWith('%')) {
-    return parseFloat(trimmed) / 100;
+    return Math.max(0, Math.min(1, parseFloat(trimmed) / 100));
   }
-  return parseFloat(trimmed);
+  return Math.max(0, Math.min(1, parseFloat(trimmed)));
 }
 
 function parseRgb(inner: string): RgbaComponents | null {
+  // Reject modern slash-alpha syntax (e.g. "rgb(255 0 0 / 50%)")
+  if (inner.includes('/')) return null;
   const parts = inner.split(',').map((p) => p.trim());
   if (parts.length < 3 || parts.length > 4) return null;
 
@@ -148,6 +154,8 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 }
 
 function parseHsl(inner: string): RgbaComponents | null {
+  // Reject modern slash-alpha syntax (e.g. "hsl(0 100% 50% / 50%)")
+  if (inner.includes('/')) return null;
   const parts = inner.split(',').map((p) => p.trim());
   if (parts.length < 3 || parts.length > 4) return null;
 
