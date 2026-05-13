@@ -221,14 +221,14 @@
   /* Size: lg */
   --cinder-button-padding-x-lg: var(--cinder-space-4);
   --cinder-button-padding-y-lg: var(--cinder-space-2);
-  --cinder-button-height-lg: 2.75rem;
+  --cinder-button-height-lg: 3rem;
   --cinder-button-font-size-lg: var(--cinder-text-sm);
   --cinder-button-radius-lg: var(--cinder-radius-md);
 
   /* Size: xl */
   --cinder-button-padding-x-xl: var(--cinder-space-5);
   --cinder-button-padding-y-xl: var(--cinder-space-2-5);
-  --cinder-button-height-xl: 3rem;
+  --cinder-button-height-xl: 3.25rem;
   --cinder-button-font-size-xl: var(--cinder-text-base);
   --cinder-button-radius-xl: var(--cinder-radius-md);
 }

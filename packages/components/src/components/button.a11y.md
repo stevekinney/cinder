@@ -26,7 +26,7 @@ When `iconOnly={true}`, `children` is also wrapped in an `aria-hidden` span and 
 ## Touch targets
 
 - `md` (default): 44px minimum height—meets [WCAG 2.5.5 AAA touch-target](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html) requirement out of the box.
-- `lg`, `xl`: exceed 44px.
+- `lg` (48px) and `xl` (52px): exceed 44px.
 - `sm` (32px) and `xs` (24px): **intentionally below AAA**. Use these sizes only in dense UI contexts (toolbars, compact tables, developer tools) where space is at a premium and the surrounding context makes smaller targets acceptable. Do not use `sm` or `xs` as the primary action button for a touch-first surface.
 
 ### Migration note: `md` height change

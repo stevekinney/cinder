@@ -155,7 +155,7 @@ describe('Button sizes — xl', () => {
   });
 
   test('large sizes remain monotonic after md touch-target increase', () => {
-    expect(readButtonHeightToken('lg')).toBeGreaterThanOrEqual(readButtonHeightToken('md'));
+    expect(readButtonHeightToken('lg')).toBeGreaterThan(readButtonHeightToken('md'));
     expect(readButtonHeightToken('xl')).toBeGreaterThan(readButtonHeightToken('lg'));
   });
 
