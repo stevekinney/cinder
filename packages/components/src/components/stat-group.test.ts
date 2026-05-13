@@ -60,6 +60,25 @@ describe('StatGroup', () => {
     expect(root?.getAttribute('data-cinder-variant')).toBe('default');
   });
 
+  test('label prop gives the group an accessible group name', () => {
+    const { container } = render(StatGroup, {
+      children: textSnippet('x'),
+      label: 'Dashboard metrics',
+    });
+    const root = container.querySelector('.cinder-stat-group');
+    expect(root?.getAttribute('role')).toBe('group');
+    expect(root?.getAttribute('aria-label')).toBe('Dashboard metrics');
+  });
+
+  test('omitting label does not force group semantics', () => {
+    const { container } = render(StatGroup, {
+      children: textSnippet('x'),
+    });
+    const root = container.querySelector('.cinder-stat-group');
+    expect(root?.hasAttribute('role')).toBe(false);
+    expect(root?.hasAttribute('aria-label')).toBe(false);
+  });
+
   test('class prop is merged with cinder-stat-group on the root', () => {
     const { container } = render(StatGroup, {
       children: textSnippet('x'),

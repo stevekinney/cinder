@@ -10,6 +10,11 @@
 
   export type StatGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /**
+     * Optional accessible label for the whole stat set. When provided, the
+     * container becomes `role="group"` and uses this value as its accessible name.
+     */
+    label?: string;
+    /**
      * Grid column count. `'auto'` uses auto-fit with minmax for responsive layout.
      * @default 'auto'
      */
@@ -37,12 +42,20 @@
     variant = 'default',
     children,
     class: customClassName,
+    label,
+    role,
+    'aria-label': ariaLabel,
     ...rest
   }: StatGroupProps = $props();
+
+  const groupRole = $derived(label ? 'group' : role);
+  const groupAriaLabel = $derived(label ?? ariaLabel);
 </script>
 
 <div
   {...rest}
+  role={groupRole}
+  aria-label={groupAriaLabel}
   class={classNames('cinder-stat-group', customClassName)}
   data-cinder-variant={variant}
   data-cinder-columns={String(columns)}

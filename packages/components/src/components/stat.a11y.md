@@ -9,6 +9,7 @@
   - Using `aria-label={label}` alone would hide the value from the accessible name, which is the wrong tradeoff for a statistic widget.
   - IDs are generated via a counter (`useId`) so each instance is unique even when multiple stats share the same label. When you need a specific, predictable ID (e.g. for testing or for `aria-describedby` cross-references from another element), pass an explicit `id` prop — this overrides the auto-generated value and is forwarded as the base for all internal element IDs.
   - **ID collision avoidance:** If you render two `<Stat label="Revenue">` components on the same page without passing `id`, the counter guarantees distinct IDs. But if you need deterministic, human-readable IDs (e.g. `"summary-revenue"` and `"detail-revenue"`), pass them explicitly so your tests and any external `aria-describedby` references remain stable.
+  - Labels may be empty, whitespace-only, or contain punctuation without breaking internal ID generation because `label` is not used to build DOM IDs. Consumers should still provide meaningful visible labels because the label text is part of the group's accessible name.
 
 ### Change indicator (`.cinder-stat__change`)
 
@@ -17,7 +18,7 @@
   - The worded text is synthesized from `change.direction` + `change.value` + optional `change.description`:
     - `up` → "increased by {value}" (+ " {description}" if provided)
     - `down` → "decreased by {value}" (+ " {description}")
-    - `neutral` → "no change ({value})" (+ " {description}")
+    - `neutral` → "no change, {value}" (+ " {description}")
   - When `change.ariaLabel` is provided by the caller, it is used verbatim and the caller owns the full wording.
 - The glyph (↑/↓/→), visible value, and description spans are all **`aria-hidden="true"`** so only the worded sr-only text is announced — no duplication of meaning.
 
@@ -30,6 +31,10 @@
 The visible change indicator combines an arrow glyph with a directional color. The color reinforces the direction but is not the sole signal — the glyph provides a non-color channel. The sr-only worded text provides the third channel for assistive technology users.
 
 Consumers who restyle the component should preserve at least one non-color channel (glyph or other shape) in the visible change indicator.
+
+## Motion
+
+The v1 component does not animate value or change transitions. Future animation work should respect reduced-motion preferences with CSS media queries or the shared `useReducedMotion()` utility for client-side behavior.
 
 ## Value as Plain Text
 

@@ -61,6 +61,15 @@ describe('Stat', () => {
     expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('12.3%');
   });
 
+  test('numeric value respects valueLocale', () => {
+    const { container } = render(Stat, {
+      label: 'Revenue',
+      value: 1234.5,
+      valueLocale: 'de-DE',
+    });
+    expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('1.234,5');
+  });
+
   test('change element is not rendered when change prop is omitted', () => {
     const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
     expect(container.querySelector('.cinder-stat__change')).toBeNull();
@@ -98,7 +107,20 @@ describe('Stat', () => {
       change: { direction: 'neutral', value: '0' },
     });
     const srOnly = container.querySelector('.cinder-stat__change .cinder-sr-only');
-    expect(srOnly?.textContent).toBe('no change (0)');
+    expect(srOnly?.textContent).toBe('no change, 0');
+  });
+
+  test.each([
+    ['up', '↑'],
+    ['down', '↓'],
+    ['neutral', '→'],
+  ] as const)('change direction %s renders the expected visible glyph', (direction, glyph) => {
+    const { container } = render(Stat, {
+      label: 'Revenue',
+      value: '$1,000',
+      change: { direction, value: '1%' },
+    });
+    expect(container.querySelector('.cinder-stat__change-icon')?.textContent).toBe(glyph);
   });
 
   test('change with description appends description to synthesized sr-only text', () => {
