@@ -85,6 +85,10 @@
       "svelte": "./src/components/date-picker.svelte",
       "types": "./dist/components/date-picker.svelte.d.ts"
     },
+    "./description-list": {
+      "svelte": "./src/components/description-list.svelte",
+      "types": "./dist/components/description-list.svelte.d.ts"
+    },
     "./diff-statistics": {
       "svelte": "./src/components/diff-statistics.svelte",
       "types": "./dist/components/diff-statistics.svelte.d.ts"
@@ -125,6 +129,14 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
+    "./feed-event": {
+      "svelte": "./src/components/feed-event.svelte",
+      "types": "./dist/components/feed-event.svelte.d.ts"
+    },
+    "./feed": {
+      "svelte": "./src/components/feed.svelte",
+      "types": "./dist/components/feed.svelte.d.ts"
+    },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
       "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
@@ -145,10 +157,6 @@
       "svelte": "./src/components/experimental/sheet.svelte",
       "types": "./dist/components/experimental/sheet.svelte.d.ts"
     },
-    "./experimental/stat": {
-      "svelte": "./src/components/experimental/stat.svelte",
-      "types": "./dist/components/experimental/stat.svelte.d.ts"
-    },
     "./experimental/timeline-item": {
       "svelte": "./src/components/experimental/timeline-item.svelte",
       "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
@@ -156,6 +164,14 @@
     "./experimental/timeline": {
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
+    },
+    "./grid-list-item": {
+      "svelte": "./src/components/grid-list-item.svelte",
+      "types": "./dist/components/grid-list-item.svelte.d.ts"
+    },
+    "./grid-list": {
+      "svelte": "./src/components/grid-list.svelte",
+      "types": "./dist/components/grid-list.svelte.d.ts"
     },
     "./input": {
       "svelte": "./src/components/input.svelte",
@@ -213,6 +229,10 @@
       "svelte": "./src/components/review-editor.svelte",
       "types": "./dist/components/review-editor.svelte.d.ts"
     },
+    "./section-heading": {
+      "svelte": "./src/components/section-heading.svelte",
+      "types": "./dist/components/section-heading.svelte.d.ts"
+    },
     "./segmented-control": {
       "svelte": "./src/components/segmented-control.svelte",
       "types": "./dist/components/segmented-control.svelte.d.ts"
@@ -229,9 +249,25 @@
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
     },
+    "./sortable-list": {
+      "svelte": "./src/components/sortable-list.svelte",
+      "types": "./dist/components/sortable-list.svelte.d.ts"
+    },
     "./spinner": {
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
+    },
+    "./stacked-list-item": {
+      "svelte": "./src/components/stacked-list-item.svelte",
+      "types": "./dist/components/stacked-list-item.svelte.d.ts"
+    },
+    "./stat-group": {
+      "svelte": "./src/components/stat-group.svelte",
+      "types": "./dist/components/stat-group.svelte.d.ts"
+    },
+    "./stat": {
+      "svelte": "./src/components/stat.svelte",
+      "types": "./dist/components/stat.svelte.d.ts"
     },
     "./surface": {
       "svelte": "./src/components/surface.svelte",

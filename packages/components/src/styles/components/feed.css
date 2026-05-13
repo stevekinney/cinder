@@ -1,0 +1,83 @@
+/* ========================================
+ * FEED
+ * ======================================== */
+
+.cinder-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+}
+
+.cinder-feed-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--cinder-space-3);
+  align-items: start;
+}
+
+.cinder-feed-event-rail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--cinder-space-6);
+  block-size: var(--cinder-space-6);
+  border-radius: 9999px;
+  background: var(--cinder-surface-muted);
+  color: var(--cinder-text-muted);
+  flex-shrink: 0;
+}
+
+/* Minimal variant keeps the SAME rail box dimensions as the icon variant so
+ * the connector's inline anchor is constant across mixed-variant feeds. Only
+ * the inner visual marker shrinks — the dot is centered inside the same rail
+ * box via the flex centering already on .cinder-feed-event-rail. */
+.cinder-feed-event[data-cinder-variant='minimal'] .cinder-feed-event-rail {
+  background: transparent;
+}
+
+.cinder-feed-event-dot {
+  inline-size: var(--cinder-space-2);
+  block-size: var(--cinder-space-2);
+  border-radius: 9999px;
+  background: var(--cinder-border-strong);
+}
+
+/* Connector line — pseudo-element on the <li> itself, anchored at the rail's
+ * horizontal center. The line spans from the bottom of the rail all the way
+ * through the row body plus the gap, landing at the next rail's top edge.
+ *
+ * inset-block-start must match .cinder-feed-event-rail's block-size so the
+ * line starts exactly at the rail bottom regardless of body height.
+ * inset-block-end extends into the row gap to reach the next rail's top. */
+.cinder-feed-event::after {
+  content: '';
+  position: absolute;
+  inset-block-start: var(--cinder-space-6);
+  inset-block-end: calc(-1 * var(--cinder-space-4));
+  inset-inline-start: calc(var(--cinder-space-6) / 2);
+  inline-size: 1px;
+  background: var(--cinder-border-muted);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.cinder-feed-event:last-child::after {
+  content: none;
+}
+
+.cinder-feed-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1);
+  min-inline-size: 0;
+}
+
+.cinder-feed-event-time {
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+}
