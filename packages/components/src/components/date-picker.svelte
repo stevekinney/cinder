@@ -522,9 +522,6 @@
     } else if (key === 'Enter' || key === ' ') {
       event.preventDefault();
       selectDate(focusedDate);
-    } else if (key === 'Escape') {
-      event.preventDefault();
-      closePopover();
     }
   }
 

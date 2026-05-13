@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { _resetEscapeStack } from '../_internal/overlay.ts';
+import { _resetEscapeStack, pushEscapeHandler } from '../_internal/overlay.ts';
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
@@ -132,13 +132,33 @@ describe('DatePicker open / close', () => {
     expect(getPopover(container)).not.toBeNull();
   });
 
-  test('closes popover on Escape key from grid', async () => {
+  test('closes popover through the shared Escape stack', async () => {
     const { container } = render(DatePicker, { id: 'dp', label: 'Date' });
     await openCalendar(container);
 
     const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
     await fireEvent.keyDown(grid, { key: 'Escape' });
 
+    expect(getPopover(container)).toBeNull();
+  });
+
+  test('does not close when another overlay owns the Escape stack', async () => {
+    const { container } = render(DatePicker, { id: 'dp', label: 'Date' });
+    await openCalendar(container);
+
+    let topOverlayCalls = 0;
+    const releaseTopOverlay = pushEscapeHandler(() => {
+      topOverlayCalls += 1;
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]')!;
+    await fireEvent.keyDown(grid, { key: 'Escape' });
+
+    expect(topOverlayCalls).toBe(1);
+    expect(getPopover(container)).not.toBeNull();
+
+    releaseTopOverlay();
+    await fireEvent.keyDown(grid, { key: 'Escape' });
     expect(getPopover(container)).toBeNull();
   });
 
