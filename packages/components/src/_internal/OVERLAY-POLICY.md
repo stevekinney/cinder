@@ -75,6 +75,9 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
   - Skip animations entirely (immediate fade or no transition), or
   - Use a clearly-reduced fallback (no looping animation, lower amplitude, etc.).
 - Token-driven durations help: `--cinder-duration-*` tokens collapse to 0ms under reduced motion (see `tokens-base.css`).
+- For client-side JS decisions (e.g. choosing `scrollTo` behavior, gating an animation `setTimeout`), use the `useReducedMotion()` hook. It exposes a reactive `.current` boolean; on the server it returns `false` because the user's preference is unavailable. Keep SSR-visible presentation in CSS media queries and duration tokens. New JS code must use this hook rather than reading `window.matchMedia` directly; existing inline checks should migrate opportunistically.
+  - **External consumers**: `import { useReducedMotion } from 'cinder';`
+  - **Inside `packages/components/src/...`**: import using the appropriate local relative path to `src/utilities/use-reduced-motion.svelte.ts` (the depth depends on the consuming file's location). This matches the package's existing internal-import convention — for example, components reference `./_internal/overlay.ts` or `../_internal/overlay.ts` rather than the package root — and avoids a barrel cycle through `src/index.ts`.
 
 ## Hydration tests
 
