@@ -167,6 +167,9 @@ export type {
   ToolbarContext,
 } from './components/markdown-editor.svelte';
 
+export { default as ConfirmDialog } from './components/confirm-dialog.svelte';
+export type { ConfirmDialogProps } from './components/confirm-dialog.svelte';
+
 export { default as Modal } from './components/modal.svelte';
 export type { ModalProps } from './components/modal.svelte';
 

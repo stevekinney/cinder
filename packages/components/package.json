@@ -77,6 +77,10 @@
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
     },
+    "./confirm-dialog": {
+      "svelte": "./src/components/confirm-dialog.svelte",
+      "types": "./dist/components/confirm-dialog.svelte.d.ts"
+    },
     "./command-item": {
       "svelte": "./src/components/command-item.svelte",
       "types": "./dist/components/command-item.svelte.d.ts"

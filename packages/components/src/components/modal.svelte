@@ -8,6 +8,14 @@
     children: Snippet;
     footer?: Snippet;
     triggerRef?: HTMLElement | null;
+    /** When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only. */
+    describedById?: string;
+    /**
+     * Fired on user-initiated dismissal. Includes: Escape key (native dialog 'cancel' event),
+     * backdrop click, and the close-X button. EXCLUDES: parent-driven open = false.
+     * Callbacks are not awaited and thrown callbacks do not block close.
+     */
+    ondismiss?: () => void;
   };
 </script>
 
@@ -23,6 +31,8 @@
     children,
     footer,
     triggerRef = null,
+    describedById,
+    ondismiss,
   }: ModalProps = $props();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
@@ -75,16 +85,35 @@
     capturedFocus = null;
   }
 
+  // Single source of truth for all user-initiated dismissal paths: Escape, backdrop click,
+  // and the close-X button. State flips FIRST so a thrown callback does not leave the
+  // dialog open. Callbacks are not awaited; sync throws propagate to the caller.
+  function dismiss() {
+    open = false;
+    ondismiss?.();
+  }
+
   function handleClose() {
+    // Fired on the native 'close' event — may be triggered by dismiss() (via dialogElement.close())
+    // or by parent-driven open = false. Only restores focus; does NOT call ondismiss here
+    // so parent-driven closes do not fire the callback.
     open = false;
     returnFocus();
   }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {
-      open = false;
-      returnFocus();
+      dismiss();
     }
+  }
+
+  function handleNativeCancel(event: Event) {
+    // Escape key fires the native 'cancel' event on <dialog>. We prevent the default
+    // so the browser doesn't close the dialog through its own mechanism — we route
+    // exclusively through dismiss() → open = false → $effect → dialogElement.close()
+    // → 'close' event → handleClose. This ensures exactly one close path for Escape.
+    event.preventDefault();
+    dismiss();
   }
 </script>
 
@@ -94,8 +123,10 @@
     class={cn('cinder-modal', className)}
     aria-modal="true"
     aria-labelledby={titleId}
+    {...describedById ? { 'aria-describedby': describedById } : {}}
     onclose={handleClose}
     onclick={handleBackdropClick}
+    oncancel={handleNativeCancel}
   >
     {#if open}
       <div class="cinder-modal__panel">
@@ -121,7 +152,7 @@
           type="button"
           class="cinder-modal__close"
           aria-label="Close dialog"
-          onclick={handleClose}
+          onclick={dismiss}
         >
           <svg
             class="cinder-modal__close-icon"
