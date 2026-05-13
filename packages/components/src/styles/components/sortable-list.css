@@ -1,0 +1,61 @@
+/* ========================================
+ * SORTABLE LIST
+ * ======================================== */
+
+.cinder-sortable-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cinder-sortable-item {
+  position: relative;
+  cursor: default;
+  user-select: none;
+}
+
+.cinder-sortable-item--lifted {
+  transform: scale(1.02);
+  box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+  z-index: 1;
+  position: relative;
+}
+
+.cinder-sortable-item--shifting {
+  transition: transform 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-sortable-item--shifting {
+    transition: none;
+  }
+
+  .cinder-sortable-item--lifted {
+    transform: none;
+    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+  }
+}
+
+.cinder-sortable-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+  color: inherit;
+}
+
+.cinder-sortable-handle:focus-visible {
+  outline: var(--cinder-focus-ring, 2px solid currentcolor);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.cinder-sortable-handle[aria-pressed='true'] {
+  cursor: grabbing;
+}

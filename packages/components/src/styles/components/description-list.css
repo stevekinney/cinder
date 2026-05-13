@@ -1,0 +1,77 @@
+/* ========================================
+ * DESCRIPTION LIST
+ * ======================================== */
+
+.cinder-description-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reset UA default margin-inline-start on <dd> (~40px in most browsers). */
+.cinder-description-list dt,
+.cinder-description-list dd {
+  margin: 0;
+}
+
+.cinder-description-list__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1);
+  padding: var(--cinder-space-2) var(--cinder-space-3);
+}
+
+/* <dd> hosts both definition and optional actions. */
+.cinder-description-list dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-description-list__definition {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cinder-description-list__actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+}
+
+/* Striped variant: odd rows get a subtle background. */
+.cinder-description-list[data-cinder-variant='striped']
+  .cinder-description-list__row:nth-child(odd) {
+  background: var(--cinder-surface-inset);
+}
+
+/* Two-column variant: term and definition share a row. */
+.cinder-description-list[data-cinder-variant='two-column'] {
+  container-type: inline-size;
+}
+
+.cinder-description-list[data-cinder-variant='two-column'] .cinder-description-list__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 3fr;
+  align-items: baseline;
+  gap: var(--cinder-space-3);
+}
+
+/* Collapse two-column to stacked at narrow container widths. */
+@container (max-width: 28rem) {
+  .cinder-description-list[data-cinder-variant='two-column'] .cinder-description-list__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Narrow variant: <dt> is sr-only (position: absolute, out-of-flow) so <dd>
+ * fills the visible row. flex-direction: row here matches the intended reading
+ * direction if a future variant needs the dt in-flow; for now the sr-only dt
+ * has no layout footprint and the dd is visually full-width. */
+.cinder-description-list[data-cinder-variant='narrow'] .cinder-description-list__row {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--cinder-space-2);
+}

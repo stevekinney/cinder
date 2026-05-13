@@ -18,7 +18,8 @@ export async function discoverComponents(): Promise<string[]> {
   const names: string[] = [];
 
   for await (const file of glob.scan({ cwd: join(COMPONENTS_ROOT, 'src', 'components') })) {
-    // file is like "button.svelte"
+    // file is like "button.svelte"; skip internal components (underscore-prefixed)
+    if (file.startsWith('_')) continue;
     const name = file.replace(/\.svelte$/, '');
     names.push(name);
   }
