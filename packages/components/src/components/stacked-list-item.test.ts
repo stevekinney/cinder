@@ -127,7 +127,7 @@ describe('StackedListItem', () => {
     expect(li?.getAttribute('hreflang')).toBeNull();
   });
 
-  test('target="_blank" without rel auto-applies rel="noreferrer"', () => {
+  test('target="_blank" without rel auto-applies rel="noopener noreferrer"', () => {
     const { container } = render(StackedListItem, {
       props: {
         title: textSnippet('external'),
@@ -137,7 +137,8 @@ describe('StackedListItem', () => {
     });
 
     const anchor = container.querySelector('.cinder-stacked-list-item__title-link');
-    expect(anchor?.getAttribute('rel')).toBe('noreferrer');
+    expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(anchor?.getAttribute('target')).toBe('_blank');
   });
 
   test('defaults to comfortable density', () => {

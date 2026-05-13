@@ -67,13 +67,17 @@
 
   // Filter out any on* attributes that TypeScript already blocks but which could
   // leak through at runtime (e.g. from dynamic spreads or JS consumers).
-  const safeRest = Object.fromEntries(
-    Object.entries(rest).filter(([key]) => !key.startsWith('on')),
-  ) as Omit<typeof rest, `on${string}`>;
+  // $derived so the filtered set re-evaluates when rest changes.
+  const safeRest = $derived(
+    Object.fromEntries(Object.entries(rest).filter(([key]) => !key.startsWith('on'))) as Omit<
+      typeof rest,
+      `on${string}`
+    >,
+  );
 
   // When target="_blank" and no rel is supplied, default to "noreferrer" to
-  // prevent reverse-tabnapping.
-  const resolvedRel = target === '_blank' && !rel ? 'noreferrer' : rel;
+  // prevent reverse-tabnapping. $derived so it re-evaluates when target or rel changes.
+  const resolvedRel = $derived(target === '_blank' && !rel ? 'noopener noreferrer' : rel);
 </script>
 
 <li
