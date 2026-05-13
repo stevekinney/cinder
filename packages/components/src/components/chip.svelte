@@ -74,8 +74,11 @@
     mode !== 'display' ? (props as ChipToggleProps | ChipRemovableProps).disabled : undefined,
   );
   const onclick = $derived(mode === 'toggle' ? (props as ChipToggleProps).onclick : undefined);
-  const ariaLabel = $derived(
+  const ariaLabelRaw = $derived(
     mode === 'toggle' ? (props as ChipToggleProps)['aria-label'] : undefined,
+  );
+  const ariaLabel = $derived(
+    typeof ariaLabelRaw === 'string' && ariaLabelRaw.trim().length > 0 ? ariaLabelRaw : undefined,
   );
   const onremove = $derived(
     mode === 'removable' ? (props as ChipRemovableProps).onremove : undefined,
@@ -132,6 +135,7 @@
     data-cinder-mode="removable"
     data-cinder-variant={variant}
     data-cinder-size={size}
+    data-cinder-disabled={disabled || undefined}
   >
     {#if leadingIcon}
       <span class="cinder-chip__icon" aria-hidden="true">{@render leadingIcon()}</span>

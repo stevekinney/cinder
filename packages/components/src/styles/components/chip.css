@@ -203,6 +203,11 @@ button.cinder-chip:disabled,
   cursor: not-allowed;
 }
 
+.cinder-chip[data-cinder-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ----------------------------------------
  * Icon slot
  * ---------------------------------------- */

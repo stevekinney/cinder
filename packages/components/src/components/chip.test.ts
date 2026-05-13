@@ -1,17 +1,19 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Chip } = await import('./chip.svelte');
 const { createRawSnippet } = await import('svelte');
 
+afterEach(() => cleanup());
+
 function iconSnippet(text: string) {
   return createRawSnippet(() => ({
-    render: () => `<svg aria-hidden="true"><title>${text}</title></svg>`,
+    render: () => `<svg><title>${text}</title></svg>`,
   }));
 }
 
@@ -30,6 +32,12 @@ describe('Chip', () => {
     expect(chip?.tagName.toLowerCase()).toBe('button');
     expect(chip?.getAttribute('aria-pressed')).toBe('false');
     expect(chip?.getAttribute('data-cinder-mode')).toBe('toggle');
+  });
+
+  test('toggle mode renders aria-pressed="true" when pressed=true', () => {
+    const { container } = render(Chip, { mode: 'toggle', label: 'Filter', pressed: true });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('aria-pressed')).toBe('true');
   });
 
   test('toggle mode click calls onpressedchange with toggled value', async () => {
@@ -77,8 +85,37 @@ describe('Chip', () => {
     });
     const button = container.querySelector('button.cinder-chip')!;
     expect(button.hasAttribute('disabled')).toBe(true);
+    // fireEvent bypasses native disabled suppression; real browsers block the click entirely.
     await fireEvent.click(button);
     expect(onpressedchange).not.toHaveBeenCalled();
+  });
+
+  test('toggle mode forwards aria-label prop to the button', () => {
+    const { container } = render(Chip, {
+      mode: 'toggle',
+      label: 'Filter',
+      pressed: false,
+      'aria-label': 'Toggle dark mode',
+    });
+    const chip = container.querySelector('button.cinder-chip');
+    expect(chip?.getAttribute('aria-label')).toBe('Toggle dark mode');
+  });
+
+  test('toggle mode does not set aria-label when not provided', () => {
+    const { container } = render(Chip, { mode: 'toggle', label: 'Filter', pressed: false });
+    const chip = container.querySelector('button.cinder-chip');
+    expect(chip?.getAttribute('aria-label')).toBeNull();
+  });
+
+  test('toggle mode empty aria-label prop is treated as absent', () => {
+    const { container } = render(Chip, {
+      mode: 'toggle',
+      label: 'Filter',
+      pressed: false,
+      'aria-label': '',
+    });
+    const chip = container.querySelector('button.cinder-chip');
+    expect(chip?.getAttribute('aria-label')).toBeNull();
   });
 
   test('removable mode renders span root with remove button', () => {
@@ -138,11 +175,27 @@ describe('Chip', () => {
     expect(onremove).not.toHaveBeenCalled();
   });
 
+  test('removable mode disabled sets data-cinder-disabled on the root span', () => {
+    const { container } = render(Chip, {
+      mode: 'removable',
+      label: 'JavaScript',
+      disabled: true,
+    });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.hasAttribute('data-cinder-disabled')).toBe(true);
+  });
+
   test('applies data-cinder-variant and data-cinder-size attributes', () => {
     const { container } = render(Chip, { label: 'Tag', variant: 'success', size: 'sm' });
     const chip = container.querySelector('.cinder-chip');
     expect(chip?.getAttribute('data-cinder-variant')).toBe('success');
     expect(chip?.getAttribute('data-cinder-size')).toBe('sm');
+  });
+
+  test.each(['sm', 'md'] as const)('renders data-cinder-size="%s"', (size) => {
+    const { container } = render(Chip, { label: 'Tag', size });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('data-cinder-size')).toBe(size);
   });
 
   test('class prop merges with cinder-chip', () => {
@@ -152,7 +205,7 @@ describe('Chip', () => {
     expect(chip?.getAttribute('class')).toContain('my-custom-class');
   });
 
-  test('leadingIcon renders inside .cinder-chip__icon with aria-hidden', () => {
+  test('leadingIcon renders inside .cinder-chip__icon with aria-hidden on the wrapper', () => {
     const { container } = render(Chip, {
       label: 'Tag',
       leadingIcon: iconSnippet('star'),
