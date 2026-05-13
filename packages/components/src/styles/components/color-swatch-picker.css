@@ -100,6 +100,17 @@
   z-index: 1;
 }
 
+/* Forced Colors Mode (Windows High Contrast): box-shadow is ignored so the
+ * focus ring would be invisible without this override. Use Highlight to match
+ * the system's chosen focus color.
+ */
+@media (forced-colors: active) {
+  .cinder-color-swatch-picker__swatch:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 /* ── Disabled item ──────────────────────────────────────────────────────── */
 
 .cinder-color-swatch-picker__swatch[data-cinder-disabled] {
@@ -111,6 +122,10 @@
 
 .cinder-color-swatch-picker[aria-disabled='true'] {
   opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cinder-color-swatch-picker[aria-disabled='true'] .cinder-color-swatch-picker__swatch {
   cursor: not-allowed;
 }
 

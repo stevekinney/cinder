@@ -344,6 +344,18 @@ describe('ColorSwatchPicker disabled handling', () => {
     expect(listbox?.getAttribute('aria-disabled')).toBe('true');
   });
 
+  test('group disabled: all options have aria-disabled=true', () => {
+    const { container } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      disabled: true,
+    });
+    const options = toArray(container.querySelectorAll('[role="option"]'));
+    options.forEach((option) => {
+      expect(option.getAttribute('aria-disabled')).toBe('true');
+    });
+  });
+
   test('group disabled: focused option retains tabindex=0', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
@@ -462,6 +474,69 @@ describe('ColorSwatchPicker duplicate palette', () => {
     const options = toArray(container.querySelectorAll('[role="option"]'));
     expect(options[0].getAttribute('aria-selected')).toBe('true');
     expect(options[1].getAttribute('aria-selected')).toBe('false');
+  });
+});
+
+describe('ColorSwatchPicker controlled value update', () => {
+  test('updating value prop moves aria-selected to the new color', async () => {
+    const { container, rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff0000',
+    });
+    const options = toArray(container.querySelectorAll('[role="option"]'));
+    expect(options[0].getAttribute('aria-selected')).toBe('true');
+
+    await rerender({ colors: palette, label: 'Colors', value: '#0000ff' });
+    expect(options[0].getAttribute('aria-selected')).toBe('false');
+    expect(options[2].getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('onchange does not fire when controlled value prop changes', async () => {
+    let changed = false;
+    const { rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff0000',
+      onchange: () => {
+        changed = true;
+      },
+    });
+    await rerender({ colors: palette, label: 'Colors', value: '#0000ff' });
+    expect(changed).toBe(false);
+  });
+});
+
+describe('ColorSwatchPicker navigate-then-select', () => {
+  test('ArrowRight then Enter selects the navigated-to swatch', async () => {
+    let changed = '';
+    const { container } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      onchange: (c: string) => {
+        changed = c;
+      },
+    });
+    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(changed).toBe('#00ff00');
+  });
+
+  test('ArrowDown then Space selects the navigated-to swatch in stack layout', async () => {
+    let changed = '';
+    const { container } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      layout: 'stack',
+      onchange: (c: string) => {
+        changed = c;
+      },
+    });
+    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    await fireEvent.keyDown(listbox, { key: ' ' });
+    expect(changed).toBe('#00ff00');
   });
 });
 

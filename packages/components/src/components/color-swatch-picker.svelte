@@ -162,7 +162,7 @@
       event.preventDefault();
       userFocusIndex = newIndex;
       await tick();
-      liRefs[effectiveFocusIndex]?.focus();
+      liRefs[newIndex]?.focus();
     }
   }
 
@@ -206,7 +206,7 @@
       role="option"
       aria-selected={isSelected}
       aria-label={swatch.name ? `${swatch.name}, ${swatch.color}` : swatch.color}
-      aria-disabled={isDisabled ? 'true' : undefined}
+      aria-disabled={disabled || isDisabled ? 'true' : undefined}
       tabindex={index === effectiveFocusIndex ? 0 : -1}
       class="cinder-color-swatch-picker__swatch"
       data-cinder-selected={isSelected ? '' : undefined}
