@@ -63,20 +63,20 @@
 
 /* Horizontal — first child: zero the inline-end corners. */
 .cinder-button-group[data-cinder-orientation='horizontal']
-  > [data-cinder-button-group-item]:first-child
+  > [data-cinder-button-group-item]:first-child:not(:only-child)
   :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
 .cinder-button-group[data-cinder-orientation='horizontal']
-  > [data-cinder-button-group-item]:is(.cinder-button, button):first-child {
+  > [data-cinder-button-group-item]:is(.cinder-button, button):first-child:not(:only-child) {
   border-start-end-radius: 0;
   border-end-end-radius: 0;
 }
 
 /* Horizontal — last child: zero the inline-start corners. */
 .cinder-button-group[data-cinder-orientation='horizontal']
-  > [data-cinder-button-group-item]:last-child
+  > [data-cinder-button-group-item]:last-child:not(:only-child)
   :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
 .cinder-button-group[data-cinder-orientation='horizontal']
-  > [data-cinder-button-group-item]:is(.cinder-button, button):last-child {
+  > [data-cinder-button-group-item]:is(.cinder-button, button):last-child:not(:only-child) {
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
@@ -92,20 +92,20 @@
 
 /* Vertical — first child: zero the block-end corners. */
 .cinder-button-group[data-cinder-orientation='vertical']
-  > [data-cinder-button-group-item]:first-child
+  > [data-cinder-button-group-item]:first-child:not(:only-child)
   :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
 .cinder-button-group[data-cinder-orientation='vertical']
-  > [data-cinder-button-group-item]:is(.cinder-button, button):first-child {
+  > [data-cinder-button-group-item]:is(.cinder-button, button):first-child:not(:only-child) {
   border-end-start-radius: 0;
   border-end-end-radius: 0;
 }
 
 /* Vertical — last child: zero the block-start corners. */
 .cinder-button-group[data-cinder-orientation='vertical']
-  > [data-cinder-button-group-item]:last-child
+  > [data-cinder-button-group-item]:last-child:not(:only-child)
   :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
 .cinder-button-group[data-cinder-orientation='vertical']
-  > [data-cinder-button-group-item]:is(.cinder-button, button):last-child {
+  > [data-cinder-button-group-item]:is(.cinder-button, button):last-child:not(:only-child) {
   border-start-start-radius: 0;
   border-start-end-radius: 0;
 }
