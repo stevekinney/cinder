@@ -66,10 +66,10 @@
   }: StackedListItemProps = $props();
 
   // Filter out any on* attributes that TypeScript already blocks but which could
-  // leak through at runtime (e.g. from dynamic spreads).
+  // leak through at runtime (e.g. from dynamic spreads or JS consumers).
   const safeRest = Object.fromEntries(
     Object.entries(rest).filter(([key]) => !key.startsWith('on')),
-  );
+  ) as Omit<typeof rest, `on${string}`>;
 
   // When target="_blank" and no rel is supplied, default to "noreferrer" to
   // prevent reverse-tabnapping.
