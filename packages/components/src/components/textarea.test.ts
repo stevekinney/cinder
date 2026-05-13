@@ -131,13 +131,15 @@ describe('Textarea — character count', () => {
     expect(container.querySelector('[id$="-count"]')).toBeNull();
   });
 
-  test('count renders when showCount=true and maxlength is set', () => {
+  test('count renders as <output> with aria-live and aria-atomic when showCount=true', () => {
     const { container } = render(Textarea, {
       props: { id: 'bio', showCount: true, maxlength: 500, value: 'hello' },
     });
     const countElement = container.querySelector('#bio-count');
     expect(countElement).not.toBeNull();
+    expect(countElement?.tagName.toLowerCase()).toBe('output');
     expect(countElement?.getAttribute('aria-live')).toBe('polite');
+    expect(countElement?.getAttribute('aria-atomic')).toBe('true');
     expect(countElement?.textContent?.trim()).toBe('5/500');
   });
 
@@ -181,6 +183,42 @@ describe('Textarea — character count', () => {
     expect(container.querySelector('textarea')?.getAttribute('maxlength')).toBe('500');
   });
 
+  test('maxlength is forwarded to textarea when showCount is false', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'fwd-no-count', maxlength: 200 },
+    });
+    expect(container.querySelector('textarea')?.getAttribute('maxlength')).toBe('200');
+  });
+
+  test('count not rendered when maxlength is an invalid value', () => {
+    const invalidValues = [0, -1, 1.5, 'abc'];
+    for (const maxlength of invalidValues) {
+      const { container } = render(Textarea, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        props: { id: 'inv', showCount: true, maxlength: maxlength as any },
+      });
+      expect(container.querySelector('#inv-count')).toBeNull();
+    }
+  });
+
+  test('count element renders before error element in DOM order', () => {
+    const { container } = render(Textarea, {
+      props: {
+        id: 'dom-order',
+        description: 'Helper',
+        error: 'Bad',
+        showCount: true,
+        maxlength: 100,
+      },
+    });
+    const children = Array.from(container.querySelector('.cinder-textarea-field')!.children);
+    const countIndex = children.findIndex((el) => el.id === 'dom-order-count');
+    const errorIndex = children.findIndex((el) => el.id === 'dom-order-error');
+    expect(countIndex).toBeGreaterThan(-1);
+    expect(errorIndex).toBeGreaterThan(-1);
+    expect(countIndex).toBeLessThan(errorIndex);
+  });
+
   test('string maxlength="500" is accepted as the counter denominator', () => {
     const { container } = render(Textarea, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -212,6 +250,7 @@ describe('resolveMaximumLength', () => {
     ['string digit-only', '500', 500],
     ['string leading zero', '0500', 500],
     ['string surrounding whitespace', ' 500 ', 500],
+    ['MAX_SAFE_INTEGER', Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
   ])('accepts %s → %i', (_label, input, expected) => {
     expect(resolveMaximumLength(input)).toBe(expected);
   });
@@ -221,6 +260,9 @@ describe('resolveMaximumLength', () => {
     ['negative number', -1],
     ['non-integer number', 1.5],
     ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['-Infinity', -Infinity],
+    ['above MAX_SAFE_INTEGER', Number.MAX_SAFE_INTEGER + 1],
     ['string zero', '0'],
     ['empty string', ''],
     ['string with letters', 'abc'],

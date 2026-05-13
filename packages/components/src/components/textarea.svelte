@@ -79,12 +79,18 @@
   {#if description}
     <p id={descriptionId} class="cinder-textarea-description">{description}</p>
   {/if}
+  {#if countId}
+    <output
+      id={countId}
+      for={id}
+      class="cinder-textarea-count"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {currentCount}/{maximumLength}
+    </output>
+  {/if}
   {#if error}
     <p id={errId} class="cinder-textarea-error" aria-live="polite">{error}</p>
-  {/if}
-  {#if countId}
-    <p id={countId} class="cinder-textarea-count" aria-live="polite">
-      {currentCount}/{maximumLength}
-    </p>
   {/if}
 </div>
