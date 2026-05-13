@@ -11,6 +11,33 @@
   border: 0;
 }
 
+/* Focusable variant: behaves like .cinder-sr-only until the element (or a
+ * descendant) gains focus, at which point it is fully revealed. Use with
+ * `<VisuallyHidden focusable>` for skip-link patterns. The focused state pins
+ * the element to the top-left of the viewport — the canonical skip-link
+ * placement. Consumers who need different placement can override the position
+ * properties with a more specific selector.
+ */
+.cinder-sr-only-focusable:focus,
+.cinder-sr-only-focusable:focus-within,
+.cinder-sr-only-focusable:focus-visible {
+  position: fixed;
+  top: var(--cinder-space-2, 0.5rem);
+  left: var(--cinder-space-2, 0.5rem);
+  width: auto;
+  height: auto;
+  padding: var(--cinder-space-2, 0.5rem) var(--cinder-space-3, 0.75rem);
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: var(--cinder-surface, #fff);
+  color: var(--cinder-text, #000);
+  border: 1px solid var(--cinder-border, currentColor);
+  border-radius: var(--cinder-radius-md, 0.5rem);
+  z-index: 9999;
+}
+
 /* Icon size utilities. lucide-svelte and most icon libraries default to a
  * 24px viewBox with no inline width/height. These classes force a consistent
  * size across the chat, markdown editor, code blocks, and any other component

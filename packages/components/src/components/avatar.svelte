@@ -32,6 +32,7 @@
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
+  import VisuallyHidden from './visually-hidden.svelte';
 
   let {
     src,
@@ -82,7 +83,7 @@
   {:else if initials}
     <span class="cinder-avatar__initials" aria-hidden={!!name && !alt}>{initials}</span>
     {#if accessibleAlt}
-      <span class="cinder-visually-hidden">{accessibleAlt}</span>
+      <VisuallyHidden>{accessibleAlt}</VisuallyHidden>
     {/if}
   {:else}
     <!-- Fallback when neither image nor name is available. Render an empty

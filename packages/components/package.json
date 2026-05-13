@@ -352,6 +352,10 @@
     "./view-switcher": {
       "svelte": "./src/components/view-switcher.svelte",
       "types": "./dist/components/view-switcher.svelte.d.ts"
+    },
+    "./visually-hidden": {
+      "svelte": "./src/components/visually-hidden.svelte",
+      "types": "./dist/components/visually-hidden.svelte.d.ts"
     }
   },
   "main": "./dist/server/index.js",

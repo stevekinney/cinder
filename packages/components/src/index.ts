@@ -330,6 +330,9 @@ export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte
 export { default as ViewSwitcher } from './components/view-switcher.svelte';
 export type { ViewOption, ViewSwitcherProps, ViewType } from './components/view-switcher.svelte';
 
+export { default as VisuallyHidden } from './components/visually-hidden.svelte';
+export type { VisuallyHiddenProps } from './components/visually-hidden.svelte';
+
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their
 // APIs may change between minor versions until they meet the canonical
