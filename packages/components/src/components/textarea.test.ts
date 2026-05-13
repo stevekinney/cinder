@@ -249,6 +249,8 @@ describe('Textarea — character count', () => {
 describe('resolveMaximumLength', () => {
   test.each([
     ['numeric positive integer', 500, 500],
+    ['zero number', 0, 0],
+    ['string zero', '0', 0],
     ['string digit-only', '500', 500],
     ['string leading zero', '0500', 500],
     ['string surrounding whitespace', ' 500 ', 500],
@@ -258,14 +260,12 @@ describe('resolveMaximumLength', () => {
   });
 
   test.each([
-    ['zero number', 0],
     ['negative number', -1],
     ['non-integer number', 1.5],
     ['NaN', NaN],
     ['Infinity', Infinity],
     ['-Infinity', -Infinity],
     ['above MAX_SAFE_INTEGER', Number.MAX_SAFE_INTEGER + 1],
-    ['string zero', '0'],
     ['empty string', ''],
     ['string with letters', 'abc'],
     ['exponent notation', '5e2'],
