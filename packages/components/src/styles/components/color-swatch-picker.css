@@ -148,7 +148,8 @@
     transition: transform var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
   }
 
-  .cinder-color-swatch-picker__swatch:hover:not([data-cinder-disabled]),
+  .cinder-color-swatch-picker:not([aria-disabled='true'])
+    .cinder-color-swatch-picker__swatch:hover:not([data-cinder-disabled]),
   .cinder-color-swatch-picker__swatch:focus-visible {
     transform: scale(1.06);
   }
