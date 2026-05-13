@@ -73,7 +73,7 @@
 
   let {
     id,
-    value = $bindable<any>(),
+    value = $bindable<T | SvelteSet<T> | undefined>(),
     options,
     label,
     hideLabel = false,

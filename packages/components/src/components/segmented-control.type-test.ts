@@ -101,6 +101,17 @@ const _onkeydownRejected: SegmentedControlProps = {
   onkeydown: () => {},
 };
 
+// ── Invalid: disallowEmptySelection=true is not applicable in multiple mode ──
+
+// @ts-expect-error - disallowEmptySelection: true is not assignable in multiple mode (type is undefined)
+const _disallowEmptyInMultiple: SegmentedControlProps<'a' | 'b'> = {
+  id: 'test',
+  label: 'Test',
+  options,
+  selectionMode: 'multiple',
+  disallowEmptySelection: true,
+};
+
 void _singleValid;
 void _singleDefault;
 void _multipleValid;
@@ -110,3 +121,4 @@ void _labelledByRejected;
 void _ariaDisabledRejected;
 void _tabindexRejected;
 void _onkeydownRejected;
+void _disallowEmptyInMultiple;

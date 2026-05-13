@@ -123,23 +123,26 @@
 
 /* ── Size variants ──────────────────────────────────────────────────────── */
 
+/* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target */
 .cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
-  min-block-size: 1rem;
-  padding-block: 0;
+  min-block-size: 1.5rem;
+  padding-block: var(--cinder-space-1);
   padding-inline: var(--cinder-space-1);
   font-size: var(--cinder-text-xs);
 }
 
+/* md: 2rem = 32px — comfortable middle ground */
 .cinder-segmented-control[data-cinder-size='md'] .cinder-segmented-control-option {
-  min-block-size: 1.25rem;
-  padding-block: 0;
+  min-block-size: 2rem;
+  padding-block: var(--cinder-space-1);
   padding-inline: var(--cinder-space-2);
   font-size: var(--cinder-text-xs);
 }
 
+/* lg: 2.75rem = 44px — recommended pointer/touch target per WCAG 2.5.5 */
 .cinder-segmented-control[data-cinder-size='lg'] .cinder-segmented-control-option {
-  min-block-size: 1.75rem;
-  padding-block: 0;
+  min-block-size: 2.75rem;
+  padding-block: var(--cinder-space-2);
   padding-inline: var(--cinder-space-3, 0.75rem);
   font-size: var(--cinder-text-sm);
 }

@@ -171,6 +171,31 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBeUndefined();
   });
 
+  // Test 7a
+  test('Space key on focused already-selected option clears value when disallowEmptySelection=false', async () => {
+    let selected: string | undefined = 'source';
+
+    render(SegmentedControl, {
+      props: {
+        id: 'document-view',
+        get value() {
+          return selected;
+        },
+        set value(nextValue: string | undefined) {
+          selected = nextValue;
+        },
+        label: 'Document view',
+        options,
+        disallowEmptySelection: false,
+      } as any,
+    });
+
+    // Space on a <button> synthesizes a click — the keydown handler routes roving keys only,
+    // so Space falls through to native button behavior which fires a click event.
+    await fireEvent.click(screen.getByRole('radio', { name: 'Source' }));
+    expect(selected).toBeUndefined();
+  });
+
   // Test 8
   test('with invalid value, first non-disabled option holds tabindex="0"', () => {
     render(SegmentedControl, {
@@ -355,6 +380,8 @@ describe('SegmentedControl — multiple mode', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
     expect(set.has('bold')).toBe(true);
+    // Prove DOM reactivity: aria-pressed must reflect the mutation
+    expect(screen.getByRole('button', { name: 'Bold' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   // Test 15
@@ -374,6 +401,11 @@ describe('SegmentedControl — multiple mode', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
     expect(set.has('bold')).toBe(false);
     expect(set.has('italic')).toBe(true);
+    // Prove DOM reactivity: aria-pressed must reflect the updated state
+    expect(screen.getByRole('button', { name: 'Bold' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Italic' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
   });
 
   // Test 16
@@ -412,9 +444,9 @@ describe('SegmentedControl — multiple mode', () => {
     const italicBtn = screen.getByRole('button', { name: 'Italic' });
     const underlineBtn = screen.getByRole('button', { name: 'Underline' });
 
-    // Enabled buttons should not have tabindex="-1"
-    expect(boldBtn.getAttribute('tabindex')).not.toBe('-1');
-    expect(italicBtn.getAttribute('tabindex')).not.toBe('-1');
+    // Multi-mode buttons have no explicit tabindex — they are naturally in tab order
+    expect(boldBtn.getAttribute('tabindex')).toBeNull();
+    expect(italicBtn.getAttribute('tabindex')).toBeNull();
     // Disabled button has the disabled attribute
     expect(underlineBtn.hasAttribute('disabled')).toBe(true);
   });
