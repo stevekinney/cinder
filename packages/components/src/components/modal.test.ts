@@ -245,6 +245,37 @@ describe('Modal', () => {
     expect(body?.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {
+    const originalFocus = HTMLElement.prototype.focus;
+    const focusTargets: HTMLElement[] = [];
+    HTMLElement.prototype.focus = function focus() {
+      focusTargets.push(this);
+      return originalFocus.call(this);
+    };
+
+    try {
+      const children = createRawSnippet(() => ({
+        render: () => `<a href="/target">Autofocus link</a>`,
+        setup: (node: Element) => {
+          (node as HTMLElement).autofocus = true;
+        },
+      }));
+
+      const { container } = render(Modal, {
+        props: {
+          open: true,
+          title: 'Test Modal',
+          children,
+        },
+      });
+
+      const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+      expect(focusTargets).not.toContain(body);
+    } finally {
+      HTMLElement.prototype.focus = originalFocus;
+    }
+  });
+
   test('close button is the last focusable element inside the panel', () => {
     // The close button was deliberately moved to the end of the DOM so the
     // native <dialog>.showModal() autofocus fallback (first focusable) does
@@ -263,5 +294,164 @@ describe('Modal', () => {
     );
     const last = focusables?.[focusables.length - 1];
     expect(last?.classList.contains('cinder-modal__close')).toBe(true);
+  });
+
+  test('describedById sets aria-describedby on the dialog element', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+        describedById: 'x-123',
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.getAttribute('aria-describedby')).toBe('x-123');
+  });
+
+  test('aria-describedby is absent when describedById is omitted', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  test('ondismiss fires when native cancel event is dispatched (Escape)', async () => {
+    let dismissCount = 0;
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        ondismiss: () => {
+          dismissCount++;
+        },
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(dismissCount).toBe(1);
+    expect(openValue).toBe(false);
+  });
+
+  test('native cancel event is prevented (Escape routes through dismiss())', async () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+  });
+
+  test('ondismiss fires when backdrop is clicked', async () => {
+    let dismissCount = 0;
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        ondismiss: () => {
+          dismissCount++;
+        },
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent.click(dialog);
+    expect(dismissCount).toBe(1);
+    expect(openValue).toBe(false);
+  });
+
+  test('ondismiss fires when the close-X button is clicked', async () => {
+    let dismissCount = 0;
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        ondismiss: () => {
+          dismissCount++;
+        },
+      },
+    });
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    expect(dismissCount).toBe(1);
+    expect(openValue).toBe(false);
+  });
+
+  test('ondismiss does NOT fire when open is set to false by the parent', async () => {
+    let dismissCount = 0;
+    let openValue = true;
+    const { rerender } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        ondismiss: () => {
+          dismissCount++;
+        },
+      },
+    });
+    // Parent-driven close: update the prop directly
+    await rerender({ open: false, title: 'Test Modal', children: emptySnippet });
+    expect(dismissCount).toBe(0);
+  });
+
+  test('a throwing ondismiss callback propagates the error but open is still false', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        ondismiss: () => {
+          throw new Error('ondismiss error');
+        },
+      },
+    });
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    // fireEvent swallows handler errors internally; we assert the state side-effect instead.
+    await fireEvent.click(closeButton);
+    // open flipped to false before the callback ran, so the throw doesn't leave dialog stuck
+    expect(openValue).toBe(false);
   });
 });

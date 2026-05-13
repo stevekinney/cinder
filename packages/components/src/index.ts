@@ -49,6 +49,9 @@ export type { CommandItemProps } from './components/command-item.svelte';
 export { default as CommandPalette } from './components/command-palette.svelte';
 export type { CommandPaletteProps } from './components/command-palette.svelte';
 
+export { default as ConfirmDialog } from './components/confirm-dialog.svelte';
+export type { ConfirmDialogProps } from './components/confirm-dialog.svelte';
+
 export { default as CopyButton } from './components/copy-button.svelte';
 export type { CopyButtonProps } from './components/copy-button.svelte';
 
