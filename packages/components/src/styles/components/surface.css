@@ -15,6 +15,5 @@
 
 .cinder-surface[data-cinder-tone='transparent'] {
   background: transparent;
-  border: 1px solid var(--cinder-border);
   box-shadow: none;
 }

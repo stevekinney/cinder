@@ -146,9 +146,17 @@ describe('Surface CSS contract', () => {
   test('surface.css contains transparent tone rule with required declarations', async () => {
     const css = await Bun.file(new URL('../styles/components/surface.css', import.meta.url)).text();
 
+    // Base rule declares the border; transparent tone inherits it without re-declaring.
+    expect(css).toContain('border: 1px solid var(--cinder-border)');
     expect(css).toContain("[data-cinder-tone='transparent']");
     expect(css).toContain('background: transparent');
-    expect(css).toContain('border: 1px solid var(--cinder-border)');
     expect(css).toContain('box-shadow: none');
+  });
+
+  test('transparent tone rule does not re-declare border', async () => {
+    const css = await Bun.file(new URL('../styles/components/surface.css', import.meta.url)).text();
+
+    const transparentBlock = css.match(/\[data-cinder-tone='transparent'\]\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(transparentBlock).not.toContain('border');
   });
 });
