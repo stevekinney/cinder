@@ -16,7 +16,7 @@ Choosing the semantically correct element is the foundation of accessible naviga
 | Arm    | Attribute      | Value    | Meaning                                                                  |
 | ------ | -------------- | -------- | ------------------------------------------------------------------------ |
 | Link   | `aria-current` | `"page"` | Indicates this link represents the current page in a navigation set.     |
-| Button | `aria-current` | `"true"` | Indicates the button is the currently selected item in a navigation set. |
+| Button | `aria-current` | `"page"` | Indicates the button is the currently selected item in a navigation set. |
 
 `aria-pressed` is intentionally not used on the button arm. `aria-pressed` implies toggle semantics—a button that independently switches between on and off states. Navigation selection is not a toggle; the correct signal is `aria-current`, which communicates "this is the active item in a set" without implying the button controls its own binary state.
 

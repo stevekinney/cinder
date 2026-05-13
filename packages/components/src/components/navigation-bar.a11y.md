@@ -57,7 +57,7 @@ If a consumer wraps the toggle in a custom component without ensuring the native
 
 ## Route-Change Auto-Close
 
-The component has no router dependency. Consumers using a client-side router (SvelteKit, etc.) should subscribe to route-change events and set `bind:mobileMenuOpen` to `false` when the route changes. Example:
+The component has no router dependency. Consumers using a client-side router ([SvelteKit](https://kit.svelte.dev), etc.) should subscribe to route-change events and set `bind:mobileMenuOpen` to `false` when the route changes. Example:
 
 ```svelte
 <script>
