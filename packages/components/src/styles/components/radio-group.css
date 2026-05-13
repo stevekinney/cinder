@@ -129,3 +129,98 @@
   color: var(--cinder-text-disabled);
   cursor: not-allowed;
 }
+
+/* ========================================
+ * PER-OPTION DESCRIPTION
+ * ======================================== */
+
+.cinder-radio-row[data-has-description] {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--cinder-space-2);
+  row-gap: var(--cinder-space-1);
+  align-items: start;
+}
+
+.cinder-radio-row[data-has-description] .cinder-radio {
+  grid-row: 1;
+  grid-column: 1;
+  margin-top: 0.125rem; /* align input with label's first cap-height line */
+}
+
+.cinder-radio-row[data-has-description] .cinder-radio-row__label {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.cinder-radio-row__description {
+  grid-row: 2;
+  grid-column: 2;
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+}
+
+.cinder-radio-row__description[data-disabled] {
+  color: var(--cinder-text-disabled);
+}
+
+/* ========================================
+ * CARD VARIANT
+ * ======================================== */
+
+.cinder-radio-group[data-variant='card'] .cinder-radio-group__items {
+  gap: var(--cinder-space-2);
+}
+
+.cinder-radio-group[data-variant='card'] .cinder-radio-row {
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  padding: var(--cinder-space-3);
+  background: var(--cinder-surface-raised);
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    background var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-radio-group[data-variant='card'] .cinder-radio-row:hover {
+  border-color: var(--cinder-border-strong);
+}
+
+/* Selection reinforcement — NOT the sole indicator. */
+.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
+  border-color: var(--cinder-accent);
+  background: var(--cinder-surface-selected, var(--cinder-surface-raised));
+}
+
+/* Invalid state on the card surface. Driven by `data-invalid` on the row. */
+.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+  border-color: var(--cinder-danger);
+}
+
+/* Disabled card — driven by `data-disabled` on the row. */
+.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled] {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  cursor: not-allowed;
+}
+
+/* Suppress hover on disabled cards. */
+.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled]:hover {
+  border-color: var(--cinder-border-muted);
+}
+
+@media (forced-colors: active) {
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row {
+    border: 1px solid CanvasText;
+  }
+
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
+    border: 2px solid Highlight;
+  }
+
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+    border: 2px solid Mark;
+  }
+}

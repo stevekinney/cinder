@@ -39,6 +39,8 @@
     disabled?: boolean;
     /** When true, marks the group's radios as required for form submission. */
     required?: boolean;
+    /** Visual layout. 'card' wraps each radio row in a bordered surface. */
+    variant?: 'default' | 'card';
     /** Additional class names merged with `.cinder-radio-group`. */
     class?: string;
     /** Radio children. */
@@ -66,6 +68,7 @@
     error,
     disabled = false,
     required = false,
+    variant = 'default',
     class: className,
     children,
   }: RadioGroupProps = $props();
@@ -102,6 +105,7 @@
   aria-describedby={describedBy}
   data-cinder-disabled={disabled || undefined}
   data-cinder-required={required || undefined}
+  data-variant={variant === 'card' ? 'card' : undefined}
 >
   {#if legend}
     <legend class="cinder-radio-group__legend">{legend}</legend>

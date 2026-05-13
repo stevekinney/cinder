@@ -143,4 +143,240 @@ describe('RadioGroup', () => {
     expect(typeof Radio).toBe('function');
     expect(typeof createRawSnippet).toBe('function');
   });
+
+  // ── Per-option description ──────────────────────────────────────────────
+
+  test('renders per-option description with id={id}-description', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A', description: 'Helper text' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const description = container.querySelector('p#r-a-description');
+    expect(description).not.toBeNull();
+    expect(description?.textContent?.trim()).toBe('Helper text');
+    // Option without description should not render a description element
+    expect(container.querySelector('p#r-b-description')).toBeNull();
+  });
+
+  test('wires aria-describedby to the description id', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A', description: 'Helper' }],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(describedBy.split(' ')).toContain('r-a-description');
+  });
+
+  test('aria-describedby is absent when there is no description and no consumer-supplied value', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  test('aria-describedby contains only the consumer value when there is no description', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A', ariaDescribedBy: 'external-help' }],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const value = input.getAttribute('aria-describedby');
+    expect(value).toBe('external-help');
+    expect(value).not.toContain('r-a-description');
+  });
+
+  test('composes aria-describedby with consumer-supplied value', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A', description: 'x', ariaDescribedBy: 'external-help' },
+      ],
+    });
+    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const parts = (input.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(parts).toContain('r-a-description');
+    expect(parts).toContain('external-help');
+    // description id comes first, consumer second
+    expect(parts.indexOf('r-a-description')).toBeLessThan(parts.indexOf('external-help'));
+  });
+
+  test('row carries data-has-description when description is set', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A', description: 'Helper' }],
+    });
+    const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
+    expect(row.hasAttribute('data-has-description')).toBe(true);
+  });
+
+  test('row omits data-has-description when no description', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
+    expect(row.hasAttribute('data-has-description')).toBe(false);
+  });
+
+  // ── Card variant ────────────────────────────────────────────────────────
+
+  test("variant='card' emits data-variant='card' on the fieldset", () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      variant: 'card',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.getAttribute('data-variant')).toBe('card');
+  });
+
+  test('variant defaults to omitting data-variant', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.hasAttribute('data-variant')).toBe(false);
+  });
+
+  test('card variant DOM contract: fieldset[data-variant=card] > items > rows', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      variant: 'card',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const rows = container.querySelectorAll(
+      "fieldset[data-variant='card'] .cinder-radio-group__items .cinder-radio-row",
+    );
+    expect(rows.length).toBe(2);
+  });
+
+  // ── Row data attributes ─────────────────────────────────────────────────
+
+  test('data-checked reflects the bound value', async () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'b',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const rowA = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
+    const rowB = container.querySelector('#r-b')?.closest('.cinder-radio-row') as HTMLElement;
+    expect(rowA.hasAttribute('data-checked')).toBe(false);
+    expect(rowB.hasAttribute('data-checked')).toBe(true);
+
+    await fireEvent.click(container.querySelector('#r-a') as HTMLElement);
+    expect(rowA.hasAttribute('data-checked')).toBe(true);
+    expect(rowB.hasAttribute('data-checked')).toBe(false);
+  });
+
+  // ── aria-invalid + data-invalid ─────────────────────────────────────────
+
+  test('aria-invalid is exactly "true" when error is set', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      error: 'Required',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const radios = Array.from(container.querySelectorAll('input[type="radio"]'));
+    expect(radios[0]?.getAttribute('aria-invalid')).toBe('true');
+    expect(radios[1]?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('data-invalid is mirrored on each row when error is set', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      error: 'Required',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const rows = Array.from(container.querySelectorAll('.cinder-radio-row'));
+    expect(rows.length).toBe(2);
+    rows.forEach((row) => expect((row as HTMLElement).hasAttribute('data-invalid')).toBe(true));
+
+    // Without error, no row carries data-invalid
+    const { container: c2 } = render(Wrapper, {
+      name: 'choice2',
+      value: 'a',
+      options: [{ id: 'r-c', value: 'a', label: 'A' }],
+    });
+    const cleanRows = Array.from(c2.querySelectorAll('.cinder-radio-row'));
+    cleanRows.forEach((row) =>
+      expect((row as HTMLElement).hasAttribute('data-invalid')).toBe(false),
+    );
+  });
+
+  // ── data-disabled ───────────────────────────────────────────────────────
+
+  test('data-disabled is mirrored on disabled rows', async () => {
+    // Group-level disabled: every row has data-disabled
+    const { container: c1 } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      disabled: true,
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const rows1 = Array.from(c1.querySelectorAll('.cinder-radio-row'));
+    rows1.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(true));
+
+    // Only one option disabled: only that row has data-disabled
+    const { container: c2 } = render(Wrapper, {
+      name: 'choice2',
+      value: 'a',
+      options: [
+        { id: 'r-c', value: 'a', label: 'A', disabled: true },
+        { id: 'r-d', value: 'b', label: 'B' },
+      ],
+    });
+    const rowC = c2.querySelector('#r-c')?.closest('.cinder-radio-row') as HTMLElement;
+    const rowD = c2.querySelector('#r-d')?.closest('.cinder-radio-row') as HTMLElement;
+    expect(rowC.hasAttribute('data-disabled')).toBe(true);
+    expect(rowD.hasAttribute('data-disabled')).toBe(false);
+
+    // Fully enabled group: no row has data-disabled
+    const { container: c3 } = render(Wrapper, {
+      name: 'choice3',
+      value: 'a',
+      options: [
+        { id: 'r-e', value: 'a', label: 'A' },
+        { id: 'r-f', value: 'b', label: 'B' },
+      ],
+    });
+    const rows3 = Array.from(c3.querySelectorAll('.cinder-radio-row'));
+    rows3.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(false));
+  });
 });
