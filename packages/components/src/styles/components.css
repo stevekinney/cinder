@@ -11,8 +11,10 @@
 @import './components/badge.css';
 @import './components/breadcrumbs.css';
 @import './components/button.css';
+@import './components/button-group.css';
 @import './components/card.css';
 @import './components/checkbox.css';
+@import './components/checkbox-group.css';
 @import './components/code-block.css';
 @import './components/combobox.css';
 @import './components/command-palette.css';
@@ -44,12 +46,15 @@
 @import './components/select.css';
 @import './components/segmented-control.css';
 @import './components/selection-popover.css';
+@import './components/side-navigation.css';
+@import './components/side-navigation-group.css';
 @import './components/skeleton.css';
 @import './components/sortable-list.css';
 @import './components/stacked-list-item.css';
 @import './components/spinner.css';
 @import './components/stat.css';
 @import './components/stat-group.css';
+@import './components/steps.css';
 @import './components/surface.css';
 @import './components/tab.css';
 @import './components/tab-list.css';

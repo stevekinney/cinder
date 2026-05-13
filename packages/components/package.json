@@ -41,6 +41,10 @@
       "svelte": "./src/components/breadcrumbs.svelte",
       "types": "./dist/components/breadcrumbs.svelte.d.ts"
     },
+    "./button-group": {
+      "svelte": "./src/components/button-group.svelte",
+      "types": "./dist/components/button-group.svelte.d.ts"
+    },
     "./button": {
       "svelte": "./src/components/button.svelte",
       "types": "./dist/components/button.svelte.d.ts"
@@ -52,6 +56,10 @@
     "./chat": {
       "svelte": "./src/components/chat.svelte",
       "types": "./dist/components/chat.svelte.d.ts"
+    },
+    "./checkbox-group": {
+      "svelte": "./src/components/checkbox-group.svelte",
+      "types": "./dist/components/checkbox-group.svelte.d.ts"
     },
     "./checkbox": {
       "svelte": "./src/components/checkbox.svelte",
@@ -125,14 +133,6 @@
       "svelte": "./src/components/empty-state.svelte",
       "types": "./dist/components/empty-state.svelte.d.ts"
     },
-    "./feed-event": {
-      "svelte": "./src/components/feed-event.svelte",
-      "types": "./dist/components/feed-event.svelte.d.ts"
-    },
-    "./feed": {
-      "svelte": "./src/components/feed.svelte",
-      "types": "./dist/components/feed.svelte.d.ts"
-    },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
       "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
@@ -160,6 +160,14 @@
     "./experimental/timeline": {
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
+    },
+    "./feed-event": {
+      "svelte": "./src/components/feed-event.svelte",
+      "types": "./dist/components/feed-event.svelte.d.ts"
+    },
+    "./feed": {
+      "svelte": "./src/components/feed.svelte",
+      "types": "./dist/components/feed.svelte.d.ts"
     },
     "./grid-list-item": {
       "svelte": "./src/components/grid-list-item.svelte",
@@ -241,6 +249,18 @@
       "svelte": "./src/components/selection-popover.svelte",
       "types": "./dist/components/selection-popover.svelte.d.ts"
     },
+    "./side-navigation-group": {
+      "svelte": "./src/components/side-navigation-group.svelte",
+      "types": "./dist/components/side-navigation-group.svelte.d.ts"
+    },
+    "./side-navigation-item": {
+      "svelte": "./src/components/side-navigation-item.svelte",
+      "types": "./dist/components/side-navigation-item.svelte.d.ts"
+    },
+    "./side-navigation": {
+      "svelte": "./src/components/side-navigation.svelte",
+      "types": "./dist/components/side-navigation.svelte.d.ts"
+    },
     "./skeleton": {
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
@@ -264,6 +284,10 @@
     "./stat": {
       "svelte": "./src/components/stat.svelte",
       "types": "./dist/components/stat.svelte.d.ts"
+    },
+    "./steps": {
+      "svelte": "./src/components/steps.svelte",
+      "types": "./dist/components/steps.svelte.d.ts"
     },
     "./surface": {
       "svelte": "./src/components/surface.svelte",
@@ -324,6 +348,10 @@
     "./tooltip": {
       "svelte": "./src/components/tooltip.svelte",
       "types": "./dist/components/tooltip.svelte.d.ts"
+    },
+    "./visually-hidden": {
+      "svelte": "./src/components/visually-hidden.svelte",
+      "types": "./dist/components/visually-hidden.svelte.d.ts"
     }
   },
   "main": "./dist/server/index.js",

@@ -395,4 +395,17 @@ export const CONTRACT: Record<string, ComponentContract> = {
       children: s0(false),
     },
   },
+
+  'visually-hidden': {
+    kind: 'intersection',
+    html_attrs: 'HTMLAnchorAttributes',
+    props: {
+      as: { optional: true, type_kind: 'TSTypeReference', default: L('span') },
+      focusable: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+    },
+    snippets: {
+      children: s0(false),
+    },
+  },
 };

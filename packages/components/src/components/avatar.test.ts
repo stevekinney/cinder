@@ -59,4 +59,12 @@ describe('Avatar', () => {
     const placeholder = container.querySelector('.cinder-avatar__placeholder');
     expect(placeholder).not.toBeNull();
   });
+
+  test('sr-only span exposes accessible name to AT when falling back to initials', () => {
+    const { container } = render(Avatar, { name: 'Alice' });
+    const srOnly = container.querySelector('.cinder-sr-only');
+    expect(srOnly).not.toBeNull();
+    expect(srOnly?.textContent).toBe('Alice');
+    expect(srOnly?.getAttribute('aria-hidden')).not.toBe('true');
+  });
 });

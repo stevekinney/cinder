@@ -1,5 +1,7 @@
 /* ========================================
  * NAVIGATION BAR
+ * Breakpoint used below: 47.99rem (~767px). No shared breakpoint token
+ * exists in this package yet; extract to a token in a follow-up task.
  * ======================================== */
 
 .cinder-navigation-bar {
@@ -43,4 +45,76 @@
   align-items: center;
   gap: var(--cinder-space-2);
   flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Toggle button — hidden by default; shown on mobile only when
+ * the consumer provides a menuToggle snippet (data-collapsible='true').
+ * ---------------------------------------- */
+
+.cinder-navigation-bar__menu-toggle {
+  display: none;
+}
+
+/* ----------------------------------------
+ * Collapsible mobile mode
+ * Scoped under [data-collapsible='true'] so non-opted-in bars are
+ * completely unaffected at every viewport.
+ * ---------------------------------------- */
+
+@media (max-width: 47.99rem) {
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__menu-toggle {
+    display: inline-flex;
+  }
+
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--cinder-space-2);
+    background: var(--cinder-surface);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    z-index: var(--cinder-z-overlay, 10);
+
+    /* Open → visible, slide in */
+    transition:
+      transform 200ms ease,
+      opacity 200ms ease;
+  }
+
+  /* Closed: remove from focus/AT trees immediately via visibility. */
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items[data-open='false'] {
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items[data-open='true'] {
+    visibility: visible;
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ----------------------------------------
+ * Reduced motion — zero out transitions
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    transition: none;
+  }
+}
+
+/* ----------------------------------------
+ * Forced colors — keep panel border visible
+ * ---------------------------------------- */
+
+@media (forced-colors: active) {
+  .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    border-bottom-color: CanvasText;
+  }
 }

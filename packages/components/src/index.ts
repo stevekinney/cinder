@@ -19,6 +19,9 @@ export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.
 export { default as Button } from './components/button.svelte';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button.svelte';
 
+export { default as ButtonGroup } from './components/button-group.svelte';
+export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
+
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 
@@ -27,6 +30,9 @@ export type { ChatProps } from './components/chat.svelte';
 
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
+
+export { default as CheckboxGroup } from './components/checkbox-group.svelte';
+export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
 
 export { default as CodeBlock } from './components/code-block.svelte';
 export type { CodeBlockProps } from './components/code-block.svelte';
@@ -145,7 +151,12 @@ export { default as Modal } from './components/modal.svelte';
 export type { ModalProps } from './components/modal.svelte';
 
 export { default as NavigationBar } from './components/navigation-bar.svelte';
-export type { NavigationBarProps } from './components/navigation-bar.svelte';
+export type {
+  NavigationBarItemsContext,
+  NavigationBarProps,
+  NavigationBarToggleAttributes,
+  NavigationVariant,
+} from './components/navigation-bar.svelte';
 
 export { default as NavigationItem } from './components/navigation-item.svelte';
 export type { NavigationItemProps } from './components/navigation-item.svelte';
@@ -210,6 +221,15 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
+export { default as SideNavigation } from './components/side-navigation.svelte';
+export type { SideNavigationProps } from './components/side-navigation.svelte';
+
+export { default as SideNavigationGroup } from './components/side-navigation-group.svelte';
+export type { SideNavigationGroupProps } from './components/side-navigation-group.svelte';
+
+export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
+export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
+
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
 export type {
@@ -229,6 +249,9 @@ export type {
 
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
+
+export { default as Steps } from './components/steps.svelte';
+export type { StepItem, StepsOrientation, StepsProps } from './components/steps.svelte';
 
 export { default as Stat } from './components/stat.svelte';
 export type { StatChange, StatChangeDirection, StatProps } from './components/stat.svelte';
@@ -303,6 +326,9 @@ export type { ToggleProps } from './components/toggle.svelte';
 
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
+
+export { default as VisuallyHidden } from './components/visually-hidden.svelte';
+export type { VisuallyHiddenProps } from './components/visually-hidden.svelte';
 
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their

@@ -48,7 +48,7 @@ async function waitForPing(timeoutMs: number): Promise<void> {
 
 /**
  * Validate shell + component page routes for all discovered components:
- *   - /c/:name — shell with sidebar nav + iframe pointing at /page/:name
+ *   - /c/:name — shell scaffold with the SPA mount point and initial data island
  *   - /page/:name — standalone component page (the iframe content)
  */
 async function validateComponentRoutes(baseUrl: string, components: string[]): Promise<void> {
@@ -70,17 +70,17 @@ async function validateComponentRoutes(baseUrl: string, components: string[]): P
     if (!shellBody.includes('<!DOCTYPE html>')) {
       fail(`GET ${shellUrl} did not return HTML (missing DOCTYPE)`);
     }
-    if (!shellBody.includes('<nav>')) {
-      fail(`GET ${shellUrl} HTML is missing the expected <nav> shell element`);
+    if (!shellBody.includes('id="shell-root"')) {
+      fail(`GET ${shellUrl} HTML is missing the expected #shell-root mount point`);
     }
-    // Shell iframe must target /page/:name, not /c/:name (recursive self-reference)
+    if (!shellBody.includes('id="cinder-initial"')) {
+      fail(`GET ${shellUrl} HTML is missing the expected cinder-initial data island`);
+    }
+    if (!shellBody.includes('src="/shell-bundle/shell.js"')) {
+      fail(`GET ${shellUrl} HTML does not load the shell bundle`);
+    }
     if (shellBody.includes(`src="/c/${name}"`)) {
-      fail(
-        `GET ${shellUrl} shell iframe references /c/${name} (recursive) — should reference /page/${name}`,
-      );
-    }
-    if (!shellBody.includes(`src="/page/${name}"`)) {
-      fail(`GET ${shellUrl} shell iframe does not reference /page/${name}`);
+      fail(`GET ${shellUrl} shell scaffold references /c/${name} recursively`);
     }
 
     // Component page route (iframe content)

@@ -34,7 +34,7 @@ If you need the entire row to be clickable, wrap the row in an explicit interact
 
 ## Disambiguated Action Labels
 
-When the `trailing` snippet contains interactive controls — "Edit", "Delete", "View", etc. — the accessible name of each control must identify the specific row. Screen readers reading row-by-row otherwise announce a stream of identical button labels, violating WCAG 2.4.6 (Headings and Labels) and WCAG 2.4.4 (Link Purpose in Context).
+When the `trailing` snippet contains interactive controls — "Edit", "Delete", "View", etc. — the accessible name of each control must identify the specific row. Screen readers reading row-by-row otherwise announce a stream of identical button labels, violating [WCAG 2.4.6 Headings and Labels](https://www.w3.org/WAI/WCAG21/Understanding/headings-and-labels.html) and [WCAG 2.4.4 Link Purpose in Context](https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html).
 
 ```svelte
 {#snippet trailing()}
@@ -57,8 +57,8 @@ If `trailing` contains interactive elements alongside a linked title, both are s
 
 The component cannot enforce minimum touch target sizes on `trailing` content because that region is consumer-supplied markup. Two separate WCAG criteria apply:
 
-- **WCAG 2.5.8 Target Size (Minimum)** — Level AA — requires at least 24×24 CSS pixels, with documented exceptions and a spacing allowance for smaller targets. This is the **baseline**.
-- **WCAG 2.5.5 Target Size (Enhanced)** — Level AAA — recommends at least 44×44 CSS pixels for pointer-input targets. This is the **recommendation** for comfortable interaction.
+- **[WCAG 2.5.8 Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)** — Level AA — requires at least 24×24 CSS pixels, with documented exceptions and a spacing allowance for smaller targets. This is the **baseline**.
+- **[WCAG 2.5.5 Target Size (Enhanced)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html)** — Level AAA — recommends at least 44×44 CSS pixels for pointer-input targets. This is the **recommendation** for comfortable interaction.
 
 Condensed density reduces row padding; it does not reduce trailing control dimensions. Consumers must ensure their trailing controls independently satisfy the applicable target size criterion.
 

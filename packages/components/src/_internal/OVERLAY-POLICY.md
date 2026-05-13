@@ -12,7 +12,7 @@ The runtime helpers backing this policy live in `src/_internal/overlay.ts`.
 
 ## SSR rule (hard constraint)
 
-Overlays render nothing on the server, regardless of their initial `open` state. The standard idiom in a Svelte 5 component:
+Overlays render nothing on the server, regardless of their initial `open` state. The standard idiom in a [Svelte 5](https://svelte.dev/docs/svelte/overview) component:
 
 ```svelte
 <script>
