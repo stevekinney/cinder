@@ -247,6 +247,9 @@ export type {
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
 
+export { default as Steps } from './components/steps.svelte';
+export type { StepItem, StepsOrientation, StepsProps } from './components/steps.svelte';
+
 export { default as Stat } from './components/stat.svelte';
 export type { StatChange, StatChangeDirection, StatProps } from './components/stat.svelte';
 
