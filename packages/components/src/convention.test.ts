@@ -77,22 +77,26 @@ function findSpreadOnNativeElement(fragment: unknown, _restName: string): boolea
   if (!fragment || typeof fragment !== 'object') return false;
   const node = fragment as Record<string, unknown>;
 
-  // Check if this node is a RegularElement (native DOM element) with any SpreadAttribute.
+  // Check if this node is a RegularElement (native DOM element) or SvelteElement
+  // (<svelte:element this={...}>) with any SpreadAttribute.
   // We accept any SpreadAttribute identifier — the component may alias `rest` before spreading
   // (e.g. Button casts rest → anchorAttributes / buttonAttributes). The structural requirement
   // is that SOME spread lands on a native element, not that the spread identifier is always "rest".
-  if (node.type === 'RegularElement') {
-    const tag = node.name as string;
-    // Native elements have lowercase tag names (no colon, no capital letters).
-    if (tag === tag.toLowerCase() && !tag.includes(':')) {
-      const attrs = Array.isArray(node.attributes) ? node.attributes : [];
-      const hasSpread = attrs.some((attr: unknown) => {
-        if (!attr || typeof attr !== 'object') return false;
-        const a = attr as Record<string, unknown>;
-        return a.type === 'SpreadAttribute';
-      });
-      if (hasSpread) return true;
-    }
+  const isNativeOrDynamicElement =
+    (node.type === 'RegularElement' &&
+      typeof node.name === 'string' &&
+      node.name === node.name.toLowerCase() &&
+      !node.name.includes(':')) ||
+    node.type === 'SvelteElement';
+
+  if (isNativeOrDynamicElement) {
+    const attrs = Array.isArray(node.attributes) ? node.attributes : [];
+    const hasSpread = attrs.some((attr: unknown) => {
+      if (!attr || typeof attr !== 'object') return false;
+      const a = attr as Record<string, unknown>;
+      return a.type === 'SpreadAttribute';
+    });
+    if (hasSpread) return true;
   }
 
   // Recurse into child nodes (covers Svelte modern AST: nodes, children, body, etc.)

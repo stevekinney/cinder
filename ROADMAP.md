@@ -358,16 +358,16 @@ Consolidate around one `<VisuallyHidden>` component and one canonical class. Mig
 
 Best-practice notes: render as `<span>` by default so the component is inline-flow-compatible; expose an `as` prop (or `element` prop) for cases that need block semantics (`<div>` inside a `<dl>`, `<dt>` inside a screen-reader-only `<dl>` row); support a `focusable` mode for skip-links and "Skip to main content" patterns — when `focusable` is on, the element becomes visible on `:focus`/`:focus-within` by overriding the clip; never use `display: none` or `visibility: hidden` (both remove from the AT tree); never use `aria-hidden="true"` (that's the _opposite_ of what this component does); the canonical CSS is the clip-rect/1px/absolute pattern already present in `utilities.css`.
 
-- [ ] Create `visually-hidden.svelte` with props `as?: keyof HTMLElementTagNameMap = 'span'`, `focusable?: boolean = false`, `class?: string`, plus `children: Snippet`.
-- [ ] Render via `<svelte:element this={as}>` so block-vs-inline use cases are covered with one component.
-- [ ] Apply `cinder-sr-only` by default; when `focusable` is true, apply an additional `cinder-sr-only-focusable` class that reverts the clip on `:focus`, `:focus-within`, and `:focus-visible`.
-- [ ] Add the `.cinder-sr-only-focusable` rule alongside `.cinder-sr-only` in `styles/utilities.css` — keep the visually-hidden utilities co-located, do not introduce a new stylesheet.
-- [ ] Delete the duplicate `.cinder-visually-hidden` rule in `styles/components/avatar.css`; update `avatar.svelte` to use the new `<VisuallyHidden>` component (or `cinder-sr-only` class — pick the component for parity).
-- [ ] Spread `...rest` so consumers can pass `id`, `aria-*`, `data-*`, etc. through to the rendered element.
-- [ ] Forward `class` via `classNames(...)` so consumers can layer additional classes without losing the utility.
-- [ ] Write `visually-hidden.a11y.md`: covers when to use this vs. an `aria-label`/`aria-labelledby` (rule of thumb: prefer aria attributes when the visible UI already names the element; use `<VisuallyHidden>` when you need additional context only ATs should hear, or when the visible UI is non-text like an icon-only button with adjacent state text); skip-link example using `focusable`; explicit warning never to confuse this with `aria-hidden`.
-- [ ] Tests: renders as `<span>` by default; respects `as` prop; applies `cinder-sr-only`; applies focusable class when prop is set; passes through arbitrary attributes; content is queryable via `getByText` (i.e., not pruned from the DOM).
-- [ ] Storybook story: default usage inside an icon-only button; skip-link usage with `focusable` showing the visible-on-focus behavior; usage as a `<dt>` inside a description list "narrow" variant (ties to the description-list task).
+- [x] Create `visually-hidden.svelte` with props `as?: keyof HTMLElementTagNameMap = 'span'`, `focusable?: boolean = false`, `class?: string`, plus `children: Snippet`.
+- [x] Render via `<svelte:element this={as}>` so block-vs-inline use cases are covered with one component.
+- [x] Apply `cinder-sr-only` by default; when `focusable` is true, apply an additional `cinder-sr-only-focusable` class that reverts the clip on `:focus`, `:focus-within`, and `:focus-visible`.
+- [x] Add the `.cinder-sr-only-focusable` rule alongside `.cinder-sr-only` in `styles/utilities.css` — keep the visually-hidden utilities co-located, do not introduce a new stylesheet.
+- [x] Delete the duplicate `.cinder-visually-hidden` rule in `styles/components/avatar.css`; update `avatar.svelte` to use the new `<VisuallyHidden>` component (or `cinder-sr-only` class — pick the component for parity).
+- [x] Spread `...rest` so consumers can pass `id`, `aria-*`, `data-*`, etc. through to the rendered element.
+- [x] Forward `class` via `classNames(...)` so consumers can layer additional classes without losing the utility.
+- [x] Write `visually-hidden.a11y.md`: covers when to use this vs. an `aria-label`/`aria-labelledby` (rule of thumb: prefer aria attributes when the visible UI already names the element; use `<VisuallyHidden>` when you need additional context only ATs should hear, or when the visible UI is non-text like an icon-only button with adjacent state text); skip-link example using `focusable`; explicit warning never to confuse this with `aria-hidden`.
+- [x] Tests: renders as `<span>` by default; respects `as` prop; applies `cinder-sr-only`; applies focusable class when prop is set; passes through arbitrary attributes; content is queryable via `getByText` (i.e., not pruned from the DOM).
+- [x] Storybook story: default usage inside an icon-only button; skip-link usage with `focusable` showing the visible-on-focus behavior; usage as a `<dt>` inside a description list "narrow" variant (ties to the description-list task).
 - [ ] Follow-up cleanup (not blocking this task): migrate `chat-input`, `message-attachments`, `chat-status-announcer`, and `spinner` to use the component and remove their local `.sr-only` declarations. File a separate task once the primitive ships.
 
 ## Selection Controls
