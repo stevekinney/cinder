@@ -112,12 +112,12 @@ async function main(): Promise<void> {
   }
 
   const topRules: RuleStat[] = [...ruleCounts.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
+    .toSorted((a, b) => b[1].count - a[1].count)
     .slice(0, 5)
     .map(([ruleId, { count, help }]) => ({ ruleId, count, help }));
 
   const topComponents: ComponentStat[] = [...componentCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
+    .toSorted((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([slug, count]) => ({ slug, count }));
 
@@ -133,12 +133,16 @@ async function main(): Promise<void> {
   await mkdir(dirname(summaryPath), { recursive: true });
   await writeFile(summaryPath, JSON.stringify(summary, null, 2) + '\n');
 
-  console.log(`Axe summary: ${totalViolations} total violations across ${jsonFiles.length} result files`);
+  console.log(
+    `Axe summary: ${totalViolations} total violations across ${jsonFiles.length} result files`,
+  );
   console.log(
     `  By impact: critical=${byImpact.critical}, serious=${byImpact.serious}, moderate=${byImpact.moderate}, minor=${byImpact.minor}`,
   );
   if (topRules.length > 0) {
-    console.log(`  Top rules: ${topRules.map((rule) => `${rule.ruleId}(${rule.count})`).join(', ')}`);
+    console.log(
+      `  Top rules: ${topRules.map((rule) => `${rule.ruleId}(${rule.count})`).join(', ')}`,
+    );
   }
 }
 

@@ -4,11 +4,7 @@
 </script>
 
 <script lang="ts">
-  import {
-    Button,
-    CommandItem,
-    CommandPalette,
-  } from '../../../../components/src/index.ts';
+  import { Button, CommandItem, CommandPalette } from '../../../../components/src/index.ts';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);

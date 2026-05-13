@@ -92,7 +92,8 @@
 
   <section aria-label="NavigationBar">
     <NavigationBar>
-      {#snippet items()}<NavigationItem href="/">Home</NavigationItem>{/snippet}
+      {#snippet items({ variant })}<NavigationItem {variant} href="/">Home</NavigationItem
+        >{/snippet}
     </NavigationBar>
   </section>
 

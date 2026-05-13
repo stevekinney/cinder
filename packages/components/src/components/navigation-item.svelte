@@ -1,23 +1,19 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
 
-  type LinkArm = {
-    href: string;
+  type CommonArm = {
     active?: boolean;
     disabled?: boolean;
     class?: string;
+    /** Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'. */
+    variant?: 'horizontal' | 'mobile';
     children: Snippet;
   };
 
-  type ButtonArm = {
-    onClick: (event: MouseEvent) => void;
-    active?: boolean;
-    disabled?: boolean;
-    class?: string;
-    children: Snippet;
-  };
+  type LinkArm = CommonArm & { href: string };
+  type ButtonArm = CommonArm & { onclick: (event: MouseEvent) => void };
 
-  /** Props for the NavigationItem component. Pass `href` for a link, `onClick` for a button. */
+  /** Props for the NavigationItem component. Pass `href` for a link, `onclick` for a button. */
   export type NavigationItemProps = LinkArm | ButtonArm;
 </script>
 
@@ -31,6 +27,7 @@
   const resolvedClass = $derived(classNames('cinder-navigation-item', props.class));
   const active = $derived(props.active ?? false);
   const disabled = $derived(props.disabled ?? false);
+  const variant = $derived(props.variant ?? 'horizontal');
 
   function handleClick(event: MouseEvent): void {
     if (disabled) {
@@ -38,7 +35,7 @@
       return;
     }
     if (!isLink) {
-      (props as { onClick: (event: MouseEvent) => void }).onClick(event);
+      (props as { onclick: (event: MouseEvent) => void }).onclick(event);
     }
   }
 </script>
@@ -50,6 +47,7 @@
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
+    data-variant={variant}
     onclick={handleClick}
   >
     {@render props.children()}
@@ -58,9 +56,10 @@
   <button
     type="button"
     class={resolvedClass}
-    aria-current={active ? 'true' : undefined}
+    aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
+    data-variant={variant}
     onclick={handleClick}
   >
     {@render props.children()}

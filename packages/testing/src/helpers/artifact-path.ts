@@ -14,5 +14,11 @@ export function screenshotPath(key: ArtifactKey): string {
 }
 
 export function axeJsonPath(key: ArtifactKey): string {
-  return resolve(packageRoot(), 'test-results', 'axe', key.slug, `${key.theme}-${key.viewport}.json`);
+  return resolve(
+    packageRoot(),
+    'test-results',
+    'axe',
+    key.slug,
+    `${key.theme}-${key.viewport}.json`,
+  );
 }

@@ -11,12 +11,12 @@ Reference: [WAI-ARIA APG Combobox Pattern](https://www.w3.org/WAI/ARIA/apg/patte
 
 ## Roles and Accessible Names
 
-| Element | Role | Accessible Name Source |
-|---------|------|------------------------|
-| `<dialog>` | `dialog` (implicit) | `aria-label` from the `label` prop |
-| `<input>` | `combobox` (explicit) | Visually-hidden `<label>` element (text from `label` prop) |
-| `<ul>` | `listbox` (explicit) | No `aria-label`; the combobox owns the listbox via `aria-controls`, and virtual focus is communicated via `aria-activedescendant` |
-| `<li>` | `option` (explicit) | Text content of the `children` snippet |
+| Element    | Role                  | Accessible Name Source                                                                                                            |
+| ---------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `<dialog>` | `dialog` (implicit)   | `aria-label` from the `label` prop                                                                                                |
+| `<input>`  | `combobox` (explicit) | Visually-hidden `<label>` element (text from `label` prop)                                                                        |
+| `<ul>`     | `listbox` (explicit)  | No `aria-label`; the combobox owns the listbox via `aria-controls`, and virtual focus is communicated via `aria-activedescendant` |
+| `<li>`     | `option` (explicit)   | Text content of the `children` snippet                                                                                            |
 
 ## Virtual Focus Model
 
@@ -33,16 +33,16 @@ Invariants asserted in tests:
 
 ## Keyboard Contract
 
-| Key | Behavior |
-|-----|----------|
-| `ArrowDown` | Move active item to next non-disabled; wrap to first if at end. `preventDefault`. |
-| `ArrowUp` | Move active item to previous non-disabled; wrap to last. `preventDefault`. |
-| `Home` | Move active item to first non-disabled. `preventDefault` (prevents caret jump). |
-| `End` | Move active item to last non-disabled. `preventDefault`. |
-| `Enter` | Invoke the active item's `onselect`. `preventDefault` (prevents form submission). |
-| `Escape` | Close the palette via the shared escape stack. Single-sourced through `closePalette()`. |
+| Key                 | Behavior                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `ArrowDown`         | Move active item to next non-disabled; wrap to first if at end. `preventDefault`.                                |
+| `ArrowUp`           | Move active item to previous non-disabled; wrap to last. `preventDefault`.                                       |
+| `Home`              | Move active item to first non-disabled. `preventDefault` (prevents caret jump).                                  |
+| `End`               | Move active item to last non-disabled. `preventDefault`.                                                         |
+| `Enter`             | Invoke the active item's `onselect`. `preventDefault` (prevents form submission).                                |
+| `Escape`            | Close the palette via the shared escape stack. Single-sourced through `closePalette()`.                          |
 | `Tab` / `Shift+Tab` | Native `<dialog>` focus trap (browser-level). Focus cycles through interactive elements in the panel and footer. |
-| Typing | Updates `query` (bindable). Items snippet re-renders with the new query. |
+| Typing              | Updates `query` (bindable). Items snippet re-renders with the new query.                                         |
 
 ## Mouse / Pointer Parity
 

@@ -148,7 +148,12 @@ export { default as Modal } from './components/modal.svelte';
 export type { ModalProps } from './components/modal.svelte';
 
 export { default as NavigationBar } from './components/navigation-bar.svelte';
-export type { NavigationBarProps } from './components/navigation-bar.svelte';
+export type {
+  NavigationBarItemsContext,
+  NavigationBarProps,
+  NavigationBarToggleAttributes,
+  NavigationVariant,
+} from './components/navigation-bar.svelte';
 
 export { default as NavigationItem } from './components/navigation-item.svelte';
 export type { NavigationItemProps } from './components/navigation-item.svelte';
