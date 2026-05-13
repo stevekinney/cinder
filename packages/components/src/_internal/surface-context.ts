@@ -36,7 +36,16 @@ export const SURFACE_CONTEXT_KEY: unique symbol = Symbol('cinder.surface');
  * Read the nearest enclosing `<Surface>` context. Returns `undefined` when no
  * `<Surface>` ancestor exists. All readers MUST handle the `undefined` case;
  * cinder makes no implicit "default" assumption when there is no parent.
+ *
+ * The try-catch handles the same SSR/test-environment edge case documented in
+ * `form-field-context.ts`: compiling with `generate:'server'` while resolving
+ * 'svelte' to the client build causes `getContext` to throw
+ * `lifecycle_outside_component`. Returning `undefined` is the correct fallback.
  */
 export function getSurfaceContext(): SurfaceContextValue | undefined {
-  return getContext<SurfaceContextValue | undefined>(SURFACE_CONTEXT_KEY);
+  try {
+    return getContext<SurfaceContextValue | undefined>(SURFACE_CONTEXT_KEY);
+  } catch {
+    return undefined;
+  }
 }

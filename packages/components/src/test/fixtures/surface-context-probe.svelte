@@ -1,6 +1,8 @@
 <script lang="ts">
   import { getSurfaceContext } from '../../_internal/surface-context.ts';
 
+  let { testid = 'probe-tone' }: { testid?: string } = $props();
+
   const context = getSurfaceContext();
 </script>
 
@@ -9,4 +11,4 @@
   current tone onto a data-* attribute so tests can query it deterministically.
   Renders 'none' when no enclosing <Surface> exists (getSurfaceContext returns undefined).
 -->
-<div data-testid="probe-tone" data-tone={context?.tone ?? 'none'}></div>
+<div data-testid={testid} data-tone={context?.tone ?? 'none'}></div>

@@ -13,6 +13,9 @@ const { default: SurfaceContextProbe } =
   await import('../test/fixtures/surface-context-probe.svelte');
 const { default: SurfaceToneMutator } =
   await import('../test/fixtures/surface-tone-mutator.svelte');
+const { default: SurfaceWithProbe } = await import('../test/fixtures/surface-with-probe.svelte');
+const { default: NestedSurfacesFixture } =
+  await import('../test/fixtures/nested-surfaces-fixture.svelte');
 
 const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
@@ -64,34 +67,33 @@ describe('Surface rendering', () => {
     expect(root?.getAttribute('data-bar')).toBe('baz');
     expect(root?.getAttribute('aria-label')).toBe('region');
   });
+
+  test('children snippet renders inside the surface', () => {
+    const childSnippet = createRawSnippet(() => ({
+      render: () => `<span data-testid="child-content">hello</span>`,
+      setup: () => {},
+    }));
+    const { container } = render(Surface, {
+      props: { children: childSnippet },
+    });
+    expect(container.querySelector('.cinder-surface [data-testid="child-content"]')).not.toBeNull();
+  });
 });
 
 describe('SurfaceContext', () => {
   test.each(['default', 'raised', 'inset', 'transparent'] as SurfaceTone[])(
-    'context is readable by descendants for tone "%s"',
+    'context is readable by a real descendant component for tone "%s"',
     (tone) => {
-      const probeSnippet = createRawSnippet(() => ({
-        render: () => `<div data-testid="probe-tone" data-tone="${tone}"></div>`,
-        setup: () => {},
-      }));
-
-      const { container } = render(Surface, {
-        props: {
-          tone,
-          children: probeSnippet,
-        },
+      const { container } = render(SurfaceWithProbe, {
+        props: { tone },
       });
-
-      // Verify the surface itself has the right tone
-      expect(container.querySelector('.cinder-surface')?.getAttribute('data-cinder-tone')).toBe(
-        tone,
-      );
+      const probe = container.querySelector('[data-testid="probe-tone"]');
+      expect(probe?.getAttribute('data-tone')).toBe(tone);
     },
   );
 
-  test('context is readable by SurfaceContextProbe descendant', async () => {
+  test('no-parent reader returns none sentinel', () => {
     const { container } = render(SurfaceContextProbe, {});
-    // Outside any surface — expects 'none' sentinel
     const probe = container.querySelector('[data-testid="probe-tone"]');
     expect(probe?.getAttribute('data-tone')).toBe('none');
   });
@@ -122,37 +124,16 @@ describe('SurfaceContext', () => {
     });
   });
 
-  test('nested surfaces override context for their subtree', async () => {
-    // Render outer surface with raised tone containing inner surface with transparent tone,
-    // each with a context probe. We verify the inner surface has its own data attribute.
-    const { container } = render(Surface, {
-      props: {
-        tone: 'raised',
-        children: createRawSnippet(() => ({
-          render: () =>
-            `<div class="outer-probe" data-outer-tone="raised">` +
-            `<div class="cinder-surface" data-cinder-tone="transparent">` +
-            `<div class="inner-probe" data-inner-tone="transparent"></div>` +
-            `</div>` +
-            `</div>`,
-          setup: () => {},
-        })),
-      },
-    });
+  test('nested surfaces override context for their subtree', () => {
+    const { container } = render(NestedSurfacesFixture, {});
 
-    // Outer surface has raised tone
-    const outerSurface = container.querySelector('.cinder-surface');
-    expect(outerSurface?.getAttribute('data-cinder-tone')).toBe('raised');
+    // Outer probe (between outer and inner Surface) reads the outer tone
+    const outerProbe = container.querySelector('[data-testid="outer-probe"]');
+    expect(outerProbe?.getAttribute('data-tone')).toBe('raised');
 
-    // Inner surface (manually rendered via snippet) shows transparent
-    const innerSurface = container.querySelector('.cinder-surface .cinder-surface');
-    expect(innerSurface?.getAttribute('data-cinder-tone')).toBe('transparent');
-  });
-
-  test('no-parent reader returns none sentinel', () => {
-    const { container } = render(SurfaceContextProbe, {});
-    const probe = container.querySelector('[data-testid="probe-tone"]');
-    expect(probe?.getAttribute('data-tone')).toBe('none');
+    // Inner probe (inside inner Surface) reads the inner tone
+    const innerProbe = container.querySelector('[data-testid="inner-probe"]');
+    expect(innerProbe?.getAttribute('data-tone')).toBe('transparent');
   });
 });
 
