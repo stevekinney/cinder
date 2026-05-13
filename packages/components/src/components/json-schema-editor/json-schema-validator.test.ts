@@ -74,6 +74,16 @@ describe('validateMetaSchema', () => {
     );
     expect(result.valid).toBe(true);
   });
+
+  test('forced draft mismatch returns invalid instead of throwing', () => {
+    const result = validateMetaSchema(
+      { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'string' },
+      'draft-07',
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]?.message).toContain('no schema with key or ref');
+  });
 });
 
 describe('tryCompile', () => {

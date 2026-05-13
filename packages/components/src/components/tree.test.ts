@@ -1,0 +1,1307 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, test } from 'bun:test';
+import type { Snippet } from 'svelte';
+import { createRawSnippet, mount, unmount } from 'svelte';
+
+import { setupHappyDom } from '../test/happy-dom.ts';
+
+setupHappyDom();
+
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+const { default: Tree } = await import('./tree.svelte');
+const { default: TreeItem } = await import('./tree-item.svelte');
+const { default: TreeTestHarness } = await import('./_tree-test-harness.svelte');
+
+afterEach(() => cleanup());
+
+// ---------------------------------------------------------------------------
+// Snippet helpers
+// ---------------------------------------------------------------------------
+
+type TreeItemMountProps = {
+  id: string;
+  label: string;
+  disabled?: boolean;
+  branch?: boolean;
+  children?: Snippet;
+  row?: Snippet<[{ expanded: boolean; selected: boolean; busy: boolean; level: number }]>;
+};
+
+function textSnippet(text: string) {
+  return createRawSnippet(() => ({
+    render: () => `<span>${text}</span>`,
+    setup: () => {},
+  }));
+}
+
+function treeItem(container: HTMLElement, label: string): HTMLElement | null {
+  const labelElement = [...container.querySelectorAll<HTMLElement>('.cinder-sr-only')].find(
+    (element) => element.textContent === label,
+  );
+
+  if (!labelElement?.id) return null;
+  return container.querySelector<HTMLElement>(
+    `[role="treeitem"][aria-labelledby="${labelElement.id}"]`,
+  );
+}
+
+function treeItemsSnippet(
+  items: Array<{
+    id: string;
+    label: string;
+    disabled?: boolean;
+    branch?: boolean;
+    children?: Array<{ id: string; label: string; disabled?: boolean }>;
+  }>,
+) {
+  return createRawSnippet(() => ({
+    render: () => `<div class="items-wrapper"></div>`,
+    setup: (node: Element) => {
+      const instances: ReturnType<typeof mount>[] = [];
+
+      for (const item of items) {
+        const childrenSnippet = item.children
+          ? createRawSnippet(() => ({
+              render: () => `<div class="children-wrapper"></div>`,
+              setup: (childNode: Element) => {
+                const childInstances: ReturnType<typeof mount>[] = [];
+                for (const child of item.children ?? []) {
+                  const childProps = {
+                    id: child.id,
+                    label: child.label,
+                    ...(child.disabled !== undefined && { disabled: child.disabled }),
+                  } satisfies TreeItemMountProps;
+                  childInstances.push(
+                    mount(TreeItem, {
+                      target: childNode,
+                      props: childProps,
+                    }),
+                  );
+                }
+                return () => {
+                  for (const ci of childInstances) unmount(ci);
+                };
+              },
+            }))
+          : undefined;
+
+        const itemProps = {
+          id: item.id,
+          label: item.label,
+          ...(item.disabled !== undefined && { disabled: item.disabled }),
+          ...(item.branch !== undefined && { branch: item.branch }),
+          ...(childrenSnippet && { children: childrenSnippet }),
+        } satisfies TreeItemMountProps;
+        instances.push(
+          mount(TreeItem, {
+            target: node,
+            props: itemProps,
+          }),
+        );
+      }
+      return () => {
+        for (const inst of instances) unmount(inst);
+      };
+    },
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Structure & ARIA
+// ---------------------------------------------------------------------------
+
+describe('Tree — structure and ARIA', () => {
+  test('root has role="tree"', () => {
+    const { container } = render(Tree, {
+      props: { 'aria-label': 'Test tree', children: textSnippet('') },
+    });
+    expect(container.querySelector('[role="tree"]')).not.toBeNull();
+  });
+
+  test('aria-multiselectable="true" only in multiple mode', () => {
+    const { container: c1 } = render(Tree, {
+      props: { 'aria-label': 'T', selectionMode: 'multiple', children: textSnippet('') },
+    });
+    expect(c1.querySelector('[role="tree"]')?.getAttribute('aria-multiselectable')).toBe('true');
+
+    const { container: c2 } = render(Tree, {
+      props: { 'aria-label': 'T', selectionMode: 'single', children: textSnippet('') },
+    });
+    expect(c2.querySelector('[role="tree"]')?.hasAttribute('aria-multiselectable')).toBe(false);
+
+    const { container: c3 } = render(Tree, {
+      props: { 'aria-label': 'T', selectionMode: 'none', children: textSnippet('') },
+    });
+    expect(c3.querySelector('[role="tree"]')?.hasAttribute('aria-multiselectable')).toBe(false);
+  });
+
+  test('items have role="treeitem"', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([{ id: 'a', label: 'Alpha' }]),
+      },
+    });
+    expect(container.querySelector('[role="treeitem"]')).not.toBeNull();
+  });
+
+  test('items have correct aria-level (1-based)', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const parent = treeItem(container, 'Parent');
+    const child = treeItem(container, 'Child');
+    expect(parent?.getAttribute('aria-level')).toBe('1');
+    expect(child?.getAttribute('aria-level')).toBe('2');
+  });
+
+  test('leaf items omit aria-expanded entirely', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([{ id: 'leaf', label: 'Leaf' }]),
+      },
+    });
+    const item = container.querySelector('[role="treeitem"]');
+    expect(item?.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  test('branch items have aria-expanded="true"/"false"', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['b1'],
+        children: treeItemsSnippet([
+          { id: 'b1', label: 'Branch1', branch: true, children: [{ id: 'c1', label: 'C1' }] },
+          { id: 'b2', label: 'Branch2', branch: true, children: [{ id: 'c2', label: 'C2' }] },
+        ]),
+      },
+    });
+    const b1 = treeItem(container, 'Branch1');
+    const b2 = treeItem(container, 'Branch2');
+    expect(b1?.getAttribute('aria-expanded')).toBe('true');
+    expect(b2?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('aria-selected absent in none mode', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'none',
+        children: treeItemsSnippet([{ id: 'a', label: 'A' }]),
+      },
+    });
+    const item = container.querySelector('[role="treeitem"]');
+    expect(item?.hasAttribute('aria-selected')).toBe(false);
+  });
+
+  test('aria-selected present in single mode', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        children: treeItemsSnippet([{ id: 'a', label: 'A' }]),
+      },
+    });
+    const item = container.querySelector('[role="treeitem"]');
+    expect(item?.hasAttribute('aria-selected')).toBe(true);
+  });
+
+  test('nested item lists use role="group"', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    expect(container.querySelector('[role="group"]')).not.toBeNull();
+  });
+
+  test('group labels point to unique treeitem ids across multiple trees', () => {
+    const first = render(Tree, {
+      props: {
+        'aria-label': 'First tree',
+        expandedIds: ['shared'],
+        children: treeItemsSnippet([
+          {
+            id: 'shared',
+            label: 'Shared',
+            branch: true,
+            children: [{ id: 'first-child', label: 'First Child' }],
+          },
+        ]),
+      },
+    });
+    const second = render(Tree, {
+      props: {
+        'aria-label': 'Second tree',
+        expandedIds: ['shared'],
+        children: treeItemsSnippet([
+          {
+            id: 'shared',
+            label: 'Shared',
+            branch: true,
+            children: [{ id: 'second-child', label: 'Second Child' }],
+          },
+        ]),
+      },
+    });
+
+    const firstItem = treeItem(first.container, 'Shared');
+    const secondItem = treeItem(second.container, 'Shared');
+    const firstGroup = first.container.querySelector('[role="group"]');
+    const secondGroup = second.container.querySelector('[role="group"]');
+
+    expect(firstItem?.id).toBeTruthy();
+    expect(secondItem?.id).toBeTruthy();
+    expect(firstItem?.id).not.toBe(secondItem?.id);
+    expect(firstGroup?.getAttribute('aria-labelledby')).toBe(firstItem?.id);
+    expect(secondGroup?.getAttribute('aria-labelledby')).toBe(secondItem?.id);
+  });
+
+  test('tree contains zero <li> elements', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    expect(container.querySelectorAll('li').length).toBe(0);
+  });
+
+  test('warns when neither aria-label nor aria-labelledby is provided', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+
+    try {
+      render(Tree, {
+        props: { children: textSnippet('') },
+      });
+      expect(warnings.some((w) => w.includes('[cinder-tree]'))).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Roving tabindex
+// ---------------------------------------------------------------------------
+
+describe('Tree — roving tabindex', () => {
+  test('exactly one item has tabindex="0" at any time', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const zeros = [...container.querySelectorAll('[role="treeitem"]')].filter(
+      (el) => el.getAttribute('tabindex') === '0',
+    );
+    expect(zeros.length).toBe(1);
+  });
+
+  test('initial tabindex=0 lands on first item when no selection', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const items = [...container.querySelectorAll('[role="treeitem"]')];
+    expect(items[0]?.getAttribute('tabindex')).toBe('0');
+    expect(items[1]?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('initial tabindex=0 lands on first selected item when selection exists', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        selectedIds: ['b'],
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const b = treeItem(container, 'B');
+    expect(b?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('focus falls back to a visible item when focused item becomes invisible (parent collapses)', async () => {
+    const { container } = render(TreeTestHarness, {
+      props: {
+        'aria-label': 'T',
+        initialExpandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+          { id: 'sibling', label: 'Sibling' },
+        ]),
+      },
+    });
+    // Focus the child (inside the expanded parent).
+    const child = treeItem(container, 'Child') as HTMLElement;
+    await fireEvent.focus(child);
+    // Collapse the parent while the child still owns focus; the child becomes
+    // invisible and unregisters.
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.keyDown(parent, { key: 'ArrowLeft' });
+    await waitFor(() => {
+      // After collapse, exactly one visible item should have tabindex=0.
+      const tabbables = [...container.querySelectorAll('[role="treeitem"]')].filter(
+        (element) => element.getAttribute('tabindex') === '0',
+      );
+      expect(tabbables.length).toBe(1);
+      // The focused item must be a root-level item (child is now hidden).
+      const focused = tabbables[0];
+      expect(focused?.getAttribute('aria-level')).toBe('1');
+      expect(document.activeElement).toBe(parent);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Keyboard navigation
+// ---------------------------------------------------------------------------
+
+describe('Tree — keyboard navigation', () => {
+  test('ArrowDown moves focus to next visible item', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    a.focus();
+    await fireEvent.keyDown(a, { key: 'ArrowDown' });
+    const b = treeItem(container, 'B');
+    expect(b?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowUp moves focus to previous visible item', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const b = treeItem(container, 'B') as HTMLElement;
+    b.focus();
+    await fireEvent.keyDown(b, { key: 'ArrowUp' });
+    const a = treeItem(container, 'A');
+    expect(a?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowDown does not wrap past the last item', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const b = treeItem(container, 'B') as HTMLElement;
+    b.focus();
+    await fireEvent.keyDown(b, { key: 'ArrowDown' });
+    // Should still be on B
+    expect(b.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('Home moves focus to first visible item', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const c = treeItem(container, 'C') as HTMLElement;
+    c.focus();
+    await fireEvent.keyDown(c, { key: 'Home' });
+    const a = treeItem(container, 'A');
+    expect(a?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('End moves focus to last visible item', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    a.focus();
+    await fireEvent.keyDown(a, { key: 'End' });
+    const c = treeItem(container, 'C');
+    expect(c?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowRight on collapsed branch expands without moving focus', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    parent.focus();
+    await fireEvent.keyDown(parent, { key: 'ArrowRight' });
+    expect(expandedIds).toContain('parent');
+    // Focus stays on parent
+    expect(parent.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowRight on expanded branch moves focus to first child', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    parent.focus();
+    await fireEvent.keyDown(parent, { key: 'ArrowRight' });
+    const child = treeItem(container, 'Child');
+    expect(child?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowLeft on expanded branch collapses; focus stays', async () => {
+    let expandedIds: string[] = ['parent'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    parent.focus();
+    await fireEvent.keyDown(parent, { key: 'ArrowLeft' });
+    expect(expandedIds).not.toContain('parent');
+    expect(parent.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowLeft on collapsed branch moves focus to parent', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [
+              {
+                id: 'inner',
+                label: 'Inner',
+              },
+            ],
+          },
+        ]),
+      },
+    });
+    const inner = treeItem(container, 'Inner') as HTMLElement;
+    inner.focus();
+    await fireEvent.keyDown(inner, { key: 'ArrowLeft' });
+    const parent = treeItem(container, 'Parent');
+    expect(parent?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowLeft at root with collapsed branch is a no-op', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A', branch: true, children: [{ id: 'c', label: 'C' }] },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    a.focus();
+    // Should not throw
+    await fireEvent.keyDown(a, { key: 'ArrowLeft' });
+    expect(a.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('ArrowDown skips collapsed-subtree descendants', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        // parent is collapsed, so children are invisible
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+          { id: 'sibling', label: 'Sibling' },
+        ]),
+      },
+    });
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    parent.focus();
+    await fireEvent.keyDown(parent, { key: 'ArrowDown' });
+    const sibling = treeItem(container, 'Sibling');
+    expect(sibling?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('* key expands all sibling branches at the current level', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'b1', label: 'Branch1', branch: true, children: [{ id: 'c1', label: 'C1' }] },
+          { id: 'b2', label: 'Branch2', branch: true, children: [{ id: 'c2', label: 'C2' }] },
+          { id: 'b3', label: 'Branch3', branch: true, children: [{ id: 'c3', label: 'C3' }] },
+        ]),
+      },
+    });
+    const b1 = treeItem(container, 'Branch1') as HTMLElement;
+    b1.focus();
+    await fireEvent.keyDown(b1, { key: '*' });
+    expect(expandedIds).toContain('b1');
+    expect(expandedIds).toContain('b2');
+    expect(expandedIds).toContain('b3');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+
+describe('Tree — selection', () => {
+  test('single mode: clicking item A then B leaves only B selected', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    const b = treeItem(container, 'B') as HTMLElement;
+    await fireEvent.click(a);
+    expect(selectedIds).toEqual(['a']);
+    await fireEvent.click(b);
+    expect(selectedIds).toEqual(['b']);
+    expect(selectedIds).not.toContain('a');
+  });
+
+  test('multiple mode: click toggles individual ids', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    const b = treeItem(container, 'B') as HTMLElement;
+    await fireEvent.click(a);
+    expect(selectedIds).toContain('a');
+    await fireEvent.click(b);
+    expect(selectedIds).toContain('a');
+    expect(selectedIds).toContain('b');
+    await fireEvent.click(a);
+    expect(selectedIds).not.toContain('a');
+    expect(selectedIds).toContain('b');
+  });
+
+  test('disabled items are never added to selectedIds', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([{ id: 'a', label: 'A', disabled: true }]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    await fireEvent.click(a);
+    expect(selectedIds).toEqual([]);
+  });
+
+  test('Ctrl/Cmd+A selects all visible items in multiple mode', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const tree = container.querySelector('[role="tree"]') as HTMLElement;
+    await fireEvent.keyDown(tree, { key: 'a', ctrlKey: true });
+    expect(selectedIds).toContain('a');
+    expect(selectedIds).toContain('b');
+    expect(selectedIds).toContain('c');
+  });
+
+  test('Enter toggles selection', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([{ id: 'a', label: 'A' }]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    await fireEvent.keyDown(a, { key: 'Enter' });
+    expect(selectedIds).toContain('a');
+  });
+
+  test('selectedIds is an array even in single mode', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([{ id: 'a', label: 'A' }]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    await fireEvent.click(a);
+    expect(Array.isArray(selectedIds)).toBe(true);
+    expect(selectedIds.length).toBe(1);
+  });
+
+  test('multiple mode: Shift+ArrowDown selects anchor item and moves focus', async () => {
+    // The current implementation toggles the anchor item on Shift+Arrow (range=anchor-to-anchor)
+    // then moves focus. This is the implemented behavior; a future improvement could
+    // select the destination item instead (APG suggestion from the review).
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    // Click A to set anchor
+    await fireEvent.click(a);
+    // Shift+ArrowDown selects range(anchor, current=a) = ['a'] and moves focus to b
+    await fireEvent.keyDown(a, { key: 'ArrowDown', shiftKey: true });
+    expect(selectedIds).toContain('a');
+    // Focus has moved to b
+    const b = treeItem(container, 'B');
+    expect(b?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('multiple mode: Shift+ArrowUp selects anchor item and moves focus', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+          { id: 'c', label: 'C' },
+        ]),
+      },
+    });
+    const c = treeItem(container, 'C') as HTMLElement;
+    // Click C to set anchor
+    await fireEvent.click(c);
+    // Shift+ArrowUp selects range(anchor, current=c) = ['c'] and moves focus to b
+    await fireEvent.keyDown(c, { key: 'ArrowUp', shiftKey: true });
+    expect(selectedIds).toContain('c');
+    // Focus has moved to b
+    const b = treeItem(container, 'B');
+    expect(b?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('single mode: Shift+ArrowDown does not perform range selection', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ]),
+      },
+    });
+    const a = treeItem(container, 'A') as HTMLElement;
+    await fireEvent.click(a);
+    await fireEvent.keyDown(a, { key: 'ArrowDown', shiftKey: true });
+    // Single mode ignores shift; focus moves but selection stays
+    expect(selectedIds.length).toBeLessThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Async loading
+// Use TreeTestHarness so expandedIds is backed by real Svelte $state,
+// enabling cross-component reactive tracking for the async load effects.
+// ---------------------------------------------------------------------------
+
+describe('Tree — async loading', () => {
+  test('expanding a branch with loadChildren sets aria-busy="true" while pending', async () => {
+    let resolveLoad!: () => void;
+    const loadChildren = () =>
+      new Promise<void>((resolve) => {
+        resolveLoad = resolve;
+      });
+
+    const { container } = render(TreeTestHarness, {
+      props: {
+        'aria-label': 'T',
+        children: createRawSnippet(() => ({
+          render: () => `<div class="w"></div>`,
+          setup: (node: Element) => {
+            const inst = mount(TreeItem, {
+              target: node,
+              props: { id: 'async-branch', label: 'Branch', loadChildren },
+            });
+            return () => unmount(inst);
+          },
+        })),
+      },
+    });
+
+    const item = container.querySelector('[role="treeitem"]') as HTMLElement;
+    item.focus();
+    await fireEvent.keyDown(item, { key: 'ArrowRight' });
+
+    await waitFor(() => {
+      expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    });
+
+    resolveLoad();
+    await waitFor(() => {
+      expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    });
+  });
+
+  test('loader rejection invokes onLoadError and collapses branch', async () => {
+    const errors: Array<{ error: unknown; id: string }> = [];
+    const loadError = new Error('fetch failed');
+
+    const { container } = render(TreeTestHarness, {
+      props: {
+        'aria-label': 'T',
+        children: createRawSnippet(() => ({
+          render: () => `<div class="w"></div>`,
+          setup: (node: Element) => {
+            const inst = mount(TreeItem, {
+              target: node,
+              props: {
+                id: 'error-branch',
+                label: 'Error Branch',
+                loadChildren: async () => {
+                  throw loadError;
+                },
+                onLoadError: (error: unknown, id: string) => errors.push({ error, id }),
+              },
+            });
+            return () => unmount(inst);
+          },
+        })),
+      },
+    });
+
+    const item = container.querySelector('[role="treeitem"]') as HTMLElement;
+    item.focus();
+    await fireEvent.keyDown(item, { key: 'ArrowRight' });
+
+    await waitFor(() => {
+      expect(errors.length).toBe(1);
+      expect(errors[0]?.error).toBe(loadError);
+      expect(errors[0]?.id).toBe('error-branch');
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('[aria-expanded="true"]')).toBeNull();
+    });
+  });
+
+  test('when onLoadError is absent, console.error is called with [cinder-tree] prefix', async () => {
+    const errorMessages: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      errorMessages.push(args.join(' '));
+    };
+
+    try {
+      const { container } = render(TreeTestHarness, {
+        props: {
+          'aria-label': 'T',
+          children: createRawSnippet(() => ({
+            render: () => `<div class="w"></div>`,
+            setup: (node: Element) => {
+              const inst = mount(TreeItem, {
+                target: node,
+                props: {
+                  id: 'nohandler-branch',
+                  label: 'NoHandler',
+                  loadChildren: async () => {
+                    throw new Error('unhandled');
+                  },
+                },
+              });
+              return () => unmount(inst);
+            },
+          })),
+        },
+      });
+
+      const item = container.querySelector('[role="treeitem"]') as HTMLElement;
+      item.focus();
+      await fireEvent.keyDown(item, { key: 'ArrowRight' });
+
+      await waitFor(() => {
+        expect(errorMessages.some((m) => m.includes('[cinder-tree]'))).toBe(true);
+      });
+    } finally {
+      console.error = originalError;
+    }
+  });
+
+  test('collapsing during load aborts without calling onLoadError', async () => {
+    const errors: unknown[] = [];
+    let aborted = false;
+    const loadChildren = ({ signal }: { id: string; signal: AbortSignal }) =>
+      new Promise<void>((_resolve, _reject) => {
+        signal.addEventListener('abort', () => {
+          aborted = true;
+        });
+        // never resolves — simulates a hung request
+      });
+
+    const { container } = render(TreeTestHarness, {
+      props: {
+        'aria-label': 'T',
+        children: createRawSnippet(() => ({
+          render: () => `<div class="w"></div>`,
+          setup: (node: Element) => {
+            const inst = mount(TreeItem, {
+              target: node,
+              props: {
+                id: 'abort-branch',
+                label: 'Abort Branch',
+                loadChildren,
+                onLoadError: (error: unknown) => errors.push(error),
+              },
+            });
+            return () => unmount(inst);
+          },
+        })),
+      },
+    });
+
+    const item = container.querySelector('[role="treeitem"]') as HTMLElement;
+    item.focus();
+    // Expand to start loading
+    await fireEvent.keyDown(item, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    });
+    // Collapse to abort
+    await fireEvent.keyDown(item, { key: 'ArrowLeft' });
+    await waitFor(() => {
+      expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    });
+    expect(aborted).toBe(true);
+    expect(errors).toHaveLength(0);
+  });
+
+  test('loadChildren is not re-invoked after successful load', async () => {
+    let callCount = 0;
+    const loadChildren = async () => {
+      callCount++;
+    };
+
+    const { container } = render(TreeTestHarness, {
+      props: {
+        'aria-label': 'T',
+        children: createRawSnippet(() => ({
+          render: () => `<div class="w"></div>`,
+          setup: (node: Element) => {
+            const inst = mount(TreeItem, {
+              target: node,
+              props: { id: 'reload-branch', label: 'Reload Branch', loadChildren },
+            });
+            return () => unmount(inst);
+          },
+        })),
+      },
+    });
+
+    const item = container.querySelector('[role="treeitem"]') as HTMLElement;
+    // Expand
+    item.focus();
+    await fireEvent.keyDown(item, { key: 'ArrowRight' });
+    await waitFor(() => expect(callCount).toBe(1));
+    // Collapse
+    await fireEvent.keyDown(item, { key: 'ArrowLeft' });
+    await waitFor(() => {
+      const reloadItem = treeItem(container, 'Reload Branch');
+      expect(reloadItem?.getAttribute('aria-expanded')).toBe('false');
+    });
+    // Expand again
+    await fireEvent.keyDown(item, { key: 'ArrowRight' });
+    // Give time for any re-trigger
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Should still be 1, not 2
+    expect(callCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accessibility — disabled items
+// ---------------------------------------------------------------------------
+
+describe('Tree — disabled items', () => {
+  test('disabled items carry aria-disabled="true"', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([{ id: 'a', label: 'A', disabled: true }]),
+      },
+    });
+    const item = container.querySelector('[role="treeitem"]');
+    expect(item?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  test('disabled items remain in tab order (keyboard-reachable)', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([{ id: 'a', label: 'A', disabled: true }]),
+      },
+    });
+    const item = container.querySelector('[role="treeitem"]');
+    // First item should still have tabindex=0 even if disabled
+    expect(item?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('disabled branches expand on Enter without becoming selected', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'branch',
+            label: 'Branch',
+            disabled: true,
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const branch = treeItem(container, 'Branch') as HTMLElement;
+
+    await fireEvent.keyDown(branch, { key: 'Enter' });
+
+    expect(branch.getAttribute('aria-expanded')).toBe('true');
+    expect(selectedIds).toEqual([]);
+  });
+
+  test('disabled branches expand on plain click without becoming selected', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'branch',
+            label: 'Branch',
+            disabled: true,
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const branch = treeItem(container, 'Branch') as HTMLElement;
+
+    await fireEvent.click(branch);
+
+    expect(branch.getAttribute('aria-expanded')).toBe('true');
+    expect(selectedIds).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Typeahead
+// ---------------------------------------------------------------------------
+
+describe('Tree — typeahead', () => {
+  test('typing a character focuses next item starting with that char', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        children: treeItemsSnippet([
+          { id: 'banana', label: 'Banana' },
+          { id: 'apple', label: 'Apple' },
+          { id: 'avocado', label: 'Avocado' },
+        ]),
+      },
+    });
+    const banana = treeItem(container, 'Banana') as HTMLElement;
+    banana.focus();
+    await fireEvent.keyDown(banana, { key: 'a' });
+    const apple = treeItem(container, 'Apple');
+    expect(apple?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('disableTypeahead prevents typeahead from moving focus', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        disableTypeahead: true,
+        children: treeItemsSnippet([
+          { id: 'banana', label: 'Banana' },
+          { id: 'apple', label: 'Apple' },
+        ]),
+      },
+    });
+    const banana = treeItem(container, 'Banana') as HTMLElement;
+    banana.focus();
+    await fireEvent.keyDown(banana, { key: 'a' });
+    // Banana should still be focused (typeahead disabled)
+    expect(banana.getAttribute('tabindex')).toBe('0');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Button inside row does not trigger tree actions
+// ---------------------------------------------------------------------------
+
+describe('Tree — event filtering', () => {
+  test('click on a button inside row does NOT toggle selection', async () => {
+    let selectedIds: string[] = [];
+
+    const buttonSnippet = createRawSnippet(() => ({
+      render: () => `<div class="w"></div>`,
+      setup: (node: Element) => {
+        const rowSnippet = createRawSnippet(() => ({
+          render: () => `<button class="inner-btn" type="button">Action</button>`,
+          setup: () => {},
+        })) satisfies Snippet<
+          [{ expanded: boolean; selected: boolean; busy: boolean; level: number }]
+        >;
+        const inst = mount(TreeItem, {
+          target: node,
+          props: {
+            id: 'item-with-btn',
+            label: 'Item',
+            row: rowSnippet,
+          },
+        });
+        return () => unmount(inst);
+      },
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: buttonSnippet,
+      },
+    });
+
+    const btn = container.querySelector('.inner-btn') as HTMLElement;
+    await fireEvent.click(btn);
+    expect(selectedIds).toEqual([]);
+  });
+});
