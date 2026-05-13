@@ -157,14 +157,6 @@
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
     },
-    "./form-field": {
-      "svelte": "./src/components/form-field.svelte",
-      "types": "./dist/components/form-field.svelte.d.ts"
-    },
-    "./form-section": {
-      "svelte": "./src/components/form-section.svelte",
-      "types": "./dist/components/form-section.svelte.d.ts"
-    },
     "./feed-event": {
       "svelte": "./src/components/feed-event.svelte",
       "types": "./dist/components/feed-event.svelte.d.ts"
@@ -172,6 +164,14 @@
     "./feed": {
       "svelte": "./src/components/feed.svelte",
       "types": "./dist/components/feed.svelte.d.ts"
+    },
+    "./form-field": {
+      "svelte": "./src/components/form-field.svelte",
+      "types": "./dist/components/form-field.svelte.d.ts"
+    },
+    "./form-section": {
+      "svelte": "./src/components/form-section.svelte",
+      "types": "./dist/components/form-section.svelte.d.ts"
     },
     "./grid-list-item": {
       "svelte": "./src/components/grid-list-item.svelte",
