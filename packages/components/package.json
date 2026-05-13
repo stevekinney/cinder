@@ -153,6 +153,14 @@
       "svelte": "./src/components/experimental/timeline.svelte",
       "types": "./dist/components/experimental/timeline.svelte.d.ts"
     },
+    "./grid-list-item": {
+      "svelte": "./src/components/grid-list-item.svelte",
+      "types": "./dist/components/grid-list-item.svelte.d.ts"
+    },
+    "./grid-list": {
+      "svelte": "./src/components/grid-list.svelte",
+      "types": "./dist/components/grid-list.svelte.d.ts"
+    },
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
