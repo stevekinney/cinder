@@ -83,6 +83,7 @@
         <span class="cinder-steps__body">
           {#if isComplete}
             <span class="cinder-steps__sr-only">{completedLabel}</span>
+            <span class="cinder-steps__sr-only-separator"> </span>
           {/if}
           <span class="cinder-steps__label">{step.label}</span>
           {#if step.description}

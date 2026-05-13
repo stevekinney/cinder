@@ -23,7 +23,7 @@ The active step is marked with `aria-current="step"` on its `<li>`. This is one 
 
 The marker element (`<span class="cinder-steps__marker">`) is `aria-hidden="true"`. It is purely decorative — the checkmark icon and step number carry no semantic weight themselves.
 
-Completed steps render a visually-hidden `<span class="cinder-steps__sr-only">` **inside `.cinder-steps__body`**, before the label. This produces the announcement:
+Completed steps render a visually-hidden `<span class="cinder-steps__sr-only">` **inside `.cinder-steps__body`**, before the label. A separate visually-hidden whitespace separator follows that span so the caller-provided `completedLabel` remains verbatim while the announcement still has a word boundary. This produces the announcement:
 
 > "Completed Set up profile Tell us about yourself"
 

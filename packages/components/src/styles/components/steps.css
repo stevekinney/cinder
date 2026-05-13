@@ -197,7 +197,8 @@
  * Visually-hidden text for completed steps
  * ---------------------------------------- */
 
-.cinder-steps__sr-only {
+.cinder-steps__sr-only,
+.cinder-steps__sr-only-separator {
   position: absolute;
   width: 1px;
   height: 1px;

@@ -67,8 +67,19 @@ describe('Steps', () => {
     const srOnlySpans = container.querySelectorAll('.cinder-steps__sr-only');
     expect(srOnlySpans.length).toBe(2);
     for (const span of srOnlySpans) {
-      expect(span.textContent).toContain('Finished');
+      expect(span.textContent).toBe('Finished');
     }
+  });
+
+  test('completedLabel is separated from the visible step label in accessible text', () => {
+    const { container } = render(Steps, {
+      steps: defaultSteps,
+      currentStep: 1,
+      completedLabel: 'Finished',
+    });
+    const firstItem = container.querySelector('li');
+    expect(firstItem?.textContent).not.toContain('FinishedSet up profile');
+    expect(firstItem?.textContent).toMatch(/Finished\s+Set up profile/);
   });
 
   test('orientation prop drives layout via data-cinder-orientation', () => {
