@@ -145,10 +145,6 @@
       "svelte": "./src/components/experimental/sheet.svelte",
       "types": "./dist/components/experimental/sheet.svelte.d.ts"
     },
-    "./experimental/stat": {
-      "svelte": "./src/components/experimental/stat.svelte",
-      "types": "./dist/components/experimental/stat.svelte.d.ts"
-    },
     "./experimental/timeline-item": {
       "svelte": "./src/components/experimental/timeline-item.svelte",
       "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
@@ -240,6 +236,14 @@
     "./spinner": {
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
+    },
+    "./stat-group": {
+      "svelte": "./src/components/stat-group.svelte",
+      "types": "./dist/components/stat-group.svelte.d.ts"
+    },
+    "./stat": {
+      "svelte": "./src/components/stat.svelte",
+      "types": "./dist/components/stat.svelte.d.ts"
     },
     "./surface": {
       "svelte": "./src/components/surface.svelte",

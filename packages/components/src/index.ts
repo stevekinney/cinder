@@ -212,6 +212,16 @@ export type { SkeletonProps } from './components/skeleton.svelte';
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
 
+export { default as Stat } from './components/stat.svelte';
+export type { StatChange, StatChangeDirection, StatProps } from './components/stat.svelte';
+
+export { default as StatGroup } from './components/stat-group.svelte';
+export type {
+  StatGroupColumns,
+  StatGroupProps,
+  StatGroupVariant,
+} from './components/stat-group.svelte';
+
 export { default as Surface } from './components/surface.svelte';
 export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
 
@@ -302,9 +312,6 @@ export type { PopoverPlacement, PopoverProps } from './components/experimental/p
 
 export { default as Sheet } from './components/experimental/sheet.svelte';
 export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
-
-export { default as Stat } from './components/experimental/stat.svelte';
-export type { StatProps, StatTrend } from './components/experimental/stat.svelte';
 
 export { default as Timeline } from './components/experimental/timeline.svelte';
 export type { TimelineProps } from './components/experimental/timeline.svelte';
