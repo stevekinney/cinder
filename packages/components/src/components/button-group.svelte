@@ -1,0 +1,139 @@
+<script lang="ts" module>
+  import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  /** Visual/layout orientation of the group. */
+  export type ButtonGroupOrientation = 'horizontal' | 'vertical';
+
+  type ButtonGroupBase = Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'class' | 'role' | 'aria-label' | 'aria-labelledby'
+  > & {
+    /** Orientation of the visual collapse. Default: 'horizontal'. */
+    orientation?: ButtonGroupOrientation;
+    /** Additional class merged with `.cinder-button-group`. */
+    class?: string;
+    /** Buttons (or split-button compositions) to render inside the group. */
+    children: Snippet;
+  };
+
+  /**
+   * Layout-only grouping container for related action buttons.
+   * Requires an accessible name via either `label` (for inline labelling)
+   * or `labelledBy` (when a visible heading already names the group).
+   * Exactly one must be provided.
+   */
+  export type ButtonGroupProps = ButtonGroupBase &
+    ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string });
+
+  let groupIdCounter = 0;
+</script>
+
+<script lang="ts">
+  import type { Attachment } from 'svelte/attachments';
+  import { DEV } from 'esm-env';
+
+  import { classNames } from '../utilities/class-names.ts';
+
+  let {
+    label,
+    labelledBy,
+    orientation = 'horizontal',
+    class: customClassName,
+    children,
+    ...rest
+  }: ButtonGroupProps = $props();
+
+  const mergedClassName = $derived(classNames('cinder-button-group', customClassName));
+  const ariaLabelAttribute = $derived(typeof label === 'string' ? label : undefined);
+  const ariaLabelledByAttribute = $derived(typeof labelledBy === 'string' ? labelledBy : undefined);
+
+  // Each group instance gets a unique ID so the styling-contract attribute
+  // carries ownership. When a child moves from one group to another, the new
+  // group overwrites the value and the old group's cleanup only removes it if
+  // the value still matches this instance's ID.
+  const groupId = String(++groupIdCounter);
+
+  const tagDirectChildren: Attachment = (element) => {
+    const ATTR = 'data-cinder-button-group-item';
+    // Track previously tagged children by element reference so cleanup is
+    // O(n) and ownership-specific: we only remove our group's tag value.
+    const tagged = new Set<Element>();
+
+    const sync = () => {
+      const currentChildren = new Set(Array.from(element.children));
+
+      // Stamp current direct children with this group's ID. Overwriting
+      // another group's ID claims ownership — the other group's cleanup will
+      // see a mismatched value and skip removal, so no double-remove race.
+      for (const child of currentChildren) {
+        child.setAttribute(ATTR, groupId);
+        tagged.add(child);
+      }
+
+      // Remove ownership from children that are no longer direct children.
+      // Only remove if the value still matches this group's ID — prevents
+      // clobbering a new group that already claimed the child.
+      for (const previouslyTagged of Array.from(tagged)) {
+        if (!currentChildren.has(previouslyTagged)) {
+          if (previouslyTagged.getAttribute(ATTR) === groupId) {
+            previouslyTagged.removeAttribute(ATTR);
+          }
+          tagged.delete(previouslyTagged);
+        }
+      }
+    };
+
+    sync();
+
+    const observer = new MutationObserver(sync);
+    observer.observe(element, { childList: true });
+    return () => {
+      observer.disconnect();
+      // Release ownership on unmount for any remaining tagged children.
+      for (const child of Array.from(tagged)) {
+        if (child.getAttribute(ATTR) === groupId) {
+          child.removeAttribute(ATTR);
+        }
+      }
+    };
+  };
+
+  $effect(() => {
+    if (!DEV) return;
+
+    const hasLabel = typeof label === 'string';
+    const hasLabelledBy = typeof labelledBy === 'string';
+
+    if (!hasLabel && !hasLabelledBy) {
+      console.warn(
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+      );
+      return;
+    }
+
+    if (hasLabel && label.trim().length === 0) {
+      console.warn(
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+      );
+    }
+
+    if (hasLabelledBy && labelledBy.trim().length === 0) {
+      console.warn(
+        "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
+      );
+    }
+  });
+</script>
+
+<div
+  {...rest}
+  role="group"
+  aria-label={ariaLabelAttribute}
+  aria-labelledby={ariaLabelledByAttribute}
+  class={mergedClassName}
+  data-cinder-orientation={orientation}
+  {@attach tagDirectChildren}
+>
+  {@render children()}
+</div>

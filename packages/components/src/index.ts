@@ -19,6 +19,9 @@ export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.
 export { default as Button } from './components/button.svelte';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button.svelte';
 
+export { default as ButtonGroup } from './components/button-group.svelte';
+export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
+
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 

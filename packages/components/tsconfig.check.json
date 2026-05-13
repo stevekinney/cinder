@@ -8,6 +8,7 @@
     "**/dist/**",
     "**/build/**",
     "src/index.ts",
-    "src/components.test.ts"
+    "src/components.test.ts",
+    "src/**/*.type-test.ts"
   ]
 }

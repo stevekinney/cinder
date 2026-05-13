@@ -316,11 +316,11 @@ Categorically distinct from `segmented-control.svelte`. `segmented-control` is a
 
 Best-practice notes: container needs `role="group"` with `aria-label`; toggle buttons inside need `aria-pressed`, not `aria-checked`; focused buttons must elevate `z-index` so focus rings aren't clipped by adjacent siblings; split-button dropdown trigger needs `aria-haspopup="true"` and `aria-expanded`.
 
-- [ ] Create `button-group.svelte` as a layout container: `role="group"`, required `label: string` for `aria-label`, `class` passthrough, `orientation: 'horizontal' | 'vertical'` (default horizontal).
-- [ ] Border-collapse via adjacent-sibling selectors or data attributes so internal shared borders render as a single 1px line, not 2px doubled.
-- [ ] Elevate focused child `z-index` so focus rings aren't clipped by the group's border context.
-- [ ] Document the split-button composition in Storybook using the existing `dropdown.svelte` as the trailing trigger — no new split-button primitive.
-- [ ] Do NOT add selection-state logic to `button-group` — keep that boundary clean against `segmented-control`.
+- [x] Create `button-group.svelte` as a layout container: `role="group"`, required `label: string` for `aria-label`, `class` passthrough, `orientation: 'horizontal' | 'vertical'` (default horizontal).
+- [x] Border-collapse via adjacent-sibling selectors or data attributes so internal shared borders render as a single 1px line, not 2px doubled.
+- [x] Elevate focused child `z-index` so focus rings aren't clipped by the group's border context.
+- [x] Document the split-button composition in Storybook using the existing `dropdown.svelte` as the trailing trigger — no new split-button primitive.
+- [x] Do NOT add selection-state logic to `button-group` — keep that boundary clean against `segmented-control`.
 
 ## Forms — Additional Components
 

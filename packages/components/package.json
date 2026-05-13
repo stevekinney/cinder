@@ -41,6 +41,10 @@
       "svelte": "./src/components/breadcrumbs.svelte",
       "types": "./dist/components/breadcrumbs.svelte.d.ts"
     },
+    "./button-group": {
+      "svelte": "./src/components/button-group.svelte",
+      "types": "./dist/components/button-group.svelte.d.ts"
+    },
     "./button": {
       "svelte": "./src/components/button.svelte",
       "types": "./dist/components/button.svelte.d.ts"
