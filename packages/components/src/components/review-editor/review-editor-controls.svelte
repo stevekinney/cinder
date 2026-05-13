@@ -102,6 +102,8 @@
       <div class="controls-separator" aria-hidden="true"></div>
       <SegmentedControl
         id="{id}-diff-view-mode"
+        selectionMode="single"
+        size="sm"
         label="Diff view mode"
         hideLabel
         bind:value={diffViewMode}
@@ -198,17 +200,7 @@
     line-height: 1;
   }
 
-  /* SegmentedControl wrapper - ensure consistent outer height */
-  .review-editor-controls :global(.segmented-control) {
-    padding: 2px;
-  }
-
-  /* SegmentedControl options - 20px inner height (24px with wrapper padding + border) */
-  .review-editor-controls :global(.segmented-control-option) {
-    height: 18px;
-    min-height: 18px;
-    padding: 0 var(--cinder-space-2);
-  }
+  /* SegmentedControl uses size="sm" (1.5rem = 24px) — no height override needed */
 
   /* Buttons - 24px height to match */
   .review-editor-controls :global(.button[data-size='sm']) {

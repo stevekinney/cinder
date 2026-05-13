@@ -619,6 +619,8 @@
           <div class="toolbar-mode-toggle">
             <SegmentedControl
               id={`${id}-mode-toggle`}
+              selectionMode="single"
+              size="sm"
               bind:value={mode}
               options={[
                 { value: 'wysiwyg', label: 'Rich' },
@@ -732,15 +734,7 @@
     flex-shrink: 0;
   }
 
-  /* Compact mode toggle styling for toolbar context */
-  .toolbar-mode-toggle :global(.segmented-control) {
-    font-size: var(--cinder-text-xs);
-  }
-
-  .toolbar-mode-toggle :global(.segmented-control-option) {
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    min-height: auto;
-  }
+  /* SegmentedControl uses size="sm" — no height override needed */
 
   .toolbar-leading,
   .toolbar-actions {

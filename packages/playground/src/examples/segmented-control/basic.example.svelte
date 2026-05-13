@@ -16,6 +16,12 @@
 </script>
 
 <div style="display: grid; gap: 0.75rem; justify-items: start;">
-  <SegmentedControl id="playground-view" bind:value label="Document view" {options} />
+  <SegmentedControl
+    id="playground-view"
+    selectionMode="single"
+    bind:value
+    label="Document view"
+    {options}
+  />
   <p style="margin: 0; color: var(--cinder-text-muted);">Current view: {value}</p>
 </div>

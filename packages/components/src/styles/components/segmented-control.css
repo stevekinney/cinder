@@ -8,40 +8,79 @@
   gap: var(--cinder-space-2);
 }
 
+.cinder-segmented-control-container:has([data-cinder-full-width]) {
+  display: flex;
+  width: 100%;
+}
+
 .cinder-segmented-control-label {
   color: var(--cinder-text);
   font-size: var(--cinder-text-sm);
   font-weight: var(--cinder-font-medium);
 }
 
+/* ── Attached (default) ─────────────────────────────────────────────────── */
+
 .cinder-segmented-control {
   display: inline-flex;
   align-items: center;
-  gap: 1px;
+  gap: 0;
   padding: 1px;
   border: 1px solid var(--cinder-border-muted);
   border-radius: var(--cinder-radius-md);
   background: var(--cinder-surface-inset);
 }
 
-.cinder-segmented-control[data-cinder-disabled] {
+/* ── Full width ─────────────────────────────────────────────────────────── */
+
+.cinder-segmented-control[data-cinder-full-width] {
+  display: flex;
+  width: 100%;
+}
+
+.cinder-segmented-control[data-cinder-full-width] .cinder-segmented-control-option {
+  flex: 1;
+}
+
+/* ── Vertical orientation ───────────────────────────────────────────────── */
+
+.cinder-segmented-control[data-cinder-orientation='vertical'] {
+  flex-direction: column;
+}
+
+/* ── Detached ────────────────────────────────────────────────────────────── */
+
+.cinder-segmented-control[data-cinder-detached] {
+  gap: var(--cinder-space-1);
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.cinder-segmented-control[data-cinder-detached] .cinder-segmented-control-option {
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-md);
+}
+
+/* ── Disabled group ─────────────────────────────────────────────────────── */
+
+.cinder-segmented-control[aria-disabled='true'] {
   opacity: 0.6;
   pointer-events: none;
 }
+
+/* ── Option base ────────────────────────────────────────────────────────── */
 
 .cinder-segmented-control-option {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.25rem;
-  padding: 0 var(--cinder-space-2);
   border: 0;
   border-radius: calc(var(--cinder-radius-sm) - 1px);
   background: transparent;
   color: var(--cinder-text-muted);
   cursor: pointer;
-  font-size: var(--cinder-text-xs);
   font-weight: var(--cinder-font-medium);
   line-height: 1;
   transition:
@@ -50,10 +89,76 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]) {
+/* Separator between attached options */
+.cinder-segmented-control:not([data-cinder-detached])
+  .cinder-segmented-control-option:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  block-size: 60%;
+  border-inline-start: 1px solid var(--cinder-border-muted);
+  transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-segmented-control:not([data-cinder-detached])
+  .cinder-segmented-control-option[data-cinder-selected]:not(:first-child)::before,
+.cinder-segmented-control:not([data-cinder-detached])
+  .cinder-segmented-control-option[data-cinder-pressed]:not(:first-child)::before,
+.cinder-segmented-control:not([data-cinder-detached])
+  [data-cinder-selected]
+  + .cinder-segmented-control-option::before,
+.cinder-segmented-control:not([data-cinder-detached])
+  [data-cinder-pressed]
+  + .cinder-segmented-control-option::before {
+  opacity: 0;
+}
+
+.cinder-segmented-control[data-cinder-orientation='vertical']
+  .cinder-segmented-control-option:not(:first-child)::before {
+  inset-inline-start: unset;
+  inset-block-start: 0;
+  inline-size: 60%;
+  block-size: auto;
+  border-inline-start: none;
+  border-block-start: 1px solid var(--cinder-border-muted);
+}
+
+/* ── Size variants ──────────────────────────────────────────────────────── */
+
+/* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target */
+.cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
+  min-block-size: 1.5rem;
+  padding-block: var(--cinder-space-1);
+  padding-inline: var(--cinder-space-1);
+  font-size: var(--cinder-text-xs);
+}
+
+/* md: 2rem = 32px — comfortable middle ground */
+.cinder-segmented-control[data-cinder-size='md'] .cinder-segmented-control-option {
+  min-block-size: 2rem;
+  padding-block: var(--cinder-space-1);
+  padding-inline: var(--cinder-space-2);
+  font-size: var(--cinder-text-xs);
+}
+
+/* lg: 2.75rem = 44px — recommended pointer/touch target per WCAG 2.5.5 */
+.cinder-segmented-control[data-cinder-size='lg'] .cinder-segmented-control-option {
+  min-block-size: 2.75rem;
+  padding-block: var(--cinder-space-2);
+  padding-inline: var(--cinder-space-3, 0.75rem);
+  font-size: var(--cinder-text-sm);
+}
+
+/* ── Hover ──────────────────────────────────────────────────────────────── */
+
+.cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
+    [data-cinder-pressed]
+  ) {
   background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
   color: var(--cinder-text);
 }
+
+/* ── Focus ──────────────────────────────────────────────────────────────── */
 
 .cinder-segmented-control-option:focus-visible {
   outline: 2px solid transparent;
@@ -63,12 +168,24 @@
   z-index: 1;
 }
 
+/* ── Disabled option ────────────────────────────────────────────────────── */
+
 .cinder-segmented-control-option:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
+/* ── Selected (single mode) ─────────────────────────────────────────────── */
+
 .cinder-segmented-control-option[data-cinder-selected] {
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-contrast);
+  box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+}
+
+/* ── Pressed (multiple mode) ────────────────────────────────────────────── */
+
+.cinder-segmented-control-option[data-cinder-pressed] {
   background: var(--cinder-accent);
   color: var(--cinder-accent-contrast);
   box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
