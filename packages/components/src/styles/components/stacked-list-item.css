@@ -73,9 +73,19 @@
 }
 
 .cinder-stacked-list-item__title-link:focus-visible {
-  outline: 2px solid var(--cinder-color-focus-ring);
-  outline-offset: 2px;
+  outline: var(--cinder-ring-width) solid transparent;
   border-radius: var(--cinder-radius-sm);
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+/* Forced Colors Mode — box-shadow focus rings are invisible; use a real outline. */
+@media (forced-colors: active) {
+  .cinder-stacked-list-item__title-link:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
 }
 
 .cinder-stacked-list-item__description {
@@ -96,7 +106,7 @@
 }
 
 /* Narrow container query — trailing drops below body */
-@container cinder-stacked-list-item (max-width: 28rem) {
+@container cinder-stacked-list-item (max-width: 448px) {
   .cinder-stacked-list-item--has-trailing .cinder-stacked-list-item__layout {
     grid-template-columns: 1fr;
     grid-template-areas:

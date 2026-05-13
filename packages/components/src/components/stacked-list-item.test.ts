@@ -49,6 +49,9 @@ describe('StackedListItem', () => {
     expect(root?.querySelector('.cinder-stacked-list-item__trailing')?.textContent).toContain(
       'trailing-content',
     );
+    // Modifier classes are set when snippets are present
+    expect(root?.classList.contains('cinder-stacked-list-item--has-leading')).toBe(true);
+    expect(root?.classList.contains('cinder-stacked-list-item--has-trailing')).toBe(true);
   });
 
   test('title-only minimal case omits optional sub-elements', () => {
@@ -67,6 +70,9 @@ describe('StackedListItem', () => {
     expect(root?.querySelector('.cinder-stacked-list-item__title')?.textContent).toContain(
       'only-title',
     );
+    // Modifier classes are absent when snippets are omitted
+    expect(root?.classList.contains('cinder-stacked-list-item--has-leading')).toBe(false);
+    expect(root?.classList.contains('cinder-stacked-list-item--has-trailing')).toBe(false);
   });
 
   test('href renders title as <a>', () => {
@@ -80,9 +86,9 @@ describe('StackedListItem', () => {
     const root = container.querySelector('.cinder-stacked-list-item');
     expect(root?.tagName).toBe('LI');
 
-    const anchor = root?.querySelector('.cinder-stacked-list-item__title a');
+    const anchor = root?.querySelector('.cinder-stacked-list-item__title-link');
     expect(anchor).not.toBeNull();
-    expect((anchor as HTMLAnchorElement | null)?.getAttribute('href')).toBe('/some/path');
+    expect(anchor?.getAttribute('href')).toBe('/some/path');
     expect(anchor?.textContent).toContain('linked-title');
   });
 
@@ -94,7 +100,7 @@ describe('StackedListItem', () => {
     });
 
     const titleEl = container.querySelector('.cinder-stacked-list-item__title');
-    expect(titleEl?.querySelector('a')).toBeNull();
+    expect(titleEl?.querySelector('.cinder-stacked-list-item__title-link')).toBeNull();
     expect(titleEl?.textContent).toContain('static-title');
   });
 
@@ -104,14 +110,14 @@ describe('StackedListItem', () => {
         title: textSnippet('external'),
         href: 'https://example.com',
         target: '_blank',
-        rel: 'noopener',
+        rel: 'noopener noreferrer',
         hreflang: 'en',
       },
     });
 
-    const anchor = container.querySelector('.cinder-stacked-list-item__title a');
+    const anchor = container.querySelector('.cinder-stacked-list-item__title-link');
     expect(anchor?.getAttribute('target')).toBe('_blank');
-    expect(anchor?.getAttribute('rel')).toBe('noopener');
+    expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(anchor?.getAttribute('hreflang')).toBe('en');
 
     // Anchor attributes must not leak onto the <li>
@@ -119,6 +125,19 @@ describe('StackedListItem', () => {
     expect(li?.getAttribute('target')).toBeNull();
     expect(li?.getAttribute('rel')).toBeNull();
     expect(li?.getAttribute('hreflang')).toBeNull();
+  });
+
+  test('target="_blank" without rel auto-applies rel="noreferrer"', () => {
+    const { container } = render(StackedListItem, {
+      props: {
+        title: textSnippet('external'),
+        href: 'https://example.com',
+        target: '_blank',
+      },
+    });
+
+    const anchor = container.querySelector('.cinder-stacked-list-item__title-link');
+    expect(anchor?.getAttribute('rel')).toBe('noreferrer');
   });
 
   test('defaults to comfortable density', () => {
@@ -141,15 +160,14 @@ describe('StackedListItem', () => {
     ).toBe('condensed');
   });
 
-  test('<li> has no inline activation handlers', () => {
+  test('<li> has no role or tabindex — not interactive', () => {
     const { container } = render(StackedListItem, {
       props: { title: textSnippet('no-handlers') },
     });
 
     const li = container.querySelector('.cinder-stacked-list-item');
-    expect(li instanceof HTMLElement ? li.onclick : null).toBeNull();
-    expect(li instanceof HTMLElement ? li.onkeydown : null).toBeNull();
-    expect(li instanceof HTMLElement ? li.onkeyup : null).toBeNull();
+    expect(li?.getAttribute('role')).toBeNull();
+    expect(li?.getAttribute('tabindex')).toBeNull();
   });
 
   test('data-*, id, and aria-* attrs land on the <li>, not an anchor', () => {

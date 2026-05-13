@@ -48,7 +48,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
   let {
     density = 'comfortable',
@@ -64,14 +64,27 @@
     hreflang,
     ...rest
   }: StackedListItemProps = $props();
+
+  // Filter out any on* attributes that TypeScript already blocks but which could
+  // leak through at runtime (e.g. from dynamic spreads).
+  const safeRest = Object.fromEntries(
+    Object.entries(rest).filter(([key]) => !key.startsWith('on')),
+  );
+
+  // When target="_blank" and no rel is supplied, default to "noreferrer" to
+  // prevent reverse-tabnapping.
+  const resolvedRel = target === '_blank' && !rel ? 'noreferrer' : rel;
 </script>
 
 <li
-  class={cn('cinder-stacked-list-item', className)}
-  class:cinder-stacked-list-item--has-leading={!!leading}
-  class:cinder-stacked-list-item--has-trailing={!!trailing}
+  class={classNames(
+    'cinder-stacked-list-item',
+    leading && 'cinder-stacked-list-item--has-leading',
+    trailing && 'cinder-stacked-list-item--has-trailing',
+    className,
+  )}
   data-cinder-density={density}
-  {...rest}
+  {...safeRest}
 >
   <div class="cinder-stacked-list-item__layout">
     {#if leading}
@@ -82,7 +95,13 @@
     <div class="cinder-stacked-list-item__body">
       <div class="cinder-stacked-list-item__title">
         {#if href !== undefined}
-          <a class="cinder-stacked-list-item__title-link" {href} {target} {rel} {hreflang}>
+          <a
+            class="cinder-stacked-list-item__title-link"
+            {href}
+            {target}
+            rel={resolvedRel}
+            {hreflang}
+          >
             {@render title()}
           </a>
         {:else}
