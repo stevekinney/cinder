@@ -43,6 +43,7 @@
     bodyAnchorUpdateToDocumentAnchorUpdate,
     combineFrontMatterAndBody,
     documentAnchorToBodyAnchor,
+    documentPersistedAnchorToBodyAnchor,
     documentPositionToBodyPosition,
     parseReviewEditorFrontMatter,
     replaceFrontMatterData,
@@ -555,16 +556,10 @@
     const reanchoredThreads: Thread[] = [];
 
     for (const persistedThread of state.threads) {
-      const bodyPersistedAnchor = {
-        ...persistedThread.anchor,
-        lastKnownOffset:
-          persistedThread.anchor.lastKnownOffset === undefined
-            ? undefined
-            : documentPositionToBodyPosition(
-                persistedThread.anchor.lastKnownOffset,
-                pendingDocument.bodyOffset,
-              ),
-      };
+      const bodyPersistedAnchor = documentPersistedAnchorToBodyAnchor(
+        persistedThread.anchor,
+        pendingDocument.bodyOffset,
+      );
       const result = reanchorQuote(documentText, bodyPersistedAnchor);
 
       // If anchor text not found, skip this thread (auto-delete)

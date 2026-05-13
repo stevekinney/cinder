@@ -766,6 +766,13 @@
     gap: var(--cinder-space-3);
   }
 
+  /* Inset surface separates assistant bubbles (--cinder-surface) from the
+   * page-level background. Only applied in default surfaceMode; embedded
+   * contexts using surfaceMode="transparent" inherit their host's background. */
+  .chat-container[data-surface-mode='default'] .chat-timeline {
+    background: var(--cinder-surface-inset);
+  }
+
   .chat-timeline:focus-visible {
     outline: 2px solid var(--cinder-ring-color);
     outline-offset: -2px;

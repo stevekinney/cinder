@@ -32,9 +32,14 @@
   letter-spacing: var(--cinder-tracking-wide);
 }
 
-.cinder-code-block__pre {
+.cinder-code-block__pre,
+/* Highlighter output (e.g. Shiki) replaces __pre with its own markup
+ * (typically <pre class="shiki ...">). Match it so the highlighted variant
+ * inherits the same padding / font / line-height as the plain variant —
+ * this is what Issue 6 was supposed to fix originally. */
+.cinder-code-block > pre {
   margin: 0;
-  padding: var(--cinder-space-3) var(--cinder-space-4);
+  padding: var(--cinder-space-4);
   overflow-x: auto;
   font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-sm);
@@ -61,4 +66,28 @@
 .cinder-code-block :where(pre.shiki code) {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Compact, borderless copy button when nested inside a code block header.
+ * Specificity bump (`.cinder-code-block .cinder-code-block__header .cinder-copy-button`)
+ * is required because copy-button.css imports AFTER code-block.css in components.css;
+ * with equal specificity the later import would win and the bordered default would
+ * leak through. Scoped so the standalone CopyButton keeps its bordered default
+ * everywhere else in the app. */
+.cinder-code-block .cinder-code-block__header .cinder-copy-button {
+  border: none;
+  background: transparent;
+  padding: var(--cinder-space-1);
+  color: var(--cinder-text-subtle);
+}
+
+.cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
+  background: var(--cinder-surface-hover);
+  color: var(--cinder-text);
+  border-color: transparent;
+}
+
+.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
+  outline: 2px solid var(--cinder-ring-color);
+  outline-offset: 2px;
 }

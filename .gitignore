@@ -111,4 +111,12 @@ scripts/playground/.controls-*.svelte
 
 # Hydration-test temporary SSR-compiled component files
 **/.cinder-ssr-*.mjs
-tmp/ralph-pipeline.log
+
+**/.claude/worktrees/**
+.claude/scheduled_tasks.lock
+
+# Playwright browser-test artifacts
+packages/testing/screenshots/
+packages/testing/playwright-report/
+packages/testing/test-results/
+packages/testing/.playwright/

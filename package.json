@@ -8,7 +8,8 @@
     "packages/diff",
     "packages/editor",
     "packages/markdown",
-    "packages/playground"
+    "packages/playground",
+    "packages/testing"
   ],
   "scripts": {
     "build": "bun run --filter=cinder build",
@@ -21,6 +22,10 @@
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
     "test": "bun run --filter='*' test",
+    "test:browser": "bun run --filter='@cinder/testing' test:playwright",
+    "test:browser:headed": "bun run --filter='@cinder/testing' test:playwright:headed",
+    "test:browser:install": "bun run --filter='@cinder/testing' install-browsers",
+    "test:browser:ui": "bun run --filter='@cinder/testing' test:playwright:ui",
     "typecheck": "bun run --filter='*' typecheck",
     "validate": "bun run --filter='*' validate && bun run --filter=cinder validate:consumer",
     "validate:consumer": "bun run --filter=cinder validate:consumer",
@@ -52,6 +57,10 @@
       "prettier --write"
     ],
     "packages/playground/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
+      "oxlint --fix",
+      "prettier --write"
+    ],
+    "packages/testing/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "oxlint --fix",
       "prettier --write"
     ],

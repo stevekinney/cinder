@@ -1,4 +1,4 @@
-import type { CommentAnchor } from '@cinder/commentary/comments';
+import type { CommentAnchor, PersistedAnchor } from '@cinder/commentary/comments';
 import { describe, expect, test } from 'bun:test';
 
 import {
@@ -6,6 +6,7 @@ import {
   bodyAnchorUpdateToDocumentAnchorUpdate,
   combineFrontMatterAndBody,
   documentAnchorToBodyAnchor,
+  documentPersistedAnchorToBodyAnchor,
   parseReviewEditorFrontMatter,
   parseYamlFieldValue,
   replaceFrontMatterData,
@@ -104,5 +105,20 @@ describe('review editor front matter helpers', () => {
         30,
       ).lastKnownOffset,
     ).toBe(40);
+  });
+
+  test('translates persisted reanchor fallback offsets into body-editor positions', () => {
+    const anchor: PersistedAnchor = {
+      quote: 'Architecture',
+      prefix: '# ',
+      suffix: '\n',
+      status: 'anchored',
+      originalQuote: 'Architecture',
+      originalPosition: { offset: 40, line: 3, column: 1 },
+    };
+
+    const bodyAnchor = documentPersistedAnchorToBodyAnchor(anchor, 30);
+
+    expect(bodyAnchor.originalPosition?.offset).toBe(10);
   });
 });

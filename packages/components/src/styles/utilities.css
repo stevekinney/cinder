@@ -21,23 +21,47 @@
 }
 
 .icon-xs {
-  inline-size: 0.75rem;
-  block-size: 0.75rem;
-}
-
-.icon-sm {
   inline-size: 0.875rem;
   block-size: 0.875rem;
 }
 
-.icon-md {
+.icon-sm {
   inline-size: 1rem;
   block-size: 1rem;
 }
 
-.icon-lg {
+.icon-md {
   inline-size: 1.25rem;
   block-size: 1.25rem;
+}
+
+.icon-lg {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+
+.icon-xs > svg,
+svg.icon-xs {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.icon-sm > svg,
+svg.icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-md > svg,
+svg.icon-md {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon-lg > svg,
+svg.icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 /* Shared markdown rhythm for rendered markdown and rich editing surfaces. */

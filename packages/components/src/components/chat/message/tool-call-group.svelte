@@ -28,6 +28,10 @@
     ...rest
   }: ToolCallGroupProps = $props();
 
+  // Stable ID for the disclosed region so the toggle can reference it via aria-controls.
+  // Reactive so the ID tracks the current pair when the component instance is reused.
+  const detailsId = $derived(`tool-call-details-${pair.call.id}`);
+
   // Determine result status
   const hasResult = $derived(!!pair.result);
   const isError = $derived(pair.result?.outcome === 'error');
@@ -55,6 +59,7 @@
     type="button"
     class="tool-call-header"
     aria-expanded={expanded}
+    aria-controls={detailsId}
     aria-label={`Toggle tool call details for ${pair.call.name}`}
     onclick={handleToggle}
   >
@@ -83,7 +88,7 @@
   </button>
 
   {#if expanded}
-    <div class="tool-call-details">
+    <div id={detailsId} class="tool-call-details" role="region" aria-label="Tool details">
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
         <ToolPayloadCode code={formattedArguments} />
@@ -140,13 +145,17 @@
     color: inherit;
   }
 
+  /* Hover: subtle inset tint instead of the full surface-hover gray, which
+   * looked harsh against the colored card border. */
   .tool-call-header:hover {
-    background: var(--cinder-surface-hover);
+    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
   }
 
+  /* Focus: ring travels via box-shadow, not outline, so it sits inside the
+   * card's colored border instead of doubling up on top of it. */
   .tool-call-header:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--cinder-ring-color);
   }
 
   .tool-call-icon {
@@ -210,7 +219,13 @@
     background: var(--cinder-surface-inset);
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-space-2);
+  }
+
+  .tool-call-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
   }
 
   .tool-call-section-title {
@@ -219,7 +234,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--cinder-text-muted);
-    margin: 0 0 var(--cinder-space-2);
+    margin: 0;
   }
 
   .tool-call-error {

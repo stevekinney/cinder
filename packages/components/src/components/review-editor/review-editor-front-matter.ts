@@ -1,4 +1,9 @@
-import type { AnchorUpdate, CommentAnchor, ReviewState } from '@cinder/commentary/comments';
+import type {
+  AnchorUpdate,
+  CommentAnchor,
+  PersistedAnchor,
+  ReviewState,
+} from '@cinder/commentary/comments';
 import {
   parseFrontMatter,
   serializeYaml,
@@ -107,6 +112,13 @@ export function documentAnchorToBodyAnchor(
   return offsetAnchor(anchor, -bodyOffset);
 }
 
+export function documentPersistedAnchorToBodyAnchor(
+  anchor: PersistedAnchor,
+  bodyOffset: number,
+): PersistedAnchor {
+  return offsetPersistedAnchor(anchor, -bodyOffset);
+}
+
 export function bodyAnchorToDocumentAnchor(
   anchor: CommentAnchor,
   bodyOffset: number,
@@ -154,6 +166,26 @@ function offsetAnchor(anchor: CommentAnchor, offset: number, documentText?: stri
       originalPosition === undefined || originalPositionOffset === undefined
         ? undefined
         : textOffsetToLineColumn(documentText, originalPositionOffset, originalPosition),
+  };
+}
+
+function offsetPersistedAnchor(anchor: PersistedAnchor, offset: number): PersistedAnchor {
+  if (anchor.type === 'document') return anchor;
+
+  const originalPosition = anchor.originalPosition;
+  const originalPositionOffset =
+    originalPosition === undefined ? undefined : Math.max(0, originalPosition.offset + offset);
+
+  return {
+    ...anchor,
+    lastKnownOffset:
+      anchor.lastKnownOffset === undefined
+        ? undefined
+        : Math.max(0, anchor.lastKnownOffset + offset),
+    originalPosition:
+      originalPosition === undefined || originalPositionOffset === undefined
+        ? undefined
+        : { ...originalPosition, offset: originalPositionOffset },
   };
 }
 

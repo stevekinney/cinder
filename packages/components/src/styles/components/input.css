@@ -131,3 +131,111 @@
   color: var(--cinder-danger);
   margin: 0;
 }
+
+/* ----------------------------------------
+ * Input group (leading / trailing addons)
+ * ---------------------------------------- */
+
+.cinder-input-group {
+  display: flex;
+  align-items: stretch;
+  inline-size: 100%;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Inner input: strip its own chrome, inherit the group's */
+.cinder-input-group > .cinder-input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: var(--cinder-space-3);
+}
+
+/* When an addon is present on a given side, the input trims its padding on
+   that side; the addon container owns the visual inset. */
+.cinder-input-group[data-leading] > .cinder-input {
+  padding-inline-start: var(--cinder-space-2);
+}
+.cinder-input-group[data-trailing] > .cinder-input {
+  padding-inline-end: var(--cinder-space-2);
+}
+
+/* Suppress the inner input's focus ring when grouped — the group owns the ring. */
+.cinder-input-group > .cinder-input:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+/* Hover mirrors the standalone input. */
+.cinder-input-group:hover:not([data-disabled]) {
+  border-color: var(--cinder-border-strong);
+}
+
+/* Focus ring on the group via :focus-within — same token math as standalone. */
+.cinder-input-group:focus-within {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-input-ring, var(--cinder-ring-color));
+}
+
+@media (forced-colors: active) {
+  .cinder-input-group:focus-within {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+/* Invalid state. */
+.cinder-input-group[data-invalid] {
+  --_cinder-input-ring: var(--cinder-danger);
+  border-color: var(--cinder-danger);
+}
+.cinder-input-group[data-invalid]:hover:not([data-disabled]) {
+  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+}
+
+/* Disabled state. */
+.cinder-input-group[data-disabled] {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  cursor: not-allowed;
+}
+.cinder-input-group[data-disabled] > .cinder-input {
+  background: transparent;
+  color: var(--cinder-text-disabled);
+}
+
+/* Addon containers — decorative default sizing. */
+.cinder-input-group__leading,
+.cinder-input-group__trailing {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  max-inline-size: 40%;
+  gap: var(--cinder-space-1);
+  padding-inline: var(--cinder-space-3);
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Interactive addons get a tighter wrapper so the consumer's control owns the inset.
+   overflow: visible allows the inner control's focus ring to paint outside the container. */
+.cinder-input-group__leading:not([aria-hidden]),
+.cinder-input-group__trailing:not([aria-hidden]) {
+  padding-inline: var(--cinder-space-1);
+  overflow: visible;
+}

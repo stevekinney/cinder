@@ -34,6 +34,12 @@ export type { CodeBlockProps } from './components/code-block.svelte';
 export { default as Combobox } from './components/combobox.svelte';
 export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
 
+export { default as CommandItem } from './components/command-item.svelte';
+export type { CommandItemProps } from './components/command-item.svelte';
+
+export { default as CommandPalette } from './components/command-palette.svelte';
+export type { CommandPaletteProps } from './components/command-palette.svelte';
+
 export { default as CopyButton } from './components/copy-button.svelte';
 export type { CopyButtonProps } from './components/copy-button.svelte';
 
@@ -41,6 +47,13 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
+
+export { default as DescriptionList } from './components/description-list.svelte';
+export type {
+  DescriptionListItem,
+  DescriptionListProps,
+  DescriptionListVariant,
+} from './components/description-list.svelte';
 
 export { default as DiffStatistics } from './components/diff-statistics.svelte';
 export type {
@@ -54,6 +67,9 @@ export type {
   DiffViewerProps,
   ViewMode,
 } from './components/diff-viewer.svelte';
+
+export { default as Drawer } from './components/drawer.svelte';
+export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer.svelte';
 
 export { default as Dropdown } from './components/dropdown.svelte';
 export type {
@@ -79,6 +95,18 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte'
 
 export { default as EmptyState } from './components/empty-state.svelte';
 export type { EmptyStateProps } from './components/empty-state.svelte';
+
+export { default as FeedEvent } from './components/feed-event.svelte';
+export type { FeedEventProps, FeedEventVariant } from './components/feed-event.svelte';
+
+export { default as Feed } from './components/feed.svelte';
+export type { FeedProps } from './components/feed.svelte';
+
+export { default as GridList } from './components/grid-list.svelte';
+export type { GridListProps } from './components/grid-list.svelte';
+
+export { default as GridListItem } from './components/grid-list-item.svelte';
+export type { GridListItemProps } from './components/grid-list-item.svelte';
 
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
@@ -123,7 +151,7 @@ export { default as NavigationItem } from './components/navigation-item.svelte';
 export type { NavigationItemProps } from './components/navigation-item.svelte';
 
 export { default as PageLayout } from './components/page-layout.svelte';
-export type { PageLayoutProps } from './components/page-layout.svelte';
+export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout.svelte';
 
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';
@@ -164,8 +192,8 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
-export { default as Select } from './components/select.svelte';
-export type { SelectOption, SelectProps } from './components/select.svelte';
+export { default as SectionHeading } from './components/section-heading.svelte';
+export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
 
 export { default as SegmentedControl } from './components/segmented-control.svelte';
 export type {
@@ -173,17 +201,44 @@ export type {
   SegmentedControlProps,
 } from './components/segmented-control.svelte';
 
+export { default as Select } from './components/select.svelte';
+export type { SelectOption, SelectProps } from './components/select.svelte';
+
 export { default as SelectionPopover } from './components/selection-popover.svelte';
 export type {
   SelectionPopoverPosition,
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
+export { default as SortableList } from './components/sortable-list.svelte';
+export type { SortableListProps } from './components/sortable-list.svelte';
+export type {
+  SortableAnnouncements,
+  SortableItemContext,
+  SortableReorderChange,
+} from './utilities/sortable-controller.svelte.ts';
+
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
 
+export { default as StackedListItem } from './components/stacked-list-item.svelte';
+export type {
+  StackedListItemDensity,
+  StackedListItemProps,
+} from './components/stacked-list-item.svelte';
+
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
+
+export { default as Stat } from './components/stat.svelte';
+export type { StatChange, StatChangeDirection, StatProps } from './components/stat.svelte';
+
+export { default as StatGroup } from './components/stat-group.svelte';
+export type {
+  StatGroupColumns,
+  StatGroupProps,
+  StatGroupVariant,
+} from './components/stat-group.svelte';
 
 export { default as Surface } from './components/surface.svelte';
 export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
@@ -238,6 +293,9 @@ export type {
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
 
+export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+
 export { useToast } from './utilities/use-toast.ts';
 
 export { default as Toggle } from './components/toggle.svelte';
@@ -269,9 +327,6 @@ export type { PopoverPlacement, PopoverProps } from './components/experimental/p
 
 export { default as Sheet } from './components/experimental/sheet.svelte';
 export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
-
-export { default as Stat } from './components/experimental/stat.svelte';
-export type { StatProps, StatTrend } from './components/experimental/stat.svelte';
 
 export { default as Timeline } from './components/experimental/timeline.svelte';
 export type { TimelineProps } from './components/experimental/timeline.svelte';
