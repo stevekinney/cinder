@@ -1,5 +1,7 @@
 // @ts-nocheck — this file is excluded from the test runner; run `bun run typecheck` to verify.
 // It uses @ts-expect-error directives to prove compile-time constraints.
+// NOTE: @ts-nocheck is required because tsc cannot resolve svelte module exports;
+// svelte-check (run via bun run typecheck) is the authoritative type checker for this file.
 import type { SideNavigationProps } from './side-navigation.svelte';
 
 // ariaLabel is required — omitting it must be a compile error.
