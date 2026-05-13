@@ -281,6 +281,10 @@
       "svelte": "./src/components/stat.svelte",
       "types": "./dist/components/stat.svelte.d.ts"
     },
+    "./steps": {
+      "svelte": "./src/components/steps.svelte",
+      "types": "./dist/components/steps.svelte.d.ts"
+    },
     "./surface": {
       "svelte": "./src/components/surface.svelte",
       "types": "./dist/components/surface.svelte.d.ts"
