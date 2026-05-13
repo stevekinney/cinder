@@ -65,6 +65,10 @@
       "svelte": "./src/components/checkbox.svelte",
       "types": "./dist/components/checkbox.svelte.d.ts"
     },
+    "./chip": {
+      "svelte": "./src/components/chip.svelte",
+      "types": "./dist/components/chip.svelte.d.ts"
+    },
     "./code-block": {
       "svelte": "./src/components/code-block.svelte",
       "types": "./dist/components/code-block.svelte.d.ts"

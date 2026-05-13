@@ -28,6 +28,17 @@ export type { CardProps } from './components/card.svelte';
 export { default as Chat } from './components/chat.svelte';
 export type { ChatProps } from './components/chat.svelte';
 
+export { default as Chip } from './components/chip.svelte';
+export type {
+  ChipDisplayProps,
+  ChipMode,
+  ChipProps,
+  ChipRemovableProps,
+  ChipSize,
+  ChipToggleProps,
+  ChipVariant,
+} from './components/chip.svelte';
+
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
 
