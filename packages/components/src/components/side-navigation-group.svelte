@@ -41,6 +41,13 @@
 
   const generatedId = useId('side-navigation-group');
   const id = $derived(idProp ?? generatedId);
+
+  const validatedLabel = $derived.by(() => {
+    if (label.trim() === '') {
+      throw new Error('SideNavigationGroup requires a non-empty label.');
+    }
+    return label;
+  });
   const headerId = $derived(`${id}-trigger`);
   const panelId = $derived(`${id}-panel`);
 
@@ -68,7 +75,7 @@
     {#if icon}
       <span class="cinder-side-navigation-group__icon" aria-hidden="true">{@render icon()}</span>
     {/if}
-    <span class="cinder-side-navigation-group__label">{label}</span>
+    <span class="cinder-side-navigation-group__label">{validatedLabel}</span>
     {#if badge}
       <span class="cinder-side-navigation-group__badge">{@render badge()}</span>
     {/if}

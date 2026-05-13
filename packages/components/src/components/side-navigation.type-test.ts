@@ -17,3 +17,11 @@ const _ariaLabelInRest: SideNavigationProps = {
   'aria-label': 'Should not compile',
   children: {} as never,
 };
+
+// aria-labelledby is also omitted — it must be a compile error since it would win over aria-label.
+// @ts-expect-error — 'aria-labelledby' is omitted from HTMLAttributes via Omit
+const _ariaLabelledByInRest: SideNavigationProps = {
+  ariaLabel: 'Sections',
+  'aria-labelledby': 'some-other-element',
+  children: {} as never,
+};

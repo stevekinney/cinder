@@ -26,6 +26,22 @@ function itemSnippet() {
 }
 
 describe('SideNavigationGroup', () => {
+  test('empty label throws on initial render', () => {
+    expect(() => {
+      render(SideNavigationGroup, {
+        props: { label: '', children: itemSnippet() },
+      });
+    }).toThrow();
+  });
+
+  test('whitespace-only label throws on initial render', () => {
+    expect(() => {
+      render(SideNavigationGroup, {
+        props: { label: '   ', children: itemSnippet() },
+      });
+    }).toThrow();
+  });
+
   test('header trigger renders as <button type="button"> with label text', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', children: itemSnippet() },
@@ -142,16 +158,27 @@ describe('SideNavigationGroup', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  test('disabled=true: clicking trigger does not change aria-expanded', async () => {
+  test('disabled=true: clicking trigger does not change aria-expanded (defaults true)', async () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', disabled: true, children: itemSnippet() },
     });
     const button = container.querySelector(
       '.cinder-side-navigation-group__trigger',
     ) as HTMLButtonElement;
-    const before = button?.getAttribute('aria-expanded');
+    expect(button?.getAttribute('aria-expanded')).toBe('true');
     await fireEvent.click(button);
-    expect(button?.getAttribute('aria-expanded')).toBe(before);
+    expect(button?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('disabled=true: clicking trigger does not toggle when initially collapsed', async () => {
+    const { container } = render(SideNavigationGroup, {
+      props: { label: 'Settings', disabled: true, expanded: false, children: itemSnippet() },
+    });
+    const button = container.querySelector(
+      '.cinder-side-navigation-group__trigger',
+    ) as HTMLButtonElement;
+    await fireEvent.click(button);
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
   });
 
   test('icon snippet renders inside .cinder-side-navigation-group__icon with aria-hidden', () => {
@@ -173,10 +200,51 @@ describe('SideNavigationGroup', () => {
     expect(badge?.textContent).toContain('3');
   });
 
-  test('bind:expanded round-trip: external expanded=false reflects in aria-expanded', () => {
-    // Render with expanded=false and verify DOM state
+  test('bind:expanded — clicking trigger calls the setter with the toggled value', async () => {
+    let expandedValue = true;
     const { container } = render(SideNavigationGroup, {
-      props: { label: 'Settings', expanded: false, children: itemSnippet() },
+      props: {
+        label: 'Settings',
+        get expanded() {
+          return expandedValue;
+        },
+        set expanded(value: boolean) {
+          expandedValue = value;
+        },
+        children: itemSnippet(),
+      },
+    });
+    const button = container.querySelector(
+      '.cinder-side-navigation-group__trigger',
+    ) as HTMLButtonElement;
+    await fireEvent.click(button);
+    expect(expandedValue).toBe(false);
+  });
+
+  test('bind:expanded — parent-driven state change re-renders aria-expanded', async () => {
+    let expandedValue = true;
+    const { container, rerender } = render(SideNavigationGroup, {
+      props: {
+        label: 'Settings',
+        get expanded() {
+          return expandedValue;
+        },
+        set expanded(value: boolean) {
+          expandedValue = value;
+        },
+        children: itemSnippet(),
+      },
+    });
+    expandedValue = false;
+    await rerender({
+      label: 'Settings',
+      get expanded() {
+        return expandedValue;
+      },
+      set expanded(value: boolean) {
+        expandedValue = value;
+      },
+      children: itemSnippet(),
     });
     const button = container.querySelector('.cinder-side-navigation-group__trigger');
     expect(button?.getAttribute('aria-expanded')).toBe('false');
