@@ -96,6 +96,12 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte'
 export { default as EmptyState } from './components/empty-state.svelte';
 export type { EmptyStateProps } from './components/empty-state.svelte';
 
+export { default as GridList } from './components/grid-list.svelte';
+export type { GridListProps } from './components/grid-list.svelte';
+
+export { default as GridListItem } from './components/grid-list-item.svelte';
+export type { GridListItemProps } from './components/grid-list-item.svelte';
+
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 
