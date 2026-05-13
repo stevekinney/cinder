@@ -473,12 +473,12 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
   // For changes to these values to be caught, the CSS source file must be updated
   // together with these tests — they serve as regression guards for the declared intent.
 
-  test('.cinder-table__sort-indicator declares opacity: 1', () => {
+  test('.cinder-table__sort-indicator declares color: var(--cinder-text)', () => {
     const rule = injectAndFind(
-      '.cinder-table__sort-indicator { color: var(--cinder-text); opacity: 1; }',
+      '.cinder-table__sort-indicator { color: var(--cinder-text); }',
       '.cinder-table__sort-indicator',
     );
-    expect(rule?.style.opacity).toBe('1');
+    expect(rule?.style.color).toBe('var(--cinder-text)');
   });
 
   test('.cinder-table__sort-button declares position: relative', () => {
