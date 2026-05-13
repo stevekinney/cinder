@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, spyOn, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -22,6 +23,10 @@ const defaultOptions = [
   { value: 'b', label: 'Option B' },
   { value: 'c', label: 'Option C' },
 ];
+
+function readSelectStyles(): string {
+  return readFileSync(new URL('../styles/components/select.css', import.meta.url), 'utf8');
+}
 
 describe('Select', () => {
   test('renders <select id={id}> with one <option> per option in options array', () => {
@@ -231,5 +236,11 @@ describe('Select field-control contract', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+
+  test('inactive error live region is removed from flex layout flow', () => {
+    expect(readSelectStyles()).toContain(
+      '.cinder-select-field__error:not([data-cinder-error]) {\n  position: absolute;',
+    );
   });
 });

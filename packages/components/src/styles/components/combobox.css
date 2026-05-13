@@ -173,6 +173,7 @@
 
 /* Hide the always-present error live region when no error is active. */
 .cinder-combobox__error:not([data-cinder-error]) {
+  position: absolute;
   visibility: hidden;
   height: 0;
   overflow: hidden;

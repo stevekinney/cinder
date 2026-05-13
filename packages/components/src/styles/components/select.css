@@ -124,6 +124,7 @@
  * rather than display:none so the aria-live region stays in the accessibility
  * tree and is ready to announce changes. */
 .cinder-select-field__error:not([data-cinder-error]) {
+  position: absolute;
   visibility: hidden;
   height: 0;
   overflow: hidden;

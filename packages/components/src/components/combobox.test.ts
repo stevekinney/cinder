@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -14,6 +15,10 @@ const fruits = [
   { value: 'cherry', label: 'Cherry' },
   { value: 'durian', label: 'Durian', disabled: true },
 ];
+
+function readComboboxStyles(): string {
+  return readFileSync(new URL('../styles/components/combobox.css', import.meta.url), 'utf8');
+}
 
 describe('Combobox structure', () => {
   test('renders an input with role=combobox and aria-controls', () => {
@@ -223,6 +228,12 @@ describe('Combobox aria wiring', () => {
     });
     const input = container.querySelector('#fruit');
     expect(input?.getAttribute('aria-describedby')).toBe('external-hint');
+  });
+
+  test('inactive error live region is removed from flex layout flow', () => {
+    expect(readComboboxStyles()).toContain(
+      '.cinder-combobox__error:not([data-cinder-error]) {\n  position: absolute;',
+    );
   });
 });
 
