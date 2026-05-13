@@ -686,6 +686,171 @@
         <line x1="3" y1="10" x2="21" y2="10"></line>
       </svg>
     </span>
+
+    {#if open}
+      <dialog
+        bind:this={popoverEl}
+        id={popoverId}
+        role="dialog"
+        class="cinder-date-picker__popover"
+        aria-modal="false"
+        aria-label={label ? `${label} — calendar` : 'Date picker calendar'}
+        open
+      >
+        <div class="cinder-date-picker__popover-header">
+          <button
+            type="button"
+            class="cinder-date-picker__nav-button"
+            aria-label="Previous month"
+            onclick={() => navigateMonth(-1)}
+          >
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+
+          <h2 id={titleId} class="cinder-date-picker__month-title">
+            {monthTitle}
+          </h2>
+
+          <button
+            type="button"
+            class="cinder-date-picker__nav-button"
+            aria-label="Next month"
+            onclick={() => navigateMonth(1)}
+          >
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <table
+          bind:this={gridEl}
+          role="grid"
+          class="cinder-date-picker__grid"
+          aria-labelledby={titleId}
+          onkeydown={handleGridKeydown}
+        >
+          <thead>
+            <tr>
+              {#each headers as header, i (i)}
+                <th scope="col" abbr={header.full} class="cinder-date-picker__weekday-header">
+                  {header.label}
+                </th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
+            {#each matrix as week, wi (wi)}
+              <tr>
+                {#each week as day, di (di)}
+                  {@const disabled_day = isDateDisabled(day)}
+                  {@const selected = isDateSelected(day)}
+                  {@const inRange = isDateInRange(day)}
+                  {@const rangeStart = isRangeStart(day)}
+                  {@const rangeEnd = isRangeEnd(day)}
+                  {@const today = isToday(day)}
+                  {@const isCurrentMonth = day.getMonth() === anchor.getMonth()}
+                  {@const isFocused = isSameDay(day, focusedDate)}
+                  {@const dateKey = serializeDate(day)}
+                  <td role="presentation">
+                    <button
+                      type="button"
+                      role="gridcell"
+                      class="cinder-date-picker__day"
+                      tabindex={isFocused ? 0 : -1}
+                      aria-selected={selected}
+                      aria-disabled={disabled_day || undefined}
+                      aria-label={dayAriaLabel(day)}
+                      aria-current={today ? 'date' : undefined}
+                      data-date={dateKey}
+                      data-other-month={!isCurrentMonth || undefined}
+                      data-range-start={rangeStart || undefined}
+                      data-range-end={rangeEnd || undefined}
+                      data-in-range={inRange || undefined}
+                      onclick={() => selectDate(day)}
+                      onmouseenter={() => {
+                        if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
+                          rangeDraft = { ...rangeDraft, hover: day };
+                        }
+                      }}
+                      onmouseleave={() => {
+                        if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
+                          rangeDraft = { ...rangeDraft, hover: null };
+                        }
+                      }}
+                      onfocus={() => {
+                        focusedDate = day;
+                        if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
+                          rangeDraft = { ...rangeDraft, hover: day };
+                        }
+                      }}
+                    >
+                      {#if dayContent}
+                        {@render dayContent(day, {
+                          isToday: today,
+                          isSelected: selected,
+                          isInRange: inRange,
+                          isDisabled: disabled_day,
+                        })}
+                      {:else}
+                        {day.getDate()}
+                      {/if}
+                    </button>
+                  </td>
+                {/each}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+
+        <button
+          type="button"
+          class="cinder-date-picker__close-button"
+          aria-label="Close calendar"
+          onclick={closePopover}
+        >
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </dialog>
+    {/if}
   </div>
 
   {#if name}
@@ -695,171 +860,6 @@
       <input type="hidden" name="{name}.start" value={serializedRangeStart} />
       <input type="hidden" name="{name}.end" value={serializedRangeEnd} />
     {/if}
-  {/if}
-
-  {#if open}
-    <dialog
-      bind:this={popoverEl}
-      id={popoverId}
-      role="dialog"
-      class="cinder-date-picker__popover"
-      aria-modal="false"
-      aria-label={label ? `${label} — calendar` : 'Date picker calendar'}
-      open
-    >
-      <div class="cinder-date-picker__popover-header">
-        <button
-          type="button"
-          class="cinder-date-picker__nav-button"
-          aria-label="Previous month"
-          onclick={() => navigateMonth(-1)}
-        >
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-
-        <h2 id={titleId} class="cinder-date-picker__month-title">
-          {monthTitle}
-        </h2>
-
-        <button
-          type="button"
-          class="cinder-date-picker__nav-button"
-          aria-label="Next month"
-          onclick={() => navigateMonth(1)}
-        >
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        </button>
-      </div>
-
-      <table
-        bind:this={gridEl}
-        role="grid"
-        class="cinder-date-picker__grid"
-        aria-labelledby={titleId}
-        onkeydown={handleGridKeydown}
-      >
-        <thead>
-          <tr>
-            {#each headers as header, i (i)}
-              <th scope="col" abbr={header.full} class="cinder-date-picker__weekday-header">
-                {header.label}
-              </th>
-            {/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#each matrix as week, wi (wi)}
-            <tr>
-              {#each week as day, di (di)}
-                {@const disabled_day = isDateDisabled(day)}
-                {@const selected = isDateSelected(day)}
-                {@const inRange = isDateInRange(day)}
-                {@const rangeStart = isRangeStart(day)}
-                {@const rangeEnd = isRangeEnd(day)}
-                {@const today = isToday(day)}
-                {@const isCurrentMonth = day.getMonth() === anchor.getMonth()}
-                {@const isFocused = isSameDay(day, focusedDate)}
-                {@const dateKey = serializeDate(day)}
-                <td role="presentation">
-                  <button
-                    type="button"
-                    role="gridcell"
-                    class="cinder-date-picker__day"
-                    tabindex={isFocused ? 0 : -1}
-                    aria-selected={selected}
-                    aria-disabled={disabled_day || undefined}
-                    aria-label={dayAriaLabel(day)}
-                    aria-current={today ? 'date' : undefined}
-                    data-date={dateKey}
-                    data-other-month={!isCurrentMonth || undefined}
-                    data-range-start={rangeStart || undefined}
-                    data-range-end={rangeEnd || undefined}
-                    data-in-range={inRange || undefined}
-                    onclick={() => selectDate(day)}
-                    onmouseenter={() => {
-                      if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
-                        rangeDraft = { ...rangeDraft, hover: day };
-                      }
-                    }}
-                    onmouseleave={() => {
-                      if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
-                        rangeDraft = { ...rangeDraft, hover: null };
-                      }
-                    }}
-                    onfocus={() => {
-                      focusedDate = day;
-                      if (initialMode === 'range' && rangeDraft.stage === 'picking-end') {
-                        rangeDraft = { ...rangeDraft, hover: day };
-                      }
-                    }}
-                  >
-                    {#if dayContent}
-                      {@render dayContent(day, {
-                        isToday: today,
-                        isSelected: selected,
-                        isInRange: inRange,
-                        isDisabled: disabled_day,
-                      })}
-                    {:else}
-                      {day.getDate()}
-                    {/if}
-                  </button>
-                </td>
-              {/each}
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-
-      <button
-        type="button"
-        class="cinder-date-picker__close-button"
-        aria-label="Close calendar"
-        onclick={closePopover}
-      >
-        <svg
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </dialog>
   {/if}
 
   <div id={liveRegionId} aria-live="polite" class="cinder-date-picker__live-region">
