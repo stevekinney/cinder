@@ -69,6 +69,10 @@
       "svelte": "./src/components/code-block.svelte",
       "types": "./dist/components/code-block.svelte.d.ts"
     },
+    "./color-swatch-picker": {
+      "svelte": "./src/components/color-swatch-picker.svelte",
+      "types": "./dist/components/color-swatch-picker.svelte.d.ts"
+    },
     "./combobox": {
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
