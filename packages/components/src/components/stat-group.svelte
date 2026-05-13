@@ -49,7 +49,7 @@
   }: StatGroupProps = $props();
 
   const groupRole = $derived(label ? 'group' : role);
-  const groupAriaLabel = $derived(label ?? ariaLabel);
+  const groupAriaLabel = $derived(label || ariaLabel);
 </script>
 
 <div

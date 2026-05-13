@@ -89,6 +89,7 @@
   class={classNames('cinder-stat', customClassName)}
   role="group"
   aria-labelledby={`${labelId} ${valueId}`}
+  data-cinder-has-icon={icon ? '' : undefined}
 >
   {#if icon}
     <span class="cinder-stat__icon" aria-hidden="true">{@render icon()}</span>
