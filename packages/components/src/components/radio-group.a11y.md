@@ -33,7 +33,7 @@ Fieldset-level descriptions (`RadioGroupProps.description`) and per-option descr
 
 **The card border is decorative reinforcement, not the sole indicator of selection.** The native checked-state dot (`.cinder-radio:checked` background SVG) remains the primary indicator. Forced-colors mode uses border weight (`1px → 2px`) and the `Highlight` system color to ensure a non-color indicator is always present.
 
-**Activation surface is the native `<input>` + `<label for=…>` pair.** The card padding is intentionally modest (`--cinder-space-3`) to minimise the gap between the visible card edge and the clickable area. Whole-card activation (click anywhere on the card to select the radio) is a known follow-up and is explicitly out of scope for this variant — it would require either a wrapping `<label>` or JavaScript pointer handling, both of which affect the WAI-ARIA keyboard model and WCAG 2.5.3 (Label in Name).
+**Activation surface is the native `<input>` + `<label for=…>` pair.** The card padding is intentionally modest (`--cinder-space-3`) to minimise the gap between the visible card edge and the clickable area. Whole-card activation (click anywhere on the card to select the radio) is a known follow-up and is explicitly out of scope for this variant — it would require either a wrapping `<label>` or JavaScript pointer handling, both of which affect the WAI-ARIA keyboard model and [WCAG 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG21/Understanding/label-in-name.html).
 
 ## `aria-invalid`
 

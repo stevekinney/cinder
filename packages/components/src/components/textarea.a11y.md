@@ -10,7 +10,7 @@ When the `label` prop is provided, a `<label for={id}>` is rendered. The `for` a
 
 - Gives the textarea an accessible name announced by screen readers on focus.
 - Expands the click target — clicking the label text moves focus to the textarea.
-- Is required for WCAG 2.1 SC 1.3.1 (Info and Relationships) and SC 4.1.2 (Name, Role, Value).
+- Is required for [WCAG 2.1 SC 1.3.1 Info and Relationships](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html) and [SC 4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html).
 
 The `id` prop is required on `TextareaProps` and intentionally has no default, enforcing uniqueness at the call site.
 
@@ -40,7 +40,7 @@ No custom keyboard handling is added; the browser's native textarea behaviour is
 
 ## Focus Visibility
 
-The textarea's `:focus-visible` style renders a `box-shadow` ring (2 px offset + ring width) using `--cinder-ring-color` (defaults to the accent colour). In Forced Colors Mode (Windows High Contrast, print), `box-shadow` is suppressed by the browser, so a `@media (forced-colors: active)` block substitutes a solid `outline` on `ButtonText` to maintain a visible focus indicator per WCAG 2.1 SC 2.4.7.
+The textarea's `:focus-visible` style renders a `box-shadow` ring (2 px offset + ring width) using `--cinder-ring-color` (defaults to the accent colour). In Forced Colors Mode (Windows High Contrast, print), `box-shadow` is suppressed by the browser, so a `@media (forced-colors: active)` block substitutes a solid `outline` on `ButtonText` to maintain a visible focus indicator per [WCAG 2.1 SC 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html).
 
 ## Disabled State
 
@@ -79,12 +79,12 @@ The count uses JavaScript string length (UTF-16 code units), matching the browse
 
 ## WCAG 2.1 Compliance Summary
 
-| Success Criterion            | Level | Satisfied by                                                                                                                  |
-| ---------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 1.3.1 Info and Relationships | A     | `<label for>` association                                                                                                     |
-| 1.3.5 Identify Input Purpose | AA    | Native `<textarea>` with `autocomplete` passthrough via `...rest`                                                             |
-| 2.4.7 Focus Visible          | AA    | `:focus-visible` ring; WHCM fallback outline                                                                                  |
-| 3.3.1 Error Identification   | A     | `aria-invalid="true"` + visible error `<p>`                                                                                   |
-| 3.3.2 Labels or Instructions | A     | Rendered `<label>` + optional description `<p>`                                                                               |
-| 4.1.2 Name, Role, Value      | A     | Native `<textarea>` with programmatic label                                                                                   |
-| 4.1.3 Status Messages        | AA    | Error `<p aria-live="polite">` as live region; count `<output aria-live="polite" aria-atomic="true">` when `showCount` is set |
+| Success Criterion                                                                                       | Level | Satisfied by                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [1.3.1 Info and Relationships](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html) | A     | `<label for>` association                                                                                                     |
+| [1.3.5 Identify Input Purpose](https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose.html) | AA    | Native `<textarea>` with `autocomplete` passthrough via `...rest`                                                             |
+| [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html)                   | AA    | `:focus-visible` ring; WHCM fallback outline                                                                                  |
+| [3.3.1 Error Identification](https://www.w3.org/WAI/WCAG21/Understanding/error-identification.html)     | A     | `aria-invalid="true"` + visible error `<p>`                                                                                   |
+| [3.3.2 Labels or Instructions](https://www.w3.org/WAI/WCAG21/Understanding/labels-or-instructions.html) | A     | Rendered `<label>` + optional description `<p>`                                                                               |
+| [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html)             | A     | Native `<textarea>` with programmatic label                                                                                   |
+| [4.1.3 Status Messages](https://www.w3.org/WAI/WCAG21/Understanding/status-messages.html)               | AA    | Error `<p aria-live="polite">` as live region; count `<output aria-live="polite" aria-atomic="true">` when `showCount` is set |
