@@ -56,7 +56,7 @@
   <button
     type="button"
     class={resolvedClass}
-    aria-current={active ? 'true' : undefined}
+    aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
     data-variant={variant}

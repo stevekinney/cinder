@@ -48,12 +48,12 @@ describe('NavigationItem rendering', () => {
     expect(anchor?.hasAttribute('aria-current')).toBe(false);
   });
 
-  test('active button has aria-current="true"', () => {
+  test('active button has aria-current="page"', () => {
     const { container } = render(NavigationItem, {
       props: { onClick: () => {}, active: true, children: (() => {}) as never },
     });
     const button = container.querySelector('button');
-    expect(button?.getAttribute('aria-current')).toBe('true');
+    expect(button?.getAttribute('aria-current')).toBe('page');
   });
 
   test('inactive button does not have aria-current', () => {

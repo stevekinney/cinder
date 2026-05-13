@@ -46,42 +46,23 @@
     // Strip these from rest so they cannot collide with internal attributes.
     'aria-label': _ariaLabel,
     'data-collapsible': _dataCollapsible,
-    'data-mobile-open': _dataMobileOpen,
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
 
   const regionId = useId('cinder-navigation-bar');
 
-  const isCollapsible = $derived(menuToggle !== undefined);
-
   const variant: NavigationVariant = $derived(
-    isCollapsible && mobileMenuOpen ? 'mobile' : 'horizontal',
+    menuToggle !== undefined && mobileMenuOpen ? 'mobile' : 'horizontal',
   );
-
-  const toggleAttributes = $derived({
-    'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
-    'aria-controls': regionId,
-    onclick: handleToggle,
-  } satisfies NavigationBarToggleAttributes);
 
   // Stores the toggle element for focus return after Escape-close.
   let toggleElement: HTMLElement | null = null;
-  // Tracks whether the menu was closed by Escape so we can return focus.
-  let closedByEscape = $state(false);
 
   function handleToggle(event: MouseEvent): void {
     mobileMenuOpen = !mobileMenuOpen;
     toggleElement = event.currentTarget as HTMLElement | null;
   }
-
-  $effect(() => {
-    // Return focus to the toggle when the menu is closed via Escape.
-    if (!mobileMenuOpen && closedByEscape) {
-      toggleElement?.focus();
-      closedByEscape = false;
-    }
-  });
 
   function handleKeyDown(event: KeyboardEvent): void {
     // Consumer handler runs first; if it cancels, skip the internal close.
@@ -89,8 +70,9 @@
       (consumerOnKeyDown as (e: KeyboardEvent) => void)(event);
     }
     if (event.key === 'Escape' && mobileMenuOpen && !event.defaultPrevented) {
-      closedByEscape = true;
       mobileMenuOpen = false;
+      // Return focus synchronously — toggleElement is captured on each click.
+      toggleElement?.focus();
     }
   }
 </script>
@@ -99,8 +81,7 @@
   {...rest}
   aria-label={navAriaLabel}
   class={cn('cinder-navigation-bar', className)}
-  data-collapsible={isCollapsible ? 'true' : 'false'}
-  data-mobile-open={mobileMenuOpen ? 'true' : 'false'}
+  data-collapsible={menuToggle !== undefined ? 'true' : 'false'}
   onkeydown={handleKeyDown}
 >
   {#if brand}
@@ -111,7 +92,11 @@
 
   {#if menuToggle}
     <div class="cinder-navigation-bar__menu-toggle">
-      {@render menuToggle(toggleAttributes)}
+      {@render menuToggle({
+        'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
+        'aria-controls': regionId,
+        onclick: handleToggle,
+      })}
     </div>
   {/if}
 
