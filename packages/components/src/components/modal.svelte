@@ -63,7 +63,16 @@
       //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
       //      lands on meaningful content rather than the close-X button — which
       //      would otherwise be the first sequentially-focusable element.
-      const hasExplicitAutofocus = dialogElement.querySelector('[autofocus]') !== null;
+      // Check both the HTML attribute (set by static markup) and the DOM property
+      // (set by Svelte 5's $.autofocus() helper, which sets element.autofocus = true
+      // rather than the attribute). The attribute selector alone misses the Svelte case.
+      const hasExplicitAutofocus =
+        dialogElement.querySelector('[autofocus]') !== null ||
+        Array.from(
+          dialogElement.querySelectorAll<HTMLElement>(
+            'button, input, select, textarea, [tabindex]',
+          ),
+        ).some((el) => (el as HTMLElement & { autofocus?: boolean }).autofocus === true);
       if (!hasExplicitAutofocus && bodyElement) {
         bodyElement.focus();
       }

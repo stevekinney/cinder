@@ -41,6 +41,6 @@ State flips to `open = false` **before** the callback is invoked. A thrown callb
 
 ## Screen Reader Announcements
 
-- Opening a `<dialog>` with `showModal()` causes supporting screen readers (NVDA+Firefox, JAWS+Chrome, VoiceOver+Safari) to announce the dialog role and its accessible name (from `aria-labelledby`) immediately.
+- Opening a `<dialog>` with `showModal()` causes supporting screen readers ([NVDA](https://www.nvaccess.org/)+Firefox, [JAWS](https://www.freedomscientific.com/products/software/jaws/)+Chrome, [VoiceOver](https://www.apple.com/accessibility/vision/)+Safari) to announce the dialog role and its accessible name (from `aria-labelledby`) immediately.
 - When `describedById` is set, the referenced description text is announced immediately after the accessible name.
 - The close button carries `aria-label="Close dialog"` so it reads as "Close dialog, button" rather than the SVG icon content. Clicking the close-X fires `ondismiss`.

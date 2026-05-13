@@ -409,7 +409,9 @@ describe('ConfirmDialog', () => {
       },
     });
     const [cancelBtn] = footerButtons(container);
-    expect(async () => await fireEvent.click(cancelBtn)).not.toThrow();
+    // Directly await the click — if it threw synchronously the test would fail.
+    // Then assert the state side-effect: dialog closed without error.
+    await fireEvent.click(cancelBtn);
     expect(openValue).toBe(false);
   });
 

@@ -19,11 +19,11 @@ This is the industry-standard guard against accidental destructive confirms:
 
 - macOS NSAlert defaults focus to the non-destructive button.
 - GNOME HIG and APG's confirmation pattern example both default to cancel.
-- WCAG 3.2.1 is satisfied — focus is moved by the dialog opening, not by user input.
+- [WCAG 3.2.1](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) is satisfied—focus is moved by the dialog opening, not by user input.
 
 The confirm button never carries `autofocus`. `ConfirmDialog` exposes no prop to change the default focus target — consumers who need a different focus default should compose `<Modal>` + `<Button>` directly.
 
-**Color is never the sole destructive signal.** `destructive={true}` changes the confirm button to `variant="danger"`. The cancel button still receives default focus. The `confirmLabel` prop is required so consumers must name the action being confirmed ("Delete account", "Discard changes") — generic labels like "OK" or "Confirm" are explicitly disallowed.
+**Color is never the sole destructive signal.** `destructive={true}` changes the confirm button to `variant="danger"`. The cancel button still receives default focus. The `confirmLabel` prop is required so consumers must name the action being confirmed ("Delete account", "Discard changes")—generic labels like "OK" or "Confirm" are explicitly disallowed.
 
 ## Keyboard Interactions
 
