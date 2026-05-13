@@ -1,0 +1,56 @@
+.cinder-stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: var(--cinder-space-3, 0.75rem);
+  row-gap: var(--cinder-space-1, 0.25rem);
+  align-items: start;
+  color: var(--cinder-color-text, currentColor);
+}
+
+.cinder-stat__icon {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cinder-color-text-muted, currentColor);
+}
+
+.cinder-stat__label {
+  grid-column: 2;
+  font-size: var(--cinder-font-size-sm, 0.875rem);
+  color: var(--cinder-color-text-muted, currentColor);
+}
+
+.cinder-stat__value {
+  grid-column: 2;
+  font-size: var(--cinder-font-size-2xl, 1.875rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.cinder-stat__change {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1, 0.25rem);
+  font-size: var(--cinder-font-size-sm, 0.875rem);
+}
+
+.cinder-stat__change[data-cinder-direction='up'] {
+  color: var(--cinder-color-success, #15803d);
+}
+
+.cinder-stat__change[data-cinder-direction='down'] {
+  color: var(--cinder-color-danger, #b91c1c);
+}
+
+.cinder-stat__change[data-cinder-direction='neutral'] {
+  color: var(--cinder-color-text-muted, currentColor);
+}
+
+.cinder-stat__change-description {
+  color: var(--cinder-color-text-muted, currentColor);
+}
