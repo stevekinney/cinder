@@ -81,8 +81,8 @@
     const focusTarget = rootElement ? resolveFocusTarget(rootElement) : null;
     visible = false;
     await tick();
+    if (focusTarget?.isConnected) focusTarget.focus();
     onDismiss?.();
-    focusTarget?.focus();
   }
 
   function resolveFocusTarget(bannerElement: HTMLElement): HTMLElement | null {
