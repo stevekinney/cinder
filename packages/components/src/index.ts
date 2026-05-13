@@ -54,6 +54,15 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list.svelte';
 export type { DataListProps } from './components/data-list.svelte';
 
+export { default as DatePicker } from './components/date-picker.svelte';
+export type {
+  DatePickerMode,
+  DatePickerProps,
+  DatePickerRangeValue,
+  DatePickerSingleValue,
+  DatePickerValue,
+} from './components/date-picker.svelte';
+
 export { default as DescriptionList } from './components/description-list.svelte';
 export type {
   DescriptionListItem,
@@ -107,6 +116,14 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event.s
 
 export { default as Feed } from './components/feed.svelte';
 export type { FeedProps } from './components/feed.svelte';
+
+export { default as FormField } from './components/form-field.svelte';
+export type { FormFieldProps } from './components/form-field.svelte';
+
+export { default as FormSection } from './components/form-section.svelte';
+export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section.svelte';
+
+export type { FormFieldContext } from './_internal/form-field-context.ts';
 
 export { default as GridList } from './components/grid-list.svelte';
 export type { GridListProps } from './components/grid-list.svelte';
@@ -276,7 +293,15 @@ export { default as TabPanel } from './components/tab-panel.svelte';
 export type { TabPanelProps } from './components/tab-panel.svelte';
 
 export { default as Table } from './components/table.svelte';
-export type { SortDirection, TableContext, TableProps, TableSort } from './components/table.svelte';
+export type {
+  SortDirection,
+  TableContext,
+  TableDensity,
+  TableHeaderSelectionContext,
+  TableProps,
+  TableSectionContext,
+  TableSort,
+} from './components/table.svelte';
 
 export { default as TableBody } from './components/table-body.svelte';
 export type { TableBodyProps } from './components/table-body.svelte';
@@ -291,7 +316,7 @@ export { default as TableHeaderCell } from './components/table-header-cell.svelt
 export type { TableHeaderCellProps } from './components/table-header-cell.svelte';
 
 export { default as TableRow } from './components/table-row.svelte';
-export type { TableRowProps } from './components/table-row.svelte';
+export type { TableRowProps, TableRowSelectionProps } from './components/table-row.svelte';
 
 export { default as Tabs } from './components/tabs.svelte';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs.svelte';
@@ -323,6 +348,12 @@ export { useToast } from './utilities/use-toast.ts';
 
 export { default as Toggle } from './components/toggle.svelte';
 export type { ToggleProps } from './components/toggle.svelte';
+
+export { default as Tree } from './components/tree.svelte';
+export type { TreeProps, TreeSelectionMode } from './components/tree.svelte';
+
+export { default as TreeItem } from './components/tree-item.svelte';
+export type { TreeItemProps } from './components/tree-item.svelte';
 
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';

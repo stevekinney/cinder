@@ -89,6 +89,10 @@
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
     },
+    "./date-picker": {
+      "svelte": "./src/components/date-picker.svelte",
+      "types": "./dist/components/date-picker.svelte.d.ts"
+    },
     "./description-list": {
       "svelte": "./src/components/description-list.svelte",
       "types": "./dist/components/description-list.svelte.d.ts"
@@ -168,6 +172,14 @@
     "./feed": {
       "svelte": "./src/components/feed.svelte",
       "types": "./dist/components/feed.svelte.d.ts"
+    },
+    "./form-field": {
+      "svelte": "./src/components/form-field.svelte",
+      "types": "./dist/components/form-field.svelte.d.ts"
+    },
+    "./form-section": {
+      "svelte": "./src/components/form-section.svelte",
+      "types": "./dist/components/form-section.svelte.d.ts"
     },
     "./grid-list-item": {
       "svelte": "./src/components/grid-list-item.svelte",
@@ -349,6 +361,14 @@
       "svelte": "./src/components/tooltip.svelte",
       "types": "./dist/components/tooltip.svelte.d.ts"
     },
+    "./tree-item": {
+      "svelte": "./src/components/tree-item.svelte",
+      "types": "./dist/components/tree-item.svelte.d.ts"
+    },
+    "./tree": {
+      "svelte": "./src/components/tree.svelte",
+      "types": "./dist/components/tree.svelte.d.ts"
+    },
     "./visually-hidden": {
       "svelte": "./src/components/visually-hidden.svelte",
       "types": "./dist/components/visually-hidden.svelte.d.ts"
@@ -369,6 +389,8 @@
     "src/_internal/field-control.ts",
     "src/_internal/overlay.ts",
     "src/_internal/toast-context.ts",
+    "src/_internal/tree-context.ts",
+    "src/_internal/tree-registry.svelte.ts",
     "src/styles/**/*.css",
     "src/components/icons/index.ts",
     "src/utilities/attachments.ts",
