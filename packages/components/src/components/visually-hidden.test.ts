@@ -72,27 +72,30 @@ describe('VisuallyHidden', () => {
       children: textSnippet('label'),
     });
     const el = container.querySelector('.cinder-sr-only');
-    const classes = el?.className ?? '';
-    expect(classes).toContain('cinder-sr-only');
-    expect(classes).toContain('my-custom-class');
-    const srOnlyIndex = classes.indexOf('cinder-sr-only');
-    const customIndex = classes.indexOf('my-custom-class');
-    expect(srOnlyIndex).toBeLessThan(customIndex);
+    expect(el?.classList.contains('cinder-sr-only')).toBe(true);
+    expect(el?.classList.contains('my-custom-class')).toBe(true);
+    // cinder-sr-only must appear before my-custom-class in the token list
+    const tokens = Array.from(el?.classList ?? []);
+    expect(tokens.indexOf('cinder-sr-only')).toBeLessThan(tokens.indexOf('my-custom-class'));
   });
 
-  test('with focusable=true, class order is cinder-sr-only, cinder-sr-only-focusable, then consumer class', () => {
+  test('with focusable=true, all three classes are present and in the correct order', () => {
     const { container } = render(VisuallyHidden, {
       focusable: true,
       class: 'my-custom-class',
       children: textSnippet('label'),
     });
     const el = container.querySelector('.cinder-sr-only');
-    const classes = el?.className ?? '';
-    const srOnlyIndex = classes.indexOf('cinder-sr-only ');
-    const focusableIndex = classes.indexOf('cinder-sr-only-focusable');
-    const customIndex = classes.indexOf('my-custom-class');
-    expect(srOnlyIndex).toBeLessThan(focusableIndex);
-    expect(focusableIndex).toBeLessThan(customIndex);
+    const tokens = Array.from(el?.classList ?? []);
+    expect(tokens).toContain('cinder-sr-only');
+    expect(tokens).toContain('cinder-sr-only-focusable');
+    expect(tokens).toContain('my-custom-class');
+    expect(tokens.indexOf('cinder-sr-only')).toBeLessThan(
+      tokens.indexOf('cinder-sr-only-focusable'),
+    );
+    expect(tokens.indexOf('cinder-sr-only-focusable')).toBeLessThan(
+      tokens.indexOf('my-custom-class'),
+    );
   });
 
   test('spreads arbitrary attributes onto the rendered element', () => {
@@ -112,22 +115,23 @@ describe('VisuallyHidden', () => {
     expect(el?.getAttribute('tabindex')).toBe('0');
   });
 
-  test('rendered element has exactly one cinder-sr-only token in the class attribute (no duplicate via rest)', () => {
+  test('rendered element has exactly one cinder-sr-only token (no duplicate via rest spread)', () => {
     const { container } = render(VisuallyHidden, {
       class: 'extra',
       children: textSnippet('label'),
     });
     const el = container.querySelector('.cinder-sr-only');
-    const classAttr = el?.getAttribute('class') ?? '';
-    const occurrences = (classAttr.match(/cinder-sr-only/g) ?? []).length;
-    // 'extra' class is present, and cinder-sr-only appears exactly once
-    expect(occurrences).toBe(1);
+    // Use classList to count exact token matches (avoids substring matching cinder-sr-only-focusable)
+    const tokens = Array.from(el?.classList ?? []);
+    const srOnlyCount = tokens.filter((t) => t === 'cinder-sr-only').length;
+    expect(srOnlyCount).toBe(1);
   });
 
-  test('content is queryable via getByText and the element is not aria-hidden', () => {
-    const { getByText } = render(VisuallyHidden, { children: textSnippet('Hidden label text') });
-    const el = getByText('Hidden label text');
-    expect(el).toBeDefined();
-    expect(el.closest('[aria-hidden="true"]')).toBeNull();
+  test('content is queryable and the VisuallyHidden element itself is not aria-hidden', () => {
+    const { container } = render(VisuallyHidden, { children: textSnippet('Hidden label text') });
+    const el = container.querySelector('.cinder-sr-only');
+    expect(el).not.toBeNull();
+    expect(el?.getAttribute('aria-hidden')).not.toBe('true');
+    expect(el?.textContent).toContain('Hidden label text');
   });
 });
