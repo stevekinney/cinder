@@ -43,11 +43,69 @@ export interface UseChatMessageGroupsReturn {
   readonly messagesWithDates: MessageWithDateItem[];
   /** Map of tool call ID to tool call pairs for O(1) lookup */
   readonly toolCallPairsByCallId: Map<string, ToolCallPair[]>;
+  /** Tool result message IDs already represented inside a paired tool call group */
+  readonly pairedToolResultIds: Set<string>;
 }
 
 // ==========================================================================
 // Helper
 // ==========================================================================
+
+/** Find result message IDs that are already represented by paired tool-use messages. */
+export function findPairedToolResultIds(messages: readonly Message[]): Set<string> {
+  const visibleToolCallIds = new Set<string>();
+  const pairedResultIds = new Set<string>();
+
+  for (const message of messages) {
+    if (message.role === 'tool-use' && message.toolCall) {
+      visibleToolCallIds.add(message.toolCall.id);
+    }
+  }
+
+  for (const message of messages) {
+    if (
+      message.role === 'tool-result' &&
+      message.toolResult &&
+      visibleToolCallIds.has(message.toolResult.callId)
+    ) {
+      pairedResultIds.add(message.id);
+    }
+  }
+
+  return pairedResultIds;
+}
+
+/** Build visible messages with date separators, skipping paired tool-result messages. */
+export function buildMessagesWithDateSeparators(
+  messages: readonly Message[],
+  pairedToolResultIds: ReadonlySet<string>,
+): MessageWithDateItem[] {
+  const result: MessageWithDateItem[] = [];
+  let lastDate: string | null = null;
+
+  for (const message of messages) {
+    if (message.role === 'tool-result' && pairedToolResultIds.has(message.id)) {
+      continue;
+    }
+
+    const timestamp = message.createdAt ?? message.metadata?.['timestamp'];
+    if (timestamp != null) {
+      const messageDate = new Date(timestamp);
+      const isValidDate = !isNaN(messageDate.getTime());
+      if (isValidDate) {
+        const dateKey = messageDate.toDateString();
+
+        if (dateKey !== lastDate) {
+          result.push({ type: 'date', date: messageDate });
+          lastDate = dateKey;
+        }
+      }
+    }
+    result.push({ type: 'message', message });
+  }
+
+  return result;
+}
 
 /**
  * Creates reactive derived values for message grouping and tool call pairing.
@@ -92,43 +150,11 @@ export function useChatMessageGroups(
     return map;
   });
 
-  // Group messages by date for date separators.
-  // Paired tool-result messages are filtered out: when a tool-use renders, ToolCallGroup
-  // already shows the result inline. Rendering the tool-result as its own bubble produces
-  // a duplicate "TOOL RESULT" card next to the unified ToolCallGroup card.
+  const pairedToolResultIds = $derived.by(() => findPairedToolResultIds(getMessages()));
+
+  // Group messages by date for date separators
   const messagesWithDates = $derived.by(() => {
-    const messages = getMessages();
-    const result: MessageWithDateItem[] = [];
-    let lastDate: string | null = null;
-
-    for (const message of messages) {
-      if (message.role === 'tool-result' && message.toolResult?.callId) {
-        const pairs = toolCallPairsByCallId.get(message.toolResult.callId);
-        const isPaired = pairs?.some((pair) => pair.call && pair.result);
-        if (isPaired) {
-          continue;
-        }
-      }
-
-      const timestamp = message.createdAt ?? message.metadata?.['timestamp'];
-      if (timestamp != null) {
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Date is created fresh each derivation, not mutated
-        const messageDate = new Date(timestamp);
-        // Validate date before using - invalid dates have NaN getTime()
-        const isValidDate = !isNaN(messageDate.getTime());
-        if (isValidDate) {
-          const dateKey = messageDate.toDateString();
-
-          if (dateKey !== lastDate) {
-            result.push({ type: 'date', date: messageDate });
-            lastDate = dateKey;
-          }
-        }
-      }
-      result.push({ type: 'message', message });
-    }
-
-    return result;
+    return buildMessagesWithDateSeparators(getMessages(), pairedToolResultIds);
   });
 
   return {
@@ -137,6 +163,9 @@ export function useChatMessageGroups(
     },
     get toolCallPairsByCallId() {
       return toolCallPairsByCallId;
+    },
+    get pairedToolResultIds() {
+      return pairedToolResultIds;
     },
   };
 }

@@ -1,3 +1,6 @@
+import type { IconProps } from 'lucide-svelte';
+import type { ComponentType, SvelteComponent } from 'svelte';
+
 export {
   ArrowUp,
   Bold,
@@ -40,3 +43,5 @@ export {
 } from 'lucide-svelte';
 
 export type { IconProps } from 'lucide-svelte';
+
+export type IconComponent = ComponentType<SvelteComponent<IconProps>>;

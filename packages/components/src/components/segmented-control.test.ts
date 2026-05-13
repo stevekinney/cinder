@@ -7,6 +7,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
+const { Check } = await import('./icons/index.ts');
 const { default: SegmentedControl } = await import('./segmented-control.svelte');
 
 afterEach(() => cleanup());
@@ -704,5 +705,44 @@ describe('SegmentedControl — variants', () => {
     });
     const multiGroup = multiContainer.querySelector('[role="group"]');
     expect(multiGroup?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
+  });
+
+  test('renders option icons without changing accessible names', () => {
+    render(SegmentedControl, {
+      props: {
+        id: 'document-view',
+        value: 'source',
+        label: 'Document view',
+        options: [{ value: 'source', label: 'Source', icon: Check }],
+      },
+    });
+
+    const source = screen.getByRole('radio', { name: 'Source' });
+    expect(source.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('can render tab semantics for panel switching', () => {
+    render(SegmentedControl, {
+      props: {
+        id: 'review-view',
+        value: 'editor',
+        label: 'Review view',
+        variant: 'tablist',
+        options: [
+          { value: 'editor', label: 'Editor', controls: 'editor-panel' },
+          { value: 'diff', label: 'Diff', controls: 'diff-panel' },
+        ],
+      },
+    });
+
+    const tablist = screen.getByRole('tablist', { name: 'Review view' });
+    const editor = screen.getByRole('tab', { name: 'Editor' });
+    const diff = screen.getByRole('tab', { name: 'Diff' });
+
+    expect(tablist).not.toBeNull();
+    expect(editor.getAttribute('aria-selected')).toBe('true');
+    expect(editor.getAttribute('aria-controls')).toBe('editor-panel');
+    expect(diff.getAttribute('aria-selected')).toBe('false');
+    expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
   });
 });

@@ -10,6 +10,8 @@
     id: string;
     /** Current active view */
     activeView: ViewType;
+    /** Panel IDs controlled by each top-level view option. */
+    viewPanelIds?: Partial<Record<ViewType, string>>;
     /** Callback when view changes */
     onViewChange?: (view: ViewType) => void;
     /** Whether to show diff/summary tabs */
@@ -40,14 +42,14 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '../button.svelte';
-  import SegmentedControl from '../segmented-control.svelte';
-  import ViewSwitcher from '../view-switcher.svelte';
+  import SegmentedControl, { type SegmentedControlOption } from '../segmented-control.svelte';
   import DiffStatistics from '../diff-statistics.svelte';
-  import { MessageSquare, RotateCcw } from '../icons/index.ts';
+  import { FileText, GitBranch, MessageSquare, Pencil, RotateCcw } from '../icons/index.ts';
 
   let {
     id,
     activeView,
+    viewPanelIds,
     onViewChange,
     showDiffTabs = true,
     diffStats,
@@ -68,9 +70,31 @@
     { value: 'original', label: 'Original' },
   ];
 
+  const viewOptions = $derived.by((): SegmentedControlOption<ViewType>[] => {
+    const options: SegmentedControlOption<ViewType>[] = [
+      { value: 'editor', label: 'Editor', icon: Pencil, controls: viewPanelIds?.editor },
+    ];
+    if (showDiffTabs) {
+      options.push({ value: 'diff', label: 'Diff', icon: GitBranch, controls: viewPanelIds?.diff });
+      options.push({
+        value: 'summary',
+        label: 'Summary',
+        icon: FileText,
+        controls: viewPanelIds?.summary,
+      });
+    }
+    return options;
+  });
+
   function handleViewChange(view: ViewType) {
     onViewChange?.(view);
   }
+
+  const commentsToggleLabel = $derived(
+    `${sidebarOpen ? 'Close' : 'Open'} comments sidebar (${commentCount} ${
+      commentCount === 1 ? 'comment' : 'comments'
+    })`,
+  );
 </script>
 
 <div
@@ -80,12 +104,14 @@
   aria-label="Review editor controls"
 >
   <div class="controls-leading">
-    <ViewSwitcher
-      id="{id}-view-switcher"
+    <SegmentedControl
+      id="{id}-view-mode"
+      label="Review editor view"
+      hideLabel
+      variant="tablist"
       value={activeView}
-      showDiff={showDiffTabs}
-      showSummary={showDiffTabs}
-      onchange={(view: ViewType) => handleViewChange(view)}
+      options={viewOptions}
+      onchange={handleViewChange}
     />
 
     {#if diffStats && (diffStats.added > 0 || diffStats.removed > 0 || diffStats.modified > 0)}
@@ -133,6 +159,7 @@
       onclick={onSidebarToggle}
       aria-expanded={sidebarOpen}
       aria-controls="{id}-sidebar"
+      aria-label={commentsToggleLabel}
       title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
     >
       <MessageSquare class="icon-sm" />
@@ -186,19 +213,6 @@
    * All controls in the toolbar should have consistent visual height
    * Target: 24px outer height for all interactive elements
    * ========================================================================= */
-
-  /* ViewSwitcher wrapper - ensure consistent outer height */
-  .review-editor-controls :global(.view-switcher) {
-    padding: 2px;
-  }
-
-  /* ViewSwitcher tabs - 20px inner height (24px with wrapper padding) */
-  .review-editor-controls :global(.view-switcher-tab) {
-    height: 20px;
-    min-height: 20px;
-    padding: 0 var(--cinder-space-2);
-    line-height: 1;
-  }
 
   /* SegmentedControl uses size="sm" (1.5rem = 24px) — no height override needed */
 

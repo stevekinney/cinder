@@ -1,10 +1,13 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { SvelteSet } from 'svelte/reactivity';
+  import type { IconComponent } from './icons/index.ts';
 
   export type SegmentedControlOption<T extends string = string> = {
     value: T;
     label: string;
+    icon?: IconComponent;
+    controls?: string | undefined;
     disabled?: boolean;
   };
 
@@ -17,6 +20,7 @@
     | 'aria-labelledby'
     | 'aria-disabled'
     | 'aria-orientation'
+    | 'onchange'
     | 'onkeydown';
 
   type CommonProps<T extends string> = Omit<
@@ -39,10 +43,14 @@
     detached?: boolean;
     /** Stretch the control to fill available width. */
     fullWidth?: boolean;
+    /** ARIA interaction pattern. Use `tablist` when options switch visible panels. */
+    variant?: 'radiogroup' | 'tablist';
     /** Available options. */
     options: readonly SegmentedControlOption<T>[];
     /** Additional class names merged with `.cinder-segmented-control`. */
     class?: string;
+    /** Called when the selected value changes. */
+    onchange?: (value: T) => void;
   };
 
   type SingleProps<T extends string> = CommonProps<T> & {
@@ -62,6 +70,8 @@
     value?: SvelteSet<T>;
     /** Not applicable in multiple mode — present for Svelte destructuring compatibility. */
     disallowEmptySelection?: undefined;
+    /** Tablist semantics are only valid for single selection. */
+    variant?: 'radiogroup';
   };
 
   export type SegmentedControlProps<T extends string = string> = SingleProps<T> | MultipleProps<T>;
@@ -82,13 +92,14 @@
     orientation = 'horizontal',
     detached = false,
     fullWidth = false,
+    variant = 'radiogroup',
     selectionMode = 'single',
     disallowEmptySelection = true,
     class: customClassName,
+    onchange,
     ...rest
   }: SegmentedControlProps<T> = $props();
 
-  // Single-mode state
   let focusedIndex = $state<number | null>(null);
 
   const selectedIndex = $derived(
@@ -102,8 +113,6 @@
   const focusableIndex = $derived.by((): number => {
     if (selectionMode !== 'single') return -1;
     const candidate = getFocusableIndex(selectedIndex, options.length, isOptionDisabled);
-    // If every option is disabled, getFocusableIndex falls back to index 0.
-    // Don't give tabindex="0" to a disabled option — return -1 so no option is focusable.
     if (candidate >= 0 && isOptionDisabled(candidate)) return -1;
     return candidate;
   });
@@ -121,6 +130,7 @@
     }
 
     (value as any) = option.value;
+    onchange?.(option.value);
   }
 
   function handleMultipleClick(index: number): void {
@@ -162,6 +172,12 @@
     const set = value as SvelteSet<T> | undefined;
     return set?.has(optionValue) ?? false;
   }
+
+  const groupRole = $derived(
+    selectionMode === 'multiple' ? 'group' : variant === 'tablist' ? 'tablist' : 'radiogroup',
+  );
+
+  const optionRole = $derived(variant === 'tablist' ? 'tab' : 'radio');
 </script>
 
 <div class="cinder-segmented-control-container">
@@ -174,7 +190,7 @@
   <div
     {...rest}
     {id}
-    role={selectionMode === 'single' ? 'radiogroup' : 'group'}
+    role={groupRole}
     aria-labelledby={`${id}-label`}
     aria-disabled={disabled ? 'true' : undefined}
     aria-orientation={selectionMode === 'single' ? orientation : undefined}
@@ -183,6 +199,7 @@
     data-cinder-selection-mode={selectionMode}
     data-cinder-detached={detached ? '' : undefined}
     data-cinder-full-width={fullWidth ? '' : undefined}
+    data-cinder-variant={variant}
     class={classNames('cinder-segmented-control', customClassName)}
     onkeydown={selectionMode === 'single' ? handleKeydown : undefined}
   >
@@ -193,8 +210,11 @@
         <button
           id={`${id}-option-${index}`}
           type="button"
-          role="radio"
-          aria-checked={isSelected}
+          role={optionRole}
+          aria-checked={variant === 'radiogroup' ? isSelected : undefined}
+          aria-selected={variant === 'tablist' ? isSelected : undefined}
+          aria-controls={variant === 'tablist' ? option.controls : undefined}
+          aria-disabled={isDisabled ? 'true' : undefined}
           disabled={isDisabled}
           tabindex={index === focusableIndex ? 0 : -1}
           class="cinder-segmented-control-option"
@@ -203,6 +223,9 @@
           onfocus={() => (focusedIndex = index)}
           onblur={() => (focusedIndex = null)}
         >
+          {#if option.icon}
+            <option.icon class="icon-xs cinder-segmented-control-option-icon" aria-hidden="true" />
+          {/if}
           {option.label}
         </button>
       {:else}
@@ -216,6 +239,9 @@
           data-cinder-pressed={pressed ? '' : undefined}
           onclick={() => handleMultipleClick(index)}
         >
+          {#if option.icon}
+            <option.icon class="icon-xs cinder-segmented-control-option-icon" aria-hidden="true" />
+          {/if}
           {option.label}
         </button>
       {/if}

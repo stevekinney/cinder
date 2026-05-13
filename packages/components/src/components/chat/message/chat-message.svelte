@@ -56,6 +56,7 @@
   import MessageContent from './message-content.svelte';
   import MessageAttachments from './message-attachments.svelte';
   import ToolCallGroup from './tool-call-group.svelte';
+  import ToolPayloadCode from './tool-payload-code.svelte';
 
   let {
     message,
@@ -226,8 +227,7 @@
               {formattedToolResult}
             </div>
           {:else}
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-            <pre tabindex="0"><code>{formattedToolResult}</code></pre>
+            <ToolPayloadCode code={formattedToolResult} />
           {/if}
         </div>
       {:else if isEditing}
@@ -416,6 +416,8 @@
   .chat-message-wrapper[data-role='tool-use'],
   .chat-message-wrapper[data-role='tool-result'] {
     margin-inline-end: auto;
+    min-width: min(18rem, 100%);
+    max-width: min(100%, 48rem);
   }
 
   .chat-message-wrapper[data-role='tool-use'] .chat-message,
@@ -522,13 +524,8 @@
     line-height: 1.6;
   }
 
-  .chat-message-tool-result pre {
-    margin: 0;
-    padding: var(--cinder-space-3);
-    background: var(--cinder-surface);
-    border-radius: var(--cinder-radius-md);
-    overflow-x: auto;
-    font-size: var(--cinder-text-sm);
+  .chat-message-tool-result {
+    inline-size: 100%;
   }
 
   .chat-message-tool-error {
