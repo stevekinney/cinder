@@ -59,3 +59,22 @@ NavigationItem is designed to be used inside a `<nav>` element or another approp
 - Each item must have a meaningful text label visible to all users — do not use icon-only items without a supplemental `aria-label` on the item or a visually hidden span inside `children`.
 - Labels should be unique within a navigation region so users can distinguish items when navigating by tab or the screen reader's link/button list.
 - Avoid changing an item's label text dynamically as the active state changes — the active state is communicated via `aria-current` / `aria-pressed`, not by altering the label.
+
+## Variants
+
+`NavigationItem` accepts a `variant` prop (`'horizontal'` | `'mobile'`, default `'horizontal'`) that controls stacked layout on small viewports. The value is emitted as a `data-variant` attribute on the root element.
+
+**Visual behavior is CSS-only and viewport-gated.** The `data-variant='mobile'` styles are scoped inside a `@media (max-width: 47.99rem)` rule. Passing `variant='mobile'` on a desktop viewport has no visual effect—the item renders identically to the horizontal variant. This keeps the variant safe to pass at all viewports without conditional JS.
+
+**Usage with `NavigationBar`.** When `NavigationBar` renders with a `menuToggle` snippet (mobile collapse enabled), it passes a `{ variant }` context object to the `items` snippet. Consumers forward this to each `NavigationItem` to enable stacked layout automatically:
+
+```svelte
+{#snippet items({ variant })}
+  <NavigationItem href="/home" {variant}>Home</NavigationItem>
+  <NavigationItem href="/docs" {variant}>Docs</NavigationItem>
+{/snippet}
+```
+
+When a consumer's `items` snippet does not destructure the context parameter, `NavigationItem` falls back to its own `variant='horizontal'` default. Mobile styling is then opt-in per-item rather than automatic.
+
+**Accessibility impact.** The `variant` prop has no ARIA semantics. It controls layout only. Screen readers announce both variants identically—the accessible name, role (`link` or `button`), and state (`aria-current`, `aria-disabled`) are unchanged by `variant`.

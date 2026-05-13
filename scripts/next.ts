@@ -10,9 +10,9 @@
 //   bun scripts/next.ts --concurrency 3    # run 3 tasks in parallel
 //   bun scripts/next.ts --help
 
-import { parseArgs } from 'node:util';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 
 // =============================================================================
 // Colors — Bun.color makes everything sparkle
@@ -161,7 +161,10 @@ async function runOkVisible(args: string[], options: RunOptions = {}): Promise<s
   return runOk(args, { ...options, tee: true });
 }
 
-async function runStreaming(args: string[], options: RunOptions = {}): Promise<{ exitCode: number; captured: string }> {
+async function runStreaming(
+  args: string[],
+  options: RunOptions = {},
+): Promise<{ exitCode: number; captured: string }> {
   const child = Bun.spawn(args, {
     cwd: options.cwd ?? process.cwd(),
     stdin: options.stdin === undefined ? 'ignore' : 'pipe',
@@ -228,7 +231,9 @@ type Task = {
 async function fetchNextTask(): Promise<Task | null> {
   const result = await run(['tasks', 'next']);
   if (result.exitCode !== 0) {
-    throw new Error(`tasks next failed (exit ${result.exitCode}):\n${result.stderr.trim() || result.stdout.trim()}`);
+    throw new Error(
+      `tasks next failed (exit ${result.exitCode}):\n${result.stderr.trim() || result.stdout.trim()}`,
+    );
   }
   const trimmed = result.stdout.trim();
   if (!trimmed) return null;
@@ -241,7 +246,9 @@ async function fetchNextTask(): Promise<Task | null> {
   try {
     return JSON.parse(trimmed.slice(start)) as Task;
   } catch (error) {
-    throw new Error(`tasks next emitted invalid JSON: ${(error as Error).message}\nRaw output:\n${trimmed}`);
+    throw new Error(
+      `tasks next emitted invalid JSON: ${(error as Error).message}\nRaw output:\n${trimmed}`,
+    );
   }
 }
 
@@ -250,7 +257,10 @@ async function getTask(id: string): Promise<Task> {
   return JSON.parse(result.trim()) as Task;
 }
 
-async function setStatus(id: string, status: 'in-progress' | 'in-review' | 'completed' | 'ready'): Promise<void> {
+async function setStatus(
+  id: string,
+  status: 'in-progress' | 'in-review' | 'completed' | 'ready',
+): Promise<void> {
   await runOk(['tasks', 'set-status', id, status]);
 }
 
@@ -360,7 +370,10 @@ async function tryClaimTask(taskId: string): Promise<boolean> {
   // before we got the lock (we won the mkdir but they won the status flip).
   const fresh = await getTask(taskId);
   if (fresh.status !== 'ready') {
-    log('INFO', `Task ${taskId.slice(0, 8)} no longer ready (status: ${fresh.status}) — releasing lock`);
+    log(
+      'INFO',
+      `Task ${taskId.slice(0, 8)} no longer ready (status: ${fresh.status}) — releasing lock`,
+    );
     releaseLock(directory);
     return false;
   }
@@ -389,7 +402,10 @@ async function claimNextTask(maxAttempts = 5): Promise<Task | null> {
     if (!candidate) return null;
     const won = await tryClaimTask(candidate.id);
     if (won) return candidate;
-    log('INFO', `Task ${candidate.id.slice(0, 8)} locked by another worker — trying next (${attempt}/${maxAttempts})`);
+    log(
+      'INFO',
+      `Task ${candidate.id.slice(0, 8)} locked by another worker — trying next (${attempt}/${maxAttempts})`,
+    );
     // Small jitter so multiple workers don't refetch in lockstep.
     await Bun.sleep(500 + Math.floor(Math.random() * 500));
   }
@@ -475,7 +491,9 @@ async function createWorktree(taskId: string, branch: string, baseBranch: string
   mkdirSync(resolve(directory, '..'), { recursive: true });
 
   if (await worktreeExists(directory)) {
-    const removed = await run(['git', 'worktree', 'remove', '--force', directory], { cwd: repoRoot });
+    const removed = await run(['git', 'worktree', 'remove', '--force', directory], {
+      cwd: repoRoot,
+    });
     if (removed.exitCode !== 0) {
       log('WARN', `Could not remove stale worktree at ${directory}: ${removed.stderr.trim()}`);
     }
@@ -485,7 +503,9 @@ async function createWorktree(taskId: string, branch: string, baseBranch: string
   // will surface when `git worktree add` rejects the branch below.
   await run(['git', 'branch', '-D', branch], { cwd: repoRoot });
 
-  await runOkVisible(['git', 'worktree', 'add', directory, '-b', branch, `origin/${baseBranch}`], { cwd: repoRoot });
+  await runOkVisible(['git', 'worktree', 'add', directory, '-b', branch, `origin/${baseBranch}`], {
+    cwd: repoRoot,
+  });
   activeWorktrees.add(directory);
   log('OK', `Worktree at ${palette.dim(directory)} on branch ${palette.task(branch)}`);
   return directory;
@@ -498,7 +518,9 @@ async function createWorktree(taskId: string, branch: string, baseBranch: string
  */
 async function cleanupWorktree(directory: string, branch?: string): Promise<void> {
   if (existsSync(directory)) {
-    const removed = await run(['git', 'worktree', 'remove', '--force', directory], { cwd: repoRoot });
+    const removed = await run(['git', 'worktree', 'remove', '--force', directory], {
+      cwd: repoRoot,
+    });
     if (removed.exitCode !== 0) {
       log('WARN', `worktree remove failed for ${directory}: ${removed.stderr.trim()}`);
     }
@@ -513,7 +535,9 @@ async function cleanupWorktree(directory: string, branch?: string): Promise<void
 }
 
 async function countCommitsAhead(worktree: string, baseBranch: string): Promise<number> {
-  const result = await run(['git', 'rev-list', '--count', `origin/${baseBranch}..HEAD`], { cwd: worktree });
+  const result = await run(['git', 'rev-list', '--count', `origin/${baseBranch}..HEAD`], {
+    cwd: worktree,
+  });
   if (result.exitCode !== 0) return 0;
   return Number.parseInt(result.stdout.trim(), 10) || 0;
 }
@@ -536,7 +560,17 @@ type PrSummary = {
 
 async function findOpenPr(branch: string): Promise<PrSummary | null> {
   const result = await run(
-    ['gh', 'pr', 'list', '--head', branch, '--state', 'open', '--json', 'number,url,state,mergeable,mergeStateStatus'],
+    [
+      'gh',
+      'pr',
+      'list',
+      '--head',
+      branch,
+      '--state',
+      'open',
+      '--json',
+      'number,url,state,mergeable,mergeStateStatus',
+    ],
     { cwd: repoRoot },
   );
   if (result.exitCode !== 0) return null;
@@ -548,7 +582,9 @@ type ChecksSummary = { pending: number; failing: number; passing: number; total:
 
 /** Fetch the aggregate CI state for a PR. `gh pr checks` exits non-zero on failing checks, so always parse output. */
 async function getPrChecks(prNumber: number): Promise<ChecksSummary> {
-  const result = await run(['gh', 'pr', 'checks', String(prNumber), '--json', 'state'], { cwd: repoRoot });
+  const result = await run(['gh', 'pr', 'checks', String(prNumber), '--json', 'state'], {
+    cwd: repoRoot,
+  });
   const empty: ChecksSummary = { pending: 0, failing: 0, passing: 0, total: 0 };
 
   const parsed = parseChecksJson(result.stdout);
@@ -584,7 +620,13 @@ function parseChecksJson(stdout: string): ChecksSummary | null {
     summary.total++;
     const upper = state.toUpperCase();
     if (upper === 'PENDING' || upper === 'QUEUED' || upper === 'IN_PROGRESS') summary.pending++;
-    else if (upper === 'FAILURE' || upper === 'ERROR' || upper === 'CANCELLED' || upper === 'TIMED_OUT') summary.failing++;
+    else if (
+      upper === 'FAILURE' ||
+      upper === 'ERROR' ||
+      upper === 'CANCELLED' ||
+      upper === 'TIMED_OUT'
+    )
+      summary.failing++;
     else if (upper === 'SUCCESS') summary.passing++;
   }
   return summary;
@@ -610,11 +652,17 @@ async function getReviewState(prNumber: number): Promise<ReviewState> {
   }`;
   const result = await run(
     [
-      'gh', 'api', 'graphql',
-      '-f', `query=${query}`,
-      '-F', `owner=${repoInfo.owner.login}`,
-      '-F', `name=${repoInfo.name}`,
-      '-F', `number=${prNumber}`,
+      'gh',
+      'api',
+      'graphql',
+      '-f',
+      `query=${query}`,
+      '-F',
+      `owner=${repoInfo.owner.login}`,
+      '-F',
+      `name=${repoInfo.name}`,
+      '-F',
+      `number=${prNumber}`,
     ],
     { cwd: repoRoot },
   );
@@ -669,7 +717,9 @@ function isReviewStatePayload(value: unknown): value is ReviewStatePayload {
 }
 
 async function mergePr(prNumber: number): Promise<void> {
-  await runOkVisible(['gh', 'pr', 'merge', String(prNumber), '--squash', '--delete-branch'], { cwd: repoRoot });
+  await runOkVisible(['gh', 'pr', 'merge', String(prNumber), '--squash', '--delete-branch'], {
+    cwd: repoRoot,
+  });
 }
 
 // =============================================================================
@@ -728,7 +778,9 @@ Do not modify any source files. Do not commit. Do not open a PR.`;
 async function driveImplementation(task: Task, worktree: string, planPath: string): Promise<void> {
   log('PHASE', `Implementing task ${palette.task(task.id.slice(0, 8))} in worktree`);
 
-  const planContent = existsSync(planPath) ? await Bun.file(planPath).text() : '(plan file missing)';
+  const planContent = existsSync(planPath)
+    ? await Bun.file(planPath).text()
+    : '(plan file missing)';
 
   const prompt = `You are working on this task in an isolated git worktree.
 
@@ -788,7 +840,10 @@ async function ensurePr(task: Task, worktree: string, branch: string): Promise<P
   if (created.exitCode !== 0) {
     pr = await findOpenPr(branch);
     if (pr) {
-      log('OK', `PR already existed (raced with committee-review) #${pr.number}: ${palette.dim(pr.url)}`);
+      log(
+        'OK',
+        `PR already existed (raced with committee-review) #${pr.number}: ${palette.dim(pr.url)}`,
+      );
       return pr;
     }
     throw new Error(`gh pr create failed and no open PR found:\n${created.stderr.trim()}`);
@@ -848,7 +903,9 @@ function formatSnapshot(snapshot: ReadinessSnapshot): string {
     palette.err(`${checks.failing} fail`),
   ];
   const threadStr =
-    unresolvedThreads === 0 ? palette.ok('0 unresolved') : palette.warn(`${unresolvedThreads} unresolved`);
+    unresolvedThreads === 0
+      ? palette.ok('0 unresolved')
+      : palette.warn(`${unresolvedThreads} unresolved`);
   const botStr =
     expectedBotsPending.length === 0
       ? palette.ok('all bots in')
@@ -866,7 +923,10 @@ function normalizeLogin(login: string): string {
 }
 
 async function getReadiness(prNumber: number, expectedBots: string[]): Promise<ReadinessSnapshot> {
-  const [checks, reviewState] = await Promise.all([getPrChecks(prNumber), getReviewState(prNumber)]);
+  const [checks, reviewState] = await Promise.all([
+    getPrChecks(prNumber),
+    getReviewState(prNumber),
+  ]);
   const seenLogins = new Set(Array.from(reviewState.reviewerLogins).map(normalizeLogin));
   const expectedBotsPending = expectedBots.filter((bot) => !seenLogins.has(normalizeLogin(bot)));
   return {
@@ -880,7 +940,11 @@ async function getReadiness(prNumber: number, expectedBots: string[]): Promise<R
 /** Poll until pending checks resolve or the budget runs out. Returns the last snapshot regardless. */
 async function waitForChecks(prNumber: number, expectedBots: string[]): Promise<ReadinessSnapshot> {
   let snapshot = await getReadiness(prNumber, expectedBots);
-  for (let attempt = 1; attempt <= CHECK_POLL_MAX_ATTEMPTS && snapshot.checks.pending > 0; attempt++) {
+  for (
+    let attempt = 1;
+    attempt <= CHECK_POLL_MAX_ATTEMPTS && snapshot.checks.pending > 0;
+    attempt++
+  ) {
     log(
       'INFO',
       `Checks pending (${attempt}/${CHECK_POLL_MAX_ATTEMPTS}) — sleeping ${CHECK_POLL_INTERVAL_MS / 1000}s: ${formatSnapshot(snapshot)}`,
@@ -889,7 +953,10 @@ async function waitForChecks(prNumber: number, expectedBots: string[]): Promise<
     snapshot = await getReadiness(prNumber, expectedBots);
   }
   if (snapshot.checks.pending > 0) {
-    log('WARN', `Checks still pending after ${CHECK_POLL_MAX_ATTEMPTS} attempts — proceeding anyway`);
+    log(
+      'WARN',
+      `Checks still pending after ${CHECK_POLL_MAX_ATTEMPTS} attempts — proceeding anyway`,
+    );
   }
   return snapshot;
 }
@@ -914,7 +981,10 @@ async function waitForReviewBots(
     snapshot = await getReadiness(prNumber, expectedBots);
   }
   if (snapshot.expectedBotsPending.length > 0) {
-    log('WARN', `Bots never reviewed within budget: ${snapshot.expectedBotsPending.join(', ')} — proceeding anyway`);
+    log(
+      'WARN',
+      `Bots never reviewed within budget: ${snapshot.expectedBotsPending.join(', ')} — proceeding anyway`,
+    );
   }
   return snapshot;
 }
@@ -933,7 +1003,11 @@ function isReady(snapshot: ReadinessSnapshot): boolean {
  * Drive the PR to a mergeable state. Detects readiness locally; only spawns
  * /address-pr when there is concrete failing-CI or unresolved-thread work.
  */
-async function pollPrUntilReady(prNumber: number, worktree: string, expectedBots: string[]): Promise<void> {
+async function pollPrUntilReady(
+  prNumber: number,
+  worktree: string,
+  expectedBots: string[],
+): Promise<void> {
   for (let round = 1; round <= ADDRESS_PR_MAX_ROUNDS; round++) {
     log('PHASE', `PR readiness check ${round}/${ADDRESS_PR_MAX_ROUNDS} for PR #${prNumber}`);
 
@@ -1131,7 +1205,10 @@ async function spawnWorkerInline(index: number): Promise<number> {
   activeChildren.add(child);
 
   const decoder = new TextDecoder();
-  const stream = async (source: ReadableStream<Uint8Array>, sink: NodeJS.WriteStream): Promise<void> => {
+  const stream = async (
+    source: ReadableStream<Uint8Array>,
+    sink: NodeJS.WriteStream,
+  ): Promise<void> => {
     let buffer = '';
     for await (const chunk of source) {
       buffer += decoder.decode(chunk, { stream: true });
@@ -1146,7 +1223,11 @@ async function spawnWorkerInline(index: number): Promise<number> {
   };
 
   try {
-    await Promise.all([stream(child.stdout, process.stdout), stream(child.stderr, process.stderr), child.exited]);
+    await Promise.all([
+      stream(child.stdout, process.stdout),
+      stream(child.stderr, process.stderr),
+      child.exited,
+    ]);
     return await child.exited;
   } finally {
     activeChildren.delete(child);
@@ -1155,7 +1236,9 @@ async function spawnWorkerInline(index: number): Promise<number> {
 
 async function runInlineConcurrency(concurrency: number): Promise<void> {
   log('INFO', palette.heading(`Starting ${concurrency} inline workers (no tmux)`));
-  const results = await Promise.all(Array.from({ length: concurrency }, (_, index) => spawnWorkerInline(index + 1)));
+  const results = await Promise.all(
+    Array.from({ length: concurrency }, (_, index) => spawnWorkerInline(index + 1)),
+  );
   const successes = results.filter((code) => code === 0).length;
   const noWork = results.filter((code) => code === 2).length;
   const failures = results.filter((code) => code === 1).length;
@@ -1183,8 +1266,16 @@ async function runTmuxConcurrency(concurrency: number): Promise<void> {
 
   // Create the session detached with worker 1.
   await runOk([
-    'tmux', 'new-session', '-d', '-s', session, '-n', 'worker-1',
-    'bash', '-lc', `NEXT_WORKER_INDEX=1 ${workerCommand}`,
+    'tmux',
+    'new-session',
+    '-d',
+    '-s',
+    session,
+    '-n',
+    'worker-1',
+    'bash',
+    '-lc',
+    `NEXT_WORKER_INDEX=1 ${workerCommand}`,
   ]);
 
   // Keep dead panes visible so output is still readable on attach.
@@ -1192,8 +1283,15 @@ async function runTmuxConcurrency(concurrency: number): Promise<void> {
 
   for (let index = 2; index <= concurrency; index++) {
     await runOk([
-      'tmux', 'new-window', '-t', session, '-n', `worker-${index}`,
-      'bash', '-lc', `NEXT_WORKER_INDEX=${index} ${workerCommand}`,
+      'tmux',
+      'new-window',
+      '-t',
+      session,
+      '-n',
+      `worker-${index}`,
+      'bash',
+      '-lc',
+      `NEXT_WORKER_INDEX=${index} ${workerCommand}`,
     ]);
   }
 
@@ -1205,7 +1303,14 @@ async function runTmuxConcurrency(concurrency: number): Promise<void> {
   const start = Date.now();
 
   while (true) {
-    const list = await run(['tmux', 'list-windows', '-t', session, '-F', '#{window_name}:#{pane_dead}']);
+    const list = await run([
+      'tmux',
+      'list-windows',
+      '-t',
+      session,
+      '-F',
+      '#{window_name}:#{pane_dead}',
+    ]);
     if (list.exitCode !== 0) {
       log('INFO', `tmux session ${session} ended`);
       return;
@@ -1220,7 +1325,10 @@ async function runTmuxConcurrency(concurrency: number): Promise<void> {
       return;
     }
     if (Date.now() - start > TMUX_POLL_TIMEOUT_MS) {
-      log('ERROR', `tmux session ${session} exceeded 6h supervisor timeout — leaving session running for inspection`);
+      log(
+        'ERROR',
+        `tmux session ${session} exceeded 6h supervisor timeout — leaving session running for inspection`,
+      );
       return;
     }
     await Bun.sleep(15_000);
@@ -1241,7 +1349,10 @@ let cleaningUp = false;
 function cleanupAndExit(code: number): never {
   if (cleaningUp) process.exit(code);
   cleaningUp = true;
-  log('WARN', `Caught signal — tearing down ${activeChildren.size} child(ren), ${activeWorktrees.size} worktree(s), ${heldLocks.size} lock(s)`);
+  log(
+    'WARN',
+    `Caught signal — tearing down ${activeChildren.size} child(ren), ${activeWorktrees.size} worktree(s), ${heldLocks.size} lock(s)`,
+  );
 
   // 1. SIGTERM all active children.
   for (const child of activeChildren) {
@@ -1360,7 +1471,14 @@ async function preflightChecks(): Promise<void> {
   // We send the cheapest possible prompt and bound the call at 30s.
   log('INFO', 'Validating claude -p invocation (cheap smoke test)…');
   const claudeCheck = await run(
-    ['claude', '-p', '--dangerously-skip-permissions', '--model', 'sonnet', 'reply with the single word: ok'],
+    [
+      'claude',
+      '-p',
+      '--dangerously-skip-permissions',
+      '--model',
+      'sonnet',
+      'reply with the single word: ok',
+    ],
     { env: { ...process.env, CLAUDE_BUDGET_MS: '30000' }, tee: true },
   );
   if (claudeCheck.exitCode !== 0) {
@@ -1448,7 +1566,8 @@ async function main(): Promise<void> {
       log('OK', palette.bold(palette.ok(`Queue drained after ${batch - 1} batch(es)`)));
       return;
     }
-    if (serialize) log('INFO', palette.heading(`Serialize batch ${batch} (concurrency ${concurrency})`));
+    if (serialize)
+      log('INFO', palette.heading(`Serialize batch ${batch} (concurrency ${concurrency})`));
 
     if (hasTmux()) {
       await runTmuxConcurrency(concurrency);

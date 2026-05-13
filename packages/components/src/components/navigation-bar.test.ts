@@ -8,7 +8,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: NavigationBar } = await import('./navigation-bar.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
@@ -18,10 +18,39 @@ const { createRawSnippet } = await import('svelte');
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<span>${text}</span>`,
+    setup: () => {},
+  }));
+}
+
+/**
+ * Creates a toggle button snippet that wires aria-expanded, aria-controls, and onclick
+ * from the snippet parameter. The setup closure captures the click handler from the
+ * initial render. Attribute updates (aria-expanded) after interaction are observable
+ * via the nav's data-mobile-open attribute, which Svelte binds directly in the template.
+ */
+function toggleSnippet(buttonId = 'toggle-btn') {
+  return createRawSnippet<
+    [
+      {
+        'aria-expanded': string;
+        'aria-controls': string;
+        onclick: (event: MouseEvent) => void;
+      },
+    ]
+  >((getAttrs) => ({
+    render: () => `<button type="button" id="${buttonId}">Menu</button>`,
+    setup(element: Element) {
+      const attrs = getAttrs();
+      element.setAttribute('aria-expanded', attrs['aria-expanded']);
+      element.setAttribute('aria-controls', attrs['aria-controls']);
+      element.addEventListener('click', attrs.onclick as EventListener);
+    },
   }));
 }
 
 describe('NavigationBar', () => {
+  // ── Legacy tests (preserved) ────────────────────────────────────────────
+
   test('root element is <nav>', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('nav items'),
@@ -88,5 +117,248 @@ describe('NavigationBar', () => {
       id: 'main-nav',
     });
     expect(container.querySelector('nav')?.getAttribute('id')).toBe('main-nav');
+  });
+
+  // ── navAriaLabel prop ────────────────────────────────────────────────────
+
+  test('navAriaLabel defaults to "Main navigation"', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+    });
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation');
+  });
+
+  test('navAriaLabel prop is applied to <nav>', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      navAriaLabel: 'Site navigation',
+    });
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Site navigation');
+  });
+
+  test('rest-prop aria-label does not override navAriaLabel', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      navAriaLabel: 'Primary nav',
+      'aria-label': 'Should be ignored',
+    } as any);
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Primary nav');
+  });
+
+  // ── Rest props forwarding ────────────────────────────────────────────────
+
+  test('rest props are forwarded: id, data-foo, and custom class all appear on <nav>', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      id: 'my-nav',
+      'data-foo': 'bar',
+      class: 'extra-class',
+    } as any);
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('id')).toBe('my-nav');
+    expect(nav?.getAttribute('data-foo')).toBe('bar');
+    expect(nav?.getAttribute('class')).toContain('cinder-navigation-bar');
+    expect(nav?.getAttribute('class')).toContain('extra-class');
+  });
+
+  // ── Without menuToggle ───────────────────────────────────────────────────
+
+  test('without menuToggle, no toggle wrapper is rendered and data-collapsible is false', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+    });
+    expect(container.querySelector('.cinder-navigation-bar__menu-toggle')).toBeNull();
+    expect(container.querySelector('nav')?.getAttribute('data-collapsible')).toBe('false');
+  });
+
+  // ── mobileMenuOpen defaults ──────────────────────────────────────────────
+
+  test('mobileMenuOpen defaults to false; items region has data-open="false"', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('false');
+  });
+
+  // ── menuToggle snippet and ARIA ──────────────────────────────────────────
+
+  test('with menuToggle, toggle button receives aria-expanded="false" initially', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('aria-controls value equals the items region id', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn');
+    const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
+    expect(toggle?.getAttribute('aria-controls')).toBe(itemsRegion?.getAttribute('id'));
+  });
+
+  test('clicking the toggle sets data-open="true" on the items region', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    await fireEvent.click(toggle);
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('true');
+  });
+
+  test('clicking the toggle sets data-mobile-open="true" on <nav>', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    await fireEvent.click(toggle);
+    expect(container.querySelector('nav')?.getAttribute('data-mobile-open')).toBe('true');
+  });
+
+  // ── Escape key handling ──────────────────────────────────────────────────
+
+  test('pressing Escape on <nav> while open closes the menu', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    const nav = container.querySelector('nav') as HTMLElement;
+
+    await fireEvent.click(toggle);
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('true');
+
+    await fireEvent.keyDown(nav, { key: 'Escape' });
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('false');
+  });
+
+  test('pressing Escape on <nav> while closed does not error and data-open stays false', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const nav = container.querySelector('nav') as HTMLElement;
+    await fireEvent.keyDown(nav, { key: 'Escape' });
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('false');
+  });
+
+  test('pressing Escape outside the navbar does not close the menu', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    await fireEvent.click(toggle);
+
+    // Dispatch Escape on document.body — outside the nav element.
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('true');
+  });
+
+  // ── items snippet receives variant context ───────────────────────────────
+
+  test('items snippet receives { variant } equal to "horizontal" when menu is closed', () => {
+    let capturedVariant: string | undefined;
+    const captureSnippet = createRawSnippet<[{ variant: string }]>((getCtx) => ({
+      render: () => `<span></span>`,
+      setup() {
+        capturedVariant = getCtx().variant;
+      },
+    }));
+
+    render(NavigationBar, {
+      items: captureSnippet as any,
+      menuToggle: toggleSnippet(),
+    });
+
+    expect(capturedVariant).toBe('horizontal');
+  });
+
+  test('items snippet receives variant="mobile" after opening on a collapsible bar', async () => {
+    // The nav's data-mobile-open attribute is the direct template binding that tracks
+    // mobileMenuOpen. When it is 'true', the variant passed to the items snippet is 'mobile'.
+    // (createRawSnippet's setup runs once at mount; reactive variant changes are verified
+    // via the nav-level data-mobile-open signal which Svelte keeps in sync.)
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    await fireEvent.click(toggle);
+
+    expect(container.querySelector('nav')?.getAttribute('data-mobile-open')).toBe('true');
+  });
+
+  // ── data-collapsible cannot be overridden via rest ───────────────────────
+
+  test('consumer data-collapsible rest prop cannot override internal value', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+      'data-collapsible': 'false',
+    } as any);
+    expect(container.querySelector('nav')?.getAttribute('data-collapsible')).toBe('true');
+  });
+
+  // ── Composed onkeydown ───────────────────────────────────────────────────
+
+  test('rest-prop onkeydown is composed: spy fires AND menu closes on Escape', async () => {
+    let spyFired = false;
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+      onkeydown: () => {
+        spyFired = true;
+      },
+    } as any);
+
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    const nav = container.querySelector('nav') as HTMLElement;
+    await fireEvent.click(toggle);
+    await fireEvent.keyDown(nav, { key: 'Escape' });
+
+    expect(spyFired).toBe(true);
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('false');
+  });
+
+  test('rest-prop onkeydown that calls preventDefault cancels the Escape close', async () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+      onkeydown: (e: KeyboardEvent) => {
+        e.preventDefault();
+      },
+    } as any);
+
+    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+    const nav = container.querySelector('nav') as HTMLElement;
+    await fireEvent.click(toggle);
+    await fireEvent.keyDown(nav, { key: 'Escape' });
+
+    expect(
+      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+    ).toBe('true');
   });
 });

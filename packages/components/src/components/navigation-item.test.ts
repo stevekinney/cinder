@@ -176,4 +176,32 @@ describe('NavigationItem rendering', () => {
     button?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     expect(clickCount).toBe(1);
   });
+
+  test('link arm emits data-variant="horizontal" by default', () => {
+    const { container } = render(NavigationItem, {
+      props: { href: '/home', children: (() => {}) as never },
+    });
+    expect(container.querySelector('a')?.getAttribute('data-variant')).toBe('horizontal');
+  });
+
+  test('button arm emits data-variant="horizontal" by default', () => {
+    const { container } = render(NavigationItem, {
+      props: { onClick: () => {}, children: (() => {}) as never },
+    });
+    expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('horizontal');
+  });
+
+  test('link arm emits data-variant="mobile" when variant="mobile" is passed', () => {
+    const { container } = render(NavigationItem, {
+      props: { href: '/home', variant: 'mobile', children: (() => {}) as never },
+    });
+    expect(container.querySelector('a')?.getAttribute('data-variant')).toBe('mobile');
+  });
+
+  test('button arm emits data-variant="mobile" when variant="mobile" is passed', () => {
+    const { container } = render(NavigationItem, {
+      props: { onClick: () => {}, variant: 'mobile', children: (() => {}) as never },
+    });
+    expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('mobile');
+  });
 });

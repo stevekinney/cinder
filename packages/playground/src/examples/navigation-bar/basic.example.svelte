@@ -7,20 +7,26 @@
   import { Button, NavigationBar, NavigationItem } from '../../../../components/src/index.ts';
 
   let active = $state('home');
+  let mobileMenuOpen = $state(false);
 </script>
 
-<NavigationBar>
+<NavigationBar bind:mobileMenuOpen>
   {#snippet brand()}
     <strong>Acme</strong>
   {/snippet}
-  {#snippet items()}
-    <NavigationItem onClick={() => (active = 'home')} active={active === 'home'}>
+  {#snippet menuToggle(attrs)}
+    <button type="button" {...attrs} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}>
+      ☰
+    </button>
+  {/snippet}
+  {#snippet items({ variant })}
+    <NavigationItem {variant} onClick={() => (active = 'home')} active={active === 'home'}>
       Home
     </NavigationItem>
-    <NavigationItem onClick={() => (active = 'docs')} active={active === 'docs'}>
+    <NavigationItem {variant} onClick={() => (active = 'docs')} active={active === 'docs'}>
       Docs
     </NavigationItem>
-    <NavigationItem onClick={() => (active = 'blog')} active={active === 'blog'}>
+    <NavigationItem {variant} onClick={() => (active = 'blog')} active={active === 'blog'}>
       Blog
     </NavigationItem>
   {/snippet}

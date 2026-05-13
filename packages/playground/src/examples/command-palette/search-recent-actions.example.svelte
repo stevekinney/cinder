@@ -36,15 +36,11 @@
 
   // ── Filtering ──────────────────────────────────────────────────────────
   const filteredPages = $derived(
-    query
-      ? allPages.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
-      : [],
+    query ? allPages.filter((p) => p.label.toLowerCase().includes(query.toLowerCase())) : [],
   );
 
   const filteredActions = $derived(
-    query
-      ? actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase()))
-      : actions,
+    query ? actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase())) : actions,
   );
 
   function select(label: string) {
