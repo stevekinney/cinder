@@ -79,8 +79,16 @@
     }
   });
 
-  const ownDescriptionId = $derived(describeId(id, !!description));
-  const ownErrorId = $derived(buildErrorId(id, !!error));
+  const defaultDescriptionId = $derived(describeId(id, !!description));
+  const defaultErrorId = $derived(buildErrorId(id, !!error));
+  const ownDescriptionId = $derived(
+    description && defaultDescriptionId === context?.descriptionId
+      ? `${id}-input-description`
+      : defaultDescriptionId,
+  );
+  const ownErrorId = $derived(
+    error && defaultErrorId === context?.errorId ? `${id}-input-error` : defaultErrorId,
+  );
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
   const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));

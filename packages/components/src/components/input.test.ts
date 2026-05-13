@@ -23,6 +23,10 @@ function textSnippet(text: string) {
   }));
 }
 
+function idsIn(container: Element): string[] {
+  return Array.from(container.querySelectorAll('[id]'), (element) => element.id);
+}
+
 describe('Input rendering', () => {
   test('renders with required id prop', () => {
     const { container } = render(Input, {
@@ -187,7 +191,9 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    expect(input?.getAttribute('aria-describedby')).toContain('ctx-field-description');
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-description');
+    expect(idsIn(container).filter((id) => id === 'ctx-field-description')).toHaveLength(1);
+    expect(idsIn(container).filter((id) => id === 'ctx-field-input-description')).toHaveLength(1);
   });
 
   test('partial override: Input description + FormField error produces joint aria-describedby', () => {
@@ -203,6 +209,25 @@ describe('Input context inheritance from FormField', () => {
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('ctx-field-description');
     expect(describedBy).toContain('ctx-field-error');
+    expect(idsIn(container).filter((id) => id === 'ctx-field-description')).toHaveLength(1);
+    expect(idsIn(container).filter((id) => id === 'ctx-field-input-description')).toHaveLength(0);
+    expect(idsIn(container).filter((id) => id === 'ctx-field-error')).toHaveLength(1);
+  });
+
+  test('own error prop uses a distinct id when FormField also renders an error', () => {
+    const { container } = render(FormFieldInputFixture, {
+      props: {
+        fieldId: 'ctx-field',
+        fieldLabel: 'Label',
+        fieldError: 'Field error',
+        inputError: 'Input error',
+      },
+    });
+    const input = container.querySelector('#ctx-field');
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-error');
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+    expect(idsIn(container).filter((id) => id === 'ctx-field-error')).toHaveLength(1);
+    expect(idsIn(container).filter((id) => id === 'ctx-field-input-error')).toHaveLength(1);
   });
 
   test('inherits required from FormField context when own required is absent', () => {
