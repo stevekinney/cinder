@@ -180,6 +180,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     expect(options[1].getAttribute('tabindex')).toBe('0');
     expect(options[0].getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(options[1]);
   });
 
   test('ArrowLeft retreats focus in grid layout', async () => {
@@ -196,6 +197,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     expect(options[1].getAttribute('tabindex')).toBe('0');
     await fireEvent.keyDown(listbox, { key: 'ArrowLeft' });
     expect(options[0].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[0]);
   });
 
   test('ArrowDown advances focus in grid layout', async () => {
@@ -209,6 +211,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
 
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
     expect(options[1].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[1]);
   });
 
   test('ArrowDown advances focus in stack layout', async () => {
@@ -222,6 +225,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
 
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
     expect(options[1].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[1]);
   });
 
   test('ArrowUp retreats focus in stack layout', async () => {
@@ -236,6 +240,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
 
     await fireEvent.keyDown(listbox, { key: 'ArrowUp' });
     expect(options[0].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[0]);
   });
 
   test('ArrowLeft/Right are no-ops in stack layout', async () => {
@@ -266,6 +271,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     expect(options[2].getAttribute('tabindex')).toBe('0');
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     expect(options[0].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[0]);
   });
 
   test('Home jumps to first non-disabled swatch', async () => {
@@ -279,6 +285,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
 
     await fireEvent.keyDown(listbox, { key: 'Home' });
     expect(options[0].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[0]);
   });
 
   test('End jumps to last non-disabled swatch', async () => {
@@ -292,6 +299,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     await fireEvent.keyDown(listbox, { key: 'End' });
     // Last non-disabled is index 4 (Magenta), index 3 (Yellow) is disabled
     expect(options[4].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[4]);
   });
 
   test('disabled items are skipped during arrow navigation', async () => {
@@ -307,9 +315,11 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     // Now at index 2 (Blue)
     expect(options[2].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[2]);
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     // Skip index 3 (Yellow, disabled) → land on index 4 (Magenta)
     expect(options[4].getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(options[4]);
   });
 });
 
@@ -518,7 +528,9 @@ describe('ColorSwatchPicker navigate-then-select', () => {
       },
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const options = toArray(container.querySelectorAll('[role="option"]'));
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[1]);
     await fireEvent.keyDown(listbox, { key: 'Enter' });
     expect(changed).toBe('#00ff00');
   });
@@ -534,7 +546,9 @@ describe('ColorSwatchPicker navigate-then-select', () => {
       },
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const options = toArray(container.querySelectorAll('[role="option"]'));
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(options[1]);
     await fireEvent.keyDown(listbox, { key: ' ' });
     expect(changed).toBe('#00ff00');
   });
