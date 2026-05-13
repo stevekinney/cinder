@@ -209,6 +209,12 @@ export type {
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
 
+export { default as StackedListItem } from './components/stacked-list-item.svelte';
+export type {
+  StackedListItemDensity,
+  StackedListItemProps,
+} from './components/stacked-list-item.svelte';
+
 export { default as Spinner } from './components/spinner.svelte';
 export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
 

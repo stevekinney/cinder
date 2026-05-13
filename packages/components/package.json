@@ -237,6 +237,10 @@
       "svelte": "./src/components/spinner.svelte",
       "types": "./dist/components/spinner.svelte.d.ts"
     },
+    "./stacked-list-item": {
+      "svelte": "./src/components/stacked-list-item.svelte",
+      "types": "./dist/components/stacked-list-item.svelte.d.ts"
+    },
     "./stat-group": {
       "svelte": "./src/components/stat-group.svelte",
       "types": "./dist/components/stat-group.svelte.d.ts"
