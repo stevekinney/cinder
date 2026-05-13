@@ -190,15 +190,18 @@ describe('Textarea — character count', () => {
     expect(container.querySelector('textarea')?.getAttribute('maxlength')).toBe('200');
   });
 
-  test('count not rendered when maxlength is an invalid value', () => {
-    const invalidValues = [0, -1, 1.5, 'abc'];
-    for (const maxlength of invalidValues) {
-      const { container } = render(Textarea, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        props: { id: 'inv', showCount: true, maxlength: maxlength as any },
-      });
-      expect(container.querySelector('#inv-count')).toBeNull();
-    }
+  test.each([
+    ['zero', 0],
+    ['negative', -1],
+    ['non-integer', 1.5],
+    ['non-numeric string', 'abc'],
+  ])('count not rendered when maxlength is invalid: %s', (_label, maxlength) => {
+    const id = `inv-${_label.replace(/[^a-z]/g, '-')}`;
+    const { container } = render(Textarea, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      props: { id, showCount: true, maxlength: maxlength as any },
+    });
+    expect(container.querySelector(`#${id}-count`)).toBeNull();
   });
 
   test('count element renders before error element in DOM order', () => {
