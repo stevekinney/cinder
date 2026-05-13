@@ -18,7 +18,10 @@
 <ButtonGroup label="Save options">
   <Button>Save</Button>
   <Dropdown id="save-options">
-    <DropdownTrigger><Button aria-label="More save options">▾</Button></DropdownTrigger>
+    <DropdownTrigger>
+      <!-- Decorative glyph; aria-label supplies the accessible name. -->
+      <Button aria-label="More save options">▾</Button>
+    </DropdownTrigger>
     <DropdownMenu>
       <DropdownItem>Save as draft</DropdownItem>
       <DropdownItem>Save and publish</DropdownItem>

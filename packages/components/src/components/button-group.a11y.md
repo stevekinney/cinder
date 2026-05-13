@@ -39,7 +39,10 @@ Compose a primary `<Button>` with a `<Dropdown>` whose trigger is an icon button
 <ButtonGroup label="Save options">
   <Button>Save</Button>
   <Dropdown id="save-options">
-    <DropdownTrigger><Button aria-label="More save options">▾</Button></DropdownTrigger>
+    <DropdownTrigger>
+      <!-- Decorative glyph; aria-label supplies the accessible name. -->
+      <Button aria-label="More save options">▾</Button>
+    </DropdownTrigger>
     <DropdownMenu>
       <DropdownItem>Save as draft</DropdownItem>
       <DropdownItem>Save and publish</DropdownItem>
@@ -49,6 +52,8 @@ Compose a primary `<Button>` with a `<Dropdown>` whose trigger is an icon button
 ```
 
 The `<Dropdown>` already wires `aria-haspopup="menu"` and `aria-expanded` on its trigger. `ButtonGroup` adds nothing beyond visual attachment. This is composition — not a new primitive.
+
+When a child opens a portaled overlay, focus may move outside the group while the overlay is open. The group does not keep portaled content visually attached with `:focus-within`; overlay positioning and active trigger styling remain the child component's responsibility.
 
 ## Keyboard model
 
