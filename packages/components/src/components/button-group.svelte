@@ -25,6 +25,8 @@
    */
   export type ButtonGroupProps = ButtonGroupBase &
     ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string });
+
+  let groupIdCounter = 0;
 </script>
 
 <script lang="ts">
@@ -46,34 +48,56 @@
   const ariaLabelAttribute = $derived(typeof label === 'string' ? label : undefined);
   const ariaLabelledByAttribute = $derived(typeof labelledBy === 'string' ? labelledBy : undefined);
 
-  function tagDirectChildren(): Attachment {
-    return (element) => {
-      const ATTR = 'data-cinder-button-group-item';
-      const tagged = new Set<Element>();
+  // Each group instance gets a unique ID so the styling-contract attribute
+  // carries ownership. When a child moves from one group to another, the new
+  // group overwrites the value and the old group's cleanup only removes it if
+  // the value still matches this instance's ID.
+  const groupId = String(++groupIdCounter);
 
-      const sync = () => {
-        const currentChildren = new Set(Array.from(element.children));
+  const tagDirectChildren: Attachment = (element) => {
+    const ATTR = 'data-cinder-button-group-item';
+    // Track previously tagged children by element reference so cleanup is
+    // O(n) and ownership-specific: we only remove our group's tag value.
+    const tagged = new Set<Element>();
 
-        for (const child of currentChildren) {
-          if (!child.hasAttribute(ATTR)) child.setAttribute(ATTR, '');
-          tagged.add(child);
-        }
+    const sync = () => {
+      const currentChildren = new Set(Array.from(element.children));
 
-        for (const previouslyTagged of tagged) {
-          if (!currentChildren.has(previouslyTagged)) {
+      // Stamp current direct children with this group's ID. Overwriting
+      // another group's ID claims ownership — the other group's cleanup will
+      // see a mismatched value and skip removal, so no double-remove race.
+      for (const child of currentChildren) {
+        child.setAttribute(ATTR, groupId);
+        tagged.add(child);
+      }
+
+      // Remove ownership from children that are no longer direct children.
+      // Only remove if the value still matches this group's ID — prevents
+      // clobbering a new group that already claimed the child.
+      for (const previouslyTagged of Array.from(tagged)) {
+        if (!currentChildren.has(previouslyTagged)) {
+          if (previouslyTagged.getAttribute(ATTR) === groupId) {
             previouslyTagged.removeAttribute(ATTR);
-            tagged.delete(previouslyTagged);
           }
+          tagged.delete(previouslyTagged);
         }
-      };
-
-      sync();
-
-      const observer = new MutationObserver(sync);
-      observer.observe(element, { childList: true });
-      return () => observer.disconnect();
+      }
     };
-  }
+
+    sync();
+
+    const observer = new MutationObserver(sync);
+    observer.observe(element, { childList: true });
+    return () => {
+      observer.disconnect();
+      // Release ownership on unmount for any remaining tagged children.
+      for (const child of Array.from(tagged)) {
+        if (child.getAttribute(ATTR) === groupId) {
+          child.removeAttribute(ATTR);
+        }
+      }
+    };
+  };
 
   $effect(() => {
     if (!DEV) return;
@@ -107,10 +131,9 @@
   role="group"
   aria-label={ariaLabelAttribute}
   aria-labelledby={ariaLabelledByAttribute}
-  aria-orientation={orientation}
   class={mergedClassName}
   data-cinder-orientation={orientation}
-  {@attach tagDirectChildren()}
+  {@attach tagDirectChildren}
 >
   {@render children()}
 </div>

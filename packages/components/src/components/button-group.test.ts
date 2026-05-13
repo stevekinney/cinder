@@ -15,14 +15,6 @@ afterEach(() => cleanup());
 // Snippet helpers
 // ---------------------------------------------------------------------------
 
-function buttonSnippet(labels: string[]) {
-  return createRawSnippet(() => ({
-    render: () =>
-      `<div class="buttons-wrapper">${labels.map((l) => `<button type="button">${l}</button>`).join('')}</div>`,
-    setup: () => {},
-  }));
-}
-
 function singleButtonSnippet(label: string) {
   return createRawSnippet(() => ({
     render: () => `<button type="button">${label}</button>`,
@@ -70,21 +62,23 @@ describe('ButtonGroup', () => {
     expect(group?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('aria-orientation defaults to horizontal', () => {
+  test('data-cinder-orientation defaults to horizontal', () => {
     const { container } = render(ButtonGroup, {
       props: { label: 'Actions', children: singleButtonSnippet('Save') },
     });
     const group = container.querySelector('[role="group"]');
-    expect(group?.getAttribute('aria-orientation')).toBe('horizontal');
+    // aria-orientation is intentionally absent — it is not a valid attribute for role="group"
+    expect(group?.hasAttribute('aria-orientation')).toBe(false);
     expect(group?.getAttribute('data-cinder-orientation')).toBe('horizontal');
   });
 
-  test('aria-orientation vertical when orientation="vertical"', () => {
+  test('data-cinder-orientation is set to vertical when orientation="vertical"', () => {
     const { container } = render(ButtonGroup, {
       props: { label: 'Actions', orientation: 'vertical', children: singleButtonSnippet('Save') },
     });
     const group = container.querySelector('[role="group"]');
-    expect(group?.getAttribute('aria-orientation')).toBe('vertical');
+    // aria-orientation is intentionally absent — it is not a valid attribute for role="group"
+    expect(group?.hasAttribute('aria-orientation')).toBe(false);
     expect(group?.getAttribute('data-cinder-orientation')).toBe('vertical');
   });
 
@@ -165,19 +159,64 @@ describe('ButtonGroup', () => {
     expect(group?.hasAttribute('aria-activedescendant')).toBe(false);
     expect(group?.hasAttribute('aria-multiselectable')).toBe(false);
     expect(group?.hasAttribute('aria-checked')).toBe(false);
+    expect(group?.hasAttribute('aria-orientation')).toBe(false);
     expect(group?.getAttribute('role')).not.toBe('radiogroup');
   });
 
-  test('direct children carry the styling-contract attribute after mount', () => {
+  test('direct child carries the styling-contract attribute after mount', () => {
     const { container } = render(ButtonGroup, {
-      props: { label: 'Actions', children: buttonSnippet(['Save', 'Cancel', 'Reset']) },
+      props: { label: 'Actions', children: singleButtonSnippet('Save') },
     });
 
     const group = container.querySelector('.cinder-button-group');
-    const directChildren = Array.from(group?.children ?? []);
-    expect(directChildren.length).toBeGreaterThan(0);
-    for (const child of directChildren) {
-      expect(child.hasAttribute('data-cinder-button-group-item')).toBe(true);
-    }
+    const directChild = group?.children[0];
+    expect(directChild).not.toBeUndefined();
+    expect(directChild?.hasAttribute('data-cinder-button-group-item')).toBe(true);
+  });
+
+  test('styling-contract attribute carries a non-empty group ID for ownership', () => {
+    const { container } = render(ButtonGroup, {
+      props: { label: 'Actions', children: singleButtonSnippet('Save') },
+    });
+
+    const group = container.querySelector('.cinder-button-group');
+    const directChild = group?.children[0];
+    const value = directChild?.getAttribute('data-cinder-button-group-item');
+    expect(value).not.toBeNull();
+    expect(value?.length).toBeGreaterThan(0);
+  });
+
+  test('styling-contract attribute is removed from a child after it is removed from the group', async () => {
+    const { container } = render(ButtonGroup, {
+      props: { label: 'Actions', children: singleButtonSnippet('Save') },
+    });
+
+    const group = container.querySelector('.cinder-button-group')!;
+    const child = group.children[0] as Element;
+    expect(child.hasAttribute('data-cinder-button-group-item')).toBe(true);
+
+    group.removeChild(child);
+    // MutationObserver callbacks are batched as microtasks. In happy-dom,
+    // a setTimeout(0) reliably flushes the callback queue.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(child.hasAttribute('data-cinder-button-group-item')).toBe(false);
+  });
+
+  test('styling-contract attribute is added to a child appended after mount', async () => {
+    const { container } = render(ButtonGroup, {
+      props: { label: 'Actions', children: singleButtonSnippet('Save') },
+    });
+
+    const group = container.querySelector('.cinder-button-group')!;
+    const newButton = document.createElement('button');
+    newButton.textContent = 'Cancel';
+    group.appendChild(newButton);
+
+    // MutationObserver callbacks are batched as microtasks. In happy-dom,
+    // a setTimeout(0) reliably flushes the callback queue.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(newButton.hasAttribute('data-cinder-button-group-item')).toBe(true);
   });
 });

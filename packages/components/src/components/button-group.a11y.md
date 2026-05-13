@@ -21,9 +21,9 @@ The TypeScript discriminated union enforces this at compile time. A dev-mode `$e
 
 A ButtonGroup can contain a mix of regular `<Button>` elements and toggle buttons (`<button aria-pressed="true|false">`). Toggle children manage their own `aria-pressed` — the group does not coordinate this state. This is the explicit separation from `segmented-control`: if your buttons share a value, you want `segmented-control`; if they are independent actions (some of which happen to be toggleable), you want `button-group`.
 
-## `aria-orientation`
+## Orientation
 
-The group emits `aria-orientation` matching the visual layout (`horizontal` or `vertical`). Most screen readers do not act on this for `role="group"`, but it is spec-allowed and aligns with the planned `segmented-control` vertical-mode behavior.
+The group uses `data-cinder-orientation` (a data attribute, not an ARIA attribute) to drive the CSS layout direction. `aria-orientation` is intentionally absent: per ARIA 1.2, `aria-orientation` is only valid for roles such as `toolbar`, `listbox`, `menu`, `radiogroup`, `scrollbar`, `separator`, `slider`, `tablist`, and `tree` — not `group`. Emitting it on `role="group"` would produce invalid ARIA and fail automated accessibility audits (axe-core, Deque, IBM Equal Access). Orientation is a visual concern only and is handled entirely through the `data-cinder-orientation` attribute on the container.
 
 ## Why this is not `segmented-control`
 
