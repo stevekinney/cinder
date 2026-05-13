@@ -171,8 +171,8 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBeUndefined();
   });
 
-  // Test 7a
-  test('Space key on focused already-selected option clears value when disallowEmptySelection=false', async () => {
+  // Test 7a — verifies handleKeydown does not preventDefault on Space, allowing browser click synthesis
+  test('Space keydown does not suppress click on already-selected option (disallowEmptySelection=false)', async () => {
     let selected: string | undefined = 'source';
 
     render(SegmentedControl, {
@@ -190,9 +190,16 @@ describe('SegmentedControl — single mode', () => {
       } as any,
     });
 
-    // Space on a <button> synthesizes a click — the keydown handler routes roving keys only,
-    // so Space falls through to native button behavior which fires a click event.
-    await fireEvent.click(screen.getByRole('radio', { name: 'Source' }));
+    const sourceOption = screen.getByRole('radio', { name: 'Source' });
+
+    // Fire Space keydown — handleKeydown only handles Arrow/Home/End and returns null for Space,
+    // so preventDefault is not called and the browser can synthesize its native click.
+    const spaceEvent = await fireEvent.keyDown(sourceOption, { key: ' ' });
+    // Verify handleKeydown did not swallow the event (defaultPrevented would break browser click synthesis)
+    expect(spaceEvent).toBe(true); // fireEvent returns true when event was not cancelled
+
+    // Simulate the browser's native Space→click synthesis
+    await fireEvent.click(sourceOption);
     expect(selected).toBeUndefined();
   });
 

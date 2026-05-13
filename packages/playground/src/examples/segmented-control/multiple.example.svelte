@@ -8,7 +8,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import { SegmentedControl } from '../../../../components/src/index.ts';
 
-  const formats = new SvelteSet<string>();
+  let formats = new SvelteSet<string>();
 
   const options = [
     { value: 'bold', label: 'Bold' },
