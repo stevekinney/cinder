@@ -21,10 +21,14 @@
   color: var(--cinder-text);
   font-size: var(--cinder-text-sm);
   line-height: var(--cinder-leading-normal);
+}
 
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-banner {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 }
 
 /* ----------------------------------------
@@ -70,10 +74,14 @@
   cursor: pointer;
 
   position: relative;
+}
 
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-banner__dismiss {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 }
 
 /* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout. */
@@ -194,6 +202,11 @@
 @media (forced-colors: active) {
   .cinder-banner {
     border-block: 1px solid CanvasText;
+  }
+
+  /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace. */
+  .cinder-banner__dismiss:hover {
+    background: ButtonFace;
   }
 
   .cinder-banner__dismiss:focus-visible {

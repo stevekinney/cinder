@@ -45,41 +45,16 @@ describe('Banner rendering', () => {
     expect(container.querySelector('#my-banner')).not.toBeNull();
   });
 
-  test('applies data-cinder-variant for variant "info"', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'info', children: emptySnippet },
+  for (const variant of ['info', 'success', 'warning', 'danger'] as const) {
+    test(`applies data-cinder-variant for variant "${variant}"`, () => {
+      const { container } = render(Banner, {
+        props: { variant, children: emptySnippet },
+      });
+      expect(container.querySelector('.cinder-banner')?.getAttribute('data-cinder-variant')).toBe(
+        variant,
+      );
     });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('data-cinder-variant')).toBe(
-      'info',
-    );
-  });
-
-  test('applies data-cinder-variant for variant "success"', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'success', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('data-cinder-variant')).toBe(
-      'success',
-    );
-  });
-
-  test('applies data-cinder-variant for variant "warning"', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'warning', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('data-cinder-variant')).toBe(
-      'warning',
-    );
-  });
-
-  test('applies data-cinder-variant for variant "danger"', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'danger', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('data-cinder-variant')).toBe(
-      'danger',
-    );
-  });
+  }
 
   test('defaults data-cinder-variant to "info" when variant is omitted', () => {
     const { container } = render(Banner, {
@@ -99,35 +74,21 @@ describe('Banner region landmark + accessible name', () => {
     expect(container.querySelector('.cinder-banner')?.getAttribute('role')).toBe('region');
   });
 
-  test('root has aria-label="Information" for info (default)', () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
+  for (const [variant, expectedLabel] of [
+    ['info', 'Information'],
+    ['success', 'Success'],
+    ['warning', 'Warning'],
+    ['danger', 'Error'],
+  ] as const) {
+    test(`root has aria-label="${expectedLabel}" for variant "${variant}"`, () => {
+      const { container } = render(Banner, {
+        props: { variant, children: emptySnippet },
+      });
+      expect(container.querySelector('.cinder-banner')?.getAttribute('aria-label')).toBe(
+        expectedLabel,
+      );
     });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('aria-label')).toBe(
-      'Information',
-    );
-  });
-
-  test('root has aria-label="Success" for success', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'success', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('aria-label')).toBe('Success');
-  });
-
-  test('root has aria-label="Warning" for warning', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'warning', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('aria-label')).toBe('Warning');
-  });
-
-  test('root has aria-label="Error" for danger', () => {
-    const { container } = render(Banner, {
-      props: { variant: 'danger', children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner')?.getAttribute('aria-label')).toBe('Error');
-  });
+  }
 
   test('consumer-provided aria-label overrides variant-derived default', () => {
     const { container } = render(Banner, {
@@ -162,6 +123,23 @@ describe('Banner region landmark + accessible name', () => {
     const root = container.querySelector('.cinder-banner');
     expect(root?.getAttribute('role')).not.toBe('alert');
     expect(root?.hasAttribute('aria-live')).toBe(false);
+  });
+
+  test('consumer-supplied aria-live is stripped (cannot turn banner into a live region)', () => {
+    const { container } = render(Banner, {
+      // Cast: HTMLAttributes typing exposes aria-live, but banner deliberately
+      // strips it at runtime so the type-allowed attribute is the worst case we
+      // need to verify.
+      props: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ['aria-live' as any]: 'assertive',
+        ['aria-atomic' as any]: 'true',
+        children: emptySnippet,
+      } as never,
+    });
+    const root = container.querySelector('.cinder-banner');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
+    expect(root?.hasAttribute('aria-atomic')).toBe(false);
   });
 });
 

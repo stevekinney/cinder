@@ -53,7 +53,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
   let {
     variant = 'info',
@@ -72,16 +72,29 @@
     onDismiss?.();
   }
 
-  const hasLabelledBy = $derived(Boolean(rest['aria-labelledby']));
+  // Strip live-region attributes from rest so a consumer cannot turn a
+  // persistent landmark banner back into an assertive announcement (which
+  // would defeat the role="region" design — see banner.a11y.md).
+  const restWithoutLiveRegion = $derived.by(() => {
+    const {
+      'aria-live': _ariaLive,
+      'aria-atomic': _ariaAtomic,
+      'aria-relevant': _ariaRelevant,
+      'aria-busy': _ariaBusy,
+      ...filtered
+    } = rest;
+    return filtered;
+  });
+
   const ariaLabel = $derived(
-    hasLabelledBy ? undefined : (rest['aria-label'] ?? VARIANT_LABEL[variant]),
+    rest['aria-labelledby'] ? undefined : (rest['aria-label'] ?? VARIANT_LABEL[variant]),
   );
 </script>
 
 {#if visible}
   <div
-    {...rest}
-    class={cn('cinder-banner', className)}
+    {...restWithoutLiveRegion}
+    class={classNames('cinder-banner', className)}
     data-cinder-variant={variant}
     role="region"
     aria-label={ariaLabel}

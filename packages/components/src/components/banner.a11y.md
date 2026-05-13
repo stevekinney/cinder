@@ -38,7 +38,12 @@ The component computes the accessible name in three tiers:
 
 `role` is intentionally locked. The component's `BannerProps` `Omit`s
 `role` from the underlying `HTMLAttributes`, so callers cannot silently
-turn the banner into `role="alert"`.
+turn the banner into `role="alert"`. The component also strips
+`aria-live`, `aria-atomic`, `aria-relevant`, and `aria-busy` from
+rest-props at runtime — the type system permits them (they live on
+`HTMLAttributes`), but the banner is a landmark, not a live region, and
+allowing those attributes through would reintroduce the assertive-
+announcement behavior `role="region"` was chosen to avoid.
 
 ## Why not `role="alert"`?
 
@@ -93,6 +98,10 @@ behavior.
   `::after` pseudo-element (WCAG 2.5.5 Target Size).
 - The visible focus ring uses a two-tone offset + colored ring derived
   from the active variant token.
+- The dismiss button's `aria-label` is hardcoded to English. Internationalization
+  is not yet plumbed through this component (sibling `alert.svelte` has the
+  same constraint); a future `dismissLabel` prop or i18n integration will
+  unify both.
 
 ## Color and contrast
 
