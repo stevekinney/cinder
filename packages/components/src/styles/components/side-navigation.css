@@ -1,0 +1,53 @@
+/* ========================================
+ * SIDE NAVIGATION
+ * ======================================== */
+
+.cinder-side-navigation {
+  display: block;
+}
+
+.cinder-side-navigation__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1);
+}
+
+/* ----------------------------------------
+ * Vertical-context overrides for NavigationItem leaves.
+ * Escalated specificity targets the leaf's actual tags so these
+ * rules win over the base .cinder-navigation-item selector.
+ * ---------------------------------------- */
+
+.cinder-side-navigation a.cinder-navigation-item,
+.cinder-side-navigation button.cinder-navigation-item {
+  display: flex;
+  inline-size: 100%;
+  justify-content: flex-start;
+  border-bottom: none;
+  border-radius: var(--cinder-radius-sm);
+  border-inline-start: 2px solid transparent;
+  /* Reset the horizontal top-radius-only shape from the base rule */
+  border-start-start-radius: var(--cinder-radius-sm);
+  border-start-end-radius: var(--cinder-radius-sm);
+  border-end-start-radius: var(--cinder-radius-sm);
+  border-end-end-radius: var(--cinder-radius-sm);
+}
+
+.cinder-side-navigation a.cinder-navigation-item[data-active='true'],
+.cinder-side-navigation button.cinder-navigation-item[data-active='true'] {
+  border-inline-start-color: var(--cinder-accent);
+  background-color: var(--cinder-surface-hover);
+  /* Remove the horizontal bottom-border active indicator */
+  border-bottom-color: transparent;
+}
+
+/* ----------------------------------------
+ * Item wrapper <li> — reset list styles
+ * ---------------------------------------- */
+
+.cinder-side-navigation__item {
+  list-style: none;
+}
