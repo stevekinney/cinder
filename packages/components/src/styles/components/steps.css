@@ -153,6 +153,7 @@
  * ---------------------------------------- */
 
 .cinder-steps__body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--cinder-space-1);
