@@ -144,7 +144,7 @@
     const nextIndex = handleRovingKeydown(event, currentIndex, options.length, {
       isDisabled: isOptionDisabled,
       vertical: true,
-      horizontal: true,
+      horizontal: orientation !== 'vertical',
     });
 
     if (nextIndex === null) return;
