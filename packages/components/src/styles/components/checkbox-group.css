@@ -61,6 +61,7 @@
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-md);
   padding: var(--cinder-space-3);
+  background: var(--cinder-surface-raised);
   transition:
     border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
     background var(--cinder-duration-fast) var(--cinder-ease-standard);
