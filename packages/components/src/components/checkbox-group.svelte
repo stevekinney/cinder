@@ -87,6 +87,7 @@
   {disabled}
   aria-invalid={ariaInvalid(!!error)}
   aria-describedby={describedBy}
+  data-cinder-disabled={disabled || undefined}
   data-cinder-required={required ? '' : undefined}
   data-variant={variant}
 >

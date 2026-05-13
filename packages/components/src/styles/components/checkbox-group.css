@@ -79,6 +79,22 @@
   border-color: var(--cinder-accent);
 }
 
+/* Disabled card — uses :has(input:disabled) because disabled state arrives via
+ * native fieldset cascade, not a data attribute on the card element. */
+.cinder-checkbox-group[data-variant='card']
+  .cinder-checkbox-group__items
+  > .cinder-checkbox-field:has(input:disabled) {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  cursor: not-allowed;
+}
+
+.cinder-checkbox-group[data-variant='card']
+  .cinder-checkbox-group__items
+  > .cinder-checkbox-field:has(input:disabled):hover {
+  border-color: var(--cinder-border-muted);
+}
+
 @media (forced-colors: active) {
   .cinder-checkbox-group[data-variant='card']
     .cinder-checkbox-group__items

@@ -135,6 +135,32 @@ describe('CheckboxGroup', () => {
     expect(typeof CheckboxGroup).toBe('function');
   });
 
+  // aria-describedby absent when neither description nor error present
+  test('aria-describedby is absent when neither description nor error is provided', () => {
+    const { container } = render(Wrapper, {
+      options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
+    });
+    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    expect(fieldset.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  // Both description and error contribute to aria-describedby simultaneously
+  test('aria-describedby contains both description and error ids when both are provided', () => {
+    const { container } = render(Wrapper, {
+      description: 'Choose at least one',
+      error: 'Selection required',
+      options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
+    });
+    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const descriptionEl = container.querySelector('.cinder-checkbox-group__description');
+    const errorEl = container.querySelector('.cinder-checkbox-group__error');
+    expect(descriptionEl).not.toBeNull();
+    expect(errorEl).not.toBeNull();
+    const parts = (fieldset.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(parts).toContain(descriptionEl?.id ?? '');
+    expect(parts).toContain(errorEl?.id ?? '');
+  });
+
   // Test 9: card variant DOM structure assertion
   test('card variant: items container has correct number of .cinder-checkbox-field children', () => {
     const { container } = render(Wrapper, {
