@@ -118,6 +118,16 @@ describe('Chip', () => {
     expect(chip?.getAttribute('aria-label')).toBeNull();
   });
 
+  test('removable mode empty removeAriaLabel falls back to generated label', () => {
+    const { container } = render(Chip, {
+      mode: 'removable',
+      label: 'JavaScript',
+      removeAriaLabel: '',
+    });
+    const removeBtn = container.querySelector('button.cinder-chip__remove');
+    expect(removeBtn?.getAttribute('aria-label')).toBe('Remove JavaScript');
+  });
+
   test('removable mode renders span root with remove button', () => {
     const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
     const chip = container.querySelector('.cinder-chip');

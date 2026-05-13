@@ -197,9 +197,12 @@ button.cinder-chip:focus-visible,
  * Disabled state
  * ---------------------------------------- */
 
-button.cinder-chip:disabled,
-.cinder-chip__remove:disabled {
+button.cinder-chip:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cinder-chip__remove:disabled {
   cursor: not-allowed;
 }
 

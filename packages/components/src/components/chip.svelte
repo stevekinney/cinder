@@ -83,9 +83,11 @@
   const onremove = $derived(
     mode === 'removable' ? (props as ChipRemovableProps).onremove : undefined,
   );
-  const removeAriaLabel = $derived(
-    mode === 'removable' ? (props as ChipRemovableProps).removeAriaLabel : undefined,
-  );
+  const removeAriaLabel = $derived.by(() => {
+    if (mode !== 'removable') return undefined;
+    const raw = (props as ChipRemovableProps).removeAriaLabel;
+    return typeof raw === 'string' && raw.trim().length > 0 ? raw : undefined;
+  });
 
   const extraAttrs = $derived.by(() => {
     const result: Record<string, string | number | boolean | undefined> = {};
