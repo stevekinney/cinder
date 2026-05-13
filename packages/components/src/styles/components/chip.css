@@ -244,14 +244,16 @@ button.cinder-chip:disabled {
   position: relative;
 }
 
-/* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout. */
+/* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout.
+ * Anchored to the right edge so the expansion never encroaches into the label on the left. */
 .cinder-chip__remove::after {
   content: '';
   position: absolute;
-  inset: 50% auto auto 50%;
+  top: 50%;
+  right: 0;
   width: 44px;
   height: 44px;
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
 }
 
 .cinder-chip__remove:hover:not(:disabled) {
