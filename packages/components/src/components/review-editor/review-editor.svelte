@@ -47,6 +47,7 @@
     documentPositionToBodyPosition,
     parseReviewEditorFrontMatter,
     replaceFrontMatterData,
+    remapDocumentAnchorBodyOffset,
     reviewStateToMarkdown,
   } from './review-editor-front-matter.ts';
   import type {
@@ -788,7 +789,23 @@
   }
 
   function handleFrontMatterChange(data: Record<string, unknown> | null) {
-    handleChange(replaceFrontMatterData(value, data));
+    const previousBodyOffset = currentDocument.bodyOffset;
+    const nextValue = replaceFrontMatterData(value, data);
+    const nextDocument = parseReviewEditorFrontMatter(nextValue);
+
+    if (previousBodyOffset !== nextDocument.bodyOffset) {
+      threads = threads.map((thread) => ({
+        ...thread,
+        anchor: remapDocumentAnchorBodyOffset(
+          thread.anchor,
+          previousBodyOffset,
+          nextDocument.bodyOffset,
+          nextValue,
+        ),
+      }));
+    }
+
+    handleChange(nextValue);
   }
 
   // =========================================================================

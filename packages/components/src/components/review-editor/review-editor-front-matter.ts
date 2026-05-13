@@ -127,6 +127,21 @@ export function bodyAnchorToDocumentAnchor(
   return offsetAnchor(anchor, bodyOffset, documentText);
 }
 
+export function remapDocumentAnchorBodyOffset(
+  anchor: CommentAnchor,
+  previousBodyOffset: number,
+  nextBodyOffset: number,
+  nextDocumentText?: string,
+): CommentAnchor {
+  if (previousBodyOffset === nextBodyOffset) return anchor;
+
+  return bodyAnchorToDocumentAnchor(
+    documentAnchorToBodyAnchor(anchor, previousBodyOffset),
+    nextBodyOffset,
+    nextDocumentText,
+  );
+}
+
 export function bodyAnchorUpdateToDocumentAnchorUpdate(
   update: AnchorUpdate,
   bodyOffset: number,

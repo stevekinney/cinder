@@ -9,6 +9,7 @@ import {
   documentPersistedAnchorToBodyAnchor,
   parseReviewEditorFrontMatter,
   parseYamlFieldValue,
+  remapDocumentAnchorBodyOffset,
   replaceFrontMatterData,
   reviewStateToMarkdown,
   serializeYamlFieldValue,
@@ -120,5 +121,26 @@ describe('review editor front matter helpers', () => {
     const bodyAnchor = documentPersistedAnchorToBodyAnchor(anchor, 30);
 
     expect(bodyAnchor.originalPosition?.offset).toBe(10);
+  });
+
+  test('remaps document anchors when front matter length changes', () => {
+    const anchor: CommentAnchor = {
+      from: 42,
+      to: 55,
+      quote: 'Architecture',
+      prefix: '# ',
+      suffix: '\n',
+      status: 'anchored',
+      lastKnownOffset: 40,
+      originalPosition: { offset: 40, line: 5, column: 1 },
+    };
+
+    const nextDocument = '---\nowner: platform\nstatus: published\n---\n\n# Architecture\n';
+    const nextAnchor = remapDocumentAnchorBodyOffset(anchor, 30, 45, nextDocument);
+
+    expect(nextAnchor.from).toBe(57);
+    expect(nextAnchor.to).toBe(70);
+    expect(nextAnchor.lastKnownOffset).toBe(55);
+    expect(nextAnchor.originalPosition).toEqual({ offset: 55, line: 6, column: 13 });
   });
 });
