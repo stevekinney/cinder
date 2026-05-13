@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -12,6 +13,20 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Button } = await import('./button.svelte');
+
+function readTokenSource(): string {
+  return readFileSync(new URL('../styles/tokens-base.css', import.meta.url), 'utf8');
+}
+
+function readButtonHeightToken(size: 'md' | 'lg' | 'xl'): number {
+  const source = readTokenSource();
+  const match = new RegExp(`--cinder-button-height-${size}: (?<value>\\d+(?:\\.\\d+)?)rem;`).exec(
+    source,
+  );
+  const value = match?.groups?.['value'];
+  if (value === undefined) throw new Error(`Missing button height token for ${size}`);
+  return Number.parseFloat(value);
+}
 
 describe('Button rendering', () => {
   test('renders a <button> when no href is provided', () => {
@@ -137,6 +152,15 @@ describe('Button sizes — xl', () => {
   test('xl size applies data-cinder-size="xl"', () => {
     const { container } = render(Button, { props: { label: 'Big', size: 'xl' } });
     expect(container.querySelector('button')?.getAttribute('data-cinder-size')).toBe('xl');
+  });
+
+  test('large sizes remain monotonic after md touch-target increase', () => {
+    expect(readButtonHeightToken('lg')).toBeGreaterThanOrEqual(readButtonHeightToken('md'));
+    expect(readButtonHeightToken('xl')).toBeGreaterThan(readButtonHeightToken('lg'));
+  });
+
+  test('xl font size references an existing typography token', () => {
+    expect(readTokenSource()).toContain('--cinder-button-font-size-xl: var(--cinder-text-base);');
   });
 });
 
