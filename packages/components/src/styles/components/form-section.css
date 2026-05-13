@@ -53,6 +53,12 @@
   .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .cinder-form-section[data-columns='2'] .cinder-form-section__span-2,
+  .cinder-form-section[data-columns='3'] .cinder-form-section__span-2,
+  .cinder-form-section[data-columns='4'] .cinder-form-section__span-2 {
+    grid-column: span 2;
+  }
 }
 
 @container cinder-form-section (min-width: 60rem) {

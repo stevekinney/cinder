@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, spyOn, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
@@ -8,6 +9,11 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: FormSection } = await import('./form-section.svelte');
+
+const formSectionStyles = readFileSync(
+  new URL('../styles/components/form-section.css', import.meta.url),
+  'utf8',
+);
 
 const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
@@ -129,6 +135,11 @@ describe('FormSection rendering — section (default)', () => {
     });
     const root = container.querySelector('.cinder-form-section');
     expect(root?.classList.contains('custom-section')).toBe(true);
+  });
+
+  test('span-2 utility is defined for multi-column grids', () => {
+    expect(formSectionStyles).toContain('.cinder-form-section__span-2');
+    expect(formSectionStyles).toContain('grid-column: span 2');
   });
 });
 
