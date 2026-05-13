@@ -119,23 +119,27 @@ const progressCssPath = join(import.meta.dir, '../styles/components/progress.css
 describe('Progress CSS reduced-motion audit', () => {
   test('progress.css disables the indeterminate bar animation under prefers-reduced-motion: reduce', async () => {
     const css = await Bun.file(progressCssPath).text();
-    const allBlockText = extractReducedMotionBlocks(css).join('\n');
+    const blocks = extractReducedMotionBlocks(css);
 
-    const hasBarRule =
-      allBlockText.includes('.cinder-progress--bar .cinder-progress__fill--indeterminate') &&
-      allBlockText.includes('animation: none');
+    const barRuleBlock = blocks.find(
+      (block) =>
+        block.includes('.cinder-progress--bar .cinder-progress__fill--indeterminate') &&
+        block.includes('animation: none'),
+    );
 
-    expect(hasBarRule).toBe(true);
+    expect(barRuleBlock).not.toBeUndefined();
   });
 
   test('progress.css disables the indeterminate ring animation under prefers-reduced-motion: reduce', async () => {
     const css = await Bun.file(progressCssPath).text();
-    const allBlockText = extractReducedMotionBlocks(css).join('\n');
+    const blocks = extractReducedMotionBlocks(css);
 
-    const hasRingRule =
-      allBlockText.includes('.cinder-progress--ring .cinder-progress__fill--indeterminate') &&
-      allBlockText.includes('animation: none');
+    const ringRuleBlock = blocks.find(
+      (block) =>
+        block.includes('.cinder-progress--ring .cinder-progress__fill--indeterminate') &&
+        block.includes('animation: none'),
+    );
 
-    expect(hasRingRule).toBe(true);
+    expect(ringRuleBlock).not.toBeUndefined();
   });
 });
