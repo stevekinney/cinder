@@ -117,6 +117,14 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event.s
 export { default as Feed } from './components/feed.svelte';
 export type { FeedProps } from './components/feed.svelte';
 
+export { default as FormField } from './components/form-field.svelte';
+export type { FormFieldProps } from './components/form-field.svelte';
+
+export { default as FormSection } from './components/form-section.svelte';
+export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section.svelte';
+
+export type { FormFieldContext } from './_internal/form-field-context.ts';
+
 export { default as GridList } from './components/grid-list.svelte';
 export type { GridListProps } from './components/grid-list.svelte';
 

@@ -6,6 +6,7 @@
     "install-browsers": "playwright install chromium",
     "install-browsers:ci": "playwright install --with-deps chromium",
     "report": "playwright show-report ./playwright-report",
+    "test": "bun run typecheck",
     "test:playwright": "bun run scripts/start-server.ts",
     "test:playwright:headed": "bun run scripts/start-server.ts -- --headed",
     "test:playwright:ui": "bun run scripts/start-server.ts -- --ui",

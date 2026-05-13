@@ -33,18 +33,22 @@
       description?: string;
       error?: string;
       disabled?: boolean;
+      required?: boolean;
       type?: InputType;
       class?: string;
     };
 </script>
 
 <script lang="ts">
+  import { DEV } from 'esm-env';
+
   import {
     ariaInvalid,
     composeDescribedBy,
     describeId,
     errorId as buildErrorId,
   } from '../_internal/field-control.ts';
+  import { getFormFieldContext } from '../_internal/form-field-context.ts';
   import { cn } from '../utilities/class-names.ts';
 
   let {
@@ -53,7 +57,8 @@
     label,
     description,
     error,
-    disabled = false,
+    disabled,
+    required,
     type = 'text',
     class: className,
     leading,
@@ -63,29 +68,49 @@
     ...rest
   }: InputProps = $props();
 
-  // Stable, predictable IDs for associated elements via the shared field-control
-  // contract — keeps wiring identical across Input, Textarea, Select, Checkbox, Radio.
-  const descriptionId = $derived(describeId(id, !!description));
-  const errId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+  const context = getFormFieldContext();
+
+  $effect(() => {
+    if (!DEV) return;
+    if (context && context.controlId !== id) {
+      console.warn(
+        `[cinder/Input] id mismatch: Input id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
+      );
+    }
+  });
+
+  const defaultDescriptionId = $derived(describeId(id, !!description));
+  const defaultErrorId = $derived(buildErrorId(id, !!error));
+  const ownDescriptionId = $derived(
+    description && defaultDescriptionId === context?.descriptionId
+      ? `${id}-input-description`
+      : defaultDescriptionId,
+  );
+  const ownErrorId = $derived(
+    error && defaultErrorId === context?.errorId ? `${id}-input-error` : defaultErrorId,
+  );
+  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
+  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
+  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+  const resolvedAriaInvalid = $derived(
+    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
+  );
+  const resolvedRequired = $derived(required ?? context?.required ?? false);
+  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   const hasGroup = $derived(!!leading || !!trailing);
-  // grammar/spelling aria-invalid values are intentionally excluded — the visual error
-  // treatment (danger border + ring) only applies to the boolean invalid state, matching
-  // the standalone .cinder-input[aria-invalid='true'] rule which also ignores grammar/spelling.
-  const isInvalid = $derived(
-    !!error || rest['aria-invalid'] === 'true' || rest['aria-invalid'] === true,
-  );
+  const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
 </script>
 
 {#snippet inputElement()}
   <input
     {id}
     {type}
-    {disabled}
+    disabled={resolvedDisabled}
+    required={resolvedRequired}
     bind:value
     class={cn('cinder-input', className)}
-    aria-invalid={ariaInvalid(!!error)}
+    aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
     {...rest}
   />
@@ -93,7 +118,7 @@
 
 <div class="cinder-input-field">
   {#if label}
-    <label for={id} class="cinder-input-field__label" data-disabled={disabled || undefined}>
+    <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
       {label}
     </label>
   {/if}
@@ -103,7 +128,7 @@
       class="cinder-input-group"
       data-leading={leading ? '' : undefined}
       data-trailing={trailing ? '' : undefined}
-      data-disabled={disabled ? '' : undefined}
+      data-disabled={resolvedDisabled ? '' : undefined}
       data-invalid={isInvalid ? '' : undefined}
     >
       {#if leading}
@@ -127,10 +152,10 @@
   {/if}
 
   {#if description}
-    <p id={descriptionId} class="cinder-input-field__description">{description}</p>
+    <p id={ownDescriptionId} class="cinder-input-field__description">{description}</p>
   {/if}
 
   {#if error}
-    <p id={errId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+    <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
   {/if}
 </div>

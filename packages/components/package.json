@@ -173,6 +173,14 @@
       "svelte": "./src/components/feed.svelte",
       "types": "./dist/components/feed.svelte.d.ts"
     },
+    "./form-field": {
+      "svelte": "./src/components/form-field.svelte",
+      "types": "./dist/components/form-field.svelte.d.ts"
+    },
+    "./form-section": {
+      "svelte": "./src/components/form-section.svelte",
+      "types": "./dist/components/form-section.svelte.d.ts"
+    },
     "./grid-list-item": {
       "svelte": "./src/components/grid-list-item.svelte",
       "types": "./dist/components/grid-list-item.svelte.d.ts"
