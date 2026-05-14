@@ -30,7 +30,7 @@
 
 .cinder-page-layout-breadcrumbs {
   width: 100%;
-  max-width: 72rem;
+  max-width: var(--cinder-content-width);
   margin-inline: auto;
   padding-inline: var(--cinder-space-4);
   padding-block: var(--cinder-space-2);
@@ -52,7 +52,7 @@
   gap: var(--cinder-space-3);
   /* 2.75rem = 44px — WCAG 2.5.5 minimum touch target row height */
   min-block-size: 2.75rem;
-  max-width: 72rem;
+  max-width: var(--cinder-content-width);
   margin-inline: auto;
   padding-inline: var(--cinder-space-4);
 }
@@ -126,7 +126,7 @@
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  max-width: 72rem;
+  max-width: var(--cinder-content-width);
   margin-inline: auto;
   padding-inline: var(--cinder-space-4);
   padding-block: var(--cinder-space-6);
