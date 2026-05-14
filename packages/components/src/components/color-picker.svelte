@@ -152,23 +152,6 @@
     alphaValue = alpha ? next.a : 1;
   }
 
-  function resetToEmptyValue(): void {
-    hue = 0;
-    saturation = 0;
-    lightnessValue = 0;
-    alphaValue = 1;
-    internalValue = '';
-    lastEmittedHex = '';
-  }
-
-  function applyHslaSilently(next: Hsla): void {
-    applyHsla(next);
-    const hex = formatHex(next.h, next.s, next.l, next.a, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-  }
-
   // Initialize from defaultValue (only when uncontrolled).
   if (value === undefined && defaultValue) {
     const parsed = parseToHsla(defaultValue);
@@ -176,7 +159,12 @@
       applyHsla(parsed);
       internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
     } else {
-      resetToEmptyValue();
+      hue = 0;
+      saturation = 0;
+      lightnessValue = 0;
+      alphaValue = 1;
+      internalValue = '';
+      lastEmittedHex = '';
     }
   } else if (value !== undefined) {
     const parsed = parseToHsla(value);
@@ -184,7 +172,12 @@
       applyHsla(parsed);
       internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
     } else {
-      resetToEmptyValue();
+      hue = 0;
+      saturation = 0;
+      lightnessValue = 0;
+      alphaValue = 1;
+      internalValue = '';
+      lastEmittedHex = '';
     }
   }
 
@@ -195,13 +188,14 @@
   $effect(() => {
     if (value === undefined) return;
     if (value !== '' && value === lastEmittedHex) return;
-    if (value === '') {
-      resetToEmptyValue();
-      return;
-    }
-    const parsed = parseToHsla(value);
-    if (!parsed) {
-      resetToEmptyValue();
+    const parsed = value === '' ? null : parseToHsla(value);
+    if (parsed === null) {
+      hue = 0;
+      saturation = 0;
+      lightnessValue = 0;
+      alphaValue = 1;
+      internalValue = '';
+      lastEmittedHex = '';
       return;
     }
     applyHsla(parsed);
@@ -228,14 +222,6 @@
     // Every value mutation fires `oninput`; `onchange` additionally fires on commit.
     oninput?.(hex);
     if (reason === 'change') onchange?.(hex);
-  }
-
-  function commitCurrentValue(): void {
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-    onchange?.(hex);
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -285,7 +271,11 @@
     if (!isDragging) return;
     isDragging = false;
     gradientElement?.releasePointerCapture(event.pointerId);
-    commitCurrentValue();
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+    onchange?.(hex);
   }
 
   function handleGradientPointerCancel(event: PointerEvent): void {
@@ -328,7 +318,11 @@
     if (draggingSlider !== 'hue') return;
     draggingSlider = null;
     hueElement?.releasePointerCapture(event.pointerId);
-    commitCurrentValue();
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+    onchange?.(hex);
   }
 
   function handleHuePointerCancel(event: PointerEvent): void {
@@ -356,7 +350,11 @@
     if (draggingSlider !== 'alpha') return;
     draggingSlider = null;
     alphaElement?.releasePointerCapture(event.pointerId);
-    commitCurrentValue();
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+    onchange?.(hex);
   }
 
   function handleAlphaPointerCancel(event: PointerEvent): void {
@@ -541,18 +539,22 @@
 
     function resetToDefault(): void {
       const fallback = defaultValue ?? '';
-      if (fallback === '') {
-        resetToEmptyValue();
+      const parsed = fallback === '' ? null : parseToHsla(fallback);
+      if (parsed === null) {
+        hue = 0;
+        saturation = 0;
+        lightnessValue = 0;
+        alphaValue = 1;
+        internalValue = '';
+        lastEmittedHex = '';
         if (value !== undefined) value = '';
         return;
       }
-      const parsed = parseToHsla(fallback);
-      if (!parsed) {
-        resetToEmptyValue();
-        if (value !== undefined) value = '';
-        return;
-      }
-      applyHslaSilently(parsed);
+      applyHsla(parsed);
+      const hex = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+      internalValue = hex;
+      lastEmittedHex = hex;
+      if (value !== undefined) value = hex;
     }
 
     function attach(): void {
