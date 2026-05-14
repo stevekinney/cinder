@@ -394,6 +394,17 @@ describe('Sidebar (mobile / drawer)', () => {
     expect(container.querySelector('dialog .cinder-sidebar__footer')?.textContent ?? '').toContain(
       'Sign out',
     );
+    expect(container.querySelector('dialog .cinder-drawer__footer')).toBeNull();
+  });
+
+  test('mobile branch omits drawer footer when no footer snippet is provided', () => {
+    mock = installMatchMediaMock(true);
+    const { container } = render(Sidebar, {
+      props: { navigation: listSnippet('items') },
+    });
+    expectMobileQueryWasUsed(mock);
+    expect(container.querySelector('dialog .cinder-sidebar__footer')).toBeNull();
+    expect(container.querySelector('dialog .cinder-drawer__footer')).toBeNull();
   });
 
   test('mobile wrapper does not carry data-cinder-collapsed', () => {

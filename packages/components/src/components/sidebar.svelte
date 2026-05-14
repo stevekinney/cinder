@@ -110,15 +110,13 @@
       <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
         {@render navigationSnippet()}
       </nav>
-    </div>
 
-    {#snippet footer()}
       {#if footerSnippet}
         <div class="cinder-sidebar__footer cinder-sidebar__footer--mobile">
           {@render footerSnippet()}
         </div>
       {/if}
-    {/snippet}
+    </div>
   </Drawer>
 {:else}
   <aside
