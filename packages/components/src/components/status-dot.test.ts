@@ -100,21 +100,14 @@ describe('StatusDot label rendering', () => {
 });
 
 describe('StatusDot accessible name (WCAG 1.4.1)', () => {
-  test('root has role="status" so assistive tech exposes the accessible name', () => {
+  test('root has role="img" so the static indicator has a graphic semantic with a name', () => {
     const { container } = render(StatusDot, { props: { status: 'online' } });
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('role')).toBe('status');
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('role')).toBe('img');
   });
 
   test('falls back to aria-label={status} when no label is provided', () => {
     const { container } = render(StatusDot, { props: { status: 'error' } });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
-  });
-
-  test('falls back to aria-label={status} when label is undefined and showLabel defaults true', () => {
-    const { container } = render(StatusDot, { props: { status: 'offline' } });
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
-      'offline',
-    );
   });
 
   test('uses label text as aria-label when showLabel is false but label is provided', () => {
@@ -162,5 +155,14 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'Server is currently online and accepting connections',
     );
+  });
+
+  test('empty-string aria-label from consumer does not blank the accessible name', () => {
+    const { container } = render(StatusDot, {
+      props: { status: 'error', 'aria-label': '' },
+    });
+    // An empty override would hide the element from AT — treat it as "no
+    // override" and fall through to the automatic status fallback instead.
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
   });
 });

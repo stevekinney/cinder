@@ -56,20 +56,33 @@
   const hasLabelText = $derived(label !== undefined && label.length > 0);
   const hasVisibleLabel = $derived(showLabel && hasLabelText);
 
-  // Accessible-name priority: consumer override → label text (even when hidden)
-  // → raw status token. Omitting `aria-label` when a visible label is rendered
-  // lets the label text itself serve as the accessible name.
+  // Accessible-name priority: non-empty consumer override → label text (even
+  // when hidden) → raw status token. An empty-string `aria-label` is treated
+  // as "no override" rather than blanking the accessible name. When a visible
+  // label is rendered we omit `aria-label` so the label text itself becomes
+  // the accessible name.
   const resolvedAriaLabel = $derived(
-    ariaLabel ?? (hasVisibleLabel ? undefined : hasLabelText ? label : status),
+    (ariaLabel ? ariaLabel : undefined) ??
+      (hasVisibleLabel ? undefined : hasLabelText ? label : status),
   );
 </script>
 
+<!--
+  `role="img"` (not `role="status"`) because StatusDot is a static decorative
+  indicator that can appear many times in a single view (e.g. one per row in a
+  list). `role="status"` is an ARIA polite live region: when injected into an
+  already-rendered DOM (paginated tables, virtualized lists) it can cause
+  screen readers to announce each dot as it mounts. `role="img"` declares the
+  element as a graphic with an accessible name supplied via `aria-label`,
+  which is the semantically correct choice for a non-changing visual state
+  badge.
+-->
 <span
   {...rest}
   class={classNames('cinder-status-dot', className)}
   data-cinder-status={status}
   data-cinder-size={size}
-  role="status"
+  role="img"
   aria-label={resolvedAriaLabel}
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
