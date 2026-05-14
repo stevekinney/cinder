@@ -261,9 +261,12 @@
 
   // ── Slider pointer handling ─────────────────────────────────────────────
 
-  let hueElement: HTMLDivElement | null = $state(null);
-  let alphaElement: HTMLDivElement | null = $state(null);
-  let draggingSlider: 'hue' | 'alpha' | null = $state(null);
+  // bind:this refs and the drag-discriminator are coordination state read only
+  // inside event handlers, never inside the template or effects — plain `let`
+  // is sufficient and avoids unnecessary reactive tracking.
+  let hueElement: HTMLDivElement | null = null;
+  let alphaElement: HTMLDivElement | null = null;
+  let draggingSlider: 'hue' | 'alpha' | null = null;
 
   function pointerToFraction(event: PointerEvent, element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
@@ -429,7 +432,7 @@
   // ── Swatch list ─────────────────────────────────────────────────────────
 
   const swatchList = $derived(swatches ?? []);
-  let swatchFocusIndex = $state<number | null>(null);
+  let swatchFocusIndex: number | null = $state(null);
   let swatchRefs: (HTMLLIElement | null)[] = $state([]);
 
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
