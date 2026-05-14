@@ -32,8 +32,11 @@
      * When `true`, render a decorative drag handle above the header.
      * Swipe-to-close gesture is a stretch goal not implemented in MVP —
      * the handle is purely a visual affordance. Default `false`.
+     *
+     * Named `showDragHandle` (not `draggable`) to avoid colliding with the
+     * native HTML `draggable` attribute on the underlying `<dialog>`.
      */
-    draggable?: boolean;
+    showDragHandle?: boolean;
     /** Custom header. Falls back to a default header that renders `title`. */
     header?: Snippet;
     /** Sheet body content. Required. */
@@ -72,7 +75,7 @@
     class: className,
     triggerRef = null,
     ariaLabelledBy,
-    draggable = false,
+    showDragHandle = false,
     header,
     children,
     footer,
@@ -182,8 +185,8 @@
     {/snippet}
 
     {#if open}
-      <div class="cinder-sheet__panel" data-cinder-draggable={draggable ? '' : undefined}>
-        {#if draggable}
+      <div class="cinder-sheet__panel">
+        {#if showDragHandle}
           <div class="cinder-sheet__drag-handle" aria-hidden="true">
             <span class="cinder-sheet__drag-handle-pill"></span>
           </div>

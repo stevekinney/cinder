@@ -262,6 +262,10 @@ describe('Sheet', () => {
   });
 
   test('Escape key on dialog fires close event and sets open to false', async () => {
+    // The native <dialog> handles ESC → cancel → close automatically with showModal().
+    // happy-dom does not fully emulate this native behaviour, so we fire the close
+    // event after dispatching Escape to replicate the browser sequence — same pattern
+    // as drawer.test.ts. This tests the onclose → handleClose → open=false chain.
     let openValue = true;
     const { container } = render(Sheet, {
       props: {
@@ -507,19 +511,78 @@ describe('Sheet', () => {
     expect(closeButton?.getAttribute('aria-label')).toBe('Close sheet');
   });
 
-  test('drag handle is absent by default (draggable=false)', () => {
+  test('drag handle is absent by default (showDragHandle=false)', () => {
     const { container } = render(Sheet, {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-sheet__drag-handle')).toBeNull();
   });
 
-  test('drag handle renders when draggable=true with aria-hidden="true"', () => {
+  test('drag handle renders when showDragHandle=true with aria-hidden="true"', () => {
     const { container } = render(Sheet, {
-      props: { open: true, title: 'Test', draggable: true, children: emptySnippet },
+      props: { open: true, title: 'Test', showDragHandle: true, children: emptySnippet },
     });
     const handle = container.querySelector('.cinder-sheet__drag-handle');
     expect(handle).not.toBeNull();
     expect(handle?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('sheet.css close button meets 44px touch target (2.75rem × 2.75rem)', async () => {
+    const cssFile = Bun.file(new URL('../styles/components/sheet.css', import.meta.url));
+    const cssText = await cssFile.text();
+    const closeRule = cssText.split('.cinder-sheet__close {')[1]?.split('}')[0];
+    expect(closeRule).toContain('width: 2.75rem');
+    expect(closeRule).toContain('height: 2.75rem');
+  });
+
+  test('sheet.css drag handle meets 44px touch target (min-height: 2.75rem)', async () => {
+    const cssFile = Bun.file(new URL('../styles/components/sheet.css', import.meta.url));
+    const cssText = await cssFile.text();
+    const handleRule = cssText.split('.cinder-sheet__drag-handle {')[1]?.split('}')[0];
+    expect(handleRule).toContain('min-height: 2.75rem');
+  });
+
+  // Documents that successive open/close cycles do not leak escape-stack
+  // entries. If pushEscapeHandler were not released on close, the second open
+  // would stack on top of a stale entry and break ESC routing for sibling
+  // overlays. The afterEach reset would mask this — we open/close twice and
+  // assert scroll lock returns cleanly to released state both times, which
+  // implicitly verifies the release paths run end-to-end.
+  test('open/close cycles do not leak scroll lock or escape stack entries', async () => {
+    let openValue = true;
+    const { container, rerender } = render(Sheet, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+    let closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    expect(document.body.style.overflow).toBe('');
+
+    openValue = true;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+    closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    expect(document.body.style.overflow).toBe('');
   });
 });

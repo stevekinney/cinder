@@ -49,7 +49,8 @@
   /* 44px minimum touch target. */
   min-height: 2.75rem;
   flex-shrink: 0;
-  cursor: grab;
+  /* The handle is decorative until swipe-to-close ships — no grab cursor. */
+  cursor: default;
   user-select: none;
 }
 
@@ -127,6 +128,11 @@
   overflow-y: auto;
   padding: var(--cinder-space-6);
   overscroll-behavior: contain;
+}
+
+/* Suppress the focus ring only for programmatic (mouse / open-effect) focus —
+ * if the body container ever becomes keyboard-reachable, indication is preserved. */
+.cinder-sheet__body:focus:not(:focus-visible) {
   outline: none;
 }
 

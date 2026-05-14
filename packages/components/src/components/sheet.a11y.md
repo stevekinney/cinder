@@ -50,9 +50,15 @@ The close button and the drag handle both meet the WCAG 2.5.5 minimum 44×44 CSS
 
 ## Drag handle
 
-When `draggable={true}`, a decorative drag handle renders above the header. The handle is marked `aria-hidden="true"` because it carries no semantic information beyond its visual affordance — the same close paths (close button, backdrop, ESC) remain the keyboard-accessible ways to dismiss the sheet.
+When `showDragHandle={true}`, a decorative drag handle renders above the header. The handle is marked `aria-hidden="true"` because it carries no semantic information beyond its visual affordance — the same close paths (close button, backdrop, ESC) remain the keyboard-accessible ways to dismiss the sheet.
 
-Swipe-to-close gesture support is a stretch goal not implemented in the MVP. The `draggable` prop currently only controls visibility of the handle. When swipe support lands, it will be gated behind the same prop.
+The prop is named `showDragHandle` (not `draggable`) to avoid colliding with the native HTML `draggable` attribute on the underlying `<dialog>`.
+
+Swipe-to-close gesture support is a stretch goal not implemented in the MVP. The `showDragHandle` prop currently only controls visibility of the handle, and the cursor is intentionally `default` rather than `grab` so pointer users are not given a false affordance. When swipe support lands, both will change in lockstep.
+
+## Exit animation
+
+The slide-up animation plays on open. On close, the panel is removed from the DOM immediately rather than reversing — there is no exit animation in the MVP. This matches the pattern in `drawer.svelte` and is consistent with modern overlay libraries (Radix, shadcn). A coordinated exit-animation pass across both `drawer.svelte` and `sheet.svelte` is tracked as future work.
 
 ## Reduced motion
 
