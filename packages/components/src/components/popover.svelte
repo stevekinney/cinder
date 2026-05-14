@@ -196,6 +196,10 @@
     const off = offset;
     const arrowEnabled = showArrow;
     let cancelled = false;
+    // Generation counter discards out-of-order results: autoUpdate can invoke
+    // the callback multiple times in flight, and an older computePosition
+    // resolution must not overwrite a newer one's positionStyle.
+    let generation = 0;
 
     const middleware = [
       offsetMw(off),
@@ -206,12 +210,13 @@
 
     const stop = autoUpdate(anchor, panel, async () => {
       if (cancelled) return;
+      const myGeneration = ++generation;
       const result = await computePosition(anchor, panel, {
         placement: placementSnap,
         middleware,
         strategy: 'fixed',
       });
-      if (cancelled) return;
+      if (cancelled || myGeneration !== generation) return;
       positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
       computedPlacement = result.placement;
       arrowStyle = '';
