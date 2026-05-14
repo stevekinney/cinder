@@ -10,9 +10,10 @@ function resolveTrace(): TraceValue {
     return raw as TraceValue;
   }
   // No override: CI defaults to off (trace recording adds measurable
-  // per-test overhead, and the CI workflow opts into 'retain-on-failure'
-  // for the full main-branch run via PLAYWRIGHT_TRACE). Local development
-  // keeps traces on for debugging.
+  // per-test overhead). The CI workflow opts into 'retain-on-failure'
+  // via PLAYWRIGHT_TRACE for any full-matrix run — pushes to main and
+  // PRs that touched shared utilities. Local development keeps traces
+  // on for debugging.
   return process.env['CI'] ? 'off' : 'retain-on-failure';
 }
 

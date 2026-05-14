@@ -20,16 +20,18 @@
  *
  * It is `mode=filtered` with a comma-separated, sorted `components` list when
  * every non-ignorable changed file maps to a known component slug — which
- * is verified against the manifest passed in by the caller, so deleted
- * components or cross-cutting example directories that happen to match the
- * extraction regex (e.g. a `packages/playground/src/examples/shared/`
- * helper directory) fall back to full.
+ * is verified against the set of `*.svelte` filenames currently living in
+ * `packages/components/src/components/`. Slugs that don't exist there
+ * (deleted components, or cross-cutting example directories like
+ * `packages/playground/src/examples/shared/` that happen to match the
+ * extraction regex) trigger a fallback to full so the spec file's own
+ * unknown-slug guard never has to throw at suite-load time.
  *
  * Designed for CI: invoked from `.github/workflows/browser-tests.yaml` to
  * decide whether to set `CINDER_TEST_COMPONENTS` for the Playwright suite.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -62,9 +64,10 @@ export type Decision =
  * list of changed file paths.
  *
  * @param changedFiles - newline-stripped file paths from `git diff --name-only`.
- * @param knownSlugs - the set of component slugs currently present in the
- *   manifest. When omitted, slug validation is skipped (used by unit tests
- *   for the path-classification logic in isolation).
+ * @param knownSlugs - the set of component slugs derived from the
+ *   `packages/components/src/components/*.svelte` source tree. When omitted,
+ *   slug validation is skipped (used by unit tests for the
+ *   path-classification logic in isolation).
  */
 export function decide(changedFiles: string[], knownSlugs?: ReadonlySet<string>): Decision {
   const slugs = new Set<string>();
@@ -110,29 +113,38 @@ export function decide(changedFiles: string[], knownSlugs?: ReadonlySet<string>)
   return { mode: 'filtered', components: [...slugs].toSorted() };
 }
 
-type ManifestFile = { entries: Array<{ slug: string }> };
-
-async function loadKnownSlugs(): Promise<ReadonlySet<string> | undefined> {
+/**
+ * Discover known component slugs by reading the components source directory
+ * directly. The playground manifest is built lazily and is not available at
+ * the point the scope job runs in CI (no test setup has happened yet), so
+ * the source tree is the only reliable slug source at decision time.
+ *
+ * Slugs are derived from `<slug>.svelte` filenames under
+ * `packages/components/src/components/`, mirroring the discovery logic the
+ * playground itself uses. Files prefixed with `_` (test harnesses, private
+ * helpers) and known non-component conventions are skipped.
+ */
+async function loadKnownSlugs(): Promise<ReadonlySet<string>> {
   const here = dirname(fileURLToPath(import.meta.url));
-  const manifestPath = resolve(here, '..', '.playwright', 'manifest.json');
-  try {
-    const raw = await readFile(manifestPath, 'utf-8');
-    const parsed = JSON.parse(raw) as ManifestFile;
-    return new Set(parsed.entries.map((entry) => entry.slug));
-  } catch {
-    // No manifest available yet (first-run, clean checkout). Skip slug
-    // validation; the spec file's own unknown-slug guard will catch any
-    // false positives at suite-load time.
-    return undefined;
+  // scripts/ → ../../components/src/components
+  const componentsDirectory = resolve(here, '..', '..', 'components', 'src', 'components');
+  const entries = await readdir(componentsDirectory);
+  const slugs = new Set<string>();
+  for (const entry of entries) {
+    if (!entry.endsWith('.svelte')) continue;
+    if (entry.startsWith('_')) continue;
+    slugs.add(entry.slice(0, -'.svelte'.length));
   }
+  return slugs;
 }
 
 async function emit(decision: Decision): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
-  const lines =
-    decision.mode === 'full'
-      ? ['mode=full', '']
-      : ['mode=filtered', `components=${decision.components.join(',')}`, ''];
+  // Always write both `mode` and `components` so the workflow's downstream
+  // expressions can read `needs.scope.outputs.components` unconditionally.
+  // Full-mode runs emit an empty `components=` value.
+  const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
+  const lines = [`mode=${decision.mode}`, `components=${componentsValue}`, ''];
   const payload = lines.join('\n');
 
   if (githubOutput !== undefined && githubOutput.length > 0) {

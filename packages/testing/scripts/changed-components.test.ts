@@ -128,11 +128,26 @@ describe('changed-components decide()', () => {
 
   it('falls back to full when a deleted component slug is extracted', () => {
     // A PR that removes `view-switcher.svelte` will have the deleted file
-    // path in `git diff --name-only`. The manifest no longer contains it,
-    // so the suite must run in full mode rather than throw at slug
+    // path in `git diff --name-only`. The known-slug set no longer contains
+    // it, so the suite must run in full mode rather than throw at slug
     // validation in components.spec.ts.
     const knownSlugs = new Set(['accordion', 'button']);
     const result = decide(['packages/components/src/components/view-switcher.svelte'], knownSlugs);
     expect(result.mode).toBe('full');
+  });
+
+  it('returns full for shared CSS / utility files in packages/components/src', () => {
+    expect(decide(['packages/components/src/styles/shared.css']).mode).toBe('full');
+    expect(decide(['packages/components/src/styles/components.css']).mode).toBe('full');
+  });
+
+  it('returns full for component-package manifest / public-export files', () => {
+    expect(decide(['packages/components/src/index.ts']).mode).toBe('full');
+    expect(decide(['packages/components/package.json']).mode).toBe('full');
+  });
+
+  it('returns full for playground server / discovery files outside examples/', () => {
+    expect(decide(['packages/playground/src/discover.ts']).mode).toBe('full');
+    expect(decide(['packages/playground/src/shell-app/routing.ts']).mode).toBe('full');
   });
 });
