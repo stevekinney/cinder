@@ -107,7 +107,18 @@
     return step;
   });
 
-  const effectivePageStep = $derived(pageStep ?? safeStep * 10);
+  const safePageStep = $derived.by(() => {
+    if (pageStep === undefined) return safeStep * 10;
+    if (!Number.isFinite(pageStep) || pageStep <= 0) {
+      if (typeof console !== 'undefined') {
+        console.warn(
+          `[cinder/Slider] pageStep must be a positive finite number — received ${pageStep}. Falling back to ${safeStep * 10}.`,
+        );
+      }
+      return safeStep * 10;
+    }
+    return pageStep;
+  });
 
   // Normalize a tick array (or boolean) once. The list is filtered to
   // `[min, max]` so the renderer, snap, and keyboard neighbor lookups all
@@ -127,6 +138,22 @@
     return dot >= 0 ? text.length - dot - 1 : 0;
   }
 
+  function clampToBounds(raw: number): number {
+    if (raw === Infinity) return max;
+    if (raw === -Infinity || Number.isNaN(raw)) return min;
+    return Math.max(min, Math.min(max, raw));
+  }
+
+  function normalizeValueForMode(nextValue: SliderValue): SliderValue {
+    if (mode === 'range') {
+      const [rawLow, rawHigh] = Array.isArray(nextValue) ? nextValue : [min, max];
+      const first = clampToBounds(rawLow);
+      const second = clampToBounds(rawHigh);
+      return first <= second ? [first, second] : [second, first];
+    }
+    return clampToBounds(Array.isArray(nextValue) ? nextValue[0] : nextValue);
+  }
+
   // Uncontrolled state: initialized once from defaultValue / mode default.
   let uncontrolledInternal = $state<SliderValue>(
     defaultValue ?? (mode === 'range' ? [min, max] : min),
@@ -136,11 +163,13 @@
   // through to it; otherwise the uncontrolled state is the source of truth.
   const isControlled = $derived(value !== undefined);
   const currentValue = $derived<SliderValue>(
-    value !== undefined
-      ? Array.isArray(value)
-        ? [value[0], value[1]]
-        : value
-      : uncontrolledInternal,
+    normalizeValueForMode(
+      value !== undefined
+        ? Array.isArray(value)
+          ? [value[0], value[1]]
+          : value
+        : uncontrolledInternal,
+    ),
   );
 
   const isRange = $derived(mode === 'range');
@@ -150,7 +179,7 @@
 
   /** Snap a raw value: clamp into `[min, max]`, then to the nearest tick or step. */
   function snap(raw: number): number {
-    const clamped = Math.max(min, Math.min(max, raw));
+    const clamped = clampToBounds(raw);
     if (tickList && tickList.length > 0) {
       let nearest = tickList[0]!;
       let nearestDelta = Math.abs(clamped - nearest);
@@ -166,7 +195,7 @@
     const stepped = Math.round((clamped - min) / safeStep) * safeStep + min;
     const decimals = decimalsFromStep(safeStep);
     const rounded = Number(stepped.toFixed(decimals));
-    return Math.max(min, Math.min(max, rounded));
+    return clampToBounds(rounded);
   }
 
   function percentOf(numeric: number): number {
@@ -174,13 +203,9 @@
     return ((numeric - min) / (max - min)) * 100;
   }
 
-  /** Apply a new value, respecting range constraint and controlled prop. */
+  /** Apply a new value, respecting the controlled prop. */
   function commit(next: SliderValue) {
-    let normalized: SliderValue = next;
-    if (isRange && Array.isArray(next)) {
-      const [a, b] = next;
-      normalized = a <= b ? [a, b] : [b, a];
-    }
+    const normalized = normalizeValueForMode(next);
     if (!isControlled) {
       uncontrolledInternal = Array.isArray(normalized)
         ? [normalized[0], normalized[1]]
@@ -233,10 +258,10 @@
         next = hasTickArray ? neighborTick(current, -1) : current - safeStep;
         break;
       case 'PageUp':
-        next = current + effectivePageStep;
+        next = current + safePageStep;
         break;
       case 'PageDown':
-        next = current - effectivePageStep;
+        next = current - safePageStep;
         break;
       case 'Home':
         next = min;
@@ -251,6 +276,7 @@
     if (thumb === 'single') {
       updateSingle(next);
     } else {
+      activeThumbRecent = thumb;
       updateRange(thumb, next);
     }
   }
@@ -324,7 +350,11 @@
 
   function accessibleNameFor(thumb: 'single' | 'low' | 'high'): string {
     if (thumb === 'single') return label;
-    return thumb === 'low' ? `${label} — minimum value` : `${label} — maximum value`;
+    return `${label} — ${qualifierFor(thumb)}`;
+  }
+
+  function qualifierFor(thumb: 'low' | 'high'): string {
+    return thumb === 'low' ? 'minimum value' : 'maximum value';
   }
 
   // FormField wiring. When inside a FormField the field's label becomes the
@@ -335,9 +365,9 @@
   const describedBy = $derived(formField?.describedBy);
   const ariaInvalidFromField = $derived(formField?.invalid);
 
-  const uniqueId = $props.id();
-  const lowQualifierId = `${uniqueId}-low-label`;
-  const highQualifierId = `${uniqueId}-high-label`;
+  const sliderId = $props.id();
+  const lowQualifierId = `${sliderId}-low-label`;
+  const highQualifierId = `${sliderId}-high-label`;
 
   function labelledByFor(thumb: 'single' | 'low' | 'high'): string | undefined {
     if (!formFieldLabelId) return undefined;
@@ -376,10 +406,10 @@
 >
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">
-      {accessibleNameFor('low')}
+      {qualifierFor('low')}
     </span>
     <span id={highQualifierId} class="cinder-sr-only">
-      {accessibleNameFor('high')}
+      {qualifierFor('high')}
     </span>
   {/if}
 

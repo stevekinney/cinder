@@ -7,9 +7,19 @@ setupHappyDom();
 
 const { fireEvent, render } = await import('@testing-library/svelte');
 const { default: Slider } = await import('./slider.svelte');
+const { default: SliderFormFieldFixture } =
+  await import('../test/fixtures/slider-form-field-fixture.svelte');
 
 function getThumbs(container: Element): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('[role="slider"]'));
+}
+
+function textForLabelledBy(container: Element, labelledBy: string): string {
+  return labelledBy
+    .split(/\s+/)
+    .map((id) => container.ownerDocument.getElementById(id)?.textContent?.trim() ?? '')
+    .filter(Boolean)
+    .join(' ');
 }
 
 describe('Slider (single)', () => {
@@ -129,6 +139,13 @@ describe('Slider (single)', () => {
       props: { label: 'Volume', value: 70 },
     });
     expect(getThumbs(container)[0]!.getAttribute('aria-valuenow')).toBe('70');
+  });
+
+  test('initial value is clamped to the configured bounds', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 200, min: 0, max: 100 },
+    });
+    expect(getThumbs(container)[0]!.getAttribute('aria-valuenow')).toBe('100');
   });
 
   test('controlled value: keyboard does not mutate when no onchange echoes it back', async () => {
@@ -264,6 +281,21 @@ describe('Slider (range)', () => {
     expect(high!.getAttribute('aria-valuemin')).toBe('10');
   });
 
+  test('initial range value is clamped and ordered before render', () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Price',
+        mode: 'range',
+        defaultValue: [120, -10],
+        min: 0,
+        max: 100,
+      },
+    });
+    const [low, high] = getThumbs(container);
+    expect(low!.getAttribute('aria-valuenow')).toBe('0');
+    expect(high!.getAttribute('aria-valuenow')).toBe('100');
+  });
+
   test('renders two hidden inputs in range mode', () => {
     const { container } = render(Slider, {
       props: {
@@ -309,6 +341,36 @@ describe('Slider (range)', () => {
     const [low, high] = getThumbs(container);
     expect(low!.getAttribute('aria-valuetext')).toBe('$10');
     expect(high!.getAttribute('aria-valuetext')).toBe('$90');
+  });
+
+  test('range thumbs inside FormField use the field label plus non-duplicating qualifiers', () => {
+    const { container } = render(SliderFormFieldFixture);
+    const [low, high] = getThumbs(container);
+
+    const lowLabelledBy = low!.getAttribute('aria-labelledby');
+    const highLabelledBy = high!.getAttribute('aria-labelledby');
+
+    expect(low!.getAttribute('aria-label')).toBeNull();
+    expect(high!.getAttribute('aria-label')).toBeNull();
+    expect(lowLabelledBy).not.toBeNull();
+    expect(highLabelledBy).not.toBeNull();
+    expect(textForLabelledBy(container, lowLabelledBy!)).toBe('Price minimum value');
+    expect(textForLabelledBy(container, highLabelledBy!)).toBe('Price maximum value');
+  });
+
+  test('range qualifier ids are unique across sliders without explicit ids', () => {
+    const { container } = render(SliderFormFieldFixture, {
+      props: { renderSecond: true },
+    });
+    const labelledByIds = getThumbs(container).flatMap(
+      (thumb) => thumb.getAttribute('aria-labelledby')?.split(/\s+/) ?? [],
+    );
+    const qualifierIds = labelledByIds.filter(
+      (id) => id.endsWith('-low-label') || id.endsWith('-high-label'),
+    );
+
+    expect(qualifierIds).toHaveLength(4);
+    expect(new Set(qualifierIds).size).toBe(4);
   });
 });
 
