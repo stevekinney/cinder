@@ -270,6 +270,9 @@ export type { SideNavigationGroupProps } from './components/side-navigation-grou
 export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
 export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
 
+export { default as Sidebar } from './components/sidebar.svelte';
+export type { SidebarProps } from './components/sidebar.svelte';
+
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
 export type {
