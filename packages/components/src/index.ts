@@ -51,6 +51,9 @@ export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
 export { default as CodeBlock } from './components/code-block.svelte';
 export type { CodeBlockProps } from './components/code-block.svelte';
 
+export { default as ColorPicker } from './components/color-picker.svelte';
+export type { ColorPickerProps } from './components/color-picker.svelte';
+
 export { default as ColorSwatchPicker } from './components/color-swatch-picker.svelte';
 export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swatch-picker.svelte';
 
