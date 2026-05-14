@@ -16,8 +16,11 @@
      */
     collapsed?: boolean;
     /**
-     * Accessible name for the outer landmark and the mobile drawer. Required.
-     * Must be non-empty and distinct from any other landmark on the page.
+     * Accessible name for the outer landmark and the mobile drawer. Required —
+     * defaults to `'Sidebar'` for convenience but must be unique per page. The
+     * inner `<nav>` landmark derives its own accessible name from this value
+     * by appending `' navigation'` so screen readers can distinguish the
+     * outer complementary region from the inner navigation region.
      */
     ariaLabel?: string;
     /** Additional CSS class merged with `.cinder-sidebar`. */
@@ -63,10 +66,16 @@
     return ariaLabel;
   });
 
+  // The inner <nav> landmark gets a distinct accessible name so the outer
+  // complementary <aside> and the inner navigation are not announced as two
+  // identically-named landmarks.
+  const navigationLabel = $derived(`${validatedLabel} navigation`);
+
   // Breakpoint matches the existing `47.99rem` (~767px) convention used by
-  // navigation-bar.css and navigation-item.css. The `(max-width: ...)` form
-  // is true on mobile (< md) and false on desktop.
-  const mobile = new MediaQuery('max-width: 47.99rem', false);
+  // navigation-bar.css and navigation-item.css. The fully-parenthesized form
+  // is required — `window.matchMedia` rejects bare media feature expressions
+  // on Firefox and Safari.
+  const mobile = new MediaQuery('(max-width: 47.99rem)', false);
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -87,21 +96,26 @@
     side="left"
     size="md"
     title={validatedLabel}
-    class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}
   >
-    {#if brandSnippet}
-      <div class="cinder-sidebar__brand">
-        {@render brandSnippet()}
-      </div>
-    {/if}
+    <div
+      {...rest}
+      class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}
+      data-cinder-collapsed={collapsed ? '' : undefined}
+    >
+      {#if brandSnippet}
+        <div class="cinder-sidebar__brand">
+          {@render brandSnippet()}
+        </div>
+      {/if}
 
-    <nav class="cinder-sidebar__nav" aria-label={validatedLabel}>
-      {@render navigationSnippet()}
-    </nav>
+      <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+        {@render navigationSnippet()}
+      </nav>
+    </div>
 
     {#snippet footer()}
       {#if footerSnippet}
-        <div class="cinder-sidebar__footer">
+        <div class="cinder-sidebar__footer cinder-sidebar__footer--mobile">
           {@render footerSnippet()}
         </div>
       {/if}
@@ -120,7 +134,7 @@
       </div>
     {/if}
 
-    <nav class="cinder-sidebar__nav" aria-label={validatedLabel}>
+    <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
       {@render navigationSnippet()}
     </nav>
 

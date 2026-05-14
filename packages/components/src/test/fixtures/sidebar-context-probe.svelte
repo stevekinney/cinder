@@ -12,5 +12,5 @@
 <div
   data-sidebar-probe
   data-context={context ? 'present' : 'absent'}
-  data-collapsed={context?.collapsed ? 'true' : 'false'}
+  data-collapsed={context ? String(context.collapsed) : undefined}
 ></div>

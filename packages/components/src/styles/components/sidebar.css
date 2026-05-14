@@ -26,10 +26,10 @@
   border-inline-end: none;
 }
 
-/* Collapsed (icon-only) mode applies only when rendered as an inline <aside>.
- * The mobile drawer surface ignores collapsed because the drawer being closed
- * already represents the collapsed state. */
-.cinder-sidebar[data-cinder-collapsed] {
+/* Collapsed (icon-only) mode applies to the inline <aside>. The mobile drawer
+ * surface ignores `data-cinder-collapsed` for sizing because drawer-closed is
+ * the collapsed state on mobile. */
+.cinder-sidebar[data-cinder-collapsed]:not(.cinder-sidebar--mobile) {
   inline-size: 4rem;
 }
 
@@ -61,23 +61,53 @@
 
 /* ----------------------------------------
  * Collapsed (icon-only) treatment for descendant items.
- * Hide non-icon text in collapsed inline <aside> mode so the nav reads as
- * an icon rail. Consumers must provide `aria-label` on each NavigationItem
- * for the icon-only mode to remain accessible; without it the item has no
- * accessible name once the text content is hidden.
+ *
+ * Decorative chrome (group badge, chevron, panel) is hidden with `display:
+ * none` because it carries no accessible name.
+ *
+ * Label-bearing text is hidden using the visually-hidden technique rather
+ * than `display: none` so the accessible name of each focusable element is
+ * preserved in the accessibility tree. The visual result is icon-only, but a
+ * screen-reader user still hears the section header or item text when focus
+ * lands on the trigger or link.
  * ---------------------------------------- */
 
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__label,
 .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__badge,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__chevron {
-  display: none;
-}
-
+.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__chevron,
 .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__panel {
   display: none;
 }
 
 .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__trigger {
+  justify-content: center;
+  padding-inline: var(--cinder-space-2);
+}
+
+.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__label,
+.cinder-sidebar[data-cinder-collapsed]
+  .cinder-side-navigation
+  a.cinder-navigation-item
+  > :not([aria-hidden='true']):not(svg):not(img),
+.cinder-sidebar[data-cinder-collapsed]
+  .cinder-side-navigation
+  button.cinder-navigation-item
+  > :not([aria-hidden='true']):not(svg):not(img) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Leaf items in collapsed mode collapse to icon-only width. The visually-
+ * hidden text above preserves the accessible name; this rule re-centers the
+ * remaining icon content. */
+.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item,
+.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation button.cinder-navigation-item {
   justify-content: center;
   padding-inline: var(--cinder-space-2);
 }
