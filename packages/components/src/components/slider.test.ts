@@ -402,6 +402,42 @@ describe('Slider (ticks)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
   });
 
+  test('PageUp/PageDown move across ticks when tick spacing exceeds pageStep', async () => {
+    // Regression: with ticks=[0,25,50,75,100] and default pageStep (10× step=10),
+    // PageUp at tick 0 would compute 10, then snap back to 0 — making the keys
+    // non-functional. PageUp must always advance to at least the next tick.
+    const { container } = render(Slider, {
+      props: {
+        label: 'Volume',
+        defaultValue: 0,
+        ticks: [0, 25, 50, 75, 100],
+        step: 1,
+      },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'PageUp' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+    await fireEvent.keyDown(thumb, { key: 'PageDown' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+  });
+
+  test('PageUp jumps multiple ticks when pageStep spans several', async () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Volume',
+        defaultValue: 0,
+        ticks: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        step: 1,
+        pageStep: 30,
+      },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'PageUp' });
+    // pageStep=30, ticks every 10 → should land at 30 (the last tick that
+    // doesn't overshoot current+30).
+    expect(thumb.getAttribute('aria-valuenow')).toBe('30');
+  });
+
   test('pointer drag snaps to the nearest tick when ticks is an array', async () => {
     const { container } = render(Slider, {
       props: {

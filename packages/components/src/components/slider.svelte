@@ -245,6 +245,25 @@
     return tickList[0] ?? current;
   }
 
+  /**
+   * Advance from `current` toward `direction` by at least `distance` of value,
+   * landing on a tick. Guarantees at least one tick of movement so PageUp/PageDown
+   * stays functional when tick spacing exceeds `pageStep`.
+   */
+  function tickPageJump(current: number, distance: number, direction: 1 | -1): number {
+    if (!tickList || tickList.length === 0) return current;
+    const target = current + direction * distance;
+    let candidate = neighborTick(current, direction);
+    while (true) {
+      const stepped = neighborTick(candidate, direction);
+      if (stepped === candidate) break;
+      const passedTarget = direction === 1 ? stepped > target : stepped < target;
+      if (passedTarget) break;
+      candidate = stepped;
+    }
+    return candidate;
+  }
+
   function handleKey(event: KeyboardEvent, thumb: 'single' | 'low' | 'high') {
     if (disabled) return;
     const current = thumb === 'high' ? highValue : lowValue;
@@ -260,10 +279,10 @@
         next = hasTickArray ? neighborTick(current, -1) : current - safeStep;
         break;
       case 'PageUp':
-        next = current + safePageStep;
+        next = hasTickArray ? tickPageJump(current, safePageStep, 1) : current + safePageStep;
         break;
       case 'PageDown':
-        next = current - safePageStep;
+        next = hasTickArray ? tickPageJump(current, safePageStep, -1) : current - safePageStep;
         break;
       case 'Home':
         next = min;
