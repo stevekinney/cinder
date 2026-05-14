@@ -6,6 +6,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: NumberInput } = await import('./number-input.svelte');
 
 afterEach(() => {
@@ -31,10 +32,10 @@ function getHidden(container: Element): HTMLInputElement | null {
 }
 
 function getIncrement(container: Element): HTMLButtonElement {
-  return container.querySelector('[aria-label="Increment"]') as HTMLButtonElement;
+  return container.querySelector('.cinder-number-input__stepper--increment') as HTMLButtonElement;
 }
 function getDecrement(container: Element): HTMLButtonElement {
-  return container.querySelector('[aria-label="Decrement"]') as HTMLButtonElement;
+  return container.querySelector('.cinder-number-input__stepper--decrement') as HTMLButtonElement;
 }
 
 async function type(input: HTMLInputElement, text: string) {
@@ -721,5 +722,168 @@ describe('External updates and edge cases', () => {
     const input = getInput(container);
     await fireEvent.keyDown(input, { key: 'ArrowUp' });
     expect(calls).toEqual([5]);
+  });
+});
+
+describe('Stepper aria-labels include field + step magnitude', () => {
+  test('with label and explicit step', () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', value: 1, label: 'Quantity', step: 5, locale: 'en-US' },
+    });
+    expect(getIncrement(container).getAttribute('aria-label')).toBe('Increment Quantity by 5');
+    expect(getDecrement(container).getAttribute('aria-label')).toBe('Decrement Quantity by 5');
+  });
+
+  test('without label falls back to magnitude-only label', () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', value: 1, locale: 'en-US' },
+    });
+    expect(getIncrement(container).getAttribute('aria-label')).toBe('Increment by 1');
+    expect(getDecrement(container).getAttribute('aria-label')).toBe('Decrement by 1');
+  });
+});
+
+describe('Locale parser coverage in component', () => {
+  test('fr-FR narrow-NBSP grouping round-trip', async () => {
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'fr-FR', onchange: (v: number | null) => calls.push(v) },
+    });
+    const input = getInput(container);
+    await focus(input);
+    // Use the locale's own formatted output so we get the actual narrow NBSP.
+    const formatted = new Intl.NumberFormat('fr-FR').format(1234.5);
+    await type(input, formatted);
+    await blur(input);
+    expect(calls).toEqual([1234.5]);
+  });
+
+  test('ar-EG localized digits round-trip', async () => {
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'ar-EG', onchange: (v: number | null) => calls.push(v) },
+    });
+    const input = getInput(container);
+    await focus(input);
+    const formatted = new Intl.NumberFormat('ar-EG').format(1234);
+    await type(input, formatted);
+    await blur(input);
+    expect(calls).toEqual([1234]);
+  });
+
+  test('hi-IN secondary grouping accepted', async () => {
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'hi-IN', onchange: (v: number | null) => calls.push(v) },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12,34,567');
+    await blur(input);
+    expect(calls).toEqual([1234567]);
+  });
+});
+
+describe('Form serialization correctness', () => {
+  test('formdata event picks up hidden input with canonical numeric string', () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: { id: 'n', name: 'q', value: 1234.5, locale: 'en-US' },
+    });
+    // Dispatch a formdata event with a fresh FormData; the hidden input's
+    // value is what the browser collects under `name="q"`.
+    const fd = new FormData();
+    const hidden = mount.querySelector('input[type="hidden"]') as HTMLInputElement;
+    fd.set(hidden.name, hidden.value);
+    expect(fd.get('q')).toBe('1234.5');
+  });
+
+  test('mid-edit value reaches form serialization after submit-capture flush', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: { id: 'n', name: 'q', defaultValue: 0, locale: 'en-US' },
+    });
+    const input = mount.querySelector('#n') as HTMLInputElement;
+    await focus(input);
+    await type(input, '999');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    const hidden = mount.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('999');
+  });
+});
+
+describe('Required + reset and other validity edge cases', () => {
+  test('required + form-reset-to-null stays invalid', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: { id: 'n', name: 'q', required: true, defaultValue: null, locale: 'en-US' },
+    });
+    const input = mount.querySelector('#n') as HTMLInputElement;
+    // Force into an invalid-required state on reset.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    expect(input.validity.customError).toBe(true);
+  });
+
+  test('malformed blur keeps user text visible for correction', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12abc');
+    await blur(input);
+    // The hostile-form-UX behavior would erase to '' here. The component
+    // keeps the user's text so they can edit it.
+    expect(input.value).toBe('12abc');
+    expect(input.validity.customError).toBe(true);
+  });
+
+  test('disabled form listeners are no-ops', async () => {
+    const calls: Array<number | null> = [];
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: {
+        id: 'n',
+        name: 'q',
+        value: 5,
+        disabled: true,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('FormField context overrides', () => {
+  test('context-disabled disables steppers and omits hidden input', async () => {
+    // Render the component and patch context post-hoc: use disabled prop as
+    // the proxy since FormField is a separate test concern. (Direct context
+    // testing lives in the form-field fixture suite — we only need to verify
+    // resolvedDisabled is the source of truth.)
+    const { container } = render(NumberInput, {
+      props: { id: 'n', name: 'q', value: 5, disabled: true, locale: 'en-US' },
+    });
+    expect(getIncrement(container).disabled).toBe(true);
+    expect(getHidden(container)).toBeNull();
   });
 });

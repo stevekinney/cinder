@@ -36,6 +36,7 @@
   import { getFormFieldContext } from '../_internal/form-field-context.ts';
   import { cn } from '../utilities/class-names.ts';
   import { formatNumber } from '../utilities/format-number.ts';
+  import { parseLocaleNumber } from '../utilities/parse-locale-number.ts';
 
   let {
     id,
@@ -63,10 +64,10 @@
   let isFocused = $state(false);
   let hasMounted = $state(false);
   let inputElement: HTMLInputElement | undefined = $state();
-  let resolvedLocale = $state(locale ?? 'en-US');
+  let malformedError = $state(false);
 
   // Seed the bindable from defaultValue when the parent didn't supply a value.
-  if (value === null && defaultValue !== null && defaultValue !== undefined) {
+  if (value === null && defaultValue !== null) {
     value = defaultValue;
   }
 
@@ -74,9 +75,7 @@
     hasMounted = true;
   });
 
-  $effect(() => {
-    resolvedLocale = locale ?? (hasMounted ? navigator.language : 'en-US');
-  });
+  const resolvedLocale = $derived(locale ?? (hasMounted ? navigator.language : 'en-US'));
 
   const resolvedMin = $derived(typeof min === 'number' && Number.isFinite(min) ? min : -Infinity);
   const resolvedMax = $derived(typeof max === 'number' && Number.isFinite(max) ? max : Infinity);
@@ -85,7 +84,10 @@
     typeof s === 'number' && Number.isFinite(s) && s > 0;
 
   const incrementStep = $derived(isValidStep(step) ? step : 1);
-  const snapStep = $derived<number | null>(isValidStep(step) ? step : null);
+  const snapStep = $derived(isValidStep(step) ? step : null);
+
+  const resolvedRequired = $derived(required ?? context?.required ?? false);
+  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   function roundToPrecision(n: number, digits: number): number {
     return Number(n.toFixed(Math.min(digits, 12)));
@@ -105,238 +107,145 @@
     return s.split('.')[1]?.length ?? 0;
   }
 
-  function escapeRegex(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
+  // Three commit sources — that's the smallest set that captures the actually-
+  // distinct behaviors:
+  // - 'delta': user pressed a stepper or arrow/page/home/end — value is already
+  //   step-aligned, so snap-to-grid is skipped. onchange fires.
+  // - 'typed': user committed via blur/enter/submit — apply snap-to-grid.
+  //   onchange fires unless the source is a serialization-only event.
+  // - 'reset': form reset — like typed in that snap doesn't apply (we're
+  //   restoring defaultValue verbatim), but always fires onchange.
+  type CommitSource = 'typed' | 'delta' | 'reset';
 
-  type ParseResult =
-    | { value: number; status: 'valid' }
-    | { value: null; status: 'empty' | 'malformed' };
-
-  function parseLocaleNumber(
-    text: string,
-    parseLocale: string,
-    fmt: Intl.NumberFormatOptions | undefined,
-  ): ParseResult {
-    if (text.trim() === '') return { value: null, status: 'empty' };
-
-    let working = text;
-
-    // Localized digit mapping (e.g. ar-EG, hi-IN extended-arabic).
-    const digitFormatter = new Intl.NumberFormat(parseLocale, {
-      useGrouping: false,
-      maximumFractionDigits: 0,
-    });
-    for (let d = 0; d <= 9; d++) {
-      const glyph = digitFormatter.format(d);
-      if (glyph !== String(d)) {
-        working = working.split(glyph).join(String(d));
-      }
-    }
-
-    // Separator discovery (always via a plain decimal formatter).
-    const sepParts = new Intl.NumberFormat(parseLocale, {
-      useGrouping: true,
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    }).formatToParts(-12345.6);
-    const groupSep = sepParts.find((p) => p.type === 'group')?.value ?? '';
-    const decimalSep = sepParts.find((p) => p.type === 'decimal')?.value ?? '.';
-
-    // Strip caller-format symbols (currency / percent) and any literals from the
-    // caller's format — but NOT the locale's digits/separators.
-    if (fmt) {
-      const callerParts = new Intl.NumberFormat(parseLocale, fmt).formatToParts(0);
-      for (const part of callerParts) {
-        if (
-          part.type === 'currency' ||
-          part.type === 'percentSign' ||
-          part.type === 'literal' ||
-          part.type === 'unit' ||
-          part.type === 'compact'
-        ) {
-          if (part.value) working = working.split(part.value).join('');
-        }
-      }
-    }
-    // Always allow a stray percent literal.
-    working = working.split('%').join('');
-
-    // Trim whitespace variants.
-    working = working.replace(/[\s  ]+/g, (m) => {
-      // Keep the locale's narrow-NBSP group separator candidates intact for
-      // grouping validation. Only strip them at the very edges.
-      return m;
-    });
-    working = working.replace(/^[\s  ]+|[\s  ]+$/g, '');
-
-    if (working === '') return { value: null, status: 'empty' };
-
-    // Strict grouping validation, only when groupSep appears in the integer part.
-    const decimalSplit = working.split(decimalSep);
-    if (decimalSplit.length > 2) return { value: null, status: 'malformed' };
-    const integerPart = decimalSplit[0] ?? '';
-    const fractionPart = decimalSplit[1];
-
-    if (groupSep && integerPart.includes(groupSep)) {
-      // Derive group sizes from the locale.
-      const probeParts = new Intl.NumberFormat(parseLocale, {
-        useGrouping: true,
-      }).formatToParts(12345678);
-      const integerRuns: string[] = [];
-      for (const p of probeParts) {
-        if (p.type === 'integer') integerRuns.push(p.value);
-      }
-      // Right-most run is "primary"; the run just before it is "secondary".
-      const primary =
-        integerRuns.length > 0 ? (integerRuns[integerRuns.length - 1] ?? '').length : 3;
-      const secondary =
-        integerRuns.length > 1 ? (integerRuns[integerRuns.length - 2] ?? '').length : primary;
-      const groupEsc = escapeRegex(groupSep);
-      const grouped = new RegExp(
-        `^[+-]?\\d{1,${secondary}}(${groupEsc}\\d{${secondary}})*${groupEsc}\\d{${primary}}$`,
-      );
-      if (!grouped.test(integerPart)) return { value: null, status: 'malformed' };
-    }
-
-    // Strip group separators and normalize decimal.
-    let normalized = groupSep.length > 0 ? integerPart.split(groupSep).join('') : integerPart;
-    if (fractionPart !== undefined) normalized += '.' + fractionPart;
-
-    if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(normalized)) {
-      return { value: null, status: 'malformed' };
-    }
-    const parsed = parseFloat(normalized);
-    if (!Number.isFinite(parsed)) return { value: null, status: 'malformed' };
-    return { value: parsed, status: 'valid' };
-  }
-
-  type CommitSource =
-    | 'blur'
-    | 'enter'
-    | 'stepper'
-    | 'arrow'
-    | 'page'
-    | 'home'
-    | 'end'
-    | 'reset'
-    | 'formdata'
-    | 'submit';
-
-  function shouldEmitChange(source: CommitSource): boolean {
-    return source !== 'formdata' && source !== 'submit';
-  }
-
-  function commitValue(
+  /**
+   * Apply the value to component state and side-effects: native validity,
+   * onchange callback, and the bindable `value` write. Returns the value that
+   * was actually applied so callers can chain.
+   */
+  function commit(
     next: number | null,
-    source: CommitSource,
     parseStatus: 'valid' | 'empty' | 'malformed',
-    formData: FormData | undefined,
+    emitChange: boolean,
   ): number | null {
     if (inputElement) {
-      if (disabled) {
+      if (resolvedDisabled) {
         inputElement.setCustomValidity('');
       } else if (parseStatus === 'malformed') {
         inputElement.setCustomValidity('Please enter a valid number.');
-      } else if (required && next === null) {
+      } else if (resolvedRequired && next === null) {
         inputElement.setCustomValidity('Please enter a number.');
       } else {
         inputElement.setCustomValidity('');
       }
     }
 
-    if (formData && typeof name === 'string' && name.length > 0 && !disabled) {
-      formData.set(name, next === null ? '' : String(next));
-    }
+    malformedError = parseStatus === 'malformed';
 
     if (!Object.is(next, value)) {
+      isInternalValueChange = true;
       value = next;
     }
 
-    if (shouldEmitChange(source)) {
+    if (emitChange) {
       onchange?.(next);
     }
 
     return next;
   }
 
+  /**
+   * Commit a numeric value. For `'typed'` sources the value is snapped to the
+   * step grid (if `step` is set), then clamped. For `'delta'` and `'reset'`
+   * sources the value is only clamped.
+   */
   function commitFromNumber(
     source: CommitSource,
     raw: number | null,
-    formData?: FormData,
     parseStatus: 'valid' | 'empty' | 'malformed' = 'valid',
   ): number | null {
-    if (raw === null) return commitValue(null, source, parseStatus, formData);
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
-      return commitValue(null, source, 'malformed', formData);
-    }
-    // Snap applies to typed commits (blur/enter/submit/formdata/text-derived).
-    // Stepper / arrow / page / home / end deltas are already step-aligned by
-    // construction, so re-snapping would push value off the grid the user
-    // chose with their explicit ± action.
-    const snapApplies =
-      snapStep !== null &&
-      source !== 'stepper' &&
-      source !== 'arrow' &&
-      source !== 'page' &&
-      source !== 'home' &&
-      source !== 'end' &&
-      source !== 'reset';
-    let snapped = raw;
-    if (snapApplies && snapStep !== null) {
+    if (raw === null) return commit(null, parseStatus, true);
+    if (!Number.isFinite(raw)) return commit(null, 'malformed', true);
+    let result = raw;
+    if (source === 'typed' && snapStep !== null) {
       const origin = Number.isFinite(resolvedMin) ? resolvedMin : 0;
-      snapped = origin + Math.round((raw - origin) / snapStep) * snapStep;
-      snapped = roundToPrecision(snapped, fractionalDigits(snapStep));
+      result = origin + Math.round((raw - origin) / snapStep) * snapStep;
+      result = roundToPrecision(result, fractionalDigits(snapStep));
     } else if (snapStep !== null) {
-      // Even when not snapping, round to step precision so 0.1+0.2 → 0.3 cleanly.
-      snapped = roundToPrecision(raw, fractionalDigits(snapStep));
+      // Even when snapping is skipped, round to step precision so successive
+      // additions of `0.1` don't accumulate float error.
+      result = roundToPrecision(raw, fractionalDigits(snapStep));
     }
-    const next = Math.min(resolvedMax, Math.max(resolvedMin, snapped));
-    return commitValue(next, source, parseStatus, formData);
+    const clamped = Math.min(resolvedMax, Math.max(resolvedMin, result));
+    return commit(clamped, parseStatus, true);
   }
 
-  function commitFromText(source: CommitSource, text: string, formData?: FormData): number | null {
+  /**
+   * Commit by parsing user-typed text via the locale parser, then routing the
+   * canonical numeric value through `commitFromNumber`.
+   */
+  function commitFromText(source: CommitSource, text: string): number | null {
     const result = parseLocaleNumber(text, resolvedLocale, format);
     if (result.status !== 'valid') {
-      return commitValue(null, source, result.status, formData);
+      return commit(null, result.status, true);
     }
-    let canonical: number;
-    if (format?.style === 'percent') {
-      canonical = roundToPrecision(
-        result.value / 100,
-        Math.max(2, fractionalDigits(result.value) + 2),
-      );
-    } else {
-      canonical = result.value;
-    }
-    return commitFromNumber(source, canonical, formData, 'valid');
+    const canonical =
+      format?.style === 'percent'
+        ? roundToPrecision(result.value / 100, Math.max(2, fractionalDigits(result.value) + 2))
+        : result.value;
+    return commitFromNumber(source, canonical, 'valid');
   }
 
-  const formattedValue = $derived(
-    value === null || value === undefined ? '' : formatNumber(value, resolvedLocale, format),
-  );
-  const displayValue = $derived(isFocused ? editorBuffer : formattedValue);
+  // Track value changes initiated from within the component so the "parent
+  // always wins during focus" effect below doesn't fight a commit.
+  let isInternalValueChange = false;
 
-  // Parent always wins: when value changes from outside while focused, replace
-  // the in-progress editor buffer with a fresh edit-display.
+  // formattedValue and displayValue collapsed into one derived expression.
+  // When the last commit was malformed we keep the user's typed text visible
+  // so they can correct it instead of having their input erased.
+  const displayValue = $derived(
+    isFocused
+      ? editorBuffer
+      : malformedError
+        ? editorBuffer
+        : value === null || value === undefined
+          ? ''
+          : formatNumber(value, resolvedLocale, format),
+  );
+
+  // Parent always wins: when `value` changes from outside while focused, replace
+  // the in-progress editor buffer with a fresh edit-display. The
+  // `isInternalValueChange` flag breaks the cycle when the commit path is the
+  // one that just wrote `value`.
   $effect(() => {
-    // Track value, resolvedLocale, format reactively.
     void value;
     void resolvedLocale;
     void format;
     if (!isFocused) return;
+    if (isInternalValueChange) {
+      isInternalValueChange = false;
+      return;
+    }
     editorBuffer = value === null || value === undefined ? '' : buildEditDisplay(value);
   });
 
-  // Validity sync for required/disabled changes outside commit paths.
+  // Validity-sync for required/disabled changes outside the commit path. Also
+  // clears the malformed flag whenever value flips to a defined number from
+  // outside the component — the parent assigning a valid number means the
+  // input is no longer in a parse-failure state.
   $effect(() => {
     if (!inputElement) return;
-    if (disabled) {
+    if (resolvedDisabled) {
       inputElement.setCustomValidity('');
-    } else if (required && (value === null || value === undefined)) {
+      malformedError = false;
+    } else if (value !== null && value !== undefined && !isInternalValueChange) {
+      // External value write — clear malformed state and any prior validity.
+      malformedError = false;
+      inputElement.setCustomValidity('');
+    } else if (malformedError) {
+      // commit() owns the malformed message; leave it in place.
+    } else if (resolvedRequired && (value === null || value === undefined)) {
       inputElement.setCustomValidity('Please enter a number.');
     } else if (value !== null && value !== undefined) {
-      // Any defined value clears prior malformed/empty errors.
       inputElement.setCustomValidity('');
     }
   });
@@ -364,12 +273,13 @@
   function onBlur() {
     const buffered = editorBuffer;
     isFocused = false;
-    commitFromText('blur', buffered);
+    commitFromText('typed', buffered);
   }
 
-  function onInput(event: Event) {
-    const target = event.currentTarget as HTMLInputElement;
-    editorBuffer = target.value;
+  function onInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
+    editorBuffer = event.currentTarget.value;
+    // Clear any prior malformed state as soon as the user starts re-typing.
+    if (malformedError) malformedError = false;
   }
 
   function getBaseForStep(direction: 'increment' | 'decrement'): number {
@@ -392,47 +302,47 @@
     return baseFromDisplay ?? value ?? defaultStart;
   }
 
-  function stepBy(direction: 'increment' | 'decrement', source: CommitSource, multiplier = 1) {
+  function stepBy(direction: 'increment' | 'decrement', multiplier = 1) {
     const base = getBaseForStep(direction);
     const delta = incrementStep * multiplier * (direction === 'increment' ? 1 : -1);
-    commitFromNumber(source, base + delta);
+    commitFromNumber('delta', base + delta);
     inputElement?.focus();
   }
 
   function onKeyDown(event: KeyboardEvent) {
-    if (disabled) return;
+    if (resolvedDisabled) return;
     switch (event.key) {
       case 'ArrowUp':
         event.preventDefault();
-        stepBy('increment', 'arrow');
+        stepBy('increment');
         break;
       case 'ArrowDown':
         event.preventDefault();
-        stepBy('decrement', 'arrow');
+        stepBy('decrement');
         break;
       case 'PageUp':
         event.preventDefault();
-        stepBy('increment', 'page', 10);
+        stepBy('increment', 10);
         break;
       case 'PageDown':
         event.preventDefault();
-        stepBy('decrement', 'page', 10);
+        stepBy('decrement', 10);
         break;
       case 'Home':
         if (Number.isFinite(resolvedMin)) {
           event.preventDefault();
-          commitFromNumber('home', resolvedMin);
+          commitFromNumber('delta', resolvedMin);
         }
         break;
       case 'End':
         if (Number.isFinite(resolvedMax)) {
           event.preventDefault();
-          commitFromNumber('end', resolvedMax);
+          commitFromNumber('delta', resolvedMax);
         }
         break;
       case 'Enter': {
         event.preventDefault();
-        commitFromText('enter', isFocused ? editorBuffer : formattedValue);
+        commitFromText('typed', isFocused ? editorBuffer : '');
         const form = inputElement?.closest('form');
         if (form) {
           if (form.checkValidity()) form.requestSubmit();
@@ -443,40 +353,34 @@
     }
   }
 
-  // Form integration: submit (capture), formdata, reset.
+  // Form integration: submit-capture to flush any in-flight edit so the hidden
+  // input carries the user's just-typed value at serialization time. The hidden
+  // input is the sole form-data path — there is no `formdata` listener that
+  // duplicates the serialization (avoiding double-write surprises when the
+  // hidden input and a listener disagree).
   $effect(() => {
     if (!inputElement) return;
     const form = inputElement.closest('form');
     if (!form) return;
 
     const onSubmit = (event: SubmitEvent) => {
-      if (disabled) return;
-      if (isFocused) commitFromText('submit', editorBuffer);
+      if (resolvedDisabled) return;
+      if (isFocused) commitFromText('typed', editorBuffer);
       if (!form.checkValidity()) {
         event.preventDefault();
         form.reportValidity();
       }
     };
-    const onFormData = (event: FormDataEvent) => {
-      if (disabled) return;
-      if (isFocused) {
-        commitFromText('formdata', editorBuffer, event.formData);
-      } else if (typeof name === 'string' && name.length > 0) {
-        event.formData.set(name, value === null || value === undefined ? '' : String(value));
-      }
-    };
     const onReset = () => {
-      if (disabled) return;
-      commitFromNumber('reset', defaultValue ?? null, undefined, 'valid');
+      if (resolvedDisabled) return;
+      commitFromNumber('reset', defaultValue ?? null, defaultValue === null ? 'empty' : 'valid');
     };
 
-    form.addEventListener('submit', onSubmit, true);
-    form.addEventListener('formdata', onFormData);
+    form.addEventListener('submit', onSubmit);
     form.addEventListener('reset', onReset);
 
     return () => {
-      form.removeEventListener('submit', onSubmit, true);
-      form.removeEventListener('formdata', onFormData);
+      form.removeEventListener('submit', onSubmit);
       form.removeEventListener('reset', onReset);
     };
   });
@@ -495,10 +399,10 @@
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
   const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
   const resolvedAriaInvalid = $derived(
-    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
+    error || malformedError
+      ? ariaInvalid(true)
+      : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
   );
-  const resolvedRequired = $derived(required ?? context?.required ?? false);
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   const incrementDisabled = $derived(
     resolvedDisabled || (value !== null && value !== undefined && value >= resolvedMax),
@@ -509,6 +413,13 @@
 
   const showHiddenInput = $derived(
     typeof name === 'string' && name.length > 0 && !resolvedDisabled,
+  );
+
+  // Compose stepper labels with the field's label (when present) and the
+  // current step magnitude. Screen-reader users navigating between multiple
+  // number fields then hear distinguishable, magnitude-aware names.
+  const stepperLabelSuffix = $derived(
+    label ? ` ${label} by ${incrementStep}` : ` by ${incrementStep}`,
   );
 </script>
 
@@ -540,18 +451,18 @@
     <button
       type="button"
       class="cinder-number-input__stepper cinder-number-input__stepper--increment"
-      aria-label="Increment"
+      aria-label={`Increment${stepperLabelSuffix}`}
       disabled={incrementDisabled}
-      onclick={() => stepBy('increment', 'stepper')}
+      onclick={() => stepBy('increment')}
     >
       <span aria-hidden="true">+</span>
     </button>
     <button
       type="button"
       class="cinder-number-input__stepper cinder-number-input__stepper--decrement"
-      aria-label="Decrement"
+      aria-label={`Decrement${stepperLabelSuffix}`}
       disabled={decrementDisabled}
-      onclick={() => stepBy('decrement', 'stepper')}
+      onclick={() => stepBy('decrement')}
     >
       <span aria-hidden="true">&#x2212;</span>
     </button>
