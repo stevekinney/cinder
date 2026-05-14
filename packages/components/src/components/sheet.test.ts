@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { _resetEscapeStack, _resetScrollLock } from '../_internal/overlay.ts';
+import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../_internal/overlay.ts';
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
@@ -543,12 +543,14 @@ describe('Sheet', () => {
   });
 
   // Documents that successive open/close cycles do not leak escape-stack
-  // entries. If pushEscapeHandler were not released on close, the second open
-  // would stack on top of a stale entry and break ESC routing for sibling
-  // overlays. The afterEach reset would mask this — we open/close twice and
-  // assert scroll lock returns cleanly to released state both times, which
-  // implicitly verifies the release paths run end-to-end.
+  // entries. If the sheet's no-op marker handler were not released on close,
+  // it would stay above this sibling handler and prevent Escape from routing
+  // back to the sibling overlay after the sheet closes.
   test('open/close cycles do not leak scroll lock or escape stack entries', async () => {
+    let siblingEscapeCount = 0;
+    const releaseSiblingEscape = pushEscapeHandler(() => {
+      siblingEscapeCount += 1;
+    });
     let openValue = true;
     const { container, rerender } = render(Sheet, {
       props: {
@@ -567,6 +569,8 @@ describe('Sheet', () => {
     let closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
     expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(1);
 
     openValue = true;
     await rerender({
@@ -584,5 +588,8 @@ describe('Sheet', () => {
     closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
     expect(document.body.style.overflow).toBe('');
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(2);
+    releaseSiblingEscape();
   });
 });
