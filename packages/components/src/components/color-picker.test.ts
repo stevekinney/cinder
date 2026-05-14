@@ -80,6 +80,14 @@ describe('ColorPicker parser round-trips', () => {
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#ff0000');
   });
+
+  test('near-360 parsed hue stays within slider bounds', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#ff0001' });
+    const hue = q(container, '[aria-label="Hue"]');
+    const thumb = q(container, '.cinder-color-picker__hue-thumb');
+    expect(hue.getAttribute('aria-valuenow')).toBe('359');
+    expect(thumb.getAttribute('style')).toContain('left: 100%;');
+  });
 });
 
 describe('ColorPicker alpha behavior', () => {

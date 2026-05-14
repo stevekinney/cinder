@@ -77,6 +77,10 @@
     return clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
   }
 
+  function normalizeHue(h: number): number {
+    return Math.min(((h % 360) + 360) % 360, 359);
+  }
+
   function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
     const rn = r / 255;
     const gn = g / 255;
@@ -131,7 +135,7 @@
     const parsed = parseColor(input);
     if (!parsed) return null;
     const { h, s, l } = rgbToHsl(parsed.r, parsed.g, parsed.b);
-    return { h, s, l, a: parsed.a };
+    return { h: normalizeHue(h), s, l, a: parsed.a };
   }
 
   /**
