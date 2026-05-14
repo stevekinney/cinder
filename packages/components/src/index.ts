@@ -25,6 +25,9 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button
 export { default as ButtonGroup } from './components/button-group.svelte';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
 
+export { default as Callout } from './components/callout.svelte';
+export type { CalloutProps, CalloutVariant } from './components/callout.svelte';
+
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 
