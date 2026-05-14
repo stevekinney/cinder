@@ -26,9 +26,17 @@ Each thumb is a focusable `<div role="slider">` carrying:
 | `range`  | low          | `{label} — minimum value` |
 | `range`  | high         | `{label} — maximum value` |
 
+The range-mode labels include the slider's `label` so a screen reader
+that announces only the thumb (rather than both the thumb and its parent
+container) still has context — "Price — minimum value" is more useful
+than the bare "Minimum value" called for in the WAI-ARIA APG example.
+
 When the slider is composed inside `<FormField>`, the field's label is
 linked via `aria-labelledby` and the per-thumb `aria-label` is suppressed
-so accessible-name computation has a single unambiguous source.
+so accessible-name computation has a single unambiguous source. In range
+mode, each thumb's `aria-labelledby` references both the field label and
+a visually hidden qualifier span (`{label-id} {qualifier-id}`) so that the
+"minimum value" / "maximum value" distinction is preserved.
 
 ## Keyboard Interactions
 
@@ -96,11 +104,15 @@ When `name` is set:
 - **Single mode** renders one hidden `<input type="hidden" name="{name}">`.
 - **Range mode** renders two: `name="{name}.min"` and `name="{name}.max"`.
 
-Hidden inputs make the slider participate in native form submission.
-Form `reset` is currently handled by the consumer re-rendering with the
-original `defaultValue` — there is no internal listener on the parent
-`<form>`'s `reset` event, since the slider does not know which form it
-belongs to in advance.
+Hidden inputs make the slider participate in native form submission. The
+hidden input's `value` tracks the slider's current value live, so the
+submitted payload is always up to date.
+
+Native form `reset` is not handled internally: a hidden input does not
+participate in the `reset` event the way `<input type="range">` does.
+Consumers that need form-reset to restore the slider should either
+re-render the component with the original `defaultValue` after reset, or
+prefer the controlled pattern and reset the state externally.
 
 ## Content Guidance
 

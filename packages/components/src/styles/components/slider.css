@@ -82,13 +82,23 @@
   transform: translate(-50%, -50%);
   cursor: grab;
   box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+  /* Touch-action is set on the track for the same reason; explicitly setting
+   * it on the thumb prevents older Chromium-on-Android from intercepting the
+   * gesture for scrolling when pointerdown lands directly on the thumb. */
+  touch-action: none;
   transition:
     left var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
     box-shadow var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
 }
 
-.cinder-slider__thumb:active,
+/* The most recently moved thumb in range mode is raised above its sibling
+ * so that when the two values coincide, the active one remains the click
+ * target. */
 .cinder-slider__thumb[data-cinder-active] {
+  z-index: 2;
+}
+
+.cinder-slider__thumb:active {
   cursor: grabbing;
   z-index: 2;
 }

@@ -24,7 +24,7 @@
       value={percent}
       valueText={(value) => `${value} percent`}
       onchange={(next) => {
-        percent = next as number;
+        percent = next;
       }}
     />
     <p>Opacity: {percent}%</p>
@@ -39,7 +39,7 @@
       step={25}
       valueText={(value) => usd.format(value)}
       onchange={(next) => {
-        price = next as number;
+        price = next;
       }}
     />
     <p>Budget: {usd.format(price)}</p>

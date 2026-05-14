@@ -5,6 +5,51 @@
   /** Mode of the slider — `single` thumb or two-thumb `range`. */
   export type SliderMode = 'single' | 'range';
 
+  type SliderBaseProps = {
+    /** Minimum value. Default `0`. */
+    min?: number;
+    /** Maximum value. Default `100`. */
+    max?: number;
+    /** Step increment for arrow keys. Default `1`. Must be a positive finite number. */
+    step?: number;
+    /** Step increment for Page Up/Down. Default `step * 10`. */
+    pageStep?: number;
+    /** Visible label / accessible name for the slider. Required. */
+    label: string;
+    /** Formats the numeric value for `aria-valuetext`. */
+    valueText?: (value: number) => string;
+    /** Optional tick marks. `true` renders one per `step`; an array snaps to those values. */
+    ticks?: boolean | number[];
+    /** Disables interaction. */
+    disabled?: boolean;
+    /** Form field name. Renders hidden inputs for form submission. */
+    name?: string;
+    /** Extra class names merged with `.cinder-slider`. */
+    class?: string;
+  };
+
+  /**
+   * Props for the single-thumb slider. `value`/`defaultValue` are scalars and
+   * `onchange` receives a scalar.
+   */
+  export type SliderSingleProps = SliderBaseProps & {
+    mode?: 'single';
+    value?: number;
+    defaultValue?: number;
+    onchange?: (value: number) => void;
+  };
+
+  /**
+   * Props for the two-thumb range slider. `value`/`defaultValue` are `[low, high]`
+   * tuples and `onchange` receives the same tuple shape.
+   */
+  export type SliderRangeProps = SliderBaseProps & {
+    mode: 'range';
+    value?: [number, number];
+    defaultValue?: [number, number];
+    onchange?: (value: [number, number]) => void;
+  };
+
   /**
    * Props for the Slider component.
    *
@@ -21,36 +66,7 @@
    * the internal sliders inside `color-picker.svelte` (specialized for
    * color manipulation).
    */
-  export type SliderProps = {
-    /** Controlled value. Pass a number for `single`, a tuple for `range`. */
-    value?: SliderValue;
-    /** Initial value for uncontrolled usage. */
-    defaultValue?: SliderValue;
-    /** `single` (default) or `range`. */
-    mode?: SliderMode;
-    /** Minimum value. Default `0`. */
-    min?: number;
-    /** Maximum value. Default `100`. */
-    max?: number;
-    /** Step increment for arrow keys. Default `1`. */
-    step?: number;
-    /** Step increment for Page Up/Down. Default `step * 10`. */
-    pageStep?: number;
-    /** Visible label / accessible name for the slider. Required. */
-    label: string;
-    /** Formats the numeric value for `aria-valuetext`. */
-    valueText?: (value: number) => string;
-    /** Optional tick marks. `true` renders one per `step`; an array snaps to those values. */
-    ticks?: boolean | number[];
-    /** Disables interaction. */
-    disabled?: boolean;
-    /** Form field name. Renders hidden inputs for form submission. */
-    name?: string;
-    /** Extra class names merged with `.cinder-slider`. */
-    class?: string;
-    /** Called after every committed value change. */
-    onchange?: (value: SliderValue) => void;
-  };
+  export type SliderProps = SliderSingleProps | SliderRangeProps;
 </script>
 
 <script lang="ts">
@@ -77,34 +93,68 @@
   const formField = getFormFieldContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
 
-  const effectivePageStep = $derived(pageStep ?? step * 10);
-
-  // Internal state mirrors `value` when controlled, otherwise tracks the
-  // uncontrolled value initialized from `defaultValue`.
-  const initialInternal: SliderValue =
-    value ?? defaultValue ?? (mode === 'range' ? [min, max] : min);
-  let internal = $state<SliderValue>(initialInternal);
-
-  // Treat `value` as the source of truth when provided so external updates
-  // flow through. Reads of `value` inside this effect register dependency.
-  $effect(() => {
-    if (value !== undefined) {
-      internal = Array.isArray(value) ? [value[0], value[1]] : value;
+  // Guarantee a usable step. `0`, `NaN`, and negative values would let the
+  // tick generator loop forever, so fall back to `1` and warn during dev.
+  const safeStep = $derived.by(() => {
+    if (!Number.isFinite(step) || step <= 0) {
+      if (typeof console !== 'undefined') {
+        console.warn(
+          `[cinder/Slider] step must be a positive finite number — received ${step}. Falling back to 1.`,
+        );
+      }
+      return 1;
     }
+    return step;
   });
+
+  const effectivePageStep = $derived(pageStep ?? safeStep * 10);
+
+  // Normalize a tick array (or boolean) once. The list is filtered to
+  // `[min, max]` so the renderer, snap, and keyboard neighbor lookups all
+  // share the same set of valid stops.
+  const tickList = $derived.by<number[] | null>(() => {
+    if (!ticks) return null;
+    if (Array.isArray(ticks)) {
+      return ticks.filter((t) => Number.isFinite(t) && t >= min && t <= max).sort((a, b) => a - b);
+    }
+    return null;
+  });
+
+  function decimalsFromStep(s: number): number {
+    if (!Number.isFinite(s) || s <= 0) return 0;
+    const text = String(s);
+    const dot = text.indexOf('.');
+    return dot >= 0 ? text.length - dot - 1 : 0;
+  }
+
+  // Uncontrolled state: initialized once from defaultValue / mode default.
+  let uncontrolledInternal = $state<SliderValue>(
+    defaultValue ?? (mode === 'range' ? [min, max] : min),
+  );
+
+  // Controlled flag and current value. When `value` is provided we read
+  // through to it; otherwise the uncontrolled state is the source of truth.
+  const isControlled = $derived(value !== undefined);
+  const currentValue = $derived<SliderValue>(
+    value !== undefined
+      ? Array.isArray(value)
+        ? [value[0], value[1]]
+        : value
+      : uncontrolledInternal,
+  );
 
   const isRange = $derived(mode === 'range');
 
-  const lowValue = $derived(Array.isArray(internal) ? internal[0] : (internal as number));
-  const highValue = $derived(Array.isArray(internal) ? internal[1] : (internal as number));
+  const lowValue = $derived(Array.isArray(currentValue) ? currentValue[0] : currentValue);
+  const highValue = $derived(Array.isArray(currentValue) ? currentValue[1] : currentValue);
 
-  /** Snap a raw value to the nearest tick / step and clamp into `[min, max]`. */
+  /** Snap a raw value: clamp into `[min, max]`, then to the nearest tick or step. */
   function snap(raw: number): number {
     const clamped = Math.max(min, Math.min(max, raw));
-    if (Array.isArray(ticks) && ticks.length > 0) {
-      let nearest = ticks[0]!;
+    if (tickList && tickList.length > 0) {
+      let nearest = tickList[0]!;
       let nearestDelta = Math.abs(clamped - nearest);
-      for (const tick of ticks) {
+      for (const tick of tickList) {
         const delta = Math.abs(clamped - tick);
         if (delta < nearestDelta) {
           nearest = tick;
@@ -113,18 +163,10 @@
       }
       return nearest;
     }
-    const stepped = Math.round((clamped - min) / step) * step + min;
-    // Floating point hygiene — round to the precision implied by `step`.
-    const decimals = decimalsFromStep(step);
+    const stepped = Math.round((clamped - min) / safeStep) * safeStep + min;
+    const decimals = decimalsFromStep(safeStep);
     const rounded = Number(stepped.toFixed(decimals));
     return Math.max(min, Math.min(max, rounded));
-  }
-
-  function decimalsFromStep(s: number): number {
-    if (!Number.isFinite(s) || s <= 0) return 0;
-    const text = String(s);
-    const dot = text.indexOf('.');
-    return dot >= 0 ? text.length - dot - 1 : 0;
   }
 
   function percentOf(numeric: number): number {
@@ -139,10 +181,15 @@
       const [a, b] = next;
       normalized = a <= b ? [a, b] : [b, a];
     }
-    if (value === undefined) {
-      internal = Array.isArray(normalized) ? [normalized[0], normalized[1]] : normalized;
+    if (!isControlled) {
+      uncontrolledInternal = Array.isArray(normalized)
+        ? [normalized[0], normalized[1]]
+        : normalized;
     }
-    onchange?.(normalized);
+    // The discriminated SliderProps union ensures the parent's onchange
+    // matches the mode it declared; the cast here bridges the runtime
+    // (SliderValue) and prop (number | [number, number]) types.
+    (onchange as ((value: SliderValue) => void) | undefined)?.(normalized);
   }
 
   function updateSingle(nextValue: number) {
@@ -158,39 +205,32 @@
     }
   }
 
-  function thumbAccessibleName(thumb: 'single' | 'low' | 'high'): string {
-    if (thumb === 'single') return label;
-    if (thumb === 'low') return `${label} — minimum value`;
-    return `${label} — maximum value`;
-  }
-
   function neighborTick(current: number, direction: 1 | -1): number {
-    if (!Array.isArray(ticks) || ticks.length === 0) return current;
-    const sorted = [...ticks].filter((t) => t >= min && t <= max).sort((a, b) => a - b);
+    if (!tickList || tickList.length === 0) return current;
     if (direction === 1) {
-      for (const tick of sorted) if (tick > current) return tick;
-      return sorted.at(-1) ?? current;
+      for (const tick of tickList) if (tick > current) return tick;
+      return tickList.at(-1) ?? current;
     }
-    for (let index = sorted.length - 1; index >= 0; index--) {
-      const tick = sorted[index]!;
+    for (let index = tickList.length - 1; index >= 0; index--) {
+      const tick = tickList[index]!;
       if (tick < current) return tick;
     }
-    return sorted[0] ?? current;
+    return tickList[0] ?? current;
   }
 
   function handleKey(event: KeyboardEvent, thumb: 'single' | 'low' | 'high') {
     if (disabled) return;
     const current = thumb === 'high' ? highValue : lowValue;
-    const tickArray = Array.isArray(ticks);
+    const hasTickArray = tickList !== null && tickList.length > 0;
     let next = current;
     switch (event.key) {
       case 'ArrowRight':
       case 'ArrowUp':
-        next = tickArray ? neighborTick(current, 1) : current + step;
+        next = hasTickArray ? neighborTick(current, 1) : current + safeStep;
         break;
       case 'ArrowLeft':
       case 'ArrowDown':
-        next = tickArray ? neighborTick(current, -1) : current - step;
+        next = hasTickArray ? neighborTick(current, -1) : current - safeStep;
         break;
       case 'PageUp':
         next = current + effectivePageStep;
@@ -215,8 +255,9 @@
     }
   }
 
-  // Pointer drag handling. We attach move/up listeners on `document` so that
-  // dragging continues to track the pointer even when it leaves the thumb.
+  // Pointer drag handling. The `pointermove`/`pointerup` listeners live on
+  // `<svelte:document>` so they activate only while `activeThumb` is set,
+  // and Svelte tears them down on unmount automatically.
   let trackElement: HTMLDivElement | undefined = $state();
   let activeThumb: 'single' | 'low' | 'high' | null = $state(null);
   let activeThumbRecent: 'low' | 'high' | null = $state(null);
@@ -233,13 +274,12 @@
     const distanceLow = Math.abs(raw - lowValue);
     const distanceHigh = Math.abs(raw - highValue);
     if (distanceLow === distanceHigh) {
-      // Tie-break: prefer moving the thumb closer to the click target's side.
       return raw < (lowValue + highValue) / 2 ? 'low' : 'high';
     }
     return distanceLow < distanceHigh ? 'low' : 'high';
   }
 
-  function onPointerMove(event: PointerEvent) {
+  function handleDocumentPointerMove(event: PointerEvent) {
     if (!activeThumb) return;
     const raw = valueFromClientX(event.clientX);
     if (activeThumb === 'single') {
@@ -249,83 +289,100 @@
     }
   }
 
-  function onPointerUp() {
+  function handleDocumentPointerEnd() {
     activeThumb = null;
-    document.removeEventListener('pointermove', onPointerMove);
-    document.removeEventListener('pointerup', onPointerUp);
-    document.removeEventListener('pointercancel', onPointerUp);
-  }
-
-  function beginDrag(thumb: 'single' | 'low' | 'high') {
-    activeThumb = thumb;
-    if (thumb === 'low' || thumb === 'high') activeThumbRecent = thumb;
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-    document.addEventListener('pointercancel', onPointerUp);
   }
 
   function handleThumbPointerDown(event: PointerEvent, thumb: 'single' | 'low' | 'high') {
     if (disabled) return;
     event.preventDefault();
-    (event.currentTarget as HTMLElement).focus();
-    beginDrag(thumb);
+    const target = event.currentTarget;
+    if (target instanceof HTMLElement && document.activeElement !== target) {
+      target.focus();
+    }
+    activeThumb = thumb;
+    if (thumb === 'low' || thumb === 'high') activeThumbRecent = thumb;
   }
 
   function handleTrackPointerDown(event: PointerEvent) {
     if (disabled) return;
     // Ignore clicks that originated on a thumb — those are handled above.
-    const target = event.target as HTMLElement | null;
+    const target = event.target instanceof HTMLElement ? event.target : null;
     if (target?.dataset['cinderSliderThumb'] !== undefined) return;
     event.preventDefault();
     const raw = valueFromClientX(event.clientX);
     if (isRange) {
       const which = chooseNearestThumb(raw);
       updateRange(which, raw);
-      beginDrag(which);
+      activeThumb = which;
+      activeThumbRecent = which;
     } else {
       updateSingle(raw);
-      beginDrag('single');
+      activeThumb = 'single';
     }
   }
 
-  // Resolve aria-labelledby from a FormField wrapper when present, so labels
-  // remain visible and the slider does not double up `aria-label`.
-  const labelledBy = $derived(formField?.labelId);
-  const describedBy = $derived(formField?.describedBy);
-  const ariaInvalid = $derived(formField?.invalid);
-
-  function ariaAttrs(thumbKind: 'single' | 'low' | 'high', currentValue: number) {
-    const name = thumbAccessibleName(thumbKind);
-    return {
-      ariaLabel: labelledBy ? undefined : name,
-      ariaLabelledBy: labelledBy,
-      ariaDescribedBy: describedBy,
-      ariaInvalid,
-      ariaValueText: valueText ? valueText(currentValue) : undefined,
-    };
+  function accessibleNameFor(thumb: 'single' | 'low' | 'high'): string {
+    if (thumb === 'single') return label;
+    return thumb === 'low' ? `${label} — minimum value` : `${label} — maximum value`;
   }
 
-  // Render tick mark positions. `true` produces one tick per step.
+  // FormField wiring. When inside a FormField the field's label becomes the
+  // primary accessible name. In range mode we still need to disambiguate
+  // the thumbs, so each thumb references both the field label and a hidden
+  // qualifier span via `aria-labelledby`.
+  const formFieldLabelId = $derived(formField?.labelId);
+  const describedBy = $derived(formField?.describedBy);
+  const ariaInvalidFromField = $derived(formField?.invalid);
+
+  const uniqueId = $props.id();
+  const lowQualifierId = `${uniqueId}-low-label`;
+  const highQualifierId = `${uniqueId}-high-label`;
+
+  function labelledByFor(thumb: 'single' | 'low' | 'high'): string | undefined {
+    if (!formFieldLabelId) return undefined;
+    if (thumb === 'low') return `${formFieldLabelId} ${lowQualifierId}`;
+    if (thumb === 'high') return `${formFieldLabelId} ${highQualifierId}`;
+    return formFieldLabelId;
+  }
+
+  function ariaLabelFor(thumb: 'single' | 'low' | 'high'): string | undefined {
+    return formFieldLabelId ? undefined : accessibleNameFor(thumb);
+  }
+
+  // Render tick mark positions.
   const tickMarks = $derived.by<number[]>(() => {
-    if (!ticks) return [];
-    if (Array.isArray(ticks)) return ticks.filter((t) => t >= min && t <= max);
+    if (tickList) return tickList;
+    if (ticks !== true) return [];
     const out: number[] = [];
-    for (let v = min; v <= max + step / 2; v += step) {
-      const snapped = Number(v.toFixed(decimalsFromStep(step)));
+    const decimals = decimalsFromStep(safeStep);
+    for (let v = min; v <= max + safeStep / 2; v += safeStep) {
+      const snapped = Number(v.toFixed(decimals));
       if (snapped <= max) out.push(snapped);
     }
     return out;
   });
-
-  const singleAttrs = $derived(ariaAttrs('single', lowValue));
-  const lowAttrs = $derived(ariaAttrs('low', lowValue));
-  const highAttrs = $derived(ariaAttrs('high', highValue));
 </script>
+
+<svelte:document
+  onpointermove={activeThumb ? handleDocumentPointerMove : null}
+  onpointerup={activeThumb ? handleDocumentPointerEnd : null}
+  onpointercancel={activeThumb ? handleDocumentPointerEnd : null}
+/>
 
 <div
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
 >
+  {#if isRange}
+    <span id={lowQualifierId} class="cinder-sr-only">
+      {accessibleNameFor('low')}
+    </span>
+    <span id={highQualifierId} class="cinder-sr-only">
+      {accessibleNameFor('high')}
+    </span>
+  {/if}
+
   <div
     bind:this={trackElement}
     class="cinder-slider__track"
@@ -354,14 +411,14 @@
         data-cinder-active={activeThumbRecent === 'low' || undefined}
         role="slider"
         tabindex={disabled ? -1 : 0}
-        aria-label={lowAttrs.ariaLabel}
-        aria-labelledby={lowAttrs.ariaLabelledBy}
-        aria-describedby={lowAttrs.ariaDescribedBy}
-        aria-invalid={lowAttrs.ariaInvalid}
+        aria-label={ariaLabelFor('low')}
+        aria-labelledby={labelledByFor('low')}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalidFromField}
         aria-valuemin={min}
         aria-valuemax={highValue}
         aria-valuenow={lowValue}
-        aria-valuetext={lowAttrs.ariaValueText}
+        aria-valuetext={valueText ? valueText(lowValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(lowValue)}%"
@@ -374,14 +431,14 @@
         data-cinder-active={activeThumbRecent === 'high' || undefined}
         role="slider"
         tabindex={disabled ? -1 : 0}
-        aria-label={highAttrs.ariaLabel}
-        aria-labelledby={highAttrs.ariaLabelledBy}
-        aria-describedby={highAttrs.ariaDescribedBy}
-        aria-invalid={highAttrs.ariaInvalid}
+        aria-label={ariaLabelFor('high')}
+        aria-labelledby={labelledByFor('high')}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalidFromField}
         aria-valuemin={lowValue}
         aria-valuemax={max}
         aria-valuenow={highValue}
-        aria-valuetext={highAttrs.ariaValueText}
+        aria-valuetext={valueText ? valueText(highValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(highValue)}%"
@@ -394,14 +451,14 @@
         data-cinder-slider-thumb="single"
         role="slider"
         tabindex={disabled ? -1 : 0}
-        aria-label={singleAttrs.ariaLabel}
-        aria-labelledby={singleAttrs.ariaLabelledBy}
-        aria-describedby={singleAttrs.ariaDescribedBy}
-        aria-invalid={singleAttrs.ariaInvalid}
+        aria-label={ariaLabelFor('single')}
+        aria-labelledby={labelledByFor('single')}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalidFromField}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={lowValue}
-        aria-valuetext={singleAttrs.ariaValueText}
+        aria-valuetext={valueText ? valueText(lowValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(lowValue)}%"

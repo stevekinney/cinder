@@ -109,13 +109,13 @@ describe('Slider (single)', () => {
   });
 
   test('onchange fires with the snapped value on each keyboard adjust', async () => {
-    const calls: Array<number | [number, number]> = [];
+    const calls: number[] = [];
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
         defaultValue: 10,
         step: 5,
-        onchange: (value: number | [number, number]) => calls.push(value),
+        onchange: (value: number) => calls.push(value),
       },
     });
     const thumb = getThumbs(container)[0]!;
@@ -163,7 +163,7 @@ describe('Slider (single)', () => {
     expect(hidden?.value).toBe('42');
   });
 
-  test('form reset restores the defaultValue via the hidden input', async () => {
+  test('hidden input reflects the current value after keyboard movement', async () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', defaultValue: 20, name: 'volume', step: 5 },
     });
@@ -172,6 +172,30 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
     expect(hidden?.value).toBe('25');
+  });
+
+  test('PageDown clamps to min when it would overshoot', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 5, step: 1, pageStep: 50 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'PageDown' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+  });
+
+  test('aria-valuetext updates when value changes via keyboard', async () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Volume',
+        defaultValue: 30,
+        step: 10,
+        valueText: (v: number) => `${v} percent`,
+      },
+    });
+    const thumb = getThumbs(container)[0]!;
+    expect(thumb.getAttribute('aria-valuetext')).toBe('30 percent');
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuetext')).toBe('40 percent');
   });
 });
 
@@ -265,12 +289,26 @@ describe('Slider (range)', () => {
         mode: 'range',
         defaultValue: [10, 40],
         step: 5,
-        onchange: (value: number | [number, number]) => calls.push(value),
+        onchange: (value: [number, number]) => calls.push(value),
       },
     });
     const [low] = getThumbs(container);
     await fireEvent.keyDown(low!, { key: 'ArrowRight' });
     expect(calls[0]).toEqual([15, 40]);
+  });
+
+  test('aria-valuetext is applied to both thumbs in range mode', () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Price',
+        mode: 'range',
+        defaultValue: [10, 90],
+        valueText: (v: number) => `$${v}`,
+      },
+    });
+    const [low, high] = getThumbs(container);
+    expect(low!.getAttribute('aria-valuetext')).toBe('$10');
+    expect(high!.getAttribute('aria-valuetext')).toBe('$90');
   });
 });
 
@@ -325,26 +363,105 @@ describe('Slider (ticks)', () => {
   });
 });
 
+function mockTrackRect(track: HTMLElement, width: number) {
+  track.getBoundingClientRect = () =>
+    ({
+      left: 0,
+      top: 0,
+      right: width,
+      bottom: 20,
+      width,
+      height: 20,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
+}
+
 describe('Slider (pointer)', () => {
-  test('pointerdown on the track moves the thumb toward the click', async () => {
+  test('pointerdown on the track sets the value based on click position', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 0 },
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
-    // happy-dom returns zero-width rects, so the value resolves to `min`.
-    // Verify the event handler is wired up without throwing.
-    await fireEvent.pointerDown(track, { clientX: 0 });
+    mockTrackRect(track, 200);
+    await fireEvent.pointerDown(track, { clientX: 100 });
     const thumb = getThumbs(container)[0]!;
-    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+    expect(thumb.getAttribute('aria-valuenow')).toBe('50');
   });
 
-  test('pointerdown on the thumb does not throw and focuses the thumb', async () => {
+  test('pointermove on document updates the value while dragging', async () => {
     const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(thumb, { clientX: 0 });
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 150, bubbles: true }));
+    expect(thumb.getAttribute('aria-valuenow')).toBe('75');
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
+  });
+
+  test('pointerup ends the drag — further pointermove no longer mutates value', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 50, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(thumb, { clientX: 100 });
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 20, bubbles: true }));
+    // The slider value should remain wherever the last drag commit left it
+    // (here, the thumb pointerdown did not move it since it landed at the
+    // existing 50 position with clientX=100 / 200px = 50%).
+    expect(thumb.getAttribute('aria-valuenow')).toBe('50');
+  });
+
+  test('pointercancel ends the drag like pointerup', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 30 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.pointerDown(thumb, { clientX: 0 });
+    await fireEvent(document, new PointerEvent('pointercancel', { bubbles: true }));
+    // No throw and subsequent pointermove no longer updates.
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 999, bubbles: true }));
+    expect(thumb.getAttribute('aria-valuenow')).toBe('30');
+  });
+
+  test('track click in range mode moves the nearer thumb', async () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Price',
+        mode: 'range',
+        defaultValue: [20, 80],
+        min: 0,
+        max: 100,
+      },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    mockTrackRect(track, 200);
+    // clientX=20/200 → value 10, closer to low thumb (20) than high (80).
+    await fireEvent.pointerDown(track, { clientX: 20 });
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
+    const [low, high] = getThumbs(container);
+    expect(low!.getAttribute('aria-valuenow')).toBe('10');
+    expect(high!.getAttribute('aria-valuenow')).toBe('80');
+  });
+
+  test('document listeners are cleaned up on unmount during drag', async () => {
+    const { container, unmount } = render(Slider, {
       props: { label: 'Volume', defaultValue: 50 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.pointerDown(thumb, { clientX: 50 });
-    // Cleanup any document listeners by simulating pointerup.
-    await fireEvent(document, new Event('pointerup'));
+    unmount();
+    // No throw firing pointermove on document after unmount means Svelte
+    // tore down the <svelte:document> listeners correctly.
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 60, bubbles: true }));
   });
 });

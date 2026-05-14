@@ -15,7 +15,7 @@
     label="Volume"
     {value}
     onchange={(next) => {
-      value = next as number;
+      value = next;
     }}
   />
   <p>Value: {value}</p>

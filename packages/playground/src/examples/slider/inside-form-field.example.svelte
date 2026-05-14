@@ -20,7 +20,7 @@
       step={10}
       name="quality"
       onchange={(next) => {
-        value = next as number;
+        value = next;
       }}
     />
   </FormField>

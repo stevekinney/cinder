@@ -16,7 +16,7 @@
     mode="range"
     {value}
     onchange={(next) => {
-      value = next as [number, number];
+      value = next;
     }}
   />
   <p>Range: {value[0]} – {value[1]}</p>

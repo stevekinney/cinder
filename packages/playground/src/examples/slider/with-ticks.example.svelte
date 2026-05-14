@@ -16,7 +16,7 @@
     {value}
     ticks={[0, 25, 50, 75, 100]}
     onchange={(next) => {
-      value = next as number;
+      value = next;
     }}
   />
   <p>Value: {value}</p>
