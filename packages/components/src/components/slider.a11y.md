@@ -79,8 +79,9 @@ none` is applied to the track so the browser does not steal the gesture
 
 - Each thumb receives `tabindex="0"` when enabled and `tabindex="-1"`
   when `disabled`.
-- `:focus-visible` produces an outline using `--cinder-focus-ring` (or
-  `--cinder-accent` as a fallback) with a 2px offset.
+- `:focus-visible` produces an outline using the shared focus-ring
+  tokens (`--cinder-ring-width`, `--cinder-ring-color`, and
+  `--cinder-ring-offset`).
 
 ## Reduced Motion
 
