@@ -1,0 +1,217 @@
+/* ========================================
+ * BANNER
+ * ----------------------------------------
+ * Full-width, page-level notification strip. Stretches the inline size of
+ * its parent container — to bleed edge-to-edge of the viewport, render
+ * outside any max-width content column.
+ *
+ * No motion is defined in v1; if entry/exit animation is added later, it
+ * must be gated on `prefers-reduced-motion: no-preference`.
+ * ======================================== */
+
+.cinder-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3);
+  inline-size: 100%;
+  padding-block: var(--cinder-space-3);
+  padding-inline: var(--cinder-space-4);
+  border-block: 1px solid var(--cinder-border);
+  background: var(--cinder-surface);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-normal);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-banner {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+}
+
+/* ----------------------------------------
+ * Content area
+ * ---------------------------------------- */
+
+.cinder-banner__content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ----------------------------------------
+ * Actions region
+ * ---------------------------------------- */
+
+.cinder-banner__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Dismiss button
+ * Mirrors .cinder-alert__dismiss rule-for-rule.
+ * ---------------------------------------- */
+
+.cinder-banner__dismiss {
+  flex-shrink: 0;
+  align-self: center;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+
+  border-radius: var(--cinder-radius-sm);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  position: relative;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-banner__dismiss {
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+}
+
+/* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout. */
+.cinder-banner__dismiss::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+.cinder-banner__dismiss:hover {
+  background: color-mix(in oklch, currentColor, transparent 80%);
+}
+
+.cinder-banner__dismiss:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-banner-ring, var(--cinder-ring-color));
+}
+
+.cinder-banner__dismiss-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ----------------------------------------
+ * Variant: info
+ * ---------------------------------------- */
+
+.cinder-banner[data-cinder-variant='info'] {
+  --_cinder-banner-ring: var(--cinder-info);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-info) 96.5% 0.015 h),
+    oklch(from var(--cinder-info) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-info) 85% 0.05 h),
+    oklch(from var(--cinder-info) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-info) 35% 0.12 h),
+    oklch(from var(--cinder-info) 88% 0.12 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: success
+ * ---------------------------------------- */
+
+.cinder-banner[data-cinder-variant='success'] {
+  --_cinder-banner-ring: var(--cinder-success);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-success) 96.5% 0.015 h),
+    oklch(from var(--cinder-success) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-success) 85% 0.05 h),
+    oklch(from var(--cinder-success) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-success) 35% 0.14 h),
+    oklch(from var(--cinder-success) 88% 0.12 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: warning
+ * ---------------------------------------- */
+
+.cinder-banner[data-cinder-variant='warning'] {
+  --_cinder-banner-ring: var(--cinder-warning);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-warning) 96.5% 0.015 h),
+    oklch(from var(--cinder-warning) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-warning) 85% 0.05 h),
+    oklch(from var(--cinder-warning) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-warning) 35% 0.16 h),
+    oklch(from var(--cinder-warning) 88% 0.14 h)
+  );
+}
+
+/* ----------------------------------------
+ * Variant: danger
+ * ---------------------------------------- */
+
+.cinder-banner[data-cinder-variant='danger'] {
+  --_cinder-banner-ring: var(--cinder-danger);
+
+  background-color: light-dark(
+    oklch(from var(--cinder-danger) 96.5% 0.015 h),
+    oklch(from var(--cinder-danger) 20% 0.03 h)
+  );
+  border-color: light-dark(
+    oklch(from var(--cinder-danger) 85% 0.05 h),
+    oklch(from var(--cinder-danger) 35% 0.08 h)
+  );
+  color: light-dark(
+    oklch(from var(--cinder-danger) 35% 0.18 h),
+    oklch(from var(--cinder-danger) 88% 0.16 h)
+  );
+}
+
+/* ----------------------------------------
+ * Forced-colors / high-contrast
+ * ---------------------------------------- */
+
+@media (forced-colors: active) {
+  .cinder-banner {
+    border-block: 1px solid CanvasText;
+  }
+
+  /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace. */
+  .cinder-banner__dismiss:hover {
+    background: ButtonFace;
+  }
+
+  .cinder-banner__dismiss:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+}

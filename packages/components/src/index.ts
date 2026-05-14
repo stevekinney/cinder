@@ -13,6 +13,9 @@ export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar.s
 export { default as Badge } from './components/badge.svelte';
 export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge.svelte';
 
+export { default as Banner } from './components/banner.svelte';
+export type { BannerProps, BannerVariant } from './components/banner.svelte';
+
 export { default as Breadcrumbs } from './components/breadcrumbs.svelte';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.svelte';
 

@@ -37,6 +37,10 @@
       "svelte": "./src/components/badge.svelte",
       "types": "./dist/components/badge.svelte.d.ts"
     },
+    "./banner": {
+      "svelte": "./src/components/banner.svelte",
+      "types": "./dist/components/banner.svelte.d.ts"
+    },
     "./breadcrumbs": {
       "svelte": "./src/components/breadcrumbs.svelte",
       "types": "./dist/components/breadcrumbs.svelte.d.ts"

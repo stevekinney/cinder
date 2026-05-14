@@ -82,7 +82,7 @@ try {
 // 5) lint-staged (format staged files; always last)
 info('Running lint-staged…');
 try {
-  await $`bun exec lint-staged`;
+  await $`bunx lint-staged`;
   success('Lint-staged passed');
 } catch {
   error('Lint-staged failed');
