@@ -36,19 +36,24 @@ gets announced as a duplicate by screen readers without context.
 
 ## Collapsed mode
 
-Sidebar publishes a `collapsed` boolean via context. Sidebar itself applies a
-`data-cinder-collapsed` attribute on the inline `<aside>` (or on the mobile
-wrapper inside the drawer) which the stylesheet uses to hide visible text
-labels in nav children.
+Sidebar publishes a `collapsed` boolean via context. On the inline `<aside>`
+desktop branch, Sidebar applies a `data-cinder-collapsed` attribute that the
+stylesheet uses to hide visible text labels in nav children (icon-rail mode).
+The mobile branch deliberately omits the attribute: there, `collapsed=true`
+means "drawer closed" rather than "icon-only", and `collapsed=false` means
+"drawer open". Activating the icon-rail CSS inside an open drawer would cause
+a one-frame label flash when the consumer flips `collapsed` from `true` to
+`false` to open the drawer.
 
 **Accessibility-preserving hide.** Visible text labels (`SideNavigationGroup`
-section headers and `NavigationItem` leaf text) are hidden using the
-visually-hidden technique (`position: absolute; clip: rect(0,0,0,0); ...`)
-rather than `display: none`. The visual presentation is icon-only, but each
-focusable element retains its accessible name in the accessibility tree, so
-screen-reader users still hear the label when focus lands on the trigger or
-link. Decorative chrome (group badge, chevron, disclosed panel) is hidden with
-`display: none` because it has no accessible name to preserve.
+section headers and `NavigationItem` leaf text) are visually removed without
+using `display: none`. Element children use the standard visually-hidden
+technique (`position: absolute; clip: rect(0,0,0,0); ...`); direct text nodes
+are suppressed by setting the item `font-size` to `0` while restoring icon
+descendant sizing. The visual presentation is icon-only, but the label text
+stays in the DOM for accessible-name computation. Decorative chrome (group
+badge, chevron, disclosed panel) is hidden with `display: none` because it has
+no accessible name to preserve.
 
 **Consumer guideline.** Every icon inside a collapsible Sidebar should be
 marked `aria-hidden="true"` so it does not duplicate the accessible name. The
@@ -91,7 +96,9 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
 ```
 
 This wires the open/close affordance into the page chrome and keeps the
-trigger discoverable on mobile.
+trigger discoverable on mobile. On desktop, `id` lands on the `<aside>`; on
+mobile, the same `id` lands on the persistent drawer `<dialog>` so
+`aria-controls` still resolves while the drawer panel content is closed.
 
 ## SSR behavior
 

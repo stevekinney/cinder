@@ -185,6 +185,16 @@ describe('Sidebar (desktop / inline aside)', () => {
     });
     expect(container.querySelector('aside')?.getAttribute('data-testid')).toBe('side');
   });
+
+  test('id lands on the desktop aside', () => {
+    const { container } = render(Sidebar, {
+      props: {
+        id: 'primary-sidebar',
+        navigation: listSnippet('items'),
+      },
+    });
+    expect(container.querySelector('aside')?.getAttribute('id')).toBe('primary-sidebar');
+  });
 });
 
 describe('Sidebar context', () => {
@@ -261,6 +271,10 @@ function installMatchMediaMock(initialMatches: boolean) {
   };
 }
 
+function expectMobileQueryWasUsed(mock: ReturnType<typeof installMatchMediaMock>): void {
+  expect(mock.list.media).toBe('(max-width: 47.99rem)');
+}
+
 // happy-dom doesn't implement HTMLDialogElement.showModal / close — stub them
 // the same way drawer.test.ts does so the mobile <Drawer> can render.
 if (typeof HTMLDialogElement !== 'undefined') {
@@ -298,11 +312,7 @@ describe('Sidebar (mobile / drawer)', () => {
     const { container } = render(Sidebar, {
       props: { navigation: listSnippet('items') },
     });
-    if (!mock.list.media) {
-      // Bun's `svelte/reactivity` resolution may not route through matchMedia
-      // in this environment; skip without failing.
-      return;
-    }
+    expectMobileQueryWasUsed(mock);
     expect(container.querySelector('dialog')).not.toBeNull();
     expect(container.querySelector('aside')).toBeNull();
   });
@@ -312,9 +322,19 @@ describe('Sidebar (mobile / drawer)', () => {
     const { container } = render(Sidebar, {
       props: { navigation: listSnippet('items') },
     });
-    if (!mock.list.media) return;
+    expectMobileQueryWasUsed(mock);
     const wrapper = container.querySelector('dialog .cinder-sidebar.cinder-sidebar--mobile');
     expect(wrapper).not.toBeNull();
+  });
+
+  test('consumer class prop merges onto the mobile sidebar wrapper', () => {
+    mock = installMatchMediaMock(true);
+    const { container } = render(Sidebar, {
+      props: { class: 'my-sidebar', navigation: listSnippet('items') },
+    });
+    expectMobileQueryWasUsed(mock);
+    const wrapper = container.querySelector('dialog .cinder-sidebar.cinder-sidebar--mobile');
+    expect(wrapper?.classList.contains('my-sidebar')).toBe(true);
   });
 
   test('mobile nav landmark has the distinct navigation label', () => {
@@ -322,12 +342,12 @@ describe('Sidebar (mobile / drawer)', () => {
     const { container } = render(Sidebar, {
       props: { ariaLabel: 'Workspace', navigation: listSnippet('items') },
     });
-    if (!mock.list.media) return;
+    expectMobileQueryWasUsed(mock);
     const nav = container.querySelector('dialog nav.cinder-sidebar__nav');
     expect(nav?.getAttribute('aria-label')).toBe('Workspace navigation');
   });
 
-  test('mobile branch forwards rest attributes onto the wrapper', () => {
+  test('mobile branch forwards rest attributes onto the drawer dialog', () => {
     mock = installMatchMediaMock(true);
     const { container } = render(Sidebar, {
       props: {
@@ -335,9 +355,27 @@ describe('Sidebar (mobile / drawer)', () => {
         'data-testid': 'mobile-side',
       } as never,
     });
-    if (!mock.list.media) return;
+    expectMobileQueryWasUsed(mock);
+    const dialog = container.querySelector('dialog');
     const wrapper = container.querySelector('.cinder-sidebar.cinder-sidebar--mobile');
-    expect(wrapper?.getAttribute('data-testid')).toBe('mobile-side');
+    expect(dialog?.getAttribute('data-testid')).toBe('mobile-side');
+    expect(wrapper?.hasAttribute('data-testid')).toBe(false);
+  });
+
+  test('mobile id lands on the persistent drawer dialog for aria-controls', () => {
+    mock = installMatchMediaMock(true);
+    const { container } = render(Sidebar, {
+      props: {
+        id: 'primary-sidebar',
+        collapsed: true,
+        navigation: listSnippet('items'),
+      },
+    });
+    expectMobileQueryWasUsed(mock);
+    const dialog = container.querySelector('dialog');
+    const wrapper = container.querySelector('.cinder-sidebar.cinder-sidebar--mobile');
+    expect(dialog?.getAttribute('id')).toBe('primary-sidebar');
+    expect(wrapper).toBeNull();
   });
 
   test('mobile brand and footer render inside the drawer', () => {
@@ -349,12 +387,52 @@ describe('Sidebar (mobile / drawer)', () => {
         footer: textSnippet('Sign out'),
       },
     });
-    if (!mock.list.media) return;
+    expectMobileQueryWasUsed(mock);
     expect(container.querySelector('dialog .cinder-sidebar__brand')?.textContent ?? '').toContain(
       'Cinder',
     );
     expect(container.querySelector('dialog .cinder-sidebar__footer')?.textContent ?? '').toContain(
       'Sign out',
     );
+  });
+
+  test('mobile wrapper does not carry data-cinder-collapsed', () => {
+    // On mobile, drawer open/closed represents collapsed state. Putting
+    // data-cinder-collapsed on the wrapper would activate icon-rail CSS
+    // inside an open drawer for one frame when the consumer flips collapsed
+    // from true to false to open the drawer.
+    mock = installMatchMediaMock(true);
+    const { container } = render(Sidebar, {
+      props: { collapsed: true, navigation: listSnippet('items') },
+    });
+    expectMobileQueryWasUsed(mock);
+    const wrapper = container.querySelector('.cinder-sidebar.cinder-sidebar--mobile');
+    // collapsed=true with mobile=true → drawer closed → wrapper not rendered
+    expect(wrapper).toBeNull();
+  });
+});
+
+describe('Sidebar collapsed CSS contract', () => {
+  test('collapsed leaf rules cover side-navigation and footer navigation items', async () => {
+    const css = await Bun.file(new URL('../styles/components/sidebar.css', import.meta.url)).text();
+    expect(css).toContain('.cinder-side-navigation a.cinder-navigation-item');
+    expect(css).toContain('.cinder-side-navigation button.cinder-navigation-item');
+    expect(css).toContain('.cinder-sidebar__footer a.cinder-navigation-item');
+    expect(css).toContain('.cinder-sidebar__footer button.cinder-navigation-item');
+  });
+
+  test('collapsed leaf rules hide bare text without removing DOM text', async () => {
+    const css = await Bun.file(new URL('../styles/components/sidebar.css', import.meta.url)).text();
+    expect(css).toContain('font-size: 0;');
+    expect(css).toContain('The DOM text remains');
+  });
+
+  test('visually-hidden block pairs `clip` with `clip-path` for modern browsers', async () => {
+    const css = await Bun.file(new URL('../styles/components/sidebar.css', import.meta.url)).text();
+    // `clip` is deprecated and unimplemented in some modern browsers;
+    // `clip-path: inset(50%)` is the modern equivalent. Both must be present
+    // so the visually-hidden technique works across the supported matrix.
+    expect(css).toContain('clip: rect(0, 0, 0, 0);');
+    expect(css).toContain('clip-path: inset(50%);');
   });
 });

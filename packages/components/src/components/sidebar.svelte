@@ -48,6 +48,7 @@
   };
 
   let {
+    id: sidebarId,
     collapsed = $bindable(false),
     ariaLabel = 'Sidebar',
     class: className,
@@ -87,6 +88,7 @@
 
 {#if mobile.current}
   <Drawer
+    {...rest}
     bind:open={
       () => !collapsed,
       (value: boolean) => {
@@ -96,12 +98,9 @@
     side="left"
     size="md"
     title={validatedLabel}
+    id={sidebarId}
   >
-    <div
-      {...rest}
-      class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}
-      data-cinder-collapsed={collapsed ? '' : undefined}
-    >
+    <div class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}>
       {#if brandSnippet}
         <div class="cinder-sidebar__brand">
           {@render brandSnippet()}
@@ -123,6 +122,7 @@
   </Drawer>
 {:else}
   <aside
+    id={sidebarId}
     {...rest}
     class={classNames('cinder-sidebar', className)}
     aria-label={validatedLabel}
