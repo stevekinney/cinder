@@ -155,8 +155,10 @@
   }
 
   // Uncontrolled state: initialized once from defaultValue / mode default.
+  // Normalize at construction so the stored state never carries an
+  // out-of-bounds or inverted-tuple value, even before the first commit.
   let uncontrolledInternal = $state<SliderValue>(
-    defaultValue ?? (mode === 'range' ? [min, max] : min),
+    normalizeValueForMode(defaultValue ?? (mode === 'range' ? [min, max] : min)),
   );
 
   // Controlled flag and current value. When `value` is provided we read
