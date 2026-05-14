@@ -34,12 +34,14 @@ export const test = base.extend<Fixtures>({
         contexts.push(context);
         const page = await context.newPage();
         await page.goto(entry.route, { waitUntil: 'load' });
-        // 50s accommodates heavier editor components (Chat, MarkdownEditor,
-        // ReviewEditor) on slower CI runners. Local hardware mounts in <2s;
-        // CI runners can take 30-40s for Milkdown-backed editors. The 50s
-        // wait sits inside Playwright's 60s per-test timeout, leaving ~10s
-        // for runAxe + captureScreenshot on the slow path.
-        await page.waitForSelector('#app > *', { state: 'visible', timeout: 50_000 });
+        // Post-#39 (chunk-[hash].js naming), all components — including the
+        // Milkdown-backed editors (Chat, MarkdownEditor, ReviewEditor) —
+        // mount in single-digit seconds on the CI runner. 20s leaves
+        // generous headroom for runAxe + captureScreenshot inside the
+        // per-test 90s timeout. Set CINDER_MOUNT_TIMEOUT_MS to override
+        // while debugging slow components.
+        const mountTimeout = Number(process.env['CINDER_MOUNT_TIMEOUT_MS'] ?? 20_000);
+        await page.waitForSelector('#app > *', { state: 'visible', timeout: mountTimeout });
         return page;
       },
     };

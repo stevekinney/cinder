@@ -28,7 +28,64 @@ env:
   BUN_VERSION: 1.3.13
 
 jobs:
+  scope:
+    # Decide whether this run executes the full component matrix or scopes
+    # to just the components changed in the pull request. `push` to main and
+    # `workflow_dispatch` always run the full matrix.
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.decide.outputs.mode }}
+      components: ${{ steps.decide.outputs.components }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # `git diff origin/<base>..HEAD` needs the merge base. fetch-depth: 0
+          # is the simplest reliable option for monorepos this size.
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Decide scope
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "Non-PR event ($EVENT_NAME): running full matrix."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "components=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch origin "$BASE_REF" --depth=200
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          echo "Changed files:"
+          echo "$changed"
+
+          decision=$(printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts || true)
+          echo "Decision output:"
+          echo "$decision"
+
+          mode=$(printf '%s\n' "$decision" | awk -F= '/^mode=/ { print $2 }')
+          components=$(printf '%s\n' "$decision" | awk -F= '/^components=/ { print $2 }')
+
+          if [ -z "$mode" ]; then
+            echo "::warning::changed-components produced no mode; defaulting to full."
+            mode=full
+            components=
+          fi
+
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "components=$components" >> "$GITHUB_OUTPUT"
+
   playwright:
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -43,13 +100,41 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Chromium
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version=$(bun -e "const m = await Bun.file('packages/testing/node_modules/@playwright/test/package.json').json(); console.log(m.version);")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Playwright version: $version"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Chromium (no system deps)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: bunx playwright install chromium
+
+      - name: Install Chromium (with system deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: bun run --filter='@cinder/testing' install-browsers:ci
 
       - name: Run Playwright suite
         env:
           CI: 'true'
-        run: bun run test:browser
+          # Empty when mode=full; comma-separated slug list when filtered.
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
+          # Trace recording is kept only for the full main-branch run.
+          PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.mode == 'full' && 'retain-on-failure' || 'off' }}
+        run: |
+          echo "Scope: ${{ needs.scope.outputs.mode }}"
+          if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
+            echo "Components: $CINDER_TEST_COMPONENTS"
+          fi
+          bun run test:browser
 
       - name: Upload Playwright HTML report
         if: failure()

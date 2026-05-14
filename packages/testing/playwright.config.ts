@@ -10,12 +10,15 @@ export default defineConfig({
   // The fixture caps its `#app > *` wait at 50s; this test-level timeout
   // leaves ~30s of headroom for runAxe + captureScreenshot on the slow path.
   timeout: 90_000,
-  // CI runs serially: the playground server's lazy `Bun.build` for page bundles
-  // doesn't dedupe concurrent requests for the same component, so parallel
-  // tests can race on the build's output path. One worker eliminates the race
-  // and the slower runner has more headroom for heavy components. Local stays
-  // parallel (default = cores).
-  ...(process.env['CI'] ? { workers: 1 } : {}),
+  // CI uses 2 workers (the chunk-[hash].js fix in #39 resolved the
+  // "Multiple files share the same output path" race that previously forced
+  // workers=1). Local stays parallel (default = cores). Override via
+  // PLAYWRIGHT_WORKERS for one-off experiments.
+  ...(process.env['PLAYWRIGHT_WORKERS']
+    ? { workers: Number(process.env['PLAYWRIGHT_WORKERS']) }
+    : process.env['CI']
+      ? { workers: 2 }
+      : {}),
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],
@@ -23,7 +26,13 @@ export default defineConfig({
   ],
   use: {
     baseURL: PLAYGROUND_URL,
-    trace: 'retain-on-failure',
+    // Trace recording adds measurable per-test overhead. CI enables it only
+    // for the full main-branch run (PLAYWRIGHT_TRACE=retain-on-failure) so
+    // regression debugging keeps its traces; changed-component PR runs
+    // default to 'off' for speed.
+    trace:
+      (process.env['PLAYWRIGHT_TRACE'] as 'on' | 'off' | 'retain-on-failure' | undefined) ??
+      (process.env['CI'] ? 'off' : 'retain-on-failure'),
     screenshot: 'off',
     video: 'off',
   },
