@@ -531,6 +531,40 @@ describe('Slider (pointer)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('30');
   });
 
+  test('track click focuses the activated thumb so keyboard refinement works', async () => {
+    // Regression: clicking the track activated a thumb but did not move
+    // focus to it, so the user could not immediately press ArrowRight to
+    // refine the value.
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    mockTrackRect(track, 200);
+    const thumb = getThumbs(container)[0]!;
+    expect(document.activeElement).not.toBe(thumb);
+    await fireEvent.pointerDown(track, { clientX: 100 });
+    expect(document.activeElement).toBe(thumb);
+  });
+
+  test('range-mode track click focuses the nearer thumb', async () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Price',
+        mode: 'range',
+        defaultValue: [20, 80],
+        min: 0,
+        max: 100,
+      },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    mockTrackRect(track, 200);
+    const [low, high] = getThumbs(container);
+    // Click near the high thumb (clientX=160 → value 80).
+    await fireEvent.pointerDown(track, { clientX: 160 });
+    expect(document.activeElement).toBe(high!);
+    expect(document.activeElement).not.toBe(low!);
+  });
+
   test('track click in range mode moves the nearer thumb', async () => {
     const { container } = render(Slider, {
       props: {

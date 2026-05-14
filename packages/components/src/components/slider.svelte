@@ -358,14 +358,26 @@
     if (target?.dataset['cinderSliderThumb'] !== undefined) return;
     event.preventDefault();
     const raw = valueFromClientX(event.clientX);
+    let activated: 'single' | 'low' | 'high';
     if (isRange) {
       const which = chooseNearestThumb(raw);
       updateRange(which, raw);
       activeThumb = which;
       activeThumbRecent = which;
+      activated = which;
     } else {
       updateSingle(raw);
       activeThumb = 'single';
+      activated = 'single';
+    }
+    // Move focus to the activated thumb so the user can immediately refine
+    // the value with the keyboard. Matches the focus behavior of clicking
+    // directly on a thumb.
+    if (trackElement) {
+      const thumb = trackElement.querySelector<HTMLElement>(
+        `[data-cinder-slider-thumb="${activated}"]`,
+      );
+      if (thumb && document.activeElement !== thumb) thumb.focus();
     }
   }
 
