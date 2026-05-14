@@ -161,10 +161,6 @@
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
     },
-    "./experimental/popover": {
-      "svelte": "./src/components/experimental/popover.svelte",
-      "types": "./dist/components/experimental/popover.svelte.d.ts"
-    },
     "./experimental/sheet": {
       "svelte": "./src/components/experimental/sheet.svelte",
       "types": "./dist/components/experimental/sheet.svelte.d.ts"
@@ -240,6 +236,10 @@
     "./pagination": {
       "svelte": "./src/components/pagination.svelte",
       "types": "./dist/components/pagination.svelte.d.ts"
+    },
+    "./popover": {
+      "svelte": "./src/components/popover.svelte",
+      "types": "./dist/components/popover.svelte.d.ts"
     },
     "./progress": {
       "svelte": "./src/components/progress.svelte",
@@ -448,6 +448,7 @@
     "@cinder/diff": "workspace:*",
     "@cinder/editor": "workspace:*",
     "@cinder/markdown": "workspace:*",
+    "@floating-ui/dom": "1.7.6",
     "@lasercat/homogenaize": "^1.2.41",
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
