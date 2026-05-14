@@ -1,0 +1,77 @@
+/* ========================================
+ * STATUS DOT
+ *
+ * Small colored dot with optional visible label communicating binary or
+ * enumerated state. Color is driven exclusively from the
+ * `data-cinder-status` attribute — never hard-code hex values when
+ * consuming this component. Dot sizing is exposed as the
+ * `--cinder-status-dot-size` custom property so callers can override per
+ * instance without forking.
+ * ======================================== */
+
+.cinder-status-dot {
+  --cinder-status-dot-size: 0.625rem; /* 10px — md default */
+  --cinder-status-dot-color: var(--cinder-text-muted);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1-5);
+  font-size: var(--cinder-text-sm);
+  line-height: 1.25;
+  color: var(--cinder-text);
+  vertical-align: middle;
+}
+
+.cinder-status-dot__indicator {
+  display: inline-block;
+  flex-shrink: 0;
+  inline-size: var(--cinder-status-dot-size);
+  block-size: var(--cinder-status-dot-size);
+  border-radius: var(--cinder-radius-full);
+  background: var(--cinder-status-dot-color);
+}
+
+.cinder-status-dot__label {
+  color: inherit;
+}
+
+/* ----------------------------------------
+ * Size variants
+ * ---------------------------------------- */
+
+.cinder-status-dot[data-cinder-size='sm'] {
+  --cinder-status-dot-size: 0.5rem; /* 8px */
+  font-size: var(--cinder-text-xs);
+}
+
+.cinder-status-dot[data-cinder-size='md'] {
+  --cinder-status-dot-size: 0.625rem; /* 10px */
+}
+
+/* ----------------------------------------
+ * Status → semantic token mapping
+ * ---------------------------------------- */
+
+.cinder-status-dot[data-cinder-status='online'] {
+  --cinder-status-dot-color: var(--cinder-success, #059669);
+}
+
+.cinder-status-dot[data-cinder-status='offline'] {
+  --cinder-status-dot-color: var(--cinder-text-muted);
+}
+
+.cinder-status-dot[data-cinder-status='warning'] {
+  --cinder-status-dot-color: var(--cinder-warning, #d97706);
+}
+
+.cinder-status-dot[data-cinder-status='error'] {
+  --cinder-status-dot-color: var(--cinder-danger, #dc2626);
+}
+
+.cinder-status-dot[data-cinder-status='building'] {
+  --cinder-status-dot-color: var(--cinder-info, #2563eb);
+}
+
+.cinder-status-dot[data-cinder-status='neutral'] {
+  --cinder-status-dot-color: var(--cinder-text-muted);
+}
