@@ -152,18 +152,39 @@
     alphaValue = alpha ? next.a : 1;
   }
 
+  function resetToEmptyValue(): void {
+    hue = 0;
+    saturation = 0;
+    lightnessValue = 0;
+    alphaValue = 1;
+    internalValue = '';
+    lastEmittedHex = '';
+  }
+
+  function applyHslaSilently(next: Hsla): void {
+    applyHsla(next);
+    const hex = formatHex(next.h, next.s, next.l, next.a, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+  }
+
   // Initialize from defaultValue (only when uncontrolled).
   if (value === undefined && defaultValue) {
     const parsed = parseToHsla(defaultValue);
     if (parsed) {
       applyHsla(parsed);
       internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+    } else {
+      resetToEmptyValue();
     }
   } else if (value !== undefined) {
     const parsed = parseToHsla(value);
     if (parsed) {
       applyHsla(parsed);
       internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+    } else {
+      resetToEmptyValue();
     }
   }
 
@@ -173,14 +194,14 @@
   // (and writes a different one back) is not ignored.
   $effect(() => {
     if (value === undefined) return;
-    if (value === lastEmittedHex) return;
+    if (value !== '' && value === lastEmittedHex) return;
     if (value === '') {
-      internalValue = '';
+      resetToEmptyValue();
       return;
     }
     const parsed = parseToHsla(value);
     if (!parsed) {
-      internalValue = '';
+      resetToEmptyValue();
       return;
     }
     applyHsla(parsed);
@@ -207,6 +228,14 @@
     // Every value mutation fires `oninput`; `onchange` additionally fires on commit.
     oninput?.(hex);
     if (reason === 'change') onchange?.(hex);
+  }
+
+  function commitCurrentValue(): void {
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+    onchange?.(hex);
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -256,7 +285,13 @@
     if (!isDragging) return;
     isDragging = false;
     gradientElement?.releasePointerCapture(event.pointerId);
-    emit('change');
+    commitCurrentValue();
+  }
+
+  function handleGradientPointerCancel(event: PointerEvent): void {
+    if (!isDragging) return;
+    isDragging = false;
+    gradientElement?.releasePointerCapture(event.pointerId);
   }
 
   // ── Slider pointer handling ─────────────────────────────────────────────
@@ -293,7 +328,13 @@
     if (draggingSlider !== 'hue') return;
     draggingSlider = null;
     hueElement?.releasePointerCapture(event.pointerId);
-    emit('change');
+    commitCurrentValue();
+  }
+
+  function handleHuePointerCancel(event: PointerEvent): void {
+    if (draggingSlider !== 'hue') return;
+    draggingSlider = null;
+    hueElement?.releasePointerCapture(event.pointerId);
   }
 
   function handleAlphaPointerDown(event: PointerEvent): void {
@@ -315,7 +356,13 @@
     if (draggingSlider !== 'alpha') return;
     draggingSlider = null;
     alphaElement?.releasePointerCapture(event.pointerId);
-    emit('change');
+    commitCurrentValue();
+  }
+
+  function handleAlphaPointerCancel(event: PointerEvent): void {
+    if (draggingSlider !== 'alpha') return;
+    draggingSlider = null;
+    alphaElement?.releasePointerCapture(event.pointerId);
   }
 
   // ── Slider keyboard handling ────────────────────────────────────────────
@@ -495,19 +542,17 @@
     function resetToDefault(): void {
       const fallback = defaultValue ?? '';
       if (fallback === '') {
-        hue = 0;
-        saturation = 0;
-        lightnessValue = 0;
-        alphaValue = 1;
-        internalValue = '';
-        lastEmittedHex = '';
+        resetToEmptyValue();
         if (value !== undefined) value = '';
-        onchange?.('');
         return;
       }
       const parsed = parseToHsla(fallback);
-      if (!parsed) return;
-      commitFromHsla(parsed, 'change');
+      if (!parsed) {
+        resetToEmptyValue();
+        if (value !== undefined) value = '';
+        return;
+      }
+      applyHslaSilently(parsed);
     }
 
     function attach(): void {
@@ -530,9 +575,11 @@
 
   const hueColor = $derived(`hsl(${hue}, 100%, 50%)`);
   const previewColor = $derived(
-    alpha
-      ? `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${alphaValue})`
-      : `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`,
+    internalValue === ''
+      ? 'transparent'
+      : alpha
+        ? `hsla(${hue}, ${saturation}%, ${lightnessValue}%, ${alphaValue})`
+        : `hsl(${hue}, ${saturation}%, ${lightnessValue}%)`,
   );
 
   // HSV position of the gradient handle (x = HSV saturation, y = HSV value).
@@ -568,7 +615,7 @@
     onpointerdown={handleGradientPointerDown}
     onpointermove={handleGradientPointerMove}
     onpointerup={handleGradientPointerUp}
-    onpointercancel={handleGradientPointerUp}
+    onpointercancel={handleGradientPointerCancel}
     onkeydown={handleGradientKeydown}
   >
     <div
@@ -593,7 +640,7 @@
     onpointerdown={handleHuePointerDown}
     onpointermove={handleHuePointerMove}
     onpointerup={handleHuePointerUp}
-    onpointercancel={handleHuePointerUp}
+    onpointercancel={handleHuePointerCancel}
   >
     <div
       class="cinder-color-picker__hue-thumb"
@@ -620,7 +667,7 @@
       onpointerdown={handleAlphaPointerDown}
       onpointermove={handleAlphaPointerMove}
       onpointerup={handleAlphaPointerUp}
-      onpointercancel={handleAlphaPointerUp}
+      onpointercancel={handleAlphaPointerCancel}
     >
       <div
         class="cinder-color-picker__alpha-thumb"
@@ -649,7 +696,8 @@
     >
       {#each swatchList as swatch, index (swatch + index)}
         {@const normalized = normalizeSwatch(swatch)}
-        {@const isSelected = normalized !== null && normalized === currentHex.toLowerCase()}
+        {@const isSelected =
+          internalValue !== '' && normalized !== null && normalized === currentHex.toLowerCase()}
         <li
           bind:this={swatchRefs[index]}
           role="option"

@@ -113,6 +113,48 @@ describe('ColorPicker invalid input', () => {
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('');
   });
+
+  test('controlled empty value clears visual selection state', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#00ff00',
+      name: 'p',
+      swatches: ['#00ff00'],
+    });
+    let hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    let preview = q(container, '.cinder-color-picker__preview');
+    let option = q(container, '[role="option"]');
+
+    expect(hidden.value).toBe('#00ff00');
+    expect(preview.getAttribute('aria-label')).toBe('Selected color: #00ff00');
+    expect(option.getAttribute('aria-selected')).toBe('true');
+
+    await rerender({ value: '', name: 'p', swatches: ['#00ff00'] });
+    await tick();
+
+    hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    preview = q(container, '.cinder-color-picker__preview');
+    option = q(container, '[role="option"]');
+    expect(hidden.value).toBe('');
+    expect(preview.getAttribute('aria-label')).toBe('Selected color: none');
+    expect(option.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('controlled invalid value clears visual selection state', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#00ff00',
+      name: 'p',
+      swatches: ['#00ff00'],
+    });
+    await rerender({ value: 'not-a-color', name: 'p', swatches: ['#00ff00'] });
+    await tick();
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const preview = q(container, '.cinder-color-picker__preview');
+    const option = q(container, '[role="option"]');
+    expect(hidden.value).toBe('');
+    expect(preview.getAttribute('aria-label')).toBe('Selected color: none');
+    expect(option.getAttribute('aria-selected')).toBe('false');
+  });
 });
 
 describe('ColorPicker hue slider keyboard', () => {
@@ -254,6 +296,42 @@ describe('ColorPicker form reset', () => {
 
     document.body.removeChild(form);
   });
+
+  test('form reset with invalid defaultValue resets to empty without callbacks', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const inputs: string[] = [];
+    const changes: string[] = [];
+
+    const { container } = render(ColorPicker, {
+      target: form,
+      props: {
+        defaultValue: 'not-a-color',
+        name: 'p',
+        oninput: (color: string) => inputs.push(color),
+        onchange: (color: string) => changes.push(color),
+      },
+    });
+    await tick();
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const hue = q(container, '[aria-label="Hue"]');
+    expect(hidden.value).toBe('');
+
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    expect(hidden.value).not.toBe('');
+    inputs.length = 0;
+    changes.length = 0;
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    expect(hidden.value).toBe('');
+    expect(inputs).toEqual([]);
+    expect(changes).toEqual([]);
+
+    document.body.removeChild(form);
+  });
 });
 
 describe('ColorPicker callback contract', () => {
@@ -319,12 +397,47 @@ describe('ColorPicker pointer interaction', () => {
         toJSON: () => ({}),
       }) as DOMRect;
     await fireEvent.pointerDown(hue, { clientX: 50, clientY: 6, pointerId: 1 });
-    expect(inputs.length).toBeGreaterThan(0);
+    expect(inputs.length).toBe(1);
     expect(changes.length).toBe(0);
     await fireEvent.pointerUp(hue, { clientX: 50, clientY: 6, pointerId: 1 });
+    expect(inputs.length).toBe(1);
     expect(changes.length).toBe(1);
     // Halfway across the 0-359 hue track ≈ 180 (cyan).
     expect(hue.getAttribute('aria-valuenow')).toBe('180');
+  });
+
+  test('pointer cancel does not fire onchange', async () => {
+    const inputs: string[] = [];
+    const changes: string[] = [];
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ff0000',
+      oninput: (color: string) => inputs.push(color),
+      onchange: (color: string) => changes.push(color),
+    });
+    const hue = q(container, '[aria-label="Hue"]');
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    (hue as unknown as { setPointerCapture: (id: number) => void }).setPointerCapture = () => {};
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    (hue as unknown as { releasePointerCapture: (id: number) => void }).releasePointerCapture =
+      () => {};
+    hue.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 100,
+        height: 12,
+        right: 100,
+        bottom: 12,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    await fireEvent.pointerDown(hue, { clientX: 50, clientY: 6, pointerId: 1 });
+    await fireEvent.pointerCancel(hue, { clientX: 50, clientY: 6, pointerId: 1 });
+
+    expect(inputs.length).toBe(1);
+    expect(changes).toEqual([]);
   });
 });
 
