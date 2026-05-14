@@ -1,7 +1,15 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
 
-  /** Public placement union. floating-ui may flip to wider placements at runtime. */
+  /**
+   * Input placements accepted by the `placement` prop. Floating-ui's `flip`
+   * middleware may resolve the panel to any of the 12 standard placements at
+   * runtime — the resolved value is exposed on `data-cinder-placement` and is
+   * typed internally as floating-ui's full `Placement` union. The four
+   * diagonal-side variants (`right-start`, `right-end`, `left-start`,
+   * `left-end`) are intentionally omitted from this public input union; pass
+   * `right` or `left` as the starting hint and let flip refine if needed.
+   */
   export type PopoverPlacement =
     | 'top'
     | 'bottom'
@@ -89,7 +97,8 @@
 
   const panelId = useId('cinder-popover');
 
-  const resolvedPlacement = $derived<Placement>(placement ?? 'bottom-start');
+  // Typed as floating-ui's full Placement union because flip() may resolve to
+  // values outside the public PopoverPlacement input subset.
   let computedPlacement = $state<Placement>('bottom-start');
 
   const anchorElement = $derived<HTMLElement | null>(
@@ -98,51 +107,61 @@
       : (findFirstFocusable(triggerWrapper) ?? null),
   );
 
+  // mounted gates the panel render so SSR emits empty markup regardless of
+  // open. See _internal/OVERLAY-POLICY.md ("SSR rule").
   let mounted = $state(false);
   let positionReady = $state(false);
-  let pendingInitialFocus = $state(false);
   let positionStyle = $state('');
   let arrowStyle = $state('');
 
   let capturedFocus: HTMLElement | null = null;
   let resolvedAnchorAtOpen: HTMLElement | null = null;
+  let pendingInitialFocus = $state(false);
 
   let isDestroyed = false;
   onDestroy(() => {
     isDestroyed = true;
   });
 
-  // Effect A — mount flag (SSR-empty gate).
   $effect(() => {
     mounted = true;
   });
 
   function handleDocumentMousedown(event: MouseEvent) {
     if (!panelElement) return;
-    const target = event.target as Node | null;
-    if (!target) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
     if (panelElement.contains(target)) return;
-    if (anchorElement && anchorElement.contains(target)) return;
+    // Use the open-time snapshot so a swapped/removed trigger does not cause
+    // unexpected close when the user mouses down on the original opener.
+    if (resolvedAnchorAtOpen && resolvedAnchorAtOpen.contains(target)) return;
     open = false;
   }
 
-  // Effect B — open lifecycle.
+  function moveFocusIntoPanel() {
+    if (isDestroyed || !panelElement) return;
+    const focusable = findFirstFocusable(panelElement);
+    (focusable ?? panelElement).focus();
+  }
+
+  // Effect: open lifecycle (captures focus, registers Escape + outside-mousedown).
   $effect(() => {
     if (!open) return;
     capturedFocus = captureFocus();
-    // Anchor snapshot for focus-restore; untrack so anchor/trigger changes while
-    // open don't retrigger the open effect (positioning rebind is Effect C's job).
+    // Snapshot the anchor at open time. untrack so anchor/trigger changes while
+    // open don't retrigger this effect; positioning rebind is the positioning
+    // effect's responsibility.
     resolvedAnchorAtOpen = untrack(() => anchorElement);
+    pendingInitialFocus = true;
     const releaseEscape = pushEscapeHandler(() => {
       open = false;
     });
     document.addEventListener('mousedown', handleDocumentMousedown, { capture: true });
-    pendingInitialFocus = true;
 
     return () => {
-      pendingInitialFocus = false;
       releaseEscape();
       document.removeEventListener('mousedown', handleDocumentMousedown, { capture: true });
+      pendingInitialFocus = false;
       if (isDestroyed) {
         capturedFocus = null;
         resolvedAnchorAtOpen = null;
@@ -159,65 +178,13 @@
       positionReady = false;
       positionStyle = '';
       arrowStyle = '';
-      computedPlacement = resolvedPlacement;
+      computedPlacement = placement;
     };
   });
 
-  // Effect B-2 — state-driven initial-focus move.
-  $effect(() => {
-    if (isDestroyed) return;
-    if (!open || !panelElement || !anchorElement || !positionReady || !pendingInitialFocus) return;
-    if (!resolvedAnchorAtOpen) resolvedAnchorAtOpen = anchorElement;
-    const focusable = findFirstFocusable(panelElement);
-    (focusable ?? panelElement).focus();
-    pendingInitialFocus = false;
-  });
-
-  // Effect B-3 — dev-only no-anchor warning.
-  let warnedNoAnchor = false;
-  let warnedNoName = false;
-  let warnedListbox = false;
-
-  $effect(() => {
-    if (!DEV) return;
-    if (!open) return;
-    if (anchorElement) return;
-    if (warnedNoAnchor) return;
-    warnedNoAnchor = true;
-    console.warn(
-      '[cinder/popover] open without a trigger anchor. ' +
-        'Provide either a `trigger` snippet with a focusable child or a `triggerRef`.',
-    );
-  });
-
-  // Effect B-4 — dev-only dialog-without-name warning.
-  $effect(() => {
-    if (!DEV) return;
-    if (!open) return;
-    if (role !== 'dialog') return;
-    if (label || ariaLabelledby) return;
-    if (warnedNoName) return;
-    warnedNoName = true;
-    console.warn(
-      '[cinder/popover] role="dialog" without `label` or `ariaLabelledby` falls back to ' +
-        'aria-label="Popover". Pass a descriptive name for production usage.',
-    );
-  });
-
-  // Effect B-5 — dev-only listbox guidance.
-  $effect(() => {
-    if (!DEV) return;
-    if (role !== 'listbox') return;
-    if (warnedListbox) return;
-    warnedListbox = true;
-    console.warn(
-      '[cinder/popover] role="listbox" only sets the surface role. ' +
-        'You must render role="option" children and own selection/keyboard semantics. ' +
-        'See popover.a11y.md §Role.',
-    );
-  });
-
-  // Effect C — positioning lifecycle.
+  // Effect: positioning lifecycle. Reads `open`, `anchorElement`, `panelElement`,
+  // `arrowElement`, `placement`, `offset`, `showArrow`. Restarts autoUpdate on
+  // any change; moves initial focus inline once the first compute resolves.
   $effect(() => {
     if (!open) return;
     if (!anchorElement || !panelElement) return;
@@ -225,11 +192,10 @@
     const anchor = anchorElement;
     const panel = panelElement;
     const arrowEl = arrowElement;
-    const placementSnap = resolvedPlacement;
+    const placementSnap = placement;
     const off = offset;
     const arrowEnabled = showArrow;
     let cancelled = false;
-    let generation = 0;
 
     const middleware = [
       offsetMw(off),
@@ -240,13 +206,12 @@
 
     const stop = autoUpdate(anchor, panel, async () => {
       if (cancelled) return;
-      const myGeneration = ++generation;
       const result = await computePosition(anchor, panel, {
         placement: placementSnap,
         middleware,
         strategy: 'fixed',
       });
-      if (cancelled || myGeneration !== generation) return;
+      if (cancelled) return;
       positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
       computedPlacement = result.placement;
       arrowStyle = '';
@@ -266,7 +231,44 @@
     };
   });
 
-  // Effect D — trigger ARIA wiring.
+  // Effect: state-driven initial-focus move. Fires once per open session when
+  // the panel mounts, the anchor resolves, and positioning is ready — so focus
+  // never lands in invisible content.
+  $effect(() => {
+    if (isDestroyed) return;
+    if (!open || !panelElement || !anchorElement || !positionReady || !pendingInitialFocus) return;
+    moveFocusIntoPanel();
+    pendingInitialFocus = false;
+  });
+
+  // Effect: dev-only guidance warnings. Single effect, fires on each open
+  // transition; the cost of repeat warnings is acceptable for dev mode.
+  $effect(() => {
+    if (!DEV) return;
+    if (!open) return;
+    if (!anchorElement) {
+      console.warn(
+        '[cinder/popover] open without a trigger anchor. ' +
+          'Provide either a `trigger` snippet with a focusable child or a `triggerRef`.',
+      );
+    }
+    if (role === 'dialog' && !label && !ariaLabelledby) {
+      console.warn(
+        '[cinder/popover] role="dialog" without `label` or `ariaLabelledby` falls back to ' +
+          'aria-label="Popover". Pass a descriptive name for production usage.',
+      );
+    }
+    if (role === 'listbox') {
+      console.warn(
+        '[cinder/popover] role="listbox" only sets the surface role. ' +
+          'You must render role="option" children and own selection/keyboard semantics. ' +
+          'See popover.a11y.md §Role.',
+      );
+    }
+  });
+
+  // Effect: trigger ARIA wiring. Captures pre-existing values and restores on
+  // teardown so consumers can manage their own attributes through changes.
   $effect(() => {
     const target = anchorElement;
     if (!target) return;
@@ -309,6 +311,7 @@
     {role}
     aria-label={ariaLabelledby ? undefined : (label ?? 'Popover')}
     aria-labelledby={ariaLabelledby}
+    aria-hidden={positionReady ? undefined : 'true'}
     class={classNames('cinder-popover', className)}
     data-cinder-placement={computedPlacement}
     data-cinder-position-ready={positionReady}
