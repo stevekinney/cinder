@@ -243,6 +243,9 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
+export { default as SearchField } from './components/search-field.svelte';
+export type { SearchFieldProps } from './components/search-field.svelte';
+
 export { default as SectionHeading } from './components/section-heading.svelte';
 export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
 
