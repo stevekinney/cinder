@@ -28,7 +28,53 @@ env:
   BUN_VERSION: 1.3.13
 
 jobs:
+  scope:
+    # Decide whether this run executes the full component matrix or scopes
+    # to just the components changed in the pull request. `push` to main and
+    # `workflow_dispatch` always run the full matrix.
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.decide.outputs.mode }}
+      components: ${{ steps.decide.outputs.components }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # `git diff origin/<base>..HEAD` needs the merge base. fetch-depth: 0
+          # is the simplest reliable option; the scope job is fast either way
+          # and shallow merge-base lookups are fragile on long-lived PRs.
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Decide scope
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "Non-PR event ($EVENT_NAME): running full matrix."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "components=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "origin/${BASE_REF}..HEAD")
+          echo "Changed files:"
+          printf '%s\n' "$changed"
+
+          # The script appends `mode=<value>` (and `components=<csv>` when
+          # filtered) directly to $GITHUB_OUTPUT — no shell parsing of its
+          # stdout needed. A non-zero exit fails the job loudly.
+          printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
+
   playwright:
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -43,13 +89,51 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Chromium
-        run: bun run --filter='@cinder/testing' install-browsers:ci
+      - name: Resolve Playwright version
+        id: playwright-version
+        # Resolve via Bun's module resolution rather than a hardcoded
+        # node_modules path — Bun's workspace install may hoist or
+        # restructure the on-disk layout, but `require.resolve` always
+        # finds the package as imported by @cinder/testing.
+        run: |
+          version=$(bun --cwd packages/testing -e "const p = require.resolve('@playwright/test/package.json'); const m = await Bun.file(p).json(); console.log(m.version);")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Playwright version: $version"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          # runner.arch guards against accidental cross-arch corruption if
+          # the runner pool ever expands beyond x64.
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Chromium system dependencies
+        # System libs (libgbm, libasound2, etc.) live in apt, not in the
+        # Playwright cache. They must be installed on every CI run,
+        # cache-hit or cache-miss, or Chromium fails to launch.
+        run: bunx playwright install-deps chromium
+
+      - name: Install Chromium browser
+        # Only the browser binaries are cacheable; skip the download on
+        # cache hits.
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: bunx playwright install chromium
 
       - name: Run Playwright suite
         env:
           CI: 'true'
-        run: bun run test:browser
+          # Empty when mode=full; comma-separated slug list when filtered.
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
+          # Trace recording is kept only for the full main-branch run.
+          PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.mode == 'full' && 'retain-on-failure' || 'off' }}
+        run: |
+          echo "Scope: ${{ needs.scope.outputs.mode }}"
+          if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
+            echo "Components: $CINDER_TEST_COMPONENTS"
+          fi
+          bun run test:browser
 
       - name: Upload Playwright HTML report
         if: failure()

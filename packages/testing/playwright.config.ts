@@ -1,21 +1,35 @@
 import { defineConfig, devices } from '@playwright/test';
 import { PLAYGROUND_URL } from './src/helpers/playground-url.ts';
 
+const TRACE_VALUES = ['on', 'off', 'retain-on-failure', 'on-first-retry'] as const;
+type TraceValue = (typeof TRACE_VALUES)[number];
+
+function resolveTrace(): TraceValue {
+  const raw = process.env['PLAYWRIGHT_TRACE'];
+  if (raw !== undefined && (TRACE_VALUES as readonly string[]).includes(raw)) {
+    return raw as TraceValue;
+  }
+  // No override: CI defaults to off (trace recording adds measurable
+  // per-test overhead). The CI workflow opts into 'retain-on-failure'
+  // via PLAYWRIGHT_TRACE for any full-matrix run — pushes to main and
+  // PRs that touched shared utilities. Local development keeps traces
+  // on for debugging.
+  return process.env['CI'] ? 'off' : 'retain-on-failure';
+}
+
 export default defineConfig({
   testDir: './tests',
   outputDir: './test-results/playwright',
   fullyParallel: true,
   // Heavy editor components (Chat, MarkdownEditor, ReviewEditor — all
-  // Milkdown-backed) can take 30-40s to mount on the GitHub Actions runner.
-  // The fixture caps its `#app > *` wait at 50s; this test-level timeout
-  // leaves ~30s of headroom for runAxe + captureScreenshot on the slow path.
+  // Milkdown-backed) used to take 30-40s to mount on the GitHub Actions
+  // runner. Post-#39 they mount in single-digit seconds; the per-test 90s
+  // timeout leaves generous headroom for runAxe + captureScreenshot.
   timeout: 90_000,
-  // CI runs serially: the playground server's lazy `Bun.build` for page bundles
-  // doesn't dedupe concurrent requests for the same component, so parallel
-  // tests can race on the build's output path. One worker eliminates the race
-  // and the slower runner has more headroom for heavy components. Local stays
-  // parallel (default = cores).
-  ...(process.env['CI'] ? { workers: 1 } : {}),
+  // CI uses 2 workers (the chunk-[hash].js fix in #39 resolved the
+  // "Multiple files share the same output path" race that previously forced
+  // workers=1). Local stays parallel (default = cores).
+  ...(process.env['CI'] ? { workers: 2 } : {}),
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],
@@ -23,7 +37,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: PLAYGROUND_URL,
-    trace: 'retain-on-failure',
+    trace: resolveTrace(),
     screenshot: 'off',
     video: 'off',
   },

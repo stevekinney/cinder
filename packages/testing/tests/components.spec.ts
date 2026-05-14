@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { expect, test } from '../src/fixtures/component-page.ts';
 import { runAxe } from '../src/helpers/axe.ts';
+import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
@@ -39,7 +40,17 @@ test.describe('server identity', () => {
   });
 });
 
-const entries = loadManifest();
+const allEntries = loadManifest();
+
+// `CINDER_TEST_COMPONENTS` is a comma-separated allow-list set by CI when a
+// pull request only touched specific components. See
+// `scripts/changed-components.ts` for how the value is computed. Empty,
+// whitespace, or unset all run the full matrix. Unknown slugs throw — the
+// scope job's manifest validation should have caught them upstream, so a
+// surprise here means the two are out of sync.
+const knownSlugs = new Set(allEntries.map((entry) => entry.slug));
+const filterSlugs = parseComponentFilter(process.env['CINDER_TEST_COMPONENTS'], knownSlugs);
+const entries = applyComponentFilter(allEntries, filterSlugs);
 
 for (const entry of entries) {
   test.describe(entry.name, () => {
