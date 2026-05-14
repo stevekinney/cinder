@@ -14,7 +14,8 @@
 
   /**
    * Props for the {@link Callout} component — an inline admonition block
-   * for documentation and long-form content.
+   * for documentation and long-form content. See `callout.a11y.md` for
+   * the full accessibility model.
    *
    * Callout is the static, prose-embedded sibling of:
    *

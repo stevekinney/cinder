@@ -23,11 +23,9 @@ const _ariaLiveRejected: CalloutProps = { children: noopChildren, 'aria-live': '
 // @ts-expect-error - aria-atomic is excluded from CalloutProps
 const _ariaAtomicRejected: CalloutProps = { children: noopChildren, 'aria-atomic': 'true' };
 
+// prettier-ignore
 // @ts-expect-error - aria-relevant is excluded from CalloutProps
-const _ariaRelevantRejected: CalloutProps = {
-  children: noopChildren,
-  'aria-relevant': 'additions',
-};
+const _ariaRelevantRejected: CalloutProps = { children: noopChildren, 'aria-relevant': 'additions' };
 
 // @ts-expect-error - aria-busy is excluded from CalloutProps
 const _ariaBusyRejected: CalloutProps = { children: noopChildren, 'aria-busy': 'true' };
@@ -36,11 +34,9 @@ const _ariaBusyRejected: CalloutProps = { children: noopChildren, 'aria-busy': '
 // landmark when the callout lands at a landmark position.
 const _ariaLabelAccepted: CalloutProps = { children: noopChildren, 'aria-label': 'Note' };
 
+// prettier-ignore
 // aria-labelledby is similarly allowed and takes precedence over title.
-const _ariaLabelledByAccepted: CalloutProps = {
-  children: noopChildren,
-  'aria-labelledby': 'external-heading',
-};
+const _ariaLabelledByAccepted: CalloutProps = { children: noopChildren, 'aria-labelledby': 'external-heading' };
 
 void _roleRejected;
 void _ariaLiveRejected;
