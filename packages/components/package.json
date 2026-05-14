@@ -448,6 +448,7 @@
     "@cinder/diff": "workspace:*",
     "@cinder/editor": "workspace:*",
     "@cinder/markdown": "workspace:*",
+    "@floating-ui/dom": "1.7.6",
     "@lasercat/homogenaize": "^1.2.41",
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
