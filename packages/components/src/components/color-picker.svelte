@@ -233,6 +233,14 @@
     emit(reason);
   }
 
+  function commitCurrentValueChange(): void {
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined) value = hex;
+    onchange?.(hex);
+  }
+
   // ── Gradient handling ──────────────────────────────────────────────────
 
   let gradientElement: HTMLDivElement | null = $state(null);
@@ -275,11 +283,7 @@
     if (!isDragging) return;
     isDragging = false;
     gradientElement?.releasePointerCapture(event.pointerId);
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-    onchange?.(hex);
+    commitCurrentValueChange();
   }
 
   function handleGradientPointerCancel(event: PointerEvent): void {
@@ -322,11 +326,7 @@
     if (draggingSlider !== 'hue') return;
     draggingSlider = null;
     hueElement?.releasePointerCapture(event.pointerId);
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-    onchange?.(hex);
+    commitCurrentValueChange();
   }
 
   function handleHuePointerCancel(event: PointerEvent): void {
@@ -354,11 +354,7 @@
     if (draggingSlider !== 'alpha') return;
     draggingSlider = null;
     alphaElement?.releasePointerCapture(event.pointerId);
-    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
-    internalValue = hex;
-    lastEmittedHex = hex;
-    if (value !== undefined) value = hex;
-    onchange?.(hex);
+    commitCurrentValueChange();
   }
 
   function handleAlphaPointerCancel(event: PointerEvent): void {
