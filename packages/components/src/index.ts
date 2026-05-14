@@ -281,6 +281,9 @@ export type {
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
 
+export { default as Slider } from './components/slider.svelte';
+export type { SliderMode, SliderProps, SliderValue } from './components/slider.svelte';
+
 export { default as StackedListItem } from './components/stacked-list-item.svelte';
 export type {
   StackedListItemDensity,
