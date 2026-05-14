@@ -6,6 +6,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: ColorPicker } = await import('./color-picker.svelte');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,30 +229,130 @@ describe('ColorPicker form reset', () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
 
+    // Render directly into the form so the hidden input mounts inside it
+    // from the start and the $effect attaches its reset listener at mount.
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
-      name: 'p',
+      target: form,
+      props: {
+        defaultValue: '#ff0000',
+        name: 'p',
+      },
     });
-    form.appendChild(container);
-    // Allow the $effect that attaches the form reset listener to run after
-    // the hidden input is reparented under the form.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
 
-    const hidden = q<HTMLInputElement>(form, 'input[name="p"]');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#ff0000');
 
     // Mutate via hue slider
-    const hue = q(form, '[aria-label="Hue"]');
+    const hue = q(container, '[aria-label="Hue"]');
     await fireEvent.keyDown(hue, { key: 'ArrowRight', shiftKey: true });
     expect(hidden.value).not.toBe('#ff0000');
 
-    // Dispatch the reset event directly — Svelte's onreset wiring expects
-    // a bubbling event from the form element itself.
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
     expect(hidden.value).toBe('#ff0000');
 
     document.body.removeChild(form);
+  });
+});
+
+describe('ColorPicker callback contract', () => {
+  test('slider keypress fires both oninput and onchange', async () => {
+    const inputs: string[] = [];
+    const changes: string[] = [];
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ff0000',
+      oninput: (color: string) => inputs.push(color),
+      onchange: (color: string) => changes.push(color),
+    });
+    const hue = q(container, '[aria-label="Hue"]');
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    expect(inputs.length).toBe(1);
+    expect(changes.length).toBe(1);
+    expect(inputs[0]).toBe(changes[0]);
+  });
+
+  test('swatch selection fires both oninput and onchange', async () => {
+    const inputs: string[] = [];
+    const changes: string[] = [];
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ff0000', '#00ff00'],
+      oninput: (color: string) => inputs.push(color),
+      onchange: (color: string) => changes.push(color),
+    });
+    const option = container.querySelector<HTMLElement>('[role="option"]');
+    await fireEvent.click(option!);
+    expect(inputs).toEqual(['#ff0000']);
+    expect(changes).toEqual(['#ff0000']);
+  });
+});
+
+describe('ColorPicker pointer interaction', () => {
+  test('pointer drag on hue slider updates hue and fires oninput then onchange', async () => {
+    const inputs: string[] = [];
+    const changes: string[] = [];
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ff0000',
+      oninput: (color: string) => inputs.push(color),
+      onchange: (color: string) => changes.push(color),
+    });
+    const hue = q(container, '[aria-label="Hue"]');
+    // happy-dom doesn't implement these; stub so the production setPointerCapture
+    // and releasePointerCapture calls don't throw and so getBoundingClientRect
+    // returns non-zero width for the mapping math.
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    (hue as unknown as { setPointerCapture: (id: number) => void }).setPointerCapture = () => {};
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    (hue as unknown as { releasePointerCapture: (id: number) => void }).releasePointerCapture =
+      () => {};
+    hue.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 100,
+        height: 12,
+        right: 100,
+        bottom: 12,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    await fireEvent.pointerDown(hue, { clientX: 50, clientY: 6, pointerId: 1 });
+    expect(inputs.length).toBeGreaterThan(0);
+    expect(changes.length).toBe(0);
+    await fireEvent.pointerUp(hue, { clientX: 50, clientY: 6, pointerId: 1 });
+    expect(changes.length).toBe(1);
+    // Halfway across the 0-359 hue track ≈ 180 (cyan).
+    expect(hue.getAttribute('aria-valuenow')).toBe('180');
+  });
+});
+
+describe('ColorPicker alpha mode toggle', () => {
+  test('toggling alpha=false → alpha=true re-emits 8-char hex', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      defaultValue: '#ff0000',
+      alpha: false,
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#ff0000');
+
+    await rerender({ defaultValue: '#ff0000', alpha: true, name: 'p' });
+    await tick();
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+});
+
+describe('ColorPicker swatch normalization', () => {
+  test('aria-selected matches regardless of swatch input format', () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#00ff00',
+      swatches: ['#f00', '#0f0', '#00f'],
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
   });
 });
 

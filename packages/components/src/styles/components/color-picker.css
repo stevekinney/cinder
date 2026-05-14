@@ -193,9 +193,13 @@
 }
 
 @media (forced-colors: active) {
+  .cinder-color-picker__gradient:focus,
   .cinder-color-picker__gradient:focus-visible,
+  .cinder-color-picker__hue:focus,
   .cinder-color-picker__hue:focus-visible,
+  .cinder-color-picker__alpha:focus,
   .cinder-color-picker__alpha:focus-visible,
+  .cinder-color-picker__swatch:focus,
   .cinder-color-picker__swatch:focus-visible {
     outline: 3px solid Highlight;
     outline-offset: 2px;

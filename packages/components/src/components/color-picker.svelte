@@ -64,8 +64,9 @@
   let alphaValue = $state(1); // 0–1
 
   let internalValue = $state('');
-  let lastEmittedHex = $state('');
-  let suppressNextSync = $state(false);
+  // Plain (non-reactive) coordination var: holds the most recent value the component
+  // wrote out to `value`. The controlled-sync effect uses this to skip its own echo.
+  let lastEmittedHex = '';
   let isDragging = $state(false);
 
   function clamp(n: number, min: number, max: number): number {
@@ -133,6 +134,17 @@
     return { h, s, l, a: parsed.a };
   }
 
+  /**
+   * Canonicalize a swatch string to the same hex format the picker emits, so
+   * aria-selected matches regardless of input syntax (#0f0 vs #00ff00 vs rgb()).
+   * Returns null when the swatch is unparseable.
+   */
+  function normalizeSwatch(swatch: string): string | null {
+    const parsed = parseToHsla(swatch);
+    if (!parsed) return null;
+    return formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha).toLowerCase();
+  }
+
   function applyHsla(next: Hsla): void {
     hue = next.h;
     saturation = next.s;
@@ -155,14 +167,12 @@
     }
   }
 
-  // Sync incoming `value` (controlled) to internal HSLA, but only when it
-  // doesn't match what we last emitted (avoids fighting bound updates).
+  // Sync incoming `value` (controlled) to internal HSLA, but skip the echo of our
+  // own writes. We compare against `lastEmittedHex` rather than using a one-shot
+  // suppression flag so a parent that normalizes or rejects the emitted value
+  // (and writes a different one back) is not ignored.
   $effect(() => {
     if (value === undefined) return;
-    if (suppressNextSync) {
-      suppressNextSync = false;
-      return;
-    }
     if (value === lastEmittedHex) return;
     if (value === '') {
       internalValue = '';
@@ -177,16 +187,26 @@
     internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
   });
 
+  // Re-normalize internal value when the `alpha` mode toggles after mount so
+  // hidden input / bound value reflect the new emit format immediately.
+  $effect(() => {
+    void alpha;
+    if (internalValue === '') return;
+    const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
+    if (hex === internalValue) return;
+    internalValue = hex;
+    lastEmittedHex = hex;
+    if (value !== undefined && value !== hex) value = hex;
+  });
+
   function emit(reason: 'input' | 'change'): void {
     const hex = formatHex(hue, saturation, lightnessValue, alphaValue, alpha);
     internalValue = hex;
     lastEmittedHex = hex;
-    if (value !== undefined) {
-      suppressNextSync = true;
-      value = hex;
-    }
-    if (reason === 'input') oninput?.(hex);
-    else onchange?.(hex);
+    if (value !== undefined) value = hex;
+    // Every value mutation fires `oninput`; `onchange` additionally fires on commit.
+    oninput?.(hex);
+    if (reason === 'change') onchange?.(hex);
   }
 
   function commitFromHsla(next: Hsla, reason: 'input' | 'change'): void {
@@ -236,6 +256,62 @@
     if (!isDragging) return;
     isDragging = false;
     gradientElement?.releasePointerCapture(event.pointerId);
+    emit('change');
+  }
+
+  // ── Slider pointer handling ─────────────────────────────────────────────
+
+  let hueElement: HTMLDivElement | null = $state(null);
+  let alphaElement: HTMLDivElement | null = $state(null);
+  let draggingSlider: 'hue' | 'alpha' | null = $state(null);
+
+  function pointerToFraction(event: PointerEvent, element: HTMLElement): number {
+    const rect = element.getBoundingClientRect();
+    const x = clamp(event.clientX - rect.left, 0, rect.width);
+    return rect.width === 0 ? 0 : x / rect.width;
+  }
+
+  function handleHuePointerDown(event: PointerEvent): void {
+    if (disabled || !hueElement) return;
+    event.preventDefault();
+    hueElement.setPointerCapture(event.pointerId);
+    draggingSlider = 'hue';
+    const fraction = pointerToFraction(event, hueElement);
+    commitFromHsla({ h: fraction * 359, s: saturation, l: lightnessValue, a: alphaValue }, 'input');
+  }
+
+  function handleHuePointerMove(event: PointerEvent): void {
+    if (draggingSlider !== 'hue' || disabled || !hueElement) return;
+    const fraction = pointerToFraction(event, hueElement);
+    commitFromHsla({ h: fraction * 359, s: saturation, l: lightnessValue, a: alphaValue }, 'input');
+  }
+
+  function handleHuePointerUp(event: PointerEvent): void {
+    if (draggingSlider !== 'hue') return;
+    draggingSlider = null;
+    hueElement?.releasePointerCapture(event.pointerId);
+    emit('change');
+  }
+
+  function handleAlphaPointerDown(event: PointerEvent): void {
+    if (disabled || !alphaElement) return;
+    event.preventDefault();
+    alphaElement.setPointerCapture(event.pointerId);
+    draggingSlider = 'alpha';
+    const fraction = pointerToFraction(event, alphaElement);
+    commitFromHsla({ h: hue, s: saturation, l: lightnessValue, a: fraction }, 'input');
+  }
+
+  function handleAlphaPointerMove(event: PointerEvent): void {
+    if (draggingSlider !== 'alpha' || disabled || !alphaElement) return;
+    const fraction = pointerToFraction(event, alphaElement);
+    commitFromHsla({ h: hue, s: saturation, l: lightnessValue, a: fraction }, 'input');
+  }
+
+  function handleAlphaPointerUp(event: PointerEvent): void {
+    if (draggingSlider !== 'alpha') return;
+    draggingSlider = null;
+    alphaElement?.releasePointerCapture(event.pointerId);
     emit('change');
   }
 
@@ -322,26 +398,25 @@
   // 2D selection is inherently pointer-friendly. Documented in a11y memo.
   function handleGradientKeydown(event: KeyboardEvent): void {
     if (disabled) return;
-    const stepX = event.shiftKey ? 10 : 1;
-    const stepY = event.shiftKey ? 10 : 1;
+    const step = event.shiftKey ? 10 : 1;
     let nextS = saturation;
     let nextL = lightnessValue;
     let handled = false;
     switch (event.key) {
       case 'ArrowLeft':
-        nextS = clamp(saturation - stepX, 0, 100);
+        nextS = clamp(saturation - step, 0, 100);
         handled = true;
         break;
       case 'ArrowRight':
-        nextS = clamp(saturation + stepX, 0, 100);
+        nextS = clamp(saturation + step, 0, 100);
         handled = true;
         break;
       case 'ArrowUp':
-        nextL = clamp(lightnessValue + stepY, 0, 100);
+        nextL = clamp(lightnessValue + step, 0, 100);
         handled = true;
         break;
       case 'ArrowDown':
-        nextL = clamp(lightnessValue - stepY, 0, 100);
+        nextL = clamp(lightnessValue - step, 0, 100);
         handled = true;
         break;
     }
@@ -423,10 +498,7 @@
         alphaValue = 1;
         internalValue = '';
         lastEmittedHex = '';
-        if (value !== undefined) {
-          suppressNextSync = true;
-          value = '';
-        }
+        if (value !== undefined) value = '';
         onchange?.('');
         return;
       }
@@ -469,13 +541,8 @@
     return { x: svFromHsl * 100, y: (1 - v) * 100 };
   });
 
-  const handleX = $derived(handlePosition.x);
-  const handleY = $derived(handlePosition.y);
-
   const hueAriaValue = $derived(Math.round(hue));
   const alphaAriaValue = $derived(Math.round(alphaValue * 100));
-
-  const hiddenValue = $derived(internalValue);
 </script>
 
 <div
@@ -503,12 +570,13 @@
   >
     <div
       class="cinder-color-picker__gradient-handle"
-      style="left: {handleX}%; top: {handleY}%;"
+      style="left: {handlePosition.x}%; top: {handlePosition.y}%;"
       aria-hidden="true"
     ></div>
   </div>
 
   <div
+    bind:this={hueElement}
     id={hueId}
     role="slider"
     aria-label="Hue"
@@ -519,6 +587,10 @@
     tabindex={disabled ? -1 : 0}
     class="cinder-color-picker__hue"
     onkeydown={handleHueKeydown}
+    onpointerdown={handleHuePointerDown}
+    onpointermove={handleHuePointerMove}
+    onpointerup={handleHuePointerUp}
+    onpointercancel={handleHuePointerUp}
   >
     <div
       class="cinder-color-picker__hue-thumb"
@@ -529,6 +601,7 @@
 
   {#if alpha}
     <div
+      bind:this={alphaElement}
       id={alphaId}
       role="slider"
       aria-label="Alpha"
@@ -541,6 +614,10 @@
       class="cinder-color-picker__alpha"
       style="--cinder-color-picker-base: hsl({hue}, {saturation}%, {lightnessValue}%);"
       onkeydown={handleAlphaKeydown}
+      onpointerdown={handleAlphaPointerDown}
+      onpointermove={handleAlphaPointerMove}
+      onpointerup={handleAlphaPointerUp}
+      onpointercancel={handleAlphaPointerUp}
     >
       <div
         class="cinder-color-picker__alpha-thumb"
@@ -552,9 +629,10 @@
 
   <div
     id={previewId}
+    role="img"
     class="cinder-color-picker__preview"
     data-cinder-alpha={alpha ? '' : undefined}
-    aria-label="Selected color preview"
+    aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
     style="--cinder-color-picker-preview: {previewColor};"
   ></div>
 
@@ -567,12 +645,13 @@
       class="cinder-color-picker__swatches"
     >
       {#each swatchList as swatch, index (swatch + index)}
-        {@const isSelected = swatch.toLowerCase() === currentHex.toLowerCase()}
+        {@const normalized = normalizeSwatch(swatch)}
+        {@const isSelected = normalized !== null && normalized === currentHex.toLowerCase()}
         <li
           bind:this={swatchRefs[index]}
           role="option"
           aria-selected={isSelected}
-          aria-label={swatch}
+          aria-label={`Color ${swatch}`}
           tabindex={(swatchFocusIndex ?? 0) === index && !disabled ? 0 : -1}
           class="cinder-color-picker__swatch"
           data-cinder-selected={isSelected ? '' : undefined}
@@ -585,8 +664,8 @@
   {/if}
 
   {#if name}
-    <input bind:this={hiddenInput} type="hidden" {name} value={hiddenValue} />
+    <input bind:this={hiddenInput} type="hidden" {name} value={internalValue} />
   {:else}
-    <input bind:this={hiddenInput} type="hidden" value={hiddenValue} hidden />
+    <input bind:this={hiddenInput} type="hidden" value={internalValue} hidden />
   {/if}
 </div>
