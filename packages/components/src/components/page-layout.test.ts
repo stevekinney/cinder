@@ -336,22 +336,23 @@ describe('PageLayout integration: all slots simultaneously', () => {
 
 describe('PageLayout content-width token', () => {
   test('page-layout.css uses --cinder-content-width for max-width caps', async () => {
-    const { join } = await import('node:path');
-    const cssPath = join(import.meta.dir, '../styles/components/page-layout.css');
+    const cssPath = new URL('../styles/components/page-layout.css', import.meta.url);
     const source = await Bun.file(cssPath).text();
 
-    // No hardcoded width value on max-width — must reference the shared token.
-    const hardcodedMaxWidth = /max-width:\s*\d/.exec(source);
+    // No hardcoded length on max-width — must reference the shared token.
+    // Matches dimensional units only; viewport-relative or percentage values
+    // (e.g. 100%, 100vw) are legitimate and intentionally not flagged.
+    const hardcodedMaxWidth = /max-width:\s*\d+(?:\.\d+)?(?:rem|px|em|ch)\b/.exec(source);
     expect(hardcodedMaxWidth).toBeNull();
 
-    // Three layout regions cap their inline size: breadcrumbs, header row, content.
+    // Three layout regions cap their inline size: breadcrumbs, header-row, content.
+    // If you add a fourth, update this count deliberately.
     const tokenReferences = source.match(/max-width:\s*var\(--cinder-content-width\)/g) ?? [];
     expect(tokenReferences.length).toBe(3);
   });
 
   test('--cinder-content-width is declared in tokens-base.css', async () => {
-    const { join } = await import('node:path');
-    const tokensPath = join(import.meta.dir, '../styles/tokens-base.css');
+    const tokensPath = new URL('../styles/tokens-base.css', import.meta.url);
     const source = await Bun.file(tokensPath).text();
     expect(source).toMatch(/--cinder-content-width:\s*\S+/);
   });
