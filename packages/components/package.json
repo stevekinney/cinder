@@ -165,10 +165,6 @@
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
     },
-    "./experimental/sheet": {
-      "svelte": "./src/components/experimental/sheet.svelte",
-      "types": "./dist/components/experimental/sheet.svelte.d.ts"
-    },
     "./experimental/timeline-item": {
       "svelte": "./src/components/experimental/timeline-item.svelte",
       "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
@@ -276,6 +272,10 @@
     "./selection-popover": {
       "svelte": "./src/components/selection-popover.svelte",
       "types": "./dist/components/selection-popover.svelte.d.ts"
+    },
+    "./sheet": {
+      "svelte": "./src/components/sheet.svelte",
+      "types": "./dist/components/sheet.svelte.d.ts"
     },
     "./side-navigation-group": {
       "svelte": "./src/components/side-navigation-group.svelte",

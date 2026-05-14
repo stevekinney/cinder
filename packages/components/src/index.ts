@@ -261,6 +261,9 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
+export { default as Sheet } from './components/sheet.svelte';
+export type { SheetProps } from './components/sheet.svelte';
+
 export { default as SideNavigation } from './components/side-navigation.svelte';
 export type { SideNavigationProps } from './components/side-navigation.svelte';
 
@@ -401,9 +404,6 @@ export type { JsonViewerProps } from './components/experimental/json-viewer.svel
 
 export { default as Message } from './components/experimental/message.svelte';
 export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
-
-export { default as Sheet } from './components/experimental/sheet.svelte';
-export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
 
 export { default as Timeline } from './components/experimental/timeline.svelte';
 export type { TimelineProps } from './components/experimental/timeline.svelte';
