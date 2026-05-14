@@ -83,6 +83,6 @@
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
   {#if hasVisibleLabel}
-    <span class="cinder-status-dot__label">{label}</span>
+    <span class="cinder-status-dot__label">{normalizedLabel}</span>
   {/if}
 </span>
