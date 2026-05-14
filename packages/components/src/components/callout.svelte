@@ -26,12 +26,24 @@
    *
    * Callout is intentionally **not** a live region. It is static content
    * rendered as part of the document, analogous to Markdown admonitions
-   * (note / tip / warning / danger). Do not pass `role="alert"` or
-   * `aria-live` — both are excluded from the prop type.
+   * (note / tip / warning / danger). The type omits `role`, `aria-live`,
+   * `aria-atomic`, `aria-relevant`, and `aria-busy` from the underlying
+   * `HTMLAttributes` so a consumer cannot silently turn a callout into a
+   * live region. The runtime also scrubs those attributes from rest
+   * props for defense in depth — see banner.svelte for the analogous
+   * pattern.
+   *
+   * The root is `<aside>`. When placed directly inside `<body>`,
+   * `<main>`, or another sectioning landmark, `<aside>` is exposed as a
+   * `complementary` landmark; inside `<article>` or `<section>` the
+   * landmark role is suppressed and the element behaves as generic
+   * sectioning content. When the callout lands at landmark level, supply
+   * `title` (used as the accessible name) or pass `aria-label` /
+   * `aria-labelledby` so the landmark has a meaningful name.
    */
   export type CalloutProps = Omit<
     HTMLAttributes<HTMLElement>,
-    'children' | 'class' | 'role' | 'aria-live'
+    'children' | 'class' | 'role' | 'aria-live' | 'aria-atomic' | 'aria-relevant' | 'aria-busy'
   > & {
     /** Visual + semantic variant. Default `'info'`. */
     variant?: CalloutVariant;
@@ -43,6 +55,10 @@
      * callout genuinely participates in the outline (e.g. it titles a
      * standalone section), wrap it in a `<section>` with its own heading
      * rather than promoting this prop to `<h*>`.
+     *
+     * When supplied and no `aria-label` or `aria-labelledby` is passed
+     * on rest props, the title also becomes the `aria-label` of the
+     * root `<aside>` so the landmark has an accessible name.
      */
     title?: string;
     /**
@@ -78,26 +94,39 @@
     ...rest
   }: CalloutProps = $props();
 
-  // Strip live-region attributes from rest props. Callout is static
-  // content by design; allowing a consumer to bolt on `aria-live` would
-  // silently convert it into a live region and defeat the distinction
-  // documented above. Consumers that need announcements should use
-  // `alert.svelte` instead.
-  const restWithoutLiveRegion = $derived.by(() => {
+  // Strip role + live-region attributes from rest props. The type
+  // already omits these, but a consumer can escape the type system
+  // (`as never`, spread from an `unknown` source). Scrubbing at runtime
+  // guarantees the hard invariant that a callout is never announced as
+  // a live region and never overrides the implicit `<aside>` role.
+  // Mirrors banner.svelte's defense-in-depth pattern.
+  const restWithoutForbidden = $derived.by(() => {
     const {
+      role: _role,
       'aria-live': _ariaLive,
       'aria-atomic': _ariaAtomic,
       'aria-relevant': _ariaRelevant,
+      'aria-busy': _ariaBusy,
       ...filtered
     } = rest as HTMLAttributes<HTMLElement> & Record<string, unknown>;
     return filtered;
   });
+
+  // Derive an accessible name for the root `<aside>` so a callout that
+  // lands at landmark level (direct child of body / main / etc.) is not
+  // an unnamed `complementary` landmark — WCAG 2.4.1. Priority mirrors
+  // banner.svelte: consumer `aria-labelledby` > consumer `aria-label` >
+  // `title`. When none of the three is supplied, the landmark is
+  // unnamed, which is the right behavior for a callout nested inside
+  // an <article> or <section> where it carries no landmark role anyway.
+  const ariaLabel = $derived(rest['aria-labelledby'] ? undefined : (rest['aria-label'] ?? title));
 </script>
 
 <aside
-  {...restWithoutLiveRegion}
+  {...restWithoutForbidden}
   class={classNames('cinder-callout', className)}
   data-cinder-variant={variant}
+  aria-label={ariaLabel}
 >
   {#if icon}
     <div class="cinder-callout__icon" aria-hidden="true">

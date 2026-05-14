@@ -137,7 +137,7 @@ describe('Callout icon', () => {
 });
 
 describe('Callout accessibility', () => {
-  test('does not set role="alert" on the root element', () => {
+  test('does not set an explicit role attribute on the root <aside>', () => {
     const { container } = render(Callout, {
       props: { children: emptySnippet },
     });
@@ -153,6 +153,17 @@ describe('Callout accessibility', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
+  test('strips a consumer-supplied role from rest props', () => {
+    // role is forbidden by the type, but a consumer can still escape it
+    // via `as never`. The runtime must scrub it so consumers cannot
+    // override the implicit <aside> role with role="alert" or similar.
+    const { container } = render(Callout, {
+      props: { role: 'alert', children: emptySnippet } as never,
+    });
+    const root = container.querySelector('.cinder-callout');
+    expect(root?.hasAttribute('role')).toBe(false);
+  });
+
   test('strips aria-live from consumer-supplied rest props', () => {
     const { container } = render(Callout, {
       // aria-live is intentionally forbidden by the type, but a runtime
@@ -164,17 +175,19 @@ describe('Callout accessibility', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
-  test('strips aria-atomic and aria-relevant from consumer rest props', () => {
+  test('strips aria-atomic, aria-relevant, and aria-busy from consumer rest props', () => {
     const { container } = render(Callout, {
       props: {
         'aria-atomic': 'true',
         'aria-relevant': 'additions',
+        'aria-busy': 'true',
         children: emptySnippet,
       } as never,
     });
     const root = container.querySelector('.cinder-callout');
     expect(root?.hasAttribute('aria-atomic')).toBe(false);
     expect(root?.hasAttribute('aria-relevant')).toBe(false);
+    expect(root?.hasAttribute('aria-busy')).toBe(false);
   });
 
   test('forwards aria-label from consumer rest props', () => {
@@ -182,5 +195,47 @@ describe('Callout accessibility', () => {
       props: { 'aria-label': 'Heads up', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-callout')?.getAttribute('aria-label')).toBe('Heads up');
+  });
+});
+
+describe('Callout landmark labeling', () => {
+  test('derives aria-label from title when no consumer label is provided', () => {
+    const { container } = render(Callout, {
+      props: { title: 'Heads up', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-callout')?.getAttribute('aria-label')).toBe('Heads up');
+  });
+
+  test('does not set aria-label when neither title nor consumer label is supplied', () => {
+    const { container } = render(Callout, {
+      props: { children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-callout')?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('consumer-supplied aria-label overrides the title-derived label', () => {
+    const { container } = render(Callout, {
+      props: {
+        title: 'Visual title',
+        'aria-label': 'Accessible name',
+        children: emptySnippet,
+      },
+    });
+    expect(container.querySelector('.cinder-callout')?.getAttribute('aria-label')).toBe(
+      'Accessible name',
+    );
+  });
+
+  test('aria-labelledby suppresses the title-derived aria-label so the accessible name has a single source', () => {
+    const { container } = render(Callout, {
+      props: {
+        title: 'Visual title',
+        'aria-labelledby': 'external-heading',
+        children: emptySnippet,
+      },
+    });
+    const root = container.querySelector('.cinder-callout');
+    expect(root?.hasAttribute('aria-label')).toBe(false);
+    expect(root?.getAttribute('aria-labelledby')).toBe('external-heading');
   });
 });
