@@ -402,6 +402,20 @@ describe('Slider (ticks)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
   });
 
+  test('End reaches max even when step does not evenly divide the range', async () => {
+    // Regression: with min=0, max=100, step=30, pressing End used to snap
+    // 100 → Math.round(100/30)*30 = 90, leaving aria-valuenow at 90 while
+    // aria-valuemax still announced 100.
+    const { container } = render(Slider, {
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100, step: 30 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'End' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('100');
+    await fireEvent.keyDown(thumb, { key: 'Home' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+  });
+
   test('PageUp/PageDown move across ticks when tick spacing exceeds pageStep', async () => {
     // Regression: with ticks=[0,25,50,75,100] and default pageStep (10× step=10),
     // PageUp at tick 0 would compute 10, then snap back to 0 — making the keys

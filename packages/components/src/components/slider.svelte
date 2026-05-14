@@ -182,6 +182,11 @@
   /** Snap a raw value: clamp into `[min, max]`, then to the nearest tick or step. */
   function snap(raw: number): number {
     const clamped = clampToBounds(raw);
+    // `min` and `max` are always reachable, regardless of step alignment.
+    // Without this, a non-divisible step (e.g. `min=0, max=100, step=30`)
+    // would let Home/End or a clamped overshoot snap to 90 instead of 100,
+    // creating a mismatch with `aria-valuemax`.
+    if (clamped === min || clamped === max) return clamped;
     if (tickList && tickList.length > 0) {
       let nearest = tickList[0]!;
       let nearestDelta = Math.abs(clamped - nearest);
