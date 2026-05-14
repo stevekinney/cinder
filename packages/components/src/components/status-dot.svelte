@@ -53,18 +53,14 @@
     ...rest
   }: StatusDotProps = $props();
 
-  const hasLabelText = $derived(label !== undefined && label.length > 0);
+  const normalizedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel.trim() : undefined);
+  const normalizedLabel = $derived(label?.trim() ? label.trim() : undefined);
+  const hasLabelText = $derived(normalizedLabel !== undefined);
   const hasVisibleLabel = $derived(showLabel && hasLabelText);
 
-  // Accessible-name priority: non-empty consumer override → label text (even
-  // when hidden) → raw status token. An empty-string `aria-label` is treated
-  // as "no override" rather than blanking the accessible name. When a visible
-  // label is rendered we omit `aria-label` so the label text itself becomes
-  // the accessible name.
-  const resolvedAriaLabel = $derived(
-    (ariaLabel ? ariaLabel : undefined) ??
-      (hasVisibleLabel ? undefined : hasLabelText ? label : status),
-  );
+  // `role="img"` needs an author-provided name. Blank labels are treated as
+  // absent so status is never communicated by color alone.
+  const resolvedAriaLabel = $derived(normalizedAriaLabel ?? normalizedLabel ?? status);
 </script>
 
 <!--

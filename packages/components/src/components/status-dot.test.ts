@@ -6,6 +6,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
+const { within } = await import('@testing-library/dom');
 const { default: StatusDot } = await import('./status-dot.svelte');
 
 const ALL_STATUSES = ['online', 'offline', 'warning', 'error', 'building', 'neutral'] as const;
@@ -97,6 +98,11 @@ describe('StatusDot label rendering', () => {
     const { container } = render(StatusDot, { props: { status: 'online', label: '' } });
     expect(container.querySelector('.cinder-status-dot__label')).toBeNull();
   });
+
+  test('omits the visible label when label is whitespace-only', () => {
+    const { container } = render(StatusDot, { props: { status: 'online', label: '   ' } });
+    expect(container.querySelector('.cinder-status-dot__label')).toBeNull();
+  });
 });
 
 describe('StatusDot accessible name (WCAG 1.4.1)', () => {
@@ -128,11 +134,14 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     );
   });
 
-  test('omits aria-label when a visible label is rendered (label text is the accessible name)', () => {
+  test('uses label text as aria-label when a visible label is rendered', () => {
     const { container } = render(StatusDot, {
       props: { status: 'online', label: 'Online' },
     });
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBeNull();
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'Online',
+    );
+    expect(within(container).getByRole('img', { name: 'Online' })).not.toBeNull();
   });
 
   test('consumer-supplied aria-label overrides the automatic fallback', () => {
@@ -163,6 +172,13 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     });
     // An empty override would hide the element from AT — treat it as "no
     // override" and fall through to the automatic status fallback instead.
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
+  });
+
+  test('whitespace-only aria-label from consumer does not blank the accessible name', () => {
+    const { container } = render(StatusDot, {
+      props: { status: 'error', 'aria-label': '   ' },
+    });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
   });
 });
