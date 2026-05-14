@@ -201,6 +201,9 @@ export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout.
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';
 
+export { default as Popover } from './components/popover.svelte';
+export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover.svelte';
+
 export { default as Progress } from './components/progress.svelte';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress.svelte';
 
@@ -395,9 +398,6 @@ export type { JsonViewerProps } from './components/experimental/json-viewer.svel
 
 export { default as Message } from './components/experimental/message.svelte';
 export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
-
-export { default as Popover } from './components/experimental/popover.svelte';
-export type { PopoverPlacement, PopoverProps } from './components/experimental/popover.svelte';
 
 export { default as Sheet } from './components/experimental/sheet.svelte';
 export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';

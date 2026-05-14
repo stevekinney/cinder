@@ -43,6 +43,7 @@
 @import './components/navigation-item.css';
 @import './components/page-layout.css';
 @import './components/pagination.css';
+@import './components/popover.css';
 @import './components/progress.css';
 @import './components/radio.css';
 @import './components/radio-group.css';
