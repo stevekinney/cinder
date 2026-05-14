@@ -1,0 +1,104 @@
+/* ========================================
+ * NUMBER INPUT
+ * ======================================== */
+
+.cinder-number-input {
+  display: inline-flex;
+  align-items: stretch;
+  inline-size: 100%;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-number-input:hover:not([data-disabled]) {
+  border-color: var(--cinder-border-strong);
+}
+
+.cinder-number-input:focus-within {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-input-ring, var(--cinder-ring-color));
+}
+
+@media (forced-colors: active) {
+  .cinder-number-input:focus-within {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+.cinder-number-input[data-disabled] {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  cursor: not-allowed;
+}
+
+.cinder-number-input__input.cinder-input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline-end: var(--cinder-space-2);
+}
+
+.cinder-number-input__input.cinder-input:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.cinder-number-input__input[aria-invalid='true'] ~ .cinder-number-input__stepper {
+  border-inline-start-color: var(--cinder-danger);
+}
+
+.cinder-number-input:has(.cinder-number-input__input[aria-invalid='true']) {
+  --_cinder-input-ring: var(--cinder-danger);
+  border-color: var(--cinder-danger);
+}
+
+.cinder-number-input__stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 2.25rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-inline-start: 1px solid var(--cinder-border);
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+  cursor: pointer;
+  appearance: none;
+  transition:
+    background var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-number-input__stepper:hover:not(:disabled) {
+  background: var(--cinder-surface-hover);
+  color: var(--cinder-text);
+}
+
+.cinder-number-input__stepper:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: -2px;
+}
+
+.cinder-number-input__stepper:disabled {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .cinder-number-input__stepper {
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+  }
+}

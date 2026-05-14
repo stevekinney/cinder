@@ -233,6 +233,10 @@
       "svelte": "./src/components/navigation-item.svelte",
       "types": "./dist/components/navigation-item.svelte.d.ts"
     },
+    "./number-input": {
+      "svelte": "./src/components/number-input.svelte",
+      "types": "./dist/components/number-input.svelte.d.ts"
+    },
     "./page-layout": {
       "svelte": "./src/components/page-layout.svelte",
       "types": "./dist/components/page-layout.svelte.d.ts"
