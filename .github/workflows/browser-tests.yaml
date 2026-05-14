@@ -41,7 +41,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           # `git diff origin/<base>..HEAD` needs the merge base. fetch-depth: 0
-          # is the simplest reliable option for monorepos this size.
+          # is the simplest reliable option; the scope job is fast either way
+          # and shallow merge-base lookups are fragile on long-lived PRs.
           fetch-depth: 0
 
       - name: Setup Bun
@@ -63,26 +64,14 @@ jobs:
             exit 0
           fi
 
-          git fetch origin "$BASE_REF" --depth=200
-          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          changed=$(git diff --name-only "origin/${BASE_REF}..HEAD")
           echo "Changed files:"
-          echo "$changed"
+          printf '%s\n' "$changed"
 
-          decision=$(printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts || true)
-          echo "Decision output:"
-          echo "$decision"
-
-          mode=$(printf '%s\n' "$decision" | awk -F= '/^mode=/ { print $2 }')
-          components=$(printf '%s\n' "$decision" | awk -F= '/^components=/ { print $2 }')
-
-          if [ -z "$mode" ]; then
-            echo "::warning::changed-components produced no mode; defaulting to full."
-            mode=full
-            components=
-          fi
-
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-          echo "components=$components" >> "$GITHUB_OUTPUT"
+          # The script appends `mode=<value>` (and `components=<csv>` when
+          # filtered) directly to $GITHUB_OUTPUT — no shell parsing of its
+          # stdout needed. A non-zero exit fails the job loudly.
+          printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
 
   playwright:
     needs: scope
@@ -102,8 +91,12 @@ jobs:
 
       - name: Resolve Playwright version
         id: playwright-version
+        # Resolve via Bun's module resolution rather than a hardcoded
+        # node_modules path — Bun's workspace install may hoist or
+        # restructure the on-disk layout, but `require.resolve` always
+        # finds the package as imported by @cinder/testing.
         run: |
-          version=$(bun -e "const m = await Bun.file('packages/testing/node_modules/@playwright/test/package.json').json(); console.log(m.version);")
+          version=$(bun --cwd packages/testing -e "const p = require.resolve('@playwright/test/package.json'); const m = await Bun.file(p).json(); console.log(m.version);")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Playwright version: $version"
 
@@ -112,15 +105,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          # runner.arch guards against accidental cross-arch corruption if
+          # the runner pool ever expands beyond x64.
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
 
-      - name: Install Chromium (no system deps)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: bunx playwright install chromium
+      - name: Install Chromium system dependencies
+        # System libs (libgbm, libasound2, etc.) live in apt, not in the
+        # Playwright cache. They must be installed on every CI run,
+        # cache-hit or cache-miss, or Chromium fails to launch.
+        run: bunx playwright install-deps chromium
 
-      - name: Install Chromium (with system deps)
+      - name: Install Chromium browser
+        # Only the browser binaries are cacheable; skip the download on
+        # cache hits.
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: bun run --filter='@cinder/testing' install-browsers:ci
+        run: bunx playwright install chromium
 
       - name: Run Playwright suite
         env:

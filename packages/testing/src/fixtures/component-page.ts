@@ -38,10 +38,8 @@ export const test = base.extend<Fixtures>({
         // Milkdown-backed editors (Chat, MarkdownEditor, ReviewEditor) —
         // mount in single-digit seconds on the CI runner. 20s leaves
         // generous headroom for runAxe + captureScreenshot inside the
-        // per-test 90s timeout. Set CINDER_MOUNT_TIMEOUT_MS to override
-        // while debugging slow components.
-        const mountTimeout = Number(process.env['CINDER_MOUNT_TIMEOUT_MS'] ?? 20_000);
-        await page.waitForSelector('#app > *', { state: 'visible', timeout: mountTimeout });
+        // per-test 90s timeout.
+        await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
         return page;
       },
     };
