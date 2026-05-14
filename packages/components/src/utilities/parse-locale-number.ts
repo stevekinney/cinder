@@ -59,10 +59,40 @@ export function parseLocaleNumber(
   const groupSep = sepParts.find((p) => p.type === 'group')?.value ?? '';
   const decimalSep = sepParts.find((p) => p.type === 'decimal')?.value ?? '.';
 
+  let isNegativeByFormatAffix = false;
   if (format) {
     // Strip currency / percent / literal / unit / compact glyphs derived from
     // both positive and negative samples so accounting formats like `($1.00)`
     // round-trip — `formatToParts(0)` alone misses the parentheses.
+    const positiveAffixValues = new Set(
+      new Intl.NumberFormat(locale, format)
+        .formatToParts(0)
+        .filter(
+          (part) =>
+            part.type === 'currency' ||
+            part.type === 'percentSign' ||
+            part.type === 'literal' ||
+            part.type === 'unit' ||
+            part.type === 'compact',
+        )
+        .map((part) => part.value),
+    );
+    const negativeParts = new Intl.NumberFormat(locale, format).formatToParts(-1);
+    const negativeOnlyAffixes = negativeParts
+      .filter(
+        (part) =>
+          (part.type === 'currency' ||
+            part.type === 'percentSign' ||
+            part.type === 'literal' ||
+            part.type === 'unit' ||
+            part.type === 'compact') &&
+          part.value.trim() !== '' &&
+          !positiveAffixValues.has(part.value),
+      )
+      .map((part) => part.value);
+    isNegativeByFormatAffix =
+      negativeOnlyAffixes.length > 0 && negativeOnlyAffixes.every((part) => working.includes(part));
+
     const stripSamples = [0, -1];
     for (const sample of stripSamples) {
       const parts = new Intl.NumberFormat(locale, format).formatToParts(sample);
@@ -78,6 +108,9 @@ export function parseLocaleNumber(
         }
       }
     }
+  }
+  if (isNegativeByFormatAffix && !/^[+-]/.test(working)) {
+    working = '-' + working;
   }
   // Always allow a stray percent literal.
   working = working.split('%').join('');

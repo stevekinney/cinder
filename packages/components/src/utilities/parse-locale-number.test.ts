@@ -80,6 +80,17 @@ describe('parseLocaleNumber', () => {
     });
   });
 
+  test('currency: accounting-style ($1.00) round-trips to -1', () => {
+    const fmt: Intl.NumberFormatOptions = {
+      style: 'currency',
+      currency: 'USD',
+      currencySign: 'accounting',
+    };
+    const formatted = new Intl.NumberFormat('en-US', fmt).format(-1);
+    if (!formatted.includes('(')) return; // engine doesn't honor accounting parens — skip
+    expect(parseLocaleNumber(formatted, 'en-US', fmt)).toEqual({ value: -1, status: 'valid' });
+  });
+
   test('percent: percent literal stripped', () => {
     const fmt: Intl.NumberFormatOptions = { style: 'percent' };
     expect(parseLocaleNumber('50%', 'en-US', fmt)).toEqual({ value: 50, status: 'valid' });

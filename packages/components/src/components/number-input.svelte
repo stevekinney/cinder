@@ -64,7 +64,11 @@
   let isFocused = $state(false);
   let hasMounted = $state(false);
   let inputElement: HTMLInputElement | undefined = $state();
+  // Two-part internal-invalid surface: malformed (parse failure) and
+  // required-empty (no value when the field demands one). Both drive
+  // `aria-invalid` so screen readers stay aligned with native validity.
   let malformedError = $state(false);
+  let requiredEmptyError = $state(false);
 
   // Seed the bindable from defaultValue when the parent didn't supply a value.
   if (value === null && defaultValue !== null) {
@@ -127,19 +131,22 @@
     parseStatus: 'valid' | 'empty' | 'malformed',
     emitChange: boolean,
   ): number | null {
+    const nextMalformed = !resolvedDisabled && parseStatus === 'malformed';
+    const nextRequiredEmpty =
+      !resolvedDisabled && !nextMalformed && resolvedRequired && next === null;
+
     if (inputElement) {
-      if (resolvedDisabled) {
-        inputElement.setCustomValidity('');
-      } else if (parseStatus === 'malformed') {
+      if (nextMalformed) {
         inputElement.setCustomValidity('Please enter a valid number.');
-      } else if (resolvedRequired && next === null) {
+      } else if (nextRequiredEmpty) {
         inputElement.setCustomValidity('Please enter a number.');
       } else {
         inputElement.setCustomValidity('');
       }
     }
 
-    malformedError = parseStatus === 'malformed';
+    malformedError = nextMalformed;
+    requiredEmptyError = nextRequiredEmpty;
 
     if (!Object.is(next, value)) {
       isInternalValueChange = true;
@@ -196,8 +203,9 @@
   }
 
   // Track value changes initiated from within the component so the "parent
-  // always wins during focus" effect below doesn't fight a commit.
-  let isInternalValueChange = false;
+  // always wins during focus" effect below doesn't fight a commit. Reactive
+  // because two distinct $effects read it across the same flush.
+  let isInternalValueChange = $state(false);
 
   // formattedValue and displayValue collapsed into one derived expression.
   // When the last commit was malformed we keep the user's typed text visible
@@ -212,14 +220,20 @@
           : formatNumber(value, resolvedLocale, format),
   );
 
-  // Parent always wins: when `value` changes from outside while focused, replace
-  // the in-progress editor buffer with a fresh edit-display. The
-  // `isInternalValueChange` flag breaks the cycle when the commit path is the
-  // one that just wrote `value`.
+  // Parent always wins: when `value` changes from outside while focused,
+  // replace the in-progress editor buffer with a fresh edit-display. We use
+  // `$derived` to capture only the value/locale/format inputs (not
+  // `isFocused`) so re-focusing after a malformed blur doesn't accidentally
+  // clobber the user's typed text. The effect that consumes this derived
+  // only writes to `editorBuffer` when the underlying value actually changes.
+  const parentValueSignature = $derived(
+    `${value ?? ''}|${resolvedLocale}|${JSON.stringify(format ?? null)}`,
+  );
+  let lastSeenParentSignature = parentValueSignature;
   $effect(() => {
-    void value;
-    void resolvedLocale;
-    void format;
+    const signature = parentValueSignature;
+    if (signature === lastSeenParentSignature) return;
+    lastSeenParentSignature = signature;
     if (!isFocused) return;
     if (isInternalValueChange) {
       isInternalValueChange = false;
@@ -231,22 +245,28 @@
   // Validity-sync for required/disabled changes outside the commit path. Also
   // clears the malformed flag whenever value flips to a defined number from
   // outside the component — the parent assigning a valid number means the
-  // input is no longer in a parse-failure state.
+  // input is no longer in a parse-failure state. Keeps required-empty validity
+  // in lockstep with the `requiredEmptyError` flag so aria-invalid and native
+  // validity never diverge.
   $effect(() => {
     if (!inputElement) return;
     if (resolvedDisabled) {
       inputElement.setCustomValidity('');
       malformedError = false;
+      requiredEmptyError = false;
     } else if (value !== null && value !== undefined && !isInternalValueChange) {
-      // External value write — clear malformed state and any prior validity.
+      // External value write — clear all prior validity state.
       malformedError = false;
+      requiredEmptyError = false;
       inputElement.setCustomValidity('');
     } else if (malformedError) {
       // commit() owns the malformed message; leave it in place.
     } else if (resolvedRequired && (value === null || value === undefined)) {
       inputElement.setCustomValidity('Please enter a number.');
+      requiredEmptyError = true;
     } else if (value !== null && value !== undefined) {
       inputElement.setCustomValidity('');
+      requiredEmptyError = false;
     }
   });
 
@@ -266,7 +286,11 @@
   }
 
   function onFocus() {
-    editorBuffer = value === null || value === undefined ? '' : buildEditDisplay(value);
+    // Preserve the editor buffer when re-focusing after a malformed blur so
+    // the user can correct their own text instead of having it disappear.
+    if (!malformedError) {
+      editorBuffer = value === null || value === undefined ? '' : buildEditDisplay(value);
+    }
     isFocused = true;
   }
 
@@ -278,8 +302,13 @@
 
   function onInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
     editorBuffer = event.currentTarget.value;
-    // Clear any prior malformed state as soon as the user starts re-typing.
-    if (malformedError) malformedError = false;
+    // Clear any prior malformed state as soon as the user starts re-typing —
+    // and clear the matching native customValidity message so aria-invalid
+    // and `input.validity.customError` move together.
+    if (malformedError) {
+      malformedError = false;
+      inputElement?.setCustomValidity('');
+    }
   }
 
   function getBaseForStep(direction: 'increment' | 'decrement'): number {
@@ -305,7 +334,13 @@
   function stepBy(direction: 'increment' | 'decrement', multiplier = 1) {
     const base = getBaseForStep(direction);
     const delta = incrementStep * multiplier * (direction === 'increment' ? 1 : -1);
-    commitFromNumber('delta', base + delta);
+    const next = commitFromNumber('delta', base + delta);
+    // Keep the in-progress editor buffer in sync with the committed value
+    // when focused. Without this, repeated ArrowUp / ArrowDown steps would
+    // step off the stale buffer instead of the canonical value.
+    if (isFocused) {
+      editorBuffer = next === null ? '' : buildEditDisplay(next);
+    }
     inputElement?.focus();
   }
 
@@ -363,24 +398,26 @@
     const form = inputElement.closest('form');
     if (!form) return;
 
-    const onSubmit = (event: SubmitEvent) => {
+    const onSubmit = () => {
+      // Capture-phase listener: runs before any consumer-registered submit
+      // handler, so by the time `new FormData(form)` is collected (whether
+      // by the platform's submission machinery or by app code in a later
+      // listener) the hidden input already reflects the canonical value.
+      // Validity reporting lives in onKeyDown / native form submission —
+      // not here — so the listener has exactly one job: flush.
       if (resolvedDisabled) return;
       if (isFocused) commitFromText('typed', editorBuffer);
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        form.reportValidity();
-      }
     };
     const onReset = () => {
       if (resolvedDisabled) return;
       commitFromNumber('reset', defaultValue ?? null, defaultValue === null ? 'empty' : 'valid');
     };
 
-    form.addEventListener('submit', onSubmit);
+    form.addEventListener('submit', onSubmit, true);
     form.addEventListener('reset', onReset);
 
     return () => {
-      form.removeEventListener('submit', onSubmit);
+      form.removeEventListener('submit', onSubmit, true);
       form.removeEventListener('reset', onReset);
     };
   });
@@ -397,9 +434,24 @@
   );
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+
+  // Internal error region — rendered when the parse failed and the consumer
+  // didn't supply their own `error` text. Without it, screen readers would
+  // hear `aria-invalid="true"` with no associated message describing why.
+  const internalErrorMessage = $derived(
+    !error && malformedError
+      ? 'Please enter a valid number.'
+      : !error && requiredEmptyError
+        ? 'Please enter a number.'
+        : null,
+  );
+  const internalErrorId = $derived(internalErrorMessage ? `${id}-internal-error` : undefined);
+
+  const describedBy = $derived(
+    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, internalErrorId),
+  );
   const resolvedAriaInvalid = $derived(
-    error || malformedError
+    error || malformedError || requiredEmptyError
       ? ariaInvalid(true)
       : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
   );
@@ -482,5 +534,9 @@
 
   {#if error}
     <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+  {:else if internalErrorMessage}
+    <p id={internalErrorId} class="cinder-input-field__error" aria-live="polite">
+      {internalErrorMessage}
+    </p>
   {/if}
 </div>

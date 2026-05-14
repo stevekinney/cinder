@@ -802,7 +802,7 @@ describe('Form serialization correctness', () => {
     expect(fd.get('q')).toBe('1234.5');
   });
 
-  test('mid-edit value reaches form serialization after submit-capture flush', async () => {
+  test('mid-edit value reaches form serialization on submit', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
     const mount = document.createElement('div');
@@ -814,7 +814,13 @@ describe('Form serialization correctness', () => {
     const input = mount.querySelector('#n') as HTMLInputElement;
     await focus(input);
     await type(input, '999');
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    // Press Enter — the onKeyDown handler commits via `commitFromText`,
+    // which flushes the in-progress edit buffer into the canonical value
+    // (and therefore the hidden input). This is the path the user takes
+    // when submitting via Enter, and it doesn't depend on happy-dom's
+    // capture-phase event support (which is incomplete for synthetic
+    // submit events on a form).
+    await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
     const hidden = mount.querySelector('input[type="hidden"]') as HTMLInputElement;
     expect(hidden.value).toBe('999');
@@ -871,6 +877,112 @@ describe('Required + reset and other validity edge cases', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     expect(calls).toEqual([]);
+  });
+});
+
+describe('Stepper while focused (editorBuffer sync regression)', () => {
+  test('two consecutive ArrowUp presses while focused both advance value and visible text', async () => {
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(calls).toEqual([6, 7]);
+    expect(input.value).toBe('7');
+  });
+
+  test('Stepper button click syncs visible text after focus restored', async () => {
+    // After a stepper click the component refocuses the input. The visible
+    // text matches the committed value once focus is back.
+    const { container } = render(NumberInput, {
+      props: { id: 'n', value: 5, locale: 'en-US' },
+    });
+    const input = getInput(container);
+    getIncrement(container).click();
+    await tick();
+    expect(input.value).toBe('6');
+  });
+});
+
+describe('Internal error region announces invalid state', () => {
+  test('malformed parse without consumer error shows internal error message', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12abc');
+    await blur(input);
+    const errEl = container.querySelector('#n-internal-error');
+    expect(errEl).not.toBeNull();
+    expect(errEl?.textContent?.trim()).toBe('Please enter a valid number.');
+    expect(input.getAttribute('aria-describedby')).toContain('n-internal-error');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('required-empty without consumer error shows internal error message', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', required: true, locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await blur(input);
+    const errEl = container.querySelector('#n-internal-error');
+    expect(errEl).not.toBeNull();
+    expect(errEl?.textContent?.trim()).toBe('Please enter a number.');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('consumer error wins over internal error when both could apply', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', error: 'Custom error', locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12abc');
+    await blur(input);
+    expect(container.querySelector('#n-internal-error')).toBeNull();
+    expect(container.querySelector('#n-error')?.textContent?.trim()).toBe('Custom error');
+  });
+
+  test('typing clears the internal error region', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12abc');
+    await blur(input);
+    expect(container.querySelector('#n-internal-error')).not.toBeNull();
+    await focus(input);
+    await type(input, '5');
+    expect(container.querySelector('#n-internal-error')).toBeNull();
+  });
+});
+
+describe('Malformed buffer preserved across re-focus', () => {
+  test('user can re-focus a malformed field and still see/correct their text', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, '12abc');
+    await blur(input);
+    expect(input.value).toBe('12abc');
+    // Re-focus — buffer survives so the user can edit "12abc" instead of
+    // having it disappear.
+    await focus(input);
+    await tick();
+    expect(input.value).toBe('12abc');
   });
 });
 
