@@ -55,15 +55,12 @@ describe('StatusDot rendering', () => {
 });
 
 describe('StatusDot status attribute (color via CSS)', () => {
-  test.each(ALL_STATUSES.map((status) => [status] as const))(
-    'renders data-cinder-status="%s"',
-    (status) => {
-      const { container } = render(StatusDot, { props: { status } });
-      expect(
-        container.querySelector('.cinder-status-dot')?.getAttribute('data-cinder-status'),
-      ).toBe(status);
-    },
-  );
+  test.each(ALL_STATUSES.map((status) => [status]))('renders data-cinder-status="%s"', (status) => {
+    const { container } = render(StatusDot, { props: { status } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('data-cinder-status')).toBe(
+      status,
+    );
+  });
 
   test('does not apply inline color styles — color is driven by CSS only', () => {
     const { container } = render(StatusDot, { props: { status: 'online' } });
@@ -103,14 +100,35 @@ describe('StatusDot label rendering', () => {
 });
 
 describe('StatusDot accessible name (WCAG 1.4.1)', () => {
-  test('adds aria-label={status} when no visible label is rendered', () => {
+  test('root has role="status" so assistive tech exposes the accessible name', () => {
+    const { container } = render(StatusDot, { props: { status: 'online' } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('role')).toBe('status');
+  });
+
+  test('falls back to aria-label={status} when no label is provided', () => {
     const { container } = render(StatusDot, { props: { status: 'error' } });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
   });
 
-  test('adds aria-label={status} when showLabel is false even if label is set', () => {
+  test('falls back to aria-label={status} when label is undefined and showLabel defaults true', () => {
+    const { container } = render(StatusDot, { props: { status: 'offline' } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'offline',
+    );
+  });
+
+  test('uses label text as aria-label when showLabel is false but label is provided', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'warning', label: 'Degraded', showLabel: false },
+      props: { status: 'error', label: 'Database unavailable', showLabel: false },
+    });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'Database unavailable',
+    );
+  });
+
+  test('falls back to aria-label={status} when showLabel is false and label is empty', () => {
+    const { container } = render(StatusDot, {
+      props: { status: 'warning', label: '', showLabel: false },
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'warning',
@@ -130,6 +148,19 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'Deployment in progress',
+    );
+  });
+
+  test('consumer-supplied aria-label is preserved even when a visible label is rendered', () => {
+    const { container } = render(StatusDot, {
+      props: {
+        status: 'online',
+        label: 'Online',
+        'aria-label': 'Server is currently online and accepting connections',
+      },
+    });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'Server is currently online and accepting connections',
     );
   });
 });

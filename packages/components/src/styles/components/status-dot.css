@@ -53,7 +53,7 @@
  * ---------------------------------------- */
 
 .cinder-status-dot[data-cinder-status='online'] {
-  --cinder-status-dot-color: var(--cinder-success, #059669);
+  --cinder-status-dot-color: var(--cinder-success);
 }
 
 .cinder-status-dot[data-cinder-status='offline'] {
@@ -61,15 +61,15 @@
 }
 
 .cinder-status-dot[data-cinder-status='warning'] {
-  --cinder-status-dot-color: var(--cinder-warning, #d97706);
+  --cinder-status-dot-color: var(--cinder-warning);
 }
 
 .cinder-status-dot[data-cinder-status='error'] {
-  --cinder-status-dot-color: var(--cinder-danger, #dc2626);
+  --cinder-status-dot-color: var(--cinder-danger);
 }
 
 .cinder-status-dot[data-cinder-status='building'] {
-  --cinder-status-dot-color: var(--cinder-info, #2563eb);
+  --cinder-status-dot-color: var(--cinder-info);
 }
 
 .cinder-status-dot[data-cinder-status='neutral'] {

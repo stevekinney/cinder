@@ -20,16 +20,16 @@
   /**
    * Props for {@link StatusDot}.
    *
-   * `aria-label` is excluded from the spread HTML attributes because the
-   * component manages the accessible name itself: if `showLabel` is `false`
-   * or no `label` is provided, the root receives `aria-label={status}` so
-   * the status is not communicated by color alone (WCAG 1.4.1). A consumer
-   * can still override that label by passing one explicitly.
+   * The component manages the accessible name itself so the status is never
+   * communicated by color alone (WCAG 1.4.1): the visible label text wins,
+   * then a hidden but provided `label`, then the raw `status` token. A
+   * consumer-supplied `aria-label` always takes priority over the automatic
+   * fallback.
    */
   export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
     /** Required semantic status. Drives color via `data-cinder-status`. */
     status: StatusDotStatus;
-    /** Optional human label shown next to the dot. */
+    /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
     label?: string;
     /** Whether to render the visible label. Default `true`. */
     showLabel?: boolean;
@@ -49,15 +49,19 @@
     showLabel = true,
     size = 'md',
     class: className,
+    'aria-label': ariaLabel,
     ...rest
   }: StatusDotProps = $props();
 
-  const hasVisibleLabel = $derived(showLabel && label !== undefined && label.length > 0);
+  const hasLabelText = $derived(label !== undefined && label.length > 0);
+  const hasVisibleLabel = $derived(showLabel && hasLabelText);
 
-  // When no visible label is rendered the dot would communicate the state by
-  // color alone, so fall back to `aria-label={status}`. A consumer-supplied
-  // `aria-label` wins over the automatic one.
-  const resolvedAriaLabel = $derived(rest['aria-label'] ?? (hasVisibleLabel ? undefined : status));
+  // Accessible-name priority: consumer override → label text (even when hidden)
+  // → raw status token. Omitting `aria-label` when a visible label is rendered
+  // lets the label text itself serve as the accessible name.
+  const resolvedAriaLabel = $derived(
+    ariaLabel ?? (hasVisibleLabel ? undefined : hasLabelText ? label : status),
+  );
 </script>
 
 <span
@@ -65,6 +69,7 @@
   class={classNames('cinder-status-dot', className)}
   data-cinder-status={status}
   data-cinder-size={size}
+  role="status"
   aria-label={resolvedAriaLabel}
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
