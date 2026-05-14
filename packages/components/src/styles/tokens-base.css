@@ -74,8 +74,8 @@
    * ======================================== */
   /**
    * Maximum inline size for primary page content. Caps line length and keeps
-   * content readable on wide viewports. Consumed by `page-layout.svelte` and
-   * the `Center` Every-Layout primitive; consumers can override per scope.
+   * content readable on wide viewports. Used by page layout styles; consumers
+   * can override per scope.
    */
   --cinder-content-width: 72rem;
 
