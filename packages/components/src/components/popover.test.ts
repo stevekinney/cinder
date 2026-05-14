@@ -509,4 +509,25 @@ describe('Popover — no-anchor degradation', () => {
     await tick();
     expect(container.querySelector('.cinder-popover')).toBeNull();
   });
+
+  test('open=true with no anchor does not register Escape handler (no overlay-stack pollution)', async () => {
+    // Render an anchorless popover. With the gate, the open lifecycle effect
+    // bails before pushing onto the shared escape stack — so a sibling overlay
+    // can still receive Escape.
+    let siblingEscapes = 0;
+    const overlay = await import('../_internal/overlay.ts');
+    const release = overlay.pushEscapeHandler(() => {
+      siblingEscapes += 1;
+    });
+
+    render(Popover, {
+      props: { open: true, children: textSnippet('content') },
+    });
+    await tick();
+    await tick();
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(siblingEscapes).toBe(1);
+    release();
+  });
 });

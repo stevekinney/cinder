@@ -145,8 +145,12 @@
   }
 
   // Effect: open lifecycle (captures focus, registers Escape + outside-mousedown).
+  // Gated on anchorElement so a no-anchor open session does not push onto the
+  // shared escape stack or steal mousedowns from other visible overlays — the
+  // panel itself won't render without an anchor.
   $effect(() => {
     if (!open) return;
+    if (!anchorElement) return;
     capturedFocus = captureFocus();
     // Snapshot the anchor at open time. untrack so anchor/trigger changes while
     // open don't retrigger this effect; positioning rebind is the positioning
