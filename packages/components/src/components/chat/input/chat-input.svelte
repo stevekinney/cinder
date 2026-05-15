@@ -610,9 +610,15 @@
   /* Wrapper allows remove button to extend beyond image bounds without clipping */
   .chat-input-attachment-wrapper {
     position: relative;
-    /* Add padding to accommodate the extended touch target */
+    /* Add padding to accommodate the extended touch target.
+       The remove button below is absolutely positioned with physical `right`
+       to anchor at the visual top-right corner of the image in both LTR and
+       RTL, so the wrapper's accommodating padding must also be physical to
+       match. Using padding-inline-end would flip in RTL while the button
+       stayed anchored right, causing overflow/clipping. */
     padding-top: var(--cinder-space-2);
-    padding-inline-end: var(--cinder-space-2);
+    /* stylelint-disable-next-line csstools/use-logical */
+    padding-right: var(--cinder-space-2);
   }
 
   .chat-input-attachment-remove {
