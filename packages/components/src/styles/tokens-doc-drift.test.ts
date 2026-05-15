@@ -22,14 +22,17 @@ function extractCssTokens(css: string): Set<string> {
   // Pull just the `:root { ... }` block. The file also has scoped redeclarations
   // (`:root[data-theme='dark']`, the prefers-reduced-motion override, etc.) that
   // would otherwise inflate the token set with duplicates.
-  const rootMatch = css.match(/^:root\s*\{([\s\S]*?)\n\}/m);
+  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
   const rootBody = rootMatch?.[1];
   if (!rootBody) {
     throw new Error('Could not find :root { ... } block in tokens-base.css');
   }
+  // Strip CSS block comments so a `/* --cinder-future: reserved */` aside in the
+  // source never gets counted as a real declaration.
+  const stripped = rootBody.replace(/\/\*[\s\S]*?\*\//g, '');
   const tokens = new Set<string>();
   const declarationPattern = /--cinder-[a-z0-9-]+(?=\s*:)/g;
-  for (const match of rootBody.matchAll(declarationPattern)) {
+  for (const match of stripped.matchAll(declarationPattern)) {
     tokens.add(match[0]);
   }
   return tokens;
@@ -58,6 +61,13 @@ describe('docs/tokens.md drift', () => {
     const cssTokens = extractCssTokens(css);
     const docTokens = extractDocTokens(doc);
 
+    // Sanity floor: a parser regression that silently returns a tiny set would
+    // otherwise show up as a confusing "missing from CSS: [137 tokens]" diff
+    // rather than a clear "the parser broke" signal. The real count sits well
+    // above 100; 50 leaves room to delete tokens without lowering this floor.
+    expect(cssTokens.size).toBeGreaterThan(50);
+    expect(docTokens.size).toBeGreaterThan(50);
+
     const missingFromDoc = [...cssTokens].filter((token) => !docTokens.has(token)).toSorted();
     const missingFromCss = [...docTokens].filter((token) => !cssTokens.has(token)).toSorted();
 
@@ -65,15 +75,5 @@ describe('docs/tokens.md drift', () => {
       missingFromDoc: [],
       missingFromCss: [],
     });
-  });
-
-  test('finds at least one token in each source (guards against parser regressions)', async () => {
-    const [css, doc] = await Promise.all([
-      readFile(TOKENS_CSS, 'utf8'),
-      readFile(TOKENS_DOC, 'utf8'),
-    ]);
-
-    expect(extractCssTokens(css).size).toBeGreaterThan(0);
-    expect(extractDocTokens(doc).size).toBeGreaterThan(0);
   });
 });
