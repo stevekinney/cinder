@@ -289,6 +289,10 @@
       "svelte": "./src/components/side-navigation.svelte",
       "types": "./dist/components/side-navigation.svelte.d.ts"
     },
+    "./sidebar": {
+      "svelte": "./src/components/sidebar.svelte",
+      "types": "./dist/components/sidebar.svelte.d.ts"
+    },
     "./skeleton": {
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
