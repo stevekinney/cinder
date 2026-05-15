@@ -108,15 +108,18 @@
   }
 
   // Stop emitting the inline background-image once the real image has loaded
-  // so the CSS rule can clear it without `!important` overriding consumers.
-  const cssUrl = $derived(placeholder && !loaded ? buildCssUrl(placeholder) : undefined);
+  // (or errored) so the placeholder doesn't leak behind a transparent image
+  // or a fallback snippet.
+  const cssUrl = $derived(
+    placeholder && !loaded && !errored ? buildCssUrl(placeholder) : undefined,
+  );
 
   // Decorative images (alt="") should stay invisible to assistive tech even
   // when the fallback renders — otherwise we'd announce an unnamed image-like
   // region. Meaningful images keep their accessible name via role + label.
   const fallbackRole = $derived(showFallback && alt !== '' ? 'img' : undefined);
   const fallbackLabel = $derived(showFallback && alt !== '' ? alt : undefined);
-  const fallbackHidden = $derived(showFallback && alt === '' ? 'true' : undefined);
+  const fallbackHidden = $derived(showFallback && alt === '' ? true : undefined);
 
   function buildCssUrl(value: string): string {
     // Quote and escape the URL so values containing parens, spaces, or quotes

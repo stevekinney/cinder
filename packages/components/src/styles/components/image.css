@@ -28,10 +28,19 @@
   opacity: 1;
 }
 
-/* Component clears the inline `style:background-image` after load (via the
- * `cssUrl` derivation), so the placeholder layer disappears for transparent
- * images. Keeping this rule belt-and-braces in case a consumer overrides the
- * inline style binding. */
-.cinder-image[data-cinder-loaded] {
+/* Errored without a fallback snippet: reveal the <img> so the browser's
+ * native broken-image / alt-text rendering shows through, rather than
+ * leaving a permanently-blank wrapper. */
+.cinder-image[data-cinder-errored]:not([data-cinder-fallback]) .cinder-image__img {
+  opacity: 1;
+}
+
+/* Component clears the inline `style:background-image` after the image
+ * resolves (via the `cssUrl` derivation), so transparent images don't show
+ * the low-res layer through them and fallback snippets aren't painted over
+ * a leftover blurry background. This rule covers the case where a consumer
+ * has set their own background via a custom class on the wrapper. */
+.cinder-image[data-cinder-loaded],
+.cinder-image[data-cinder-errored] {
   background-image: none;
 }

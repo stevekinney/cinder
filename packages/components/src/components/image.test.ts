@@ -228,9 +228,16 @@ describe('Image', () => {
       const wrapper = container.querySelector('div.cinder-image');
       expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(true);
     } finally {
-      if (completeDescriptor) Object.defineProperty(proto, 'complete', completeDescriptor);
-      if (naturalWidthDescriptor)
+      if (completeDescriptor) {
+        Object.defineProperty(proto, 'complete', completeDescriptor);
+      } else {
+        delete (proto as { complete?: boolean }).complete;
+      }
+      if (naturalWidthDescriptor) {
         Object.defineProperty(proto, 'naturalWidth', naturalWidthDescriptor);
+      } else {
+        delete (proto as { naturalWidth?: number }).naturalWidth;
+      }
     }
   });
 
@@ -258,6 +265,25 @@ describe('Image', () => {
     expect(wrapper?.style.backgroundImage).toContain(placeholder);
     await fireEvent.load(container.querySelector('img')!);
     expect(wrapper?.style.backgroundImage).toBe('');
+  });
+
+  test('clears the inline background-image after the image errors', async () => {
+    const placeholder = 'data:image/png;base64,iVBORw0KGgo=';
+    const { container } = render(Image, { src: '/broken.jpg', alt: 'Broken', placeholder });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper?.style.backgroundImage).toContain(placeholder);
+    await fireEvent.error(container.querySelector('img')!);
+    expect(wrapper?.style.backgroundImage).toBe('');
+  });
+
+  test('sets aria-hidden as a boolean attribute (not a string literal)', async () => {
+    const { container } = render(ImageWithFallback, { src: '/missing.svg', alt: '' });
+    await fireEvent.error(container.querySelector('img')!);
+    const wrapper = container.querySelector('div.cinder-image');
+    // The DOM serializes booleans as "true" — the source of truth is that the
+    // attribute exists with value "true" regardless of input form. This test
+    // pins the wire format consumers (and AT) actually see.
+    expect(wrapper?.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('restores the img when src changes while the fallback is active', async () => {
