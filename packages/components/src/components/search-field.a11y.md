@@ -8,7 +8,7 @@ The native WebKit clear button is suppressed via CSS (`::-webkit-search-cancel-b
 
 ## Leading icon
 
-The search icon is wrapped in `aria-hidden="true"`. The icon is decorative—the field's accessible name (provided by `FormField`'s `label`, an associated `<label>`, or `aria-label` on the consumer's wrapping element) carries the meaning. Placeholder text is not a substitute for an accessible name and disappears while typing, so always pair the field with a real label.
+The search icon is wrapped in `aria-hidden="true"`. The icon is decorative—the field's accessible name (provided by `FormField`'s `label`, an associated `<label>`, or `aria-label` on the input itself) carries the meaning. Placeholder text is not a substitute for an accessible name and disappears while typing, so always pair the field with a real label.
 
 ## Clear button
 
