@@ -179,7 +179,11 @@ describe('Image', () => {
     expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
   });
 
-  test('calls consumer onload after internal state updates', async () => {
+  test('calls consumer onload after the internal state mutation', async () => {
+    // Contract: handleLoad mutates loadedSource BEFORE invoking the consumer
+    // callback. The DOM reflects the new state on the next microtask, so we
+    // verify (a) the callback fired, (b) data-cinder-loaded is set once the
+    // task settles.
     let handlerCalled = false;
     const { container } = render(Image, {
       src: '/a.jpg',
@@ -195,7 +199,7 @@ describe('Image', () => {
     );
   });
 
-  test('calls consumer onerror after internal state updates', async () => {
+  test('calls consumer onerror after the internal state mutation', async () => {
     let handlerCalled = false;
     const { container } = render(Image, {
       src: '/broken.jpg',
@@ -209,6 +213,63 @@ describe('Image', () => {
     expect(container.querySelector('div.cinder-image')?.hasAttribute('data-cinder-errored')).toBe(
       true,
     );
+  });
+
+  test('treats a cached/already-complete <img> as loaded on mount', () => {
+    // Pre-stamp the image prototype so the attachment's `complete`/`naturalWidth`
+    // probes see a cached image. Restore the prototype after the assertion.
+    const proto = window.HTMLImageElement.prototype;
+    const completeDescriptor = Object.getOwnPropertyDescriptor(proto, 'complete');
+    const naturalWidthDescriptor = Object.getOwnPropertyDescriptor(proto, 'naturalWidth');
+    Object.defineProperty(proto, 'complete', { configurable: true, get: () => true });
+    Object.defineProperty(proto, 'naturalWidth', { configurable: true, get: () => 100 });
+    try {
+      const { container } = render(Image, { src: '/relative/cached.jpg', alt: 'Cached' });
+      const wrapper = container.querySelector('div.cinder-image');
+      expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(true);
+    } finally {
+      if (completeDescriptor) Object.defineProperty(proto, 'complete', completeDescriptor);
+      if (naturalWidthDescriptor)
+        Object.defineProperty(proto, 'naturalWidth', naturalWidthDescriptor);
+    }
+  });
+
+  test('sets data-cinder-fallback while the fallback renders', async () => {
+    const { container } = render(ImageWithFallback, { src: '/missing.jpg', alt: 'Missing' });
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.hasAttribute('data-cinder-fallback')).toBe(false);
+    await fireEvent.error(container.querySelector('img')!);
+    expect(wrapper?.hasAttribute('data-cinder-fallback')).toBe(true);
+  });
+
+  test('marks the fallback as aria-hidden for decorative images (alt="")', async () => {
+    const { container } = render(ImageWithFallback, { src: '/missing.svg', alt: '' });
+    await fireEvent.error(container.querySelector('img')!);
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.getAttribute('aria-hidden')).toBe('true');
+    expect(wrapper?.hasAttribute('role')).toBe(false);
+    expect(wrapper?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('clears the inline background-image after the image loads', async () => {
+    const placeholder = 'data:image/png;base64,iVBORw0KGgo=';
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A', placeholder });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper?.style.backgroundImage).toContain(placeholder);
+    await fireEvent.load(container.querySelector('img')!);
+    expect(wrapper?.style.backgroundImage).toBe('');
+  });
+
+  test('restores the img when src changes while the fallback is active', async () => {
+    const { container, rerender } = render(ImageWithFallback, {
+      src: '/missing.jpg',
+      alt: 'Missing',
+    });
+    await fireEvent.error(container.querySelector('img')!);
+    expect(container.querySelectorAll('[data-testid="image-fallback"]').length).toBe(1);
+    expect(container.querySelectorAll('img').length).toBe(0);
+    await rerender({ src: '/fixed.jpg', alt: 'Missing' });
+    expect(container.querySelectorAll('img').length).toBe(1);
   });
 
   test('forwards extra HTML attributes onto the <img>', () => {

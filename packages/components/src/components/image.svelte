@@ -103,11 +103,20 @@
   // when the element mounts, and treat it as loaded.
   function detectCached(node: HTMLImageElement) {
     if (node.complete && node.naturalWidth > 0) {
-      loadedSource = node.currentSrc || node.src;
+      loadedSource = src;
     }
   }
 
-  const cssUrl = $derived(placeholder ? buildCssUrl(placeholder) : undefined);
+  // Stop emitting the inline background-image once the real image has loaded
+  // so the CSS rule can clear it without `!important` overriding consumers.
+  const cssUrl = $derived(placeholder && !loaded ? buildCssUrl(placeholder) : undefined);
+
+  // Decorative images (alt="") should stay invisible to assistive tech even
+  // when the fallback renders — otherwise we'd announce an unnamed image-like
+  // region. Meaningful images keep their accessible name via role + label.
+  const fallbackRole = $derived(showFallback && alt !== '' ? 'img' : undefined);
+  const fallbackLabel = $derived(showFallback && alt !== '' ? alt : undefined);
+  const fallbackHidden = $derived(showFallback && alt === '' ? 'true' : undefined);
 
   function buildCssUrl(value: string): string {
     // Quote and escape the URL so values containing parens, spaces, or quotes
@@ -122,8 +131,9 @@
   data-cinder-loaded={loaded ? '' : undefined}
   data-cinder-errored={errored ? '' : undefined}
   data-cinder-fallback={showFallback ? '' : undefined}
-  role={showFallback ? 'img' : undefined}
-  aria-label={showFallback ? alt : undefined}
+  role={fallbackRole}
+  aria-label={fallbackLabel}
+  aria-hidden={fallbackHidden}
   style:aspect-ratio={ratio}
   style:background-image={cssUrl}
 >

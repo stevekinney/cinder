@@ -35,11 +35,15 @@ the low-res layer through them. Assistive tech only sees the `<img>` and its
 `alt`; the placeholder is not announced.
 
 When the image fails to load and a `fallback` snippet is provided, the
-`<img>` is unmounted and the wrapper renders the fallback in its place. The
-wrapper switches to `role="img"` with `aria-label={alt}` for that state, so
-screen readers get a stable, named image surface regardless of what the
-fallback renders. The consumer's fallback content (e.g. an icon, a skeleton)
-sits inside this labeled region and inherits its accessible name from `alt`.
+`<img>` is unmounted and the wrapper renders the fallback in its place.
+
+- **Meaningful images** (non-empty `alt`): the wrapper switches to
+  `role="img"` with `aria-label={alt}`, so screen readers get a stable,
+  named image surface regardless of what the fallback renders.
+- **Decorative images** (`alt=""`): the wrapper switches to
+  `aria-hidden="true"` instead. This preserves the "ignore this" semantics of
+  the original `<img alt="">` — assistive tech doesn't suddenly start
+  announcing an unnamed image region just because the load failed.
 
 ## Public CSS hooks
 

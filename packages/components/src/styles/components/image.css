@@ -28,8 +28,10 @@
   opacity: 1;
 }
 
-/* Clear the placeholder background after load so transparent images don't
- * show the low-res layer through them. */
+/* Component clears the inline `style:background-image` after load (via the
+ * `cssUrl` derivation), so the placeholder layer disappears for transparent
+ * images. Keeping this rule belt-and-braces in case a consumer overrides the
+ * inline style binding. */
 .cinder-image[data-cinder-loaded] {
-  background-image: none !important;
+  background-image: none;
 }
