@@ -87,7 +87,7 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
 > The pre-paint script avoids "flash of incorrect theme" only for users who have already chosen `light` or `dark`. System-mode users rely on cinder's stylesheet (which declares `color-scheme: light dark` on `:root`) loading promptly. If your bundler defers the cinder stylesheet behind a slow code-split chunk, system-mode users may see a brief light flash before the stylesheet resolves. In practice this is invisible on production builds, but worth knowing about if you see it during development.
 
 > [!TIP]
-> The storage key (`'app-theme'`) is repeated in the pre-paint script and the toggle component below. Nothing enforces the match — a copy-paste typo silently breaks persistence. If your app has a module that runs before both, extract the key to a shared constant and import it in both places.
+> The storage key (`'app-theme'`) is repeated in the pre-paint script and the toggle component below. Nothing enforces the match — a copy-paste typo silently breaks persistence. The pre-paint script must stay an inline classic `<script>` to run before stylesheets, so you can't `import` a shared constant into it. Either keep the two literals in sync by hand, or inject the value into your HTML template from your server/build system (a SvelteKit `transformPageChunk` hook or a Vite HTML transform).
 
 ### The toggle component
 
@@ -104,9 +104,10 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
 
   // Initialize to 'system' on both server and client so the SSR-rendered
   // radio markup matches the first client render. After mount, read the
-  // real value from the DOM (set by the pre-paint script) and write it
-  // back into state. The `mounted` flag gates the write effect so we
-  // don't clobber the DOM attribute before that read has happened.
+  // real value from the DOM (set by the pre-paint script) and reconcile
+  // state. The `mounted` flag gates the write effect until that read has
+  // happened, so the write effect can't clobber the pre-paint attribute
+  // with the placeholder `'system'` value before `onMount` runs.
   let theme = $state<Theme>('system');
   let mounted = $state(false);
 
@@ -131,8 +132,11 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
   }
 
   // Sync `theme` to the DOM and localStorage on every change. The `mounted`
-  // guard skips the initial run, so the read-from-DOM above isn't immediately
-  // echoed back as a redundant write.
+  // guard prevents the first run (with the placeholder `'system'` value)
+  // from running before `onMount` reads the real value out of the DOM. Once
+  // `onMount` flips the flag, the effect runs once with the just-read value
+  // (an idempotent re-write of the attribute and a re-write of localStorage)
+  // and then reruns on every subsequent user change.
   $effect(() => {
     if (!mounted) return;
     setTheme(theme);
@@ -154,7 +158,7 @@ A few notes on what's happening:
 
 - **`data-theme` is the only mutation.** The component never touches `color-scheme` directly; cinder's stylesheet does that translation. That keeps the DOM clean — no inline styles to remove later — and makes it trivial to query the active choice from elsewhere (`getAttribute('data-theme')`).
 - **`system` removes the attribute** rather than setting `data-theme="system"`. The absence of the attribute is what lets `:root`'s default `color-scheme: light dark` fall back to the OS preference.
-- **State starts at `'system'` on both server and client.** That matches the SSR-rendered radio markup to the first client render. The `onMount` callback reads the real value from the DOM (populated by the pre-paint script) and updates state in place, and the `mounted` guard prevents the write effect from echoing that read back to the DOM. Net result: no hydration mismatch, no redundant DOM write on mount.
+- **State starts at `'system'` on both server and client.** That matches the SSR-rendered radio markup to the first client render. The `onMount` callback reads the real value from the DOM (populated by the pre-paint script) and reconciles state; the `mounted` guard keeps the write effect from running with the placeholder value before that read. After mount, the effect runs once with the just-read value — an idempotent re-write of the same `data-theme` attribute — and then on every subsequent user change. Net result: no hydration mismatch.
 - **Three options, not two.** A binary light/dark toggle hides the system option, which is what most users actually want.
 
 That's the whole recipe. No store, no context, no provider.
