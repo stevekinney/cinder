@@ -35,8 +35,13 @@
   width: 8px;
   height: 8px;
   background: var(--cinder-surface);
-  border-inline-end: 1px solid var(--cinder-border);
+  /* Physical sides intentional: the arrow is a rotated geometric decoration,
+     not text-flow content. Logical borders would flip the visible edges in
+     RTL relative to the physical rotation/inset pairs below. */
+  /* stylelint-disable csstools/use-logical */
+  border-right: 1px solid var(--cinder-border);
   border-bottom: 1px solid var(--cinder-border);
+  /* stylelint-enable csstools/use-logical */
   transform: rotate(45deg);
   pointer-events: none;
 }

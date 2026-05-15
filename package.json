@@ -17,10 +17,8 @@
     "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
-    "lint": "bun run --filter='*' lint && bun run lint:css",
-    "lint:css": "stylelint \"packages/**/src/**/*.{css,svelte}\"",
-    "lint:css:fix": "stylelint \"packages/**/src/**/*.{css,svelte}\" --fix",
-    "lint:fix": "bun run --filter='*' lint:fix && bun run lint:css:fix",
+    "lint": "bun run --filter='*' lint && stylelint \"packages/**/src/**/*.{css,svelte}\"",
+    "lint:fix": "bun run --filter='*' lint:fix && stylelint \"packages/**/src/**/*.{css,svelte}\" --fix",
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
     "test": "bun run --filter='*' test",
@@ -66,18 +64,11 @@
       "oxlint --fix",
       "prettier --write"
     ],
-    "packages/**/src/**/*.svelte": [
+    "packages/**/src/**/*.{svelte,css}": [
       "stylelint --fix",
       "prettier --write"
     ],
-    "**/*.svelte": [
-      "prettier --write"
-    ],
-    "packages/**/src/**/*.css": [
-      "stylelint --fix",
-      "prettier --write"
-    ],
-    "**/*.{json,md,css,scss}": [
+    "**/*.{json,md,scss}": [
       "prettier --write"
     ],
     "package.json": [

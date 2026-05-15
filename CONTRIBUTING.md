@@ -18,20 +18,22 @@ See [README.md](./README.md) for the consumer-facing API overview.
 
 All component stylesheets must use CSS [logical properties][logical-properties] on the inline axis instead of physical `left`/`right` variants. This keeps the library usable in right-to-left writing modes without per-component overrides.
 
-| Use this               | Instead of                       |
-| ---------------------- | -------------------------------- |
-| `margin-inline-start`  | `margin-left`                    |
-| `margin-inline-end`    | `margin-right`                   |
-| `margin-inline`        | `margin-left` + `margin-right`   |
-| `padding-inline-start` | `padding-left`                   |
-| `padding-inline-end`   | `padding-right`                  |
-| `padding-inline`       | `padding-left` + `padding-right` |
-| `border-inline-start`  | `border-left`                    |
-| `border-inline-end`    | `border-right`                   |
-| `inset-inline-start`   | `left` (when positioning)        |
-| `inset-inline-end`     | `right` (when positioning)       |
+| Use this               | Instead of                                     |
+| ---------------------- | ---------------------------------------------- |
+| `margin-inline-start`  | `margin-left`                                  |
+| `margin-inline-end`    | `margin-right`                                 |
+| `margin-inline`        | `margin-left` + `margin-right`                 |
+| `padding-inline-start` | `padding-left`                                 |
+| `padding-inline-end`   | `padding-right`                                |
+| `padding-inline`       | `padding-left` + `padding-right`               |
+| `border-inline-start`  | `border-left`                                  |
+| `border-inline-end`    | `border-right`                                 |
+| `inset-inline-start`   | `left` (when positioning, but see note below)  |
+| `inset-inline-end`     | `right` (when positioning, but see note below) |
 
 Block-axis physical properties (`margin-top`, `padding-bottom`, `border-top`, `top`, `bottom`, `width`, `height`) are fine — they don't change under RTL.
+
+Positioning properties (`left`, `right`) and `text-align: left | right` are **not** stylelint-enforced today. Many components position decorative or geometrically rotated elements (popover arrows, anchor positioning, fixed insets) where physical placement is intentional. When you add a new positioned element that should follow text direction, prefer `inset-inline-start` / `inset-inline-end` by hand. When you keep physical `left`/`right` (e.g., `data-placement="left"` selectors, rotated CSS-triangle decorations), it's worth a short comment so a future reader knows the choice was deliberate.
 
 Stylelint enforces this on every CSS file and `<style>` block under `packages/*/src/**`. The pre-commit hook will auto-fix where it can and fail the commit otherwise. To run the check locally:
 

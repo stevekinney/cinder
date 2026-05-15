@@ -160,10 +160,13 @@
   border-radius: 0;
 }
 
-/* When sidebar is open, main loses right border-radius */
+/* When sidebar is open, main loses its inline-end border-radius */
 .review-editor-container:has(.comment-sidebar) .review-editor-main {
   border-inline-end: none;
-  border-radius: 0 0 0 var(--cinder-radius-md);
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  border-end-start-radius: var(--cinder-radius-md);
+  border-end-end-radius: 0;
 }
 
 /* Sidebar adjusts height and connects visually to main content */
@@ -173,7 +176,10 @@
   border-top: 1px solid var(--cinder-border);
   border-bottom: 1px solid var(--cinder-border);
   border-inline-end: 1px solid var(--cinder-border);
-  border-radius: 0 0 var(--cinder-radius-md) 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+  border-end-start-radius: 0;
+  border-end-end-radius: var(--cinder-radius-md);
 }
 
 /* In diff/summary views, sidebar top connects to controls bar bottom border */
