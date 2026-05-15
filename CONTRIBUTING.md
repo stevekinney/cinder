@@ -38,8 +38,8 @@ Positioning properties (`left`, `right`) and `text-align: left | right` are **no
 Stylelint enforces this on every CSS file and `<style>` block under `packages/*/src/**`. The pre-commit hook will auto-fix where it can and fail the commit otherwise. To run the check locally:
 
 ```bash
-bun run lint:css           # report
-bun run lint:css:fix       # auto-fix what's safe
+bun run lint        # full lint pipeline, including stylelint
+bun run lint:fix    # auto-fix what's safe
 ```
 
 When `left`/`right` carries semantic placement (e.g. `data-placement="left"` selectors on a tooltip), use the rule's `/* stylelint-disable-next-line csstools/use-logical */` escape hatch and add a comment explaining why the physical axis is intentional.
