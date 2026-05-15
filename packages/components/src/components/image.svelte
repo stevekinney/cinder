@@ -7,15 +7,22 @@
    *
    * A general-purpose `<img>` wrapper with `loading="lazy"` and `decoding="async"`
    * defaults, an aspect-ratio container, a blur-up placeholder for progressive
-   * loading, and a fallback snippet rendered when the image errors. Distinct from
-   * `Avatar`: this component does not render initials and has no concept of a
-   * person's identity.
+   * loading, and a fallback snippet rendered when the image errors. Distinct
+   * from `Avatar`: this component does not render initials and has no concept
+   * of a person's identity.
    *
    * `alt` is required with no default — consumers must make the
    * decorative-vs-meaningful choice explicitly. Pass `alt=""` for decorative
    * images.
+   *
+   * For above-the-fold hero images, override `loading="eager"` and pass
+   * `fetchpriority="high"` (forwarded via rest props) so the browser
+   * prioritizes the Largest Contentful Paint resource.
    */
-  export type ImageProps = Omit<HTMLImgAttributes, 'alt' | 'src' | 'loading' | 'decoding'> & {
+  export type ImageProps = Omit<
+    HTMLImgAttributes,
+    'alt' | 'src' | 'width' | 'height' | 'loading' | 'decoding' | 'onload' | 'onerror'
+  > & {
     /** Image source URL. */
     src: string;
     /**
@@ -29,8 +36,7 @@
     height?: number;
     /**
      * CSS aspect-ratio applied to the wrapper (e.g. `'16 / 9'`) so layout is
-     * stable while the image loads. Renders a wrapper element only when
-     * provided (or when `placeholder` is set).
+     * stable while the image loads.
      */
     ratio?: string;
     /** Loading strategy. Default `lazy`. Override to `eager` for above-the-fold images. */
@@ -39,16 +45,18 @@
     decoding?: 'async' | 'sync' | 'auto';
     /**
      * Low-resolution image source (typically a base64 data URI) shown as a
-     * pixelated background while the main image loads. Fades out via opacity
-     * once the `<img>` fires `load`.
+     * pixelated background while the main image loads. Fades out once the
+     * `<img>` fires `load`.
      */
     placeholder?: string;
-    /** CSS `object-fit` for the `<img>`. Default `cover`. */
-    objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
     /** Additional class names merged with `.cinder-image`. */
     class?: string;
     /** Rendered in place of the `<img>` when it fails to load. */
     fallback?: Snippet;
+    /** Forwarded after internal state updates. */
+    onload?: (event: Event) => void;
+    /** Forwarded after internal state updates. */
+    onerror?: (event: Event) => void;
   };
 </script>
 
@@ -64,75 +72,76 @@
     loading = 'lazy',
     decoding = 'async',
     placeholder,
-    objectFit = 'cover',
     class: className,
     fallback,
+    onload,
+    onerror,
     ...rest
   }: ImageProps = $props();
 
-  let loaded = $state(false);
-  let errored = $state(false);
+  // Track which src has loaded or errored so derived booleans reset
+  // synchronously when src changes — no $effect required.
+  let loadedSource = $state<string | null>(null);
+  let erroredSource = $state<string | null>(null);
 
-  // Reset load/error state whenever the source changes so a new src gets a
-  // fresh chance to load and show its placeholder.
-  $effect(() => {
-    void src;
-    loaded = false;
-    errored = false;
-  });
-
-  const needsWrapper = $derived(ratio !== undefined || placeholder !== undefined);
+  const loaded = $derived(loadedSource === src);
+  const errored = $derived(erroredSource === src);
   const showFallback = $derived(errored && fallback !== undefined);
 
-  function handleLoad() {
-    loaded = true;
+  function handleLoad(event: Event) {
+    loadedSource = src;
+    onload?.(event);
   }
 
-  function handleError() {
-    errored = true;
+  function handleError(event: Event) {
+    erroredSource = src;
+    onerror?.(event);
+  }
+
+  // Cached/SSR-hydrated images may already be complete before the load
+  // handler is attached. Detect that case via an attachment that fires
+  // when the element mounts, and treat it as loaded.
+  function detectCached(node: HTMLImageElement) {
+    if (node.complete && node.naturalWidth > 0) {
+      loadedSource = node.currentSrc || node.src;
+    }
+  }
+
+  const cssUrl = $derived(placeholder ? buildCssUrl(placeholder) : undefined);
+
+  function buildCssUrl(value: string): string {
+    // Quote and escape the URL so values containing parens, spaces, or quotes
+    // remain valid CSS — works for both plain URLs and data: URIs.
+    const escaped = value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+    return `url("${escaped}")`;
   }
 </script>
 
-{#if needsWrapper}
-  <div
-    class={cn('cinder-image', className)}
-    data-cinder-loaded={loaded ? '' : undefined}
-    data-cinder-errored={errored ? '' : undefined}
-    style:aspect-ratio={ratio}
-    style:background-image={placeholder ? `url(${placeholder})` : undefined}
-  >
-    {#if showFallback}
-      {@render fallback?.()}
-    {:else}
-      <img
-        class="cinder-image__img"
-        {src}
-        {alt}
-        {width}
-        {height}
-        {loading}
-        {decoding}
-        style:object-fit={objectFit}
-        onload={handleLoad}
-        onerror={handleError}
-        {...rest}
-      />
-    {/if}
-  </div>
-{:else if showFallback}
-  {@render fallback?.()}
-{:else}
-  <img
-    class={cn('cinder-image', className)}
-    {src}
-    {alt}
-    {width}
-    {height}
-    {loading}
-    {decoding}
-    style:object-fit={objectFit}
-    onload={handleLoad}
-    onerror={handleError}
-    {...rest}
-  />
-{/if}
+<div
+  class={cn('cinder-image', className)}
+  data-cinder-loaded={loaded ? '' : undefined}
+  data-cinder-errored={errored ? '' : undefined}
+  data-cinder-fallback={showFallback ? '' : undefined}
+  role={showFallback ? 'img' : undefined}
+  aria-label={showFallback ? alt : undefined}
+  style:aspect-ratio={ratio}
+  style:background-image={cssUrl}
+>
+  {#if showFallback}
+    {@render fallback?.()}
+  {:else}
+    <img
+      class="cinder-image__img"
+      {src}
+      {alt}
+      {width}
+      {height}
+      {loading}
+      {decoding}
+      onload={handleLoad}
+      onerror={handleError}
+      {@attach detectCached}
+      {...rest}
+    />
+  {/if}
+</div>

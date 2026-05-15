@@ -6,16 +6,19 @@
   export type ImageFallbackFixtureProps = {
     src: string;
     alt: string;
+    ratio?: string;
   };
 </script>
 
 <script lang="ts">
   import Image from '../../components/image.svelte';
 
-  let { src, alt }: ImageFallbackFixtureProps = $props();
+  let { src, alt, ratio }: ImageFallbackFixtureProps = $props();
+
+  const ratioProps = $derived(ratio !== undefined ? { ratio } : {});
 </script>
 
-<Image {src} {alt}>
+<Image {src} {alt} {...ratioProps}>
   {#snippet fallback()}
     <span data-testid="image-fallback">Could not load image</span>
   {/snippet}

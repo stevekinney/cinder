@@ -1,21 +1,16 @@
-/* ========================================
- * IMAGE
- * General-purpose <img> wrapper with aspect-ratio and blur-up placeholder.
- * ======================================== */
-
 .cinder-image {
   display: block;
-  max-width: 100%;
-}
-
-/* Wrapper variant — applies when ratio or placeholder is set. */
-div.cinder-image {
   position: relative;
   overflow: hidden;
+  max-width: 100%;
   background-color: var(--cinder-surface-inset);
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
+}
+
+/* Pixelated placeholder only while the real image hasn't loaded. */
+.cinder-image:not([data-cinder-loaded]) {
   image-rendering: pixelated;
 }
 
@@ -23,18 +18,18 @@ div.cinder-image {
   display: block;
   width: 100%;
   height: 100%;
-  /* Hide until loaded so the pixelated placeholder shows through cleanly. */
-  opacity: 0;
-  transition: opacity 200ms ease-out;
+  object-fit: cover;
   image-rendering: auto;
+  opacity: 0;
+  transition: opacity var(--cinder-duration) var(--cinder-ease-standard);
 }
 
 .cinder-image[data-cinder-loaded] .cinder-image__img {
   opacity: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-image__img {
-    transition: none;
-  }
+/* Clear the placeholder background after load so transparent images don't
+ * show the low-res layer through them. */
+.cinder-image[data-cinder-loaded] {
+  background-image: none !important;
 }

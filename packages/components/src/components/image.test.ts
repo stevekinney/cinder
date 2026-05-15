@@ -1,14 +1,18 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Image } = await import('./image.svelte');
 const { default: ImageWithFallback } =
   await import('../test/fixtures/image-fallback-fixture.svelte');
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('Image', () => {
   test('renders an <img> with the given src and alt', () => {
@@ -45,47 +49,50 @@ describe('Image', () => {
     expect(img?.getAttribute('height')).toBe('240');
   });
 
-  test('does not render a wrapper when neither ratio nor placeholder is provided', () => {
+  test('always renders a wrapper containing the img', () => {
     const { container } = render(Image, { src: '/a.jpg', alt: 'A' });
-    expect(container.querySelector('div.cinder-image')).toBeNull();
-    expect(container.querySelector('img.cinder-image')).not.toBeNull();
-  });
-
-  test('renders a wrapper with aspect-ratio when ratio is provided', () => {
-    const { container } = render(Image, { src: '/a.jpg', alt: 'A', ratio: '16 / 9' });
     const wrapper = container.querySelector('div.cinder-image');
     expect(wrapper).not.toBeNull();
-    expect((wrapper as HTMLElement).style.aspectRatio).toBe('16 / 9');
     expect(wrapper?.querySelector('img.cinder-image__img')).not.toBeNull();
   });
 
-  test('renders a wrapper with background-image when placeholder is provided', () => {
+  test('applies aspect-ratio to the wrapper when ratio is provided', () => {
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A', ratio: '16 / 9' });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.style.aspectRatio).toBe('16 / 9');
+  });
+
+  test('does not apply aspect-ratio when ratio is omitted', () => {
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A' });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper?.style.aspectRatio).toBe('');
+  });
+
+  test('applies a quoted background-image when placeholder is provided', () => {
     const placeholder = 'data:image/png;base64,iVBORw0KGgo=';
     const { container } = render(Image, { src: '/a.jpg', alt: 'A', placeholder });
     const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
-    expect(wrapper).not.toBeNull();
     expect(wrapper?.style.backgroundImage).toContain(placeholder);
+    expect(wrapper?.style.backgroundImage).toContain('"');
   });
 
-  test('applies object-fit to the <img>', () => {
-    const { container } = render(Image, {
-      src: '/a.jpg',
-      alt: 'A',
-      ratio: '1 / 1',
-      objectFit: 'contain',
-    });
-    const img = container.querySelector('img');
-    expect(img?.style.objectFit).toBe('contain');
+  test('quotes placeholder URLs so values with special characters remain valid', () => {
+    const placeholder = 'https://cdn.example.com/p.jpg?w=20&blur=10';
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A', placeholder });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper?.style.backgroundImage).toContain(placeholder);
+    expect(wrapper?.style.backgroundImage).toContain('url("');
   });
 
-  test('object-fit defaults to cover', () => {
-    const { container } = render(Image, { src: '/a.jpg', alt: 'A' });
-    const img = container.querySelector('img');
-    expect(img?.style.objectFit).toBe('cover');
+  test('does not set background-image when placeholder is absent', () => {
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A', ratio: '1 / 1' });
+    const wrapper = container.querySelector<HTMLElement>('div.cinder-image');
+    expect(wrapper?.style.backgroundImage).toBe('');
   });
 
   test('toggles data-cinder-loaded on the wrapper after the img loads', async () => {
-    const { container } = render(Image, { src: '/a.jpg', alt: 'A', ratio: '1 / 1' });
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A' });
     const wrapper = container.querySelector('div.cinder-image');
     expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(false);
     const img = container.querySelector('img')!;
@@ -93,24 +100,115 @@ describe('Image', () => {
     expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(true);
   });
 
-  test('renders fallback snippet when the image errors', async () => {
+  test('toggles data-cinder-errored on the wrapper after the img errors', async () => {
+    const { container } = render(Image, { src: '/broken.jpg', alt: 'Broken' });
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(false);
+    const img = container.querySelector('img')!;
+    await fireEvent.error(img);
+    expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
+  });
+
+  test('resets loaded state when src changes', async () => {
+    const { container, rerender } = render(Image, { src: '/a.jpg', alt: 'A' });
+    const wrapper = container.querySelector('div.cinder-image');
+    await fireEvent.load(container.querySelector('img')!);
+    expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(true);
+    await rerender({ src: '/b.jpg', alt: 'A' });
+    expect(wrapper?.hasAttribute('data-cinder-loaded')).toBe(false);
+  });
+
+  test('resets errored state when src changes', async () => {
+    const { container, rerender } = render(Image, { src: '/broken.jpg', alt: 'A' });
+    const wrapper = container.querySelector('div.cinder-image');
+    await fireEvent.error(container.querySelector('img')!);
+    expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
+    await rerender({ src: '/fixed.jpg', alt: 'A' });
+    expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(false);
+  });
+
+  test('renders fallback snippet when the image errors and a fallback is provided', async () => {
     const { container } = render(ImageWithFallback, { src: '/missing.jpg', alt: 'Missing' });
-    // Before error, img is rendered.
     expect(container.querySelector('img')).not.toBeNull();
     const img = container.querySelector('img')!;
     await fireEvent.error(img);
-    // After error, img is unmounted and fallback shows.
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('[data-testid="image-fallback"]')?.textContent).toBe(
       'Could not load image',
     );
   });
 
-  test('without a fallback snippet, an error leaves the img in place', async () => {
-    const { container } = render(Image, { src: '/broken.jpg', alt: 'Broken' });
+  test('renders fallback inside the wrapper when ratio is set', async () => {
+    const { container } = render(ImageWithFallback, {
+      src: '/missing.jpg',
+      alt: 'Missing',
+      ratio: '16 / 9',
+    });
+    const img = container.querySelector('img')!;
+    await fireEvent.error(img);
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper).not.toBeNull();
+    expect((wrapper as HTMLElement).style.aspectRatio).toBe('16 / 9');
+    expect(wrapper?.querySelector('[data-testid="image-fallback"]')?.textContent).toBe(
+      'Could not load image',
+    );
+  });
+
+  test('sets role="img" and aria-label on the wrapper when fallback renders', async () => {
+    const { container } = render(ImageWithFallback, { src: '/missing.jpg', alt: 'A duck' });
+    await fireEvent.error(container.querySelector('img')!);
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.getAttribute('role')).toBe('img');
+    expect(wrapper?.getAttribute('aria-label')).toBe('A duck');
+  });
+
+  test('does not set role or aria-label before the fallback activates', () => {
+    const { container } = render(ImageWithFallback, { src: '/missing.jpg', alt: 'A duck' });
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.hasAttribute('role')).toBe(false);
+    expect(wrapper?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('without a fallback snippet, an error keeps the img in place and marks the wrapper', async () => {
+    const placeholder = 'data:image/png;base64,iVBORw0KGgo=';
+    const { container } = render(Image, { src: '/broken.jpg', alt: 'Broken', placeholder });
     const img = container.querySelector('img')!;
     await fireEvent.error(img);
     expect(container.querySelector('img')).not.toBeNull();
+    const wrapper = container.querySelector('div.cinder-image');
+    expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
+  });
+
+  test('calls consumer onload after internal state updates', async () => {
+    let handlerCalled = false;
+    const { container } = render(Image, {
+      src: '/a.jpg',
+      alt: 'A',
+      onload: () => {
+        handlerCalled = true;
+      },
+    });
+    await fireEvent.load(container.querySelector('img')!);
+    expect(handlerCalled).toBe(true);
+    expect(container.querySelector('div.cinder-image')?.hasAttribute('data-cinder-loaded')).toBe(
+      true,
+    );
+  });
+
+  test('calls consumer onerror after internal state updates', async () => {
+    let handlerCalled = false;
+    const { container } = render(Image, {
+      src: '/broken.jpg',
+      alt: 'Broken',
+      onerror: () => {
+        handlerCalled = true;
+      },
+    });
+    await fireEvent.error(container.querySelector('img')!);
+    expect(handlerCalled).toBe(true);
+    expect(container.querySelector('div.cinder-image')?.hasAttribute('data-cinder-errored')).toBe(
+      true,
+    );
   });
 
   test('forwards extra HTML attributes onto the <img>', () => {
@@ -125,15 +223,8 @@ describe('Image', () => {
     expect(img?.getAttribute('data-testid')).toBe('hero');
   });
 
-  test('class prop is merged with .cinder-image on the bare img variant', () => {
-    const { container } = render(Image, { src: '/a.jpg', alt: 'A', class: 'extra' });
-    const img = container.querySelector('img');
-    expect(img?.className).toContain('cinder-image');
-    expect(img?.className).toContain('extra');
-  });
-
-  test('class prop is merged with .cinder-image on the wrapper variant', () => {
-    const { container } = render(Image, { src: '/a.jpg', alt: 'A', ratio: '1 / 1', class: 'hero' });
+  test('class prop is merged with .cinder-image on the wrapper', () => {
+    const { container } = render(Image, { src: '/a.jpg', alt: 'A', class: 'hero' });
     const wrapper = container.querySelector('div.cinder-image');
     expect(wrapper?.className).toContain('cinder-image');
     expect(wrapper?.className).toContain('hero');
