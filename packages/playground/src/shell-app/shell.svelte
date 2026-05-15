@@ -101,7 +101,7 @@
   }
 
   main {
-    margin-left: 220px;
+    margin-inline-start: 220px;
     flex: 1;
     height: 100vh;
     display: flex;
@@ -118,6 +118,6 @@
   }
 
   .shell.focus-mode main {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 </style>

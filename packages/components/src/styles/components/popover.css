@@ -35,7 +35,7 @@
   width: 8px;
   height: 8px;
   background: var(--cinder-surface);
-  border-right: 1px solid var(--cinder-border);
+  border-inline-end: 1px solid var(--cinder-border);
   border-bottom: 1px solid var(--cinder-border);
   transform: rotate(45deg);
   pointer-events: none;

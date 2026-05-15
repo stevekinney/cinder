@@ -48,7 +48,7 @@
     top: 0;
     left: 0;
     background: var(--cinder-surface);
-    border-right: 1px solid var(--cinder-border);
+    border-inline-end: 1px solid var(--cinder-border);
     overflow-y: auto;
     display: flex;
     flex-direction: column;

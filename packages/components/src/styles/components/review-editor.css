@@ -58,8 +58,8 @@
   .editor-toolbar {
   border-radius: 0;
   border-top: none;
-  border-left: none;
-  border-right: none;
+  border-inline-start: none;
+  border-inline-end: none;
   border-bottom: 1px solid var(--cinder-border);
 }
 
@@ -162,7 +162,7 @@
 
 /* When sidebar is open, main loses right border-radius */
 .review-editor-container:has(.comment-sidebar) .review-editor-main {
-  border-right: none;
+  border-inline-end: none;
   border-radius: 0 0 0 var(--cinder-radius-md);
 }
 
@@ -172,7 +172,7 @@
   max-height: 100%;
   border-top: 1px solid var(--cinder-border);
   border-bottom: 1px solid var(--cinder-border);
-  border-right: 1px solid var(--cinder-border);
+  border-inline-end: 1px solid var(--cinder-border);
   border-radius: 0 0 var(--cinder-radius-md) 0;
 }
 

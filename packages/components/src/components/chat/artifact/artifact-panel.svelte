@@ -53,7 +53,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    border-left: 1px solid var(--cinder-border);
+    border-inline-start: 1px solid var(--cinder-border);
     background: var(--cinder-surface);
     min-width: 0;
     overflow: hidden;

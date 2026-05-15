@@ -1,0 +1,55 @@
+{
+  "plugins": ["stylelint-use-logical"],
+  "overrides": [
+    {
+      "files": ["**/*.svelte"],
+      "customSyntax": "postcss-html"
+    }
+  ],
+  "rules": {
+    "csstools/use-logical": [
+      "always",
+      {
+        "direction": "ltr",
+        "except": [
+          "top",
+          "bottom",
+          "left",
+          "right",
+          "width",
+          "min-width",
+          "max-width",
+          "height",
+          "min-height",
+          "max-height",
+          "margin-top",
+          "margin-bottom",
+          "padding-top",
+          "padding-bottom",
+          "border-top",
+          "border-bottom",
+          "border-top-width",
+          "border-bottom-width",
+          "border-top-style",
+          "border-bottom-style",
+          "border-top-color",
+          "border-bottom-color",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "float",
+          "clear",
+          "text-align"
+        ]
+      }
+    ]
+  },
+  "ignoreFiles": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/build/**",
+    "**/.svelte-kit/**"
+  ]
+}

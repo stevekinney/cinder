@@ -612,7 +612,7 @@
     position: relative;
     /* Add padding to accommodate the extended touch target */
     padding-top: var(--cinder-space-2);
-    padding-right: var(--cinder-space-2);
+    padding-inline-end: var(--cinder-space-2);
   }
 
   .chat-input-attachment-remove {
