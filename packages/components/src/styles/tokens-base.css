@@ -159,6 +159,15 @@
   --cinder-color-danger-fg: light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25));
   --cinder-color-danger-border: light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25));
 
+  /* Scrollbars — used by the ScrollArea component and any consumer that
+     opts into themed native scrollbars via `scrollbar-width` and
+     `::-webkit-scrollbar-*`. Kept semi-transparent so they sit lightly over
+     either light or dark surfaces. */
+  --cinder-scrollbar-size: 0.625rem;
+  --cinder-scrollbar-track: light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04));
+  --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.25), oklch(100% 0 0 / 0.25));
+  --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.4), oklch(100% 0 0 / 0.4));
+
   /* Focus ring */
   --cinder-ring-width: 3px;
   --cinder-ring-offset: 1px;

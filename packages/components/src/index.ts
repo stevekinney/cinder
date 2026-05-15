@@ -249,6 +249,13 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
+export { default as ScrollArea } from './components/scroll-area.svelte';
+export type {
+  ScrollAreaDirection,
+  ScrollAreaElement,
+  ScrollAreaProps,
+} from './components/scroll-area.svelte';
+
 export { default as SectionHeading } from './components/section-heading.svelte';
 export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
 

@@ -1,0 +1,60 @@
+/* ========================================
+ * SCROLL AREA
+ *
+ * Styled scrollable container. Uses the native scrollbar (never substitutes
+ * a fake one) and themes it via cross-browser properties so keyboard, touch,
+ * and assistive-technology interactions stay intact.
+ * ======================================== */
+
+.cinder-scroll-area {
+  display: block;
+  min-block-size: 0;
+  min-inline-size: 0;
+
+  /* Firefox scrollbar theming. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--cinder-scrollbar-thumb) var(--cinder-scrollbar-track);
+}
+
+.cinder-scroll-area[data-cinder-direction='vertical'] {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cinder-scroll-area[data-cinder-direction='horizontal'] {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.cinder-scroll-area[data-cinder-direction='both'] {
+  overflow: auto;
+}
+
+/* Chromium / Safari scrollbar theming. */
+.cinder-scroll-area::-webkit-scrollbar {
+  inline-size: var(--cinder-scrollbar-size);
+  block-size: var(--cinder-scrollbar-size);
+}
+
+.cinder-scroll-area::-webkit-scrollbar-track {
+  background: var(--cinder-scrollbar-track);
+}
+
+.cinder-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--cinder-scrollbar-thumb);
+  border-radius: var(--cinder-radius-sm);
+}
+
+.cinder-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--cinder-scrollbar-thumb-hover);
+}
+
+.cinder-scroll-area::-webkit-scrollbar-corner {
+  background: var(--cinder-scrollbar-track);
+}
+
+/* Visible focus ring for keyboard scroll users. */
+.cinder-scroll-area:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: var(--cinder-ring-offset);
+}

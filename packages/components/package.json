@@ -269,6 +269,10 @@
       "svelte": "./src/components/review-editor.svelte",
       "types": "./dist/components/review-editor.svelte.d.ts"
     },
+    "./scroll-area": {
+      "svelte": "./src/components/scroll-area.svelte",
+      "types": "./dist/components/scroll-area.svelte.d.ts"
+    },
     "./section-heading": {
       "svelte": "./src/components/section-heading.svelte",
       "types": "./dist/components/section-heading.svelte.d.ts"
