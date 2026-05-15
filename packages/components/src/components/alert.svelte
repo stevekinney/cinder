@@ -36,13 +36,7 @@
 </script>
 
 {#if visible}
-  <div
-    class={cn('cinder-alert', className)}
-    data-cinder-variant={variant}
-    role="alert"
-    aria-live="polite"
-    {...rest}
-  >
+  <div class={cn('cinder-alert', className)} data-cinder-variant={variant} role="alert" {...rest}>
     {#if icon}
       <div class="cinder-alert__icon" aria-hidden="true">
         {@render icon()}

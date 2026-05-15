@@ -53,6 +53,10 @@
       "svelte": "./src/components/button.svelte",
       "types": "./dist/components/button.svelte.d.ts"
     },
+    "./callout": {
+      "svelte": "./src/components/callout.svelte",
+      "types": "./dist/components/callout.svelte.d.ts"
+    },
     "./card": {
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
