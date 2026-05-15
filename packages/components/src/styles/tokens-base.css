@@ -70,6 +70,16 @@
   --cinder-touch-target-min: 44px;
 
   /* ========================================
+   * LAYOUT
+   * ======================================== */
+  /**
+   * Maximum inline size for primary page content. Caps line length and keeps
+   * content readable on wide viewports. Used by page layout styles; consumers
+   * can override per scope.
+   */
+  --cinder-content-width: 72rem;
+
+  /* ========================================
    * MOTION
    * ======================================== */
   --cinder-duration-instant: 0ms;
