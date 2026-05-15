@@ -92,6 +92,12 @@ cinder's compiled server output is coupled to the Svelte minor it was built agai
 - **Variants** use `data-cinder-*` attributes: `data-cinder-variant`, `data-cinder-size`.
 - **Design tokens** use `--cinder-*` for the public surface and `--_cinder-*` for internal-only custom properties.
 
+### Theming and dark mode
+
+Cinder's color tokens are built on [`light-dark()`][mdn-light-dark]. Set `color-scheme` on your root element and every semantic color follows automatically — no `ThemeProvider`, no class toggling. See [docs/theming.md](docs/theming.md) for the full contract, a copy-pasteable Svelte toggle, and a Storybook toolbar recipe.
+
+[mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
+
 ## Playground
 
 `bun run playground` starts the playground dev server at http://localhost:4173. The sidebar lists all 21 components—click any one to open its page in the main frame. Each component page shows curated examples with live controls.
