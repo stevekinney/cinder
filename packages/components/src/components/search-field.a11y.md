@@ -8,7 +8,7 @@ The native WebKit clear button is suppressed via CSS (`::-webkit-search-cancel-b
 
 ## Leading icon
 
-The search icon is wrapped in `aria-hidden="true"`. The icon is decorative—the field's role and placeholder already convey purpose, and a sighted-only icon does not need to be announced again.
+The search icon is wrapped in `aria-hidden="true"`. The icon is decorative—the field's accessible name (provided by `FormField`'s `label`, an associated `<label>`, or `aria-label` on the consumer's wrapping element) carries the meaning. Placeholder text is not a substitute for an accessible name and disappears while typing, so always pair the field with a real label.
 
 ## Clear button
 
@@ -21,7 +21,19 @@ The search icon is wrapped in `aria-hidden="true"`. The icon is decorative—the
 
 When the `shortcut` prop is provided, a trailing `<kbd aria-hidden="true">` badge renders the hint text (e.g. `⌘K`). The badge is **decorative**—it is `aria-hidden` because the shortcut itself is the consumer's responsibility to wire globally, and announcing it alongside the field would be misleading if no handler is bound.
 
-If you want the shortcut announced to assistive technology, set the field's accessible name via `aria-label` or a `FormField` description that includes the shortcut text—but the visual badge does not duplicate it.
+If you want the shortcut announced to assistive technology, put it in the `FormField` description, which already feeds `aria-describedby`:
+
+```svelte
+<FormField id="site-search" label="Search" description="Press ⌘K to focus">
+  <SearchField id="site-search" shortcut="⌘K" />
+</FormField>
+```
+
+That way AT users hear the shortcut as part of the field's description on focus, and sighted users get the visual hint—neither audience hears it twice.
+
+## Error styling on the wrapper
+
+The wrapper carries `data-invalid` (mirrored from the input's `aria-invalid`) so the entire composite field—border, ring, focus state—reads as invalid. The `aria-invalid` attribute on the inner `<input>` is the source of truth for assistive technology; the `data-invalid` on the wrapper exists only to drive CSS for the surrounding chrome.
 
 ## Form-field integration
 

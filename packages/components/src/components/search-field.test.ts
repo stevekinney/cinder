@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: SearchField } = await import('./search-field.svelte');
+const { default: FormFieldSearchFieldFixture } =
+  await import('../test/fixtures/form-field-search-field-fixture.svelte');
 
 describe('SearchField rendering', () => {
   test('renders an input with type="search"', () => {
@@ -103,7 +105,7 @@ describe('SearchField clear button', () => {
     expect(clear?.getAttribute('tabindex')).toBe('0');
   });
 
-  test('clear click fires onclear and onsets value to empty string via oninput', async () => {
+  test('clear click fires onclear and sets value to empty string via oninput', async () => {
     const oninput = mock((_value: string) => {});
     const onclear = mock(() => {});
     const { container } = render(SearchField, {
@@ -175,26 +177,67 @@ describe('SearchField input callbacks', () => {
     expect(oninput).toHaveBeenNthCalledWith(2, 'ab');
   });
 
-  test('onsearch fires when Enter is pressed', async () => {
+  test('onsearch fires once on the native search event (Enter dispatches it in real browsers)', async () => {
     const onsearch = mock((_value: string) => {});
     const { container } = render(SearchField, {
       props: { id: 'search', defaultValue: 'query', onsearch },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
-    await fireEvent.keyDown(input, { key: 'Enter' });
+    await fireEvent(input, new Event('search', { bubbles: true }));
     expect(onsearch).toHaveBeenCalledTimes(1);
     expect(onsearch).toHaveBeenCalledWith('query');
   });
 
-  test('onsearch fires on the native search event', async () => {
-    const onsearch = mock((_value: string) => {});
+  test('consumer onkeydown handler is composed, not dropped', async () => {
+    const consumerKeyDown = mock((_event: KeyboardEvent) => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'query', onsearch },
+      props: { id: 'search', defaultValue: '', onkeydown: consumerKeyDown },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
-    input.dispatchEvent(new Event('search', { bubbles: true }));
-    expect(onsearch).toHaveBeenCalledTimes(1);
-    expect(onsearch).toHaveBeenCalledWith('query');
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(consumerKeyDown).toHaveBeenCalledTimes(1);
+  });
+
+  test('disabled: input has the disabled attribute (browsers suppress events natively)', () => {
+    const { container } = render(SearchField, {
+      props: { id: 'search', disabled: true, oninput: () => {} },
+    });
+    const input = container.querySelector('#search') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  test('uncontrolled: clearing also updates the reactive hasValue (clear button becomes hidden)', async () => {
+    const { container } = render(SearchField, {
+      props: { id: 'search', defaultValue: 'hello' },
+    });
+    const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
+    expect(clear.hasAttribute('hidden')).toBe(false);
+    await fireEvent.click(clear);
+    expect(clear.hasAttribute('hidden')).toBe(true);
+  });
+
+  test('controlled: clear does not mutate the input DOM value when parent rejects the change', async () => {
+    const { container } = render(SearchField, {
+      props: { id: 'search', value: 'hello', oninput: () => {} },
+    });
+    const input = container.querySelector('#search') as HTMLInputElement;
+    const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
+    await fireEvent.click(clear);
+    // Parent did not update `value` prop, so the controlled input keeps its value.
+    expect(input.value).toBe('hello');
+  });
+
+  test('readonly: clear button is disabled and does not mutate the value', async () => {
+    const onclear = mock(() => {});
+    const { container } = render(SearchField, {
+      props: { id: 'search', defaultValue: 'hello', readonly: true, onclear },
+    });
+    const input = container.querySelector('#search') as HTMLInputElement;
+    const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
+    expect(clear.disabled).toBe(true);
+    await fireEvent.click(clear);
+    expect(input.value).toBe('hello');
+    expect(onclear).not.toHaveBeenCalled();
   });
 
   test('uncontrolled: typing updates the displayed input value', async () => {
@@ -204,6 +247,50 @@ describe('SearchField input callbacks', () => {
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'hello' } });
     expect(input.value).toBe('hello');
+  });
+});
+
+describe('SearchField context inheritance from FormField', () => {
+  test('inherits aria-describedby pointing to the FormField description', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldDescription: 'Helper' },
+    });
+    const input = container.querySelector('#ctx-search');
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-search-description');
+  });
+
+  test('inherits aria-invalid="true" from FormField error', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldError: 'Required' },
+    });
+    const input = container.querySelector('#ctx-search');
+    expect(input?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('FormField error sets data-invalid on the wrapper', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldError: 'Required' },
+    });
+    const root = container.querySelector('.cinder-search-field');
+    expect(root?.hasAttribute('data-invalid')).toBe(true);
+  });
+
+  test('inherits required from FormField context', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldRequired: true },
+    });
+    const input = container.querySelector('#ctx-search') as HTMLInputElement;
+    expect(input.required).toBe(true);
+  });
+
+  test('inherits disabled from FormField context (input + clear button)', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldDisabled: true },
+    });
+    const input = container.querySelector('#ctx-search') as HTMLInputElement;
+    const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
+    expect(input.disabled).toBe(true);
+    expect(clear.disabled).toBe(true);
   });
 });
 

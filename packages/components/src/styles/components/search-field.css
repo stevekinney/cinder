@@ -111,6 +111,7 @@
  * ---------------------------------------- */
 
 .cinder-search-field__clear {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -125,6 +126,17 @@
   cursor: pointer;
 }
 
+/* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout.
+ * Mirrors the pattern used by .cinder-alert__dismiss and .cinder-chip__remove. */
+.cinder-search-field__clear::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  inline-size: 44px;
+  block-size: 44px;
+  transform: translate(-50%, -50%);
+}
+
 .cinder-search-field__clear[hidden] {
   display: none;
 }
@@ -137,6 +149,13 @@
 .cinder-search-field__clear:focus-visible {
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: 1px;
+}
+
+@media (forced-colors: active) {
+  .cinder-search-field__clear:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 2px;
+  }
 }
 
 .cinder-search-field__clear:disabled {

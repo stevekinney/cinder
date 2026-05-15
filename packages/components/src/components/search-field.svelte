@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import type { Attachment } from 'svelte/attachments';
   import type { HTMLInputAttributes } from 'svelte/elements';
 
   /**
@@ -15,7 +16,7 @@
    */
   export type SearchFieldProps = Omit<
     HTMLInputAttributes,
-    'type' | 'value' | 'defaultValue' | 'oninput' | 'onsearch'
+    'type' | 'value' | 'defaultValue' | 'oninput'
   > & {
     /** Stable id for the input element. Required when composing with `FormField`. */
     id?: string;
@@ -33,13 +34,15 @@
     shortcut?: string;
     /** Disables the input and the clear button. */
     disabled?: boolean;
+    /** Marks the input as read-only; the clear button becomes inert. */
+    readonly?: boolean;
     /** `name` attribute for form submission. */
     name?: string;
     /** Additional class merged with `.cinder-search-field`. */
     class?: string;
     /** Fires on every keystroke with the current value. */
     oninput?: (value: string) => void;
-    /** Fires on Enter or when the native `search` event triggers. */
+    /** Fires when the native `search` event triggers (Enter or programmatic dispatch). */
     onsearch?: (value: string) => void;
     /** Fires when the clear button is clicked. */
     onclear?: () => void;
@@ -47,13 +50,10 @@
 </script>
 
 <script lang="ts">
+  import { DEV } from 'esm-env';
+
   import { Search, X } from './icons/index.ts';
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../_internal/field-control.ts';
+  import { ariaInvalid, composeDescribedBy } from '../_internal/field-control.ts';
   import { getFormFieldContext } from '../_internal/form-field-context.ts';
   import { classNames } from '../utilities/class-names.ts';
 
@@ -64,11 +64,13 @@
     placeholder,
     shortcut,
     disabled,
+    readonly,
     name,
     class: customClassName,
     oninput,
     onsearch,
     onclear,
+    onkeydown: consumerKeyDown,
     ...rest
   }: SearchFieldProps = $props();
 
@@ -82,42 +84,51 @@
   const currentValue = $derived(isControlled ? (value ?? '') : uncontrolledValue);
   const hasValue = $derived(currentValue.length > 0);
 
-  const ownDescriptionId = $derived(resolvedId ? describeId(resolvedId, false) : undefined);
-  const ownErrorId = $derived(resolvedId ? buildErrorId(resolvedId, false) : undefined);
   const describedBy = $derived(
-    composeDescribedBy(ownDescriptionId ?? context?.descriptionId, ownErrorId ?? context?.errorId),
+    composeDescribedBy(context?.descriptionId, context?.errorId, rest['aria-describedby']),
   );
-  const resolvedAriaInvalid = $derived(context?.invalid ?? ariaInvalid(false));
-  const resolvedRequired = $derived(context?.required ?? false);
+  const consumerAriaInvalid = $derived(rest['aria-invalid']);
+  const resolvedAriaInvalid = $derived(
+    context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
+  );
+  const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
+  const resolvedRequired = $derived(context?.required ?? rest.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const clearInert = $derived(resolvedDisabled || readonly === true);
+
+  $effect(() => {
+    if (!DEV) return;
+    if (context && id && context.controlId !== id) {
+      console.warn(
+        `[cinder/SearchField] id mismatch: SearchField id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
+      );
+    }
+  });
 
   function handleInput(event: Event) {
-    const next = (event.currentTarget as HTMLInputElement).value;
+    const target = event.currentTarget as HTMLInputElement;
+    const next = target.value;
     if (!isControlled) uncontrolledValue = next;
     oninput?.(next);
   }
 
-  function attachSearchListener(element: HTMLInputElement) {
-    const handler = () => {
-      onsearch?.(element.value);
-    };
-    element.addEventListener('search', handler);
-    return { destroy: () => element.removeEventListener('search', handler) };
+  function handleKeyDown(event: KeyboardEvent) {
+    consumerKeyDown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement });
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
-      const next = (event.currentTarget as HTMLInputElement).value;
-      onsearch?.(next);
-    }
-  }
+  const searchEventListener: Attachment<HTMLInputElement> = (element) => {
+    const handler = () => onsearch?.(element.value);
+    element.addEventListener('search', handler);
+    return () => element.removeEventListener('search', handler);
+  };
 
   function handleClear() {
-    if (!isControlled) uncontrolledValue = '';
-    if (inputElement) {
+    if (clearInert) return;
+    if (!isControlled && inputElement) {
+      uncontrolledValue = '';
       inputElement.value = '';
-      inputElement.focus();
     }
+    inputElement?.focus();
     oninput?.('');
     onclear?.();
   }
@@ -126,10 +137,10 @@
 <div
   class={classNames('cinder-search-field', customClassName)}
   data-disabled={resolvedDisabled ? '' : undefined}
-  data-invalid={resolvedAriaInvalid === 'true' ? '' : undefined}
+  data-invalid={isInvalid ? '' : undefined}
 >
   <span class="cinder-search-field__leading" aria-hidden="true">
-    <Search class="cinder-search-field__icon" />
+    <Search class="cinder-search-field__icon" aria-hidden="true" />
   </span>
 
   <input
@@ -141,25 +152,26 @@
     class="cinder-search-field__input"
     value={currentValue}
     {placeholder}
+    {readonly}
     disabled={resolvedDisabled}
     required={resolvedRequired}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
     oninput={handleInput}
     onkeydown={handleKeyDown}
-    {@attach (element) => attachSearchListener(element as HTMLInputElement).destroy}
+    {@attach searchEventListener}
   />
 
   <button
     type="button"
     class="cinder-search-field__clear"
     aria-label="Clear search"
-    tabindex={hasValue ? 0 : -1}
+    tabindex={hasValue && !clearInert ? 0 : -1}
     hidden={!hasValue}
-    disabled={resolvedDisabled}
+    disabled={clearInert}
     onclick={handleClear}
   >
-    <X class="cinder-search-field__icon" />
+    <X class="cinder-search-field__icon" aria-hidden="true" />
   </button>
 
   {#if shortcut}
