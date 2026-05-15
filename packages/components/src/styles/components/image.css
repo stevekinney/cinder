@@ -9,8 +9,10 @@
   background-repeat: no-repeat;
 }
 
-/* Pixelated placeholder only while the real image hasn't loaded. */
-.cinder-image:not([data-cinder-loaded]) {
+/* Pixelated placeholder only while the real image hasn't resolved.
+ * Exclude the errored state too — a broken-image icon should render at the
+ * browser's native fidelity, not pixel-snapped. */
+.cinder-image:not([data-cinder-loaded]):not([data-cinder-errored]) {
   image-rendering: pixelated;
 }
 
