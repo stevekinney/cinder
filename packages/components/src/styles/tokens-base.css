@@ -161,12 +161,13 @@
 
   /* Scrollbars — used by the ScrollArea component and any consumer that
      opts into themed native scrollbars via `scrollbar-width` and
-     `::-webkit-scrollbar-*`. Kept semi-transparent so they sit lightly over
-     either light or dark surfaces. */
+     `::-webkit-scrollbar-*`. Thumb alpha is tuned so the resolved
+     thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over the common
+     light- and dark-mode surface tokens. */
   --cinder-scrollbar-size: 0.625rem;
   --cinder-scrollbar-track: light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04));
-  --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.25), oklch(100% 0 0 / 0.25));
-  --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.4), oklch(100% 0 0 / 0.4));
+  --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45));
+  --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65));
 
   /* Focus ring */
   --cinder-ring-width: 3px;

@@ -68,8 +68,8 @@ describe('ScrollArea', () => {
   test('omits role and aria-label when ariaLabel is not provided', () => {
     const { container } = render(ScrollArea, { children: textSnippet('body') });
     const root = container.querySelector('.cinder-scroll-area');
-    expect(root?.getAttribute('role')).toBeNull();
-    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(root?.hasAttribute('role')).toBe(false);
+    expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('applies tabindex="0" by default so keyboard users can scroll', () => {
@@ -93,6 +93,16 @@ describe('ScrollArea', () => {
     expect(root?.style.getPropertyValue('max-inline-size')).toBe('40rem');
   });
 
+  test('omits max-inline-size when only maxHeight is provided', () => {
+    const { container } = render(ScrollArea, {
+      maxHeight: '20rem',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-scroll-area');
+    expect(root?.style.getPropertyValue('max-block-size')).toBe('20rem');
+    expect(root?.style.getPropertyValue('max-inline-size')).toBe('');
+  });
+
   test('merges a consumer-provided class with cinder-scroll-area', () => {
     const { container } = render(ScrollArea, {
       class: 'extra-class',
@@ -108,7 +118,38 @@ describe('ScrollArea', () => {
       'data-testid': 'scroll',
       children: textSnippet('body'),
     });
-    expect(container.querySelector('[data-testid="scroll"]')).not.toBeNull();
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.getAttribute('data-testid')).toBe('scroll');
+  });
+
+  test('renders the tag passed via as="article" (non-sectioning element)', () => {
+    const { container } = render(ScrollArea, { as: 'article', children: textSnippet('body') });
+    expect(container.querySelector('article.cinder-scroll-area')).not.toBeNull();
+  });
+});
+
+describe('ScrollArea attribute precedence', () => {
+  test('consumer-supplied role via rest props does not override the component-derived role', () => {
+    // `role` is Omitted from ScrollAreaProps, so we cast to `any` to simulate
+    // a consumer reaching past the type to pass it anyway — the runtime
+    // contract must still hold.
+    const { container } = render(ScrollArea, {
+      ariaLabel: 'Chat transcript',
+      role: 'complementary',
+      children: textSnippet('body'),
+    } as any);
+    expect(container.querySelector('.cinder-scroll-area')?.getAttribute('role')).toBe('region');
+  });
+
+  test('consumer-supplied direction via data-cinder-direction does not override the prop', () => {
+    const { container } = render(ScrollArea, {
+      direction: 'horizontal',
+      'data-cinder-direction': 'vertical',
+      children: textSnippet('body'),
+    });
+    expect(
+      container.querySelector('.cinder-scroll-area')?.getAttribute('data-cinder-direction'),
+    ).toBe('horizontal');
   });
 });
 
@@ -116,10 +157,12 @@ describe('ScrollArea scrollbar tokens', () => {
   test('scrollbar tokens are declared in tokens-base.css', async () => {
     const tokensPath = new URL('../styles/tokens-base.css', import.meta.url);
     const source = await Bun.file(tokensPath).text();
-    expect(source).toMatch(/--cinder-scrollbar-track:\s*\S+/);
-    expect(source).toMatch(/--cinder-scrollbar-thumb:\s*\S+/);
-    expect(source).toMatch(/--cinder-scrollbar-thumb-hover:\s*\S+/);
-    expect(source).toMatch(/--cinder-scrollbar-size:\s*\S+/);
+    // Use a colon anchor so `--cinder-scrollbar-thumb` does not also match
+    // `--cinder-scrollbar-thumb-hover` (prefix overlap).
+    expect(source).toMatch(/--cinder-scrollbar-size\s*:/);
+    expect(source).toMatch(/--cinder-scrollbar-track\s*:/);
+    expect(source).toMatch(/--cinder-scrollbar-thumb\s*:/);
+    expect(source).toMatch(/--cinder-scrollbar-thumb-hover\s*:/);
   });
 
   test('scroll-area.css consumes the scrollbar tokens for both engines', async () => {

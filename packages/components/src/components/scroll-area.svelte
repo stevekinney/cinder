@@ -32,7 +32,10 @@
    * (svelte-virtual, TanStack Virtual, etc.) remains a consumer-level concern
    * and pairs *with* this component, not inside it.
    */
-  export type ScrollAreaProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'children'> & {
+  export type ScrollAreaProps = Omit<
+    HTMLAttributes<HTMLElement>,
+    'class' | 'children' | 'tabindex' | 'role' | 'aria-label'
+  > & {
     /** Axis to allow scrolling on. Defaults to `'vertical'`. */
     direction?: ScrollAreaDirection;
     /** Maximum block size of the scroll viewport (any valid CSS length). */
@@ -44,13 +47,17 @@
      * gets `role="region"` so assistive technology treats it as a landmark.
      * Provide this when the scroll area represents a meaningful section
      * (a chat transcript, a code panel) — omit it for purely decorative
-     * scrolling chrome.
+     * scrolling chrome. This is the single source of truth for the accessible
+     * name; pass it through this prop rather than the raw `aria-label` HTML
+     * attribute so the landmark role and label stay coupled.
      */
     ariaLabel?: string;
     /**
      * Override the default focusable behavior. The component sets `tabindex="0"`
      * by default so keyboard users can scroll the viewport with arrow keys.
-     * Pass `tabindex={-1}` (or any value) to opt out or change the order.
+     * Pass `tabindex={-1}` to opt out when the scroll area wraps content that
+     * is guaranteed not to overflow, or when the container is focused
+     * programmatically rather than via tab order.
      */
     tabindex?: number;
     /** Element tag to render. Defaults to `'div'`. */
@@ -82,6 +89,7 @@
 
 <svelte:element
   this={as}
+  {...rest}
   class={classNames('cinder-scroll-area', className)}
   data-cinder-direction={direction}
   {role}
@@ -89,7 +97,6 @@
   {tabindex}
   style:max-block-size={maxHeight}
   style:max-inline-size={maxWidth}
-  {...rest}
 >
   {@render children()}
 </svelte:element>
