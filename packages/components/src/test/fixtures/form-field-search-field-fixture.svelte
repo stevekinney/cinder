@@ -12,6 +12,7 @@
     fieldError?: string;
     fieldRequired?: boolean;
     fieldDisabled?: boolean;
+    searchFieldRequired?: boolean;
   };
 </script>
 
@@ -26,6 +27,7 @@
     fieldError,
     fieldRequired,
     fieldDisabled,
+    searchFieldRequired,
   }: FormFieldSearchFieldFixtureProps = $props();
 
   const fieldOptional = $derived({
@@ -34,8 +36,12 @@
     ...(fieldRequired !== undefined ? { required: fieldRequired } : {}),
     ...(fieldDisabled !== undefined ? { disabled: fieldDisabled } : {}),
   });
+
+  const searchFieldOptional = $derived(
+    searchFieldRequired !== undefined ? { required: searchFieldRequired } : {},
+  );
 </script>
 
 <FormField id={fieldId} label={fieldLabel} {...fieldOptional}>
-  <SearchField id={fieldId} />
+  <SearchField id={fieldId} {...searchFieldOptional} />
 </FormField>

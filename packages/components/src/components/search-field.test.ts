@@ -283,6 +283,19 @@ describe('SearchField context inheritance from FormField', () => {
     expect(input.required).toBe(true);
   });
 
+  test('consumer required={true} wins over FormField context required={false}', () => {
+    const { container } = render(FormFieldSearchFieldFixture, {
+      props: {
+        fieldId: 'ctx-search',
+        fieldLabel: 'Site search',
+        fieldRequired: false,
+        searchFieldRequired: true,
+      },
+    });
+    const input = container.querySelector('#ctx-search') as HTMLInputElement;
+    expect(input.required).toBe(true);
+  });
+
   test('inherits disabled from FormField context (input + clear button)', () => {
     const { container } = render(FormFieldSearchFieldFixture, {
       props: { fieldId: 'ctx-search', fieldLabel: 'Site search', fieldDisabled: true },

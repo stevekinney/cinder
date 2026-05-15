@@ -92,7 +92,7 @@
     context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
   );
   const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
-  const resolvedRequired = $derived(context?.required ?? rest.required ?? false);
+  const resolvedRequired = $derived(rest.required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
   const clearInert = $derived(resolvedDisabled || readonly === true);
 
