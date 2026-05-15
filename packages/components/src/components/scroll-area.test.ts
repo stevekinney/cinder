@@ -65,6 +65,47 @@ describe('ScrollArea', () => {
     expect(root?.getAttribute('aria-label')).toBe('Chat transcript');
   });
 
+  test('trims ariaLabel before deriving the accessible region label', () => {
+    const { container } = render(ScrollArea, {
+      ariaLabel: '  Chat transcript  ',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.getAttribute('aria-label')).toBe('Chat transcript');
+  });
+
+  test('omits role and aria-label when ariaLabel is empty after trimming', () => {
+    const { container } = render(ScrollArea, {
+      ariaLabel: '   ',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.hasAttribute('role')).toBe(false);
+    expect(root?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('omits role and aria-label when ariaLabel is an empty string', () => {
+    const { container } = render(ScrollArea, {
+      ariaLabel: '',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.hasAttribute('role')).toBe(false);
+    expect(root?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('does not override semantic element roles when ariaLabel is provided', () => {
+    const { container } = render(ScrollArea, {
+      as: 'main',
+      ariaLabel: 'Primary page content',
+      children: textSnippet('body'),
+    });
+    const root = container.querySelector('main.cinder-scroll-area');
+    expect(root?.hasAttribute('role')).toBe(false);
+    expect(root?.getAttribute('aria-label')).toBe('Primary page content');
+  });
+
   test('omits role and aria-label when ariaLabel is not provided', () => {
     const { container } = render(ScrollArea, { children: textSnippet('body') });
     const root = container.querySelector('.cinder-scroll-area');
@@ -122,7 +163,12 @@ describe('ScrollArea', () => {
     expect(root?.getAttribute('data-testid')).toBe('scroll');
   });
 
-  test('renders the tag passed via as="article" (non-sectioning element)', () => {
+  test('renders the tag passed via as="main"', () => {
+    const { container } = render(ScrollArea, { as: 'main', children: textSnippet('body') });
+    expect(container.querySelector('main.cinder-scroll-area')).not.toBeNull();
+  });
+
+  test('renders the tag passed via as="article"', () => {
     const { container } = render(ScrollArea, { as: 'article', children: textSnippet('body') });
     expect(container.querySelector('article.cinder-scroll-area')).not.toBeNull();
   });
@@ -171,5 +217,14 @@ describe('ScrollArea scrollbar tokens', () => {
     expect(source).toMatch(/scrollbar-color:\s*var\(--cinder-scrollbar-thumb\)/);
     expect(source).toMatch(/::-webkit-scrollbar-thumb/);
     expect(source).toMatch(/var\(--cinder-scrollbar-track\)/);
+  });
+
+  test('forced-colors fallback uses standardized system colors', async () => {
+    const cssPath = new URL('../styles/components/scroll-area.css', import.meta.url);
+    const source = await Bun.file(cssPath).text();
+    expect(source).not.toContain('ScrollbarThumb');
+    expect(source).not.toContain('ScrollbarTrack');
+    expect(source).toMatch(/background:\s*Canvas;/);
+    expect(source).toMatch(/background:\s*CanvasText;/);
   });
 });

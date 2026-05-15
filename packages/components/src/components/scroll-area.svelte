@@ -5,26 +5,20 @@
   /** Axis to allow scrolling along. */
   export type ScrollAreaDirection = 'vertical' | 'horizontal' | 'both';
 
-  /**
-   * Non-void element tags valid for the `as` prop. Void elements are excluded
-   * because this component always renders a `children` snippet.
-   */
-  export type ScrollAreaElement = Exclude<
-    keyof HTMLElementTagNameMap,
-    | 'area'
-    | 'base'
-    | 'br'
-    | 'col'
-    | 'embed'
-    | 'hr'
-    | 'img'
-    | 'input'
-    | 'link'
-    | 'meta'
-    | 'source'
-    | 'track'
-    | 'wbr'
-  >;
+  /** Element tags intentionally supported by the `as` prop. */
+  export type ScrollAreaElement =
+    | 'article'
+    | 'aside'
+    | 'div'
+    | 'li'
+    | 'main'
+    | 'nav'
+    | 'ol'
+    | 'pre'
+    | 'section'
+    | 'ul';
+
+  const explicitRegionElements = new Set<ScrollAreaElement>(['div', 'pre']);
 
   /**
    * Props for ScrollArea. A styled scrollable container with cross-browser
@@ -43,9 +37,10 @@
     /** Maximum inline size of the scroll viewport (any valid CSS length). */
     maxWidth?: string;
     /**
-     * Accessible name for the scroll region. When provided, the container also
-     * gets `role="region"` so assistive technology treats it as a landmark.
-     * Provide this when the scroll area represents a meaningful section
+     * Accessible name for the scroll region. When provided on neutral
+     * containers, the container also gets `role="region"` so assistive
+     * technology treats it as a landmark. Semantic tags keep their native
+     * roles. Provide this when the scroll area represents a meaningful section
      * (a chat transcript, a code panel) — omit it for purely decorative
      * scrolling chrome. This is the single source of truth for the accessible
      * name; pass it through this prop rather than the raw `aria-label` HTML
@@ -84,7 +79,12 @@
     ...rest
   }: ScrollAreaProps = $props();
 
-  const role = $derived(ariaLabel ? 'region' : undefined);
+  const normalizedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined,
+  );
+  const role = $derived(
+    normalizedAriaLabel && explicitRegionElements.has(as) ? 'region' : undefined,
+  );
 </script>
 
 <svelte:element
@@ -93,7 +93,7 @@
   class={classNames('cinder-scroll-area', className)}
   data-cinder-direction={direction}
   {role}
-  aria-label={ariaLabel}
+  aria-label={normalizedAriaLabel}
   {tabindex}
   style:max-block-size={maxHeight}
   style:max-inline-size={maxWidth}

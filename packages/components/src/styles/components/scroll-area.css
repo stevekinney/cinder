@@ -79,11 +79,11 @@
 
   .cinder-scroll-area::-webkit-scrollbar-track,
   .cinder-scroll-area::-webkit-scrollbar-corner {
-    background: ScrollbarTrack;
+    background: Canvas;
   }
 
   .cinder-scroll-area::-webkit-scrollbar-thumb {
-    background: ScrollbarThumb;
+    background: CanvasText;
   }
 
   .cinder-scroll-area::-webkit-scrollbar-thumb:hover {
