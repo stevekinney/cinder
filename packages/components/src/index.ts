@@ -157,6 +157,9 @@ export type { GridListProps } from './components/grid-list.svelte';
 export { default as GridListItem } from './components/grid-list-item.svelte';
 export type { GridListItemProps } from './components/grid-list-item.svelte';
 
+export { default as Image } from './components/image.svelte';
+export type { ImageProps } from './components/image.svelte';
+
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 

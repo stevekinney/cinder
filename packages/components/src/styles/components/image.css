@@ -1,0 +1,40 @@
+/* ========================================
+ * IMAGE
+ * General-purpose <img> wrapper with aspect-ratio and blur-up placeholder.
+ * ======================================== */
+
+.cinder-image {
+  display: block;
+  max-width: 100%;
+}
+
+/* Wrapper variant — applies when ratio or placeholder is set. */
+div.cinder-image {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--cinder-surface-inset);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.cinder-image__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Hide until loaded so the pixelated placeholder shows through cleanly. */
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  image-rendering: auto;
+}
+
+.cinder-image[data-cinder-loaded] .cinder-image__img {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-image__img {
+    transition: none;
+  }
+}
