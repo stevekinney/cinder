@@ -5,7 +5,7 @@ Cinder's color tokens are written with [`light-dark()`][mdn-light-dark]. That me
 This page documents that contract, gives you a minimal Svelte recipe for a user-facing toggle, and shows how to wire the same control into a Storybook toolbar.
 
 > [!NOTE]
-> The toggle recipe uses Svelte 5 runes (`$state`, `bind:group`). Cinder pins `svelte >=5.55.0 <5.56.0` as a peer dependency, so any cinder consumer is already on Svelte 5.
+> The toggle recipe uses Svelte 5 — runes (`$state`, `$effect`) plus the `bind:group` directive. Cinder pins `svelte >=5.55.0 <5.56.0` as a peer dependency, so any cinder consumer is already on Svelte 5.
 
 ## The contract
 
@@ -86,6 +86,9 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
 > [!WARNING]
 > The pre-paint script avoids "flash of incorrect theme" only for users who have already chosen `light` or `dark`. System-mode users rely on cinder's stylesheet (which declares `color-scheme: light dark` on `:root`) loading promptly. If your bundler defers the cinder stylesheet behind a slow code-split chunk, system-mode users may see a brief light flash before the stylesheet resolves. In practice this is invisible on production builds, but worth knowing about if you see it during development.
 
+> [!TIP]
+> The storage key (`'app-theme'`) is repeated in the pre-paint script and the toggle component below. Nothing enforces the match — a copy-paste typo silently breaks persistence. If your app has a module that runs before both, extract the key to a shared constant and import it in both places.
+
 ### The toggle component
 
 ```svelte
@@ -97,19 +100,21 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
   const STORAGE_KEY = 'app-theme';
   const THEMES: readonly Theme[] = ['light', 'system', 'dark'];
 
-  let theme = $state<Theme>(readInitialTheme());
+  import { onMount } from 'svelte';
 
-  /**
-   * Read the active theme from the DOM, not localStorage. The pre-paint script
-   * has already reconciled storage and the DOM by the time this component
-   * mounts, so reading from the DOM avoids SSR/hydration mismatches and a
-   * second localStorage read.
-   */
-  function readInitialTheme(): Theme {
-    if (typeof document === 'undefined') return 'system';
+  // Initialize to 'system' on both server and client so the SSR-rendered
+  // radio markup matches the first client render. After mount, read the
+  // real value from the DOM (set by the pre-paint script) and write it
+  // back into state. The `mounted` flag gates the write effect so we
+  // don't clobber the DOM attribute before that read has happened.
+  let theme = $state<Theme>('system');
+  let mounted = $state(false);
+
+  onMount(() => {
     const value = document.documentElement.getAttribute('data-theme');
-    return value === 'light' || value === 'dark' ? value : 'system';
-  }
+    theme = value === 'light' || value === 'dark' ? value : 'system';
+    mounted = true;
+  });
 
   function setTheme(next: Theme) {
     try {
@@ -125,9 +130,11 @@ On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block
     }
   }
 
-  // React to user input. $effect runs after the bound `theme` updates from
-  // the radio group, so the DOM and localStorage stay in sync.
+  // Sync `theme` to the DOM and localStorage on every change. The `mounted`
+  // guard skips the initial run, so the read-from-DOM above isn't immediately
+  // echoed back as a redundant write.
   $effect(() => {
+    if (!mounted) return;
     setTheme(theme);
   });
 </script>
@@ -147,6 +154,7 @@ A few notes on what's happening:
 
 - **`data-theme` is the only mutation.** The component never touches `color-scheme` directly; cinder's stylesheet does that translation. That keeps the DOM clean — no inline styles to remove later — and makes it trivial to query the active choice from elsewhere (`getAttribute('data-theme')`).
 - **`system` removes the attribute** rather than setting `data-theme="system"`. The absence of the attribute is what lets `:root`'s default `color-scheme: light dark` fall back to the OS preference.
+- **State starts at `'system'` on both server and client.** That matches the SSR-rendered radio markup to the first client render. The `onMount` callback reads the real value from the DOM (populated by the pre-paint script) and updates state in place, and the `mounted` guard prevents the write effect from echoing that read back to the DOM. Net result: no hydration mismatch, no redundant DOM write on mount.
 - **Three options, not two.** A binary light/dark toggle hides the system option, which is what most users actually want.
 
 That's the whole recipe. No store, no context, no provider.
@@ -217,7 +225,7 @@ Import cinder's stylesheet once in `.storybook/preview.ts` (or via a `preview-he
 > [!NOTE]
 > Storybook's [`@storybook/addon-themes`][sb-addon-themes] ships a higher-level wrapper around this pattern. The hand-rolled version above is small enough that the addon is optional — pick whichever your team prefers.
 
-If a story renders the `ThemeToggle` component itself, the toggle will read `localStorage` and write `data-theme` independently of the toolbar global. That's by design for the toggle, but it does mean the two controls compete. For visual-regression tests of the toggle, mount it in a story with no other theme controls so the toolbar doesn't fight it.
+If a story renders the `ThemeToggle` component itself, the toggle reads the current `data-theme` attribute on mount and writes back to `data-theme` (plus `localStorage`) independently of the toolbar global. That's by design for the toggle, but it does mean the two controls compete — flipping the toolbar overwrites the attribute, and flipping the toggle overwrites it again. For visual-regression tests of the toggle, mount it in a story with no other theme controls so the toolbar doesn't fight it.
 
 ## Why not a `ThemeSwitcher` component?
 

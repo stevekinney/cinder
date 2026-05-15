@@ -94,7 +94,7 @@ cinder's compiled server output is coupled to the Svelte minor it was built agai
 
 ### Theming and dark mode
 
-Cinder's color tokens are built on [`light-dark()`][mdn-light-dark]. Set `color-scheme` on your root element and every semantic color follows automatically — no `ThemeProvider`, no class toggling. See [docs/theming.md](docs/theming.md) for the full contract, a copy-pasteable Svelte toggle, and a Storybook toolbar recipe.
+Cinder's color tokens are built on [`light-dark()`][mdn-light-dark]. Set `data-theme="light"` or `data-theme="dark"` on `:root` (or set `color-scheme` directly) and every semantic color follows automatically — no `ThemeProvider`, no class toggling. See [docs/theming.md](docs/theming.md) for the full contract, a copy-pasteable Svelte toggle, and a Storybook toolbar recipe.
 
 [mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
 
