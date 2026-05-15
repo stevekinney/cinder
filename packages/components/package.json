@@ -305,6 +305,10 @@
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
     },
+    "./slider": {
+      "svelte": "./src/components/slider.svelte",
+      "types": "./dist/components/slider.svelte.d.ts"
+    },
     "./sortable-list": {
       "svelte": "./src/components/sortable-list.svelte",
       "types": "./dist/components/sortable-list.svelte.d.ts"
