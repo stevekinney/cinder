@@ -325,6 +325,10 @@
       "svelte": "./src/components/stat.svelte",
       "types": "./dist/components/stat.svelte.d.ts"
     },
+    "./status-dot": {
+      "svelte": "./src/components/status-dot.svelte",
+      "types": "./dist/components/status-dot.svelte.d.ts"
+    },
     "./steps": {
       "svelte": "./src/components/steps.svelte",
       "types": "./dist/components/steps.svelte.d.ts"

@@ -312,6 +312,13 @@ export type {
   StatGroupVariant,
 } from './components/stat-group.svelte';
 
+export { default as StatusDot } from './components/status-dot.svelte';
+export type {
+  StatusDotProps,
+  StatusDotSize,
+  StatusDotStatus,
+} from './components/status-dot.svelte';
+
 export { default as Surface } from './components/surface.svelte';
 export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
 
