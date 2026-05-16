@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Modal-scoped region';
   export const description =
-    'Nest <ToastRegion> inside a Modal to scope toasts to the modal lifecycle. Closing the modal tears down its toasts.';
+    'Nest <ToastRegion> inside a Modal to scope toasts to the modal content. When the modal body unmounts on close, the region tears down with it and pending timers are cleared.';
 </script>
 
 <script lang="ts">

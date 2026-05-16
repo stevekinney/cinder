@@ -13,11 +13,12 @@ Mount one `<ToastRegion />` near the root of the app — `+layout.svelte` for Sv
   let { children } = $props();
 </script>
 
-<ToastRegion />
-{@render children()}
+<ToastRegion>
+  {@render children()}
+</ToastRegion>
 ```
 
-Toasts dispatched before any region mounts have no effect — `useToast()` throws (see below) if no region is mounted above the caller. Multiple regions are legal: each owns an independent queue scoped to its subtree (see [Region scope](./toast-region.a11y.md#region-scope)).
+Wrap the app inside the region so route components (descendants) can call `useToast()`. `useToast()` throws (see below) if no region is mounted above the caller. Multiple regions are legal: each owns an independent queue scoped to its subtree (see [Region scope](./toast-region.a11y.md#region-scope)).
 
 ## `<ToastRegion>` props
 
@@ -47,13 +48,13 @@ Import the hook from the package root — there is no `cinder/use-toast` subpath
 
 ## `ToastOptions`
 
-| Field         | Type                                                          | Default                                 | Description                                                                                                                          |
-| ------------- | ------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                                | Drives visual treatment **and** live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive)).                   |
-| `duration`    | `number`                                                      | region's `defaultDuration` (`5000`)     | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                               |
-| `dismissible` | `boolean`                                                     | `true`                                  | When `true`, renders the X button.                                                                                                   |
-| `id`          | `string`                                                      | `cinder-toast-${n}` (auto-incrementing) | Pass a stable id to deduplicate — calling `show` again with the same id replaces the existing toast instead of stacking a duplicate. |
-| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                                       | Renders a button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true`.                |
+| Field         | Type                                                          | Default                                 | Description                                                                                                                                 |
+| ------------- | ------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                                | Drives visual treatment **and** live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive)).                          |
+| `duration`    | `number`                                                      | region's `defaultDuration` (`5000`)     | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                                      |
+| `dismissible` | `boolean`                                                     | `true`                                  | When `true`, renders the X button.                                                                                                          |
+| `id`          | `string`                                                      | `cinder-toast-${n}` (auto-incrementing) | Pass a stable id to deduplicate — calling `show` again with the same id replaces the existing toast instead of stacking a duplicate.        |
+| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                                       | Renders a button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true` (defaults to `false`). |
 
 ## Variant routing (polite vs assertive)
 
@@ -135,7 +136,7 @@ See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the full ARIA / live-
 
 ## v1 limitations
 
-- **Toasts dispatched before `<ToastRegion>` mounts are no-ops.** `useToast()` throws during init if no region exists; there is no buffering of pre-mount dispatches.
+- **No pre-mount buffering.** `useToast()` throws during init if no region is mounted above the caller. There is no out-of-band dispatcher that buffers pre-mount calls.
 - **No process-global singleton.** State is region-scoped via Svelte context. Apps with multiple regions get independent queues.
 - **No position/placement prop.** The region renders in its default position; visual placement is owned by `.cinder-toast-region` styling. A placement prop is a roadmap item.
 - **`maxStack` is per-stack, not combined.** A region can hold up to `maxStack` polite toasts **and** up to `maxStack` assertive toasts at the same time.
