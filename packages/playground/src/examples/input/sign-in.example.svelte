@@ -13,12 +13,14 @@
   let submitting = $state(false);
 
   function handleSignIn() {
+    if (submitting) return;
     // Clear any prior error so a re-submit re-announces by re-mounting the Alert
     // rather than mutating its text (assistive tech announces on mount of role="alert").
     authError = undefined;
     submitting = true;
 
-    // Static example: simulate an auth failure. Do not call a real auth service.
+    // Static example: simulate an auth failure. A real implementation would
+    // POST { email, password } and redirect on success.
     setTimeout(() => {
       authError = 'Email or password is incorrect.';
       submitting = false;
@@ -34,7 +36,7 @@
     handleSignIn();
   }}
 >
-  <h2 id="sign-in-heading" style="margin: 0 0 1rem;">Sign in</h2>
+  <h2 id="sign-in-heading" style="margin-block-end: 1rem;">Sign in</h2>
 
   <!--
     Top-of-form auth-error region.
