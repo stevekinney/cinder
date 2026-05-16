@@ -59,6 +59,16 @@ Interactive addons (clear button, password-reveal toggle, unit toggle): pass `tr
 
 ## Autocomplete guidance
 
+### Sign-in forms (required pattern)
+
+For sign-in forms, the identifier field **must** carry `autocomplete="email"` (when the field collects an email address) or `autocomplete="username"` (when it collects an opaque handle), and the password field **must** carry `autocomplete="current-password"`. These two attributes are what enable password managers and browser autofill to recognize the form as a sign-in form and offer saved credentials.
+
+Omitting them is a regression: users who rely on autofill — including users with motor disabilities for whom typing a password is a significant barrier — lose access to saved credentials, and password managers may misclassify the form as a registration form and save wrong values.
+
+See `packages/playground/src/examples/input/sign-in.example.svelte` for a composition that wires these attributes alongside the top-of-form `role="alert"` auth-error banner.
+
+### General guidance
+
 Always set the `autocomplete` attribute when the input collects a value the browser or password manager can fill. Cinder's `Input` forwards arbitrary `HTMLInputAttributes` via rest props, so `autocomplete="email"`, `autocomplete="current-password"`, `autocomplete="one-time-code"`, `autocomplete="postal-code"`, etc., flow through unchanged.
 
 The most common values are `name`, `email`, `username`, `current-password`, `new-password`, `one-time-code`, `street-address`, `postal-code`, `cc-number`, `cc-exp`, `tel`. Use `autocomplete="off"` only for fields that genuinely should not be filled (search, ephemeral tokens)—overusing `off` degrades the experience for users who rely on autofill, including users with motor disabilities.
