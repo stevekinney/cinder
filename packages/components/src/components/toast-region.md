@@ -6,27 +6,30 @@ See also: [toast-region.a11y.md](./toast-region.a11y.md) for the full ARIA and l
 
 ## Placement
 
-Mount one `<ToastRegion>` near the root of your app so every component can reach it via `useToast()`. In SvelteKit, that's typically `+layout.svelte`.
+Mount one `<ToastRegion />` near the root of your app so every component can reach it via `useToast()`. In SvelteKit, that's typically `+layout.svelte`. The region is self-closing—`useToast()` works in any descendant, not just those inside a `children` snippet.
 
 ```svelte
 <!-- +layout.svelte -->
-<ToastRegion>
-  {#snippet children()}
-    {@render children()}
-  {/snippet}
-</ToastRegion>
+<script>
+  let { children } = $props();
+</script>
+
+<ToastRegion />
+{@render children()}
 ```
 
-Toasts dispatched before the region mounts are no-ops—`useToast()` would throw because no context exists yet. Multiple regions are legal and produce independent queues; each handles its own `maxStack` and `defaultDuration`.
+Toasts dispatched before the region mounts are no-ops—`useToast()` throws because no context exists yet. Multiple regions are legal and produce independent queues; each handles its own `maxStack` and `defaultDuration`.
 
 ## ToastRegion props
 
-| Prop              | Type      | Default | Description                                                                                                                   |
-| ----------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `maxStack`        | `number`  | `5`     | Maximum simultaneous toasts per stack (polite and assertive each cap independently). Overflow drops the oldest.               |
-| `defaultDuration` | `number`  | `5000`  | Auto-dismiss delay in milliseconds. `0` makes all toasts sticky by default. Overridable per-call via `ToastOptions.duration`. |
-| `class`           | `string`  | —       | Additional class names merged onto `.cinder-toast-region`.                                                                    |
-| `children`        | `Snippet` | —       | When supplied, descendants of this snippet can call `useToast()` to access the region's API.                                  |
+Import `ToastRegionProps` from `cinder` for typing wrapper components.
+
+| Prop              | Type      | Default | Description                                                                                                                                                                        |
+| ----------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxStack`        | `number`  | `5`     | Maximum simultaneous toasts per stack (polite and assertive each cap independently). Overflow drops the oldest.                                                                    |
+| `defaultDuration` | `number`  | `5000`  | Auto-dismiss delay in milliseconds. `0` makes all toasts sticky by default. Overridable per-call via `ToastOptions.duration`.                                                      |
+| `class`           | `string`  | —       | Additional class names merged onto `.cinder-toast-region`.                                                                                                                         |
+| `children`        | `Snippet` | —       | Optional. When supplied, descendants of this snippet can call `useToast()` to access the region's API. Most root-level placements omit this and use the self-closing form instead. |
 
 ## useToast()
 
@@ -34,7 +37,16 @@ Toasts dispatched before the region mounts are no-ops—`useToast()` would throw
 import { useToast } from 'cinder';
 ```
 
-Call `useToast()` during component initialization—Svelte's `getContext` runs at mount time, not inside event handlers. Inside a snippet body, use `{@const toast = useToast()}` at the top of the snippet.
+Call `useToast()` at the top level of a component (not inside event handlers or callbacks)—Svelte's `getContext` must run during component initialization. Snippets are an exception: `useToast()` works inside `{#snippet children()}` because snippets evaluate in the context of their defining component.
+
+```svelte
+<ToastRegion>
+  {#snippet children()}
+    {@const toast = useToast()}
+    <button onclick={() => toast.show('Hello!')}>Show toast</button>
+  {/snippet}
+</ToastRegion>
+```
 
 If no `<ToastRegion>` is mounted above the caller, `useToast()` throws:
 
@@ -46,15 +58,25 @@ This is intentional, not a bug. The error surfaces misconfigured component trees
 
 There is no `cinder/use-toast` subpath export. Import from the root `cinder` barrel only.
 
+## ToastApi
+
+`useToast()` returns a `ToastApi` object:
+
+| Method       | Signature                                             | Description                                                           |
+| ------------ | ----------------------------------------------------- | --------------------------------------------------------------------- |
+| `show`       | `(message: string, options?: ToastOptions) => string` | Shows a toast. Returns the assigned id.                               |
+| `dismiss`    | `(id: string) => void`                                | Dismisses a specific toast by id. No-op if the id is not active.      |
+| `dismissAll` | `() => void`                                          | Dismisses every active toast in both the polite and assertive stacks. |
+
 ## ToastOptions
 
-| Field         | Type                                                          | Default                    | Description                                                                                                                      |
-| ------------- | ------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                   | Visual treatment and live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive) below).                    |
-| `duration`    | `number`                                                      | region's `defaultDuration` | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                           |
-| `dismissible` | `boolean`                                                     | `true`                     | When `true`, renders the dismiss (×) button.                                                                                     |
-| `id`          | `string`                                                      | `cinder-toast-N` (auto)    | Stable id for deduplication—calling `show` again with the same active id replaces the existing toast instead of stacking a copy. |
-| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                          | Renders an inline button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true`.    |
+| Field         | Type                                                          | Default                    | Description                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                   | Visual treatment and live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive) below).                                                                   |
+| `duration`    | `number`                                                      | region's `defaultDuration` | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                                                                          |
+| `dismissible` | `boolean`                                                     | `true`                     | When `true`, renders the dismiss (×) button.                                                                                                                                    |
+| `id`          | `string`                                                      | `cinder-toast-N` (auto)    | Stable id for deduplication—calling `show` again with the same active id replaces the existing toast instead of stacking a copy. The replacement resets the auto-dismiss timer. |
+| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                          | Renders an inline button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true`.                                                   |
 
 ## Variant routing (polite vs assertive)
 
@@ -128,14 +150,16 @@ Three ways a toast can be dismissed:
 - **Auto-dismiss**: after `duration` ms when `duration > 0`.
 - **Programmatic**: `toast.dismiss(id)` removes a specific toast by id; `toast.dismissAll()` clears both the polite and assertive stacks together. `dismiss(id)` is a no-op if the id is not currently active.
 
+> [!WARNING] Combining `duration: 0` with `dismissible: false` and no `action` creates a toast that cannot be dismissed. Use at least one dismiss mechanism.
+
 ## Accessibility
 
 See [toast-region.a11y.md](./toast-region.a11y.md) for the complete ARIA / live-region / reduced-motion documentation.
 
 ## v1 limitations
 
-- Toasts dispatched before `<ToastRegion>` mounts are no-ops—`useToast()` would throw because no context exists yet.
-- No process-global singleton—region-scoped only. Every `useToast()` call must have an enclosing region.
+- No process-global singleton—region-scoped only. Every `useToast()` call must have an enclosing region mounted above it.
 - No position/placement prop yet; the region renders at its CSS-defined default position.
 - `maxStack` applies per stack (polite and assertive each cap independently), not as a combined total.
 - `id` deduplication is exact-match string equality—no fuzzy matching.
+- `id` collision between auto-generated `cinder-toast-N` ids and manually passed ids is possible if you pass `id: 'cinder-toast-3'`—prefer descriptive stable ids (`'save-progress'`) to avoid this.

@@ -6,27 +6,28 @@
 
 <script lang="ts">
   import { Button, ToastRegion, useToast } from '../../../../components/src/index.ts';
+
+  let lastId = $state<string | null>(null);
 </script>
 
 <ToastRegion>
   {#snippet children()}
     {@const toast = useToast()}
-    {@const lastId = { value: null as string | null }}
     <div class="example-preview-row">
       <Button
         label="Show sticky"
         onclick={() => {
-          lastId.value = toast.show('Sticky toast — will not auto-dismiss.', { duration: 0 });
+          lastId = toast.show('Sticky toast — will not auto-dismiss.', { duration: 0 });
         }}
       />
       <Button
         label="Dismiss last"
         variant="secondary"
         onclick={() => {
-          if (lastId.value) toast.dismiss(lastId.value);
+          if (lastId) toast.dismiss(lastId);
         }}
       />
-      <Button label="Dismiss all" variant="danger" onclick={() => toast.dismissAll()} />
+      <Button label="Dismiss all" variant="secondary" onclick={() => toast.dismissAll()} />
     </div>
   {/snippet}
 </ToastRegion>

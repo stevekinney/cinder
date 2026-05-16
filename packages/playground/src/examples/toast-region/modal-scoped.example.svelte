@@ -17,9 +17,6 @@
     <ToastRegion>
       {#snippet children()}
         {@const toast = useToast()}
-        <p style="margin-bottom: 1rem;">
-          Toasts dispatched here are scoped to this modal. They disappear when the modal closes.
-        </p>
         <div class="example-preview-row">
           <Button
             label="Show info"
