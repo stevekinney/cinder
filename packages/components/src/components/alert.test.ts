@@ -149,13 +149,17 @@ describe('Alert rendering', () => {
     expect(container.querySelector('.cinder-alert__icon')).toBeNull();
   });
 
-  test('has role="alert" and aria-live="polite" on root element', () => {
+  test('has role="alert" on root element and does not set an explicit aria-live', () => {
+    // role="alert" implies aria-live="assertive" (and aria-atomic="true").
+    // Adding aria-live="polite" alongside it would conflict with the implicit
+    // assertive value, so the component leaves aria-live unset and lets
+    // assistive tech derive it from the role.
     const { container } = render(Alert, {
       props: { children: emptySnippet },
     });
     const root = container.querySelector('.cinder-alert');
     expect(root?.getAttribute('role')).toBe('alert');
-    expect(root?.getAttribute('aria-live')).toBe('polite');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
   test('default variant is "info"', () => {

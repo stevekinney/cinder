@@ -25,6 +25,9 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button
 export { default as ButtonGroup } from './components/button-group.svelte';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
 
+export { default as Callout } from './components/callout.svelte';
+export type { CalloutProps, CalloutVariant } from './components/callout.svelte';
+
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 
@@ -50,6 +53,9 @@ export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
 
 export { default as CodeBlock } from './components/code-block.svelte';
 export type { CodeBlockProps } from './components/code-block.svelte';
+
+export { default as ColorPicker } from './components/color-picker.svelte';
+export type { ColorPickerProps } from './components/color-picker.svelte';
 
 export { default as ColorSwatchPicker } from './components/color-swatch-picker.svelte';
 export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swatch-picker.svelte';
@@ -273,6 +279,9 @@ export type { SideNavigationGroupProps } from './components/side-navigation-grou
 export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
 export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
 
+export { default as Sidebar } from './components/sidebar.svelte';
+export type { SidebarProps } from './components/sidebar.svelte';
+
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
 export type {
@@ -283,6 +292,9 @@ export type {
 
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
+
+export { default as Slider } from './components/slider.svelte';
+export type { SliderMode, SliderProps, SliderValue } from './components/slider.svelte';
 
 export { default as StackedListItem } from './components/stacked-list-item.svelte';
 export type {
@@ -305,6 +317,13 @@ export type {
   StatGroupProps,
   StatGroupVariant,
 } from './components/stat-group.svelte';
+
+export { default as StatusDot } from './components/status-dot.svelte';
+export type {
+  StatusDotProps,
+  StatusDotSize,
+  StatusDotStatus,
+} from './components/status-dot.svelte';
 
 export { default as Surface } from './components/surface.svelte';
 export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';

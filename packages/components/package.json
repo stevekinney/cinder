@@ -53,6 +53,10 @@
       "svelte": "./src/components/button.svelte",
       "types": "./dist/components/button.svelte.d.ts"
     },
+    "./callout": {
+      "svelte": "./src/components/callout.svelte",
+      "types": "./dist/components/callout.svelte.d.ts"
+    },
     "./card": {
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
@@ -76,6 +80,10 @@
     "./code-block": {
       "svelte": "./src/components/code-block.svelte",
       "types": "./dist/components/code-block.svelte.d.ts"
+    },
+    "./color-picker": {
+      "svelte": "./src/components/color-picker.svelte",
+      "types": "./dist/components/color-picker.svelte.d.ts"
     },
     "./color-swatch-picker": {
       "svelte": "./src/components/color-swatch-picker.svelte",
@@ -289,9 +297,17 @@
       "svelte": "./src/components/side-navigation.svelte",
       "types": "./dist/components/side-navigation.svelte.d.ts"
     },
+    "./sidebar": {
+      "svelte": "./src/components/sidebar.svelte",
+      "types": "./dist/components/sidebar.svelte.d.ts"
+    },
     "./skeleton": {
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
+    },
+    "./slider": {
+      "svelte": "./src/components/slider.svelte",
+      "types": "./dist/components/slider.svelte.d.ts"
     },
     "./sortable-list": {
       "svelte": "./src/components/sortable-list.svelte",
@@ -312,6 +328,10 @@
     "./stat": {
       "svelte": "./src/components/stat.svelte",
       "types": "./dist/components/stat.svelte.d.ts"
+    },
+    "./status-dot": {
+      "svelte": "./src/components/status-dot.svelte",
+      "types": "./dist/components/status-dot.svelte.d.ts"
     },
     "./steps": {
       "svelte": "./src/components/steps.svelte",

@@ -333,3 +333,27 @@ describe('PageLayout integration: all slots simultaneously', () => {
     expect(breadcrumbsEl.compareDocumentPosition(contentEl) & FOLLOWING).toBeTruthy();
   });
 });
+
+describe('PageLayout content-width token', () => {
+  test('page-layout.css uses --cinder-content-width for max-width caps', async () => {
+    const cssPath = new URL('../styles/components/page-layout.css', import.meta.url);
+    const source = await Bun.file(cssPath).text();
+
+    // No hardcoded length on max-width — must reference the shared token.
+    // Matches dimensional units only; viewport-relative or percentage values
+    // (e.g. 100%, 100vw) are legitimate and intentionally not flagged.
+    const hardcodedMaxWidth = /max-width:\s*\d+(?:\.\d+)?(?:rem|px|em|ch)\b/.exec(source);
+    expect(hardcodedMaxWidth).toBeNull();
+
+    // Three layout regions cap their inline size: breadcrumbs, header-row, content.
+    // If you add a fourth, update this count deliberately.
+    const tokenReferences = source.match(/max-width:\s*var\(--cinder-content-width\)/g) ?? [];
+    expect(tokenReferences.length).toBe(3);
+  });
+
+  test('--cinder-content-width is declared in tokens-base.css', async () => {
+    const tokensPath = new URL('../styles/tokens-base.css', import.meta.url);
+    const source = await Bun.file(tokensPath).text();
+    expect(source).toMatch(/--cinder-content-width:\s*\S+/);
+  });
+});

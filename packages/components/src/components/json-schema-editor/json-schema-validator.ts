@@ -116,26 +116,28 @@ export function validateMetaSchema(
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
   const ajv = getMetaValidator(resolved);
-  let valid: boolean | Promise<unknown>;
   try {
-    valid = ajv.validateSchema(schema);
+    const valid = ajv.validateSchema(schema);
+    return {
+      valid: Boolean(valid),
+      errors: ajvErrorsToValidationErrors(ajv.errors),
+    };
   } catch (error) {
+    // Ajv throws synchronously when a schema references a meta-schema URI the
+    // instance doesn't know about (e.g. cross-draft $schema references). Treat
+    // as an invalid schema rather than an unhandled exception — the editor
+    // should surface this as a validation error, not crash the host.
     return {
       valid: false,
       errors: [
         {
           path: '',
-          message: error instanceof Error ? error.message : String(error),
-          keyword: 'schema',
+          message: error instanceof Error ? error.message : 'Meta-schema validation failed',
+          keyword: '',
         },
       ],
     };
   }
-
-  return {
-    valid: Boolean(valid),
-    errors: ajvErrorsToValidationErrors(ajv.errors),
-  };
 }
 
 /**
