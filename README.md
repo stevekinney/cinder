@@ -90,7 +90,7 @@ cinder's compiled server output is coupled to the Svelte minor it was built agai
 
 - **Classes** use the `.cinder-*` prefix: `.cinder-button`, `.cinder-alert`.
 - **Variants** use `data-cinder-*` attributes: `data-cinder-variant`, `data-cinder-size`.
-- **Design tokens** use `--cinder-*` for the public surface and `--_cinder-*` for internal-only custom properties.
+- **Design tokens** use `--cinder-*` for the public surface and `--_cinder-*` for internal-only custom properties. See [`docs/tokens.md`](docs/tokens.md) for the full catalog of public tokens and their defaults.
 
 ### Theming and dark mode
 
