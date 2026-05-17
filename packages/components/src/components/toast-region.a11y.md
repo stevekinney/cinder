@@ -1,6 +1,6 @@
 # ToastRegion · accessibility
 
-> See also: [toast-region.md](./toast-region.md) for call-site usage, prop tables, and playground examples.
+See [`./toast-region.md`](./toast-region.md) for the call-site usage guide (`useToast()`, `ToastOptions`, dismiss patterns).
 
 ## Pattern
 

@@ -1,11 +1,14 @@
 <script lang="ts" module>
   export const title = 'Action button';
   export const description =
-    'Clicking the action dismisses the toast by default. Set keepOpen: true to keep it visible after the action fires.';
+    'Default action dismisses after firing; keepOpen: true keeps the toast visible after the action runs.';
 </script>
 
 <script lang="ts">
   import { Button, ToastRegion, useToast } from '../../../../components/src/index.ts';
+
+  let undoCount = $state(0);
+  let pauseCount = $state(0);
 </script>
 
 <ToastRegion>
@@ -13,31 +16,34 @@
     {@const toast = useToast()}
     <div class="example-preview-row">
       <Button
-        label="Dismiss on action"
+        label="Dismiss-after-action"
         onclick={() =>
-          toast.show('File ready to download.', {
-            variant: 'success',
+          toast.show('Item moved to trash.', {
+            variant: 'info',
             duration: 0,
             action: {
-              label: 'Download',
-              onAction: () => toast.show('Download started.', { variant: 'info' }),
+              label: 'Undo',
+              onAction: () => (undoCount += 1),
             },
           })}
       />
       <Button
-        label="Keep open after action"
         variant="secondary"
+        label="Keep open after action"
         onclick={() =>
-          toast.show('Deployment in progress.', {
+          toast.show('Syncing in the background…', {
             variant: 'info',
             duration: 0,
             action: {
-              label: 'View logs',
-              onAction: () => toast.show('Logs opened.', { variant: 'success' }),
+              label: 'Pause',
               keepOpen: true,
+              onAction: () => (pauseCount += 1),
             },
           })}
       />
     </div>
+    <p style="margin-top: 0.75rem; font-size: 0.875rem;">
+      Undo fired: {undoCount} · Pause fired: {pauseCount}
+    </p>
   {/snippet}
 </ToastRegion>

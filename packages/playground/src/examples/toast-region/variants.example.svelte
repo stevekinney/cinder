@@ -21,10 +21,12 @@
         onclick={() => toast.show('Saved your changes.', { variant: 'success' })}
       />
       <Button
+        variant="secondary"
         label="Warning"
         onclick={() => toast.show('Your session expires in 5 minutes.', { variant: 'warning' })}
       />
       <Button
+        variant="danger"
         label="Danger"
         onclick={() => toast.show('Failed to save your changes.', { variant: 'danger' })}
       />

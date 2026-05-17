@@ -185,6 +185,17 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | `--cinder-color-danger-fg`      | `light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25))`    |
 | `--cinder-color-danger-border`  | `light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25))`     |
 
+## Scrollbar
+
+Used by the `ScrollArea` component and any consumer that opts into themed native scrollbars. Thumb alpha is tuned so the resolved thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over common light- and dark-mode surface tokens.
+
+| Token                            | Default                                                    |
+| -------------------------------- | ---------------------------------------------------------- |
+| `--cinder-scrollbar-size`        | `0.625rem`                                                 |
+| `--cinder-scrollbar-track`       | `light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04))` |
+| `--cinder-scrollbar-thumb`       | `light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))` |
+| `--cinder-scrollbar-thumb-hover` | `light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))` |
+
 ## Focus ring
 
 The ring tokens drive the focus-visible outline used across interactive primitives. See [`focus-ring-policy.md`](./focus-ring-policy.md) for when components are expected to render the ring vs. when they delegate to the user agent.
