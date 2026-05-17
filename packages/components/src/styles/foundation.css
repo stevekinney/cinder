@@ -137,7 +137,7 @@
 }
 
 :where(ul, ol) {
-  padding-left: var(--cinder-space-6);
+  padding-inline-start: var(--cinder-space-6);
 }
 
 :where(li) {

@@ -194,13 +194,21 @@ export async function checkReadiness(
 
   const unresolvedThreads = await countUnresolvedThreads(prNumber, owner, name, deps);
 
+  // `gh pr view` returns "" (not null) when no review decision exists.
+  // Normalize so isMergeReady's `=== null` branch matches reality.
+  const reviewDecisionRaw = state.reviewDecision;
+  const reviewDecision: ReviewDecision =
+    reviewDecisionRaw === null || reviewDecisionRaw === ''
+      ? null
+      : (reviewDecisionRaw as ReviewDecision);
+
   return {
     ciPassing: failing === 0 && pending === 0,
     ciPending: pending > 0,
     ciFailing: failing > 0,
     hasConflicts,
     mergeStateStatus: state.mergeStateStatus as MergeStateStatus,
-    reviewDecision: (state.reviewDecision ?? null) as ReviewDecision,
+    reviewDecision,
     unresolvedThreads,
     headRefOid: state.headRefOid,
     isDraft: state.isDraft,

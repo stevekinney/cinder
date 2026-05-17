@@ -271,8 +271,7 @@
 }
 
 .cinder-jse-property-row__panel > .cinder-jse-property-editor > .cinder-jse-section {
-  padding-left: 0;
-  padding-right: 0;
+  padding-inline: 0;
 }
 
 /* Required-only chip area */

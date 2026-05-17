@@ -634,6 +634,10 @@
     left: auto;
     right: 100%;
     margin-top: 0;
+    /* Padding stays physical to match the physical `right: 100%` placement
+       above; the whole block is the LTR-only fast path called out in the
+       comment at the top of this section. */
+    /* stylelint-disable-next-line csstools/use-logical */
     padding-right: var(--cinder-space-1);
     transform: translateY(-50%);
   }
@@ -644,6 +648,7 @@
     left: 100%;
     right: auto;
     margin-top: 0;
+    /* stylelint-disable-next-line csstools/use-logical */
     padding-left: var(--cinder-space-1);
     transform: translateY(-50%);
   }
@@ -675,8 +680,7 @@
       left: 0;
       right: auto;
       transform: none;
-      padding-left: 0;
-      padding-right: 0;
+      padding-inline: 0;
       margin-top: var(--cinder-space-1);
     }
   }

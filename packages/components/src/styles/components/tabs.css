@@ -27,7 +27,7 @@
 .cinder-tab-list[data-cinder-orientation='vertical'] {
   flex-direction: column;
   border-bottom: none;
-  border-right: 1px solid var(--cinder-border-muted);
+  border-inline-end: 1px solid var(--cinder-border-muted);
   align-self: stretch;
 }
 

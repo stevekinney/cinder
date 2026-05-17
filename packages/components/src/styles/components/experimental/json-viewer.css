@@ -31,7 +31,7 @@
 
 .cinder-json-viewer__key {
   color: var(--cinder-accent);
-  margin-right: var(--cinder-space-1);
+  margin-inline-end: var(--cinder-space-1);
 }
 
 .cinder-json-viewer__toggle {
@@ -57,8 +57,8 @@
   display: inline-block;
   width: 0;
   height: 0;
-  border-left: 0.25rem solid transparent;
-  border-right: 0.25rem solid transparent;
+  border-inline-start: 0.25rem solid transparent;
+  border-inline-end: 0.25rem solid transparent;
   border-top: 0.375rem solid currentColor;
   transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
@@ -79,8 +79,8 @@
 .cinder-json-viewer__children {
   list-style: none;
   margin: 0;
-  padding-left: var(--cinder-space-4);
-  border-left: 1px dashed var(--cinder-border-muted);
+  padding-inline-start: var(--cinder-space-4);
+  border-inline-start: 1px dashed var(--cinder-border-muted);
 }
 
 .cinder-json-viewer__too-deep {

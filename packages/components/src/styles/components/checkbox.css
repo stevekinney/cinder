@@ -114,7 +114,7 @@
   line-height: var(--cinder-leading-normal);
   color: var(--cinder-text-muted);
   margin: 0;
-  padding-left: calc(1.125rem + var(--cinder-space-2));
+  padding-inline-start: calc(1.125rem + var(--cinder-space-2));
 }
 
 .cinder-checkbox-field__error {
@@ -122,5 +122,5 @@
   line-height: var(--cinder-leading-normal);
   color: var(--cinder-danger);
   margin: 0;
-  padding-left: calc(1.125rem + var(--cinder-space-2));
+  padding-inline-start: calc(1.125rem + var(--cinder-space-2));
 }

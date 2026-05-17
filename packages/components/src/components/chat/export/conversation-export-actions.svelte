@@ -193,7 +193,7 @@
   }
 
   .copied-label {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-size: var(--cinder-text-xs);
     color: var(--cinder-success);
     font-weight: var(--cinder-font-medium);

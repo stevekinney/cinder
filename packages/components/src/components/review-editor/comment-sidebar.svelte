@@ -234,7 +234,7 @@
     max-width: 400px;
     height: 100%;
     background: var(--cinder-surface-raised);
-    border-left: 1px solid var(--cinder-border);
+    border-inline-start: 1px solid var(--cinder-border);
     overflow: hidden;
   }
 
@@ -377,8 +377,8 @@
     font-style: italic;
     color: var(--cinder-text-subtle);
     margin: 0;
-    padding-left: var(--cinder-space-2);
-    border-left: 2px solid var(--cinder-border);
+    padding-inline-start: var(--cinder-space-2);
+    border-inline-start: 2px solid var(--cinder-border);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -409,7 +409,7 @@
   }
 
   .thread-item[data-document='true'] {
-    border-left: 2px solid var(--cinder-accent);
+    border-inline-start: 2px solid var(--cinder-accent);
   }
 
   .empty-state {

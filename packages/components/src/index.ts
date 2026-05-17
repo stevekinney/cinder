@@ -157,6 +157,9 @@ export type { GridListProps } from './components/grid-list.svelte';
 export { default as GridListItem } from './components/grid-list-item.svelte';
 export type { GridListItemProps } from './components/grid-list-item.svelte';
 
+export { default as Image } from './components/image.svelte';
+export type { ImageProps } from './components/image.svelte';
+
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 
@@ -249,6 +252,13 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
+export { default as ScrollArea } from './components/scroll-area.svelte';
+export type {
+  ScrollAreaDirection,
+  ScrollAreaElement,
+  ScrollAreaProps,
+} from './components/scroll-area.svelte';
+
 export { default as SectionHeading } from './components/section-heading.svelte';
 export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
 
@@ -266,6 +276,9 @@ export type {
   SelectionPopoverPosition,
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
+
+export { default as Sheet } from './components/sheet.svelte';
+export type { SheetProps } from './components/sheet.svelte';
 
 export { default as SideNavigation } from './components/side-navigation.svelte';
 export type { SideNavigationProps } from './components/side-navigation.svelte';
@@ -421,9 +434,6 @@ export type { JsonViewerProps } from './components/experimental/json-viewer.svel
 
 export { default as Message } from './components/experimental/message.svelte';
 export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
-
-export { default as Sheet } from './components/experimental/sheet.svelte';
-export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
 
 export { default as Timeline } from './components/experimental/timeline.svelte';
 export type { TimelineProps } from './components/experimental/timeline.svelte';
