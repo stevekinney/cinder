@@ -205,6 +205,10 @@
       "svelte": "./src/components/grid-list.svelte",
       "types": "./dist/components/grid-list.svelte.d.ts"
     },
+    "./image": {
+      "svelte": "./src/components/image.svelte",
+      "types": "./dist/components/image.svelte.d.ts"
+    },
     "./input": {
       "svelte": "./src/components/input.svelte",
       "types": "./dist/components/input.svelte.d.ts"
