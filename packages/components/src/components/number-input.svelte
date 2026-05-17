@@ -178,10 +178,16 @@
       result = origin + Math.round((raw - origin) / snapStep) * snapStep;
       result = roundToPrecision(result, fractionalDigits(snapStep));
     } else if (source === 'delta' && snapStep !== null) {
-      // For delta steps, round to step precision so successive additions of
-      // `0.1` don't accumulate float error. Reset is excluded — it restores
-      // defaultValue verbatim without any rounding.
-      result = roundToPrecision(raw, fractionalDigits(snapStep));
+      // Eliminate float accumulation noise (0.1 + 0.2 → 0.30000…) while
+      // preserving base-value precision that exceeds the step's precision
+      // (value=0.5 + step=1 → 1.5, not 2). First clamp at 12 digits to get a
+      // clean representation, then take the max of step digits and the clean
+      // result's digits as the final rounding target.
+      const cleanRaw = roundToPrecision(raw, 12);
+      result = roundToPrecision(
+        raw,
+        Math.max(fractionalDigits(snapStep), fractionalDigits(cleanRaw)),
+      );
     }
     const clamped = Math.min(resolvedMax, Math.max(resolvedMin, result));
     return commit(clamped, parseStatus, true);

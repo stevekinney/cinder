@@ -1107,3 +1107,60 @@ describe('reset source does not snap defaultValue to step precision', () => {
     expect(input.value).toBe('0.15');
   });
 });
+
+describe('delta rounding preserves base-value precision', () => {
+  test('ArrowUp with integer step does not clip fractional base value', async () => {
+    // Regression: delta branch rounded to step precision, so value=0.5 + step=1
+    // produced 2 (rounded to 0 decimal places) instead of 1.5.
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 0.5,
+        step: 1,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(calls[0]).toBe(1.5);
+  });
+
+  test('ArrowUp with decimal step preserves extra base precision', async () => {
+    // Regression: value=0.05, step=0.1 → delta rounding to 1 decimal produced
+    // 0.1 instead of the correct 0.15.
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 0.05,
+        step: 0.1,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(calls[0]).toBe(0.15);
+  });
+
+  test('repeated ArrowUp with decimal step still eliminates float noise', async () => {
+    // Ensure the fix still prevents 0.1+0.1+...×10 = 1.0000000000000009.
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 0,
+        step: 0.1,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    for (let i = 0; i < 10; i++) {
+      await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    }
+    expect(calls[calls.length - 1]).toBe(1);
+  });
+});
