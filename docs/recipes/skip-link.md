@@ -102,7 +102,7 @@ A couple of things to keep in mind when you do this:
 ## Common pitfalls
 
 - **A focusable element before the skip link.** A logo `<a>`, a language switcher, a "Sign in" button — any of them put a stop ahead of the skip link and the user has to Tab past your chrome to find the thing that was supposed to let them skip your chrome. I've seen this most often with a logo link in the header, because the header is the first thing a designer reaches for.
-- **No `tabindex="-1"` on the target.** Activation only scrolls; focus stays on the anchor; screen readers do not jump. Easy to miss because sighted manual testing _looks_ correct.
+- **No `tabindex="-1"` on the target.** Activation only scrolls; keyboard focus stays on the anchor, leaving assistive technology without a reliable focused destination. Easy to miss because sighted manual testing _looks_ correct.
 - **`tabindex="0"` on the target instead of `-1`.** Creates an extra keyboard stop on every page. Use `-1` — programmatically focusable, not in the tab order.
 - **`display: none` instead of the visually-hidden technique.** `display: none` removes the link from the accessibility tree entirely, so keyboard users cannot tab to it. The whole point of `.cinder-sr-only` is to stay in the tree.
 - **Generic label text.** "Skip" is not specific enough; "Skip to main content" is. When multiple skip links exist, each label must describe its specific destination.
