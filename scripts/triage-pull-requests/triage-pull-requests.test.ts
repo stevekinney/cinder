@@ -723,3 +723,167 @@ describe('runTriage — local-branch-no-upstream', () => {
     expect(code).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// runTriage: worktree conflict resolution
+// ---------------------------------------------------------------------------
+
+describe('runTriage — worktree conflict', () => {
+  const sharedMocks = (pr: { number: number; headRefOid: string }, ndjson: string) => {
+    const view = JSON.stringify({
+      statusCheckRollup: [{ state: 'FAILURE', conclusion: 'FAILURE' }],
+      mergeable: 'MERGEABLE',
+      mergeStateStatus: 'CLEAN',
+      reviewDecision: null,
+      headRefOid: pr.headRefOid,
+      isDraft: false,
+    });
+    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    return [
+      { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
+      { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
+      { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
+      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: '--match-head-commit' } },
+      { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
+      { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
+      { match: argsInclude('mkdir'), result: { stdout: '' } },
+      { match: argsInclude('repos/owner/repo/pulls'), result: { stdout: ndjson } },
+      { match: argsInclude('gh', 'pr', 'view'), result: { stdout: view } },
+      { match: argsInclude('gh', 'api', 'graphql'), result: { stdout: graphql } },
+      { match: argsInclude('git', 'checkout', 'main'), result: { stdout: '' } },
+    ];
+  };
+
+  it('removes a stale worktree holding the PR branch and continues', async () => {
+    const pr = { number: 20, title: 'Stale-WT', headRefName: 'feat/blocked', headRefOid: 'wt1', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const ndjson = JSON.stringify(pr);
+    const porcelain = [
+      `worktree ${process.cwd()}`,
+      'HEAD aaaa',
+      'branch refs/heads/main',
+      '',
+      'worktree /tmp/stale-wt',
+      'HEAD bbbb',
+      `branch refs/heads/${pr.headRefName}`,
+      '',
+    ].join('\n');
+
+    const removeCalls: string[][] = [];
+    const checkoutCalls: string[][] = [];
+
+    const deps = fakeDeps([
+      ...sharedMocks(pr, ndjson),
+      {
+        match: (args) => args.join(' ') === 'git worktree list --porcelain',
+        result: { stdout: porcelain },
+      },
+      {
+        match: (args) => {
+          const matched = args[0] === 'git' && args[1] === 'worktree' && args[2] === 'remove';
+          if (matched) removeCalls.push(args);
+          return matched;
+        },
+        result: { stdout: '' },
+      },
+      { match: argsInclude('git', 'worktree', 'prune'), result: { stdout: '' } },
+      {
+        match: (args) => {
+          const matched = argsInclude('gh', 'pr', 'checkout')(args);
+          if (matched) checkoutCalls.push(args);
+          return matched;
+        },
+        result: { stdout: '' },
+      },
+      { match: (args) => args.includes('rev-parse') && args.includes('HEAD'), result: { stdout: 'wt1\n' } },
+      // No remote ref — soft-skip after the checkout. The point of this test is the
+      // pre-checkout cleanup, so we accept any later soft-skip.
+      { match: (args) => args.includes('rev-parse') && args.includes('--verify'), result: { exitCode: 1, stdout: '' } },
+    ]);
+
+    const code = await runTriage({ ...defaultOptions, execute: true }, deps);
+    expect(code).toBe(1); // soft-skip downstream
+    expect(removeCalls.length).toBe(1);
+    expect(removeCalls[0]).toContain('/tmp/stale-wt');
+    expect(checkoutCalls.length).toBeGreaterThan(0); // checkout still happened
+    const warned = deps.logged.find(([level, msg]) => level === 'WARN' && msg.includes('/tmp/stale-wt'));
+    expect(warned).toBeDefined();
+  });
+
+  it('does not remove the current worktree even if it holds the PR branch', async () => {
+    const pr = { number: 21, title: 'Self-WT', headRefName: 'feat/self', headRefOid: 'wt2', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const ndjson = JSON.stringify(pr);
+    const porcelain = [
+      `worktree ${process.cwd()}`,
+      'HEAD aaaa',
+      `branch refs/heads/${pr.headRefName}`,
+      '',
+    ].join('\n');
+
+    const removeCalls: string[][] = [];
+
+    const deps = fakeDeps([
+      ...sharedMocks(pr, ndjson),
+      {
+        match: (args) => args.join(' ') === 'git worktree list --porcelain',
+        result: { stdout: porcelain },
+      },
+      {
+        match: (args) => {
+          const matched = args[0] === 'git' && args[1] === 'worktree' && args[2] === 'remove';
+          if (matched) removeCalls.push(args);
+          return matched;
+        },
+        result: { stdout: '' },
+      },
+      { match: argsInclude('gh', 'pr', 'checkout'), result: { stdout: '' } },
+      { match: (args) => args.includes('rev-parse') && args.includes('HEAD'), result: { stdout: 'wt2\n' } },
+      { match: (args) => args.includes('rev-parse') && args.includes('--verify'), result: { exitCode: 1, stdout: '' } },
+    ]);
+
+    await runTriage({ ...defaultOptions, execute: true }, deps);
+    expect(removeCalls.length).toBe(0);
+  });
+
+  it('soft-skips when conflicting worktree cannot be removed', async () => {
+    const pr = { number: 22, title: 'Locked-WT', headRefName: 'feat/locked', headRefOid: 'wt3', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const ndjson = JSON.stringify(pr);
+    const porcelain = [
+      `worktree ${process.cwd()}`,
+      'HEAD aaaa',
+      'branch refs/heads/main',
+      '',
+      'worktree /tmp/locked-wt',
+      'HEAD bbbb',
+      `branch refs/heads/${pr.headRefName}`,
+      '',
+    ].join('\n');
+
+    const checkoutCalls: string[][] = [];
+
+    const deps = fakeDeps([
+      ...sharedMocks(pr, ndjson),
+      {
+        match: (args) => args.join(' ') === 'git worktree list --porcelain',
+        result: { stdout: porcelain },
+      },
+      {
+        match: argsInclude('git', 'worktree', 'remove'),
+        result: { exitCode: 1, stderr: 'fatal: working tree is locked' },
+      },
+      {
+        match: (args) => {
+          const matched = argsInclude('gh', 'pr', 'checkout')(args);
+          if (matched) checkoutCalls.push(args);
+          return matched;
+        },
+        result: { stdout: '' },
+      },
+    ]);
+
+    const code = await runTriage({ ...defaultOptions, execute: true }, deps);
+    expect(code).toBe(1);
+    // Critical: we never tried `gh pr checkout` because the conflict was unresolvable.
+    expect(checkoutCalls.length).toBe(0);
+  });
+});

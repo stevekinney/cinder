@@ -44,7 +44,8 @@ type SkipReason =
   | 'local-branch-no-upstream'
   | 'unpushed-local-commits'
   | 'agent-timeout'
-  | 'dirty-before-checkout';
+  | 'dirty-before-checkout'
+  | 'worktree-conflict';
 
 type SoftSkipResult = { outcome: 'soft-skip'; reason: SkipReason; detail?: string };
 type HardStopResult = { outcome: 'hard-stop'; reason: string };
@@ -134,6 +135,76 @@ async function softSkipWithRecovery(
 }
 
 // ---------------------------------------------------------------------------
+// Worktree conflict resolution
+//
+// `gh pr checkout` runs `git checkout <branch>`, which fails if that branch is
+// already checked out in another worktree (e.g. a stale agent worktree under
+// .claude/worktrees/). Detect the conflicting worktree and remove it so the
+// checkout can proceed. The current worktree is never removed.
+// ---------------------------------------------------------------------------
+
+type WorktreeEntry = { path: string; branch: string | undefined };
+
+function parseWorktreeList(porcelain: string): WorktreeEntry[] {
+  const entries: WorktreeEntry[] = [];
+  let currentPath: string | undefined;
+  let currentBranch: string | undefined;
+  for (const rawLine of porcelain.split('\n')) {
+    const line = rawLine.trimEnd();
+    if (line === '') {
+      if (currentPath !== undefined) {
+        entries.push({ path: currentPath, branch: currentBranch });
+      }
+      currentPath = undefined;
+      currentBranch = undefined;
+      continue;
+    }
+    if (line.startsWith('worktree ')) {
+      currentPath = line.slice('worktree '.length);
+    } else if (line.startsWith('branch ')) {
+      const ref = line.slice('branch '.length);
+      currentBranch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref;
+    }
+  }
+  if (currentPath !== undefined) {
+    entries.push({ path: currentPath, branch: currentBranch });
+  }
+  return entries;
+}
+
+async function resolveWorktreeConflict(
+  headRefName: string,
+  deps: Deps,
+): Promise<{ outcome: 'ok' } | { outcome: 'conflict-unresolved'; detail: string }> {
+  const listResult = await deps.run(['git', 'worktree', 'list', '--porcelain']);
+  if (listResult.exitCode !== 0) {
+    return { outcome: 'ok' }; // best-effort: let checkout produce the real error
+  }
+  const entries = parseWorktreeList(listResult.stdout);
+  const cwd = process.cwd();
+  const conflicting = entries.filter(
+    (entry) => entry.branch === headRefName && entry.path !== cwd,
+  );
+  if (conflicting.length === 0) {
+    return { outcome: 'ok' };
+  }
+  for (const entry of conflicting) {
+    deps.log(
+      'WARN',
+      `Removing stale worktree at ${entry.path} (holds branch ${headRefName})`,
+    );
+    const remove = await deps.run(['git', 'worktree', 'remove', '--force', entry.path]);
+    if (remove.exitCode !== 0) {
+      const detail = remove.stderr.trim() || `exit ${remove.exitCode}`;
+      return { outcome: 'conflict-unresolved', detail: `${entry.path}: ${detail}` };
+    }
+  }
+  // Drop any administrative residue from removed worktrees.
+  await deps.run(['git', 'worktree', 'prune']);
+  return { outcome: 'ok' };
+}
+
+// ---------------------------------------------------------------------------
 // Address loop
 // ---------------------------------------------------------------------------
 
@@ -151,6 +222,11 @@ async function addressLoop(
     const dirty = await deps.run(['git', 'status', '--porcelain']);
     if (dirty.stdout.trim() !== '') {
       return { outcome: 'hard-stop', reason: 'dirty-before-checkout' };
+    }
+
+    const conflict = await resolveWorktreeConflict(pr.headRefName, deps);
+    if (conflict.outcome === 'conflict-unresolved') {
+      return softSkipWithRecovery('worktree-conflict', deps, conflict.detail);
     }
 
     await deps.runOk(['gh', 'pr', 'checkout', String(pr.number)]);
