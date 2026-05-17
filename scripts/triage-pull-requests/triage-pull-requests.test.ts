@@ -194,6 +194,27 @@ describe('checkReadiness — CI aggregation', () => {
     expect(r.ciPassing).toBe(true);
     expect(r.ciFailing).toBe(false);
   });
+
+  it('reviewDecision="" (gh returns empty string for no decision) → normalized to null and isMergeReady=true', async () => {
+    // Regression: gh pr view returns "" — not null — when no reviews exist.
+    // Without normalization, isMergeReady rejects the PR forever and the
+    // address loop spins uselessly with the agent reporting "already ready."
+    const view = JSON.stringify({
+      statusCheckRollup: [{ state: 'SUCCESS', conclusion: 'SUCCESS' }],
+      mergeable: 'MERGEABLE',
+      mergeStateStatus: 'CLEAN',
+      reviewDecision: '', // ← the real-world value
+      headRefOid: 'abc123',
+      isDraft: false,
+    });
+    const deps = fakeDeps([
+      { match: argsInclude('gh', 'pr', 'view'), result: { stdout: view } },
+      { match: argsInclude('gh', 'api', 'graphql'), result: { stdout: makeGhGraphql() } },
+    ]);
+    const r = await checkReadiness(1, 'owner', 'repo', 1, 0, deps);
+    expect(r.reviewDecision).toBe(null);
+    expect(isMergeReady(r)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
