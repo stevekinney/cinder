@@ -22,18 +22,18 @@ Wrap the app inside the region so route components (descendants) can call `useTo
 
 ## `<ToastRegion>` props
 
-| Prop              | Type      | Default | Description                                                                                                                                                                                          |
-| ----------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `maxStack`        | `number`  | `5`     | Maximum simultaneous toasts in **each** region (polite and assertive each hold up to this many). Overflow drops the oldest.                                                                          |
-| `defaultDuration` | `number`  | `5000`  | Auto-dismiss duration in milliseconds. `0` makes a toast sticky. Overridable per-call via `ToastOptions.duration`.                                                                                   |
-| `class`           | `string`  | —       | Additional class names merged with `.cinder-toast-region`.                                                                                                                                           |
-| `children`        | `Snippet` | —       | Optional. When supplied, descendants of the snippet can call `useToast()` and read the region's API. Most apps leave this empty and dispatch from elsewhere via a separately-mounted region context. |
+| Prop              | Type      | Default | Description                                                                                                                                                                                                                                                                                                              |
+| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `maxStack`        | `number`  | `5`     | Maximum simultaneous toasts in **each** region (polite and assertive each hold up to this many). Overflow drops the oldest.                                                                                                                                                                                              |
+| `defaultDuration` | `number`  | `5000`  | Auto-dismiss duration in milliseconds. `0` makes a toast sticky. Overridable per-call via `ToastOptions.duration`.                                                                                                                                                                                                       |
+| `class`           | `string`  | —       | Additional class names merged with `.cinder-toast-region`.                                                                                                                                                                                                                                                               |
+| `children`        | `Snippet` | —       | Optional snippet rendered inside the region. Supply it when callers need access to this region's `useToast()` context — either via `{@const toast = useToast()}` inside the snippet, or in any descendant component rendered through `{@render children()}`. Callers outside the region's subtree cannot dispatch to it. |
 
 The `ToastRegionProps` type is re-exported from the package root for wrapper components.
 
 ## `useToast()`
 
-Import the hook from the package root — there is no `cinder/use-toast` subpath. Call it during component initialization (Svelte's `getContext` requires it).
+Import the hook from the package root — there is no `cinder/use-toast` subpath. Call `useToast()` from anywhere inside the region's subtree: a descendant component's `<script>`, or a `{@const}` binding inside a `{#snippet children()}` of the region. Both resolve the same context.
 
 ```svelte
 <script lang="ts">
@@ -58,17 +58,12 @@ Import the hook from the package root — there is no `cinder/use-toast` subpath
 
 ## Variant routing (polite vs assertive)
 
-`variant` is not just a visual prop — it determines which live region the toast announces through.
+`variant` is not just a visual prop — it picks which live region the toast announces through. Polite variants (`info`, `success`) queue behind the user's current screen-reader focus; assertive variants (`warning`, `danger`) interrupt. See the [Two regions, two priorities](./toast-region.a11y.md#two-regions-two-priorities) table in the a11y doc for the exact ARIA mapping.
 
-| Variants            | Live region     | ARIA role | `aria-live` |
-| ------------------- | --------------- | --------- | ----------- |
-| `info`, `success`   | polite stack    | `status`  | `polite`    |
-| `warning`, `danger` | assertive stack | `alert`   | `assertive` |
-
-The polite stack queues announcements behind the user's current screen-reader focus — informational, non-interrupting. The assertive stack interrupts. `maxStack` applies per-stack: a region can hold up to `maxStack` polite toasts **and** `maxStack` assertive toasts simultaneously. See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the full ARIA rationale.
+`maxStack` applies _per stack_: a region can hold up to `maxStack` polite toasts **and** `maxStack` assertive toasts simultaneously.
 
 > [!TIP]
-> Match urgency to variant. A `success` toast for "Saved" is informational; a `danger` toast for "Failed to save" interrupts because the user needs to know now.
+> Match urgency to variant. `success` ("Saved") is informational and belongs on the polite stack. `danger` ("Failed to save") interrupts because the user needs to know _now_. Reserve `warning` for conditions the user must address before continuing — session expiry, unsaved-changes risk — not ambient status updates; if no action is required, `info` is more honest.
 
 ## `show()` return value
 
@@ -80,7 +75,7 @@ const id = toast.show('Saving…', { duration: 0 });
 toast.dismiss(id);
 ```
 
-Auto-generated ids (`cinder-toast-N`) are session-local and not stable across reloads. Use them transiently within the current session, or pass a stable `options.id` when you need cross-render deduplication.
+Auto-generated ids (`cinder-toast-N`) are instance-local: stable for the lifetime of the mounted region and reset when it unmounts. Use them transiently within the current session, or pass a stable `options.id` when you need cross-render deduplication.
 
 ## Action buttons
 
@@ -97,6 +92,9 @@ toast.show('Item moved to trash.', {
 ```
 
 By default the toast dismisses immediately after `onAction` fires. Set `keepOpen: true` to persist the toast after the action runs — useful when the action kicks off async work the user should keep visible feedback about. The action button is focusable inside the live region so keyboard users can Tab to it after the announcement (see [Action button](./toast-region.a11y.md#action-button) in the a11y doc).
+
+> [!WARNING]
+> For destructive-action undo flows (`'Item moved to trash.'` → `Undo`), set `dismissible: false`. With the default `dismissible: true`, the user can close the toast via the X button without ever firing `onAction` — and the destructive operation stays committed. Forcing dismissal through the action button (or auto-dismiss after `duration`) keeps the undo path explicit.
 
 ## Modal-scoped regions via `children`
 
@@ -116,6 +114,9 @@ By default the toast dismisses immediately after `onAction` fires. Set `keepOpen
 
 `useToast()` inside the snippet resolves to the nearest enclosing region — in this case, the modal-scoped one. Toasts dispatched here do not appear in any outer app-root region.
 
+> [!WARNING]
+> Don't dispatch to the _outer_ region from inside a modal. Toasts from the modal-scoped region render inside the modal's DOM subtree, so their action and dismiss buttons participate in the modal's focus trap as expected. Toasts dispatched to an app-root region from inside a modal render _outside_ the trap — keyboard users can't reach the dismiss or action buttons until the modal closes. Keep modal-originated toasts on the modal-scoped region.
+
 ## Dismiss patterns
 
 There are four ways a toast leaves the screen:
@@ -130,14 +131,6 @@ toast.dismiss(id); // remove a specific toast
 toast.dismissAll(); // clear everything in this region
 ```
 
-## Accessibility
+## Roadmap
 
-See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the full ARIA / live-region / reduced-motion documentation. Anything visible to assistive technology — announcement priorities, atomic updates, teardown behavior — is documented there, not duplicated here.
-
-## v1 limitations
-
-- **No pre-mount buffering.** `useToast()` throws during init if no region is mounted above the caller. There is no out-of-band dispatcher that buffers pre-mount calls.
-- **No process-global singleton.** State is region-scoped via Svelte context. Apps with multiple regions get independent queues.
-- **No position/placement prop.** The region renders in its default position; visual placement is owned by `.cinder-toast-region` styling. A placement prop is a roadmap item.
-- **`maxStack` is per-stack, not combined.** A region can hold up to `maxStack` polite toasts **and** up to `maxStack` assertive toasts at the same time.
-- **`id` deduplication is exact-match.** Calling `show` with an active id replaces the existing entry. There is no fuzzy or prefix match.
+- **No `placement` prop yet.** Visual position is owned by `.cinder-toast-region` styling. A prop-driven placement API is on the roadmap.
