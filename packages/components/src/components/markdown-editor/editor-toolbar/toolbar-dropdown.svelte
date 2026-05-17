@@ -131,6 +131,6 @@
   :global(.dropdown-item-check) {
     color: var(--cinder-accent);
     flex-shrink: 0;
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 </style>

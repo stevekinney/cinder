@@ -1,0 +1,185 @@
+/* ========================================
+ * SHEET
+ * Bottom-anchored slide-up panel (mobile-native modal analog).
+ * The <dialog> fills the viewport so backdrop-click on dialog is reliable;
+ * the visible panel is a child absolutely positioned at the bottom edge,
+ * capped by max-height so the backdrop still covers the full viewport.
+ * ======================================== */
+
+.cinder-sheet {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  z-index: var(--cinder-z-modal);
+}
+
+.cinder-sheet::backdrop {
+  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.cinder-sheet__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: 90dvh;
+  background: var(--cinder-surface);
+  border-block-start: 1px solid var(--cinder-border);
+  border-start-start-radius: var(--cinder-radius-lg);
+  border-start-end-radius: var(--cinder-radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cinder-sheet__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  /* 44px minimum touch target. */
+  min-height: 2.75rem;
+  flex-shrink: 0;
+  /* The handle is decorative until swipe-to-close ships — no grab cursor. */
+  cursor: default;
+  user-select: none;
+}
+
+.cinder-sheet__drag-handle-pill {
+  display: block;
+  width: 2.5rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--cinder-border);
+}
+
+.cinder-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  padding: var(--cinder-space-5) var(--cinder-space-6);
+  border-block-end: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+.cinder-sheet__title {
+  margin: 0;
+  font-size: var(--cinder-text-lg);
+  font-weight: var(--cinder-font-semibold);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.cinder-sheet__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* 44px minimum touch target. */
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: var(--cinder-space-1);
+  border-radius: var(--cinder-radius-md);
+  border: none;
+  background: transparent;
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-sheet__close:hover {
+  background: color-mix(in oklch, currentColor, transparent 85%);
+  color: var(--cinder-text);
+}
+
+.cinder-sheet__close:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: var(--cinder-ring-offset);
+}
+
+@media (forced-colors: active) {
+  .cinder-sheet__close:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
+.cinder-sheet__close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.cinder-sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--cinder-space-6);
+  overscroll-behavior: contain;
+}
+
+/* Suppress the focus ring only for programmatic (mouse / open-effect) focus —
+ * if the body container ever becomes keyboard-reachable, indication is preserved. */
+.cinder-sheet__body:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.cinder-sheet__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-4) var(--cinder-space-6);
+  border-block-start: 1px solid var(--cinder-border);
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Motion — slide up from the bottom edge.
+ * Animation targets the panel, not the dialog (which is transparent).
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinder-sheet__panel {
+    animation: cinder-sheet-slide-up var(--cinder-duration-normal) var(--cinder-ease-spring)
+      forwards;
+  }
+
+  @keyframes cinder-sheet-slide-up {
+    from {
+      translate: 0 100%;
+      opacity: 0.85;
+    }
+    to {
+      translate: 0 0;
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-sheet__panel {
+    animation: cinder-sheet-fade var(--cinder-duration-fast) linear forwards;
+  }
+
+  @keyframes cinder-sheet-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

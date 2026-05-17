@@ -53,6 +53,10 @@
       "svelte": "./src/components/button.svelte",
       "types": "./dist/components/button.svelte.d.ts"
     },
+    "./callout": {
+      "svelte": "./src/components/callout.svelte",
+      "types": "./dist/components/callout.svelte.d.ts"
+    },
     "./card": {
       "svelte": "./src/components/card.svelte",
       "types": "./dist/components/card.svelte.d.ts"
@@ -76,6 +80,10 @@
     "./code-block": {
       "svelte": "./src/components/code-block.svelte",
       "types": "./dist/components/code-block.svelte.d.ts"
+    },
+    "./color-picker": {
+      "svelte": "./src/components/color-picker.svelte",
+      "types": "./dist/components/color-picker.svelte.d.ts"
     },
     "./color-swatch-picker": {
       "svelte": "./src/components/color-swatch-picker.svelte",
@@ -165,10 +173,6 @@
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
     },
-    "./experimental/sheet": {
-      "svelte": "./src/components/experimental/sheet.svelte",
-      "types": "./dist/components/experimental/sheet.svelte.d.ts"
-    },
     "./experimental/timeline-item": {
       "svelte": "./src/components/experimental/timeline-item.svelte",
       "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
@@ -200,6 +204,10 @@
     "./grid-list": {
       "svelte": "./src/components/grid-list.svelte",
       "types": "./dist/components/grid-list.svelte.d.ts"
+    },
+    "./image": {
+      "svelte": "./src/components/image.svelte",
+      "types": "./dist/components/image.svelte.d.ts"
     },
     "./input": {
       "svelte": "./src/components/input.svelte",
@@ -261,6 +269,10 @@
       "svelte": "./src/components/review-editor.svelte",
       "types": "./dist/components/review-editor.svelte.d.ts"
     },
+    "./scroll-area": {
+      "svelte": "./src/components/scroll-area.svelte",
+      "types": "./dist/components/scroll-area.svelte.d.ts"
+    },
     "./search-field": {
       "svelte": "./src/components/search-field.svelte",
       "types": "./dist/components/search-field.svelte.d.ts"
@@ -281,6 +293,10 @@
       "svelte": "./src/components/selection-popover.svelte",
       "types": "./dist/components/selection-popover.svelte.d.ts"
     },
+    "./sheet": {
+      "svelte": "./src/components/sheet.svelte",
+      "types": "./dist/components/sheet.svelte.d.ts"
+    },
     "./side-navigation-group": {
       "svelte": "./src/components/side-navigation-group.svelte",
       "types": "./dist/components/side-navigation-group.svelte.d.ts"
@@ -293,9 +309,17 @@
       "svelte": "./src/components/side-navigation.svelte",
       "types": "./dist/components/side-navigation.svelte.d.ts"
     },
+    "./sidebar": {
+      "svelte": "./src/components/sidebar.svelte",
+      "types": "./dist/components/sidebar.svelte.d.ts"
+    },
     "./skeleton": {
       "svelte": "./src/components/skeleton.svelte",
       "types": "./dist/components/skeleton.svelte.d.ts"
+    },
+    "./slider": {
+      "svelte": "./src/components/slider.svelte",
+      "types": "./dist/components/slider.svelte.d.ts"
     },
     "./sortable-list": {
       "svelte": "./src/components/sortable-list.svelte",
@@ -316,6 +340,10 @@
     "./stat": {
       "svelte": "./src/components/stat.svelte",
       "types": "./dist/components/stat.svelte.d.ts"
+    },
+    "./status-dot": {
+      "svelte": "./src/components/status-dot.svelte",
+      "types": "./dist/components/status-dot.svelte.d.ts"
     },
     "./steps": {
       "svelte": "./src/components/steps.svelte",

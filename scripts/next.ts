@@ -10,7 +10,8 @@
 //   bun scripts/next.ts --concurrency 3    # run 3 tasks in parallel
 //   bun scripts/next.ts --help
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -218,6 +219,15 @@ type Task = {
   description?: string;
   plan?: string | null;
   branch?: string | null;
+  createdAt?: string;
+  lastModifiedAt?: string;
+};
+
+type ProgressEntry = {
+  message: string;
+  createdAt?: string;
+  provider?: string | null;
+  session?: string | null;
 };
 
 /**
@@ -266,6 +276,51 @@ async function setStatus(
 
 async function setBranch(id: string, branch: string): Promise<void> {
   await runOk(['tasks', 'set-branch', id, branch]);
+}
+
+async function clearBranch(id: string): Promise<void> {
+  await runOk(['tasks', 'clear-branch', id]);
+}
+
+async function addProgress(id: string, message: string): Promise<void> {
+  await runOk(['tasks', 'add-progress', id, '--message', message]);
+}
+
+/**
+ * Fetch progress entries for a task. Returns [] on parse failure (the CLI
+ * may print a header line + JSON or pure JSON depending on version; we
+ * tolerate both).
+ */
+async function getProgress(id: string): Promise<ProgressEntry[]> {
+  const result = await run(['tasks', 'progress', id]);
+  if (result.exitCode !== 0) return [];
+  const trimmed = result.stdout.trim();
+  if (!trimmed) return [];
+  const start = trimmed.indexOf('[');
+  if (start === -1) return [];
+  try {
+    return JSON.parse(trimmed.slice(start)) as ProgressEntry[];
+  } catch {
+    return [];
+  }
+}
+
+async function listAllTasks(): Promise<Task[]> {
+  const result = await runOk(['tasks', 'list', '--all']);
+  const trimmed = result.trim();
+  if (!trimmed) return [];
+  const start = trimmed.indexOf('[');
+  if (start === -1) return [];
+  try {
+    return JSON.parse(trimmed.slice(start)) as Task[];
+  } catch (error) {
+    throw new Error(`tasks list emitted invalid JSON`, { cause: error });
+  }
+}
+
+/** Deterministic branch name derived from a task id. Single source of truth. */
+function taskBranchName(taskId: string): string {
+  return `next/${taskId.slice(0, 8)}`;
 }
 
 // =============================================================================
@@ -334,11 +389,11 @@ function reapStaleLock(directory: string): boolean {
 }
 
 /**
- * Atomically claim a task by creating its lock directory. Returns true on
- * success. After winning the lock we re-read the task and confirm its
- * status is still `ready` — guards against a stale `tasks next` result.
+ * Lower-level lock primitive — acquires the lock directory only. No task-status
+ * logic. Used by recovery actions on tasks in `in-progress` / `in-review`, and
+ * composed by `tryClaimTask` for the normal ready-task claim path.
  */
-async function tryClaimTask(taskId: string): Promise<boolean> {
+function acquireTaskLock(taskId: string): boolean {
   const directory = lockDirectory(taskId);
   mkdirSync(join(repoRoot, 'tmp', 'next-locks'), { recursive: true });
 
@@ -348,7 +403,6 @@ async function tryClaimTask(taskId: string): Promise<boolean> {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== 'EEXIST') throw error;
     if (reapStaleLock(directory)) {
-      // Retry once after reaping.
       try {
         mkdirSync(directory);
       } catch {
@@ -359,25 +413,31 @@ async function tryClaimTask(taskId: string): Promise<boolean> {
     }
   }
 
-  // Record ownership for operator audit + stale-lock reaping.
   writeFileSync(
     join(directory, 'owner.json'),
     JSON.stringify({ pid: process.pid, claimedAt: new Date().toISOString(), taskId }, null, 2),
   );
   heldLocks.add(directory);
+  return true;
+}
 
-  // Re-read to confirm: another worker may have already advanced the task
-  // before we got the lock (we won the mkdir but they won the status flip).
+/**
+ * Atomically claim a `ready` task: acquire the lock then re-read the task and
+ * confirm its status is still `ready`. Guards against a stale `tasks next`
+ * result where another worker won the status flip between our peek and lock.
+ */
+async function tryClaimTask(taskId: string): Promise<boolean> {
+  if (!acquireTaskLock(taskId)) return false;
+
   const fresh = await getTask(taskId);
   if (fresh.status !== 'ready') {
     log(
       'INFO',
       `Task ${taskId.slice(0, 8)} no longer ready (status: ${fresh.status}) — releasing lock`,
     );
-    releaseLock(directory);
+    releaseLock(lockDirectory(taskId));
     return false;
   }
-
   return true;
 }
 
@@ -556,6 +616,11 @@ type PrSummary = {
   state: string;
   mergeable: string | null;
   mergeStateStatus: string | null;
+  headRefName?: string;
+  headRefOid?: string;
+  baseRefName?: string;
+  createdAt?: string;
+  body?: string;
 };
 
 async function findOpenPr(branch: string): Promise<PrSummary | null> {
@@ -1072,8 +1137,1012 @@ Do not bail. Do not stop until address-pr reports complete.`;
 }
 
 // =============================================================================
+// Recovery sweep
+//
+// Detects tasks stranded by an interrupted pipeline run (kill -9, crash,
+// machine sleep) and reconciles them. The `--recover` mode is annotate-only
+// and never destroys local work. The `--resume <task-id>` mode is the only
+// path that can re-enter the PR phase (poll/merge/complete).
+// =============================================================================
+
+const PR_SEARCH_INDEX_GRACE_MS = 10 * 60 * 1000;
+
+type ProgressPhase =
+  | 'claim'
+  | 'branch-set'
+  | 'push'
+  | 'pr-created'
+  | 'in-review'
+  | 'address-pr'
+  | 'merge';
+const PROGRESS_PHASE_PREFIX = 'next-phase:';
+
+type ManualReasonCode =
+  | 'dirty-worktree'
+  | 'merged-dirty-worktree'
+  | 'multiple-prs'
+  | 'closed-unmerged-pr'
+  | 'wrong-base'
+  | 'stale-branch-no-pr'
+  | 'empty-remote-branch'
+  | 'orphan-worktree'
+  | 'recent-search-zero'
+  | 'past-claim-with-missing-state'
+  | 'other';
+
+type RecoveryVerdict =
+  | { kind: 'rollback-safe'; reason: string }
+  | { kind: 'complete-safe'; reason: string; pr: PrSummary }
+  | { kind: 'resumable'; reason: string; pr: PrSummary; needsPr: false }
+  | { kind: 'resumable'; reason: string; pr: null; needsPr: true; branch: string }
+  | { kind: 'manual'; reason: string; code: ManualReasonCode; evidence: string[]; pr?: PrSummary };
+
+type RecoveryInputs = {
+  task: Task;
+  now: number;
+  worktreePath: string | null;
+  worktreeDirty: boolean;
+  worktreeUnpushed: number;
+  localBranchExists: boolean;
+  localCommitsAheadOfMain: number;
+  remoteBranchExists: boolean;
+  remoteCommitsAheadOfMain: number;
+  candidatePrs: PrSummary[];
+  directBranchPrs: PrSummary[];
+  fallbackBranchPrs: PrSummary[];
+  progressPhases: ProgressPhase[];
+  liveLockHeld: boolean;
+};
+
+/**
+ * Pure classifier: takes observable state, returns a verdict. No I/O, no
+ * Date.now() (caller passes `now`), no logging. Directly testable.
+ */
+export function classifyRecovery(inputs: RecoveryInputs): RecoveryVerdict {
+  if (inputs.liveLockHeld) {
+    return {
+      kind: 'manual',
+      code: 'other',
+      reason: 'live lock held by another process',
+      evidence: [],
+    };
+  }
+
+  // Identity-verify candidate PRs in the classifier itself (defense in depth).
+  const verifiedPrs = inputs.candidatePrs.filter((pr) => {
+    if (!pr.body || !pr.body.includes(inputs.task.id)) return false;
+    if (inputs.task.createdAt && pr.createdAt && pr.createdAt < inputs.task.createdAt) return false;
+    return true;
+  });
+
+  // Dirty/unpushed worktree forces manual unless paired with a merged-on-main PR
+  // (which becomes the explicit `merged-dirty-worktree` manual code).
+  const worktreeBlocks = inputs.worktreeDirty || inputs.worktreeUnpushed > 0;
+
+  // Multiple verified PRs → always manual.
+  if (verifiedPrs.length >= 2) {
+    return {
+      kind: 'manual',
+      code: 'multiple-prs',
+      reason: `${verifiedPrs.length} PRs match this task id; operator must reconcile`,
+      evidence: verifiedPrs.map((pr) => pr.url),
+    };
+  }
+
+  // Exactly one verified PR.
+  if (verifiedPrs.length === 1) {
+    const pr = verifiedPrs[0]!;
+    const state = pr.state.toUpperCase();
+    if (state === 'MERGED') {
+      if (pr.baseRefName !== 'main') {
+        return {
+          kind: 'manual',
+          code: 'wrong-base',
+          reason: `PR #${pr.number} merged on '${pr.baseRefName}' (expected 'main')`,
+          evidence: [pr.url],
+          pr,
+        };
+      }
+      if (worktreeBlocks) {
+        return {
+          kind: 'manual',
+          code: 'merged-dirty-worktree',
+          reason: `PR #${pr.number} merged on main but local worktree is dirty at ${inputs.worktreePath}`,
+          evidence: [pr.url, inputs.worktreePath ?? '(no worktree path)'],
+          pr,
+        };
+      }
+      return { kind: 'complete-safe', reason: `PR #${pr.number} merged on main`, pr };
+    }
+    if (state === 'OPEN') {
+      if (worktreeBlocks) {
+        return {
+          kind: 'manual',
+          code: 'dirty-worktree',
+          reason: `PR #${pr.number} is open but local worktree is dirty at ${inputs.worktreePath}`,
+          evidence: [pr.url, inputs.worktreePath ?? '(no worktree path)'],
+          pr,
+        };
+      }
+      return {
+        kind: 'resumable',
+        reason: `PR #${pr.number} open; resume to continue`,
+        pr,
+        needsPr: false,
+      };
+    }
+    // Closed-unmerged or other terminal non-merged state.
+    return {
+      kind: 'manual',
+      code: 'closed-unmerged-pr',
+      reason: `PR #${pr.number} state=${state} (closed without merge)`,
+      evidence: [pr.url],
+      pr,
+    };
+  }
+
+  // No verified PR. Dirty worktree always manual.
+  if (worktreeBlocks) {
+    return {
+      kind: 'manual',
+      code: 'dirty-worktree',
+      reason: `local worktree at ${inputs.worktreePath} has uncommitted or unpushed work`,
+      evidence: [inputs.worktreePath ?? '(no worktree path)'],
+    };
+  }
+
+  // Beyond-claim phase markers block rollback when state is missing.
+  const pastClaim = inputs.progressPhases.filter((p) => p !== 'claim').length > 0;
+
+  if (inputs.task.branch) {
+    // Branch set on task.
+    const provenanceOk = inputs.task.branch === taskBranchName(inputs.task.id);
+    if (inputs.remoteBranchExists) {
+      if (!provenanceOk) {
+        return {
+          kind: 'manual',
+          code: 'stale-branch-no-pr',
+          reason: `remote branch ${inputs.task.branch} exists but does not match taskBranchName(${inputs.task.id.slice(0, 8)})`,
+          evidence: [inputs.task.branch],
+        };
+      }
+      if (inputs.remoteCommitsAheadOfMain === 0) {
+        return {
+          kind: 'manual',
+          code: 'empty-remote-branch',
+          reason: `remote branch ${inputs.task.branch} exists but is not ahead of origin/main`,
+          evidence: [inputs.task.branch],
+        };
+      }
+      return {
+        kind: 'resumable',
+        reason: `remote branch ${inputs.task.branch} exists with no PR; resume to create PR`,
+        pr: null,
+        needsPr: true,
+        branch: inputs.task.branch,
+      };
+    }
+    // Remote branch absent. Need direct branch lookup zero + grace window + no past-claim markers.
+    const withinGrace =
+      inputs.task.lastModifiedAt !== undefined &&
+      inputs.now - Date.parse(inputs.task.lastModifiedAt) < PR_SEARCH_INDEX_GRACE_MS;
+    if (withinGrace) {
+      return {
+        kind: 'manual',
+        code: 'recent-search-zero',
+        reason: 'PR search returned zero within the indexing grace window — proof not yet durable',
+        evidence: [inputs.task.branch],
+      };
+    }
+    if (inputs.directBranchPrs.length > 0) {
+      return {
+        kind: 'manual',
+        code: 'other',
+        reason: 'direct branch lookup found PRs that body-search missed; reconcile manually',
+        evidence: inputs.directBranchPrs.map((pr) => pr.url),
+      };
+    }
+    if (pastClaim) {
+      return {
+        kind: 'manual',
+        code: 'past-claim-with-missing-state',
+        reason: `task has past-claim phase markers (${inputs.progressPhases.join(', ')}) but no PR/remote branch`,
+        evidence: inputs.progressPhases,
+      };
+    }
+    return {
+      kind: 'rollback-safe',
+      reason: 'two-source PR absence proof + no remote branch + no past-claim markers',
+    };
+  }
+
+  // task.branch is null.
+  if (inputs.worktreePath) {
+    return {
+      kind: 'manual',
+      code: 'orphan-worktree',
+      reason: `worktree at ${inputs.worktreePath} exists but task has no branch metadata`,
+      evidence: [inputs.worktreePath],
+    };
+  }
+  if (inputs.fallbackBranchPrs.length > 0) {
+    return {
+      kind: 'manual',
+      code: 'other',
+      reason: 'fallback branch-name lookup found PRs that body-search missed',
+      evidence: inputs.fallbackBranchPrs.map((pr) => pr.url),
+    };
+  }
+  if (pastClaim) {
+    return {
+      kind: 'manual',
+      code: 'past-claim-with-missing-state',
+      reason: `task has past-claim phase markers (${inputs.progressPhases.join(', ')}) but no branch metadata`,
+      evidence: inputs.progressPhases,
+    };
+  }
+  const withinGrace =
+    inputs.task.lastModifiedAt !== undefined &&
+    inputs.now - Date.parse(inputs.task.lastModifiedAt) < PR_SEARCH_INDEX_GRACE_MS;
+  if (withinGrace) {
+    return {
+      kind: 'manual',
+      code: 'recent-search-zero',
+      reason: 'PR search returned zero within the indexing grace window',
+      evidence: [],
+    };
+  }
+  return {
+    kind: 'rollback-safe',
+    reason: 'task never reached branch-setting; safe to return to ready',
+  };
+}
+
+/** Normalized fingerprint for verdict-drift detection across lock acquisition. */
+export function verdictFingerprint(v: RecoveryVerdict): string {
+  const pr =
+    v.kind === 'manual' || v.kind === 'complete-safe' || v.kind === 'resumable'
+      ? (v as { pr?: PrSummary | null }).pr
+      : null;
+  const normalized = {
+    kind: v.kind,
+    code: v.kind === 'manual' ? v.code : null,
+    needsPr: v.kind === 'resumable' ? v.needsPr : null,
+    pr: pr
+      ? {
+          number: pr.number,
+          url: pr.url,
+          state: pr.state,
+          headRefName: pr.headRefName ?? null,
+          headRefOid: pr.headRefOid ?? null,
+          baseRefName: pr.baseRefName ?? null,
+        }
+      : null,
+    evidence: v.kind === 'manual' ? v.evidence.slice().sort() : null,
+  };
+  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 16);
+}
+
+// ---- I/O probes ----
+
+/**
+ * Find any worktree directory belonging to this task by id-glob. Returns the
+ * first match (workers tag with NEXT_WORKER_INDEX, so collisions on the same
+ * task id are impossible in practice).
+ */
+function findWorktreeForTask(taskId: string): string | null {
+  const root = resolve(repoRoot, '..', 'worktrees');
+  if (!existsSync(root)) return null;
+  let entries: string[];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return null;
+  }
+  for (const entry of entries) {
+    if (entry.includes(taskId)) {
+      const full = resolve(root, entry);
+      if (existsSync(full)) return full;
+    }
+  }
+  return null;
+}
+
+async function isWorktreeDirty(worktree: string): Promise<boolean> {
+  const result = await run(['git', 'status', '--porcelain'], { cwd: worktree });
+  if (result.exitCode !== 0) return true; // err on the side of "dirty"
+  return result.stdout.trim().length > 0;
+}
+
+async function countUnpushed(worktree: string, branch: string): Promise<number> {
+  const result = await run(['git', 'rev-list', '--count', `origin/${branch}..HEAD`], {
+    cwd: worktree,
+  });
+  if (result.exitCode !== 0) {
+    // Branch may not exist on remote; compare to origin/main instead.
+    const fallback = await run(['git', 'rev-list', '--count', 'origin/main..HEAD'], {
+      cwd: worktree,
+    });
+    if (fallback.exitCode !== 0) return 0;
+    return Number.parseInt(fallback.stdout.trim(), 10) || 0;
+  }
+  return Number.parseInt(result.stdout.trim(), 10) || 0;
+}
+
+async function localBranchExists(branch: string): Promise<boolean> {
+  const result = await run(['git', 'rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], {
+    cwd: repoRoot,
+  });
+  return result.exitCode === 0;
+}
+
+async function remoteBranchExists(branch: string): Promise<boolean> {
+  const result = await run(['git', 'ls-remote', '--exit-code', 'origin', `refs/heads/${branch}`], {
+    cwd: repoRoot,
+  });
+  return result.exitCode === 0;
+}
+
+async function remoteCommitsAheadOfMain(branch: string): Promise<number> {
+  const result = await run(['git', 'rev-list', '--count', `origin/main..origin/${branch}`], {
+    cwd: repoRoot,
+  });
+  if (result.exitCode !== 0) return 0;
+  return Number.parseInt(result.stdout.trim(), 10) || 0;
+}
+
+async function localCommitsAheadOfMain(branch: string): Promise<number> {
+  const result = await run(['git', 'rev-list', '--count', `origin/main..${branch}`], {
+    cwd: repoRoot,
+  });
+  if (result.exitCode !== 0) return 0;
+  return Number.parseInt(result.stdout.trim(), 10) || 0;
+}
+
+/**
+ * Search PRs whose body contains the task id. Returns identity candidates;
+ * the classifier re-verifies body identity.
+ */
+async function findPrsForTask(taskId: string): Promise<PrSummary[]> {
+  const result = await run(
+    [
+      'gh',
+      'pr',
+      'list',
+      '--search',
+      taskId,
+      '--state',
+      'all',
+      '--limit',
+      '20',
+      '--json',
+      'number,url,state,headRefName,headRefOid,baseRefName,createdAt,body',
+    ],
+    { cwd: repoRoot },
+  );
+  if (result.exitCode !== 0) return [];
+  try {
+    const raw = JSON.parse(result.stdout || '[]') as Array<Record<string, unknown>>;
+    return raw.map(normalizePrSummary).filter((pr): pr is PrSummary => pr !== null);
+  } catch {
+    return [];
+  }
+}
+
+async function findPrsForBranch(branch: string): Promise<PrSummary[]> {
+  const result = await run(
+    [
+      'gh',
+      'pr',
+      'list',
+      '--head',
+      branch,
+      '--state',
+      'all',
+      '--limit',
+      '20',
+      '--json',
+      'number,url,state,headRefName,headRefOid,baseRefName,createdAt,body',
+    ],
+    { cwd: repoRoot },
+  );
+  if (result.exitCode !== 0) return [];
+  try {
+    const raw = JSON.parse(result.stdout || '[]') as Array<Record<string, unknown>>;
+    return raw.map(normalizePrSummary).filter((pr): pr is PrSummary => pr !== null);
+  } catch {
+    return [];
+  }
+}
+
+function normalizePrSummary(raw: Record<string, unknown>): PrSummary | null {
+  if (
+    typeof raw.number !== 'number' ||
+    typeof raw.url !== 'string' ||
+    typeof raw.state !== 'string'
+  )
+    return null;
+  return {
+    number: raw.number,
+    url: raw.url,
+    state: raw.state,
+    mergeable: null,
+    mergeStateStatus: null,
+    headRefName: typeof raw.headRefName === 'string' ? raw.headRefName : undefined,
+    headRefOid: typeof raw.headRefOid === 'string' ? raw.headRefOid : undefined,
+    baseRefName: typeof raw.baseRefName === 'string' ? raw.baseRefName : undefined,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
+    body: typeof raw.body === 'string' ? raw.body : undefined,
+  };
+}
+
+function isLiveLockHeld(taskId: string): boolean {
+  const directory = lockDirectory(taskId);
+  if (!existsSync(directory)) return false;
+  const metaPath = join(directory, 'owner.json');
+  if (!existsSync(metaPath)) return false;
+  try {
+    const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as { pid: number; claimedAt: string };
+    if (meta.pid === process.pid) return false; // our own lock; not "live" from another process
+    const ageMs = Date.now() - new Date(meta.claimedAt).getTime();
+    if (ageMs > LOCK_STALE_MS) return false;
+    return pidAlive(meta.pid);
+  } catch {
+    return false;
+  }
+}
+
+function extractProgressPhases(entries: ProgressEntry[]): ProgressPhase[] {
+  const seen = new Set<ProgressPhase>();
+  for (const entry of entries) {
+    const message = entry.message ?? '';
+    const idx = message.indexOf(PROGRESS_PHASE_PREFIX);
+    if (idx === -1) continue;
+    const phase = message
+      .slice(idx + PROGRESS_PHASE_PREFIX.length)
+      .trim()
+      .split(/\s+/)[0];
+    if (
+      phase === 'claim' ||
+      phase === 'branch-set' ||
+      phase === 'push' ||
+      phase === 'pr-created' ||
+      phase === 'in-review' ||
+      phase === 'address-pr' ||
+      phase === 'merge'
+    ) {
+      seen.add(phase);
+    }
+  }
+  return Array.from(seen);
+}
+
+/** Collect every input the classifier needs for a single task. */
+async function collectRecoveryInputs(task: Task): Promise<RecoveryInputs> {
+  const branch = task.branch ?? null;
+  const fallbackBranch = taskBranchName(task.id);
+
+  const worktreePath = findWorktreeForTask(task.id);
+  const [worktreeDirty, worktreeUnpushed] = worktreePath
+    ? await Promise.all([
+        isWorktreeDirty(worktreePath),
+        countUnpushed(worktreePath, branch ?? fallbackBranch),
+      ])
+    : [false, 0];
+
+  const localExists = branch ? await localBranchExists(branch) : false;
+  const localAhead = branch && localExists ? await localCommitsAheadOfMain(branch) : 0;
+  const remoteExists = branch ? await remoteBranchExists(branch) : false;
+  const remoteAhead = branch && remoteExists ? await remoteCommitsAheadOfMain(branch) : 0;
+
+  const [candidatePrs, directBranchPrs, fallbackBranchPrs, progressEntries] = await Promise.all([
+    findPrsForTask(task.id),
+    branch ? findPrsForBranch(branch) : Promise.resolve([] as PrSummary[]),
+    !branch ? findPrsForBranch(fallbackBranch) : Promise.resolve([] as PrSummary[]),
+    getProgress(task.id),
+  ]);
+
+  return {
+    task,
+    now: Date.now(),
+    worktreePath,
+    worktreeDirty,
+    worktreeUnpushed,
+    localBranchExists: localExists,
+    localCommitsAheadOfMain: localAhead,
+    remoteBranchExists: remoteExists,
+    remoteCommitsAheadOfMain: remoteAhead,
+    candidatePrs,
+    directBranchPrs,
+    fallbackBranchPrs,
+    progressPhases: extractProgressPhases(progressEntries),
+    liveLockHeld: isLiveLockHeld(task.id),
+  };
+}
+
+// ---- Phase-marker writer (used by the normal pipeline) ----
+
+async function recordPhase(taskId: string, phase: ProgressPhase): Promise<void> {
+  try {
+    await addProgress(taskId, `${PROGRESS_PHASE_PREFIX}${phase}`);
+  } catch (error) {
+    log('WARN', `phase-marker write failed for ${phase}: ${(error as Error).message}`);
+  }
+}
+
+// ---- Progress note idempotency ----
+
+function annotationFingerprint(v: RecoveryVerdict): string {
+  const code = v.kind === 'manual' ? v.code : '';
+  const evidence = v.kind === 'manual' ? v.evidence.slice().sort().join('|') : '';
+  const fp = createHash('sha256')
+    .update(`${v.kind}|${code}|${evidence}`)
+    .digest('hex')
+    .slice(0, 16);
+  return `recovery-annot:${v.kind}:${code}:${fp}`;
+}
+
+function mutationFingerprint(kind: 'rollback-safe' | 'complete-safe'): string {
+  return `recovery-mutate:${kind}:${randomUUID()}`;
+}
+
+async function shouldSkipAnnotation(taskId: string, fingerprint: string): Promise<boolean> {
+  const entries = await getProgress(taskId);
+  if (entries.length === 0) return false;
+  const latest = entries[entries.length - 1]!;
+  return (latest.message ?? '').startsWith(fingerprint);
+}
+
+async function writeAnnotation(
+  taskId: string,
+  verdict: RecoveryVerdict,
+  body: string,
+): Promise<void> {
+  const fingerprint = annotationFingerprint(verdict);
+  if (await shouldSkipAnnotation(taskId, fingerprint)) {
+    log('INFO', `Skipping duplicate annotation for ${taskId.slice(0, 8)} (${verdict.kind})`);
+    return;
+  }
+  await addProgress(taskId, `${fingerprint} ${body}`);
+}
+
+async function writeMutationNote(
+  taskId: string,
+  kind: 'rollback-safe' | 'complete-safe',
+  body: string,
+): Promise<void> {
+  await addProgress(taskId, `${mutationFingerprint(kind)} ${body}`);
+}
+
+// ---- Action driver ----
+
+type RecoveryRunResult = {
+  taskId: string;
+  verdict: RecoveryVerdict;
+  acted: boolean;
+};
+
+async function runRecoveryForTask(
+  task: Task,
+  prelock: RecoveryVerdict,
+): Promise<RecoveryRunResult> {
+  const shortId = task.id.slice(0, 8);
+  if (
+    prelock.kind === 'manual' &&
+    prelock.code === 'other' &&
+    prelock.reason.includes('live lock held')
+  ) {
+    log('WARN', `Task ${shortId} locked by another process — skipping`);
+    return { taskId: task.id, verdict: prelock, acted: false };
+  }
+
+  // Acquire the lock. Recovery uses the low-level primitive — it must not
+  // be coupled to ready-task semantics.
+  if (!acquireTaskLock(task.id)) {
+    log('WARN', `Could not acquire lock for ${shortId} — skipping`);
+    return { taskId: task.id, verdict: prelock, acted: false };
+  }
+  const lockPath = lockDirectory(task.id);
+
+  try {
+    // Reclassify after lock acquisition.
+    const freshTask = await getTask(task.id);
+    if (freshTask.status !== 'in-progress' && freshTask.status !== 'in-review') {
+      log(
+        'INFO',
+        `Task ${shortId} status drifted to ${freshTask.status} during lock acquisition — skipping`,
+      );
+      return { taskId: task.id, verdict: prelock, acted: false };
+    }
+    const freshInputs = await collectRecoveryInputs(freshTask);
+    const fresh = classifyRecovery(freshInputs);
+    const prelockFp = verdictFingerprint(prelock);
+    const freshFp = verdictFingerprint(fresh);
+    if (prelockFp !== freshFp) {
+      log('INFO', `verdict drift for ${shortId}: ${prelockFp} → ${freshFp}; using fresh verdict`);
+    }
+    await dispatchRecoveryAction(freshTask, fresh);
+    return { taskId: task.id, verdict: fresh, acted: true };
+  } finally {
+    releaseLock(lockPath);
+  }
+}
+
+async function dispatchRecoveryAction(task: Task, verdict: RecoveryVerdict): Promise<void> {
+  const shortId = task.id.slice(0, 8);
+  log(
+    'PHASE',
+    `Recovery action for ${palette.task(shortId)}: ${palette.bold(verdict.kind)} — ${verdict.reason}`,
+  );
+  switch (verdict.kind) {
+    case 'rollback-safe':
+      await executeRollbackSafe(task);
+      return;
+    case 'complete-safe':
+      await executeCompleteSafe(task, verdict.pr);
+      return;
+    case 'resumable':
+      await executeResumableAnnotation(task, verdict);
+      return;
+    case 'manual':
+      await executeManualAnnotation(task, verdict);
+      return;
+  }
+}
+
+async function executeRollbackSafe(task: Task): Promise<void> {
+  await writeMutationNote(
+    task.id,
+    'rollback-safe',
+    'recovery: rollback-safe — no PR, no remote branch, no local work; returning to ready',
+  );
+
+  const worktreePath = findWorktreeForTask(task.id);
+  if (worktreePath && existsSync(worktreePath)) {
+    const removed = await run(['git', 'worktree', 'remove', '--force', worktreePath], {
+      cwd: repoRoot,
+    });
+    if (removed.exitCode !== 0) {
+      log('WARN', `worktree remove failed for ${worktreePath}: ${removed.stderr.trim()}`);
+    }
+  }
+
+  if (task.branch) {
+    const ahead = await localCommitsAheadOfMain(task.branch);
+    if (ahead === 0 && (await localBranchExists(task.branch))) {
+      await run(['git', 'branch', '-D', task.branch], { cwd: repoRoot });
+    }
+  }
+
+  if (task.branch) {
+    try {
+      await clearBranch(task.id);
+    } catch (error) {
+      log('WARN', `clear-branch failed for ${task.id.slice(0, 8)}: ${(error as Error).message}`);
+    }
+  }
+  await setStatus(task.id, 'ready');
+  log('OK', `Task ${task.id.slice(0, 8)} returned to ready`);
+}
+
+async function executeCompleteSafe(task: Task, pr: PrSummary): Promise<void> {
+  await writeMutationNote(
+    task.id,
+    'complete-safe',
+    `recovery: complete-safe — PR #${pr.number} verified merged on main; cleaning up`,
+  );
+
+  const worktreePath = findWorktreeForTask(task.id);
+  if (worktreePath && existsSync(worktreePath)) {
+    const removed = await run(['git', 'worktree', 'remove', '--force', worktreePath], {
+      cwd: repoRoot,
+    });
+    if (removed.exitCode !== 0) {
+      log('WARN', `worktree remove failed for ${worktreePath}: ${removed.stderr.trim()}`);
+    }
+  }
+
+  if (task.branch && (await localBranchExists(task.branch))) {
+    const safe = await isLocalBranchSafeToDelete(task.branch, pr.headRefOid);
+    if (safe) {
+      await run(['git', 'branch', '-D', task.branch], { cwd: repoRoot });
+    } else {
+      log(
+        'INFO',
+        `Preserving local branch ${task.branch} (tip diverges from PR head and is not reachable from origin/main)`,
+      );
+    }
+  }
+
+  await setStatus(task.id, 'completed');
+  log(
+    'OK',
+    palette.bold(palette.ok(`Task ${task.id.slice(0, 8)} marked completed — PR #${pr.number}`)),
+  );
+}
+
+/**
+ * Safe to delete a local branch after squash-merge when either: every commit
+ * on the branch is reachable from origin/main, or the branch tip equals the
+ * PR's head OID at merge time. `git branch --merged main` does not work after
+ * squash merges (squash-merged branches never appear there).
+ */
+async function isLocalBranchSafeToDelete(
+  branch: string,
+  prHeadOid: string | undefined,
+): Promise<boolean> {
+  const tip = await run(['git', 'rev-parse', branch], { cwd: repoRoot });
+  if (tip.exitCode !== 0) return false;
+  if (prHeadOid && tip.stdout.trim() === prHeadOid) return true;
+  const ahead = await run(['git', 'rev-list', '--count', `origin/main..${branch}`], {
+    cwd: repoRoot,
+  });
+  if (ahead.exitCode !== 0) return false;
+  return (Number.parseInt(ahead.stdout.trim(), 10) || 0) === 0;
+}
+
+async function executeResumableAnnotation(
+  task: Task,
+  verdict: Extract<RecoveryVerdict, { kind: 'resumable' }>,
+): Promise<void> {
+  const body = verdict.needsPr
+    ? `recovery: resumable — remote branch ${verdict.branch} exists with no PR; run \`bun scripts/next.ts --resume ${task.id}\` to create the PR and continue`
+    : `recovery: resumable — PR #${verdict.pr.number} open at ${verdict.pr.url}; run \`bun scripts/next.ts --resume ${task.id}\` to continue`;
+  await writeAnnotation(task.id, verdict, body);
+}
+
+async function executeManualAnnotation(
+  task: Task,
+  verdict: Extract<RecoveryVerdict, { kind: 'manual' }>,
+): Promise<void> {
+  const evidenceStr =
+    verdict.evidence.length > 0 ? ` Evidence: ${verdict.evidence.join(', ')}` : '';
+  const body = `recovery: manual (${verdict.code}) — ${verdict.reason}.${evidenceStr}`;
+  await writeAnnotation(task.id, verdict, body);
+}
+
+// ---- Sweep driver ----
+
+async function runRecoverySweep(): Promise<void> {
+  log('PHASE', palette.heading('Recovery sweep starting'));
+  const tasks = await listAllTasks();
+  const stranded = tasks.filter((t) => t.status === 'in-progress' || t.status === 'in-review');
+  if (stranded.length === 0) {
+    log('OK', 'No stranded tasks (no in-progress / in-review tasks found)');
+    return;
+  }
+  log('INFO', `Found ${stranded.length} stranded task(s)`);
+
+  let acted = 0;
+  let skipped = 0;
+  const summary: Record<RecoveryVerdict['kind'], number> = {
+    'rollback-safe': 0,
+    'complete-safe': 0,
+    resumable: 0,
+    manual: 0,
+  };
+
+  for (const task of stranded) {
+    const shortId = task.id.slice(0, 8);
+    log('TASK', `${palette.task(shortId)} (${task.status}): ${task.title}`);
+    try {
+      const inputs = await collectRecoveryInputs(task);
+      const verdict = classifyRecovery(inputs);
+      log(
+        'INFO',
+        `pre-lock verdict: ${verdict.kind}${verdict.kind === 'manual' ? ` (${verdict.code})` : ''} — ${verdict.reason}`,
+      );
+      const result = await runRecoveryForTask(task, verdict);
+      summary[result.verdict.kind]++;
+      if (result.acted) acted++;
+      else skipped++;
+    } catch (error) {
+      log('ERROR', `recovery for ${shortId} failed: ${(error as Error).message}`);
+      skipped++;
+    }
+  }
+
+  log(
+    'OK',
+    palette.bold(
+      `Sweep finished: ${palette.ok(`${acted} acted`)}, ${palette.warn(`${skipped} skipped`)} — ` +
+        `${palette.ok(`${summary['rollback-safe']} rollback`)}, ${palette.ok(`${summary['complete-safe']} complete`)}, ` +
+        `${palette.phase(`${summary.resumable} resumable`)}, ${palette.warn(`${summary.manual} manual`)}`,
+    ),
+  );
+}
+
+// ---- --resume driver ----
+
+/**
+ * Create a worktree from an existing remote branch (instead of creating a new
+ * branch from origin/main, like `createWorktree` does).
+ */
+async function createWorktreeFromRemote(taskId: string, branch: string): Promise<string> {
+  const workerTag = process.env.NEXT_WORKER_INDEX ?? 'solo';
+  const directory = resolve(repoRoot, '..', 'worktrees', `next-${workerTag}-${taskId}`);
+  mkdirSync(resolve(directory, '..'), { recursive: true });
+
+  if (await worktreeExists(directory)) {
+    const removed = await run(['git', 'worktree', 'remove', '--force', directory], {
+      cwd: repoRoot,
+    });
+    if (removed.exitCode !== 0) {
+      log('WARN', `Could not remove stale worktree at ${directory}: ${removed.stderr.trim()}`);
+    }
+  }
+  // Best-effort local branch delete (will fail if branch doesn't exist locally, which is normal).
+  await run(['git', 'branch', '-D', branch], { cwd: repoRoot });
+
+  await runOkVisible(['git', 'worktree', 'add', '-B', branch, directory, `origin/${branch}`], {
+    cwd: repoRoot,
+  });
+  activeWorktrees.add(directory);
+  log('OK', `Worktree at ${palette.dim(directory)} on remote branch ${palette.task(branch)}`);
+  return directory;
+}
+
+async function runResume(taskId: string): Promise<number> {
+  const task = await getTask(taskId);
+  if (task.status !== 'in-progress' && task.status !== 'in-review') {
+    log(
+      'ERROR',
+      `Cannot resume task ${taskId.slice(0, 8)}: status is '${task.status}' (expected in-progress or in-review)`,
+    );
+    return 1;
+  }
+
+  const inputs = await collectRecoveryInputs(task);
+  const prelock = classifyRecovery(inputs);
+  if (prelock.kind !== 'resumable') {
+    const detail = prelock.kind === 'manual' ? ` (${prelock.code})` : '';
+    log(
+      'ERROR',
+      `Task ${task.id.slice(0, 8)} is not resumable: pre-lock verdict is ${prelock.kind}${detail} — ${prelock.reason}`,
+    );
+    if (prelock.kind === 'complete-safe')
+      log('INFO', `Run \`bun scripts/next.ts --recover\` to mark it completed`);
+    return 1;
+  }
+
+  if (!acquireTaskLock(task.id)) {
+    log('ERROR', `Could not acquire lock for ${task.id.slice(0, 8)} — another process holds it`);
+    return 1;
+  }
+  const lockPath = lockDirectory(task.id);
+
+  try {
+    // Post-lock reclassification.
+    const freshTask = await getTask(task.id);
+    if (freshTask.status !== 'in-progress' && freshTask.status !== 'in-review') {
+      log(
+        'ERROR',
+        `Task ${task.id.slice(0, 8)} status drifted to '${freshTask.status}' — aborting resume`,
+      );
+      return 1;
+    }
+    const freshInputs = await collectRecoveryInputs(freshTask);
+    const fresh = classifyRecovery(freshInputs);
+    const prelockFp = verdictFingerprint(prelock);
+    const freshFp = verdictFingerprint(fresh);
+    if (prelockFp !== freshFp) {
+      log('WARN', `verdict drift during lock acquisition: ${prelockFp} → ${freshFp}`);
+    }
+    if (fresh.kind !== 'resumable') {
+      const detail = fresh.kind === 'manual' ? ` (${fresh.code})` : '';
+      log('ERROR', `Post-lock verdict changed to ${fresh.kind}${detail} — ${fresh.reason}`);
+      return 1;
+    }
+
+    // Determine authoritative branch.
+    const authoritativeBranch = fresh.needsPr
+      ? fresh.branch
+      : (fresh.pr.headRefName ?? freshTask.branch ?? taskBranchName(freshTask.id));
+    if (freshTask.branch !== authoritativeBranch) {
+      log(
+        'INFO',
+        `Repairing task.branch: ${freshTask.branch ?? '(null)'} → ${authoritativeBranch}`,
+      );
+      await setBranch(freshTask.id, authoritativeBranch);
+      await addProgress(
+        freshTask.id,
+        `recovery: repaired task.branch from ${freshTask.branch ?? '(null)'} to ${authoritativeBranch} on resume`,
+      );
+    }
+
+    await fetchBase('main');
+    await fetchBranch(authoritativeBranch);
+
+    // Reconstitute worktree.
+    let worktreePath = findWorktreeForTask(freshTask.id);
+    if (worktreePath) {
+      if (await isWorktreeDirty(worktreePath)) {
+        log(
+          'ERROR',
+          `Worktree at ${worktreePath} is dirty — manual recovery required, refusing to overwrite`,
+        );
+        return 1;
+      }
+    } else {
+      worktreePath = await createWorktreeFromRemote(freshTask.id, authoritativeBranch);
+    }
+
+    // Re-enter pipeline.
+    let pr: PrSummary;
+    if (fresh.needsPr) {
+      log('PHASE', `Opening PR for ${palette.task(authoritativeBranch)} (resume → ensurePr)`);
+      pr = await ensurePr(freshTask, worktreePath, authoritativeBranch);
+      await recordPhase(freshTask.id, 'pr-created');
+    } else {
+      pr = fresh.pr;
+    }
+
+    const result = await finishPrPhase(freshTask, worktreePath, pr);
+    log(
+      'OK',
+      palette.bold(
+        palette.ok(`Task ${freshTask.id.slice(0, 8)} resumed and shipped — PR #${result.prNumber}`),
+      ),
+    );
+    return 0;
+  } catch (error) {
+    log('ERROR', `Resume failed: ${(error as Error).message}`);
+    return 1;
+  } finally {
+    releaseLock(lockPath);
+  }
+}
+
+/** Fetch a single remote branch by name. */
+async function fetchBranch(branch: string): Promise<void> {
+  log('PHASE', `Fetching origin/${branch}`);
+  const result = await run(['git', 'fetch', 'origin', branch], { cwd: repoRoot });
+  if (result.exitCode !== 0) {
+    throw new Error(`git fetch origin ${branch} failed: ${result.stderr.trim()}`);
+  }
+}
+
+// =============================================================================
 // One-task pipeline
 // =============================================================================
+
+/**
+ * Drive a PR from open through merged. Extracted so both runOneTask and the
+ * --resume driver share the same back half.
+ *
+ * Side effects: sets task status to in-review, polls/addresses the PR, removes
+ * the worktree before merging, merges the PR, sets task status to completed.
+ */
+async function finishPrPhase(
+  task: Task,
+  worktree: string,
+  pr: PrSummary,
+): Promise<{ taskId: string; prNumber: number }> {
+  const shortId = task.id.slice(0, 8);
+
+  log('PHASE', `Setting ${palette.task(shortId)} to in-review`);
+  await setStatus(task.id, 'in-review');
+  await recordPhase(task.id, 'in-review');
+
+  const expectedBots = parseExpectedBots(process.env.NEXT_EXPECTED_BOTS) ?? DEFAULT_EXPECTED_BOTS;
+  await pollPrUntilReady(pr.number, worktree, expectedBots);
+  await recordPhase(task.id, 'address-pr');
+
+  // Tear down the worktree before merging so `gh pr merge --delete-branch`
+  // can drop the local branch. Otherwise git refuses with "branch used by
+  // worktree" and gh exits non-zero even though the remote merge succeeded.
+  log('PHASE', `Removing worktree before merge`);
+  await cleanupWorktree(worktree);
+
+  log('PHASE', `Merging PR #${pr.number}`);
+  await mergePr(pr.number);
+  await recordPhase(task.id, 'merge');
+
+  log('PHASE', `Marking ${palette.task(shortId)} as completed`);
+  await setStatus(task.id, 'completed');
+
+  return { taskId: task.id, prNumber: pr.number };
+}
 
 async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null> {
   const next = await claimNextTask();
@@ -1089,10 +2158,11 @@ async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null
 
   log('PHASE', `Marking ${palette.task(shortId)} as in-progress`);
   await setStatus(task.id, 'in-progress');
+  await recordPhase(task.id, 'claim');
 
   await fetchBase('main');
 
-  const branch = `next/${shortId}`;
+  const branch = taskBranchName(task.id);
   let worktree: string | null = null;
 
   // Track how far we got so the cleanup block can pick the right recovery
@@ -1105,6 +2175,7 @@ async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null
   try {
     worktree = await createWorktree(task.id, branch, 'main');
     await setBranch(task.id, branch);
+    await recordPhase(task.id, 'branch-set');
 
     await driveImplementation(task, worktree, join(repoRoot, task.plan!));
 
@@ -1113,32 +2184,18 @@ async function runOneTask(): Promise<{ taskId: string; prNumber: number } | null
       throw new Error(`No commits on ${branch} after implementation phase — agent did not commit`);
     }
     log('OK', `${commitsAhead} commit(s) on ${palette.task(branch)}`);
+    await recordPhase(task.id, 'push');
 
     const pr = await ensurePr(task, worktree, branch);
     prCreated = true;
+    await recordPhase(task.id, 'pr-created');
 
-    log('PHASE', `Setting ${palette.task(shortId)} to in-review`);
-    await setStatus(task.id, 'in-review');
-
-    const expectedBots = parseExpectedBots(process.env.NEXT_EXPECTED_BOTS) ?? DEFAULT_EXPECTED_BOTS;
-    await pollPrUntilReady(pr.number, worktree, expectedBots);
-
-    // Tear down the worktree before merging so `gh pr merge --delete-branch`
-    // can drop the local branch. Otherwise git refuses with "branch used by
-    // worktree" and gh exits non-zero even though the remote merge succeeded.
-    log('PHASE', `Removing worktree before merge`);
-    await cleanupWorktree(worktree);
+    const result = await finishPrPhase(task, worktree, pr);
     worktree = null;
-
-    log('PHASE', `Merging PR #${pr.number}`);
-    await mergePr(pr.number);
-
-    log('PHASE', `Marking ${palette.task(shortId)} as completed`);
-    await setStatus(task.id, 'completed');
     completed = true;
 
-    log('OK', palette.bold(palette.ok(`Task ${shortId} shipped — PR #${pr.number}`)));
-    return { taskId: task.id, prNumber: pr.number };
+    log('OK', palette.bold(palette.ok(`Task ${shortId} shipped — PR #${result.prNumber}`)));
+    return result;
   } finally {
     if (!completed && !prCreated) {
       // Best-effort: return the task to the queue so another run can claim it.
@@ -1412,7 +2469,18 @@ ${palette.bold('Usage')}
   bun scripts/next.ts --serialize           Keep pulling tasks until \`tasks next\` is empty
   bun scripts/next.ts --serialize --concurrency <n>
                                             Run batches of n until the queue drains
+  bun scripts/next.ts --recover             Run a recovery sweep and exit (annotate-only)
+  bun scripts/next.ts --recover-then-run    Sweep first, then claim and run the next task
+  bun scripts/next.ts --resume <task-id>    Continue a resumable task through merge
   bun scripts/next.ts --help                Show this help
+
+${palette.bold('Recovery')}
+  --recover scans tasks left in in-progress/in-review (by a kill -9, crash,
+  or sleep), classifies each as rollback-safe / complete-safe / resumable /
+  manual, and records a progress note describing what was found. It never
+  destroys local work and never creates PRs. --resume <task-id> is the only
+  path that can re-enter the PR phase (poll + merge + complete) for a single
+  resumable task.
 
 ${palette.bold('Pipeline')}
   1. ${palette.dim('tasks next')} — pull the highest-priority available task
@@ -1489,6 +2557,28 @@ async function preflightChecks(): Promise<void> {
   log('OK', 'claude -p is reachable');
 }
 
+type ParsedNextArgs = {
+  help?: boolean;
+  concurrency?: string;
+  serialize?: boolean;
+  __worker?: boolean;
+  recover?: boolean;
+  'recover-then-run'?: boolean;
+  resume?: string;
+};
+
+/** Whether the parent process should run a recovery sweep. */
+export function shouldRunRecoverySweep(values: ParsedNextArgs): boolean {
+  if (values.__worker) return false;
+  return Boolean(values.recover) || Boolean(values['recover-then-run']);
+}
+
+/** Whether the parent process should run --resume <task-id>. */
+export function shouldRunResume(values: ParsedNextArgs): boolean {
+  if (values.__worker) return false;
+  return typeof values.resume === 'string' && values.resume.length > 0;
+}
+
 async function main(): Promise<void> {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -1497,9 +2587,12 @@ async function main(): Promise<void> {
       concurrency: { type: 'string' },
       serialize: { type: 'boolean' },
       __worker: { type: 'boolean' },
+      recover: { type: 'boolean' },
+      'recover-then-run': { type: 'boolean' },
+      resume: { type: 'string' },
     },
     allowPositionals: false,
-  });
+  }) as { values: ParsedNextArgs };
 
   if (values.help) {
     process.stdout.write(HELP);
@@ -1516,6 +2609,17 @@ async function main(): Promise<void> {
   }
 
   await preflightChecks();
+
+  if (shouldRunResume(values)) {
+    const code = await runResume(values.resume!);
+    process.exit(code);
+  }
+
+  if (shouldRunRecoverySweep(values)) {
+    await runRecoverySweep();
+    if (!values['recover-then-run']) return;
+    // Fall through to normal claim/run loop.
+  }
 
   const concurrency = values.concurrency ? Number.parseInt(values.concurrency, 10) : 1;
   if (!Number.isFinite(concurrency) || concurrency < 1) {

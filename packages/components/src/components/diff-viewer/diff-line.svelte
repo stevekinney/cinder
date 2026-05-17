@@ -227,7 +227,7 @@
     text-align: center;
     color: var(--cinder-text-muted);
     background: var(--cinder-surface-inset);
-    border-right: 1px solid var(--cinder-border);
+    border-inline-end: 1px solid var(--cinder-border);
     user-select: none;
     font-weight: var(--cinder-font-medium);
   }

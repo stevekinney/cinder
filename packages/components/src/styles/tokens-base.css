@@ -70,6 +70,16 @@
   --cinder-touch-target-min: 44px;
 
   /* ========================================
+   * LAYOUT
+   * ======================================== */
+  /**
+   * Maximum inline size for primary page content. Caps line length and keeps
+   * content readable on wide viewports. Used by page layout styles; consumers
+   * can override per scope.
+   */
+  --cinder-content-width: 72rem;
+
+  /* ========================================
    * MOTION
    * ======================================== */
   --cinder-duration-instant: 0ms;
@@ -148,6 +158,16 @@
   --cinder-color-danger-bg: light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25));
   --cinder-color-danger-fg: light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25));
   --cinder-color-danger-border: light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25));
+
+  /* Scrollbars — used by the ScrollArea component and any consumer that
+     opts into themed native scrollbars via `scrollbar-width` and
+     `::-webkit-scrollbar-*`. Thumb alpha is tuned so the resolved
+     thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over the common
+     light- and dark-mode surface tokens. */
+  --cinder-scrollbar-size: 0.625rem;
+  --cinder-scrollbar-track: light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04));
+  --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45));
+  --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65));
 
   /* Focus ring */
   --cinder-ring-width: 3px;

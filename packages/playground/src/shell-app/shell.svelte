@@ -101,6 +101,9 @@
   }
 
   main {
+    /* Playground sidebar is physically anchored with `left: 0` —
+       keep margin physical so RTL doesn't desync the two. */
+    /* stylelint-disable-next-line csstools/use-logical */
     margin-left: 220px;
     flex: 1;
     height: 100vh;
@@ -118,6 +121,7 @@
   }
 
   .shell.focus-mode main {
+    /* stylelint-disable-next-line csstools/use-logical */
     margin-left: 0;
   }
 </style>

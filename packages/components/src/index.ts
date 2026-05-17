@@ -25,6 +25,9 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button
 export { default as ButtonGroup } from './components/button-group.svelte';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
 
+export { default as Callout } from './components/callout.svelte';
+export type { CalloutProps, CalloutVariant } from './components/callout.svelte';
+
 export { default as Card } from './components/card.svelte';
 export type { CardProps } from './components/card.svelte';
 
@@ -50,6 +53,9 @@ export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
 
 export { default as CodeBlock } from './components/code-block.svelte';
 export type { CodeBlockProps } from './components/code-block.svelte';
+
+export { default as ColorPicker } from './components/color-picker.svelte';
+export type { ColorPickerProps } from './components/color-picker.svelte';
 
 export { default as ColorSwatchPicker } from './components/color-swatch-picker.svelte';
 export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swatch-picker.svelte';
@@ -151,6 +157,9 @@ export type { GridListProps } from './components/grid-list.svelte';
 export { default as GridListItem } from './components/grid-list-item.svelte';
 export type { GridListItemProps } from './components/grid-list-item.svelte';
 
+export { default as Image } from './components/image.svelte';
+export type { ImageProps } from './components/image.svelte';
+
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
 
@@ -243,6 +252,12 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
+export { default as ScrollArea } from './components/scroll-area.svelte';
+export type {
+  ScrollAreaDirection,
+  ScrollAreaElement,
+  ScrollAreaProps,
+} from './components/scroll-area.svelte';
 export { default as SearchField } from './components/search-field.svelte';
 export type { SearchFieldProps } from './components/search-field.svelte';
 
@@ -264,6 +279,9 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
+export { default as Sheet } from './components/sheet.svelte';
+export type { SheetProps } from './components/sheet.svelte';
+
 export { default as SideNavigation } from './components/side-navigation.svelte';
 export type { SideNavigationProps } from './components/side-navigation.svelte';
 
@@ -272,6 +290,9 @@ export type { SideNavigationGroupProps } from './components/side-navigation-grou
 
 export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
 export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
+
+export { default as Sidebar } from './components/sidebar.svelte';
+export type { SidebarProps } from './components/sidebar.svelte';
 
 export { default as SortableList } from './components/sortable-list.svelte';
 export type { SortableListProps } from './components/sortable-list.svelte';
@@ -283,6 +304,9 @@ export type {
 
 export { default as Skeleton } from './components/skeleton.svelte';
 export type { SkeletonProps } from './components/skeleton.svelte';
+
+export { default as Slider } from './components/slider.svelte';
+export type { SliderMode, SliderProps, SliderValue } from './components/slider.svelte';
 
 export { default as StackedListItem } from './components/stacked-list-item.svelte';
 export type {
@@ -305,6 +329,13 @@ export type {
   StatGroupProps,
   StatGroupVariant,
 } from './components/stat-group.svelte';
+
+export { default as StatusDot } from './components/status-dot.svelte';
+export type {
+  StatusDotProps,
+  StatusDotSize,
+  StatusDotStatus,
+} from './components/status-dot.svelte';
 
 export { default as Surface } from './components/surface.svelte';
 export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
@@ -355,6 +386,7 @@ export type {
   ToastApi,
   ToastItem,
   ToastOptions,
+  ToastRegionProps,
   ToastVariant,
 } from './components/toast-region.svelte';
 
@@ -404,9 +436,6 @@ export type { JsonViewerProps } from './components/experimental/json-viewer.svel
 
 export { default as Message } from './components/experimental/message.svelte';
 export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
-
-export { default as Sheet } from './components/experimental/sheet.svelte';
-export type { SheetEdge, SheetProps, SheetSize } from './components/experimental/sheet.svelte';
 
 export { default as Timeline } from './components/experimental/timeline.svelte';
 export type { TimelineProps } from './components/experimental/timeline.svelte';
