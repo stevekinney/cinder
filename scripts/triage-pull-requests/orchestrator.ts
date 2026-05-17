@@ -238,7 +238,9 @@ async function addressLoop(
     }
 
     // Invoke claude
-    const claudeArgs = ['claude', '-p'];
+    // Triage runs in volume across many PRs — Sonnet is the right default.
+    // Opus is too expensive and too slow for the per-PR address-pr loop.
+    const claudeArgs = ['claude', '-p', '--model', 'sonnet'];
     if (options.unattended) claudeArgs.push('--dangerously-skip-permissions');
 
     const attemptLogPath = options.execute
