@@ -384,6 +384,7 @@ export type {
   ToastApi,
   ToastItem,
   ToastOptions,
+  ToastRegionProps,
   ToastVariant,
 } from './components/toast-region.svelte';
 

@@ -1,5 +1,7 @@
 # ToastRegion · accessibility
 
+> See also: [toast-region.md](./toast-region.md) for call-site usage, prop tables, and playground examples.
+
 ## Pattern
 
 Two stacked aria-live regions per [WAI-ARIA Authoring Practices: Alert and Status](https://www.w3.org/WAI/ARIA/apg/patterns/alert/) plus the WCAG 2.x guidance on dynamic notifications. Cinder splits announcements by priority so high-urgency toasts interrupt while informational ones queue politely.
