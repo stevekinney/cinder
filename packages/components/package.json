@@ -273,6 +273,10 @@
       "svelte": "./src/components/scroll-area.svelte",
       "types": "./dist/components/scroll-area.svelte.d.ts"
     },
+    "./search-field": {
+      "svelte": "./src/components/search-field.svelte",
+      "types": "./dist/components/search-field.svelte.d.ts"
+    },
     "./section-heading": {
       "svelte": "./src/components/section-heading.svelte",
       "types": "./dist/components/section-heading.svelte.d.ts"

@@ -258,6 +258,8 @@ export type {
   ScrollAreaElement,
   ScrollAreaProps,
 } from './components/scroll-area.svelte';
+export { default as SearchField } from './components/search-field.svelte';
+export type { SearchFieldProps } from './components/search-field.svelte';
 
 export { default as SectionHeading } from './components/section-heading.svelte';
 export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
