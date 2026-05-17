@@ -72,6 +72,13 @@ describe('parseLocaleNumber', () => {
     expect(parseLocaleNumber('1234', 'ar-EG')).toEqual({ value: 1234, status: 'valid' });
   });
 
+  test('ar-EG: negative value round-trips through localized minus sign', () => {
+    // Regression: ar-EG minus may include directional marks (U+061C) that are
+    // not ASCII '-'; the parser must normalize them before regex validation.
+    const formatted = new Intl.NumberFormat('ar-EG').format(-1234);
+    expect(parseLocaleNumber(formatted, 'ar-EG')).toEqual({ value: -1234, status: 'valid' });
+  });
+
   test('currency: USD format strips $ and grouping', () => {
     const fmt: Intl.NumberFormatOptions = { style: 'currency', currency: 'USD' };
     expect(parseLocaleNumber('$1,234.50', 'en-US', fmt)).toEqual({

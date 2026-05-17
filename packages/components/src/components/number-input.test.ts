@@ -856,6 +856,34 @@ describe('Form serialization correctness', () => {
     const hidden = mount.querySelector('input[type="hidden"]') as HTMLInputElement;
     expect(hidden.value).toBe('999');
   });
+
+  test('Enter key fires onchange exactly once (regression: capture-phase submit double-fire)', async () => {
+    // Regression: pressing Enter called commitFromText in onKeyDown, then
+    // requestSubmit() triggered the capture-phase submit listener which called
+    // commitFromText again, causing a duplicate onchange emission.
+    const calls: Array<number | null> = [];
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: {
+        id: 'n',
+        name: 'q',
+        defaultValue: 0,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = mount.querySelector('#n') as HTMLInputElement;
+    await focus(input);
+    await type(input, '42');
+    calls.length = 0;
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(calls).toEqual([42]);
+  });
 });
 
 describe('Required + reset and other validity edge cases', () => {

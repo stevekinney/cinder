@@ -207,6 +207,11 @@
   // because two distinct $effects read it across the same flush.
   let isInternalValueChange = $state(false);
 
+  // Set to true by the Enter key handler immediately before requestSubmit() so
+  // the capture-phase submit listener knows the value was already flushed and
+  // can skip the redundant commitFromText call (preventing double onchange).
+  let enterKeyFlushed = false;
+
   // formattedValue and displayValue collapsed into one derived expression.
   // When the last commit was malformed we keep the user's typed text visible
   // so they can correct it instead of having their input erased.
@@ -382,8 +387,12 @@
         commitFromText('typed', isFocused ? editorBuffer : '');
         const form = inputElement?.closest('form');
         if (form) {
-          if (form.checkValidity()) form.requestSubmit();
-          else form.reportValidity();
+          if (form.checkValidity()) {
+            enterKeyFlushed = true;
+            form.requestSubmit();
+          } else {
+            form.reportValidity();
+          }
         }
         break;
       }
@@ -408,6 +417,11 @@
       // Validity reporting lives in onKeyDown / native form submission —
       // not here — so the listener has exactly one job: flush.
       if (resolvedDisabled) return;
+      // Skip flush when Enter already committed — avoids double onchange.
+      if (enterKeyFlushed) {
+        enterKeyFlushed = false;
+        return;
+      }
       if (isFocused) commitFromText('typed', editorBuffer);
     };
     const onReset = () => {

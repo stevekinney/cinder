@@ -59,6 +59,21 @@ export function parseLocaleNumber(
   const groupSep = sepParts.find((p) => p.type === 'group')?.value ?? '';
   const decimalSep = sepParts.find((p) => p.type === 'decimal')?.value ?? '.';
 
+  // Strip Unicode bidi/directional control characters that Intl.NumberFormat
+  // inserts as literal parts in RTL locales (e.g. U+061C Arabic Letter Mark
+  // in ar-EG). These are invisible and must be removed before regex matching
+  // or they cause negative values to be rejected as malformed.
+  // Covers: U+061C ALM, U+200E/200F LTR/RTL marks, U+202A–202E bidi embedding,
+  // U+2066–2069 bidi isolates.
+  // eslint-disable-next-line no-misleading-character-class
+  working = working.replace(/[؜‎‏‪-‮⁦-⁩]/g, '');
+
+  // Normalize a localized MINUS SIGN (U+2212) to ASCII hyphen-minus.
+  const localeMinus = sepParts.find((p) => p.type === 'minusSign')?.value ?? '-';
+  if (localeMinus !== '-') {
+    working = working.split(localeMinus).join('-');
+  }
+
   let isNegativeByFormatAffix = false;
   if (format) {
     // Strip currency / percent / literal / unit / compact glyphs derived from
