@@ -390,6 +390,9 @@ export type {
   ToastVariant,
 } from './components/toast-region.svelte';
 
+export { useAnnouncer } from './utilities/use-announcer.svelte.ts';
+export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.svelte.ts';
+
 export { useHistory } from './utilities/use-history.svelte.ts';
 export type {
   UseHistory,

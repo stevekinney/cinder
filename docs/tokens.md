@@ -231,6 +231,17 @@ Shared backdrop, blur, padding, and radius for Modal, Sheet, and Popover. Adjust
 | `--cinder-overlay-padding`  | `var(--cinder-space-6)`                                            |
 | `--cinder-overlay-radius`   | `var(--cinder-radius-lg)`                                          |
 
+## Scrollbars
+
+Themed native scrollbars for components that opt in via `scrollbar-width` and `::-webkit-scrollbar-*` (notably `ScrollArea`). The thumb alphas are tuned so resolved thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over the common light- and dark-mode surface tokens.
+
+| Token                            | Default                                                    |
+| -------------------------------- | ---------------------------------------------------------- |
+| `--cinder-scrollbar-size`        | `0.625rem`                                                 |
+| `--cinder-scrollbar-track`       | `light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04))` |
+| `--cinder-scrollbar-thumb`       | `light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))` |
+| `--cinder-scrollbar-thumb-hover` | `light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))` |
+
 ## Button
 
 Component-specific tokens for [`Button`](../packages/components/src/components/button.svelte). The base trio (`bg`, `fg`, `border`) defines the secondary-variant defaults; size tokens scale padding, height, font, and radius across `xs`/`sm`/`md`/`lg`/`xl`. `md` is the AAA touch-target size (44px); `xs` and `sm` are intentionally below AAA — see [`button.a11y.md`](../packages/components/src/components/button.a11y.md) for the rationale.
