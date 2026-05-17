@@ -48,6 +48,9 @@
     top: 0;
     left: 0;
     background: var(--cinder-surface);
+    /* Playground sidebar is physically anchored at left: 0; keep the
+       separator physical so it stays adjacent to the main content. */
+    /* stylelint-disable-next-line csstools/use-logical */
     border-right: 1px solid var(--cinder-border);
     overflow-y: auto;
     display: flex;

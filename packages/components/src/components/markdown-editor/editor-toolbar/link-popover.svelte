@@ -303,6 +303,6 @@
   .link-popover-primary-actions {
     display: flex;
     gap: var(--cinder-space-2);
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 </style>

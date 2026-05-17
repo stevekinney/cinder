@@ -184,7 +184,7 @@
 }
 
 .cinder-dropdown-item--inset {
-  padding-left: var(--cinder-space-8);
+  padding-inline-start: var(--cinder-space-8);
 }
 
 .cinder-dropdown-label {
