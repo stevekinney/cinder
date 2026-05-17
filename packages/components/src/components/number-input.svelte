@@ -366,13 +366,15 @@
       case 'Home':
         if (Number.isFinite(resolvedMin)) {
           event.preventDefault();
-          commitFromNumber('delta', resolvedMin);
+          const homeNext = commitFromNumber('delta', resolvedMin);
+          if (isFocused) editorBuffer = homeNext === null ? '' : buildEditDisplay(homeNext);
         }
         break;
       case 'End':
         if (Number.isFinite(resolvedMax)) {
           event.preventDefault();
-          commitFromNumber('delta', resolvedMax);
+          const endNext = commitFromNumber('delta', resolvedMax);
+          if (isFocused) editorBuffer = endNext === null ? '' : buildEditDisplay(endNext);
         }
         break;
       case 'Enter': {

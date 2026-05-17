@@ -400,6 +400,37 @@ describe('Stepper buttons and keyboard', () => {
     expect(calls).toEqual([]);
   });
 
+  test('Home/End sync editor buffer while focused — no stale-buffer revert on blur', async () => {
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 5,
+        min: 1,
+        max: 9,
+        locale: 'en-US',
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    await focus(input);
+    // Press Home — should commit to min AND update the editor buffer.
+    await fireEvent.keyDown(input, { key: 'Home' });
+    await tick();
+    expect(input.value).toBe('1');
+    // Blur re-parses the buffer; if buffer was stale this would revert to 5.
+    await blur(input);
+    expect(calls.at(-1)).toBe(1);
+
+    // Now test End.
+    await focus(input);
+    await fireEvent.keyDown(input, { key: 'End' });
+    await tick();
+    expect(input.value).toBe('9');
+    await blur(input);
+    expect(calls.at(-1)).toBe(9);
+  });
+
   test('Step from focused display, not stale value', async () => {
     const calls: Array<number | null> = [];
     const { container } = render(NumberInput, {
