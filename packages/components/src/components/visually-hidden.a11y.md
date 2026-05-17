@@ -59,6 +59,8 @@ Key points:
 - This primitive does **not** move focus programmatically. Activation of the anchor relies on the browser's default in-page navigation behavior.
 - Using `tabindex={0}` on a non-interactive element (e.g., `as="div"`) creates a keyboard stop with no action. If you must do it, add a valid interactive `role` and keyboard handlers — that is outside this primitive's scope.
 
+See also: [`docs/recipes/skip-link.md`](../../../../docs/recipes/skip-link.md) for the full skip-link recipe — placement guidance, multiple-skip-link patterns, and common pitfalls.
+
 ## Styling the focused state
 
 The default `.cinder-sr-only-focusable` rule pins the element to the top-left of the viewport with a positioned chip when focused. This is the canonical skip-link placement.
