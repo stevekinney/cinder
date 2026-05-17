@@ -1025,6 +1025,31 @@ describe('Internal error region announces invalid state', () => {
     await type(input, '5');
     expect(container.querySelector('#n-internal-error')).toBeNull();
   });
+
+  test('required-empty error does not flash mid-keystroke after malformed clear', async () => {
+    // Regression: when required=true and the user re-types after a malformed blur,
+    // onInput clears malformedError but value is still null. The validity-sync
+    // $effect must NOT set requiredEmptyError while the field is focused — doing so
+    // would announce "Please enter a number." in the aria-live region mid-keystroke.
+    const { container } = render(NumberInput, {
+      props: { id: 'n', required: true, locale: 'en-US' },
+    });
+    const input = getInput(container);
+
+    // Produce a malformed state by blurring with invalid text.
+    await focus(input);
+    await type(input, 'abc');
+    await blur(input);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+
+    // Re-focus and start correcting. After the first keystroke malformedError
+    // clears but value is still null. requiredEmptyError must stay false.
+    await focus(input);
+    await type(input, '5');
+
+    expect(container.querySelector('#n-internal-error')).toBeNull();
+    expect(input.getAttribute('aria-invalid')).toBeFalsy();
+  });
 });
 
 describe('Malformed buffer preserved across re-focus', () => {

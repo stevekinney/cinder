@@ -273,9 +273,14 @@
       inputElement.setCustomValidity('');
     } else if (malformedError) {
       // commit() owns the malformed message; leave it in place.
-    } else if (resolvedRequired && (value === null || value === undefined)) {
+    } else if (!isFocused && resolvedRequired && (value === null || value === undefined)) {
       inputElement.setCustomValidity('Please enter a number.');
       requiredEmptyError = true;
+    } else if (isFocused && requiredEmptyError) {
+      // User is actively typing — suppress the required-empty error so we don't
+      // flash "Please enter a number." in the aria-live region mid-keystroke.
+      inputElement.setCustomValidity('');
+      requiredEmptyError = false;
     } else if (value !== null && value !== undefined) {
       inputElement.setCustomValidity('');
       requiredEmptyError = false;
