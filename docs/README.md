@@ -4,7 +4,7 @@ This directory holds the long-form documentation that does not live inside a com
 
 ## Recipes
 
-- [Recipes index](./recipes/README.md): short, copy-paste-ready patterns that compose existing Cinder primitives. Currently includes the [skip-link recipe](./recipes/skip-link.md).
+- [Recipes](./recipes/README.md) — currently: the [skip-link recipe](./recipes/skip-link.md).
 
 ## Policies
 

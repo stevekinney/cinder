@@ -1,6 +1,6 @@
 # Skip link
 
-A **skip link** is the small "Skip to main content" anchor that appears the first time a keyboard user presses Tab on a page. It lets them bypass repeated navigation chrome and land directly inside the page's main landmark. The pattern satisfies [WCAG 2.4.1 Bypass Blocks](https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html) and costs almost nothing to implement.
+A **skip link** is the small "Skip to main content" anchor that appears the first time a keyboard user presses Tab on a page. It lets them bypass repeated navigation chrome and land directly inside the page's main landmark. The pattern satisfies [WCAG 2.4.1 Bypass Blocks](https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html) and costs almost nothing to implement — and yet I've watched team after team ship apps without one, because the link is invisible until you tab to it and nobody on the team tabs through their own site.
 
 Cinder ships skip links as a **recipe rather than a component**: the existing `<VisuallyHidden focusable>` primitive plus the underlying `.cinder-sr-only-focusable` utility already do the work. A dedicated `<SkipLink>` component would only wrap an anchor — until that wrapper earns its keep, the recipe is the right deliverable.
 
@@ -29,7 +29,7 @@ If you are translating a snippet from a guide that uses the literature names, me
 A few details carry weight in that snippet:
 
 - **Both classes on the anchor.** `.cinder-sr-only` provides the always-hidden resting state; `.cinder-sr-only-focusable` overrides it once the element gains focus. The Svelte component applies both for you when you pass `focusable`; raw markup needs both class names explicitly.
-- **`tabindex="-1"` on the target.** Without it, activating the link only scrolls the viewport — focus stays on the link, and screen readers keep reading from wherever they were. With `tabindex="-1"`, the browser moves focus into `<main>` on activation, and screen readers begin reading from the landmark.
+- **`tabindex="-1"` on the target.** Without it, activating the link only scrolls the viewport — focus stays on the link. With `tabindex="-1"`, `<main>` becomes a programmatic focus target so fragment activation moves keyboard focus to the destination, keeps focus and scroll position aligned, and gives assistive technology a reliable landmark to announce. (Whether the screen reader then starts reading the landmark's contents varies by browser/AT combination — I've stopped trying to promise that part; the focus move is what's load-bearing.)
 - **No `tabindex="0"` on the target.** A `tabindex="0"` value adds a redundant tab stop on every page. `-1` makes the element programmatically focusable without inserting it into the tab order.
 - **One `<main>` per page.** Per the [WAI-ARIA spec](https://www.w3.org/TR/wai-aria-1.2/#main), a document has at most one `main` landmark. The skip link's fragment points at its `id`.
 
@@ -101,7 +101,7 @@ A couple of things to keep in mind when you do this:
 
 ## Common pitfalls
 
-- **A focusable element before the skip link.** A logo `<a>`, a language switcher, a "Sign in" button — any of them put a stop ahead of the skip link and the user has to Tab past your chrome to find the thing that was supposed to let them skip your chrome.
+- **A focusable element before the skip link.** A logo `<a>`, a language switcher, a "Sign in" button — any of them put a stop ahead of the skip link and the user has to Tab past your chrome to find the thing that was supposed to let them skip your chrome. I've seen this most often with a logo link in the header, because the header is the first thing a designer reaches for.
 - **No `tabindex="-1"` on the target.** Activation only scrolls; focus stays on the anchor; screen readers do not jump. Easy to miss because sighted manual testing _looks_ correct.
 - **`tabindex="0"` on the target instead of `-1`.** Creates an extra keyboard stop on every page. Use `-1` — programmatically focusable, not in the tab order.
 - **`display: none` instead of the visually-hidden technique.** `display: none` removes the link from the accessibility tree entirely, so keyboard users cannot tab to it. The whole point of `.cinder-sr-only` is to stay in the tree.
