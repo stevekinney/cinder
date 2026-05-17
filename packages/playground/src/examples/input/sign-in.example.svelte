@@ -31,12 +31,13 @@
 <form
   novalidate
   aria-labelledby="sign-in-heading"
+  style="display: flex; flex-direction: column; gap: 1rem;"
   onsubmit={(event) => {
     event.preventDefault();
     handleSignIn();
   }}
 >
-  <h2 id="sign-in-heading" style="margin-block-end: 1rem;">Sign in</h2>
+  <h2 id="sign-in-heading">Sign in</h2>
 
   <!--
     Top-of-form auth-error region.
