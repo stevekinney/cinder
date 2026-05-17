@@ -1,0 +1,250 @@
+import type { Deps } from './dependencies';
+
+export type MergeStateStatus =
+  | 'DIRTY'
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE';
+
+export type ReviewDecision =
+  | 'APPROVED'
+  | 'CHANGES_REQUESTED'
+  | 'REVIEW_REQUIRED'
+  | null;
+
+export type Readiness = {
+  ciPassing: boolean;
+  ciPending: boolean;
+  ciFailing: boolean;
+  hasConflicts: boolean;
+  mergeStateStatus: MergeStateStatus;
+  reviewDecision: ReviewDecision;
+  unresolvedThreads: number;
+  headRefOid: string;
+  isDraft: boolean;
+};
+
+export type MergeFailureReason =
+  | 'stale-head'
+  | 'branch-protection'
+  | 'required-reviews-missing'
+  | 'permissions'
+  | 'unknown';
+
+// ---------------------------------------------------------------------------
+// Status-check classification
+// ---------------------------------------------------------------------------
+
+type CheckEntry = {
+  state?: string;
+  conclusion?: string | null;
+};
+
+function classifyChecks(entries: CheckEntry[]): {
+  passing: number;
+  pending: number;
+  failing: number;
+} {
+  let passing = 0;
+  let pending = 0;
+  let failing = 0;
+
+  for (const entry of entries) {
+    const state = entry.state?.toUpperCase() ?? '';
+    const conclusion = entry.conclusion?.toUpperCase() ?? null;
+
+    if (
+      state === 'SUCCESS' ||
+      conclusion === 'SUCCESS' ||
+      conclusion === 'NEUTRAL' ||
+      conclusion === 'SKIPPED'
+    ) {
+      passing++;
+    } else if (
+      state === 'PENDING' ||
+      state === 'QUEUED' ||
+      state === 'IN_PROGRESS' ||
+      state === 'WAITING' ||
+      conclusion === null ||
+      conclusion === ''
+    ) {
+      pending++;
+    } else {
+      failing++;
+    }
+  }
+
+  return { passing, pending, failing };
+}
+
+// ---------------------------------------------------------------------------
+// Unresolved thread count (paginated GraphQL)
+// ---------------------------------------------------------------------------
+
+const THREAD_QUERY = `
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { isResolved }
+      }
+    }
+  }
+}
+`.trim();
+
+async function countUnresolvedThreads(
+  prNumber: number,
+  owner: string,
+  name: string,
+  deps: Pick<Deps, 'run'>,
+): Promise<number> {
+  let cursor: string | null = null;
+  let total = 0;
+
+  for (;;) {
+    const args = [
+      'gh', 'api', 'graphql',
+      '-F', `owner=${owner}`,
+      '-F', `name=${name}`,
+      '-F', `number=${prNumber}`,
+      '-f', `query=${THREAD_QUERY}`,
+    ];
+    if (cursor !== null) {
+      args.push('-F', `cursor=${cursor}`);
+    }
+
+    const result = await deps.run(args);
+    if (result.exitCode !== 0) {
+      // Non-fatal — return 0 rather than abort; the orchestrator can still make progress.
+      return 0;
+    }
+
+    const data = JSON.parse(result.stdout) as {
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              pageInfo: { hasNextPage: boolean; endCursor: string | null };
+              nodes: Array<{ isResolved: boolean }>;
+            };
+          };
+        };
+      };
+    };
+
+    const threads = data.data.repository.pullRequest.reviewThreads;
+    for (const node of threads.nodes) {
+      if (!node.isResolved) total++;
+    }
+
+    if (!threads.pageInfo.hasNextPage) break;
+    cursor = threads.pageInfo.endCursor;
+  }
+
+  return total;
+}
+
+// ---------------------------------------------------------------------------
+// checkReadiness
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches all readiness signals for a pull request. Polls CI up to
+ * `pollAttempts` times if checks are still pending.
+ */
+export async function checkReadiness(
+  prNumber: number,
+  owner: string,
+  name: string,
+  pollAttempts: number,
+  pollIntervalMs: number,
+  deps: Pick<Deps, 'run' | 'runOk' | 'sleep'>,
+): Promise<Readiness> {
+  const fetchState = async () => {
+    const raw = await deps.runOk([
+      'gh', 'pr', 'view', String(prNumber),
+      '--json', 'statusCheckRollup,mergeable,mergeStateStatus,reviewDecision,headRefOid,isDraft',
+    ]);
+    return JSON.parse(raw) as {
+      statusCheckRollup: CheckEntry[];
+      mergeable: string;
+      mergeStateStatus: string;
+      reviewDecision: string | null;
+      headRefOid: string;
+      isDraft: boolean;
+    };
+  };
+
+  let state = await fetchState();
+  let { passing, pending, failing } = classifyChecks(state.statusCheckRollup ?? []);
+
+  for (let attempt = 0; attempt < pollAttempts && pending > 0; attempt++) {
+    await deps.sleep(pollIntervalMs);
+    state = await fetchState();
+    ({ passing, pending, failing } = classifyChecks(state.statusCheckRollup ?? []));
+  }
+
+  const hasConflicts =
+    state.mergeable === 'CONFLICTING' || state.mergeStateStatus === 'DIRTY';
+
+  const unresolvedThreads = await countUnresolvedThreads(prNumber, owner, name, deps);
+
+  return {
+    ciPassing: failing === 0 && pending === 0,
+    ciPending: pending > 0,
+    ciFailing: failing > 0,
+    hasConflicts,
+    mergeStateStatus: state.mergeStateStatus as MergeStateStatus,
+    reviewDecision: (state.reviewDecision ?? null) as ReviewDecision,
+    unresolvedThreads,
+    headRefOid: state.headRefOid,
+    isDraft: state.isDraft,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// isMergeReady
+// ---------------------------------------------------------------------------
+
+/** Returns true when a PR is fully ready to merge without further intervention. */
+export function isMergeReady(r: Readiness): boolean {
+  return (
+    !r.isDraft &&
+    r.ciPassing &&
+    !r.ciPending &&
+    !r.ciFailing &&
+    !r.hasConflicts &&
+    r.unresolvedThreads === 0 &&
+    (r.reviewDecision === 'APPROVED' || r.reviewDecision === null) &&
+    (r.mergeStateStatus === 'CLEAN' ||
+      r.mergeStateStatus === 'HAS_HOOKS' ||
+      r.mergeStateStatus === 'UNSTABLE')
+  );
+}
+
+// ---------------------------------------------------------------------------
+// classifyMergeFailure
+// ---------------------------------------------------------------------------
+
+/** Classifies a `gh pr merge` error message into an actionable reason. */
+export function classifyMergeFailure(stderr: string): MergeFailureReason {
+  const lower = stderr.toLowerCase();
+  if (lower.includes('stale') || lower.includes('head sha') || lower.includes('head commit')) {
+    return 'stale-head';
+  }
+  if (lower.includes('branch protection') || lower.includes('protected branch')) {
+    return 'branch-protection';
+  }
+  if (lower.includes('review') && (lower.includes('required') || lower.includes('approved'))) {
+    return 'required-reviews-missing';
+  }
+  if (lower.includes('permission') || lower.includes('forbidden') || lower.includes('403')) {
+    return 'permissions';
+  }
+  return 'unknown';
+}
