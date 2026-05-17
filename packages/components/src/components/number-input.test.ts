@@ -1058,3 +1058,52 @@ describe('FormField context overrides', () => {
     expect(getHidden(container)).toBeNull();
   });
 });
+
+describe('isInternalValueChange stale-flag regression', () => {
+  test('malformedError clears when parent writes a valid number after a malformed blur', async () => {
+    // Regression: when blur commits null (malformed input), isInternalValueChange
+    // was set but never cleared for the unfocused case, so the validity-sync
+    // effect's !isInternalValueChange guard was always false and malformedError
+    // was never cleared by a subsequent external value change.
+    const { container, rerender } = render(NumberInput, {
+      props: { id: 'n', value: 5, locale: 'en-US' },
+    });
+    const input = getInput(container);
+    await focus(input);
+    await type(input, 'notanumber');
+    await blur(input);
+    await tick();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+
+    // Parent writes a valid value — malformedError must clear.
+    await rerender({ id: 'n', value: 42, locale: 'en-US' });
+    await tick();
+    expect(input.getAttribute('aria-invalid')).toBeNull();
+  });
+});
+
+describe('reset source does not snap defaultValue to step precision', () => {
+  test('form reset restores defaultValue verbatim even when step would round it', async () => {
+    // Regression: commitFromNumber with 'reset' source fell through to the
+    // else-if(snapStep !== null) branch, silently rounding defaultValue.
+    // e.g. defaultValue=0.15, step=0.1 → reset produced 0.2 instead of 0.15.
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const mount = document.createElement('div');
+    form.appendChild(mount);
+    render(NumberInput, {
+      target: mount,
+      props: { id: 'n', name: 'q', defaultValue: 0.15, step: 0.1, locale: 'en-US' },
+    });
+    const input = mount.querySelector('#n') as HTMLInputElement;
+    // Change value away from default.
+    await focus(input);
+    await type(input, '0.5');
+    await blur(input);
+    await tick();
+    // Reset the form — value should return to 0.15 verbatim, not 0.2.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(input.value).toBe('0.15');
+  });
+});

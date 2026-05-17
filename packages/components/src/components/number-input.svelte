@@ -177,9 +177,10 @@
       const origin = Number.isFinite(resolvedMin) ? resolvedMin : 0;
       result = origin + Math.round((raw - origin) / snapStep) * snapStep;
       result = roundToPrecision(result, fractionalDigits(snapStep));
-    } else if (snapStep !== null) {
-      // Even when snapping is skipped, round to step precision so successive
-      // additions of `0.1` don't accumulate float error.
+    } else if (source === 'delta' && snapStep !== null) {
+      // For delta steps, round to step precision so successive additions of
+      // `0.1` don't accumulate float error. Reset is excluded — it restores
+      // defaultValue verbatim without any rounding.
       result = roundToPrecision(raw, fractionalDigits(snapStep));
     }
     const clamped = Math.min(resolvedMax, Math.max(resolvedMin, result));
@@ -239,11 +240,11 @@
     const signature = parentValueSignature;
     if (signature === lastSeenParentSignature) return;
     lastSeenParentSignature = signature;
-    if (!isFocused) return;
     if (isInternalValueChange) {
       isInternalValueChange = false;
       return;
     }
+    if (!isFocused) return;
     editorBuffer = value === null || value === undefined ? '' : buildEditDisplay(value);
   });
 
