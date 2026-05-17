@@ -280,6 +280,10 @@ These are `@cinder/*` scoped packages that live in the cinder monorepo but are n
 - **Multi-select / async combobox, virtualized table**—explicit non-goals for v1.
 - **React port of cinder**—cross-framework needs are tracked at the vocabulary level; the port itself is not in scope.
 
+## Recipes
+
+- [Live-region announcer for transient messages](docs/recipes/announcer.md)
+
 ## License
 
 MIT
