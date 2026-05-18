@@ -3,7 +3,18 @@
 
   export type NumberInputProps = Omit<
     HTMLInputAttributes,
-    'value' | 'defaultValue' | 'min' | 'max' | 'step' | 'name' | 'type' | 'oninput' | 'onchange'
+    | 'value'
+    | 'defaultValue'
+    | 'min'
+    | 'max'
+    | 'step'
+    | 'name'
+    | 'type'
+    | 'oninput'
+    | 'onchange'
+    | 'onfocus'
+    | 'onblur'
+    | 'onkeydown'
   > & {
     id: string;
     value?: number | null;
@@ -522,11 +533,11 @@
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
       class="cinder-input cinder-number-input__input"
+      {...rest}
       oninput={onInput}
       onfocus={onFocus}
       onblur={onBlur}
       onkeydown={onKeyDown}
-      {...rest}
     />
     <button
       type="button"
