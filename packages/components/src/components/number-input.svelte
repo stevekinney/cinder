@@ -530,10 +530,10 @@
       value={displayValue}
       disabled={resolvedDisabled}
       required={resolvedRequired}
-      aria-invalid={resolvedAriaInvalid}
-      aria-describedby={describedBy}
       class="cinder-input cinder-number-input__input"
       {...rest}
+      aria-invalid={resolvedAriaInvalid}
+      aria-describedby={describedBy}
       oninput={onInput}
       onfocus={onFocus}
       onblur={onBlur}
