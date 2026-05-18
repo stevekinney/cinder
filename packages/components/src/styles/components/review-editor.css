@@ -15,6 +15,11 @@
   flex-direction: column;
   min-height: 200px;
   position: relative;
+  /* Card root carries the SINGLE background. Per the surface nesting rule
+     (see tokens-base.css), every region inside (controls, main, front-matter,
+     editor wrapper) inherits — they must not redeclare `background:`,
+     otherwise visible color bands appear between siblings. */
+  background: var(--cinder-surface-raised);
 }
 
 /* When sidebar is open, main layout becomes row */
@@ -79,7 +84,7 @@
   border: 1px solid var(--cinder-border);
   border-top: none;
   border-radius: 0 0 var(--cinder-radius-md) var(--cinder-radius-md);
-  background: var(--cinder-surface);
+  /* Background inherited from .review-editor-container per surface nesting rule. */
 }
 
 /*
@@ -111,7 +116,7 @@
 
 .review-editor-front-matter {
   border-bottom: 1px solid var(--cinder-border-muted);
-  background: var(--cinder-surface);
+  /* Background inherited from .review-editor-container per surface nesting rule. */
 }
 
 .review-editor-front-matter__header {

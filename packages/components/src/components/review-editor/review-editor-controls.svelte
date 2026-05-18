@@ -183,7 +183,7 @@
     justify-content: space-between;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-1) var(--cinder-space-2);
-    background: var(--cinder-surface-raised);
+    /* Background inherited from .review-editor-container per surface nesting rule. */
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
     border-bottom: none;

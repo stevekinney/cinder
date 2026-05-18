@@ -717,6 +717,10 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
+    /* Card root carries the SINGLE background. Per the surface nesting rule
+       (see tokens-base.css), every region inside (toolbar wrapper, editor
+       body) inherits — they must not redeclare `background:`. */
+    background: var(--cinder-surface-raised);
   }
 
   /* Toolbar wrapper for extension points */
@@ -726,7 +730,7 @@
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-2);
     border-bottom: 1px solid var(--cinder-border);
-    background: var(--cinder-surface-raised);
+    /* Background inherited from .markdown-editor-wrapper per surface nesting rule. */
     flex-wrap: wrap;
   }
 
