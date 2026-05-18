@@ -207,6 +207,9 @@ export type {
 export { default as NavigationItem } from './components/navigation-item.svelte';
 export type { NavigationItemProps } from './components/navigation-item.svelte';
 
+export { default as NumberInput } from './components/number-input.svelte';
+export type { NumberInputProps } from './components/number-input.svelte';
+
 export { default as PageLayout } from './components/page-layout.svelte';
 export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout.svelte';
 
