@@ -837,6 +837,15 @@
     border-color: var(--cinder-accent);
   }
 
+  /* When the ProseMirror surface itself receives keyboard focus (tabindex=0),
+     render an explicit focus ring. The blinking caret only appears after the
+     user starts typing — without this, keyboard users can't see where focus
+     landed. Inset offset keeps the ring inside the wrapper's border. */
+  .markdown-editor.surface:focus-visible {
+    outline: 2px solid var(--cinder-ring-color);
+    outline-offset: -2px;
+  }
+
   /*
    * Typography styles for ProseMirror content are provided by the shared
    * markdown.css file in the design system. That file targets
