@@ -18,14 +18,17 @@ function readTokenSource(): string {
   return readFileSync(new URL('../styles/tokens-base.css', import.meta.url), 'utf8');
 }
 
+function readRemTokenValue(source: string, name: string): number {
+  const literalMatch = new RegExp(`--${name}: (?<value>\\d+(?:\\.\\d+)?)rem;`).exec(source);
+  if (literalMatch?.groups?.['value']) return Number.parseFloat(literalMatch.groups['value']);
+  const aliasMatch = new RegExp(`--${name}: var\\(--(?<alias>[\\w-]+)\\)`).exec(source);
+  const alias = aliasMatch?.groups?.['alias'];
+  if (alias) return readRemTokenValue(source, alias);
+  throw new Error(`Missing or unresolvable rem-valued token for ${name}`);
+}
+
 function readButtonHeightToken(size: 'md' | 'lg' | 'xl'): number {
-  const source = readTokenSource();
-  const match = new RegExp(`--cinder-button-height-${size}: (?<value>\\d+(?:\\.\\d+)?)rem;`).exec(
-    source,
-  );
-  const value = match?.groups?.['value'];
-  if (value === undefined) throw new Error(`Missing button height token for ${size}`);
-  return Number.parseFloat(value);
+  return readRemTokenValue(readTokenSource(), `cinder-button-height-${size}`);
 }
 
 describe('Button rendering', () => {

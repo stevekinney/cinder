@@ -48,6 +48,17 @@ Corner radii and elevation shadows. `--cinder-radius-full` produces a pill or ci
 | `--cinder-shadow-md`   | `0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1)`    |
 | `--cinder-shadow-lg`   | `0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12)` |
 
+## Control heights
+
+Shared height tier for any interactive control that needs to align with its siblings in a toolbar, button group, or form row. Per-component height tokens (e.g. `--cinder-button-height-sm`) alias this family where their values match so the tiers stay in sync as the design system grows. Adoption is opt-in: existing call sites that pass `size="sm"` keep rendering at their pre-existing dimensions until they opt in via a `density` prop.
+
+| Token                        | Default   |
+| ---------------------------- | --------- |
+| `--cinder-control-height-xs` | `1.5rem`  |
+| `--cinder-control-height-sm` | `2rem`    |
+| `--cinder-control-height-md` | `2.5rem`  |
+| `--cinder-control-height-lg` | `2.75rem` |
+
 ## Typography
 
 Font stacks, type scale, line heights, letter spacing, and weights. The base font size is `0.875rem` (`--cinder-text-base`) — slightly smaller than the browser default, tuned for dense application UI.
