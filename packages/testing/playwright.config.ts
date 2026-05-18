@@ -19,6 +19,13 @@ function resolveTrace(): TraceValue {
 
 export default defineConfig({
   testDir: './tests',
+  /*
+   * Use a `.playwright.ts` suffix so Bun's test runner (which picks up
+   * `*.test.ts` and `*.spec.ts` by default at the workspace root) does not
+   * try to load these files. Playwright is the only runner that exercises
+   * this directory.
+   */
+  testMatch: '**/*.playwright.ts',
   outputDir: './test-results/playwright',
   fullyParallel: true,
   // Heavy editor components (Chat, MarkdownEditor, ReviewEditor — all
