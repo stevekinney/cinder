@@ -195,6 +195,37 @@ describe('checkReadiness — CI aggregation', () => {
     expect(r.ciFailing).toBe(false);
   });
 
+  it('mergeStateStatus=UNKNOWN from REST → falls back to GraphQL and resolves to CLEAN', async () => {
+    // Regression: after a base-branch update, `gh pr view` (REST) can return
+    // mergeable=UNKNOWN / mergeStateStatus=UNKNOWN for many minutes even when
+    // the PR is actually ready. GraphQL forces GitHub to compute mergeability.
+    const restView = JSON.stringify({
+      statusCheckRollup: [{ state: 'SUCCESS', conclusion: 'SUCCESS' }],
+      mergeable: 'UNKNOWN',
+      mergeStateStatus: 'UNKNOWN',
+      reviewDecision: null,
+      headRefOid: 'abc123',
+      isDraft: false,
+    });
+    const graphqlMergeability = JSON.stringify({
+      data: { repository: { pullRequest: { mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' } } },
+    });
+    const deps = fakeDeps([
+      { match: argsInclude('gh', 'pr', 'view'), result: { stdout: restView } },
+      // First graphql call: the mergeability query has 'mergeable' in args.
+      {
+        match: (args) => args.includes('gh') && args.includes('graphql') &&
+          args.some((a) => a.includes('mergeable')),
+        result: { stdout: graphqlMergeability },
+      },
+      { match: argsInclude('gh', 'api', 'graphql'), result: { stdout: makeGhGraphql() } },
+    ]);
+    const r = await checkReadiness(1, 'owner', 'repo', 1, 0, deps);
+    expect(r.mergeStateStatus).toBe('CLEAN');
+    expect(r.hasConflicts).toBe(false);
+    expect(isMergeReady(r)).toBe(true);
+  });
+
   it('reviewDecision="" (gh returns empty string for no decision) → normalized to null and isMergeReady=true', async () => {
     // Regression: gh pr view returns "" — not null — when no reviews exist.
     // Without normalization, isMergeReady rejects the PR forever and the

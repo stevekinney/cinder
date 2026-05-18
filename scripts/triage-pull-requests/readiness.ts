@@ -150,6 +150,65 @@ async function countUnresolvedThreads(
 }
 
 // ---------------------------------------------------------------------------
+// Mergeability via GraphQL
+//
+// `gh pr view` (REST) often returns mergeable=UNKNOWN / mergeStateStatus=UNKNOWN
+// for many minutes after a base-branch update, even when the PR is fully ready.
+// GraphQL's mergeable field forces GitHub to enqueue mergeability computation
+// on first query, so a short poll typically resolves to MERGEABLE/CONFLICTING.
+//
+// We only invoke this fallback when REST returns UNKNOWN — the common case is
+// REST returning a definite answer, and we don't want to pay for an extra
+// GraphQL call per PR per readiness check.
+// ---------------------------------------------------------------------------
+
+const MERGEABILITY_QUERY = `
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      mergeable
+      mergeStateStatus
+    }
+  }
+}
+`.trim();
+
+type MergeabilityResult = { mergeable: string; mergeStateStatus: string };
+
+async function fetchMergeabilityFromGraphQL(
+  prNumber: number,
+  owner: string,
+  name: string,
+  deps: Pick<Deps, 'run' | 'sleep'>,
+  pollAttempts: number,
+  pollIntervalMs: number,
+): Promise<MergeabilityResult | null> {
+  for (let attempt = 0; attempt < Math.max(1, pollAttempts); attempt++) {
+    const result = await deps.run([
+      'gh', 'api', 'graphql',
+      '-F', `owner=${owner}`,
+      '-F', `name=${name}`,
+      '-F', `number=${prNumber}`,
+      '-f', `query=${MERGEABILITY_QUERY}`,
+    ]);
+    if (result.exitCode !== 0) return null;
+    try {
+      const parsed = JSON.parse(result.stdout) as {
+        data: { repository: { pullRequest: MergeabilityResult } };
+      };
+      const pr = parsed.data.repository.pullRequest;
+      if (pr.mergeable !== 'UNKNOWN' && pr.mergeStateStatus !== 'UNKNOWN') {
+        return pr;
+      }
+    } catch {
+      return null;
+    }
+    if (attempt < pollAttempts - 1) await deps.sleep(pollIntervalMs);
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // checkReadiness
 // ---------------------------------------------------------------------------
 
@@ -189,8 +248,23 @@ export async function checkReadiness(
     ({ passing, pending, failing } = classifyChecks(state.statusCheckRollup ?? []));
   }
 
+  // If REST returns UNKNOWN mergeability (stale post-merge cache), query
+  // GraphQL — it forces GitHub to compute mergeability and usually resolves.
+  let mergeable = state.mergeable;
+  let mergeStateStatus = state.mergeStateStatus;
+  if (mergeable === 'UNKNOWN' || mergeStateStatus === 'UNKNOWN') {
+    const fallback = await fetchMergeabilityFromGraphQL(
+      prNumber, owner, name, deps,
+      Math.max(2, pollAttempts), Math.max(2_000, pollIntervalMs),
+    );
+    if (fallback !== null) {
+      mergeable = fallback.mergeable;
+      mergeStateStatus = fallback.mergeStateStatus;
+    }
+  }
+
   const hasConflicts =
-    state.mergeable === 'CONFLICTING' || state.mergeStateStatus === 'DIRTY';
+    mergeable === 'CONFLICTING' || mergeStateStatus === 'DIRTY';
 
   const unresolvedThreads = await countUnresolvedThreads(prNumber, owner, name, deps);
 
@@ -207,7 +281,7 @@ export async function checkReadiness(
     ciPending: pending > 0,
     ciFailing: failing > 0,
     hasConflicts,
-    mergeStateStatus: state.mergeStateStatus as MergeStateStatus,
+    mergeStateStatus: mergeStateStatus as MergeStateStatus,
     reviewDecision,
     unresolvedThreads,
     headRefOid: state.headRefOid,
