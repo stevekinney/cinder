@@ -305,6 +305,8 @@
       useGrouping: false,
       currency: undefined,
       currencyDisplay: undefined,
+      notation: 'standard',
+      compactDisplay: undefined,
     };
     if (format?.style === 'percent') {
       const asPercent = roundToPrecision(v * 100, 12);

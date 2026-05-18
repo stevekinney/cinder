@@ -813,6 +813,29 @@ describe('Locale parser coverage in component', () => {
     await blur(input);
     expect(calls).toEqual([1234567]);
   });
+
+  test('compact notation format: edit buffer shows plain number, not "1.2K"', async () => {
+    // Regression: buildEditDisplay did not clear `notation`, so format={notation:'compact'}
+    // rendered "1.2K" in the edit buffer. The parser's affix probes use 0 and -1 (too small
+    // for "K"/"M" suffixes), so "1.2K" was never stripped and was rejected as malformed on blur.
+    const calls: Array<number | null> = [];
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        locale: 'en-US',
+        value: 1200,
+        format: { notation: 'compact' },
+        onchange: (v: number | null) => calls.push(v),
+      },
+    });
+    const input = getInput(container);
+    await focus(input);
+    // Edit buffer must show the plain numeric form, not the compact abbreviation.
+    expect(input.value).toBe('1200');
+    await blur(input);
+    // Blur commit of the unmodified edit buffer should not produce a malformed error.
+    expect(calls).toEqual([1200]);
+  });
 });
 
 describe('Form serialization correctness', () => {
