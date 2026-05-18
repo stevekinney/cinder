@@ -7,11 +7,19 @@
   export type ChipSize = 'sm' | 'md';
   export type ChipMode = 'display' | 'toggle' | 'removable';
 
+  /**
+   * Opt the chip into a shared toolbar height (via `--cinder-control-height-sm`)
+   * so it lines up with sibling Button (size="sm") and SegmentedControl
+   * (density="toolbar"). Default rendering is unchanged.
+   */
+  export type ChipDensity = 'toolbar';
+
   export type ChipDisplayProps = {
     mode?: 'display';
     label: string;
     variant?: ChipVariant;
     size?: ChipSize;
+    density?: ChipDensity;
     leadingIcon?: Snippet;
     class?: string;
     id?: string;
@@ -26,6 +34,7 @@
     label: string;
     variant?: ChipVariant;
     size?: ChipSize;
+    density?: ChipDensity;
     leadingIcon?: Snippet;
     class?: string;
     id?: string;
@@ -43,6 +52,7 @@
     label: string;
     variant?: ChipVariant;
     size?: ChipSize;
+    density?: ChipDensity;
     leadingIcon?: Snippet;
     class?: string;
     id?: string;
@@ -64,6 +74,7 @@
   const label = $derived(props.label);
   const variant = $derived(props.variant ?? 'neutral');
   const size = $derived(props.size ?? 'md');
+  const density = $derived(props.density);
   const customClassName = $derived(props.class);
   const leadingIcon = $derived(props.leadingIcon);
   const pressed = $derived(mode === 'toggle' ? (props as ChipToggleProps).pressed : false);
@@ -114,6 +125,7 @@
     data-cinder-mode="toggle"
     data-cinder-variant={variant}
     data-cinder-size={size}
+    data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     aria-pressed={pressed}
     aria-label={ariaLabel}
     {disabled}
@@ -137,6 +149,7 @@
     data-cinder-mode="removable"
     data-cinder-variant={variant}
     data-cinder-size={size}
+    data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     data-cinder-disabled={disabled || undefined}
   >
     {#if leadingIcon}
@@ -162,6 +175,7 @@
     data-cinder-mode="display"
     data-cinder-variant={variant}
     data-cinder-size={size}
+    data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
   >
     {#if leadingIcon}
       <span class="cinder-chip__icon" aria-hidden="true">{@render leadingIcon()}</span>

@@ -130,7 +130,7 @@
 .cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
   min-block-size: 1.5rem;
   padding-block: var(--cinder-space-1);
-  padding-inline: var(--cinder-space-1);
+  padding-inline: var(--cinder-space-2);
   font-size: var(--cinder-text-xs);
 }
 
@@ -148,6 +148,17 @@
   padding-block: var(--cinder-space-2);
   padding-inline: var(--cinder-space-3, 0.75rem);
   font-size: var(--cinder-text-sm);
+}
+
+/* density="toolbar": opt-in to the shared --cinder-control-height-sm tier so
+ * the control lines up with sibling Button (size="sm"), Chip (density="toolbar"),
+ * DiffStatistics (compact density="toolbar"), and any other toolbar element
+ * adopting the same height. Overrides whatever size= rule preceded it. */
+.cinder-segmented-control[data-cinder-density='toolbar'] .cinder-segmented-control-option {
+  min-block-size: var(--cinder-control-height-sm);
+  padding-block: var(--cinder-space-1);
+  padding-inline: var(--cinder-space-3);
+  font-size: var(--cinder-text-xs);
 }
 
 /* ── Hover ──────────────────────────────────────────────────────────────── */

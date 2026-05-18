@@ -37,6 +37,13 @@
     disabled?: boolean;
     /** Visual size of the control. */
     size?: 'sm' | 'md' | 'lg';
+    /**
+     * Opt the control into a shared toolbar height (via
+     * `--cinder-control-height-sm`) so it lines up cleanly with sibling
+     * `Button` (size="sm"), `Chip` (density="toolbar"), and other toolbar
+     * elements. Default rendering is unchanged.
+     */
+    density?: 'toolbar';
     /** Layout orientation. */
     orientation?: 'horizontal' | 'vertical';
     /** Show options as detached individual buttons instead of a unified strip. */
@@ -89,6 +96,7 @@
     hideLabel = false,
     disabled = false,
     size = 'md',
+    density,
     orientation = 'horizontal',
     detached = false,
     fullWidth = false,
@@ -196,6 +204,7 @@
     aria-orientation={selectionMode === 'single' ? orientation : undefined}
     data-cinder-orientation={orientation}
     data-cinder-size={size}
+    data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     data-cinder-selection-mode={selectionMode}
     data-cinder-detached={detached ? '' : undefined}
     data-cinder-full-width={fullWidth ? '' : undefined}
