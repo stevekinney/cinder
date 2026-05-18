@@ -728,7 +728,10 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
-    padding: var(--cinder-space-2);
+    /* Padding is owned by .editor-toolbar (single source of truth).
+       Wrapper provides only layout (flex + gap) for extension points so
+       padding doesn't compound between wrapper and toolbar. */
+    padding: 0;
     border-bottom: 1px solid var(--cinder-border);
     /* Background inherited from .markdown-editor-wrapper per surface nesting rule. */
     flex-wrap: wrap;
