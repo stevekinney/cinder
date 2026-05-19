@@ -99,6 +99,7 @@
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   const isNativeDateInput = $derived(type === 'date');
+  const rendersNativeDateIcon = $derived(isNativeDateInput && !trailing);
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
@@ -132,7 +133,7 @@
     required={resolvedRequired}
     bind:value
     class={cn('cinder-input', className)}
-    data-cinder-native-date={isNativeDateInput ? '' : undefined}
+    data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
     {...rest}
@@ -151,7 +152,7 @@
       class="cinder-input-group"
       data-leading={leading ? '' : undefined}
       data-trailing={hasTrailing ? '' : undefined}
-      data-native-date={isNativeDateInput && !trailing ? '' : undefined}
+      data-native-date={rendersNativeDateIcon ? '' : undefined}
       data-disabled={resolvedDisabled ? '' : undefined}
       data-invalid={isInvalid ? '' : undefined}
     >
@@ -169,7 +170,7 @@
           class="cinder-input-group__trailing"
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
-      {:else if isNativeDateInput}
+      {:else if rendersNativeDateIcon}
         <span class="cinder-input-group__trailing cinder-input-group__date-icon" aria-hidden="true">
           {@render calendarIcon()}
         </span>

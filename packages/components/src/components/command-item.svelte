@@ -83,15 +83,9 @@
       onselect();
     }
   }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (disabled) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    onselect();
-  }
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <li
   id={itemId ?? undefined}
   role="option"
@@ -102,7 +96,6 @@
   data-cinder-disabled={disabled || undefined}
   onpointerenter={handlePointerEnter}
   onpointerdown={handlePointerDown}
-  onkeydown={handleKeydown}
   onclick={handleClick}
 >
   {#if leading}

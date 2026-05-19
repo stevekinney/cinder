@@ -178,6 +178,11 @@ describe('Input rendering', () => {
         trailing: textSnippet('UTC'),
       },
     });
+    const input = container.querySelector('#custom-date');
+    expect(input?.hasAttribute('data-cinder-native-date')).toBe(false);
+    expect(container.querySelector('.cinder-input-group')?.hasAttribute('data-native-date')).toBe(
+      false,
+    );
     expect(container.querySelector('.cinder-input-group__date-icon')).toBeNull();
     expect(container.querySelector('.cinder-input-group__trailing')?.textContent).toContain('UTC');
   });
