@@ -499,16 +499,22 @@
     color: var(--cinder-text-muted);
   }
 
-  /* Collapse the header's layout box for user messages so the parent flex
-     container doesn't reserve a row for it (otherwise its gap creates visible
-     empty space above the bubble text). Keep the <header> element in the
-     accessibility tree — `display: contents` would strip its implicit role
-     and orphan the sr-only role label below from its container. */
+  /* Take the header OUT of the bubble's flex flow for user messages so the
+     bubble's row gap is not allocated for an empty (sr-only-only) row, which
+     would create visible empty space above the message text.
+     `position: absolute` removes it from the flex axis entirely — flex `gap`
+     applies only to in-flow children. The header (and its sr-only role label)
+     stays in the accessibility tree with its implicit role intact;
+     `display: contents` would strip that role and orphan the label. */
   .chat-message-wrapper[data-role='user'] .chat-message-header {
-    block-size: 0;
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
     padding: 0;
     margin: 0;
-    overflow: visible;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   /* Hide role label for user messages since alignment makes it clear */
