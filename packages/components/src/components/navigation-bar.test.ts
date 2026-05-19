@@ -48,6 +48,27 @@ function toggleSnippet(buttonId = 'toggle-btn') {
   }));
 }
 
+function keyboardNavigationSnippet(clicks: Record<string, number>) {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="home" data-active="true">Home</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="docs"><span data-testid="docs-label">Docs</span></button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="billing" aria-disabled="true">Billing</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="settings">Settings</button>
+      </div>
+    `,
+    setup(element: Element) {
+      for (const button of element.querySelectorAll<HTMLButtonElement>('.cinder-navigation-item')) {
+        button.addEventListener('click', () => {
+          const key = button.dataset['key'];
+          if (key) clicks[key] = (clicks[key] ?? 0) + 1;
+        });
+      }
+    },
+  }));
+}
+
 describe('NavigationBar', () => {
   // ── Legacy tests (preserved) ────────────────────────────────────────────
 
@@ -380,5 +401,99 @@ describe('NavigationBar', () => {
     expect(
       container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
     ).toBe('true');
+  });
+
+  test('ArrowRight moves focus to the navigation item on the right', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const home = container.querySelector('[data-key="home"]') as HTMLElement;
+    const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+
+    home.focus();
+    await fireEvent.keyDown(home, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(docs);
+  });
+
+  test('ArrowLeft moves focus to the navigation item on the left', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+    const home = container.querySelector('[data-key="home"]') as HTMLElement;
+
+    docs.focus();
+    await fireEvent.keyDown(docs, { key: 'ArrowLeft' });
+
+    expect(document.activeElement).toBe(home);
+  });
+
+  test('arrow-key navigation skips disabled navigation items', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+    const settings = container.querySelector('[data-key="settings"]') as HTMLElement;
+
+    docs.focus();
+    await fireEvent.keyDown(docs, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(settings);
+  });
+
+  test('arrow-key navigation from a disabled navigation item uses its DOM position', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const billing = container.querySelector('[data-key="billing"]') as HTMLElement;
+    const settings = container.querySelector('[data-key="settings"]') as HTMLElement;
+
+    billing.focus();
+    await fireEvent.keyDown(billing, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(settings);
+  });
+
+  test('Space selects the focused navigation item', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+
+    docs.focus();
+    await fireEvent.keyDown(docs, { key: ' ' });
+
+    expect(clicks['docs']).toBe(1);
+  });
+
+  test('Enter selects the focused navigation item', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+
+    docs.focus();
+    await fireEvent.keyDown(docs, { key: 'Enter' });
+
+    expect(clicks['docs']).toBe(1);
+  });
+
+  test('Space does not select a navigation item when the event starts inside a descendant', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const docsLabel = container.querySelector('[data-testid="docs-label"]') as HTMLElement;
+
+    await fireEvent.keyDown(docsLabel, { key: ' ' });
+
+    expect(clicks['docs']).toBeUndefined();
   });
 });

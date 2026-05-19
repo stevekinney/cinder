@@ -22,6 +22,7 @@ Rem-based spacing scale. Use these for padding, gap, margin — anywhere you'd o
 | `--cinder-space-2`   | `0.5rem`   |
 | `--cinder-space-2-5` | `0.625rem` |
 | `--cinder-space-3`   | `0.75rem`  |
+| `--cinder-space-3-5` | `0.875rem` |
 | `--cinder-space-4`   | `1rem`     |
 | `--cinder-space-5`   | `1.25rem`  |
 | `--cinder-space-6`   | `1.5rem`   |
@@ -281,17 +282,17 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | ------------------------------ | ------------------------- |
 | `--cinder-button-padding-x-sm` | `var(--cinder-space-2)`   |
 | `--cinder-button-padding-y-sm` | `var(--cinder-space-1)`   |
-| `--cinder-button-height-sm`    | `2rem`                    |
-| `--cinder-button-font-size-sm` | `var(--cinder-text-xs)`   |
+| `--cinder-button-height-sm`    | `1.75rem`                 |
+| `--cinder-button-font-size-sm` | `var(--cinder-text-sm)`   |
 | `--cinder-button-radius-sm`    | `var(--cinder-radius-sm)` |
 
 ### Size: md
 
 | Token                          | Default                   |
 | ------------------------------ | ------------------------- |
-| `--cinder-button-padding-x-md` | `var(--cinder-space-3)`   |
-| `--cinder-button-padding-y-md` | `var(--cinder-space-2-5)` |
-| `--cinder-button-height-md`    | `2.75rem`                 |
+| `--cinder-button-padding-x-md` | `var(--cinder-space-2-5)` |
+| `--cinder-button-padding-y-md` | `var(--cinder-space-1-5)` |
+| `--cinder-button-height-md`    | `2rem`                    |
 | `--cinder-button-font-size-md` | `var(--cinder-text-sm)`   |
 | `--cinder-button-radius-md`    | `var(--cinder-radius-md)` |
 
@@ -299,9 +300,9 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 
 | Token                          | Default                   |
 | ------------------------------ | ------------------------- |
-| `--cinder-button-padding-x-lg` | `var(--cinder-space-4)`   |
+| `--cinder-button-padding-x-lg` | `var(--cinder-space-3)`   |
 | `--cinder-button-padding-y-lg` | `var(--cinder-space-2)`   |
-| `--cinder-button-height-lg`    | `3rem`                    |
+| `--cinder-button-height-lg`    | `2.25rem`                 |
 | `--cinder-button-font-size-lg` | `var(--cinder-text-sm)`   |
 | `--cinder-button-radius-lg`    | `var(--cinder-radius-md)` |
 
@@ -309,8 +310,8 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 
 | Token                          | Default                   |
 | ------------------------------ | ------------------------- |
-| `--cinder-button-padding-x-xl` | `var(--cinder-space-5)`   |
+| `--cinder-button-padding-x-xl` | `var(--cinder-space-3-5)` |
 | `--cinder-button-padding-y-xl` | `var(--cinder-space-2-5)` |
-| `--cinder-button-height-xl`    | `3.25rem`                 |
-| `--cinder-button-font-size-xl` | `var(--cinder-text-base)` |
+| `--cinder-button-height-xl`    | `2.5rem`                  |
+| `--cinder-button-font-size-xl` | `var(--cinder-text-sm)`   |
 | `--cinder-button-radius-xl`    | `var(--cinder-radius-md)` |

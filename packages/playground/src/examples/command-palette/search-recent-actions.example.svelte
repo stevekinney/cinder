@@ -15,12 +15,12 @@
 
   // ── Data ──────────────────────────────────────────────────────────────
   const allPages = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'settings', label: 'Settings' },
-    { id: 'billing', label: 'Billing' },
-    { id: 'team', label: 'Team members' },
-    { id: 'api-keys', label: 'API keys' },
-    { id: 'integrations', label: 'Integrations' },
+    { id: 'dashboard', label: 'Dashboard', description: 'View product and team metrics.' },
+    { id: 'settings', label: 'Settings', description: 'Manage workspace preferences.' },
+    { id: 'billing', label: 'Billing', description: 'Review invoices and payment methods.' },
+    { id: 'team', label: 'Team members', description: 'Invite or remove collaborators.' },
+    { id: 'api-keys', label: 'API keys', description: 'Create and rotate access tokens.' },
+    { id: 'integrations', label: 'Integrations', description: 'Connect external services.' },
   ];
 
   const recentItems = [
@@ -29,9 +29,27 @@
   ];
 
   const actions = [
-    { id: 'action-new-project', label: 'New project', kbd: '⌘N' },
-    { id: 'action-invite', label: 'Invite teammate', kbd: '⌘I' },
-    { id: 'action-sign-out', label: 'Sign out', kbd: '' },
+    {
+      id: 'action-new-project',
+      label: 'New project',
+      description: 'Create a blank project for a new body of work.',
+      icon: '+',
+      kbd: '⌘N',
+    },
+    {
+      id: 'action-invite',
+      label: 'Invite teammate',
+      description: 'Send an invitation to join this workspace.',
+      icon: '@',
+      kbd: '⌘I',
+    },
+    {
+      id: 'action-sign-out',
+      label: 'Sign out',
+      description: 'End this browser session.',
+      icon: '↪',
+      kbd: '',
+    },
   ];
 
   // ── Filtering ──────────────────────────────────────────────────────────
@@ -98,7 +116,11 @@
     {#if filteredPages.length > 0}
       <li role="none" class="palette-section-header">Pages</li>
       {#each filteredPages as page (page.id)}
-        <CommandItem value={page.id} onselect={() => select(page.label)}>
+        <CommandItem
+          value={page.id}
+          description={page.description}
+          onselect={() => select(page.label)}
+        >
           {page.label}
         </CommandItem>
       {/each}
@@ -123,7 +145,14 @@
     {#if filteredActions.length > 0}
       <li role="none" class="palette-section-header">Actions</li>
       {#each filteredActions as action (action.id)}
-        <CommandItem value={action.id} onselect={() => select(action.label)}>
+        <CommandItem
+          value={action.id}
+          description={action.description}
+          onselect={() => select(action.label)}
+        >
+          {#snippet leading()}
+            <span class="palette-action-icon">{action.icon}</span>
+          {/snippet}
           {action.label}
           {#snippet trailing()}
             {#if action.kbd}
@@ -148,7 +177,7 @@
 
 <style>
   .palette-section-header {
-    padding: 0.375rem 1rem 0.25rem;
+    padding: 0.625rem 1.25rem 0.375rem;
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -161,5 +190,11 @@
     border-block-start: 1px solid var(--cinder-border);
     margin-block-start: 0.25rem;
     padding-block-start: 0.625rem;
+  }
+
+  .palette-action-icon {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
   }
 </style>

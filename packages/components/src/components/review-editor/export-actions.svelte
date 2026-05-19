@@ -86,7 +86,7 @@
 
 <div class={classNames('export-actions', className)}>
   <Dropdown {id}>
-    <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard">
+    <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard" showCaret={false}>
       <Copy class="icon-sm" />
       <span class="cinder-sr-only">Copy</span>
     </DropdownTrigger>

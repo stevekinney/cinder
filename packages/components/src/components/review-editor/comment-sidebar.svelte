@@ -138,7 +138,7 @@
 
     {#if !readonly && visibleThreads.length > 0}
       <Dropdown id="{id}-actions">
-        <DropdownTrigger class="actions-trigger" aria-label="Comment actions">
+        <DropdownTrigger class="actions-trigger" aria-label="Comment actions" showCaret={false}>
           <MoreHorizontal class="icon-sm" />
         </DropdownTrigger>
         <DropdownMenu>

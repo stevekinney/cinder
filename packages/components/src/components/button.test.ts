@@ -27,7 +27,7 @@ function readRemTokenValue(source: string, name: string): number {
   throw new Error(`Missing or unresolvable rem-valued token for ${name}`);
 }
 
-function readButtonHeightToken(size: 'md' | 'lg' | 'xl'): number {
+function readButtonHeightToken(size: 'xs' | 'sm' | 'md' | 'lg' | 'xl'): number {
   return readRemTokenValue(readTokenSource(), `cinder-button-height-${size}`);
 }
 
@@ -157,13 +157,16 @@ describe('Button sizes — xl', () => {
     expect(container.querySelector('button')?.getAttribute('data-cinder-size')).toBe('xl');
   });
 
-  test('large sizes remain monotonic after md touch-target increase', () => {
-    expect(readButtonHeightToken('lg')).toBeGreaterThan(readButtonHeightToken('md'));
-    expect(readButtonHeightToken('xl')).toBeGreaterThan(readButtonHeightToken('lg'));
+  test('sizes use the compact 24/28/32/36/40px height ladder', () => {
+    expect(readButtonHeightToken('xs')).toBe(1.5);
+    expect(readButtonHeightToken('sm')).toBe(1.75);
+    expect(readButtonHeightToken('md')).toBe(2);
+    expect(readButtonHeightToken('lg')).toBe(2.25);
+    expect(readButtonHeightToken('xl')).toBe(2.5);
   });
 
-  test('xl font size references an existing typography token', () => {
-    expect(readTokenSource()).toContain('--cinder-button-font-size-xl: var(--cinder-text-base);');
+  test('xl font size matches the shared button text size', () => {
+    expect(readTokenSource()).toContain('--cinder-button-font-size-xl: var(--cinder-text-sm);');
   });
 });
 

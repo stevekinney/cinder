@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { HTMLInputAttributes } from 'svelte/elements';
 
-  export type InputType = 'text' | 'email' | 'password' | 'search' | 'tel' | 'url';
+  export type InputType = 'text' | 'email' | 'password' | 'search' | 'tel' | 'url' | 'date';
 
   type InputAddonProps =
     | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }
@@ -98,9 +98,32 @@
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
-  const hasGroup = $derived(!!leading || !!trailing);
+  const isNativeDateInput = $derived(type === 'date');
+  const rendersNativeDateIcon = $derived(isNativeDateInput && !trailing);
+  const hasTrailing = $derived(!!trailing || isNativeDateInput);
+  const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
 </script>
+
+{#snippet calendarIcon()}
+  <svg
+    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="16" y1="2" x2="16" y2="6"></line>
+    <line x1="8" y1="2" x2="8" y2="6"></line>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+  </svg>
+{/snippet}
 
 {#snippet inputElement()}
   <input
@@ -110,6 +133,7 @@
     required={resolvedRequired}
     bind:value
     class={cn('cinder-input', className)}
+    data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
     {...rest}
@@ -123,11 +147,12 @@
     </label>
   {/if}
 
-  {#if hasGroup}
+  {#if hasGroupWrapper}
     <div
       class="cinder-input-group"
       data-leading={leading ? '' : undefined}
-      data-trailing={trailing ? '' : undefined}
+      data-trailing={hasTrailing ? '' : undefined}
+      data-native-date={rendersNativeDateIcon ? '' : undefined}
       data-disabled={resolvedDisabled ? '' : undefined}
       data-invalid={isInvalid ? '' : undefined}
     >
@@ -145,6 +170,10 @@
           class="cinder-input-group__trailing"
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
+      {:else if rendersNativeDateIcon}
+        <span class="cinder-input-group__trailing cinder-input-group__date-icon" aria-hidden="true">
+          {@render calendarIcon()}
+        </span>
       {/if}
     </div>
   {:else}

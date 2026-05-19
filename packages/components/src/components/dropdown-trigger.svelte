@@ -4,6 +4,8 @@
 
   export type DropdownTriggerProps = Omit<HTMLButtonAttributes, 'class'> & {
     class?: string;
+    /** Render the trailing disclosure caret. Defaults to true. */
+    showCaret?: boolean;
     children?: Snippet;
   };
 </script>
@@ -23,7 +25,13 @@
     throw new Error('DropdownTrigger must be used within a Dropdown.');
   }
 
-  let { class: customClassName, children, onclick, ...rest }: DropdownTriggerProps = $props();
+  let {
+    class: customClassName,
+    showCaret = true,
+    children,
+    onclick,
+    ...rest
+  }: DropdownTriggerProps = $props();
 
   const context = getContext<DropdownContext>(DROPDOWN_CONTEXT);
   const registerTrigger =
@@ -66,5 +74,8 @@
 >
   {#if children}
     {@render children()}
+  {/if}
+  {#if showCaret}
+    <span class="cinder-dropdown-trigger__caret" aria-hidden="true"></span>
   {/if}
 </button>

@@ -22,8 +22,7 @@
     | 'ghost'
     | 'ghost-danger';
 
-  /** Size of the button. `xs` and `sm` are below WCAG AAA touch-target (44px) and are intended
-   * for dense UI contexts only. `md` meets WCAG AAA (44px). See button.a11y.md for rationale. */
+  /** Size of the button. All sizes use compact visual heights; see button.a11y.md for touch-target guidance. */
   export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
   type SharedBase = {

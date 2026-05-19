@@ -55,6 +55,11 @@ describe('discoverComponents', () => {
     const components = await discoverComponents();
     expect(components.length).toBeGreaterThanOrEqual(21);
   });
+
+  it('does not include removed date-picker component', async () => {
+    const components = await discoverComponents();
+    expect(components).not.toContain('date-picker');
+  });
 });
 
 describe('discoverExamples', () => {
@@ -66,6 +71,21 @@ describe('discoverExamples', () => {
 
   it('returns an empty array for a nonexistent component without throwing', async () => {
     const examples = await discoverExamples('nonexistent');
+    expect(examples).toEqual([]);
+  });
+
+  it('returns no standalone examples for navigation-item', async () => {
+    const examples = await discoverExamples('navigation-item');
+    expect(examples).toEqual([]);
+  });
+
+  it('returns no standalone examples for label', async () => {
+    const examples = await discoverExamples('label');
+    expect(examples).toEqual([]);
+  });
+
+  it('returns no standalone examples for date-picker', async () => {
+    const examples = await discoverExamples('date-picker');
     expect(examples).toEqual([]);
   });
 
@@ -113,6 +133,11 @@ describe('discoverAll', () => {
     expect(names).toContain('alert');
     expect(names).toContain('modal');
   });
+
+  it('does not include removed date-picker component', async () => {
+    const results = await discoverAll();
+    expect(results.map((entry) => entry.name)).not.toContain('date-picker');
+  });
 });
 
 describe('discoverSidebarComponents', () => {
@@ -126,6 +151,21 @@ describe('discoverSidebarComponents', () => {
   it('includes button (which has examples)', async () => {
     const sidebar = await discoverSidebarComponents();
     expect(sidebar).toContain('button');
+  });
+
+  it('excludes navigation-item because navigation-bar examples cover it', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar).not.toContain('navigation-item');
+  });
+
+  it('excludes label because input and textarea examples cover it', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar).not.toContain('label');
+  });
+
+  it('excludes date-picker because native date inputs replace it', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar).not.toContain('date-picker');
   });
 
   it('returns an array of strings, no duplicates', async () => {
