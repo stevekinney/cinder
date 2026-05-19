@@ -11,7 +11,10 @@
   display: flex;
   flex-direction: column;
   inline-size: 16rem;
-  block-size: 100%;
+  /* Fill the parent's cross-axis. `align-self: stretch` makes a flex item
+     fill its parent's cross-axis size. An explicit `block-size` here would
+     opt out of stretch behavior, so we deliberately leave it off. */
+  align-self: stretch;
   background: var(--cinder-surface);
   border-inline-end: 1px solid var(--cinder-border);
   overflow: hidden;

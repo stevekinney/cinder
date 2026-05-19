@@ -32,37 +32,101 @@
 
 .cinder-popover__arrow {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  background: var(--cinder-surface);
-  /* Physical sides intentional: the arrow is a rotated geometric decoration,
-     not text-flow content. Logical borders would flip the visible edges in
-     RTL relative to the physical rotation/inset pairs below. */
-  /* stylelint-disable csstools/use-logical */
-  border-right: 1px solid var(--cinder-border);
-  border-bottom: 1px solid var(--cinder-border);
-  /* stylelint-enable csstools/use-logical */
-  transform: rotate(45deg);
   pointer-events: none;
+  width: 0;
+  height: 0;
 }
 
-.cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
-  bottom: -5px;
-}
-
+/* Panel is BELOW trigger - arrow tip points UP */
 .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow {
-  top: -5px;
-  transform: rotate(225deg);
+  top: -8px;
+  /* stylelint-disable csstools/use-logical */
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--cinder-border);
+  margin-left: -8px;
+  /* stylelint-enable csstools/use-logical */
 }
 
-.cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
-  right: -5px;
-  transform: rotate(-45deg);
+.cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow::after {
+  content: '';
+  position: absolute;
+  /* stylelint-disable csstools/use-logical */
+  left: -7px;
+  top: 2px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid var(--cinder-surface);
+  /* stylelint-enable csstools/use-logical */
 }
 
+/* Panel is ABOVE trigger - arrow tip points DOWN */
+.cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
+  bottom: -8px;
+  /* stylelint-disable csstools/use-logical */
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--cinder-border);
+  margin-left: -8px;
+  /* stylelint-enable csstools/use-logical */
+}
+
+.cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow::after {
+  content: '';
+  position: absolute;
+  /* stylelint-disable csstools/use-logical */
+  left: -7px;
+  bottom: 2px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid var(--cinder-surface);
+  /* stylelint-enable csstools/use-logical */
+}
+
+/* Panel is to the RIGHT of trigger - arrow tip points LEFT */
 .cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow {
-  left: -5px;
-  transform: rotate(135deg);
+  left: -8px;
+  /* stylelint-disable csstools/use-logical */
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid var(--cinder-border);
+  /* stylelint-enable csstools/use-logical */
+  margin-top: -8px;
+}
+
+.cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow::after {
+  content: '';
+  position: absolute;
+  /* stylelint-disable csstools/use-logical */
+  left: 2px;
+  top: -7px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--cinder-surface);
+  /* stylelint-enable csstools/use-logical */
+}
+
+/* Panel is to the LEFT of trigger - arrow tip points RIGHT */
+.cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
+  right: -8px;
+  /* stylelint-disable csstools/use-logical */
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid var(--cinder-border);
+  /* stylelint-enable csstools/use-logical */
+  margin-top: -8px;
+}
+
+.cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow::after {
+  content: '';
+  position: absolute;
+  /* stylelint-disable csstools/use-logical */
+  right: 2px;
+  top: -7px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 7px solid var(--cinder-surface);
+  /* stylelint-enable csstools/use-logical */
 }
 
 @media (prefers-reduced-motion: reduce) {

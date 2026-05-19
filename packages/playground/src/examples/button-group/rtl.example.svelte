@@ -13,13 +13,16 @@
     DropdownMenu,
     DropdownTrigger,
   } from '../../../../components/src/index.ts';
+  import { ChevronDown } from '../../../../components/src/components/icons/index.ts';
 </script>
 
 <div dir="rtl">
   <ButtonGroup label="خيارات الحفظ">
     <Button>حفظ</Button>
     <Dropdown id="save-options-rtl">
-      <DropdownTrigger><Button aria-label="المزيد من خيارات الحفظ">▾</Button></DropdownTrigger>
+      <DropdownTrigger aria-label="المزيد من خيارات الحفظ">
+        <ChevronDown size={16} />
+      </DropdownTrigger>
       <DropdownMenu>
         <DropdownItem>حفظ كمسودة</DropdownItem>
         <DropdownItem>حفظ ونشر</DropdownItem>

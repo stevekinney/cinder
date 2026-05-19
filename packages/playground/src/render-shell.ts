@@ -89,7 +89,7 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles/index.css" />
     <style>
       *, *::before, *::after {
         box-sizing: border-box;

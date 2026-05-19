@@ -46,6 +46,6 @@
   {@render children()}
   {#if required}
     <!-- Decorative — accessible name comes from the field's `required` attribute. -->
-    <span class="cinder-label__required" aria-hidden="true">*</span>
+    <span class="cinder-label__required" aria-hidden="true"></span>
   {/if}
 </label>

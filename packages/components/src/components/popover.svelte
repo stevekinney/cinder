@@ -49,6 +49,7 @@
 </script>
 
 <script lang="ts">
+  import type { Attachment } from 'svelte/attachments';
   import { onDestroy, untrack } from 'svelte';
   import { DEV } from 'esm-env';
   import { captureFocus, restoreFocusTo, pushEscapeHandler } from '../_internal/overlay.ts';
@@ -122,6 +123,11 @@
   onDestroy(() => {
     isDestroyed = true;
   });
+
+  const portalToDocumentBody: Attachment<HTMLDivElement> = (element) => {
+    document.body.appendChild(element);
+    return () => element.remove();
+  };
 
   $effect(() => {
     mounted = true;
@@ -316,6 +322,7 @@
 {#if mounted && open && anchorElement}
   <div
     bind:this={panelElement}
+    {@attach portalToDocumentBody}
     id={panelId}
     {role}
     aria-label={ariaLabelledby ? undefined : (label ?? 'Popover')}

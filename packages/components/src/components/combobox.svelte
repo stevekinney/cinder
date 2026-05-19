@@ -74,6 +74,8 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
+
   import {
     ariaInvalid,
     composeDescribedBy,
@@ -138,11 +140,11 @@
   });
 
   // When a value is provided externally, mirror its label in the input box.
-  // This runs only when value changes, not when the user types.
+  // The current input text is read untracked so typing can keep driving filtering.
   $effect(() => {
     if (!value) return;
     const matched = options.find((option) => option.value === value);
-    if (matched && inputValue !== matched.label) {
+    if (matched && untrack(() => inputValue) !== matched.label) {
       inputValue = matched.label;
     }
   });

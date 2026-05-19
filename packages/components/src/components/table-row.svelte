@@ -143,7 +143,14 @@
       <td
         class="cinder-table__cell cinder-table__cell--selection cinder-table__cell--selection-disabled"
         aria-label="Not selectable"
-      ></td>
+      >
+        <input
+          type="checkbox"
+          class="cinder-table__selection-checkbox"
+          disabled
+          aria-disabled="true"
+        />
+      </td>
     {:else}
       <td class="cinder-table__cell cinder-table__cell--selection">
         <input

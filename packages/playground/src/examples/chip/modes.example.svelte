@@ -11,31 +11,25 @@
 </script>
 
 <!-- Manual check: click anywhere on the chip label text — onremove must not fire. -->
-<div class="example-preview-col">
-  <div class="example-preview-row">
-    <Chip label="Display" />
-  </div>
+<div class="example-preview-row">
+  <Chip label="Display" />
 
-  <div class="example-preview-row">
+  <Chip
+    mode="toggle"
+    label={pressed ? 'Active' : 'Inactive'}
+    {pressed}
+    onpressedchange={(value) => {
+      pressed = value;
+    }}
+  />
+
+  {#each tags as tag (tag)}
     <Chip
-      mode="toggle"
-      label={pressed ? 'Active' : 'Inactive'}
-      {pressed}
-      onpressedchange={(value) => {
-        pressed = value;
+      mode="removable"
+      label={tag}
+      onremove={() => {
+        tags = tags.filter((t) => t !== tag);
       }}
     />
-  </div>
-
-  <div class="example-preview-row">
-    {#each tags as tag (tag)}
-      <Chip
-        mode="removable"
-        label={tag}
-        onremove={() => {
-          tags = tags.filter((t) => t !== tag);
-        }}
-      />
-    {/each}
-  </div>
+  {/each}
 </div>

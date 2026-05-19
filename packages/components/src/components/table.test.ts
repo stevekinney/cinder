@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
@@ -379,7 +379,7 @@ describe('Table selection — selectionDisabled rows', () => {
     { id: '2', cells: ['Bob', '25', 'Designer'], selectionDisabled: true as const },
   ];
 
-  test('selectionDisabled row renders a leading <td> with no checkbox', () => {
+  test('selectionDisabled row renders a leading <td> with a disabled checkbox', () => {
     const { container } = render(Wrapper, {
       columns,
       rows: rowsWithDisabled,
@@ -388,13 +388,16 @@ describe('Table selection — selectionDisabled rows', () => {
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
     // Row 1 (index 0): active checkbox
     expect(bodyRows[0]?.querySelector('td input[type="checkbox"]')).not.toBeNull();
-    // Row 2 (index 1): disabled — empty cell, no checkbox
+    // Row 2 (index 1): disabled checkbox
     const disabledRow = bodyRows[1];
     const firstCell = disabledRow?.querySelector('td');
-    expect(firstCell?.querySelector('input')).toBeNull();
+    const checkbox = firstCell?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    expect(checkbox).not.toBeNull();
+    expect(checkbox?.disabled).toBe(true);
+    expect(checkbox?.getAttribute('aria-disabled')).toBe('true');
   });
 
-  test('selectionDisabled row empty cell has an accessible label', () => {
+  test('selectionDisabled row cell has an accessible label', () => {
     const { container } = render(Wrapper, {
       columns,
       rows: rowsWithDisabled,
@@ -413,6 +416,42 @@ describe('Table selection — selectionDisabled rows', () => {
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
     expect(bodyRows[1]?.hasAttribute('aria-selected')).toBe(false);
+  });
+
+  test('selectionDisabled row checkbox has the disabled attribute', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]');
+    expect(checkbox?.hasAttribute('disabled')).toBe(true);
+  });
+
+  test('selectionDisabled row checkbox has aria-disabled="true"', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]');
+    expect(checkbox?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  test('clicking the selectionDisabled checkbox does not fire onSelectedIds', async () => {
+    const onSelectedIdsSpy = mock((_nextSelectedIds: Set<string>) => {});
+    const { container } = render(Wrapper, {
+      columns,
+      rows: rowsWithDisabled,
+      selectable: true,
+      onSelectedIds: onSelectedIdsSpy,
+    });
+    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]') as HTMLInputElement;
+    await fireEvent.click(checkbox);
+    expect(onSelectedIdsSpy).not.toHaveBeenCalled();
   });
 
   test('selectionDisabled rows are excluded from select-all calculation', () => {

@@ -73,6 +73,10 @@ function focusableSnippet() {
   }));
 }
 
+function queryPopoverPanel(): HTMLDivElement | null {
+  return document.body.querySelector<HTMLDivElement>('.cinder-popover');
+}
+
 // Per-test DOM cleanup for nodes we attach directly to document.body.
 let scratchNodes: HTMLElement[] = [];
 function attachScratch(node: HTMLElement): void {
@@ -113,26 +117,26 @@ afterEach(() => {
 
 describe('Popover — rendering', () => {
   test('renders no panel when open=false', () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: false, trigger: triggerSnippet, children: textSnippet('content') },
     });
-    expect(container.querySelector('.cinder-popover')).toBeNull();
+    expect(queryPopoverPanel()).toBeNull();
   });
 
   test('renders panel with role and aria-label when open=true', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.getAttribute('aria-label')).toBe('Popover');
   });
 
   test('label prop sets aria-label', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: {
         open: true,
         label: 'Settings menu',
@@ -141,15 +145,15 @@ describe('Popover — rendering', () => {
       },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('aria-label')).toBe('Settings menu');
     expect(panel.hasAttribute('aria-labelledby')).toBe(false);
   });
 
   test('ariaLabelledby wins over label', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: {
         open: true,
         label: 'fallback',
@@ -159,9 +163,9 @@ describe('Popover — rendering', () => {
       },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('aria-labelledby')).toBe('external-id');
     expect(panel.hasAttribute('aria-label')).toBe(false);
   });
@@ -173,7 +177,7 @@ describe('Popover — rendering', () => {
       placement: 'right-start',
       middlewareData: {},
     };
-    const { container } = render(Popover, {
+    render(Popover, {
       props: {
         open: true,
         placement: 'bottom-start',
@@ -182,17 +186,17 @@ describe('Popover — rendering', () => {
       },
     });
     await waitFor(() => {
-      const panel = container.querySelector('.cinder-popover');
+      const panel = queryPopoverPanel();
       expect(panel?.getAttribute('data-cinder-placement')).toBe('right-start');
     });
   });
 
   test('positionReady flips true after first computePosition resolves', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      const panel = container.querySelector('.cinder-popover');
+      const panel = queryPopoverPanel();
       expect(panel?.getAttribute('data-cinder-position-ready')).toBe('true');
     });
   });
@@ -203,13 +207,13 @@ describe('Popover — rendering', () => {
     triggerBtn.type = 'button';
     attachScratch(triggerBtn);
 
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, triggerRef: triggerBtn, children: textSnippet('plain') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('aria-hidden')).toBe('true');
     expect(panel.getAttribute('data-cinder-position-ready')).toBe('false');
 
@@ -226,17 +230,69 @@ describe('Popover — rendering', () => {
 
   test('panel inline style reflects computePosition x/y', async () => {
     computePositionResult = { x: 33, y: 44, placement: 'bottom-start', middlewareData: {} };
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      const panel = container.querySelector('.cinder-popover');
+      const panel = queryPopoverPanel();
       expect(panel?.getAttribute('data-cinder-position-ready')).toBe('true');
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     const style = panel.getAttribute('style') ?? '';
     expect(style).toContain('left: 33px');
     expect(style).toContain('top: 44px');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Portal and arrow
+// ---------------------------------------------------------------------------
+
+describe('Popover — portal and arrow', () => {
+  test('moves the panel to document.body when open', async () => {
+    const { container } = render(Popover, {
+      props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    const panel = queryPopoverPanel()!;
+    expect(document.body.contains(panel)).toBe(true);
+    expect(panel.parentElement).toBe(document.body);
+    expect(container.contains(panel)).toBe(false);
+  });
+
+  test('renders an arrow inside a placed panel when showArrow=true', async () => {
+    computePositionResult = {
+      x: 10,
+      y: 20,
+      placement: 'bottom-start',
+      middlewareData: { arrow: { x: 24 } },
+    };
+
+    render(Popover, {
+      props: {
+        open: true,
+        showArrow: true,
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      const panel = queryPopoverPanel();
+      expect(panel?.getAttribute('data-cinder-placement')).toBe('bottom-start');
+      expect(panel?.querySelector('.cinder-popover__arrow')).not.toBeNull();
+    });
+
+    const arrow = queryPopoverPanel()!.querySelector<HTMLSpanElement>('.cinder-popover__arrow')!;
+    expect(arrow.getAttribute('aria-hidden')).toBe('true');
+    // happy-dom doesn't run a layout engine, so we can't assert the resolved
+    // left/top offsets Floating-UI computes. The arrow element rendering with
+    // aria-hidden and the panel having data-cinder-placement is what we can
+    // verify here; real positioning is covered by visual checks.
   });
 });
 
@@ -250,7 +306,7 @@ describe('Popover — trigger ARIA', () => {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     const button = container.querySelector('button')!;
     expect(button.getAttribute('aria-expanded')).toBe('true');
@@ -300,24 +356,24 @@ describe('Popover — trigger ARIA', () => {
 
 describe('Popover — focus management', () => {
   test('initial focus moves to first focusable inside panel after positionReady', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: focusableSnippet() },
     });
     await waitFor(() => {
-      const inside = container.querySelector('.cinder-popover button');
+      const inside = queryPopoverPanel()?.querySelector('button') ?? null;
       expect(inside).not.toBeNull();
       expect(document.activeElement).toBe(inside);
     });
   });
 
   test('initial focus falls back to panel root when no focusable child', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('plain') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('tabindex')).toBe('-1');
     await waitFor(() => {
       expect(document.activeElement).toBe(panel);
@@ -350,7 +406,7 @@ describe('Popover — focus management', () => {
   test('focus returns to trigger on close via Escape', async () => {
     const { container } = render(BindableFixture, { props: { initialOpen: true } });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     const triggerButton = container.querySelector('button')!;
 
@@ -371,7 +427,7 @@ describe('Popover — outside mousedown', () => {
   test('mousedown outside panel and anchor closes', async () => {
     const { container } = render(BindableFixture, { props: { initialOpen: true } });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
 
     const outside = document.createElement('div');
@@ -386,7 +442,7 @@ describe('Popover — outside mousedown', () => {
   test('mousedown on anchor does not close', async () => {
     const { container } = render(BindableFixture, { props: { initialOpen: true } });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     const triggerButton = container.querySelector('button')!;
     await fireEvent.mouseDown(triggerButton);
@@ -396,9 +452,9 @@ describe('Popover — outside mousedown', () => {
   test('mousedown inside panel does not close', async () => {
     const { container } = render(BindableFixture, { props: { initialOpen: true } });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
-    const panel = container.querySelector('.cinder-popover')!;
+    const panel = queryPopoverPanel()!;
     await fireEvent.mouseDown(panel);
     expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('open');
   });
@@ -412,7 +468,7 @@ describe('Popover — Escape', () => {
   test('Escape closes the popover via bindable open', async () => {
     const { container } = render(BindableFixture, { props: { initialOpen: true } });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -429,11 +485,11 @@ describe('Popover — Escape', () => {
 
 describe('Popover — floating-ui wiring', () => {
   test('autoUpdate invoked with anchor + panel, default offset forwarded', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     expect(autoUpdateSpy).toHaveBeenCalled();
     const call = autoUpdateSpy.mock.calls[0]!;
@@ -443,7 +499,7 @@ describe('Popover — floating-ui wiring', () => {
   });
 
   test('custom offset forwarded to offset middleware', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: {
         open: true,
         offset: 16,
@@ -452,7 +508,7 @@ describe('Popover — floating-ui wiring', () => {
       },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     expect(offsetSpy).toHaveBeenCalledWith(16);
   });
@@ -484,11 +540,11 @@ describe('Popover — floating-ui wiring', () => {
   });
 
   test('autoUpdate teardown invoked on close', async () => {
-    const { container, rerender } = render(Popover, {
+    const { rerender } = render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(container.querySelector('.cinder-popover')).not.toBeNull();
+      expect(queryPopoverPanel()).not.toBeNull();
     });
     autoUpdateTeardown.mockClear();
     await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
@@ -502,12 +558,12 @@ describe('Popover — floating-ui wiring', () => {
 
 describe('Popover — no-anchor degradation', () => {
   test('open=true with no trigger and no triggerRef does not render panel', async () => {
-    const { container } = render(Popover, {
+    render(Popover, {
       props: { open: true, children: textSnippet('content') },
     });
     await tick();
     await tick();
-    expect(container.querySelector('.cinder-popover')).toBeNull();
+    expect(queryPopoverPanel()).toBeNull();
   });
 
   test('open=true with no anchor does not register Escape handler (no overlay-stack pollution)', async () => {

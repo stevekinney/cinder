@@ -13,14 +13,14 @@
     DropdownMenu,
     DropdownTrigger,
   } from '../../../../components/src/index.ts';
+  import { ChevronDown } from '../../../../components/src/components/icons/index.ts';
 </script>
 
 <ButtonGroup label="Save options">
   <Button>Save</Button>
   <Dropdown id="save-options">
-    <DropdownTrigger>
-      <!-- Decorative glyph; aria-label supplies the accessible name. -->
-      <Button aria-label="More save options">▾</Button>
+    <DropdownTrigger aria-label="More save options">
+      <ChevronDown size={16} />
     </DropdownTrigger>
     <DropdownMenu>
       <DropdownItem>Save as draft</DropdownItem>
