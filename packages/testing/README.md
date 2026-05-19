@@ -31,7 +31,7 @@ bun run test:playwright:headed
 bun run test:playwright:ui
 ```
 
-`start-server.ts` manages the playground server automatically. By default it will reuse an already-running playground on the target URL (`PLAYGROUND_URL`, default `http://localhost:4173`). Set `PLAYWRIGHT_REUSE_SERVER=0` to force a hard failure if the port is already taken.
+`start-server.ts` manages the playground server automatically. By default it will reuse an already-running playground on the target URL (`PLAYGROUND_URL`, default `http://localhost:5555`). If it starts the local playground itself and 5555 is taken, it follows the playground server to the next available port. Set `PLAYWRIGHT_REUSE_SERVER=0` to force a hard failure if the target URL is already responding.
 
 ### Reproducing a single failing test
 

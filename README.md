@@ -100,7 +100,7 @@ Cinder's color tokens are built on [`light-dark()`][mdn-light-dark]. Set `data-t
 
 ## Playground
 
-`bun run playground` starts the playground dev server at http://localhost:4173. The sidebar lists all 21 components—click any one to open its page in the main frame. Each component page shows curated examples with live controls.
+`bun run playground` starts the playground dev server at http://localhost:5555 by default, or the next available port if 5555 is already taken. The sidebar lists all 21 components—click any one to open its page in the main frame. Each component page shows curated examples with live controls.
 
 Those controls aren't hardcoded. The playground reads your component's `Props` type and generates form inputs automatically—text fields for strings, toggles for booleans, dropdowns for string unions. Change a `.svelte` file and the playground reloads via Server-Sent Events; no manual refresh needed.
 

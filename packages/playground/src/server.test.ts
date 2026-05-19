@@ -9,11 +9,11 @@
  * beforeAll guard asserts this up front so failures are diagnosable.
  */
 
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import type { ComponentManifest } from './analyze.ts';
-import { PORT, handleRequest, triggerReload } from './server.ts';
+import { PORT, createHttpServerOnAvailablePort, handleRequest, triggerReload } from './server.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -34,9 +34,66 @@ beforeAll(async () => {
   }
 });
 
+const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+
+afterEach(async () => {
+  const servers = temporaryServers.splice(0);
+  await Promise.all(servers.map((server) => server.stop(true)));
+});
+
 function req(path: string, options?: RequestInit): Request {
   return new Request(`http://localhost:${PORT}${path}`, options);
 }
+
+function reservePort(start: number): ReturnType<typeof Bun.serve> {
+  for (let port = start; port < start + 100; port++) {
+    try {
+      return Bun.serve({
+        port,
+        fetch: () => new Response('reserved'),
+      });
+    } catch (error) {
+      const errorWithCode = error as Error & { code?: unknown };
+      if (errorWithCode.code !== 'EADDRINUSE') throw error;
+    }
+  }
+  throw new Error(`Could not reserve a test port starting at ${start}`);
+}
+
+function tryReservePort(port: number): ReturnType<typeof Bun.serve> | null {
+  try {
+    return Bun.serve({
+      port,
+      fetch: () => new Response('reserved'),
+    });
+  } catch (error) {
+    const errorWithCode = error as Error & { code?: unknown };
+    if (errorWithCode.code === 'EADDRINUSE') return null;
+    throw error;
+  }
+}
+
+describe('port selection', () => {
+  it('defaults to port 5555', () => {
+    expect(PORT).toBe(5555);
+  });
+
+  it('uses the next available port when the preferred port is taken', async () => {
+    const reserved = tryReservePort(PORT) ?? reservePort(56_000);
+    temporaryServers.push(reserved);
+    const reservedPort = reserved.port;
+    if (reservedPort === undefined) throw new Error('Reserved test server did not expose a port');
+
+    const server = createHttpServerOnAvailablePort(reservedPort, () => new Response('fallback'));
+    temporaryServers.push(server);
+    const serverPort = server.port;
+    if (serverPort === undefined) throw new Error('Fallback test server did not expose a port');
+
+    expect(serverPort).toBeGreaterThan(reservedPort);
+    const response = await fetch(`http://127.0.0.1:${serverPort}`);
+    expect(await response.text()).toBe('fallback');
+  });
+});
 
 describe('/ping', () => {
   it('returns 200 pong', async () => {

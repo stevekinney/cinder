@@ -29,21 +29,19 @@ function fail(message: string): never {
 /** Minimum number of public components expected in src/components/. */
 const MINIMUM_COMPONENT_COUNT = 21;
 
-const BASE_URL = `http://127.0.0.1:${PORT}`;
-
 /** Wait for the server to become ready by polling /ping. */
-async function waitForPing(timeoutMs: number): Promise<void> {
+async function waitForPing(baseUrl: string, timeoutMs: number): Promise<void> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeoutMs) {
     try {
-      const response = await fetch(`${BASE_URL}/ping`, { signal: AbortSignal.timeout(500) });
+      const response = await fetch(`${baseUrl}/ping`, { signal: AbortSignal.timeout(500) });
       if (response.status === 200) return;
     } catch {
       // Not ready yet.
     }
     await Bun.sleep(100);
   }
-  fail(`playground server did not respond on port ${PORT} within ${timeoutMs}ms`);
+  fail(`playground server did not respond at ${baseUrl} within ${timeoutMs}ms`);
 }
 
 /**
@@ -187,9 +185,12 @@ let server: PlaygroundServer | undefined;
 
 try {
   server = await startServer(PORT);
-  process.stdout.write(`[validate:playground] waiting for playground server on port ${PORT}…\n`);
-  await waitForPing(10_000);
-  process.stdout.write(`[validate:playground] server ready at ${BASE_URL}\n`);
+  const baseUrl = `http://127.0.0.1:${server.port}`;
+  process.stdout.write(
+    `[validate:playground] waiting for playground server on port ${server.port}…\n`,
+  );
+  await waitForPing(baseUrl, 10_000);
+  process.stdout.write(`[validate:playground] server ready at ${baseUrl}\n`);
 
   const components = await discoverComponents();
   if (components.length < MINIMUM_COMPONENT_COUNT) {
@@ -198,8 +199,8 @@ try {
     );
   }
 
-  await validateComponentRoutes(BASE_URL, components);
-  await validateSseReload(BASE_URL);
+  await validateComponentRoutes(baseUrl, components);
+  await validateSseReload(baseUrl);
 
   process.stdout.write('[validate:playground] all checks passed.\n');
   await server.dispose();
