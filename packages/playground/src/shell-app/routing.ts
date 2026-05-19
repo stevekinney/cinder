@@ -60,7 +60,151 @@ export function buildIframeSrc(componentName: string): string {
  * without paying the `.svelte.ts` compilation cost in test boot.
  */
 export type ThemeChoice = 'light' | 'dark' | 'system';
-export type BackgroundChoice = 'surface' | 'inverse' | 'checker';
+/**
+ * Preview backdrop. `surface` is the themed default (light or dark depending
+ * on the active theme); `checker` overlays a transparency grid so visual
+ * artifacts and component edges are easy to spot. Dark-on-light or
+ * light-on-dark is the theme toggle's job — that's why there is no `inverse`.
+ */
+export type BackgroundChoice = 'surface' | 'checker';
+
+const PREVIEW_THEMES_INTERNAL: ReadonlySet<ThemeChoice> = new Set<ThemeChoice>([
+  'light',
+  'dark',
+  'system',
+]);
+const PREVIEW_BACKGROUNDS_INTERNAL: ReadonlySet<BackgroundChoice> = new Set<BackgroundChoice>([
+  'surface',
+  'checker',
+]);
+
+/**
+ * Canonical search-param keys for the toolbar. Compact spellings (`bg`, `w`)
+ * keep shareable URLs readable; full-word keys are reserved for future
+ * additions that don't appear together with these.
+ */
+export const TOOLBAR_PARAMS = {
+  focus: 'focus',
+  theme: 'theme',
+  background: 'bg',
+  width: 'w',
+} as const;
+
+const FOCUS_MODE_TRUTHY: ReadonlySet<string> = new Set(['1', 'true', 'yes', 'on']);
+
+/** Minimum and maximum viewport widths accepted from the `w` param. */
+const VIEWPORT_WIDTH_MIN = 200;
+const VIEWPORT_WIDTH_MAX = 3840;
+
+/**
+ * Snapshot of every toolbar setting that lives in the URL. `null`s mean
+ * "use the default" — they're the values that are omitted from the query
+ * string when serializing.
+ */
+export type ToolbarSearchState = {
+  isFocusMode: boolean;
+  theme: ThemeChoice | null;
+  background: BackgroundChoice;
+  previewWidth: number | null;
+};
+
+/**
+ * Read focus mode from a URLSearchParams instance. Tolerates a few truthy
+ * spellings so handwritten URLs work; anything else is false.
+ */
+export function readFocusModeFromSearch(search: URLSearchParams): boolean {
+  const raw = search.get(TOOLBAR_PARAMS.focus);
+  if (raw === null) return false;
+  return FOCUS_MODE_TRUTHY.has(raw.toLowerCase());
+}
+
+/**
+ * Read the explicit theme from a URLSearchParams instance, or `null` if the
+ * caller should fall back to localStorage (or `system` for SSR). Unknown
+ * values resolve to `null` so a corrupted URL doesn't lock users into a bad
+ * state.
+ */
+export function readThemeFromSearch(search: URLSearchParams): ThemeChoice | null {
+  const raw = search.get(TOOLBAR_PARAMS.theme);
+  if (raw === null) return null;
+  return PREVIEW_THEMES_INTERNAL.has(raw as ThemeChoice) ? (raw as ThemeChoice) : null;
+}
+
+/**
+ * Read the preview background from a URLSearchParams instance. The default
+ * `surface` value is returned when the param is absent or unrecognized.
+ */
+export function readBackgroundFromSearch(search: URLSearchParams): BackgroundChoice {
+  const raw = search.get(TOOLBAR_PARAMS.background);
+  if (raw === null) return 'surface';
+  return PREVIEW_BACKGROUNDS_INTERNAL.has(raw as BackgroundChoice)
+    ? (raw as BackgroundChoice)
+    : 'surface';
+}
+
+/**
+ * Read a viewport width from a URLSearchParams instance. Returns `null`
+ * (full / unconstrained) for missing, non-numeric, or out-of-range values.
+ */
+export function readPreviewWidthFromSearch(search: URLSearchParams): number | null {
+  const raw = search.get(TOOLBAR_PARAMS.width);
+  if (raw === null) return null;
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isNaN(parsed)) return null;
+  if (parsed < VIEWPORT_WIDTH_MIN || parsed > VIEWPORT_WIDTH_MAX) return null;
+  return parsed;
+}
+
+/**
+ * Read the full toolbar state from a URLSearchParams instance. Convenience
+ * wrapper around the individual readers — useful for SSR seeding.
+ */
+export function readToolbarStateFromSearch(search: URLSearchParams): ToolbarSearchState {
+  return {
+    isFocusMode: readFocusModeFromSearch(search),
+    theme: readThemeFromSearch(search),
+    background: readBackgroundFromSearch(search),
+    previewWidth: readPreviewWidthFromSearch(search),
+  };
+}
+
+/**
+ * Build a canonical query string from a toolbar state snapshot, preserving
+ * any unrelated params in `search`. Default values are omitted from the
+ * output so a fresh playground URL stays clean. The leading `?` is included
+ * when non-empty.
+ */
+export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearchState): string {
+  const next = new URLSearchParams(search);
+
+  if (state.isFocusMode) {
+    next.set(TOOLBAR_PARAMS.focus, '1');
+  } else {
+    next.delete(TOOLBAR_PARAMS.focus);
+  }
+
+  // Theme defaults to "system" — omit the param entirely in that case.
+  if (state.theme === null || state.theme === 'system') {
+    next.delete(TOOLBAR_PARAMS.theme);
+  } else {
+    next.set(TOOLBAR_PARAMS.theme, state.theme);
+  }
+
+  if (state.background === 'surface') {
+    next.delete(TOOLBAR_PARAMS.background);
+  } else {
+    next.set(TOOLBAR_PARAMS.background, state.background);
+  }
+
+  if (state.previewWidth === null) {
+    next.delete(TOOLBAR_PARAMS.width);
+  } else {
+    next.set(TOOLBAR_PARAMS.width, String(state.previewWidth));
+  }
+
+  const serialized = next.toString();
+  return serialized === '' ? '' : `?${serialized}`;
+}
 
 /**
  * Message types exchanged between the shell SPA and the iframe page. The
@@ -78,7 +222,6 @@ export type PreviewMessage =
 const PREVIEW_THEMES: ReadonlySet<ThemeChoice> = new Set<ThemeChoice>(['light', 'dark', 'system']);
 const PREVIEW_BACKGROUNDS: ReadonlySet<BackgroundChoice> = new Set<BackgroundChoice>([
   'surface',
-  'inverse',
   'checker',
 ]);
 

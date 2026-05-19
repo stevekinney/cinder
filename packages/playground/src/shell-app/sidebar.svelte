@@ -21,8 +21,13 @@
   }
 </script>
 
+<!--
+  The top bar is fixed and 52px tall. The sidebar is also fixed but its
+  top edge starts below the top bar so it never overlaps the wordmark or
+  toolbar controls. The height and top values reference the same
+  --cinder-top-bar-height token that the top bar declares.
+-->
 <nav aria-label="Components">
-  <div class="nav-header">cinder</div>
   <ul>
     {#each components as name (name)}
       {@const isActive = name === currentComponent}
@@ -41,11 +46,15 @@
 
 <style>
   nav {
+    --cinder-top-bar-height: 52px;
+
+    /* stylelint-disable-next-line csstools/use-logical */
     width: 220px;
     min-width: 220px;
-    height: 100vh;
+    /* Push the sidebar below the fixed top bar */
+    height: calc(100vh - var(--cinder-top-bar-height));
     position: fixed;
-    top: 0;
+    top: var(--cinder-top-bar-height);
     left: 0;
     background: var(--cinder-surface);
     /* Playground sidebar is physically anchored at left: 0; keep the
@@ -53,25 +62,12 @@
     /* stylelint-disable-next-line csstools/use-logical */
     border-right: 1px solid var(--cinder-border);
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .nav-header {
-    padding: 16px;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--cinder-text-subtle);
-    border-bottom: 1px solid var(--cinder-border);
   }
 
   ul {
     list-style: none;
     padding: 8px 0;
     margin: 0;
-    flex: 1;
   }
 
   li {
@@ -85,7 +81,7 @@
     color: var(--cinder-text);
     border-radius: 4px;
     margin: 1px 8px;
-    transition: background 0.1s;
+    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   ul li a:hover {

@@ -2,13 +2,6 @@
   import type { BackgroundChoice, ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
 
-  type Props = {
-    onCopyLink: () => void;
-    copiedFlash: boolean;
-  };
-
-  let { onCopyLink, copiedFlash }: Props = $props();
-
   const store = getPreviewStore();
 
   const VIEWPORT_PRESETS: ReadonlyArray<{ label: string; abbrev: string; value: number | null }> = [
@@ -19,20 +12,13 @@
   ];
 
   const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; glyph: string }> = [
-    { value: 'light', label: 'Light', glyph: '☀' },
-    { value: 'system', label: 'System', glyph: '◐' },
-    { value: 'dark', label: 'Dark', glyph: '☾' },
+    { value: 'light', label: 'Light theme', glyph: '☀' },
+    { value: 'system', label: 'System theme', glyph: '◐' },
+    { value: 'dark', label: 'Dark theme', glyph: '☾' },
   ];
 
-  const BACKGROUND_OPTIONS: ReadonlyArray<{
-    value: BackgroundChoice;
-    label: string;
-    glyph: string;
-  }> = [
-    { value: 'surface', label: 'Surface', glyph: '▢' },
-    { value: 'inverse', label: 'Inverse', glyph: '■' },
-    { value: 'checker', label: 'Checker', glyph: '▦' },
-  ];
+  // Background is a binary toggle: themed surface (default) ↔ transparency
+  // grid. Light vs dark is handled by the theme switcher next to this control.
 
   // Local input state for the custom width box so a partial value (e.g. user
   // mid-typing "12") doesn't blow away the iframe size on every keystroke.
@@ -75,6 +61,10 @@
     return store.previewWidth === presetValue;
   }
 
+  // Show the custom width input only when the viewport is constrained to a
+  // numeric value. When "Full" is active there is no pixel count to display.
+  let isCustomWidthVisible = $derived(store.previewWidth !== null);
+
   let announcement = $state<string>('');
   let announceTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -103,30 +93,34 @@
     announce(`Color scheme: ${option.label}`);
   }
 
-  function selectBackground(option: (typeof BACKGROUND_OPTIONS)[number]): void {
-    store.background = option.value;
-    announce(`Preview background: ${option.label}`);
+  function toggleCheckerboard(): void {
+    const next: BackgroundChoice = store.background === 'checker' ? 'surface' : 'checker';
+    store.background = next;
+    announce(next === 'checker' ? 'Checkerboard background on' : 'Checkerboard background off');
   }
+
+  let isCheckerActive = $derived(store.background === 'checker');
 
   function toggleFocusMode(): void {
     store.isFocusMode = !store.isFocusMode;
     announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
-
-  // When the copy-link parent flips copiedFlash to true, announce success
-  // for AT users — the visual glyph swap alone is not perceivable.
-  $effect(() => {
-    if (copiedFlash) announce('Link copied to clipboard');
-  });
 </script>
 
-<header class="top-bar">
-  <div class="controls" role="group" aria-label="Preview controls">
-    <div class="breadcrumb" title={store.currentComponent}>
-      {store.currentComponent || ' '}
-    </div>
+<header class="top-bar" role="banner">
+  <!-- Wordmark — spans the sidebar column width so it aligns with the nav list -->
+  <div class="wordmark" aria-label="Cinder design system">cinder</div>
 
-    <div role="group" aria-label="Viewport width" class="cluster">
+  <div class="toolbar" role="group" aria-label="Preview controls">
+    <!-- Component breadcrumb -->
+    <span class="component-name" title={store.currentComponent} aria-label="Current component">
+      {store.currentComponent || ' '}
+    </span>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <!-- Viewport width presets -->
+    <div role="group" aria-label="Viewport width" class="control-group">
       {#each VIEWPORT_PRESETS as preset (preset.abbrev)}
         {@const active = presetIsActive(preset.value)}
         <button
@@ -135,36 +129,48 @@
           class:active
           aria-pressed={active}
           aria-label={`${preset.label}${preset.value !== null ? ` (${preset.value} pixels)` : ''}`}
-          title={preset.label}
+          title={preset.value !== null ? `${preset.label} — ${preset.value}px` : preset.label}
           onclick={() => selectViewport(preset)}
         >
-          <!-- Always-visible abbrev so the button has content at every
-               width. The friendly label shows in addition when the bar
-               has room (see the .segment-label media query). -->
-          <span class="segment-abbrev" aria-hidden="true">{preset.abbrev}</span>
-          <span class="segment-label">{preset.label}</span>
+          <!--
+            Numeric presets: show the number always; show the friendly label
+            alongside when there is room (see .segment-label media query).
+            Full preset: abbrev and label are identical — render just one span
+            to avoid "Full Full" at wide viewports.
+          -->
+          {#if preset.value !== null}
+            <span class="segment-abbrev" aria-hidden="true">{preset.abbrev}</span>
+            <span class="segment-label" aria-hidden="true">{preset.label}</span>
+          {:else}
+            <span aria-hidden="true">{preset.abbrev}</span>
+          {/if}
         </button>
       {/each}
-      <label for="viewport-width-input" class="sr-only">Custom viewport width in pixels</label>
-      <input
-        id="viewport-width-input"
-        class="width-input"
-        type="text"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        autocomplete="off"
-        spellcheck="false"
-        maxlength="4"
-        aria-label="Custom viewport width in pixels (200 to 3840)"
-        placeholder="Full"
-        bind:value={customWidthDraft}
-        onkeydown={handleCustomKeydown}
-        onblur={commitCustomWidth}
-      />
-      <span class="unit" aria-hidden="true">px</span>
+
+      {#if isCustomWidthVisible}
+        <label for="viewport-width-input" class="sr-only">Custom viewport width in pixels</label>
+        <input
+          id="viewport-width-input"
+          class="width-input"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="4"
+          aria-label="Custom viewport width in pixels (200 to 3840)"
+          bind:value={customWidthDraft}
+          onkeydown={handleCustomKeydown}
+          onblur={commitCustomWidth}
+        />
+        <span class="unit" aria-hidden="true">px</span>
+      {/if}
     </div>
 
-    <div role="group" aria-label="Color scheme" class="cluster">
+    <div class="divider" aria-hidden="true"></div>
+
+    <!-- Color scheme -->
+    <div role="group" aria-label="Color scheme" class="control-group">
       {#each THEME_OPTIONS as option (option.value)}
         {@const active = store.theme === option.value}
         <button
@@ -172,8 +178,8 @@
           class="segment icon-segment"
           class:active
           aria-pressed={active}
-          aria-label={`${option.label} theme`}
-          title={`${option.label} theme`}
+          aria-label={option.label}
+          title={option.label}
           onclick={() => selectTheme(option)}
         >
           <span aria-hidden="true">{option.glyph}</span>
@@ -181,130 +187,176 @@
       {/each}
     </div>
 
-    <div role="group" aria-label="Preview background" class="cluster">
-      {#each BACKGROUND_OPTIONS as option (option.value)}
-        {@const active = store.background === option.value}
-        <button
-          type="button"
-          class="segment icon-segment"
-          class:active
-          aria-pressed={active}
-          aria-label={`${option.label} background`}
-          title={`${option.label} background`}
-          onclick={() => selectBackground(option)}
-        >
-          <span aria-hidden="true">{option.glyph}</span>
-        </button>
-      {/each}
+    <div class="divider" aria-hidden="true"></div>
+
+    <!-- Preview background — transparency grid toggle -->
+    <div class="control-group">
+      <button
+        type="button"
+        class="segment icon-segment"
+        class:active={isCheckerActive}
+        aria-pressed={isCheckerActive}
+        aria-label="Show transparency grid"
+        title="Transparency grid"
+        onclick={toggleCheckerboard}
+      >
+        <span aria-hidden="true">▦</span>
+      </button>
     </div>
 
-    <div role="group" aria-label="Actions" class="cluster">
+    <div class="divider" aria-hidden="true"></div>
+
+    <!-- Actions -->
+    <div role="group" aria-label="Actions" class="control-group">
       <button
         type="button"
         class="segment icon-segment"
         class:active={store.isFocusMode}
         aria-pressed={store.isFocusMode}
-        aria-label="Focus mode (press Escape to exit)"
-        title="Focus mode — hide sidebar and top bar"
+        aria-label="Focus mode — hide sidebar and toolbar (press Escape to exit)"
+        title="Focus mode — hide sidebar and toolbar"
         onclick={toggleFocusMode}
       >
         <span aria-hidden="true">⛶</span>
       </button>
-      <button
-        type="button"
-        class="segment icon-segment"
-        aria-label={copiedFlash ? 'Link copied to clipboard' : 'Copy component link'}
-        title={copiedFlash ? 'Copied!' : 'Copy component link'}
-        onclick={onCopyLink}
-      >
-        <span aria-hidden="true">{copiedFlash ? '✓' : '⎘'}</span>
-      </button>
     </div>
   </div>
+
   <span class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
 </header>
 
 <style>
+  /* ============================================================
+   * TOP BAR
+   * A single full-width bar that unifies the "CINDER" wordmark
+   * (left, sidebar-column width) with the preview toolbar (right,
+   * filling the remaining space). Both regions share one height so
+   * the horizontal rule formed by the bar's bottom border runs wall
+   * to wall without a seam.
+   * ============================================================ */
+
   .top-bar {
+    /*
+     * Canonical height token used by shell.svelte for the sidebar's top
+     * offset. Keep them in sync — shell.svelte reads this custom property
+     * via var(--cinder-top-bar-height) on the <main> element.
+     */
+    --cinder-top-bar-height: 52px;
+
     box-sizing: border-box;
-    height: 48px;
-    padding: 0 12px;
+    height: var(--cinder-top-bar-height);
     background: var(--cinder-surface);
     border-bottom: 1px solid var(--cinder-border);
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    /* Span full viewport width across both the sidebar column and main column */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
   }
 
-  .controls {
+  /* ── Wordmark ── */
+  .wordmark {
+    /* Match the sidebar width exactly so the bar's left block aligns with
+       the nav list below it. Physical width keeps it in sync with sidebar's
+       physical left anchor. */
+    /* stylelint-disable-next-line csstools/use-logical */
+    width: 220px;
+    min-width: 220px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--cinder-text-subtle);
+    /* stylelint-disable-next-line csstools/use-logical */
+    border-right: 1px solid var(--cinder-border);
+    flex-shrink: 0;
+    /* Vertically center the text within the bar */
     display: flex;
     align-items: center;
-    gap: 12px;
-    width: 100%;
-    overflow-x: auto;
+    height: 100%;
+    box-sizing: border-box;
   }
 
-  .breadcrumb {
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    min-width: 0;
+    padding: 0 12px;
+    overflow-x: auto;
+    height: 100%;
+  }
+
+  .component-name {
     font-size: 13px;
     font-weight: 600;
     color: var(--cinder-text);
-    flex: 0 1 240px;
-    min-width: 0;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-inline-end: 12px;
-    border-inline-end: 1px solid var(--cinder-border);
+    flex: 0 1 200px;
+    min-width: 0;
   }
 
-  .cluster {
+  /* Vertical rule between toolbar sections */
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--cinder-border);
+    margin: 0 10px;
+    flex-shrink: 0;
+  }
+
+  /* ── Control group ── */
+  .control-group {
     display: flex;
     align-items: center;
     gap: 2px;
-    border-inline-end: 1px solid var(--cinder-border);
-    padding-inline-end: 12px;
+    flex-shrink: 0;
   }
 
-  .cluster:last-of-type {
-    border-inline-end: none;
-    padding-inline-end: 0;
-  }
-
+  /* ── Segment button ── */
   .segment {
     appearance: none;
     background: transparent;
     border: 1px solid transparent;
     color: var(--cinder-text-muted);
-    padding: 4px 10px;
+    padding: 0 10px;
     font: inherit;
     font-size: 12px;
     line-height: 1;
-    border-radius: 4px;
+    border-radius: var(--cinder-radius-sm);
     cursor: pointer;
     transition:
-      background 0.1s,
-      border-color 0.1s;
-    min-height: 28px;
+      background var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    /* Toolbar-density height — aligns with --cinder-control-height-sm (32px) */
+    height: var(--cinder-control-height-sm);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
   }
 
   .segment:hover {
     background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
   }
 
   .segment.active {
     background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
     color: var(--cinder-accent);
-    border-color: color-mix(in oklch, var(--cinder-accent), transparent 80%);
+    border-color: color-mix(in oklch, var(--cinder-accent), transparent 78%);
     font-weight: 600;
-  }
-
-  .icon-segment {
-    padding: 4px 8px;
-    min-width: 30px;
-    font-size: 14px;
   }
 
   .segment:focus-visible {
@@ -312,18 +364,44 @@
     outline-offset: 1px;
   }
 
+  /* Icon-only segments are square */
+  .icon-segment {
+    padding: 0 8px;
+    min-width: var(--cinder-control-height-sm);
+    font-size: 14px;
+  }
+
+  /* ── Viewport abbrev / label ── */
+  /* The abbrev (number) is always shown. The friendly label appears
+     alongside it when there is horizontal room. */
+  .segment-abbrev {
+    display: inline-block;
+  }
+
+  .segment-label {
+    display: inline-block;
+  }
+
+  @media (max-width: 1279px) {
+    .segment-label {
+      display: none;
+    }
+  }
+
+  /* ── Custom width input ── */
   .width-input {
-    width: 64px;
-    height: 28px;
-    margin-inline-start: 6px;
+    width: 52px;
+    height: var(--cinder-control-height-sm);
+    margin-inline-start: 4px;
     border: 1px solid var(--cinder-border-strong);
-    border-radius: 4px;
+    border-radius: var(--cinder-radius-sm);
     padding: 0 6px;
     font: inherit;
     font-size: 12px;
     text-align: right;
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-inset);
     color: var(--cinder-text);
+    box-sizing: border-box;
   }
 
   .width-input:focus-visible {
@@ -335,9 +413,10 @@
   .unit {
     font-size: 11px;
     color: var(--cinder-text-subtle);
-    padding-inline-start: 4px;
+    padding-inline-start: 3px;
   }
 
+  /* ── Accessibility ── */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -348,26 +427,5 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-  }
-
-  /* Viewport preset buttons render an abbrev (numeric width or "Full") that
-     is ALWAYS visible, plus a friendly label that appears only when there's
-     room. The aria-label on the button carries the full accessible name. */
-  .segment-abbrev {
-    display: inline-block;
-  }
-
-  .segment-label {
-    display: inline-block;
-    margin-inline-start: 4px;
-  }
-
-  @media (max-width: 1279px) {
-    .segment-label {
-      display: none;
-    }
-    .segment-abbrev {
-      margin-inline-start: 0;
-    }
   }
 </style>

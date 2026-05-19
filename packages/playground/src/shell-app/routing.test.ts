@@ -13,9 +13,22 @@ import { describe, expect, it } from 'bun:test';
 import {
   buildIframeSrc,
   buildShellHref,
+  buildToolbarSearch,
   createPreviewMessage,
   parseComponentFromPath,
+  readBackgroundFromSearch,
+  readFocusModeFromSearch,
+  readPreviewWidthFromSearch,
+  readThemeFromSearch,
+  readToolbarStateFromSearch,
 } from './routing.ts';
+
+const DEFAULT_TOOLBAR_STATE = {
+  isFocusMode: false,
+  theme: null,
+  background: 'surface' as const,
+  previewWidth: null,
+};
 
 describe('parseComponentFromPath', () => {
   it('returns the component name for a valid /c/:name path', () => {
@@ -109,10 +122,6 @@ describe('createPreviewMessage', () => {
       type: 'cinder:set-background',
       value: 'surface',
     });
-    expect(createPreviewMessage('cinder:set-background', 'inverse')).toEqual({
-      type: 'cinder:set-background',
-      value: 'inverse',
-    });
     expect(createPreviewMessage('cinder:set-background', 'checker')).toEqual({
       type: 'cinder:set-background',
       value: 'checker',
@@ -127,5 +136,144 @@ describe('createPreviewMessage', () => {
   it('returns null for an unknown background value', () => {
     // @ts-expect-error — exercising runtime validation
     expect(createPreviewMessage('cinder:set-background', 'rainbow')).toBeNull();
+  });
+});
+
+describe('readFocusModeFromSearch', () => {
+  it('returns false when the focus param is absent', () => {
+    expect(readFocusModeFromSearch(new URLSearchParams(''))).toBe(false);
+  });
+
+  it('returns true for the canonical "1" value', () => {
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=1'))).toBe(true);
+  });
+
+  it('accepts a handful of truthy spellings', () => {
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=true'))).toBe(true);
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=TRUE'))).toBe(true);
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=yes'))).toBe(true);
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=on'))).toBe(true);
+  });
+
+  it('returns false for arbitrary values that are not in the truthy set', () => {
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=0'))).toBe(false);
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=false'))).toBe(false);
+    expect(readFocusModeFromSearch(new URLSearchParams('focus=banana'))).toBe(false);
+  });
+});
+
+describe('readThemeFromSearch', () => {
+  it('returns null when the theme param is absent', () => {
+    expect(readThemeFromSearch(new URLSearchParams(''))).toBeNull();
+  });
+
+  it('returns the explicit theme for known values', () => {
+    expect(readThemeFromSearch(new URLSearchParams('theme=light'))).toBe('light');
+    expect(readThemeFromSearch(new URLSearchParams('theme=dark'))).toBe('dark');
+    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBe('system');
+  });
+
+  it('returns null for an unknown value', () => {
+    expect(readThemeFromSearch(new URLSearchParams('theme=midnight'))).toBeNull();
+  });
+});
+
+describe('readBackgroundFromSearch', () => {
+  it('defaults to "surface" when the param is absent', () => {
+    expect(readBackgroundFromSearch(new URLSearchParams(''))).toBe('surface');
+  });
+
+  it('returns "checker" when explicitly set', () => {
+    expect(readBackgroundFromSearch(new URLSearchParams('bg=checker'))).toBe('checker');
+  });
+
+  it('falls back to "surface" for unknown values', () => {
+    expect(readBackgroundFromSearch(new URLSearchParams('bg=rainbow'))).toBe('surface');
+  });
+});
+
+describe('readPreviewWidthFromSearch', () => {
+  it('returns null when the width param is absent', () => {
+    expect(readPreviewWidthFromSearch(new URLSearchParams(''))).toBeNull();
+  });
+
+  it('returns a numeric width within range', () => {
+    expect(readPreviewWidthFromSearch(new URLSearchParams('w=375'))).toBe(375);
+    expect(readPreviewWidthFromSearch(new URLSearchParams('w=1280'))).toBe(1280);
+  });
+
+  it('returns null for out-of-range values', () => {
+    expect(readPreviewWidthFromSearch(new URLSearchParams('w=10'))).toBeNull();
+    expect(readPreviewWidthFromSearch(new URLSearchParams('w=99999'))).toBeNull();
+  });
+
+  it('returns null for non-numeric values', () => {
+    expect(readPreviewWidthFromSearch(new URLSearchParams('w=banana'))).toBeNull();
+  });
+});
+
+describe('readToolbarStateFromSearch', () => {
+  it('returns defaults when every param is absent', () => {
+    expect(readToolbarStateFromSearch(new URLSearchParams(''))).toEqual(DEFAULT_TOOLBAR_STATE);
+  });
+
+  it('parses a fully-populated query string', () => {
+    expect(
+      readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768')),
+    ).toEqual({
+      isFocusMode: true,
+      theme: 'dark',
+      background: 'checker',
+      previewWidth: 768,
+    });
+  });
+});
+
+describe('buildToolbarSearch', () => {
+  it('returns an empty string when every value is at its default', () => {
+    expect(buildToolbarSearch(new URLSearchParams(''), DEFAULT_TOOLBAR_STATE)).toBe('');
+  });
+
+  it('omits theme when it is "system"', () => {
+    expect(
+      buildToolbarSearch(new URLSearchParams(''), {
+        ...DEFAULT_TOOLBAR_STATE,
+        theme: 'system',
+      }),
+    ).toBe('');
+  });
+
+  it('emits every non-default value with compact keys', () => {
+    expect(
+      buildToolbarSearch(new URLSearchParams(''), {
+        isFocusMode: true,
+        theme: 'dark',
+        background: 'checker',
+        previewWidth: 768,
+      }),
+    ).toBe('?focus=1&theme=dark&bg=checker&w=768');
+  });
+
+  it('preserves unrelated params', () => {
+    expect(
+      buildToolbarSearch(new URLSearchParams('utm_source=docs'), {
+        ...DEFAULT_TOOLBAR_STATE,
+        theme: 'dark',
+      }),
+    ).toBe('?utm_source=docs&theme=dark');
+  });
+
+  it('removes a param when its value resets to the default', () => {
+    expect(
+      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768'), {
+        ...DEFAULT_TOOLBAR_STATE,
+      }),
+    ).toBe('');
+  });
+
+  it('does not mutate the input URLSearchParams', () => {
+    const input = new URLSearchParams('focus=1');
+    buildToolbarSearch(input, DEFAULT_TOOLBAR_STATE);
+    expect(input.get('focus')).toBe('1');
   });
 });
