@@ -36,6 +36,7 @@ export type { ChatProps } from './components/chat.svelte';
 
 export { default as Chip } from './components/chip.svelte';
 export type {
+  ChipDensity,
   ChipDisplayProps,
   ChipMode,
   ChipProps,
@@ -98,6 +99,7 @@ export type {
 
 export { default as DiffStatistics } from './components/diff-statistics.svelte';
 export type {
+  DiffStatisticsDensity,
   DiffStatisticsProps,
   DiffStatisticsVariant,
 } from './components/diff-statistics.svelte';
