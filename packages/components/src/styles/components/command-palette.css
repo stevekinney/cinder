@@ -42,7 +42,7 @@
 .cinder-command-palette__panel {
   display: flex;
   flex-direction: column;
-  background: var(--cinder-surface);
+  background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-lg);
   overflow: hidden;
@@ -60,17 +60,15 @@
   display: flex;
   align-items: center;
   gap: var(--cinder-space-3);
-  padding-inline: var(--cinder-space-4);
+  min-block-size: 4.5rem;
+  padding-inline: var(--cinder-space-5);
   border-block-end: 1px solid var(--cinder-border);
   flex-shrink: 0;
 }
 
-/* Focus ring on the search row when the input is focused. The input itself
-   has outline:none; the ring is provided here so it stays inside the panel
-   border rather than overflowing the rounded corners. */
 .cinder-command-palette__search:focus-within {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: -2px;
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
 }
 
 @media (forced-colors: active) {
@@ -80,8 +78,8 @@
 }
 
 .cinder-command-palette__search-icon {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
   flex-shrink: 0;
   color: var(--cinder-text-muted);
 }
@@ -92,9 +90,8 @@
   background: transparent;
   color: var(--cinder-text);
   font-size: var(--cinder-text-base);
-  line-height: 1;
+  line-height: var(--cinder-leading-normal);
   padding-block: var(--cinder-space-4);
-  /* Focus ring is provided by the parent .cinder-command-palette__search:focus-within */
   outline: none;
 }
 
@@ -109,7 +106,7 @@
 .cinder-command-palette__listbox {
   list-style: none;
   margin: 0;
-  padding: var(--cinder-space-1);
+  padding: var(--cinder-space-2) 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   flex: 1;
@@ -152,29 +149,22 @@
   align-items: center;
   gap: var(--cinder-space-3);
   overflow: hidden;
-  padding: var(--cinder-space-2) var(--cinder-space-4);
+  min-block-size: 2.75rem;
+  padding: var(--cinder-space-2-5) var(--cinder-space-5);
   cursor: pointer;
-  border-radius: var(--cinder-radius-md);
-  margin-inline: var(--cinder-space-1);
-  font-size: var(--cinder-text-sm);
+  border-radius: 0;
+  margin: 0;
+  font-size: var(--cinder-text-base);
   color: var(--cinder-text);
   user-select: none;
-  transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
 .cinder-command-item[data-cinder-active] {
-  background: color-mix(in oklch, var(--cinder-accent) 15%, transparent);
-  color: var(--cinder-text);
-}
-
-.cinder-command-item[data-cinder-active]::before {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 3px;
-  border-radius: var(--cinder-radius-md) 0 0 var(--cinder-radius-md);
   background: var(--cinder-accent);
-  content: '';
+  color: var(--cinder-accent-contrast);
 }
 
 @media (forced-colors: active) {
@@ -196,20 +186,44 @@
 .cinder-command-item__leading {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--cinder-radius-md);
+  background: color-mix(in oklch, currentColor 10%, transparent);
   color: var(--cinder-text-muted);
 }
 
 .cinder-command-item[data-cinder-active] .cinder-command-item__leading {
-  color: var(--cinder-accent, currentColor);
+  color: currentColor;
+}
+
+.cinder-command-item__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-0-5);
 }
 
 .cinder-command-item__label {
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cinder-command-item__description {
+  overflow: hidden;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cinder-command-item[data-cinder-active] .cinder-command-item__description {
+  color: currentColor;
 }
 
 .cinder-command-item__trailing {
@@ -219,6 +233,10 @@
   margin-inline-start: auto;
   color: var(--cinder-text-muted);
   font-size: var(--cinder-text-xs);
+}
+
+.cinder-command-item[data-cinder-active] .cinder-command-item__trailing {
+  color: currentColor;
 }
 
 /* ----------------------------------------

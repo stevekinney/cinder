@@ -12,15 +12,16 @@
   align-items: center;
   justify-content: center;
   gap: var(--cinder-space-1);
-  min-height: 2rem;
-  padding-block: var(--cinder-space-1-5);
-  padding-inline: var(--cinder-space-3);
+  min-block-size: var(--cinder-button-height-md);
+  padding-block: var(--cinder-button-padding-y-md);
+  padding-inline: var(--cinder-button-padding-x-md);
   border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
+  border-radius: var(--cinder-button-radius-md);
   background: var(--cinder-surface);
   color: var(--cinder-text);
   font: inherit;
-  font-size: var(--cinder-text-sm);
+  font-size: var(--cinder-button-font-size-md);
+  line-height: 1;
   cursor: pointer;
   transition:
     background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -51,6 +52,18 @@
 
 .cinder-dropdown-trigger[aria-expanded='true'] {
   background: var(--cinder-surface-pressed);
+}
+
+.cinder-dropdown-trigger__caret {
+  display: inline-block;
+  flex: none;
+  inline-size: 0.5em;
+  block-size: 0.5em;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  opacity: 0.65;
+  rotate: 45deg;
+  translate: 0 -0.125em;
 }
 
 /* ----------------------------------------

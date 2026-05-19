@@ -34,6 +34,8 @@ const { default: CommandPalette } = await import('./command-palette.svelte');
 const { default: CommandItem } = await import('./command-item.svelte');
 const { default: CommandPaletteFixture } =
   await import('../test/fixtures/command-palette-fixture.svelte');
+const { default: CommandPaletteRichItemFixture } =
+  await import('../test/fixtures/command-palette-rich-item-fixture.svelte');
 
 // ── Snippet helpers ────────────────────────────────────────────────────────
 
@@ -473,6 +475,39 @@ describe('CommandPalette — keyboard routing with registered items', () => {
 
     expect(selectedValue).toBe('gamma');
   });
+
+  test('active registered item is scrolled into view for keyboard navigation', async () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const calls: unknown[] = [];
+    Element.prototype.scrollIntoView = function (options?: ScrollIntoViewOptions | boolean) {
+      calls.push({ element: this, options });
+    };
+
+    try {
+      const { container } = render(CommandPaletteFixture);
+      await settleCommandPalette();
+
+      const input = getInput(container);
+      await fireEvent.keyDown(input, { key: 'ArrowDown' });
+      await tick();
+
+      expect(calls.length).toBeGreaterThan(0);
+      const lastCall = calls.at(-1) as { element: Element; options: ScrollIntoViewOptions };
+      expect(lastCall.options).toEqual({ block: 'nearest' });
+      expect((lastCall.element as HTMLElement).getAttribute('aria-selected')).toBe('true');
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+});
+
+describe('CommandItem — rich row content', () => {
+  test('renders optional description text inside the option', () => {
+    const { container } = render(CommandPaletteRichItemFixture);
+    expect(container.querySelector('.cinder-command-item__description')?.textContent).toContain(
+      'Add freeform text',
+    );
+  });
 });
 
 // ── Empty state timing ────────────────────────────────────────────────────
@@ -579,5 +614,26 @@ describe('CommandPalette — class prop', () => {
     });
     const panel = container.querySelector('.cinder-command-palette__panel');
     expect(panel?.classList.contains('my-custom-palette')).toBe(true);
+  });
+});
+
+// ── Visual contract ───────────────────────────────────────────────────────
+
+describe('CommandPalette — visual contract', () => {
+  test('command palette CSS uses visible search focus and full-width active item highlight', async () => {
+    const css = await Bun.file(
+      new URL('../styles/components/command-palette.css', import.meta.url),
+    ).text();
+
+    expect(css).toMatch(
+      /\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?box-shadow:\s*inset 0 0 0 var\(--cinder-ring-width\) var\(--cinder-ring-color\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-command-palette__listbox\s*\{[\s\S]*?padding:\s*var\(--cinder-space-2\)\s*0;/,
+    );
+    expect(css).toMatch(/\.cinder-command-item\s*\{[\s\S]*?margin:\s*0;/);
+    expect(css).toMatch(
+      /\.cinder-command-item\[data-cinder-active\]\s*\{[\s\S]*?background:\s*var\(--cinder-accent\);[\s\S]*?color:\s*var\(--cinder-accent-contrast\);/,
+    );
   });
 });

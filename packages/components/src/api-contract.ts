@@ -163,7 +163,25 @@ export const CONTRACT: Record<string, ComponentContract> = {
       {
         kind: 'intersection',
         html_attrs: 'HTMLAttributes',
-        props: { class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) } },
+        props: {
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
+          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+        },
+        snippets: { children: s0(false), footer: s0(true) },
+      },
+      {
+        kind: 'intersection',
+        html_attrs: 'HTMLAttributes',
+        props: {
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
+          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+        },
         snippets: { header: s0(false), children: s0(false), footer: s0(true) },
       },
       {
@@ -173,6 +191,10 @@ export const CONTRACT: Record<string, ComponentContract> = {
           title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
           description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
+          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
         },
         snippets: { children: s0(false), footer: s0(true) },
       },

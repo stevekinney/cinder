@@ -27,7 +27,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { ChevronDown, Check } from '../../icons/index.ts';
+  import { Check } from '../../icons/index.ts';
   import Dropdown from '../../dropdown.svelte';
   import DropdownTrigger from '../../dropdown-trigger.svelte';
   import DropdownMenu from '../../dropdown-menu.svelte';
@@ -59,7 +59,6 @@
       <currentOption.icon class="icon-sm" />
     {/if}
     <span class="toolbar-dropdown-label">{currentOption?.label ?? 'Paragraph'}</span>
-    <ChevronDown class="icon-xs toolbar-dropdown-chevron" />
   </DropdownTrigger>
   <DropdownMenu>
     {#each options as option (option.type)}
@@ -117,11 +116,6 @@
   .toolbar-dropdown-label {
     min-width: 4rem;
     text-align: left;
-  }
-
-  :global(.toolbar-dropdown-chevron) {
-    opacity: 0.6;
-    flex-shrink: 0;
   }
 
   .dropdown-item-label {

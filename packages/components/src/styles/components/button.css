@@ -150,8 +150,8 @@
 
 /* ----------------------------------------
  * Icon-only modifier
- * xs and sm are below WCAG AAA (44px) and are intended for dense UI contexts only.
- * Use md or larger for primary touch surfaces. See button.a11y.md for full rationale.
+ * Button sizes are compact visual sizes, not guaranteed touch targets.
+ * See button.a11y.md for touch-target guidance.
  * ---------------------------------------- */
 
 .cinder-button[data-cinder-icon-only] {

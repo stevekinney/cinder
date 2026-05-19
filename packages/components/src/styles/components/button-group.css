@@ -4,6 +4,7 @@
 
 .cinder-button-group {
   display: inline-flex;
+  align-items: stretch;
   /* New stacking context keeps focus-ring z-index elevation local to this
      group — a focused child in one group never paints over a sibling group. */
   isolation: isolate;
@@ -21,6 +22,18 @@
 .cinder-button-group > [data-cinder-button-group-item] {
   position: relative;
   z-index: 0;
+}
+
+/* Split buttons use Dropdown as the direct group participant, with the actual
+   trigger button nested inside it. Make the wrapper behave like a button-shaped
+   flex item so the trigger fills the grouped control instead of floating inside
+   a stretched inline-block. */
+.cinder-button-group > .cinder-dropdown[data-cinder-button-group-item] {
+  display: inline-flex;
+}
+
+.cinder-button-group > .cinder-dropdown[data-cinder-button-group-item] > .cinder-dropdown-trigger {
+  min-block-size: 100%;
 }
 
 /* Elevate the hovered/focused participant so its focus ring paints over

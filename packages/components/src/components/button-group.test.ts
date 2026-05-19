@@ -219,4 +219,18 @@ describe('ButtonGroup', () => {
 
     expect(newButton.hasAttribute('data-cinder-button-group-item')).toBe(true);
   });
+
+  test('button group styles stretch dropdown participants for split-button composition', async () => {
+    const css = await Bun.file(
+      new URL('../styles/components/button-group.css', import.meta.url),
+    ).text();
+
+    expect(css).toMatch(/\.cinder-button-group\s*\{[\s\S]*?align-items:\s*stretch;/);
+    expect(css).toMatch(
+      /\.cinder-button-group\s*>\s*\.cinder-dropdown\[data-cinder-button-group-item\]\s*\{[\s\S]*?display:\s*inline-flex;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-button-group[\s\S]*?>\s*\.cinder-dropdown\[data-cinder-button-group-item\][\s\S]*?>\s*\.cinder-dropdown-trigger\s*\{[\s\S]*?min-block-size:\s*100%;/,
+    );
+  });
 });

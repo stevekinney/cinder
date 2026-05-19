@@ -8,6 +8,8 @@
     onselect: () => void;
     /** When true, the item is skipped by arrow keys and cannot be activated. */
     disabled?: boolean;
+    /** Optional secondary text shown below the main label. */
+    description?: string;
     /** Leading content (icon, avatar). Rendered with aria-hidden. */
     leading?: Snippet;
     /** Trailing content (kbd hint, badge). Rendered with aria-hidden. */
@@ -36,6 +38,7 @@
     value,
     onselect,
     disabled = false,
+    description,
     leading,
     trailing,
     children,
@@ -80,6 +83,13 @@
       onselect();
     }
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (disabled) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onselect();
+  }
 </script>
 
 <li
@@ -92,6 +102,7 @@
   data-cinder-disabled={disabled || undefined}
   onpointerenter={handlePointerEnter}
   onpointerdown={handlePointerDown}
+  onkeydown={handleKeydown}
   onclick={handleClick}
 >
   {#if leading}
@@ -100,8 +111,13 @@
     </span>
   {/if}
 
-  <span class="cinder-command-item__label">
-    {@render children()}
+  <span class="cinder-command-item__content">
+    <span class="cinder-command-item__label">
+      {@render children()}
+    </span>
+    {#if description}
+      <span class="cinder-command-item__description">{description}</span>
+    {/if}
   </span>
 
   {#if trailing}

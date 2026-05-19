@@ -63,6 +63,17 @@
   border-color: var(--cinder-border-strong);
 }
 
+.cinder-input[data-cinder-native-date] {
+  cursor: pointer;
+}
+
+/* The browser still owns the native calendar. We hide the inconsistent WebKit
+   indicator while keeping its hit area inside the input, aligned under the
+   design-system calendar glyph. */
+.cinder-input[data-cinder-native-date]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
 /* Focus ring — same pattern as Button so the system is visually consistent. */
 .cinder-input:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
@@ -139,6 +150,7 @@
 .cinder-input-group {
   display: flex;
   align-items: stretch;
+  position: relative;
   inline-size: 100%;
   background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border);
@@ -165,6 +177,10 @@
 }
 .cinder-input-group[data-trailing] > .cinder-input {
   padding-inline-end: var(--cinder-space-2);
+}
+
+.cinder-input-group[data-native-date] > .cinder-input {
+  padding-inline-end: var(--cinder-space-10);
 }
 
 /* Suppress the inner input's focus ring when grouped — the group owns the ring. */
@@ -238,4 +254,14 @@
 .cinder-input-group__trailing:not([aria-hidden]) {
   padding-inline: var(--cinder-space-1);
   overflow: visible;
+}
+
+.cinder-input-group__date-icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--cinder-space-3);
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0;
+  pointer-events: none;
 }

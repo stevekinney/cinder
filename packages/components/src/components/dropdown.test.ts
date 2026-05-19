@@ -17,6 +17,8 @@ const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Dropdown } = await import('./dropdown.svelte');
 const { default: DropdownCompoundFixture } =
   await import('../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: DropdownTriggerNoCaretFixture } =
+  await import('../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open Menu</button>`,
@@ -157,6 +159,20 @@ describe('Dropdown', () => {
     expect(trigger?.getAttribute('aria-haspopup')).toBe('menu');
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
     expect(trigger?.hasAttribute('popovertarget')).toBe(false);
+  });
+
+  test('compound trigger renders a trailing caret by default', () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    const caret = container.querySelector('.trigger .cinder-dropdown-trigger__caret');
+    expect(caret).not.toBeNull();
+    expect(caret?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('compound trigger can suppress the automatic caret', () => {
+    const { container } = render(DropdownTriggerNoCaretFixture);
+
+    expect(container.querySelector('.trigger .cinder-dropdown-trigger__caret')).toBeNull();
   });
 
   test('compound menu renders labels, separators, and items', async () => {

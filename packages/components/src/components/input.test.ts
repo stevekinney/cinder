@@ -156,6 +156,32 @@ describe('Input rendering', () => {
     expect(input?.getAttribute('type')).toBe('password');
   });
 
+  test('date type uses the native date input and renders the calendar affordance', () => {
+    const { container } = render(Input, {
+      props: { id: 'departure', value: '', type: 'date', label: 'Departure date' },
+    });
+    const input = container.querySelector('#departure');
+    expect(input?.getAttribute('type')).toBe('date');
+    expect(input?.hasAttribute('data-cinder-native-date')).toBe(true);
+    expect(container.querySelector('.cinder-input-group')?.hasAttribute('data-native-date')).toBe(
+      true,
+    );
+    expect(container.querySelector('.cinder-input-group__date-icon')).not.toBeNull();
+  });
+
+  test('date type does not replace a custom trailing addon', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'custom-date',
+        value: '',
+        type: 'date',
+        trailing: textSnippet('UTC'),
+      },
+    });
+    expect(container.querySelector('.cinder-input-group__date-icon')).toBeNull();
+    expect(container.querySelector('.cinder-input-group__trailing')?.textContent).toContain('UTC');
+  });
+
   test('rest props are spread onto the input element', () => {
     const { container } = render(Input, {
       props: { id: 'rest', value: '', 'data-testid': 'my-input' },

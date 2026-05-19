@@ -47,6 +47,7 @@
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
+    data-cinder-navigation-item
     data-variant={variant}
     onclick={handleClick}
   >
@@ -59,6 +60,7 @@
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
     data-active={active}
+    data-cinder-navigation-item
     data-variant={variant}
     onclick={handleClick}
   >

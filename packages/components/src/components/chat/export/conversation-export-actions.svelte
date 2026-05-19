@@ -126,7 +126,7 @@
   </div>
 
   <Dropdown {id}>
-    <DropdownTrigger class="export-trigger" aria-label="Export conversation">
+    <DropdownTrigger class="export-trigger" aria-label="Export conversation" showCaret={false}>
       <Copy class="icon-sm" />
     </DropdownTrigger>
     <DropdownMenu>

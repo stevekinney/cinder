@@ -113,10 +113,6 @@
       "svelte": "./src/components/data-list.svelte",
       "types": "./dist/components/data-list.svelte.d.ts"
     },
-    "./date-picker": {
-      "svelte": "./src/components/date-picker.svelte",
-      "types": "./dist/components/date-picker.svelte.d.ts"
-    },
     "./description-list": {
       "svelte": "./src/components/description-list.svelte",
       "types": "./dist/components/description-list.svelte.d.ts"

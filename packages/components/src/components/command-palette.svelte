@@ -244,6 +244,11 @@
     query = target.value;
   }
 
+  $effect(() => {
+    if (activeItemId === null) return;
+    document.getElementById(activeItemId)?.scrollIntoView({ block: 'nearest' });
+  });
+
   // ── Context ───────────────────────────────────────────────────────────────
   const context: CommandPaletteContext = {
     get listboxId() {

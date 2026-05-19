@@ -27,6 +27,18 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('Card', () => {
+  test('renders a basic card without a generated header', () => {
+    const { container } = render(Card, {
+      props: {
+        children: textSnippet('basic-card-body'),
+      },
+    });
+    const root = container.querySelector('.cinder-card');
+    expect(root).not.toBeNull();
+    expect(container.querySelector('.cinder-card__header')).toBeNull();
+    expect(container.querySelector('.cinder-card__body')?.textContent).toContain('basic-card-body');
+  });
+
   test('renders with title + description arm', () => {
     const { container } = render(Card, {
       props: {
@@ -136,5 +148,47 @@ describe('Card', () => {
       } as any,
     });
     expect(container.querySelector('.cinder-card__header')).toBeNull();
+  });
+
+  test('variant prop is reflected on the root element', () => {
+    const { container } = render(Card, {
+      props: {
+        variant: 'well',
+        children: emptySnippet,
+      },
+    });
+    expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-variant')).toBe(
+      'well',
+    );
+  });
+
+  test('bodyTone and footerTone props are reflected on their regions', () => {
+    const { container } = render(Card, {
+      props: {
+        children: emptySnippet,
+        bodyTone: 'muted',
+        footerTone: 'muted',
+        footer: textSnippet('footer-content'),
+      },
+    });
+
+    expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-tone')).toBe(
+      'muted',
+    );
+    expect(container.querySelector('.cinder-card__footer')?.getAttribute('data-cinder-tone')).toBe(
+      'muted',
+    );
+  });
+
+  test('edgeToEdgeOnMobile prop is reflected only when enabled', () => {
+    const { container } = render(Card, {
+      props: {
+        children: emptySnippet,
+        edgeToEdgeOnMobile: true,
+      },
+    });
+    expect(
+      container.querySelector('.cinder-card')?.hasAttribute('data-cinder-edge-to-edge-mobile'),
+    ).toBe(true);
   });
 });

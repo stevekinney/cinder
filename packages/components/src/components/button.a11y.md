@@ -25,13 +25,15 @@ When `iconOnly={true}`, `children` is also wrapped in an `aria-hidden` span and 
 
 ## Touch targets
 
-- `md` (default): 44px minimum height—meets [WCAG 2.5.5 AAA touch-target](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html) requirement out of the box.
-- `lg` (48px) and `xl` (52px): exceed 44px.
-- `sm` (32px) and `xs` (24px): **intentionally below AAA**. Use these sizes only in dense UI contexts (toolbars, compact tables, developer tools) where space is at a premium and the surrounding context makes smaller targets acceptable. Do not use `sm` or `xs` as the primary action button for a touch-first surface.
+Button sizes intentionally follow a compact visual ladder:
 
-### Migration note: `md` height change
+- `xs`: 24px
+- `sm`: 28px
+- `md` (default): 32px
+- `lg`: 36px
+- `xl`: 40px
 
-The `md` size bumped from 36px to 44px to meet AAA sizing out of the box. Fixed-height toolbar layouts that depended on the 36px height will grow by 8px. Switch to `size="sm"` (32px) to restore the previous density if needed.
+These are visual component sizes, not guaranteed touch-target sizes. Use spacing around the button, a larger containing row, or an app-level hit target pattern when a touch-first surface needs to satisfy [WCAG 2.5.5 AAA target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html).
 
 ### Follow-up
 

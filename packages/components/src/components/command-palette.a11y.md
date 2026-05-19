@@ -44,6 +44,8 @@ Invariants asserted in tests:
 | `Tab` / `Shift+Tab` | Native `<dialog>` focus trap (browser-level). Focus cycles through interactive elements in the panel and footer. |
 | Typing              | Updates `query` (bindable). Items snippet re-renders with the new query.                                         |
 
+The active descendant is scrolled with `scrollIntoView({ block: 'nearest' })` whenever keyboard or pointer movement changes it, so long result sets remain navigable without moving DOM focus out of the search input.
+
 ## Mouse / Pointer Parity
 
 - `pointerenter` on a non-disabled item moves the active item id (parity with arrow keys).

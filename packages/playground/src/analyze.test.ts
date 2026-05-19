@@ -132,6 +132,15 @@ describe('analyzeComponent — input.svelte', () => {
     expect(disabled?.control.kind).toBe('boolean');
   });
 
+  it('includes date in the type prop options', async () => {
+    const manifest = await analyzeComponent(componentPath('input'));
+    const type = manifest.props.find((p) => p.name === 'type');
+    expect(type?.control.kind).toBe('select');
+    if (type?.control.kind === 'select') {
+      expect(type.control.options).toContain('date');
+    }
+  });
+
   it('does not include class prop', async () => {
     const manifest = await analyzeComponent(componentPath('input'));
     expect(manifest.props.find((p) => p.name === 'class')).toBeUndefined();
@@ -198,6 +207,11 @@ describe('analyzeAll', () => {
     expect(button?.name).toBe('Button');
   });
 
+  it('date-picker does not appear in the results', async () => {
+    const manifests = await analyzeAll(COMPONENTS_DIR);
+    expect(manifests.map((manifest) => manifest.kebabName)).not.toContain('date-picker');
+  });
+
   it('excludes files from _internal/', async () => {
     const manifests = await analyzeAll(COMPONENTS_DIR);
     for (const manifest of manifests) {
@@ -226,7 +240,7 @@ describe('analyzeComponent — navigation-item.svelte (non-destructuring $props)
 });
 
 // ---------------------------------------------------------------------------
-// Card — discriminated union Props (CardWithHeader | CardWithTitle)
+// Card — discriminated union Props (CardPlain | CardWithHeader | CardWithTitle)
 // ---------------------------------------------------------------------------
 
 describe('analyzeComponent — card.svelte (discriminated union Props)', () => {
@@ -256,5 +270,20 @@ describe('analyzeComponent — card.svelte (discriminated union Props)', () => {
     if (title !== undefined) {
       expect(title.optional).toBe(true);
     }
+  });
+
+  it('exposes layout controls for variant, tones, and mobile edge-to-edge mode', async () => {
+    const manifest = await analyzeComponent(componentPath('card'));
+    const variant = manifest.props.find((p) => p.name === 'variant');
+    const bodyTone = manifest.props.find((p) => p.name === 'bodyTone');
+    const footerTone = manifest.props.find((p) => p.name === 'footerTone');
+    const edgeToEdgeOnMobile = manifest.props.find((p) => p.name === 'edgeToEdgeOnMobile');
+
+    expect(variant?.control).toEqual({ kind: 'select', options: ['card', 'well'] });
+    expect(variant?.defaultValue).toBe('card');
+    expect(bodyTone?.control).toEqual({ kind: 'select', options: ['default', 'muted'] });
+    expect(footerTone?.control).toEqual({ kind: 'select', options: ['default', 'muted'] });
+    expect(edgeToEdgeOnMobile?.control.kind).toBe('boolean');
+    expect(edgeToEdgeOnMobile?.defaultValue).toBe(false);
   });
 });
