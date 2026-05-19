@@ -32,7 +32,7 @@
 
 <script lang="ts">
   import { cn } from '../utilities/class-names.ts';
-  import VisuallyHidden from './visually-hidden.svelte';
+  import VisuallyHidden from './visually-hidden/visually-hidden.svelte';
 
   let {
     src,

@@ -28,7 +28,7 @@
    */
 
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '../badge.svelte';
+  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import { ChevronDown, ChevronUp, FileText } from '../icons/index.ts';
 

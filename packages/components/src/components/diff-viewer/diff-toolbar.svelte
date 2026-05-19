@@ -38,11 +38,11 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '../badge.svelte';
+  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import Kbd from '../kbd.svelte';
+  import Kbd from '../kbd/kbd.svelte';
   import SegmentedControl from '../segmented-control.svelte';
-  import Spinner from '../spinner.svelte';
+  import Spinner from '../spinner/spinner.svelte';
   import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw } from '../icons/index.ts';
 
   let {

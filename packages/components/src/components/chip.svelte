@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
 
-  import type { BadgeVariant } from './badge.svelte';
+  import type { BadgeVariant } from './badge/badge.types.ts';
 
   export type ChipVariant = BadgeVariant;
   export type ChipSize = 'sm' | 'md';

@@ -74,7 +74,7 @@
 
   import { classNames } from '../utilities/class-names.ts';
   import Button from './button/button.svelte';
-  import Surface from './surface.svelte';
+  import Surface from './surface/surface.svelte';
   import { RotateCcw } from './icons/index.ts';
   import { computeLineDiff, getDiffStats, groupIntoHunks } from '@cinder/markdown/diff/line-diff';
   import { createDiffController } from './diff-viewer/diff-controller.svelte';

@@ -1,0 +1,24 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    size: {
+      enum: ['sm', 'md'],
+      description: 'Keyboard key size.',
+      default: 'md',
+    },
+    label: {
+      type: 'string',
+      description: 'Key label content.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-kbd`.',
+    },
+  },
+  additionalProperties: false,
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

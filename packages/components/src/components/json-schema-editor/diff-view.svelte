@@ -9,7 +9,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Alert from '../alert.svelte';
+  import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import DiffViewer from '../diff-viewer.svelte';
   import EmptyState from '../empty-state.svelte';

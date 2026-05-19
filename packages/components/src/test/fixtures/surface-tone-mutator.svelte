@@ -14,7 +14,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  import Surface from '../../components/surface.svelte';
+  import Surface from '../../components/surface/surface.svelte';
   import SurfaceContextProbe from './surface-context-probe.svelte';
 
   let { initial, onReady, testid = 'mutator-probe', children }: SurfaceToneMutatorProps = $props();

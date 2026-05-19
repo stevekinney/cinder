@@ -10,8 +10,8 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Alert from '../alert.svelte';
-  import Badge from '../badge.svelte';
+  import Alert from '../alert/alert.svelte';
+  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Textarea from '../textarea.svelte';
 

@@ -4,20 +4,20 @@ export type { AccordionItemProps } from './components/accordion-item/index.ts';
 export { default as Accordion } from './components/accordion/index.ts';
 export type { AccordionContext, AccordionProps } from './components/accordion/index.ts';
 
-export { default as Alert } from './components/alert.svelte';
-export type { AlertProps, AlertVariant } from './components/alert.svelte';
+export { default as Alert } from './components/alert/index.ts';
+export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
 export { default as Avatar } from './components/avatar.svelte';
 export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar.svelte';
 
-export { default as Badge } from './components/badge.svelte';
-export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge.svelte';
+export { default as Badge } from './components/badge/index.ts';
+export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/index.ts';
 
 export { default as Banner } from './components/banner.svelte';
 export type { BannerProps, BannerVariant } from './components/banner.svelte';
 
-export { default as Breadcrumbs } from './components/breadcrumbs.svelte';
-export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.svelte';
+export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
+export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';
 
 export { default as Button } from './components/button/index.ts';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button/index.ts';
@@ -172,8 +172,8 @@ export type {
   JsonSchemaValue,
 } from './components/json-schema-editor.svelte';
 
-export { default as Kbd } from './components/kbd.svelte';
-export type { KbdProps } from './components/kbd.svelte';
+export { default as Kbd } from './components/kbd/index.ts';
+export type { KbdProps } from './components/kbd/index.ts';
 
 export { default as Label } from './components/label.svelte';
 export type { LabelProps } from './components/label.svelte';
@@ -310,8 +310,8 @@ export type {
   StackedListItemProps,
 } from './components/stacked-list-item.svelte';
 
-export { default as Spinner } from './components/spinner.svelte';
-export type { SpinnerProps, SpinnerSize } from './components/spinner.svelte';
+export { default as Spinner } from './components/spinner/index.ts';
+export type { SpinnerProps, SpinnerSize } from './components/spinner/index.ts';
 
 export { default as Steps } from './components/steps.svelte';
 export type { StepItem, StepsOrientation, StepsProps } from './components/steps.svelte';
@@ -326,15 +326,15 @@ export type {
   StatGroupVariant,
 } from './components/stat-group.svelte';
 
-export { default as StatusDot } from './components/status-dot.svelte';
+export { default as StatusDot } from './components/status-dot/index.ts';
 export type {
   StatusDotProps,
   StatusDotSize,
   StatusDotStatus,
-} from './components/status-dot.svelte';
+} from './components/status-dot/index.ts';
 
-export { default as Surface } from './components/surface.svelte';
-export type { SurfaceProps, SurfaceTone } from './components/surface.svelte';
+export { default as Surface } from './components/surface/index.ts';
+export type { SurfaceProps, SurfaceTone } from './components/surface/index.ts';
 
 export { default as Tab } from './components/tab.svelte';
 export type { TabProps } from './components/tab.svelte';
@@ -415,8 +415,11 @@ export type { TreeItemProps } from './components/tree-item.svelte';
 export { default as Tooltip } from './components/tooltip.svelte';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
 
-export { default as VisuallyHidden } from './components/visually-hidden.svelte';
-export type { VisuallyHiddenProps } from './components/visually-hidden.svelte';
+export { default as VisuallyHidden } from './components/visually-hidden/index.ts';
+export type {
+  VisuallyHiddenElement,
+  VisuallyHiddenProps,
+} from './components/visually-hidden/index.ts';
 
 // ---------------------------------------------------------------------------
 // Experimental components — exported under cinder/experimental/<name>. Their

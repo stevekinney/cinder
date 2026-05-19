@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  import Surface from '../../components/surface.svelte';
+  import Surface from '../../components/surface/surface.svelte';
   import SurfaceContextProbe from './surface-context-probe.svelte';
 
   let { tone }: SurfaceWithProbeProps = $props();

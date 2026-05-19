@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { BadgeVariant, BadgeSize } from '../badge.svelte';
+  import type { BadgeVariant, BadgeSize } from '../badge/badge.types.ts';
 
   export type FrontMatterHeaderVariant = 'panel' | 'inline';
 
@@ -31,7 +31,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '../badge.svelte';
+  import Badge from '../badge/badge.svelte';
   import { ChevronDown, ChevronRight, FileText } from '../icons/index.ts';
 
   let {
