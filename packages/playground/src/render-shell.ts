@@ -48,9 +48,16 @@ export function jsonForScriptTag(value: unknown): string {
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
         var theme = 'system';
+        // URL wins over localStorage — a shareable ?theme=dark link must
+        // paint dark even if this browser's stored preference is light.
         try {
-          var stored = localStorage.getItem('cinder-playground-theme');
-          if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+          var urlTheme = new URLSearchParams(window.location.search).get('theme');
+          if (urlTheme === 'light' || urlTheme === 'dark' || urlTheme === 'system') {
+            theme = urlTheme;
+          } else {
+            var stored = localStorage.getItem('cinder-playground-theme');
+            if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+          }
         } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
         if (theme === 'light' || theme === 'dark') {
           document.documentElement.style.colorScheme = theme;

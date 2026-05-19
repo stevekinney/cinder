@@ -8,7 +8,7 @@
     readPersistedTheme,
     setPreviewStore,
   } from './preview-store.svelte.ts';
-  import { buildShellHref, parseComponentFromPath } from './routing.ts';
+  import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
   import Sidebar from './sidebar.svelte';
   import TopBar from './top-bar.svelte';
 
@@ -19,8 +19,19 @@
 
   let { initialComponent, components }: Props = $props();
 
-  const initialTheme = typeof window === 'undefined' ? 'system' : readPersistedTheme();
-  const store = new PreviewStore(initialComponent, initialTheme);
+  // Seed the toolbar from the URL (shareable, survives reload). When the URL
+  // is silent about theme, fall back to the localStorage preference so the
+  // next visit honors the user's last choice.
+  const initialSearch =
+    typeof window === 'undefined'
+      ? new URLSearchParams()
+      : new URL(window.location.href).searchParams;
+  const initialUrlState = readToolbarStateFromSearch(initialSearch);
+  const initialTheme = initialUrlState.theme ?? readPersistedTheme();
+  const store = new PreviewStore(initialComponent, {
+    ...initialUrlState,
+    theme: initialTheme,
+  });
   setPreviewStore(store);
 
   // Apply the persisted theme to the shell's root document on first paint.
@@ -29,32 +40,20 @@
   // (the inline script is a perf optimization, not a correctness gate).
   if (typeof document !== 'undefined') applyThemeToDocument(document, store.theme);
 
-  let copiedFlash = $state<boolean>(false);
-
-  function copyLink(): void {
-    void navigator.clipboard
-      .writeText(window.location.href)
-      .then(() => {
-        copiedFlash = true;
-        setTimeout(() => {
-          copiedFlash = false;
-        }, 1500);
-      })
-      .catch((error: unknown) => {
-        console.error('[cinder playground] copy failed:', error);
-      });
-  }
-
   function selectComponent(name: string): void {
     if (name === store.currentComponent) return;
     store.currentComponent = name;
-    history.pushState({}, '', buildShellHref(name));
+    // Preserve the current query string (e.g. ?focus=1) and hash when
+    // navigating between components.
+    const { search, hash } = window.location;
+    history.pushState({}, '', `${buildShellHref(name)}${search}${hash}`);
   }
 
   onMount(() => {
     function handlePopState(): void {
       const parsed = parseComponentFromPath(window.location.pathname);
       if (parsed !== null) store.currentComponent = parsed;
+      store.syncFromUrl();
     }
     window.addEventListener('popstate', handlePopState);
 
@@ -82,16 +81,36 @@
   });
 </script>
 
+<!--
+  Layout overview
+  ───────────────
+  The top bar is fixed and spans the full viewport width. It owns the
+  --cinder-top-bar-height custom property (52px). Both the sidebar and
+  the main content area push their top edge down by that amount so nothing
+  slides behind the bar.
+
+  Focus mode hides both the top bar and the sidebar so the preview fills
+  the entire viewport (Escape restores the layout).
+-->
 <div class="shell" class:focus-mode={store.isFocusMode}>
+  <TopBar />
   <Sidebar {components} currentComponent={store.currentComponent} onSelect={selectComponent} />
   <main>
-    <TopBar onCopyLink={copyLink} {copiedFlash} />
     <PreviewFrame componentName={store.currentComponent} />
   </main>
 </div>
 
 <style>
+  /*
+   * --cinder-top-bar-height is declared on the .top-bar element inside
+   * TopBar. Inherit it here for layout math. If the value ever changes we
+   * only need to update the token in one place (top-bar.svelte).
+   */
   .shell {
+    /* Provide a fallback so the shell still lays out correctly if the
+       TopBar custom property hasn't resolved yet. */
+    --cinder-top-bar-height: 52px;
+
     display: flex;
     height: 100vh;
     font-family: var(--cinder-font-sans);
@@ -101,27 +120,35 @@
   }
 
   main {
-    /* Playground sidebar is physically anchored with `left: 0` —
-       keep margin physical so RTL doesn't desync the two. */
+    /*
+     * The sidebar is physically anchored at left: 0 with a fixed width of
+     * 220px. Push main content past both the sidebar and the fixed top bar.
+     * Physical margin-left keeps in sync with the sidebar's physical left
+     * anchor — do not convert to logical margin-inline-start.
+     */
     /* stylelint-disable-next-line csstools/use-logical */
     margin-left: 220px;
+    margin-top: var(--cinder-top-bar-height);
     flex: 1;
-    height: 100vh;
+    height: calc(100vh - var(--cinder-top-bar-height));
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+
+  /* Focus mode: collapse both the fixed top bar and the sidebar */
+  .shell.focus-mode :global(header.top-bar) {
+    display: none;
   }
 
   .shell.focus-mode :global(nav[aria-label='Components']) {
     display: none;
   }
 
-  .shell.focus-mode :global(header.top-bar) {
-    display: none;
-  }
-
   .shell.focus-mode main {
     /* stylelint-disable-next-line csstools/use-logical */
     margin-left: 0;
+    margin-top: 0;
+    height: 100vh;
   }
 </style>

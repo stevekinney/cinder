@@ -2,8 +2,9 @@
  * Reactive store for the playground shell SPA.
  *
  * Phase 1 held only `currentComponent`. Phase 3 adds the top-bar controls:
- * theme (persisted to localStorage), viewport width, background swatch, and
- * focus-mode toggle (all three of the latter are session-only).
+ * theme (persisted to localStorage), viewport width, and background swatch
+ * (session-only). Focus mode is driven by the `?focus=1` search param so it
+ * survives reloads and is shareable via URL.
  *
  * Single instance provided via a Svelte 5 context key so any descendant
  * component can read/write it without prop drilling.
@@ -11,7 +12,14 @@
 
 import { getContext, setContext } from 'svelte';
 
-import type { BackgroundChoice, ThemeChoice } from './routing.ts';
+import type { BackgroundChoice, ThemeChoice, ToolbarSearchState } from './routing.ts';
+import {
+  buildToolbarSearch,
+  readBackgroundFromSearch,
+  readFocusModeFromSearch,
+  readPreviewWidthFromSearch,
+  readThemeFromSearch,
+} from './routing.ts';
 
 export type { BackgroundChoice, ThemeChoice };
 
@@ -63,22 +71,116 @@ export function applyThemeToDocument(doc: Document, theme: ThemeChoice): void {
 
 export class PreviewStore {
   currentComponent = $state<string>('');
-  /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
-  previewWidth = $state<number | null>(null);
-  theme = $state<ThemeChoice>('system');
-  background = $state<BackgroundChoice>('surface');
-  isFocusMode = $state<boolean>(false);
 
-  constructor(initialComponent: string, initialTheme: ThemeChoice = 'system') {
+  /**
+   * Reactive backing cells for every toolbar setting. Public getters expose
+   * them; setters write the new value back to the URL via
+   * `history.replaceState` so the query string is the canonical source of
+   * truth and every toolbar option is shareable / survives reloads.
+   *
+   * The reactive cell is the UI's read path — we don't re-parse the URL on
+   * every render. Setters keep the cell and the URL in lockstep, and
+   * `syncFromUrl()` re-reads when back/forward navigation fires `popstate`.
+   */
+  #isFocusMode = $state<boolean>(false);
+  #theme = $state<ThemeChoice>('system');
+  #background = $state<BackgroundChoice>('surface');
+  #previewWidth = $state<number | null>(null);
+
+  constructor(initialComponent: string, initialState: Partial<ToolbarSearchState> = {}) {
     this.currentComponent = initialComponent;
-    this.theme = initialTheme;
+    this.#isFocusMode = initialState.isFocusMode ?? false;
+    this.#theme = initialState.theme ?? 'system';
+    this.#background = initialState.background ?? 'surface';
+    this.#previewWidth = initialState.previewWidth ?? null;
   }
 
+  get isFocusMode(): boolean {
+    return this.#isFocusMode;
+  }
+  set isFocusMode(value: boolean) {
+    this.#isFocusMode = value;
+    this.#writeUrl();
+  }
+
+  get theme(): ThemeChoice {
+    return this.#theme;
+  }
+
+  get background(): BackgroundChoice {
+    return this.#background;
+  }
+  set background(value: BackgroundChoice) {
+    this.#background = value;
+    this.#writeUrl();
+  }
+
+  /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
+  get previewWidth(): number | null {
+    return this.#previewWidth;
+  }
+  set previewWidth(value: number | null) {
+    this.#previewWidth = value;
+    this.#writeUrl();
+  }
+
+  /**
+   * Update the theme. Writes to the URL (so it's shareable) and to
+   * localStorage (so the next visit without a `theme=` param picks up the
+   * user's preference) and applies the new color-scheme to the shell
+   * document. Use this — never assign `store.theme` directly.
+   */
   setTheme(value: ThemeChoice): void {
     if (!THEME_VALUES.has(value)) return;
-    this.theme = value;
+    this.#theme = value;
     writePersistedTheme(value);
     if (typeof document !== 'undefined') applyThemeToDocument(document, value);
+    this.#writeUrl();
+  }
+
+  /**
+   * Re-seed every toolbar cell from the current URL. Called by the SPA on
+   * `popstate` so back/forward navigation updates the UI. Theme falls back
+   * to localStorage when the URL has no `theme=` param.
+   */
+  syncFromUrl(): void {
+    if (typeof window === 'undefined') return;
+    const search = new URL(window.location.href).searchParams;
+    this.#isFocusMode = readFocusModeFromSearch(search);
+    this.#background = readBackgroundFromSearch(search);
+    this.#previewWidth = readPreviewWidthFromSearch(search);
+    const explicitTheme = readThemeFromSearch(search);
+    const nextTheme = explicitTheme ?? readPersistedTheme();
+    if (nextTheme !== this.#theme) {
+      this.#theme = nextTheme;
+      if (typeof document !== 'undefined') applyThemeToDocument(document, nextTheme);
+    }
+  }
+
+  /**
+   * Snapshot of the toolbar state that gets serialized to the URL. Theme
+   * is only emitted when it has been set explicitly (i.e. non-`system`) so
+   * a default URL stays clean.
+   */
+  #snapshot(): ToolbarSearchState {
+    return {
+      isFocusMode: this.#isFocusMode,
+      theme: this.#theme,
+      background: this.#background,
+      previewWidth: this.#previewWidth,
+    };
+  }
+
+  /**
+   * Push the current state to the URL via `history.replaceState`, preserving
+   * pathname, hash, and any unrelated query params.
+   */
+  #writeUrl(): void {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const nextSearch = buildToolbarSearch(url.searchParams, this.#snapshot());
+    const nextHref = `${url.pathname}${nextSearch}${url.hash}`;
+    history.replaceState(history.state, '', nextHref);
   }
 }
 
