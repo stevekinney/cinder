@@ -16,7 +16,8 @@
 .cinder-table__caption {
   caption-side: top;
   text-align: left;
-  padding: var(--cinder-space-2) 0;
+  padding-block: var(--cinder-space-3) var(--cinder-space-2);
+  padding-inline: var(--cinder-space-3);
   font-weight: var(--cinder-font-medium);
   color: var(--cinder-text);
 }

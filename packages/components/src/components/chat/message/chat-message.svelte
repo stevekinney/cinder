@@ -371,6 +371,8 @@
   /* Role-based alignment (on wrapper) and visual styling (on bubble) */
   .chat-message-wrapper[data-role='user'] {
     margin-inline-start: auto;
+    /* Anchor for absolutely-positioned user-message header (see below). */
+    position: relative;
   }
 
   .chat-message-wrapper[data-role='user'] .chat-message {
@@ -497,6 +499,25 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--cinder-text-muted);
+  }
+
+  /* Take the header OUT of the bubble's flex flow for user messages so the
+     bubble's row gap is not allocated for an empty header row, which would
+     create visible empty space above the message text. `position: absolute`
+     removes it from the flex axis entirely (flex `gap` applies only to
+     in-flow children) while keeping it in the accessibility tree with its
+     implicit role intact — `display: contents` would strip that role.
+     The role label is already visually hidden via .chat-message-role below;
+     do NOT clip the whole header, or any `status` snippet a consumer passes
+     (e.g. "sending…", "failed") would also disappear. Anchor the header to
+     the bubble's top-right so status content stays visible without
+     displacing the message text. */
+  .chat-message-wrapper[data-role='user'] .chat-message-header {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    padding: 0;
+    margin: 0;
   }
 
   /* Hide role label for user messages since alignment makes it clear */
@@ -627,30 +648,37 @@
   }
 
   /* User bubbles are right-aligned; copy icon sits to their LEFT (toward chat center).
+   * The footer is anchored to the wrapper's bottom edge AND to the bubble's
+   * outer edge horizontally; the action button inside aligns its own bottom
+   * with the wrapper bottom so it sits flush with the bubble bottom.
    * padding (not margin) creates a hover bridge so the pointer never leaves a
    * hovered surface while crossing from bubble to icon. */
   .chat-message-wrapper[data-role='user'] .chat-message-footer {
-    top: 50%;
+    top: auto;
+    bottom: 0;
     left: auto;
     right: 100%;
     margin-top: 0;
+    display: flex;
+    align-items: flex-end;
     /* Padding stays physical to match the physical `right: 100%` placement
        above; the whole block is the LTR-only fast path called out in the
        comment at the top of this section. */
     /* stylelint-disable-next-line csstools/use-logical */
     padding-right: var(--cinder-space-1);
-    transform: translateY(-50%);
   }
 
   /* Assistant bubbles are left-aligned; copy icon sits to their RIGHT. */
   .chat-message-wrapper[data-role='assistant'] .chat-message-footer {
-    top: 50%;
+    top: auto;
+    bottom: 0;
     left: 100%;
     right: auto;
     margin-top: 0;
+    display: flex;
+    align-items: flex-end;
     /* stylelint-disable-next-line csstools/use-logical */
     padding-left: var(--cinder-space-1);
-    transform: translateY(-50%);
   }
 
   .chat-message-wrapper:hover .chat-message-footer,

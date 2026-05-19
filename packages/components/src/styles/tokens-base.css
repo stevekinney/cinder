@@ -1,3 +1,22 @@
+/* ============================================================
+ * SURFACE NESTING RULE (read me before adding a `background:` rule)
+ * ------------------------------------------------------------
+ * Cinder layers surfaces in three tiers; each tier has one job:
+ *
+ *   --cinder-surface-raised  →  the OUTER background of a card / container
+ *   --cinder-surface         →  a card BODY (primary content area)
+ *   --cinder-surface-inset   →  an inset region inside a card body
+ *                                (input backgrounds, code blocks, sub-cards)
+ *
+ * The rule: a card root sets ONE background. Every region inside the card
+ * should INHERIT (do not redeclare). Children that need contrast (an input
+ * field, a code block) opt into `--cinder-surface-inset` explicitly.
+ *
+ * If a region declares its own background AND the parent already set one,
+ * you create a visible color band. That is the failure mode the rule
+ * prevents.
+ * ============================================================ */
+
 :root {
   /* ========================================
    * SPACING
@@ -32,6 +51,23 @@
   --cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.08);
   --cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
+
+  /* ========================================
+   * CONTROL HEIGHTS
+   * ----------------------------------------
+   * Shared height tier for ANY interactive control that needs to align with
+   * its siblings in a toolbar, button group, or form row. Per-component
+   * height tokens (e.g. --cinder-button-height-sm) alias this family where
+   * their values match so the tiers stay in sync as the design system grows.
+   *
+   * Adoption is opt-in per component. A consumer using a `density="toolbar"`
+   * prop on `SegmentedControl` or `Chip` snaps to --cinder-control-height-sm
+   * (32px). Existing call sites that pass `size="sm"` continue to render at
+   * their pre-existing dimensions until they opt in.
+   * ======================================== */
+  --cinder-control-height-xs: 1.5rem; /* 24px — button xs */
+  --cinder-control-height-sm: 2rem; /* 32px — toolbar default + button sm */
+  --cinder-control-height-lg: 2.75rem; /* 44px — WCAG AAA touch target + button md */
 
   /* ========================================
    * TYPOGRAPHY
@@ -219,14 +255,14 @@
   /* Size: xs */
   --cinder-button-padding-x-xs: var(--cinder-space-1-5);
   --cinder-button-padding-y-xs: var(--cinder-space-0-5);
-  --cinder-button-height-xs: 1.5rem;
+  --cinder-button-height-xs: var(--cinder-control-height-xs); /* 1.5rem / 24px */
   --cinder-button-font-size-xs: var(--cinder-text-xs);
   --cinder-button-radius-xs: var(--cinder-radius-sm);
 
   /* Size: sm */
   --cinder-button-padding-x-sm: var(--cinder-space-2);
   --cinder-button-padding-y-sm: var(--cinder-space-1);
-  --cinder-button-height-sm: 2rem;
+  --cinder-button-height-sm: var(--cinder-control-height-sm); /* 2rem / 32px */
   --cinder-button-font-size-sm: var(--cinder-text-xs);
   --cinder-button-radius-sm: var(--cinder-radius-sm);
 
@@ -234,7 +270,7 @@
    * xs (24px) and sm (32px) are intentionally below AAA; see button.a11y.md for rationale. */
   --cinder-button-padding-x-md: var(--cinder-space-3);
   --cinder-button-padding-y-md: var(--cinder-space-2-5);
-  --cinder-button-height-md: 2.75rem;
+  --cinder-button-height-md: var(--cinder-control-height-lg); /* 2.75rem / 44px */
   --cinder-button-font-size-md: var(--cinder-text-sm);
   --cinder-button-radius-md: var(--cinder-radius-md);
 

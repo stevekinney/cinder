@@ -43,6 +43,17 @@ button.cinder-chip {
   padding: var(--cinder-space-0-5) var(--cinder-space-2);
 }
 
+/* density="toolbar": opt the chip into the shared --cinder-control-height-sm
+ * tier so it lines up with sibling Button (size="sm") and SegmentedControl
+ * (density="toolbar"). The base `display: inline-flex; align-items: center`
+ * already centers the chip text vertically — we just need to set the box
+ * height. box-sizing: border-box is explicit so border width does not push
+ * the rendered height above 32px. */
+.cinder-chip[data-cinder-density='toolbar'] {
+  box-sizing: border-box;
+  min-block-size: var(--cinder-control-height-sm);
+}
+
 /* ----------------------------------------
  * Color variants
  * ---------------------------------------- */

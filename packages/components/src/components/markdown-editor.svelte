@@ -717,6 +717,10 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
+    /* Card root carries the SINGLE background. Per the surface nesting rule
+       (see tokens-base.css), every region inside (toolbar wrapper, editor
+       body) inherits — they must not redeclare `background:`. */
+    background: var(--cinder-surface-raised);
   }
 
   /* Toolbar wrapper for extension points */
@@ -724,9 +728,12 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
-    padding: var(--cinder-space-2);
+    /* Padding is owned by .editor-toolbar (single source of truth).
+       Wrapper provides only layout (flex + gap) for extension points so
+       padding doesn't compound between wrapper and toolbar. */
+    padding: 0;
     border-bottom: 1px solid var(--cinder-border);
-    background: var(--cinder-surface-raised);
+    /* Background inherited from .markdown-editor-wrapper per surface nesting rule. */
     flex-wrap: wrap;
   }
 
@@ -831,6 +838,16 @@
      so a prominent ring around the entire container is redundant. */
   .markdown-editor-wrapper:focus-within {
     border-color: var(--cinder-accent);
+  }
+
+  /* When the ProseMirror surface itself receives keyboard focus (tabindex=0),
+     render an explicit focus ring. The blinking caret only appears after the
+     user starts typing — without this, keyboard users can't see where focus
+     landed. Inset offset keeps the ring inside the wrapper's border and uses
+     the shared ring-width token so weight matches sibling controls. */
+  .markdown-editor.surface:focus-visible {
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: calc(-1 * var(--cinder-ring-width));
   }
 
   /*

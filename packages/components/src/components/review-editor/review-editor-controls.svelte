@@ -109,6 +109,8 @@
       label="Review editor view"
       hideLabel
       variant="tablist"
+      size="sm"
+      density="toolbar"
       value={activeView}
       options={viewOptions}
       onchange={handleViewChange}
@@ -117,6 +119,7 @@
     {#if diffStats && (diffStats.added > 0 || diffStats.removed > 0 || diffStats.modified > 0)}
       <DiffStatistics
         variant="compact"
+        density="toolbar"
         added={diffStats.added}
         removed={diffStats.removed}
         modified={diffStats.modified}
@@ -130,6 +133,7 @@
         id="{id}-diff-view-mode"
         selectionMode="single"
         size="sm"
+        density="toolbar"
         label="Diff view mode"
         hideLabel
         bind:value={diffViewMode}
@@ -179,7 +183,7 @@
     justify-content: space-between;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-1) var(--cinder-space-2);
-    background: var(--cinder-surface-raised);
+    /* Background inherited from .review-editor-container per surface nesting rule. */
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
     border-bottom: none;
@@ -210,18 +214,11 @@
 
   /* =========================================================================
    * Unified control heights
-   * All controls in the toolbar should have consistent visual height
-   * Target: 24px outer height for all interactive elements
+   * The toolbar row uses --cinder-control-height-sm (32px) as the shared
+   * tier: SegmentedControl + DiffStatistics opt in via density="toolbar",
+   * Button (size="sm") already maps there through its alias. No per-instance
+   * height overrides are needed below.
    * ========================================================================= */
-
-  /* SegmentedControl uses size="sm" (1.5rem = 24px) — no height override needed */
-
-  /* Buttons - 24px height to match */
-  .review-editor-controls :global(.button[data-size='sm']) {
-    height: 24px;
-    min-height: 24px;
-    padding: 0 var(--cinder-space-2);
-  }
 
   /* Comments toggle button with count */
   :global(.comments-toggle) {

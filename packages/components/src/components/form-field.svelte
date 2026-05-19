@@ -85,7 +85,7 @@
   >
     {label}
     {#if required}
-      <span class="cinder-form-field__required" aria-hidden="true">*</span>
+      <span class="cinder-form-field__required" aria-hidden="true"></span>
     {/if}
   </label>
 

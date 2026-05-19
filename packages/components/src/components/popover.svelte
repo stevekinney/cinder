@@ -49,6 +49,7 @@
 </script>
 
 <script lang="ts">
+  import type { Attachment } from 'svelte/attachments';
   import { onDestroy, untrack } from 'svelte';
   import { DEV } from 'esm-env';
   import { captureFocus, restoreFocusTo, pushEscapeHandler } from '../_internal/overlay.ts';
@@ -122,6 +123,28 @@
   onDestroy(() => {
     isDestroyed = true;
   });
+
+  const portalToDocumentBody: Attachment<HTMLDivElement> = (element) => {
+    // Snapshot the trigger's inherited direction and theme before moving the
+    // panel out of its component subtree. Without this, the portaled panel
+    // inherits document.body's `dir` and `data-cinder-theme` instead of the
+    // scoped values that wrap the trigger.
+    const anchor = anchorElement ?? element.parentElement;
+    if (anchor) {
+      const inheritedDir = anchor.closest<HTMLElement>('[dir]')?.getAttribute('dir');
+      if (inheritedDir) {
+        element.setAttribute('dir', inheritedDir);
+      }
+      const inheritedTheme = anchor
+        .closest<HTMLElement>('[data-cinder-theme]')
+        ?.getAttribute('data-cinder-theme');
+      if (inheritedTheme) {
+        element.setAttribute('data-cinder-theme', inheritedTheme);
+      }
+    }
+    document.body.appendChild(element);
+    return () => element.remove();
+  };
 
   $effect(() => {
     mounted = true;
@@ -316,6 +339,7 @@
 {#if mounted && open && anchorElement}
   <div
     bind:this={panelElement}
+    {@attach portalToDocumentBody}
     id={panelId}
     {role}
     aria-label={ariaLabelledby ? undefined : (label ?? 'Popover')}

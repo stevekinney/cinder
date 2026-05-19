@@ -71,3 +71,15 @@
 .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--modified {
   background: var(--cinder-color-warning-bg);
 }
+
+/* compact + density="toolbar": opt the compact stat pills into the shared
+ * --cinder-control-height-sm tier so they align with sibling Button (size="sm")
+ * and SegmentedControl (density="toolbar") in editor toolbars. The base
+ * `display: inline-flex; align-items: center` already centers the text
+ * vertically; we just need to set the box height. Default compact rendering
+ * (without density) is unchanged. */
+.cinder-diff-statistics[data-cinder-variant='compact'][data-cinder-density='toolbar']
+  .cinder-diff-statistics__stat {
+  box-sizing: border-box;
+  min-block-size: var(--cinder-control-height-sm);
+}

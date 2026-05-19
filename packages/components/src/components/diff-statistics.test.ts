@@ -33,4 +33,20 @@ describe('DiffStatistics', () => {
     expect(status?.textContent).toContain('4');
     expect(status?.textContent).not.toContain('0');
   });
+
+  test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
+    const { container } = render(DiffStatistics, {
+      props: { added: 1, removed: 0, modified: 0, variant: 'compact', density: 'toolbar' },
+    });
+    const status = container.querySelector('[role="status"]');
+    expect(status?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
+
+  test('omitting density does not set data-cinder-density', () => {
+    const { container } = render(DiffStatistics, {
+      props: { added: 1, removed: 0, modified: 0, variant: 'compact' },
+    });
+    const status = container.querySelector('[role="status"]');
+    expect(status?.hasAttribute('data-cinder-density')).toBe(false);
+  });
 });

@@ -30,8 +30,9 @@
   display: block;
   width: 100%;
   min-height: 2.25rem;
-  padding: var(--cinder-space-1-5) var(--cinder-space-9) var(--cinder-space-1-5)
-    var(--cinder-space-3);
+  padding-block: var(--cinder-space-1-5);
+  padding-inline-start: var(--cinder-space-3);
+  padding-inline-end: var(--cinder-space-9);
   font-size: var(--cinder-text-sm);
   font-family: inherit;
   line-height: var(--cinder-leading-normal);
@@ -44,6 +45,10 @@
   transition:
     border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-date-picker__input::placeholder {
+  color: var(--cinder-text-subtle);
 }
 
 .cinder-date-picker__input:hover:not(:disabled) {
@@ -72,14 +77,21 @@
   cursor: not-allowed;
 }
 
+.cinder-date-picker__input:disabled::placeholder {
+  color: var(--cinder-text-disabled);
+}
+
 .cinder-date-picker__icon-button {
   position: absolute;
-  right: var(--cinder-space-2);
+  /* Logical positioning so RTL flips the icon to match `padding-inline-end`
+     on the input — physical `right` would have left the icon on the visual
+     end while the reserved padding moved to the start. */
+  inset-inline-end: var(--cinder-space-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
   padding: 0;
   color: var(--cinder-text-muted);
   background: transparent;

@@ -39,7 +39,7 @@
 .cinder-side-navigation a.cinder-navigation-item[data-active='true'],
 .cinder-side-navigation button.cinder-navigation-item[data-active='true'] {
   border-inline-start-color: var(--cinder-accent);
-  background-color: var(--cinder-surface-hover);
+  background-color: color-mix(in oklch, var(--cinder-accent), transparent 92%);
   /* Remove the horizontal bottom-border active indicator */
   border-bottom-color: transparent;
 }

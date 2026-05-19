@@ -20,5 +20,11 @@
 }
 
 .cinder-label__required {
-  color: var(--cinder-danger);
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--cinder-danger);
+  flex-shrink: 0;
+  align-self: center;
 }
