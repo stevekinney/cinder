@@ -371,6 +371,8 @@
   /* Role-based alignment (on wrapper) and visual styling (on bubble) */
   .chat-message-wrapper[data-role='user'] {
     margin-inline-start: auto;
+    /* Anchor for absolutely-positioned user-message header (see below). */
+    position: relative;
   }
 
   .chat-message-wrapper[data-role='user'] .chat-message {
@@ -500,21 +502,22 @@
   }
 
   /* Take the header OUT of the bubble's flex flow for user messages so the
-     bubble's row gap is not allocated for an empty (sr-only-only) row, which
-     would create visible empty space above the message text.
-     `position: absolute` removes it from the flex axis entirely — flex `gap`
-     applies only to in-flow children. The header (and its sr-only role label)
-     stays in the accessibility tree with its implicit role intact;
-     `display: contents` would strip that role and orphan the label. */
+     bubble's row gap is not allocated for an empty header row, which would
+     create visible empty space above the message text. `position: absolute`
+     removes it from the flex axis entirely (flex `gap` applies only to
+     in-flow children) while keeping it in the accessibility tree with its
+     implicit role intact — `display: contents` would strip that role.
+     The role label is already visually hidden via .chat-message-role below;
+     do NOT clip the whole header, or any `status` snippet a consumer passes
+     (e.g. "sending…", "failed") would also disappear. Anchor the header to
+     the bubble's top-right so status content stays visible without
+     displacing the message text. */
   .chat-message-wrapper[data-role='user'] .chat-message-header {
     position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
+    inset-block-start: 0;
+    inset-inline-end: 0;
     padding: 0;
     margin: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
   }
 
   /* Hide role label for user messages since alignment makes it clear */
