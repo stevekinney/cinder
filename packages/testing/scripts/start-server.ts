@@ -3,6 +3,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
+import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -46,24 +47,6 @@ function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
       resolve(1);
     });
   });
-}
-
-const DEFAULT_PLAYGROUND_URL = 'http://localhost:5555';
-const DEFAULT_PLAYGROUND_PORT = Number(new URL(DEFAULT_PLAYGROUND_URL).port);
-const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-function isLocalDefaultPlaygroundUrl(playgroundUrl: string): boolean {
-  try {
-    const url = new URL(playgroundUrl);
-    return (
-      url.protocol === 'http:' &&
-      LOOPBACK_HOSTNAMES.has(url.hostname) &&
-      Number(url.port) === DEFAULT_PLAYGROUND_PORT &&
-      (url.pathname === '' || url.pathname === '/')
-    );
-  } catch {
-    return false;
-  }
 }
 
 const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
