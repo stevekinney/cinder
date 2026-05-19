@@ -1205,6 +1205,10 @@ export type PlaygroundServer = {
 
 type BunServer = ReturnType<typeof Bun.serve>;
 type PlaygroundFetchHandler = (request: Request) => Response | Promise<Response>;
+type PlaygroundHttpServer = {
+  server: BunServer;
+  port: number;
+};
 
 function isAddressInUseError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -1215,14 +1219,15 @@ function isAddressInUseError(error: unknown): boolean {
 export function createHttpServerOnAvailablePort(
   preferredPort: number,
   fetchHandler: PlaygroundFetchHandler,
-): BunServer {
+): PlaygroundHttpServer {
   for (let offset = 0; offset < MAX_PORT_SCAN_ATTEMPTS; offset++) {
     const port = preferredPort + offset;
     try {
-      return Bun.serve({
+      const server = Bun.serve({
         port,
         fetch: fetchHandler,
       });
+      return { server, port };
     } catch (error) {
       if (!isAddressInUseError(error)) throw error;
     }
@@ -1298,7 +1303,8 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
 
   // Start the HTTP server first — if binding fails for reasons other than an
   // occupied port, no watchers are leaked.
-  const server = createHttpServerOnAvailablePort(port, handleRequest);
+  const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
+  const { port: actualPort, server } = playgroundHttpServer;
 
   let watchers: FSWatcher[];
   try {
@@ -1316,7 +1322,6 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await server.stop(true);
   }
 
-  const actualPort = server.port ?? port;
   const portFile = Bun.env['PLAYGROUND_PORT_FILE'];
   if (portFile !== undefined) {
     await Bun.write(portFile, `${actualPort}\n`);

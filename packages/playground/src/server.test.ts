@@ -84,10 +84,11 @@ describe('port selection', () => {
     const reservedPort = reserved.port;
     if (reservedPort === undefined) throw new Error('Reserved test server did not expose a port');
 
-    const server = createHttpServerOnAvailablePort(reservedPort, () => new Response('fallback'));
+    const { port: serverPort, server } = createHttpServerOnAvailablePort(
+      reservedPort,
+      () => new Response('fallback'),
+    );
     temporaryServers.push(server);
-    const serverPort = server.port;
-    if (serverPort === undefined) throw new Error('Fallback test server did not expose a port');
 
     expect(serverPort).toBeGreaterThan(reservedPort);
     const response = await fetch(`http://127.0.0.1:${serverPort}`);
