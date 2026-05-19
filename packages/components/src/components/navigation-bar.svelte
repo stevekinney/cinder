@@ -87,14 +87,20 @@
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
-    const items = getNavigationItems().filter(isEnabledNavigationItem);
+    const items = getNavigationItems();
     if (items.length === 0) return;
 
     const currentIndex = items.indexOf(currentItem);
-    const nextIndex =
-      currentIndex === -1 ? 0 : (currentIndex + direction + items.length) % items.length;
+    if (currentIndex === -1) return;
 
-    items[nextIndex]?.focus();
+    for (let step = 1; step < items.length; step++) {
+      const nextIndex = (currentIndex + direction * step + items.length) % items.length;
+      const nextItem = items[nextIndex];
+      if (nextItem && isEnabledNavigationItem(nextItem)) {
+        nextItem.focus();
+        return;
+      }
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent): void {

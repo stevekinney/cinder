@@ -445,6 +445,20 @@ describe('NavigationBar', () => {
     expect(document.activeElement).toBe(settings);
   });
 
+  test('arrow-key navigation from a disabled navigation item uses its DOM position', async () => {
+    const clicks: Record<string, number> = {};
+    const { container } = render(NavigationBar, {
+      items: keyboardNavigationSnippet(clicks),
+    });
+    const billing = container.querySelector('[data-key="billing"]') as HTMLElement;
+    const settings = container.querySelector('[data-key="settings"]') as HTMLElement;
+
+    billing.focus();
+    await fireEvent.keyDown(billing, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(settings);
+  });
+
   test('Space selects the focused navigation item', async () => {
     const clicks: Record<string, number> = {};
     const { container } = render(NavigationBar, {
