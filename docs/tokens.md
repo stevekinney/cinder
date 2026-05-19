@@ -56,7 +56,6 @@ Shared height tier for any interactive control that needs to align with its sibl
 | ---------------------------- | --------- |
 | `--cinder-control-height-xs` | `1.5rem`  |
 | `--cinder-control-height-sm` | `2rem`    |
-| `--cinder-control-height-md` | `2.5rem`  |
 | `--cinder-control-height-lg` | `2.75rem` |
 
 ## Typography

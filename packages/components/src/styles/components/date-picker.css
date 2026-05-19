@@ -83,12 +83,15 @@
 
 .cinder-date-picker__icon-button {
   position: absolute;
-  right: var(--cinder-space-2);
+  /* Logical positioning so RTL flips the icon to match `padding-inline-end`
+     on the input — physical `right` would have left the icon on the visual
+     end while the reserved padding moved to the start. */
+  inset-inline-end: var(--cinder-space-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
   padding: 0;
   color: var(--cinder-text-muted);
   background: transparent;

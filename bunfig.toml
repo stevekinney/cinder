@@ -10,4 +10,4 @@ preload = ["./scripts/preload.ts"]
 # (not Bun's `*.spec.ts`/`*.test.ts` discovery pattern), explicitly ignore
 # `packages/testing/tests/` so any future spec file dropped there does not
 # accidentally get loaded by Bun's runner.
-pathIgnorePatterns = ["packages/testing/tests/"]
+pathIgnorePatterns = ["packages/testing/tests/**"]

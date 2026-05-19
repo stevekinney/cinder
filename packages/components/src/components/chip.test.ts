@@ -256,4 +256,16 @@ describe('Chip', () => {
       expect(chip?.getAttribute('data-cinder-variant')).toBe(variant);
     },
   );
+
+  test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
+    const { container } = render(Chip, { label: 'Tag', density: 'toolbar' });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
+
+  test('omitting density does not set data-cinder-density', () => {
+    const { container } = render(Chip, { label: 'Tag' });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.hasAttribute('data-cinder-density')).toBe(false);
+  });
 });

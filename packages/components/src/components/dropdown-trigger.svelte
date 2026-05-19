@@ -56,9 +56,7 @@
 <button
   bind:this={triggerElement}
   type="button"
-  class={classNames('cinder-button', 'cinder-dropdown-trigger', customClassName)}
-  data-cinder-size="md"
-  data-cinder-variant="secondary"
+  class={classNames('cinder-dropdown-trigger', customClassName)}
   style={`anchor-name: --${context.menuId};`}
   aria-haspopup="menu"
   aria-expanded={context.isOpen}

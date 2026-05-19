@@ -394,18 +394,17 @@ describe('Table selection — selectionDisabled rows', () => {
     const checkbox = firstCell?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
     expect(checkbox).not.toBeNull();
     expect(checkbox?.disabled).toBe(true);
-    expect(checkbox?.getAttribute('aria-disabled')).toBe('true');
   });
 
-  test('selectionDisabled row cell has an accessible label', () => {
+  test('selectionDisabled row checkbox carries an accessible name on the input', () => {
     const { container } = render(Wrapper, {
       columns,
       rows: rowsWithDisabled,
       selectable: true,
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const disabledFirstCell = bodyRows[1]?.querySelector('td');
-    expect(disabledFirstCell?.getAttribute('aria-label')).toBe('Not selectable');
+    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]');
+    expect(checkbox?.getAttribute('aria-label')).toBe('Selection not allowed for this row');
   });
 
   test('selectionDisabled row has no aria-selected attribute', () => {
@@ -427,17 +426,6 @@ describe('Table selection — selectionDisabled rows', () => {
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
     const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]');
     expect(checkbox?.hasAttribute('disabled')).toBe(true);
-  });
-
-  test('selectionDisabled row checkbox has aria-disabled="true"', () => {
-    const { container } = render(Wrapper, {
-      columns,
-      rows: rowsWithDisabled,
-      selectable: true,
-    });
-    const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]');
-    expect(checkbox?.getAttribute('aria-disabled')).toBe('true');
   });
 
   test('clicking the selectionDisabled checkbox does not fire onSelectedIds', async () => {

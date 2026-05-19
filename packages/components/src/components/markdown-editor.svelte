@@ -843,10 +843,11 @@
   /* When the ProseMirror surface itself receives keyboard focus (tabindex=0),
      render an explicit focus ring. The blinking caret only appears after the
      user starts typing — without this, keyboard users can't see where focus
-     landed. Inset offset keeps the ring inside the wrapper's border. */
+     landed. Inset offset keeps the ring inside the wrapper's border and uses
+     the shared ring-width token so weight matches sibling controls. */
   .markdown-editor.surface:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: calc(-1 * var(--cinder-ring-width));
   }
 
   /*

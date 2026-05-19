@@ -65,10 +65,9 @@
    * (32px). Existing call sites that pass `size="sm"` continue to render at
    * their pre-existing dimensions until they opt in.
    * ======================================== */
-  --cinder-control-height-xs: 1.5rem; /* 24px — dense controls (compact pickers, tag inputs) */
-  --cinder-control-height-sm: 2rem; /* 32px — toolbar default */
-  --cinder-control-height-md: 2.5rem; /* 40px — comfortable form rows */
-  --cinder-control-height-lg: 2.75rem; /* 44px — WCAG AAA touch target */
+  --cinder-control-height-xs: 1.5rem; /* 24px — button xs */
+  --cinder-control-height-sm: 2rem; /* 32px — toolbar default + button sm */
+  --cinder-control-height-lg: 2.75rem; /* 44px — WCAG AAA touch target + button md */
 
   /* ========================================
    * TYPOGRAPHY

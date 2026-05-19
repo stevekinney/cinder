@@ -499,12 +499,16 @@
     color: var(--cinder-text-muted);
   }
 
-  /* Remove the header from layout flow for user messages — the role label
-     remains in the accessibility tree via the sr-only span below, but the
-     parent flex container should not reserve a row for it (otherwise its
-     gap creates visible empty space above the bubble text). */
+  /* Collapse the header's layout box for user messages so the parent flex
+     container doesn't reserve a row for it (otherwise its gap creates visible
+     empty space above the bubble text). Keep the <header> element in the
+     accessibility tree — `display: contents` would strip its implicit role
+     and orphan the sr-only role label below from its container. */
   .chat-message-wrapper[data-role='user'] .chat-message-header {
-    display: contents;
+    block-size: 0;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
   }
 
   /* Hide role label for user messages since alignment makes it clear */

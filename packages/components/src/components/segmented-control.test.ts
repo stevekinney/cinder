@@ -745,4 +745,29 @@ describe('SegmentedControl — variants', () => {
     expect(diff.getAttribute('aria-selected')).toBe('false');
     expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
   });
+
+  test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
+    const { container } = render(SegmentedControl, {
+      props: {
+        id: 'view',
+        label: 'View',
+        options: [{ value: 'a', label: 'A' }],
+        density: 'toolbar',
+      },
+    });
+    const control = container.querySelector('.cinder-segmented-control');
+    expect(control?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
+
+  test('omitting density does not set data-cinder-density', () => {
+    const { container } = render(SegmentedControl, {
+      props: {
+        id: 'view',
+        label: 'View',
+        options: [{ value: 'a', label: 'A' }],
+      },
+    });
+    const control = container.querySelector('.cinder-segmented-control');
+    expect(control?.hasAttribute('data-cinder-density')).toBe(false);
+  });
 });
