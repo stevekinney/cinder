@@ -1,12 +1,12 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '../../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
-const { default: Wrapper } = await import('../../test/fixtures/timeline-fixture.svelte');
+const { default: Wrapper } = await import('../../../test/fixtures/timeline-fixture.svelte');
 
 const items = [
   { id: '1', title: 'Created', time: '10:00', status: 'info' as const, body: 'Workflow started' },

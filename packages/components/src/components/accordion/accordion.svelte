@@ -1,33 +1,15 @@
 <script lang="ts" module>
-  import type { Snippet } from 'svelte';
-
-  /** Symbol key for the accordion Svelte context. */
-  export const ACCORDION_CONTEXT_KEY = Symbol('cinder-accordion');
-
-  /** Shape of the context object provided to AccordionItem children. */
-  export type AccordionContext = {
-    readonly expandedIds: string[];
-    toggle: (id: string) => void;
-  };
-
-  /** Props for the Accordion component. */
-  export type AccordionProps = {
-    /** When true, multiple items may be expanded simultaneously. Default: false. */
-    multiple?: boolean;
-    /** The currently expanded item IDs. Bindable. */
-    expandedIds: string[];
-    /** Additional CSS class merged with `.cinder-accordion`. */
-    class?: string;
-    /** AccordionItem children. */
-    children: Snippet;
-  };
+  export { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';
+  export type { AccordionContext, AccordionProps } from './accordion.types.ts';
 </script>
 
 <script lang="ts">
   import { setContext } from 'svelte';
 
-  import { createMultiSelection } from '../_internal/collection.ts';
-  import { classNames } from '../utilities/class-names.ts';
+  import { createMultiSelection } from '../../_internal/collection.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';
+  import type { AccordionContext, AccordionProps } from './accordion.types.ts';
 
   let {
     multiple = false,

@@ -86,7 +86,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert.svelte';
   import Badge from '../badge.svelte';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import Checkbox from '../checkbox.svelte';
   import Input from '../input.svelte';
   import Tooltip from '../tooltip.svelte';

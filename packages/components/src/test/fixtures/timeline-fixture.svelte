@@ -12,8 +12,8 @@
 </script>
 
 <script lang="ts">
-  import Timeline from '../../components/experimental/timeline.svelte';
-  import TimelineItem from '../../components/experimental/timeline-item.svelte';
+  import Timeline from '../../components/experimental/timeline/timeline.svelte';
+  import TimelineItem from '../../components/experimental/timeline-item/timeline-item.svelte';
 
   let { items }: TimelineFixtureProps = $props();
 </script>

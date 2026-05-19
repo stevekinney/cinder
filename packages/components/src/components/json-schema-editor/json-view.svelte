@@ -12,7 +12,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert.svelte';
   import Badge from '../badge.svelte';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import Textarea from '../textarea.svelte';
 
   import { tryParseJson, validateMetaSchema } from './json-schema-validator.ts';

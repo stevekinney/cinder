@@ -195,14 +195,23 @@ describe('api contract', () => {
 
     for (const [name, contract] of Object.entries(CONTRACT)) {
       const file = `${name}.svelte`;
-      const filePath = join(COMPONENTS_DIR, file);
+      // Migrated components live at src/components/<name>/<name>.svelte; legacy
+      // flat components live at src/components/<name>.svelte. Try the directory
+      // shape first so the test transparently spans both layouts during the
+      // partial-migration window.
+      const directoryPath = join(COMPONENTS_DIR, name, file);
+      const flatPath = join(COMPONENTS_DIR, file);
 
       let source: string;
       try {
-        source = await readFile(filePath, 'utf-8');
+        source = await readFile(directoryPath, 'utf-8');
       } catch {
-        errors.push(`${file}: not found in src/components/`);
-        continue;
+        try {
+          source = await readFile(flatPath, 'utf-8');
+        } catch {
+          errors.push(`${file}: not found in src/components/`);
+          continue;
+        }
       }
 
       let ast: ReturnType<typeof parse>;
@@ -214,16 +223,39 @@ describe('api contract', () => {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const moduleBody = ast.module?.content?.body as ASTNode[] | undefined;
+      let moduleBody = ast.module?.content?.body as ASTNode[] | undefined;
       if (!moduleBody) {
         errors.push(`${file}: missing module script`);
         continue;
       }
 
       const pascal = toPascal(name);
-      const propsAnnotation = findPropsTypeAlias(moduleBody, `${pascal}Props`);
+      let propsAnnotation = findPropsTypeAlias(moduleBody, `${pascal}Props`);
+
+      // After migration, types live in <name>.types.ts and the .svelte module
+      // script only re-exports them. Fall back to parsing the types file via a
+      // synthetic <script module> wrapper so the same AST walker keeps working.
       if (!propsAnnotation) {
-        errors.push(`${file}: could not find export type ${pascal}Props in module script`);
+        const typesPath = join(COMPONENTS_DIR, name, `${name}.types.ts`);
+        try {
+          const typesSource = await readFile(typesPath, 'utf-8');
+          const wrapped = `<script module lang="ts">\n${typesSource}\n</script>`;
+          const typesAst = parse(wrapped, { filename: `${name}.types.ts`, modern: true });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const typesBody = typesAst.module?.content?.body as ASTNode[] | undefined;
+          if (typesBody) {
+            moduleBody = typesBody;
+            propsAnnotation = findPropsTypeAlias(typesBody, `${pascal}Props`);
+          }
+        } catch {
+          // No types.ts — leave propsAnnotation as undefined, error below.
+        }
+      }
+
+      if (!propsAnnotation) {
+        errors.push(
+          `${file}: could not find export type ${pascal}Props in module script or types.ts`,
+        );
         continue;
       }
 

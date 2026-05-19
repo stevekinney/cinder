@@ -58,7 +58,7 @@
    */
 
   import { classNames } from '../../utilities/class-names.ts';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
 
   let {
     id,

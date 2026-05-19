@@ -12,19 +12,34 @@ import { dirname, join } from 'node:path';
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
 
-/** Returns a sorted array of component kebab names from `packages/components/src/components/*.svelte` (top-level only, no `_internal/`). */
+/**
+ * Returns a sorted array of component kebab names. Discovers both the legacy
+ * flat layout (`packages/components/src/components/<name>.svelte`) and the
+ * per-directory migrated layout (`packages/components/src/components/<name>/<name>.svelte`).
+ * Underscore-prefixed names are excluded as internal-only.
+ */
 export async function discoverComponents(): Promise<string[]> {
-  const glob = new Bun.Glob('*.svelte');
-  const names: string[] = [];
+  const names = new Set<string>();
+  const root = join(COMPONENTS_ROOT, 'src', 'components');
 
-  for await (const file of glob.scan({ cwd: join(COMPONENTS_ROOT, 'src', 'components') })) {
-    // file is like "button.svelte"; skip internal components (underscore-prefixed)
+  // Flat (legacy) components.
+  for await (const file of new Bun.Glob('*.svelte').scan({ cwd: root })) {
     if (file.startsWith('_')) continue;
-    const name = file.replace(/\.svelte$/, '');
-    names.push(name);
+    names.add(file.replace(/\.svelte$/, ''));
   }
 
-  return names.toSorted();
+  // Directory-shaped (migrated) components.
+  for await (const dir of new Bun.Glob('*/').scan({ cwd: root, onlyFiles: false })) {
+    const dirName = dir.replace(/\/$/, '');
+    if (dirName.startsWith('_')) continue;
+    if (dirName === 'experimental' || dirName === 'icons') continue;
+    // Confirm the directory holds a top-level .svelte file matching its name.
+    const expectedFile = `${dirName}/${dirName}.svelte`;
+    const hit = await Bun.file(join(root, expectedFile)).exists();
+    if (hit) names.add(dirName);
+  }
+
+  return [...names].toSorted();
 }
 
 /**

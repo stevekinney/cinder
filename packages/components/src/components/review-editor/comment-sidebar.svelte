@@ -26,7 +26,7 @@
   import { truncate } from '../../utilities/truncate.ts';
   import { MessageSquare, MoreHorizontal, Trash2, Plus, FileText, X } from '../icons/index.ts';
   import { getVisibleComments, isDocumentAnchor } from '@cinder/commentary/comments';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import Dropdown from '../dropdown.svelte';
   import DropdownTrigger from '../dropdown-trigger.svelte';
   import DropdownMenu from '../dropdown-menu.svelte';

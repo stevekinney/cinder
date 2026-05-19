@@ -1,26 +1,14 @@
 <script lang="ts" module>
-  import type { Snippet } from 'svelte';
-
-  /** Props for the AccordionItem component. */
-  export type AccordionItemProps = {
-    /** Unique identifier matched against Accordion's expandedIds. */
-    id: string;
-    /** Visible header label for the item. */
-    title: string;
-    /** When true, the item cannot be toggled. Default: false. */
-    disabled?: boolean;
-    /** Additional CSS class merged with `.cinder-accordion-item`. */
-    class?: string;
-    /** Panel content rendered when the item is expanded. */
-    children: Snippet;
-  };
+  export type { AccordionItemProps } from './accordion-item.types.ts';
 </script>
 
 <script lang="ts">
   import { getContext } from 'svelte';
 
-  import { ACCORDION_CONTEXT_KEY, type AccordionContext } from './accordion.svelte';
-  import { classNames } from '../utilities/class-names.ts';
+  import { ACCORDION_CONTEXT_KEY } from '../accordion/accordion.context.ts';
+  import type { AccordionContext } from '../accordion/accordion.types.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import type { AccordionItemProps } from './accordion-item.types.ts';
 
   let { id, title, disabled = false, class: className, children }: AccordionItemProps = $props();
 

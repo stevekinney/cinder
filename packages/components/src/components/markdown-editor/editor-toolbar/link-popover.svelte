@@ -30,7 +30,7 @@
     createFocusOnMount,
     createClickOutside,
   } from '../../../utilities/attachments.ts';
-  import Button from '../../button.svelte';
+  import Button from '../../button/button.svelte';
   import Input from '../../input.svelte';
   import { Link, Unlink, X } from '../../icons/index.ts';
 

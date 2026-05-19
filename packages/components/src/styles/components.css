@@ -4,14 +4,14 @@
  * Wave 2 of Phase 2 adds all imports in alphabetical order.
  */
 
-@import './components/accordion-item.css';
-@import './components/accordion.css';
+@import '../components/accordion-item/accordion-item.css';
+@import '../components/accordion/accordion.css';
 @import './components/alert.css';
 @import './components/avatar.css';
 @import './components/badge.css';
 @import './components/banner.css';
 @import './components/breadcrumbs.css';
-@import './components/button.css';
+@import '../components/button/button.css';
 @import './components/button-group.css';
 @import './components/callout.css';
 @import './components/card.css';

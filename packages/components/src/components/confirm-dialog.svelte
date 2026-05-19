@@ -54,7 +54,7 @@
 </script>
 
 <script lang="ts">
-  import Button from './button.svelte';
+  import Button from './button/button.svelte';
   import Modal from './modal.svelte';
   import { cn } from '../utilities/class-names.ts';
   import { useId } from '../utilities/use-id.ts';

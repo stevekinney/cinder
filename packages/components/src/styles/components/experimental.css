@@ -11,5 +11,5 @@
 @import './experimental/json-viewer.css';
 @import './experimental/message.css';
 @import './experimental/popover.css';
-@import './experimental/timeline.css';
-@import './experimental/timeline-item.css';
+@import '../../components/experimental/timeline/timeline.css';
+@import '../../components/experimental/timeline-item/timeline-item.css';

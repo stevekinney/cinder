@@ -36,7 +36,7 @@
     createFocusOnMount,
     createClickOutside,
   } from '../../utilities/attachments.ts';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import { isDocumentAnchor } from '@cinder/commentary/comments';
   import CommentList from './comment-list.svelte';
   import CommentComposer from './comment-composer.svelte';

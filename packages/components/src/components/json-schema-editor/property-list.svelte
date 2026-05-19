@@ -14,7 +14,7 @@
 
 <script lang="ts">
   import Alert from '../alert.svelte';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import Input from '../input.svelte';
   import PropertyEditor from './property-editor.svelte';
 

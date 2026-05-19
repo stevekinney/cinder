@@ -11,7 +11,7 @@
  * the manifest. If the Props type has a property not in the destructuring, it is skipped.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { parse } from 'svelte/compiler';
@@ -418,7 +418,17 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
   const componentName = toPascalCase(fileBaseName);
 
   const rawProps = extractPropsFromSvelteAst(source);
-  const moduleScriptContent = extractModuleScriptContent(source);
+  let moduleScriptContent = extractModuleScriptContent(source);
+
+  // After the per-directory migration, the .svelte module script may only
+  // re-export types from <name>.types.ts. Concatenate the types-file content
+  // so the existing module-script type walker finds the Props alias.
+  const typesFilePath = filePath.replace(/\.svelte$/, '.types.ts');
+  if (existsSync(typesFilePath)) {
+    const typesSource = readFileSync(typesFilePath, 'utf-8');
+    moduleScriptContent = `${moduleScriptContent}\n${typesSource}`;
+  }
+
   const typeInfoMap = buildTypeInfoMap(moduleScriptContent, componentName);
 
   const props: PropManifest[] = [];
@@ -460,18 +470,31 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
   };
 }
 
-/** Globs all top-level *.svelte files from componentsDir and analyzes each one. */
+/**
+ * Discovers and analyzes every public component under `componentsDir`. Covers
+ * both legacy flat components (`<name>.svelte` at the top level) and the
+ * migrated per-directory layout (`<name>/<name>.svelte`). Underscore-prefixed
+ * names are excluded as internal-only.
+ */
 export async function analyzeAll(componentsDir: string): Promise<ComponentManifest[]> {
-  const glob = new Bun.Glob('*.svelte');
-  const filePaths: string[] = [];
+  const filePaths = new Set<string>();
 
-  for await (const file of glob.scan({ cwd: componentsDir })) {
-    // Skip internal components (underscore-prefixed filenames are not public API)
+  // Flat (legacy) components.
+  for await (const file of new Bun.Glob('*.svelte').scan({ cwd: componentsDir })) {
     if (file.startsWith('_')) continue;
-    filePaths.push(join(componentsDir, file));
+    filePaths.add(join(componentsDir, file));
   }
 
-  const manifests = await Promise.all(filePaths.map((filePath) => analyzeComponent(filePath)));
+  // Directory-shaped (migrated) components: `<name>/<name>.svelte`.
+  for await (const dir of new Bun.Glob('*/').scan({ cwd: componentsDir, onlyFiles: false })) {
+    const dirName = dir.replace(/\/$/, '');
+    if (dirName.startsWith('_')) continue;
+    if (dirName === 'experimental' || dirName === 'icons') continue;
+    const candidate = join(componentsDir, dirName, `${dirName}.svelte`);
+    if (existsSync(candidate)) filePaths.add(candidate);
+  }
+
+  const manifests = await Promise.all([...filePaths].map((filePath) => analyzeComponent(filePath)));
 
   return manifests.toSorted((a, b) => a.kebabName.localeCompare(b.kebabName));
 }

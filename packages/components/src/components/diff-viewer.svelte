@@ -73,7 +73,7 @@
    */
 
   import { classNames } from '../utilities/class-names.ts';
-  import Button from './button.svelte';
+  import Button from './button/button.svelte';
   import Surface from './surface.svelte';
   import { RotateCcw } from './icons/index.ts';
   import { computeLineDiff, getDiffStats, groupIntoHunks } from '@cinder/markdown/diff/line-diff';

@@ -21,7 +21,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { formatRelativeTime } from '../../utilities/format-date.ts';
-  import Button from '../button.svelte';
+  import Button from '../button/button.svelte';
   import { Pencil, Trash2 } from '../icons/index.ts';
 
   let {

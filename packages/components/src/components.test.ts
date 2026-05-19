@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { sveltePlugin } from '../scripts/svelte-plugin.ts';
-import Button from './components/button.svelte';
+import Button from './components/button/button.svelte';
 
 describe('svelte plugin', () => {
   test('compiles Button to a callable', () => {

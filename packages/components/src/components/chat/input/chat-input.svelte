@@ -85,7 +85,7 @@
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
   import { ArrowUp, Paperclip, Square, X } from '../../icons/index.ts';
-  import Button from '../../button.svelte';
+  import Button from '../../button/button.svelte';
   import MarkdownEditor from '../../markdown-editor.svelte';
   import { deriveAttachmentKind } from './attachment-kind.js';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';

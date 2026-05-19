@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { analyzeAll, analyzeComponent } from './analyze.ts';
@@ -6,6 +7,12 @@ import { analyzeAll, analyzeComponent } from './analyze.ts';
 const COMPONENTS_DIR = join(import.meta.dirname, '../../components/src/components');
 
 function componentPath(name: string): string {
+  // Migrated components live in `<name>/<name>.svelte`; legacy flat components
+  // live in `<name>.svelte`. Prefer the directory shape so the analyzer's
+  // component-side fallback to `<name>.types.ts` (next to the .svelte) finds
+  // the types file.
+  const directoryPath = join(COMPONENTS_DIR, name, `${name}.svelte`);
+  if (existsSync(directoryPath)) return directoryPath;
   return join(COMPONENTS_DIR, `${name}.svelte`);
 }
 

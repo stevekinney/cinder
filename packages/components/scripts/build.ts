@@ -18,6 +18,16 @@ async function createServerEntry(): Promise<string> {
   return serverEntryPath;
 }
 
+// Fail fast if generated component artifacts have drifted from source.
+// Run `bun run components:generate` to fix drift.
+const componentsCheckResult = await $`bun run components:check`.nothrow();
+if (componentsCheckResult.exitCode !== 0) {
+  process.stderr.write(
+    'Build aborted: component artifacts are out of sync. Run `bun run components:generate`.\n',
+  );
+  process.exit(1);
+}
+
 // Fail fast if package.json#exports has drifted from the component file system.
 // Run `bun run exports:generate` to fix drift.
 const checkResult = await $`bun run exports:check`.nothrow();
@@ -61,7 +71,9 @@ await emitDts({
   tsconfig: `${repositoryRoot}/tsconfig.build.json`,
 });
 
-const expectedComponentDeclarations = `${distributionDirectory}/components/button.svelte.d.ts`;
+// Smoke-check declaration output for a migrated component (button is in the
+// per-directory layout) and the root barrel.
+const expectedComponentDeclarations = `${distributionDirectory}/components/button/button.svelte.d.ts`;
 const expectedBarrelDeclarations = `${distributionDirectory}/index.d.ts`;
 
 for (const declarationPath of [expectedComponentDeclarations, expectedBarrelDeclarations]) {

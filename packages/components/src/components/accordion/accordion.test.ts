@@ -2,13 +2,13 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Accordion } = await import('./accordion.svelte');
-const { default: AccordionItem } = await import('./accordion-item.svelte');
+const { default: AccordionItem } = await import('../accordion-item/accordion-item.svelte');
 
 // ---------------------------------------------------------------------------
 // Snippet helpers

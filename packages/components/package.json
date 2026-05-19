@@ -17,14 +17,6 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
-    "./accordion-item": {
-      "svelte": "./src/components/accordion-item.svelte",
-      "types": "./dist/components/accordion-item.svelte.d.ts"
-    },
-    "./accordion": {
-      "svelte": "./src/components/accordion.svelte",
-      "types": "./dist/components/accordion.svelte.d.ts"
-    },
     "./alert": {
       "svelte": "./src/components/alert.svelte",
       "types": "./dist/components/alert.svelte.d.ts"
@@ -48,10 +40,6 @@
     "./button-group": {
       "svelte": "./src/components/button-group.svelte",
       "types": "./dist/components/button-group.svelte.d.ts"
-    },
-    "./button": {
-      "svelte": "./src/components/button.svelte",
-      "types": "./dist/components/button.svelte.d.ts"
     },
     "./callout": {
       "svelte": "./src/components/callout.svelte",
@@ -168,14 +156,6 @@
     "./experimental/message": {
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
-    },
-    "./experimental/timeline-item": {
-      "svelte": "./src/components/experimental/timeline-item.svelte",
-      "types": "./dist/components/experimental/timeline-item.svelte.d.ts"
-    },
-    "./experimental/timeline": {
-      "svelte": "./src/components/experimental/timeline.svelte",
-      "types": "./dist/components/experimental/timeline.svelte.d.ts"
     },
     "./feed-event": {
       "svelte": "./src/components/feed-event.svelte",
@@ -420,6 +400,66 @@
     "./visually-hidden": {
       "svelte": "./src/components/visually-hidden.svelte",
       "types": "./dist/components/visually-hidden.svelte.d.ts"
+    },
+    "./accordion": {
+      "svelte": "./src/components/accordion/index.ts",
+      "types": "./dist/components/accordion/index.d.ts"
+    },
+    "./accordion/schema": {
+      "svelte": "./src/components/accordion/accordion.schema.ts",
+      "types": "./dist/components/accordion/accordion.schema.d.ts"
+    },
+    "./accordion/variables": {
+      "svelte": "./src/components/accordion/accordion.variables.ts",
+      "types": "./dist/components/accordion/accordion.variables.d.ts"
+    },
+    "./accordion-item": {
+      "svelte": "./src/components/accordion-item/index.ts",
+      "types": "./dist/components/accordion-item/index.d.ts"
+    },
+    "./accordion-item/schema": {
+      "svelte": "./src/components/accordion-item/accordion-item.schema.ts",
+      "types": "./dist/components/accordion-item/accordion-item.schema.d.ts"
+    },
+    "./accordion-item/variables": {
+      "svelte": "./src/components/accordion-item/accordion-item.variables.ts",
+      "types": "./dist/components/accordion-item/accordion-item.variables.d.ts"
+    },
+    "./button": {
+      "svelte": "./src/components/button/index.ts",
+      "types": "./dist/components/button/index.d.ts"
+    },
+    "./button/schema": {
+      "svelte": "./src/components/button/button.schema.ts",
+      "types": "./dist/components/button/button.schema.d.ts"
+    },
+    "./button/variables": {
+      "svelte": "./src/components/button/button.variables.ts",
+      "types": "./dist/components/button/button.variables.d.ts"
+    },
+    "./experimental/timeline": {
+      "svelte": "./src/components/experimental/timeline/index.ts",
+      "types": "./dist/components/experimental/timeline/index.d.ts"
+    },
+    "./experimental/timeline/schema": {
+      "svelte": "./src/components/experimental/timeline/timeline.schema.ts",
+      "types": "./dist/components/experimental/timeline/timeline.schema.d.ts"
+    },
+    "./experimental/timeline/variables": {
+      "svelte": "./src/components/experimental/timeline/timeline.variables.ts",
+      "types": "./dist/components/experimental/timeline/timeline.variables.d.ts"
+    },
+    "./experimental/timeline-item": {
+      "svelte": "./src/components/experimental/timeline-item/index.ts",
+      "types": "./dist/components/experimental/timeline-item/index.d.ts"
+    },
+    "./experimental/timeline-item/schema": {
+      "svelte": "./src/components/experimental/timeline-item/timeline-item.schema.ts",
+      "types": "./dist/components/experimental/timeline-item/timeline-item.schema.d.ts"
+    },
+    "./experimental/timeline-item/variables": {
+      "svelte": "./src/components/experimental/timeline-item/timeline-item.variables.ts",
+      "types": "./dist/components/experimental/timeline-item/timeline-item.variables.d.ts"
     }
   },
   "main": "./dist/server/index.js",
@@ -428,10 +468,13 @@
   "files": [
     "dist",
     "src/index.ts",
+    "src/schema-types.ts",
     "src/components/**/*.ts",
     "!src/components/**/*.test.ts",
     "!src/components/**/*.spec.ts",
     "src/components/**/*.svelte",
+    "src/components/**/*.json",
+    "src/components/**/*.md",
     "src/components/**/*.css",
     "src/_internal/collection.ts",
     "src/_internal/field-control.ts",
@@ -464,6 +507,9 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
+    "components:check": "bun run scripts/generate-component-artifacts.ts --check",
+    "components:fixture": "bun run scripts/run-consumer-fixture.ts",
+    "components:generate": "bun run scripts/generate-component-artifacts.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
@@ -502,6 +548,7 @@
     "happy-dom": "^15.11.7",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.0",
+    "postcss": "^8.5.15",
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^4.3.0",
     "prettier-plugin-svelte": "^3.3.2",
@@ -509,6 +556,7 @@
     "svelte": "~5.55.0",
     "svelte-check": "^4.0.0",
     "svelte2tsx": "^0.7.33",
+    "ts-morph": "^28.0.0",
     "typescript": "^5.9.0"
   },
   "peerDependencies": {

@@ -1,8 +1,8 @@
-export { default as AccordionItem } from './components/accordion-item.svelte';
-export type { AccordionItemProps } from './components/accordion-item.svelte';
+export { default as AccordionItem } from './components/accordion-item/index.ts';
+export type { AccordionItemProps } from './components/accordion-item/index.ts';
 
-export { default as Accordion } from './components/accordion.svelte';
-export type { AccordionContext, AccordionProps } from './components/accordion.svelte';
+export { default as Accordion } from './components/accordion/index.ts';
+export type { AccordionContext, AccordionProps } from './components/accordion/index.ts';
 
 export { default as Alert } from './components/alert.svelte';
 export type { AlertProps, AlertVariant } from './components/alert.svelte';
@@ -19,8 +19,8 @@ export type { BannerProps, BannerVariant } from './components/banner.svelte';
 export { default as Breadcrumbs } from './components/breadcrumbs.svelte';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs.svelte';
 
-export { default as Button } from './components/button.svelte';
-export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button.svelte';
+export { default as Button } from './components/button/index.ts';
+export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button/index.ts';
 
 export { default as ButtonGroup } from './components/button-group.svelte';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
@@ -436,8 +436,8 @@ export type { JsonViewerProps } from './components/experimental/json-viewer.svel
 export { default as Message } from './components/experimental/message.svelte';
 export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
 
-export { default as Timeline } from './components/experimental/timeline.svelte';
-export type { TimelineProps } from './components/experimental/timeline.svelte';
+export { default as Timeline } from './components/experimental/timeline/index.ts';
+export type { TimelineProps } from './components/experimental/timeline/index.ts';
 
-export { default as TimelineItem } from './components/experimental/timeline-item.svelte';
-export type { TimelineItemProps } from './components/experimental/timeline-item.svelte';
+export { default as TimelineItem } from './components/experimental/timeline-item/index.ts';
+export type { TimelineItemProps } from './components/experimental/timeline-item/index.ts';

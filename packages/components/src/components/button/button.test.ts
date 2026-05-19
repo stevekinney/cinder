@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -15,7 +15,7 @@ const { render } = await import('@testing-library/svelte');
 const { default: Button } = await import('./button.svelte');
 
 function readTokenSource(): string {
-  return readFileSync(new URL('../styles/tokens-base.css', import.meta.url), 'utf8');
+  return readFileSync(new URL('../../styles/tokens-base.css', import.meta.url), 'utf8');
 }
 
 function readRemTokenValue(source: string, name: string): number {
