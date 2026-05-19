@@ -1,7 +1,7 @@
 /**
  * Cinder component playground dev server.
  *
- * Runs at http://localhost:4173. Routes:
+ * Runs at http://localhost:5555 by default, or the next available port. Routes:
  *   GET /              → 302 redirect to /c/<first-component>
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
@@ -33,7 +33,8 @@ import { PRE_PAINT_THEME_SCRIPT, renderShell } from './render-shell.ts';
 
 import type { ComponentManifest } from './types.ts';
 
-export const PORT = 4173;
+export const PORT = 5555;
+const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
@@ -1202,6 +1203,43 @@ export type PlaygroundServer = {
   dispose: () => Promise<void>;
 };
 
+type BunServer = ReturnType<typeof Bun.serve>;
+type PlaygroundFetchHandler = (request: Request) => Response | Promise<Response>;
+type PlaygroundHttpServer = {
+  server: BunServer;
+  port: number;
+};
+
+function isAddressInUseError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const errorWithCode = error as Error & { code?: unknown };
+  return errorWithCode.code === 'EADDRINUSE';
+}
+
+export function createHttpServerOnAvailablePort(
+  preferredPort: number,
+  fetchHandler: PlaygroundFetchHandler,
+): PlaygroundHttpServer {
+  for (let offset = 0; offset < MAX_PORT_SCAN_ATTEMPTS; offset++) {
+    const port = preferredPort + offset;
+    try {
+      const server = Bun.serve({
+        port,
+        fetch: fetchHandler,
+      });
+      return { server, port };
+    } catch (error) {
+      if (!isAddressInUseError(error)) throw error;
+    }
+  }
+
+  throw new Error(
+    `[playground] no available port found from ${preferredPort} through ${
+      preferredPort + MAX_PORT_SCAN_ATTEMPTS - 1
+    }`,
+  );
+}
+
 /**
  * Pre-build every sidebar component's page bundle + the shell bundle.
  *
@@ -1263,12 +1301,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
   );
 
-  // Start the HTTP server first — if Bun.serve throws (e.g. EADDRINUSE),
-  // no watchers are leaked.
-  const server = Bun.serve({
-    port,
-    fetch: handleRequest,
-  });
+  // Start the HTTP server first — if binding fails for reasons other than an
+  // occupied port, no watchers are leaked.
+  const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
+  const { port: actualPort, server } = playgroundHttpServer;
 
   let watchers: FSWatcher[];
   try {
@@ -1286,7 +1322,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await server.stop(true);
   }
 
-  const actualPort = server.port ?? port;
+  const portFile = Bun.env['PLAYGROUND_PORT_FILE'];
+  if (portFile !== undefined) {
+    await Bun.write(portFile, `${actualPort}\n`);
+  }
   process.stdout.write(`[playground] Listening at http://localhost:${actualPort}\n`);
   return { port: actualPort, dispose };
 }

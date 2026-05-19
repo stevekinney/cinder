@@ -5,4 +5,4 @@
  * the playground's local dev port. Single source of truth — config, fixture,
  * and scripts all consume this.
  */
-export const PLAYGROUND_URL = process.env['PLAYGROUND_URL'] ?? 'http://localhost:4173';
+export const PLAYGROUND_URL = process.env['PLAYGROUND_URL'] ?? 'http://localhost:5555';

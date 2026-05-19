@@ -1,21 +1,39 @@
 import { spawn } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
+import { mkdirSync, rmSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
+import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const packageRoot = resolve(here, '..');
-const repoRoot = resolve(here, '../../..');
+const packageRoot = resolvePath(here, '..');
+const repoRoot = resolvePath(here, '../../..');
 const readinessPath = '/api/manifest';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
+let targetPlaygroundUrl = PLAYGROUND_URL;
+const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
 
-async function ping(): Promise<boolean> {
+async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
   try {
-    const response = await fetch(PLAYGROUND_URL + readinessPath);
+    const response = await fetch(playgroundUrl + readinessPath, {
+      signal: AbortSignal.timeout(PLAYGROUND_PORT_PROBE_TIMEOUT_MS),
+    });
     return response.ok;
   } catch {
     return false;
   }
+}
+
+function localPlaygroundUrlForPort(port: number): string {
+  return `http://localhost:${port}`;
+}
+
+async function readPlaygroundPortFile(path: string): Promise<number | null> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) return null;
+  const text = await file.text();
+  const port = Number(text.trim());
+  return Number.isInteger(port) && port > 0 ? port : null;
 }
 
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
@@ -31,48 +49,59 @@ function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   });
 }
 
-const DEFAULT_PLAYGROUND_URL = 'http://localhost:4173';
-const isLocalDefault = PLAYGROUND_URL === DEFAULT_PLAYGROUND_URL;
+const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
+  let playgroundPortFile: string | null = null;
   const alreadyUp = await ping();
 
   if (alreadyUp && reuseOptOut) {
     console.error(
-      `Playground server already responding at ${PLAYGROUND_URL}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
+      `Playground server already responding at ${targetPlaygroundUrl}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
     );
     process.exit(1);
   }
 
   if (alreadyUp) {
-    console.log(`Reusing playground server at ${PLAYGROUND_URL}.`);
+    console.log(`Reusing playground server at ${targetPlaygroundUrl}.`);
   } else if (!isLocalDefault) {
-    // The local `bun run --filter=@cinder/playground dev` server binds to
-    // port 4173 unconditionally — starting it cannot satisfy readiness for
-    // a non-default `PLAYGROUND_URL`. Fail fast with an actionable message
-    // rather than spinning for 120s.
+    // The local `bun run --filter=@cinder/playground dev` server starts from
+    // the local default port and scans upward. Starting it cannot satisfy
+    // readiness for a custom `PLAYGROUND_URL`. Fail fast with an actionable
+    // message rather than spinning for 120s.
     console.error(
-      `Playground server not responding at ${PLAYGROUND_URL}, and it differs from the local default (${DEFAULT_PLAYGROUND_URL}). Start the target server manually before running the suite, or unset PLAYGROUND_URL.`,
+      `Playground server not responding at ${targetPlaygroundUrl}, and it differs from the local default (${DEFAULT_PLAYGROUND_URL}). Start the target server manually before running the suite, or unset PLAYGROUND_URL.`,
     );
     process.exit(1);
   } else {
-    console.log(`Starting playground server (target: ${PLAYGROUND_URL})...`);
+    console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
+    playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
+    mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
+    rmSync(playgroundPortFile, { force: true });
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
       cwd: repoRoot,
-      stdio: ['ignore', 'inherit', 'inherit'],
+      stdio: ['ignore', 'pipe', 'inherit'],
+      env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
+    });
+    serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
+      process.stdout.write(chunk);
     });
 
     const startedAt = Date.now();
     const deadline = startedAt + 120_000;
     let lastLog = startedAt;
     while (Date.now() < deadline) {
-      if (await ping()) break;
+      const selectedPort = await readPlaygroundPortFile(playgroundPortFile);
+      if (selectedPort !== null) {
+        targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
+        if (await ping()) break;
+      }
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
-        console.log(`Waiting for playground at ${PLAYGROUND_URL} (${elapsed}s elapsed)...`);
+        console.log(`Waiting for playground to report its selected port (${elapsed}s elapsed)...`);
         lastLog = Date.now();
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
@@ -84,7 +113,10 @@ async function main(): Promise<void> {
       } catch (error) {
         console.error('Failed to kill unready server process:', error);
       }
-      console.error(`Playground server did not become ready within 120s at ${PLAYGROUND_URL}.`);
+      console.error(
+        `Playground server did not become ready within 120s at ${targetPlaygroundUrl}.`,
+      );
+      if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
       process.exit(1);
     }
   }
@@ -105,6 +137,7 @@ async function main(): Promise<void> {
         console.error('Failed to kill child process:', error);
       }
     }
+    if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
   };
 
   process.on('SIGINT', () => {
@@ -119,6 +152,7 @@ async function main(): Promise<void> {
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
+    env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
   children.push(prep);
   const prepCode = await waitForExit(prep);
@@ -130,7 +164,7 @@ async function main(): Promise<void> {
   const playwright = spawn('bunx', ['playwright', 'test', ...args], {
     cwd: packageRoot,
     stdio: 'inherit',
-    env: { ...process.env },
+    env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
   children.push(playwright);
   const playwrightCode = await waitForExit(playwright);
@@ -138,6 +172,7 @@ async function main(): Promise<void> {
   const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
+    env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
   children.push(summary);
   const summaryCode = await waitForExit(summary);
