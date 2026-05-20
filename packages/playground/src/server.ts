@@ -1041,6 +1041,26 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
+  // GET /components/<path>.css → packages/components/src/components/<path>.css
+  // After the per-directory layout migration, each component owns its CSS at
+  // `src/components/<name>/<name>.css`. The styles aggregator at
+  // `src/styles/components.css` imports those via `@import '../components/<name>/<name>.css'`,
+  // which the browser resolves relative to the served URL — landing on
+  // `/components/<name>/<name>.css`. Serve them from disk here so the
+  // resolved relative paths actually reach the right file.
+  if (pathname.startsWith('/components/') && pathname.endsWith('.css')) {
+    const COMPONENTS_SRC_ROOT = join(COMPONENTS_ROOT, 'src', 'components');
+    const relative = pathname.slice('/components/'.length);
+    if (relative.includes('..') || relative.startsWith('/')) return notFound();
+    const cssPath = join(COMPONENTS_SRC_ROOT, relative);
+    const cssRelativePath = relativePath(COMPONENTS_SRC_ROOT, cssPath);
+    if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
+    const cssFile = Bun.file(cssPath);
+    if (!(await cssFile.exists())) return notFound(`${relative} not found`);
+    const css = await cssFile.text();
+    return new Response(css, { headers: { 'Content-Type': 'text/css' } });
+  }
+
   // GET /bundle/:name/:scenario.js
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
