@@ -197,18 +197,6 @@ export function captureFocus(): HTMLElement | null {
   return null;
 }
 
-/**
- * Restore focus to a previously-captured element. Silently no-ops when the
- * target is no longer connected to the DOM (e.g. the trigger was unmounted
- * while the overlay was open).
- */
-export function restoreFocusTo(target: HTMLElement | null): void {
-  if (!target) return;
-  if (typeof document === 'undefined') return;
-  if (!target.isConnected) return;
-  try {
-    target.focus();
-  } catch {
-    // Some elements throw on focus() in happy-dom edge cases; harmless.
-  }
-}
+// Note: `restoreFocusTo` lives in `utilities/focus.ts` (returns a boolean so
+// candidate-list iteration can short-circuit). Overlays import it directly
+// from that module.

@@ -5,8 +5,8 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
-  import { captureFocus, lockBodyScroll } from '../../_internal/overlay.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
 
@@ -36,6 +36,10 @@
   // released on close OR on destroy (defensive — both fire on close-then-unmount,
   // and idempotence is guaranteed by checking `releaseBodyScrollLock !== null`).
   let releaseBodyScrollLock: (() => void) | null = null;
+  // Escape-stack handle. Modal handles its own Escape via the native <dialog>
+  // `cancel` event, but pushing a no-op handler keeps non-dialog overlays
+  // above us from accidentally swallowing the keystroke (per OVERLAY-POLICY).
+  let releaseEscapeHandler: (() => void) | null = null;
 
   function acquireLock() {
     if (releaseBodyScrollLock !== null) return;
@@ -45,6 +49,20 @@
   function releaseLock() {
     releaseBodyScrollLock?.();
     releaseBodyScrollLock = null;
+  }
+
+  function acquireEscapeHandler() {
+    if (releaseEscapeHandler !== null) return;
+    releaseEscapeHandler = pushEscapeHandler(() => {
+      // No-op: the native <dialog> cancel event handles ESC dismissal. We
+      // push this handler purely to participate in the escape-stack ordering
+      // so non-dialog overlays above us route their own ESC correctly.
+    });
+  }
+
+  function releaseEscape() {
+    releaseEscapeHandler?.();
+    releaseEscapeHandler = null;
   }
 
   const titleId = useId('cinder-modal-title');
@@ -59,6 +77,7 @@
       capturedFocus = captureFocus();
       dialogElement.showModal();
       acquireLock();
+      acquireEscapeHandler();
       // Initial focus strategy:
       //   1. If a child carries `autofocus`, the native dialog already focused it.
       //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
@@ -107,13 +126,15 @@
     // so parent-driven closes do not fire the callback.
     open = false;
     releaseLock();
+    releaseEscape();
     returnFocus();
   }
 
   onDestroy(() => {
     // Defensive — close-then-unmount and unmount-while-open both land here.
-    // `releaseLock` is idempotent so a double-release is impossible.
+    // The release functions are idempotent so a double-release is impossible.
     releaseLock();
+    releaseEscape();
   });
 
   function handleBackdropClick(event: MouseEvent) {
@@ -135,7 +156,7 @@
 {#if mounted || open}
   <dialog
     bind:this={dialogElement}
-    class={cn('cinder-modal', className)}
+    class={classNames('cinder-modal', className)}
     aria-modal="true"
     aria-labelledby={titleId}
     {...describedById ? { 'aria-describedby': describedById } : {}}

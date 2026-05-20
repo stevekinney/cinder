@@ -22,8 +22,8 @@ export type SidebarContextValue = {
 const [getSidebarContextStrict, setSidebarContextRaw] = createContext<SidebarContextValue>();
 
 /** Publish the sidebar context for descendants. */
-export function setSidebarContext(context: SidebarContextValue): SidebarContextValue {
-  return setSidebarContextRaw(context);
+export function setSidebarContext(context: SidebarContextValue): void {
+  setSidebarContextRaw(context);
 }
 
 /**

@@ -544,17 +544,17 @@ describe('SegmentedControl — variants', () => {
     expect(control?.classList.contains('cinder-segmented-control')).toBe(true);
   });
 
-  test('data-cinder-selection-mode reflects the selection mode', () => {
-    const { container: singleContainer } = render(Fixture, {
+  test('single mode sets data-cinder-selection-mode="single"', () => {
+    const { container } = render(Fixture, {
       props: { id: 'v1', label: 'View', options: [{ value: 'a', label: 'A' }] },
     });
-    const singleGroup = singleContainer.querySelector('[role="radiogroup"]');
-    expect(singleGroup?.getAttribute('data-cinder-selection-mode')).toBe('single');
+    const group = container.querySelector('[role="radiogroup"]');
+    expect(group?.getAttribute('data-cinder-selection-mode')).toBe('single');
+  });
 
-    cleanup();
-
+  test('multiple mode sets data-cinder-selection-mode="multiple"', () => {
     const set = new SvelteSet<string>();
-    const { container: multiContainer } = render(Fixture, {
+    const { container } = render(Fixture, {
       props: {
         id: 'v2',
         label: 'View',
@@ -563,8 +563,8 @@ describe('SegmentedControl — variants', () => {
         value: set,
       },
     });
-    const multiGroup = multiContainer.querySelector('[role="group"]');
-    expect(multiGroup?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
+    const group = container.querySelector('[role="group"]');
+    expect(group?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
   });
 
   test('renders option leading content inside aria-hidden wrapper', () => {

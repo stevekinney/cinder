@@ -69,14 +69,12 @@
   aria-pressed={context.selectionMode === 'multiple' ? isSelected : undefined}
   aria-controls={role === 'tab' ? controls : undefined}
   aria-disabled={effectiveDisabled ? 'true' : undefined}
-  disabled={effectiveDisabled}
+  disabled={context.selectionMode === 'multiple' ? effectiveDisabled : undefined}
   tabindex={isFocusable ? 0 : -1}
   class={classNames('cinder-segmented-control-option', customClassName)}
   data-cinder-selected={isSelected ? '' : undefined}
   data-cinder-pressed={context.selectionMode === 'multiple' && isSelected ? '' : undefined}
   onclick={() => context.toggle(value)}
-  onfocus={() => context.onSegmentFocus(value)}
-  onblur={() => context.onSegmentBlur()}
   {@attach registerSegment}
 >
   {#if leading}

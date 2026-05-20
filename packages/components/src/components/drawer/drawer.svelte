@@ -6,13 +6,9 @@
   import type { DrawerProps } from './drawer.types.ts';
   import { onDestroy } from 'svelte';
 
-  import {
-    captureFocus,
-    lockBodyScroll,
-    pushEscapeHandler,
-    restoreFocusTo,
-  } from '../../_internal/overlay.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
 
   let {
@@ -104,7 +100,7 @@
   <dialog
     {...rest}
     bind:this={dialogElement}
-    class={cn('cinder-drawer', className)}
+    class={classNames('cinder-drawer', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
     onclose={handleClose}

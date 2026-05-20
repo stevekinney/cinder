@@ -6,8 +6,9 @@
   import type { CommandPaletteProps } from './command-palette.types.ts';
   import { onDestroy } from 'svelte';
 
-  import { captureFocus, pushEscapeHandler, restoreFocusTo } from '../../_internal/overlay.ts';
+  import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
     setCommandPaletteContext,

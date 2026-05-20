@@ -83,22 +83,7 @@
     oncommentcreate,
     oncommentupdate,
     oncommentdelete,
-    // Optional headless-seam snippet props (DEP plan C8). Accepted here so the
-    // public API surface is established. Currently the built-in implementations
-    // are always rendered; a future iteration may wire `{@render threadList?.()}`
-    // etc. as branches in the relevant subtrees.
-    threadList,
-    sidebar,
-    frontMatterPanel,
-    exportActions,
   }: ReviewEditorProps = $props();
-
-  // Reference the snippet props to keep TypeScript and oxlint quiet about
-  // "declared but never used" until a follow-up wires their rendering in.
-  void threadList;
-  void sidebar;
-  void frontMatterPanel;
-  void exportActions;
 
   // Reference to the underlying MarkdownEditor. Using the imported component
   // as a type is the Svelte ambient pattern — `*.svelte` declares the import

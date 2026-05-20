@@ -437,6 +437,13 @@ describe('Modal', () => {
   });
 
   test('focus restores to triggerRef on close', async () => {
+    // Baseline focus so captureFocus() sees a known state. Without this, a
+    // stale activeElement from a prior test can leak into capturedFocus and
+    // win against triggerRef in the candidate iteration.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     const button = document.createElement('button');
     button.id = 'modal-trigger';
     document.body.appendChild(button);

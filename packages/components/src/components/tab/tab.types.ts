@@ -12,9 +12,14 @@ export type TabProps = {
   children: Snippet;
   /**
    * Decorative content rendered inside an `aria-hidden` span (badges, kbd hints,
-   * counters). Do NOT use for interactive controls like close buttons — those
-   * would be inaccessible inside `aria-hidden`. For close buttons, render them
-   * outside the tab.
+   * counters). Do NOT use for interactive controls like close buttons —
+   * `aria-hidden` removes the content from the accessibility tree, making any
+   * interactive child unreachable by keyboard and invisible to screen readers.
+   *
+   * For a closeable tab, render a separate `<button>` immediately after the
+   * `<Tab>` in the DOM (as a sibling within the tab strip) and associate it
+   * with the tab via `aria-label="Close [tab name]"`. The close button must
+   * live outside the `<Tab>` element entirely.
    */
   trailing?: Snippet;
 };

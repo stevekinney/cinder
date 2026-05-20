@@ -37,10 +37,6 @@ export type SegmentedControlContextValue = {
   isFocusable(value: string): boolean;
   /** Toggle a value (called by Segment on click). */
   toggle(value: string): void;
-  /** Note that a segment with the given value received focus. */
-  onSegmentFocus(value: string): void;
-  /** Note that a segment lost focus. */
-  onSegmentBlur(): void;
 };
 
 export const [getSegmentedControlContext, setSegmentedControlContext] =
@@ -51,6 +47,13 @@ export const [getSegmentedControlContext, setSegmentedControlContext] =
  * Segments register on attach, which is post-mount — but conditional `{#if}`
  * remounts and reordered children can put the registration list out of DOM
  * order. Always sort before iterating for keyboard nav.
+ *
+ * Edge case: if a node is temporarily disconnected from the document,
+ * `compareDocumentPosition` returns a platform-specific disconnected mask
+ * (`DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC`).
+ * The sort remains stable but order is undefined for disconnected nodes. In
+ * practice this is unreachable during normal teardown — unregister runs
+ * synchronously inside the attachment cleanup, before the node is removed.
  */
 export function inDocumentOrder<T extends { node: Node }>(items: readonly T[]): T[] {
   return [...items].sort((a, b) => {
@@ -92,7 +95,6 @@ export class SegmentedControlController {
   // during effect teardown, which crashes `compareDocumentPosition`.
   #registrations: SegmentRegistration[] = [];
   #version = $state(0);
-  #focusedValue = $state<string | null>(null);
   #options: SegmentedControlControllerOptions;
 
   constructor(options: SegmentedControlControllerOptions) {
@@ -201,18 +203,14 @@ export class SegmentedControlController {
     this.#options.onChange?.(value);
   }
 
-  onSegmentFocus(value: string): void {
-    this.#focusedValue = value;
-  }
-
-  onSegmentBlur(): void {
-    this.#focusedValue = null;
-  }
-
   /**
    * Handle a keydown event on the strip. Implements roving tabindex with
    * immediate selection per C6 of the plan: arrow keys move focus AND
    * update value simultaneously in single mode.
+   *
+   * Reads focus directly from `document.activeElement` rather than mirroring
+   * it in state — the DOM is the source of truth, and a separate `#focusedValue`
+   * field could drift if focus moved programmatically outside the control.
    */
   handleKeydown(event: KeyboardEvent): void {
     if (this.#options.controlDisabled()) return;
@@ -221,10 +219,13 @@ export class SegmentedControlController {
     const segments = this.segments;
     if (segments.length === 0) return;
 
-    const focused = this.#focusedValue;
+    const focusedSegment =
+      typeof document === 'undefined'
+        ? null
+        : segments.find((segment) => segment.node === document.activeElement) ?? null;
     const value = this.#options.getValue();
     const currentValue =
-      focused ?? (typeof value === 'string' ? value : null);
+      focusedSegment?.value ?? (typeof value === 'string' ? value : null);
 
     const currentIndex =
       currentValue === null
@@ -253,7 +254,6 @@ export class SegmentedControlController {
     if (!nextSegment) return;
 
     this.toggle(nextSegment.value);
-    this.#focusedValue = nextSegment.value;
     nextSegment.node.focus();
   }
 }

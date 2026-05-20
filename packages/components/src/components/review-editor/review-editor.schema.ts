@@ -49,14 +49,6 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'exportActions',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'frontMatterPanel',
-        reason: 'function-or-snippet',
-      },
-      {
         name: 'onchange',
         reason: 'function-or-snippet',
       },
@@ -78,14 +70,6 @@ const schema = {
       },
       {
         name: 'onthreaddelete',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'sidebar',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'threadList',
         reason: 'function-or-snippet',
       },
     ],

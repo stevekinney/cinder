@@ -12,7 +12,6 @@ const {
   lockBodyScroll,
   _resetScrollLock,
   captureFocus,
-  restoreFocusTo,
 } = await import('./overlay.ts');
 
 afterEach(() => {
@@ -114,31 +113,4 @@ describe('focus capture/restore', () => {
     expect(captureFocus()).toBeNull();
   });
 
-  test('restoreFocusTo focuses a connected element', () => {
-    const a = document.createElement('button');
-    const b = document.createElement('button');
-    document.body.append(a, b);
-    a.focus();
-    b.focus();
-    expect(document.activeElement).toBe(b);
-
-    restoreFocusTo(a);
-    expect(document.activeElement).toBe(a);
-
-    a.remove();
-    b.remove();
-  });
-
-  test('restoreFocusTo is a no-op for a disconnected element', () => {
-    const detached = document.createElement('button');
-    // Never appended.
-    restoreFocusTo(detached);
-    // No throw — pass. activeElement stays the body.
-    expect(document.activeElement === document.body || document.activeElement === null).toBe(true);
-  });
-
-  test('restoreFocusTo accepts null safely', () => {
-    restoreFocusTo(null);
-    expect(true).toBe(true);
-  });
 });

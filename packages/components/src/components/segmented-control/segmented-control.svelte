@@ -61,8 +61,6 @@
     isSelected: (segmentValue) => controller.isSelected(segmentValue),
     isFocusable: (segmentValue) => controller.isFocusable(segmentValue),
     toggle: (segmentValue) => controller.toggle(segmentValue),
-    onSegmentFocus: (segmentValue) => controller.onSegmentFocus(segmentValue),
-    onSegmentBlur: () => controller.onSegmentBlur(),
   };
 
   setSegmentedControlContext(contextValue);

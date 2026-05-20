@@ -56,8 +56,8 @@ const [getCommandPaletteContextStrict, setCommandPaletteContextRaw] =
   createContext<CommandPaletteContext>();
 
 /** Publish the command palette context for descendant CommandItems. */
-export function setCommandPaletteContext(context: CommandPaletteContext): CommandPaletteContext {
-  return setCommandPaletteContextRaw(context);
+export function setCommandPaletteContext(context: CommandPaletteContext): void {
+  setCommandPaletteContextRaw(context);
 }
 
 /**

@@ -32,8 +32,8 @@ export type SurfaceContextValue = {
 const [getSurfaceContextStrict, setSurfaceContextRaw] = createContext<SurfaceContextValue>();
 
 /** Publish the surface context for descendants. */
-export function setSurfaceContext(context: SurfaceContextValue): SurfaceContextValue {
-  return setSurfaceContextRaw(context);
+export function setSurfaceContext(context: SurfaceContextValue): void {
+  setSurfaceContextRaw(context);
 }
 
 /**
