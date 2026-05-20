@@ -126,7 +126,7 @@
 }
 
 .cinder-radio-row__label[data-disabled] {
-  /* color centralized in foundation.css disabled-visual text rule */
+  color: var(--cinder-text-disabled);
   cursor: not-allowed;
 }
 
@@ -163,7 +163,7 @@
 }
 
 .cinder-radio-row__description[data-disabled] {
-  /* color centralized in foundation.css disabled-visual text rule */
+  color: var(--cinder-text-disabled);
 }
 
 /* ========================================

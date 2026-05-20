@@ -170,7 +170,7 @@
 /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap. Placed before :active rules so press feedback wins on tap. */
 @media (hover: hover) {
-  .cinder-dropdown-trigger:hover {
+  .cinder-dropdown-trigger:hover:not([aria-expanded='true']) {
     background: var(--cinder-surface-hover);
   }
 

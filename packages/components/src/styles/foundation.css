@@ -261,12 +261,7 @@
   opacity: 0.6;
 }
 
-/* Label/description text-disabled color for field components. */
-:where(
-  .cinder-checkbox-field__label[data-disabled],
-  .cinder-input-field__label[data-disabled],
-  .cinder-radio-row__label[data-disabled],
-  .cinder-radio-row__description[data-disabled]
-) {
-  color: var(--cinder-text-disabled);
-}
+/* Note: a previous attempt centralized `color: var(--cinder-text-disabled)` here
+ * via :where(), but it was overridden by the higher-specificity (and
+ * later-layer) base label rules in components.css. Field-component label and
+ * description disabled colors stay component-local for now. */

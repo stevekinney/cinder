@@ -108,7 +108,7 @@
 }
 
 .cinder-checkbox-field__label[data-disabled] {
-  /* color centralized in foundation.css disabled-visual text rule */
+  color: var(--cinder-text-disabled);
   cursor: not-allowed;
 }
 
