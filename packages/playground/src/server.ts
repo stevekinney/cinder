@@ -448,7 +448,14 @@ const SHARED_BUILD_OPTIONS = {
   plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
   target: 'browser',
   format: 'esm',
-  conditions: ['bun'],
+  // `svelte` falls back to source resolution for the `cinder` workspace
+  // package: its exports map advertises `svelte` and `types` conditions
+  // pointing at `./src/components/<name>/index.ts`, with no `bun`/`default`
+  // condition. Without this, examples authored as `import { Button } from
+  // 'cinder/button'` (the public consumer-facing form) fail to resolve at
+  // bundle time. `bun` stays first so cinder workspace internals can still
+  // declare bun-specific overrides if needed.
+  conditions: ['bun', 'svelte'],
   splitting: true,
   naming: {
     entry: '[name]-[hash].js',
