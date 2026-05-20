@@ -1,13 +1,12 @@
 /// <reference lib="dom" />
+// happy-dom globals are installed in scripts/preload.ts. Static imports here
+// avoid a Bun test-runner deadlock when many test files race to top-level-
+// await the same modules in parallel.
+import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
-
-setupHappyDom();
-
-const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
-const { tick } = await import('svelte');
-const { default: NumberInput } = await import('./number-input.svelte');
+import NumberInput from './number-input.svelte';
 
 afterEach(() => {
   // Tear down any standalone <form> elements appended to body by form tests

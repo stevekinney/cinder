@@ -12,7 +12,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
-  import EmptyState from '../empty-state.svelte';
+  import EmptyState from '../empty-state/empty-state.svelte';
   import PropertyEditor from './property-editor.svelte';
 
   let { state, idPrefix, class: className }: FormViewProps = $props();

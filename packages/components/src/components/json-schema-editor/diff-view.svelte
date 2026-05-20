@@ -12,7 +12,7 @@
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import DiffViewer from '../diff-viewer.svelte';
-  import EmptyState from '../empty-state.svelte';
+  import EmptyState from '../empty-state/empty-state.svelte';
 
   let { state, class: className }: DiffViewProps = $props();
 </script>

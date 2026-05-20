@@ -137,7 +137,7 @@
   } from '@cinder/editor/component-runtime';
   import { EditorToolbar, LinkPopover } from './markdown-editor/editor-toolbar/index.ts';
   import type { LinkPopoverMode } from './markdown-editor/editor-toolbar/link-popover.svelte';
-  import SegmentedControl from './segmented-control.svelte';
+  import SegmentedControl from './segmented-control/segmented-control.svelte';
   import EditorSkeleton from './markdown-editor/editor-skeleton.svelte';
 
   type HistoryUtilities = Pick<

@@ -11,7 +11,7 @@
 </script>
 
 <script lang="ts">
-  import Image from '../../components/image.svelte';
+  import Image from '../../components/image/image.svelte';
 
   let { src, alt, ratio }: ImageFallbackFixtureProps = $props();
 

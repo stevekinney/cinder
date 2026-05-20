@@ -42,7 +42,9 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '../button/button.svelte';
-  import SegmentedControl, { type SegmentedControlOption } from '../segmented-control.svelte';
+  import SegmentedControl, {
+    type SegmentedControlOption,
+  } from '../segmented-control/segmented-control.svelte';
   import DiffStatistics from '../diff-statistics.svelte';
   import { FileText, GitBranch, MessageSquare, Pencil, RotateCcw } from '../icons/index.ts';
 

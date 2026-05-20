@@ -7,14 +7,14 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
-export { default as Avatar } from './components/avatar.svelte';
-export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar.svelte';
+export { default as Avatar } from './components/avatar/index.ts';
+export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar/index.ts';
 
 export { default as Badge } from './components/badge/index.ts';
 export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/index.ts';
 
-export { default as Banner } from './components/banner.svelte';
-export type { BannerProps, BannerVariant } from './components/banner.svelte';
+export { default as Banner } from './components/banner/index.ts';
+export type { BannerProps, BannerVariant } from './components/banner/index.ts';
 
 export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';
@@ -25,16 +25,16 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button
 export { default as ButtonGroup } from './components/button-group.svelte';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
 
-export { default as Callout } from './components/callout.svelte';
-export type { CalloutProps, CalloutVariant } from './components/callout.svelte';
+export { default as Callout } from './components/callout/index.ts';
+export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
 
-export { default as Card } from './components/card.svelte';
-export type { CardProps, CardTone, CardVariant } from './components/card.svelte';
+export { default as Card } from './components/card/index.ts';
+export type { CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
 export { default as Chat } from './components/chat.svelte';
 export type { ChatProps } from './components/chat.svelte';
 
-export { default as Chip } from './components/chip.svelte';
+export { default as Chip } from './components/chip/index.ts';
 export type {
   ChipDensity,
   ChipDisplayProps,
@@ -44,7 +44,7 @@ export type {
   ChipSize,
   ChipToggleProps,
   ChipVariant,
-} from './components/chip.svelte';
+} from './components/chip/index.ts';
 
 export { default as Checkbox } from './components/checkbox.svelte';
 export type { CheckboxProps } from './components/checkbox.svelte';
@@ -127,8 +127,8 @@ export type { DropdownSeparatorProps } from './components/dropdown-separator.sve
 export { default as DropdownTrigger } from './components/dropdown-trigger.svelte';
 export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte';
 
-export { default as EmptyState } from './components/empty-state.svelte';
-export type { EmptyStateProps } from './components/empty-state.svelte';
+export { default as EmptyState } from './components/empty-state/index.ts';
+export type { EmptyStateProps } from './components/empty-state/index.ts';
 
 export { default as FeedEvent } from './components/feed-event.svelte';
 export type { FeedEventProps, FeedEventVariant } from './components/feed-event.svelte';
@@ -150,8 +150,8 @@ export type { GridListProps } from './components/grid-list.svelte';
 export { default as GridListItem } from './components/grid-list-item.svelte';
 export type { GridListItemProps } from './components/grid-list-item.svelte';
 
-export { default as Image } from './components/image.svelte';
-export type { ImageProps } from './components/image.svelte';
+export { default as Image } from './components/image/index.ts';
+export type { ImageProps } from './components/image/index.ts';
 
 export { default as Input } from './components/input.svelte';
 export type { InputProps, InputType } from './components/input.svelte';
@@ -175,8 +175,8 @@ export type {
 export { default as Kbd } from './components/kbd/index.ts';
 export type { KbdProps } from './components/kbd/index.ts';
 
-export { default as Label } from './components/label.svelte';
-export type { LabelProps } from './components/label.svelte';
+export { default as Label } from './components/label/index.ts';
+export type { LabelProps } from './components/label/index.ts';
 
 export { default as MarkdownEditor } from './components/markdown-editor.svelte';
 export type {
@@ -203,8 +203,8 @@ export type { NavigationItemProps } from './components/navigation-item.svelte';
 export { default as NumberInput } from './components/number-input.svelte';
 export type { NumberInputProps } from './components/number-input.svelte';
 
-export { default as PageLayout } from './components/page-layout.svelte';
-export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout.svelte';
+export { default as PageLayout } from './components/page-layout/index.ts';
+export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/index.ts';
 
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';
@@ -248,23 +248,26 @@ export {
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
 
-export { default as ScrollArea } from './components/scroll-area.svelte';
+export { default as ScrollArea } from './components/scroll-area/index.ts';
 export type {
   ScrollAreaDirection,
   ScrollAreaElement,
   ScrollAreaProps,
-} from './components/scroll-area.svelte';
+} from './components/scroll-area/index.ts';
 export { default as SearchField } from './components/search-field.svelte';
 export type { SearchFieldProps } from './components/search-field.svelte';
 
-export { default as SectionHeading } from './components/section-heading.svelte';
-export type { SectionHeadingLevel, SectionHeadingProps } from './components/section-heading.svelte';
+export { default as SectionHeading } from './components/section-heading/index.ts';
+export type {
+  SectionHeadingLevel,
+  SectionHeadingProps,
+} from './components/section-heading/index.ts';
 
-export { default as SegmentedControl } from './components/segmented-control.svelte';
+export { default as SegmentedControl } from './components/segmented-control/index.ts';
 export type {
   SegmentedControlOption,
   SegmentedControlProps,
-} from './components/segmented-control.svelte';
+} from './components/segmented-control/index.ts';
 
 export { default as Select } from './components/select.svelte';
 export type { SelectOption, SelectProps } from './components/select.svelte';
@@ -298,8 +301,8 @@ export type {
   SortableReorderChange,
 } from './utilities/sortable-controller.svelte.ts';
 
-export { default as Skeleton } from './components/skeleton.svelte';
-export type { SkeletonProps } from './components/skeleton.svelte';
+export { default as Skeleton } from './components/skeleton/index.ts';
+export type { SkeletonProps } from './components/skeleton/index.ts';
 
 export { default as Slider } from './components/slider.svelte';
 export type { SliderMode, SliderProps, SliderValue } from './components/slider.svelte';
@@ -403,8 +406,8 @@ export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts'
 
 export { useToast } from './utilities/use-toast.ts';
 
-export { default as Toggle } from './components/toggle.svelte';
-export type { ToggleProps } from './components/toggle.svelte';
+export { default as Toggle } from './components/toggle/index.ts';
+export type { ToggleProps } from './components/toggle/index.ts';
 
 export { default as Tree } from './components/tree.svelte';
 export type { TreeProps, TreeSelectionMode } from './components/tree.svelte';
