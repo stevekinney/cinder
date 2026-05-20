@@ -2,13 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
-    // Enable the `svelte` export condition so example imports like
-    // `import { Button } from 'cinder/button'` resolve to the source
-    // `./src/components/button/index.ts` advertised by cinder's exports
-    // map. Without this, TypeScript and svelte-check fall back to the
-    // `types` condition pointing at `./dist/components/<name>/index.d.ts`,
-    // which only exists after a cinder build — making the typecheck depend
-    // on a prior `bun run --filter=cinder build` invocation.
+    // Resolve `cinder/<name>` to source via the `svelte` export condition
+    // instead of falling back to `types` (which points at dist). Lets typecheck
+    // succeed on a fresh checkout without a prior cinder build.
     "customConditions": ["svelte"]
   },
   "include": ["src/**/*"]
