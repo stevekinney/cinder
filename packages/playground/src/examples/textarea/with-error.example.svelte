@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Textarea } from '../../../../components/src/index.ts';
-
+  import { Textarea } from 'cinder/textarea';
   let message = $state('');
   const hasError = $derived(message.length > 0 && message.length < 20);
 </script>

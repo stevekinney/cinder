@@ -31,6 +31,11 @@ import { analyzeAll } from './analyze.ts';
 import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
 import { PRE_PAINT_THEME_SCRIPT, renderShell } from './render-shell.ts';
 
+import {
+  isSnapshotMode,
+  snapshotModeHtmlAttribute,
+  snapshotModeStyleTag,
+} from './snapshot-mode.ts';
 import type { ComponentManifest } from './types.ts';
 
 export const PORT = 5555;
@@ -448,7 +453,14 @@ const SHARED_BUILD_OPTIONS = {
   plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
   target: 'browser',
   format: 'esm',
-  conditions: ['bun'],
+  // `svelte` falls back to source resolution for the `cinder` workspace
+  // package: its exports map advertises `svelte` and `types` conditions
+  // pointing at `./src/components/<name>/index.ts`, with no `bun`/`default`
+  // condition. Without this, examples authored as `import { Button } from
+  // 'cinder/button'` (the public consumer-facing form) fail to resolve at
+  // bundle time. `bun` stays first so cinder workspace internals can still
+  // declare bun-specific overrides if needed.
+  conditions: ['bun', 'svelte'],
   splitting: true,
   naming: {
     entry: '[name]-[hash].js',
@@ -887,8 +899,15 @@ async function getManifests(): Promise<ComponentManifest[]> {
   }
 }
 
-/** Render the standalone component page HTML (the iframe content — no outer shell). */
-async function renderComponentPage(componentName: string): Promise<string> {
+/**
+ * Render the standalone component page HTML (the iframe content — no outer shell).
+ *
+ * When `snapshotMode` is `true` (request had `?snapshot=1`), the rendered
+ * `<html>` element gains `data-snapshot-mode=""` and a `<style>` tag is
+ * injected that zeroes animation/transition durations and hides carets.
+ * Without `?snapshot=1`, the output is byte-identical to the previous behavior.
+ */
+async function renderComponentPage(componentName: string, snapshotMode: boolean): Promise<string> {
   const scenarios = await discoverExamples(componentName);
   const examples = await Promise.all(
     scenarios.map(async (scenario) => {
@@ -905,9 +924,11 @@ async function renderComponentPage(componentName: string): Promise<string> {
   );
 
   const examplesJson = JSON.stringify(examples);
+  const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
+  const styleTag = snapshotModeStyleTag(snapshotMode);
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${htmlAttribute}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -915,6 +936,10 @@ async function renderComponentPage(componentName: string): Promise<string> {
     <link rel="stylesheet" href="/styles/index.css" />
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
+      /* Iframe scaffold: scope the reset narrowly. Unlike the shell, the
+         universal selectors here set ONLY box-sizing — not margin/padding —
+         so they cannot beat layered component styles. The shell's reset is
+         broader and lives in @layer cinder.reset (see render-shell.ts). */
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
       body {
@@ -937,7 +962,7 @@ async function renderComponentPage(componentName: string): Promise<string> {
         background-position: 0 0, 0 8px, 8px -8px, -8px 0;
         background-color: #fff;
       }
-    </style>
+    </style>${styleTag ? `\n    ${styleTag}` : ''}
     <script>
       // Validated postMessage listener for shell→iframe theme + background
       // commands. The shell SPA is same-origin, but we still validate origin
@@ -1156,6 +1181,8 @@ export async function handleRequest(request: Request): Promise<Response> {
   }
 
   // GET /page/:name — standalone component page (iframe content, no shell)
+  // Supports ?snapshot=1 to activate snapshot mode: data-snapshot-mode on
+  // <html>, motion-freeze CSS, and caret-color: transparent.
   const pageMatch = pathname.match(/^\/page\/([^/]+)$/);
   if (pageMatch) {
     const componentName = pageMatch[1]!;
@@ -1163,7 +1190,8 @@ export async function handleRequest(request: Request): Promise<Response> {
     const allComponents = await discoverComponents();
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
-    const html = await renderComponentPage(componentName);
+    const snapshotModeActive = isSnapshotMode(url.searchParams);
+    const html = await renderComponentPage(componentName, snapshotModeActive);
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 

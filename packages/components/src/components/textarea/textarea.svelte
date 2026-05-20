@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Multi-line text input with label, description, and error wiring plus an optional live character counter against maxlength.
+   * @tag form
+   * @tag field
+   * @useWhen Collecting multi-line prose such as comments, descriptions, or messages.
+   * @useWhen Surfacing a remaining-character counter as the user types against a maxlength.
+   * @avoidWhen Collecting a single short line of text — use input instead.
+   * @related input, markdown-editor
+   */
   export type { TextareaProps } from './textarea.types.ts';
 </script>
 

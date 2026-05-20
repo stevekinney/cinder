@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Profile graphic that renders a user image with automatic initials fallback when the source is missing or fails to load.
+   * @tag identity
+   * @tag image
+   * @useWhen Representing a person or account next to their name or activity.
+   * @useWhen Displaying initials when no avatar image is available.
+   * @avoidWhen Showing a small status or count indicator — use badge or status-dot instead.
+   * @related badge, status-dot, image
+   */
   export type { AvatarProps, AvatarShape, AvatarSize } from './avatar.types.ts';
 </script>
 

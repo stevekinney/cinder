@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { EmptyState } from '../../../../components/src/index.ts';
+  import { EmptyState } from 'cinder/empty-state';
 </script>
 
 <EmptyState title="No documents" description="Upload your first document to get started.">

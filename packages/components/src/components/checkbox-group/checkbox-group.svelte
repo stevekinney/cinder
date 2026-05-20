@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Fieldset wrapper that groups independent checkboxes under a shared legend, description, and group-level error.
+   * @tag form
+   * @tag group
+   * @useWhen Presenting several unrelated checkboxes that share a common heading or validation message.
+   * @useWhen Cascading a disabled state to every child checkbox via native fieldset propagation.
+   * @avoidWhen Picking exactly one option from a fixed set — use radio-group instead.
+   * @related checkbox, radio-group, form-field
+   */
   export type { CheckboxGroupProps } from './checkbox-group.types.ts';
 </script>
 

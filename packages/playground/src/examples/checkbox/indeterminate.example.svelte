@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from '../../../../components/src/index.ts';
-
+  import { Checkbox } from 'cinder/checkbox';
   let red = $state(true);
   let green = $state(false);
   let blue = $state(true);

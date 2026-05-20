@@ -5,8 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, Radio, RadioGroup } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Radio } from 'cinder/radio';
+  import { RadioGroup } from 'cinder/radio-group';
   let role = $state('');
   let submitted = $state(false);
   const showError = $derived(submitted && !role);

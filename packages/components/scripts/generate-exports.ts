@@ -1,18 +1,37 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes three subpaths:
+ * `src/components/`. Each component contributes up to six subpaths:
  *
- *   ./<name>            → component (svelte/types conditions)
- *   ./<name>/schema     → schema module (svelte/types conditions)
- *   ./<name>/variables  → variables module (svelte/types conditions)
+ *   ./<name>             → component (types/svelte/node/default conditions)
+ *   ./<name>/schema      → schema module (types + svelte only)
+ *   ./<name>/variables   → variables module (types + svelte only)
+ *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css)
+ *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
+ *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
  * Experimental components export under `./experimental/<name>` etc.
  *
- * Reserved (non-component) entries are preserved verbatim from a hard-coded
- * allowlist snapshotted from today's manifest:
+ * Condition ordering for component subpaths follows TypeScript `nodenext`
+ * requirements: `types` MUST be first within any conditional object, followed
+ * by `svelte` (source for Svelte-aware tooling), `node` (per-component SSR
+ * build), and `default` (per-component browser ESM build) last.
  *
- *   .          → root entry
- *   ./styles   → public styles entry
+ * Additionally, a package-level `./manifest` entry is emitted pointing at
+ * `./components.json` with `import`/`default` conditions only (no `svelte` or
+ * `types` — JSON isn't Svelte source and TS resolves JSON via
+ * `resolveJsonModule`).
+ *
+ * Reserved (non-component) entries are preserved verbatim:
+ *
+ *   .                    → root entry (also rewritten with the four-condition shape)
+ *   ./package.json       → self-export, required for some resolvers
+ *   ./styles             → full-cascade aggregator (tokens + foundation + components + utilities)
+ *   ./styles/tokens      → token-layer-only aggregator
+ *   ./styles/foundation  → foundation-layer-only aggregator
+ *
+ * The per-component `/styles` exports emit layer-unwrapped CSS. Consumers using
+ * à la carte CSS must also import `cinder/styles/tokens` and
+ * `cinder/styles/foundation` to get tokens, resets, and layer assignments.
  *
  * If a newly-emitted subpath would collide with a non-generated reserved
  * entry, the generator aborts with a named error rather than silently
@@ -20,67 +39,131 @@
  *
  * Run with `bun run exports:generate` to update package.json (mutates the file).
  * Run with `bun run exports:check` to verify there is no drift — exits non-zero on drift.
- *
- * Flat (non-directory) components are NOT discovered; this generator only
- * operates on the new per-directory layout. Phase 3 of the migration will
- * land the remaining directory-shaped components.
  */
 
 import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
+
+export type { ComponentDiscovery } from './lib/discover-components.ts';
+
+/**
+ * Back-compat alias used by AI-agent-legibility generators that were authored
+ * before `discoverComponents` was extracted to `lib/`. New callers should
+ * import directly from `./lib/discover-components.ts`.
+ */
+export const discoverDirectoryComponents = discoverComponents;
+
 export type ExportEntry = {
-  svelte?: string;
   types?: string;
-  default?: string;
+  svelte?: string;
+  import?: string;
   node?: string;
+  default?: string;
 };
 
-const RESERVED_KEYS = new Set(['.', './styles']);
+/** JSON-only export entry: no `svelte` or `types` conditions. */
+type JsonExportEntry = {
+  import: string;
+  default: string;
+};
 
-export interface ComponentDiscovery {
-  name: string;
-  isExperimental: boolean;
+const STYLES_KEY = './styles';
+const STYLES_TOKENS_KEY = './styles/tokens';
+const STYLES_FOUNDATION_KEY = './styles/foundation';
+const ROOT_KEY = '.';
+const PACKAGE_JSON_KEY = './package.json';
+
+/**
+ * Keys that the generator owns at the top level but never emits via
+ * {@link computeExports}. They are stitched in by {@link main} so the final
+ * exports map keeps them and the generator never overwrites them with a
+ * computed value.
+ */
+const RESERVED_KEYS = new Set([
+  ROOT_KEY,
+  STYLES_KEY,
+  STYLES_TOKENS_KEY,
+  STYLES_FOUNDATION_KEY,
+  PACKAGE_JSON_KEY,
+]);
+
+/**
+ * The exports map must never contain entries whose key contains a forbidden
+ * path segment. CI enforces this as a hard guard against accidentally
+ * shipping debug, scratch, or test-only subpaths.
+ *
+ * Anchored on `/` boundaries so legitimate component names that merely
+ * contain a forbidden substring (e.g. `./template`, `./temporal`,
+ * `./testament`) are NOT rejected. Matches a segment that:
+ *   - starts with `__` followed by any word/hyphen characters, OR
+ *   - is exactly `test`, `temp`, or `scratch`, with an optional
+ *     kebab-case suffix (e.g. `test-helpers`).
+ *
+ * See {@link assertNoForbiddenExportKeys}.
+ */
+export const FORBIDDEN_EXPORT_KEY_PATTERN =
+  /(?:^|\/)(?:__[\w-]*|(?:test|temp|scratch)(?:-[\w-]*)?)(?:\/|$)/i;
+
+/**
+ * Reorders an export entry into the strict order required by TypeScript
+ * `nodenext` resolution and our resolver matrix:
+ *
+ *   1. `types`
+ *   2. `svelte`
+ *   3. `node`
+ *   4. `default`
+ *
+ * Returns a fresh object so callers can rely on JSON.stringify output order.
+ */
+export function orderedExportEntry(entry: ExportEntry): ExportEntry {
+  const out: ExportEntry = {};
+  if (entry.types !== undefined) out.types = entry.types;
+  if (entry.svelte !== undefined) out.svelte = entry.svelte;
+  if (entry.node !== undefined) out.node = entry.node;
+  if (entry.default !== undefined) out.default = entry.default;
+  return out;
 }
 
-const COMPONENTS_ROOT = join(import.meta.dir, '..', 'src', 'components');
-
-export async function discoverDirectoryComponents(): Promise<ComponentDiscovery[]> {
-  const result: ComponentDiscovery[] = [];
-  for (const entry of await readdir(COMPONENTS_ROOT, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('_')) continue;
-    if (entry.name === 'icons') continue;
-
-    if (entry.name === 'experimental') {
-      const experimentalRoot = join(COMPONENTS_ROOT, 'experimental');
-      for (const subEntry of await readdir(experimentalRoot, { withFileTypes: true })) {
-        if (!subEntry.isDirectory()) continue;
-        if (subEntry.name.startsWith('_')) continue;
-        const dir = join(experimentalRoot, subEntry.name);
-        if (!existsSync(join(dir, `${subEntry.name}.svelte`))) continue;
-        if (!existsSync(join(dir, `${subEntry.name}.types.ts`))) continue;
-        result.push({ name: subEntry.name, isExperimental: true });
-      }
-      continue;
-    }
-
-    const dir = join(COMPONENTS_ROOT, entry.name);
-    if (!existsSync(join(dir, `${entry.name}.svelte`))) continue;
-    if (!existsSync(join(dir, `${entry.name}.types.ts`))) continue;
-    result.push({ name: entry.name, isExperimental: false });
-  }
-  return result.toSorted((a, b) => {
-    if (a.isExperimental !== b.isExperimental) return a.isExperimental ? 1 : -1;
-    return a.name.localeCompare(b.name);
+/**
+ * Builds the root `.` export entry. The root barrel is the only entry whose
+ * `node` target points at the preserved single-file server bundle Track 4
+ * left in place (`dist/server/index.js`); everything else points at the
+ * per-component output.
+ */
+export function computeRootExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/index.d.ts',
+    svelte: './src/index.ts',
+    node: './dist/server/index.js',
+    default: './dist/index.js',
   });
 }
 
-export function computeExports(components: ComponentDiscovery[]): Record<string, ExportEntry> {
-  const out: Record<string, ExportEntry> = {};
+/** Default package root used when `computeExports` is called without one. */
+const DEFAULT_PACKAGE_ROOT = join(import.meta.dir, '..');
 
-  for (const { name, isExperimental } of components) {
+/** Emit the `./manifest` JSON entry pointing at `./components.json`. */
+function manifestExport(): JsonExportEntry {
+  return { import: './components.json', default: './components.json' };
+}
+
+/** Build a JSON-only export entry for a per-component sidecar file. */
+function jsonSidecarExport(filePath: string): JsonExportEntry {
+  return { import: filePath, default: filePath };
+}
+
+export function computeExports(
+  components: ComponentDiscovery[],
+  packageRoot: string = DEFAULT_PACKAGE_ROOT,
+): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+
+  // Package-level manifest entry (always present).
+  out['./manifest'] = manifestExport();
+
+  for (const { name, isExperimental, hasCss } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
     const srcDir = isExperimental
       ? `./src/components/experimental/${name}`
@@ -88,32 +171,97 @@ export function computeExports(components: ComponentDiscovery[]): Record<string,
     const distDir = isExperimental
       ? `./dist/components/experimental/${name}`
       : `./dist/components/${name}`;
+    const serverDistDir = isExperimental
+      ? `./dist/server/components/experimental/${name}`
+      : `./dist/server/components/${name}`;
 
-    // Hybrid contract preserved from the legacy flat components: `svelte`
-    // condition resolves to source for Vite/Svelte bundlers; `types` resolves
-    // to built declarations for TypeScript. This intentionally matches the
-    // pre-migration shape; downstream tooling that needs raw source must opt
-    // in via `--conditions svelte` (the project does so in `bun test` and
-    // similar entry points).
-    out[prefix] = {
-      svelte: `${srcDir}/index.ts`,
+    // Component subpath: full four-condition shape. `types` first for
+    // TypeScript `nodenext`, `svelte` second so Svelte-aware tooling
+    // (SvelteKit, svelte-preprocess consumers) gets source, `node` third so
+    // Node SSR without Svelte tooling gets the SSR build, `default` last as
+    // the catch-all for Vite/Rollup/esbuild/Webpack/Bun browser bundles.
+    out[prefix] = orderedExportEntry({
       types: `${distDir}/index.d.ts`,
-    };
-    out[`${prefix}/schema`] = {
-      svelte: `${srcDir}/${name}.schema.ts`,
+      svelte: `${srcDir}/index.ts`,
+      node: `${serverDistDir}/index.js`,
+      default: `${distDir}/index.js`,
+    });
+
+    // Schema and variables modules ship as source + types only. They are
+    // metadata, not runtime entry points; no JS is emitted for them so we
+    // intentionally do not add `node`/`default` here.
+    out[`${prefix}/schema`] = orderedExportEntry({
       types: `${distDir}/${name}.schema.d.ts`,
-    };
-    out[`${prefix}/variables`] = {
-      svelte: `${srcDir}/${name}.variables.ts`,
+      svelte: `${srcDir}/${name}.schema.ts`,
+    });
+    out[`${prefix}/variables`] = orderedExportEntry({
       types: `${distDir}/${name}.variables.d.ts`,
-    };
+      svelte: `${srcDir}/${name}.variables.ts`,
+    });
+
+    // Per-component CSS sidecar — layer-unwrapped. Consumers using these
+    // à la carte must also import `cinder/styles/tokens` and
+    // `cinder/styles/foundation` to get tokens, resets, and layer assignments.
+    //
+    // Only emitted when the component ships a source CSS sidecar — emitting
+    // `/styles` for a component without CSS would publish a dead export
+    // pointing at a non-existent dist artifact.
+    if (hasCss) {
+      out[`${prefix}/styles`] = {
+        default: `${distDir}/${name}.css`,
+      };
+    }
+
+    // JSON sidecar subpaths — emitted only when the file exists on disk.
+    // Uses import+default conditions only (no svelte/types).
+    const examplesJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.examples.json`,
+    );
+    if (existsSync(examplesJsonPath)) {
+      const relPath = `${srcDir}/${name}.examples.json`;
+      out[`${prefix}/examples`] = jsonSidecarExport(relPath);
+    }
+
+    const constraintsJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.constraints.json`,
+    );
+    if (existsSync(constraintsJsonPath)) {
+      const relPath = `${srcDir}/${name}.constraints.json`;
+      out[`${prefix}/constraints`] = jsonSidecarExport(relPath);
+    }
   }
 
   return out;
 }
 
+/**
+ * The published exports map must never include keys that look like debug,
+ * scratch, or test-only subpaths. Throws on the first offender so CI fails
+ * with a clear message.
+ */
+export function assertNoForbiddenExportKeys(
+  exportsMap: Record<string, unknown>,
+  pattern: RegExp = FORBIDDEN_EXPORT_KEY_PATTERN,
+): void {
+  for (const key of Object.keys(exportsMap)) {
+    if (pattern.test(key)) {
+      throw new Error(
+        `Forbidden exports key "${key}" matches /${pattern.source}/${pattern.flags} — refusing to publish`,
+      );
+    }
+  }
+}
+
 interface PackageJson {
-  exports: Record<string, ExportEntry>;
+  exports: Record<string, ExportEntry | JsonExportEntry | string>;
   [key: string]: unknown;
 }
 
@@ -122,11 +270,18 @@ async function main(): Promise<void> {
   const packageJsonPath = join(import.meta.dir, '..', 'package.json');
   const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
 
-  const components = await discoverDirectoryComponents();
-  const computed = computeExports(components);
+  // First gate: surface any forbidden keys already on disk BEFORE we filter
+  // or rewrite anything. Otherwise generate mode would silently drop a key
+  // like `./__debug` during regeneration and never raise it as a violation.
+  // Track 3 requires the guard to fire in both check and generate modes.
+  assertNoForbiddenExportKeys(packageJson.exports);
 
-  // Collision check: any computed subpath that collides with a non-component
-  // reserved entry aborts. We never silently overwrite.
+  const components = await discoverComponents();
+  const computed = computeExports(components);
+  const rootExport = computeRootExport();
+
+  // Collision check: any computed subpath that collides with a reserved
+  // entry aborts. We never silently overwrite.
   for (const key of Object.keys(computed)) {
     if (RESERVED_KEYS.has(key)) {
       process.stderr.write(`exports collision: computed key "${key}" overlaps a reserved entry\n`);
@@ -138,8 +293,23 @@ async function main(): Promise<void> {
     const existing = packageJson.exports;
     const issues: string[] = [];
 
-    for (const key of RESERVED_KEYS) {
-      if (!existing[key]) issues.push(`Reserved export "${key}" is missing`);
+    // Root entry: must match the four-condition ordered shape exactly.
+    if (!existing[ROOT_KEY]) {
+      issues.push(`Reserved export "${ROOT_KEY}" is missing`);
+    } else if (JSON.stringify(existing[ROOT_KEY]) !== JSON.stringify(rootExport)) {
+      issues.push(`Stale root export "${ROOT_KEY}"`);
+    }
+
+    if (!existing[STYLES_KEY]) issues.push(`Reserved export "${STYLES_KEY}" is missing`);
+    if (!existing[STYLES_TOKENS_KEY]) {
+      issues.push(`Reserved export "${STYLES_TOKENS_KEY}" is missing`);
+    }
+    if (!existing[STYLES_FOUNDATION_KEY]) {
+      issues.push(`Reserved export "${STYLES_FOUNDATION_KEY}" is missing`);
+    }
+
+    if (existing[PACKAGE_JSON_KEY] !== './package.json') {
+      issues.push(`Missing or stale self-export "${PACKAGE_JSON_KEY}"`);
     }
 
     for (const [key, entry] of Object.entries(computed)) {
@@ -162,6 +332,9 @@ async function main(): Promise<void> {
       issues.push(`Orphan subpath export: "${key}"`);
     }
 
+    // The forbidden-key guard already ran at the top of main() against
+    // packageJson.exports; we don't need to repeat it here.
+
     if (issues.length > 0) {
       process.stderr.write(
         'exports:check — drift detected. Run `bun run exports:generate` to fix:\n',
@@ -174,12 +347,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Generate mode: preserve reserved entries, replace computed entries,
-  // preserve any flat (legacy) component entries that have not yet been
-  // migrated. This is the partial-migration phase.
-  const next: Record<string, ExportEntry> = {};
-  for (const key of RESERVED_KEYS) {
-    if (packageJson.exports[key]) next[key] = packageJson.exports[key];
+  // Generate mode: build the next exports map in deterministic order:
+  //   1. `.` (root, four-condition shape)
+  //   2. `./package.json` self-export
+  //   3. `./styles` (preserved verbatim)
+  //   4. computed component subpaths (incl. /examples, /constraints when present)
+  //   5. preserved legacy flat component subpaths (partial-migration window)
+  const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
+  next[ROOT_KEY] = rootExport;
+  next[PACKAGE_JSON_KEY] = './package.json';
+  if (packageJson.exports[STYLES_KEY]) next[STYLES_KEY] = packageJson.exports[STYLES_KEY];
+  if (packageJson.exports[STYLES_TOKENS_KEY]) {
+    next[STYLES_TOKENS_KEY] = packageJson.exports[STYLES_TOKENS_KEY];
+  }
+  if (packageJson.exports[STYLES_FOUNDATION_KEY]) {
+    next[STYLES_FOUNDATION_KEY] = packageJson.exports[STYLES_FOUNDATION_KEY];
   }
 
   // Preserve legacy flat component subpaths whose component still exists as
@@ -187,17 +369,31 @@ async function main(): Promise<void> {
   const migratedNames = new Set(
     components.map((c) => (c.isExperimental ? `./experimental/${c.name}` : `./${c.name}`)),
   );
+  const legacy: Record<string, ExportEntry | JsonExportEntry | string> = {};
   for (const [key, entry] of Object.entries(packageJson.exports)) {
     if (RESERVED_KEYS.has(key)) continue;
     if (migratedNames.has(key)) continue;
-    if (key.endsWith('/schema') || key.endsWith('/variables')) continue;
+    if (
+      key.endsWith('/schema') ||
+      key.endsWith('/variables') ||
+      key.endsWith('/styles') ||
+      key.endsWith('/examples') ||
+      key.endsWith('/constraints')
+    )
+      continue;
+    if (key === './manifest') continue;
     const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
-    if (flatPattern.test(key)) next[key] = entry;
+    if (flatPattern.test(key)) legacy[key] = entry;
   }
 
   for (const [key, entry] of Object.entries(computed)) {
     next[key] = entry;
   }
+  for (const [key, entry] of Object.entries(legacy)) {
+    next[key] = entry;
+  }
+
+  assertNoForbiddenExportKeys(next);
 
   packageJson.exports = next;
   await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');

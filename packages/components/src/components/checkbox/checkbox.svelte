@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Binary or tri-state selection control with bindable checked and indeterminate state for forms and lists.
+   * @tag form
+   * @tag selection
+   * @useWhen Selecting zero or more independent options from a list.
+   * @useWhen Representing a parent state that aggregates child selections via indeterminate.
+   * @avoidWhen Flipping a single setting on or off with immediate effect — use toggle instead.
+   * @avoidWhen Picking exactly one option from a small fixed set — use radio or segmented-control instead.
+   * @related checkbox-group, radio, toggle, segmented-control
+   */
   export type { CheckboxProps } from './checkbox.types.ts';
 </script>
 

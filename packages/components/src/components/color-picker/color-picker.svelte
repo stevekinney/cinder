@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized hex value.
+   * @tag form
+   * @tag color
+   * @useWhen Letting users pick any color from the full spectrum with optional alpha.
+   * @useWhen Composing a custom color with a fallback palette of preset swatches.
+   * @avoidWhen Constraining selection to a fixed brand palette — use color-swatch-picker instead.
+   * @related color-swatch-picker, input
+   */
   export type { ColorPickerProps } from './color-picker.types.ts';
 </script>
 

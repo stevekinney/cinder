@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Single-line text input with bound value, label, description, and error wiring for form-field accessibility.
+   * @tag form
+   * @tag field
+   * @useWhen Collecting a single line of free-form text such as a name, email, or URL.
+   * @useWhen Composing inside a form-field with leading or trailing adornments.
+   * @avoidWhen Collecting multi-line prose — use textarea instead.
+   * @avoidWhen Collecting a numeric value with stepping controls — use number-input instead.
+   * @related textarea, number-input, search-field, form-field
+   */
   export type { InputProps, InputType } from './input.types.ts';
 </script>
 
@@ -122,7 +135,7 @@
     >
       {#if leading}
         <span
-          class="cinder-input-group__leading"
+          class="cinder-input-group__leading cinder-_truncate"
           aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
         >
       {/if}
@@ -131,11 +144,14 @@
 
       {#if trailing}
         <span
-          class="cinder-input-group__trailing"
+          class="cinder-input-group__trailing cinder-_truncate"
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
       {:else if rendersNativeDateIcon}
-        <span class="cinder-input-group__trailing cinder-input-group__date-icon" aria-hidden="true">
+        <span
+          class="cinder-input-group__trailing cinder-input-group__date-icon cinder-_truncate"
+          aria-hidden="true"
+        >
           {@render calendarIcon()}
         </span>
       {/if}

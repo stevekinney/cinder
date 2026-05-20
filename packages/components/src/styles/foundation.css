@@ -58,6 +58,17 @@
   font-size: var(--cinder-text-base);
 }
 
+/* INTERNAL: shared box-shadow ring formula. Components that paint a focus
+   ring with the standard "transparent outline + two-stop box-shadow" pattern
+   reference this variable so the formula lives in exactly one place. Not part
+   of the public token surface — do not document, do not export. The leading
+   `_` after `--` marks it as private/internal per the Cinder convention. */
+:root {
+  --_cinder-focus-ring-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
 :focus-visible {
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);
@@ -222,3 +233,35 @@
 :where(dialog)::backdrop {
   background: transparent;
 }
+
+/* ----------------------------------------------------------------------------
+ * Disabled visual treatment — VISUAL only, does NOT suppress interaction.
+ *
+ * Centralizes `opacity: 0.6` for the components listed below. Interaction
+ * suppression (`pointer-events`, `cursor`, `aria-disabled`) stays component-
+ * local because it's behavior, not appearance.
+ *
+ * `:where()` keeps specificity at 0 so consumers can override freely.
+ *
+ * Scope: only the selectors explicitly listed below. Other components with
+ * disabled `opacity` (navigation-item, select, side-navigation-group,
+ * textarea, slider, accordion-item, color-picker, and the button variant-
+ * specific rules in button.css) still declare their own `opacity` locally —
+ * they have higher-specificity selectors or distinct disabled shapes that
+ * don't yet collapse into this list. Future audits can extend coverage.
+ * ---------------------------------------------------------------------------- */
+:where(
+  .cinder-button:disabled:not([data-cinder-loading]),
+  .cinder-button[aria-disabled='true']:not([data-cinder-loading]),
+  .cinder-dropdown-item[data-disabled],
+  .cinder-toggle:disabled,
+  .cinder-segmented-control[aria-disabled='true'],
+  .cinder-segmented-control-option:disabled
+) {
+  opacity: 0.6;
+}
+
+/* Note: a previous attempt centralized `color: var(--cinder-text-disabled)` here
+ * via :where(), but it was overridden by the higher-specificity (and
+ * later-layer) base label rules in components.css. Field-component label and
+ * description disabled colors stay component-local for now. */

@@ -1,14 +1,16 @@
 #!/usr/bin/env bun
 import { $ } from 'bun';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
   error,
   getStagedFiles,
+  getTouchedPackages,
   header,
   info,
   isContinuousIntegration,
+  loadWorkspacePackages,
+  REPO_ROOT,
+  rootConfigStaged,
   success,
   warning,
 } from './utilities.ts';
@@ -18,82 +20,184 @@ if (isContinuousIntegration()) {
   process.exit(0);
 }
 
-// In a Bun workspace the hook is invoked from the repo root; scripts that delegate
-// to package scripts (lint:fix, typecheck, test) must run inside packages/components/.
-const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-
 header('Pre-commit checks');
-let ok = true;
 
-// 1) package/lock checks
-const staged = await getStagedFiles();
-if (staged.includes('package.json')) {
+// 1) Lockfile sync check (run before any other work so a broken lock doesn't
+// pollute later steps).
+const stagedForLockCheck = await getStagedFiles();
+if (stagedForLockCheck.includes('package.json')) {
   info('package.json is staged');
-  if (!staged.includes('bun.lock')) {
-    const bunLockStatus = await $`git status --porcelain -- bun.lock`.text();
+  if (!stagedForLockCheck.includes('bun.lock')) {
+    const bunLockStatus = await $`git status --porcelain -- bun.lock`.cwd(REPO_ROOT).text();
     if (bunLockStatus.trim().length > 0) {
       warning('bun.lock has unstaged changes');
       info('Run bun install and stage bun.lock');
-      ok = false;
-    } else {
-      info('bun.lock unchanged; continuing');
+      error('Pre-commit checks failed');
+      process.exit(1);
     }
+    info('bun.lock unchanged; continuing');
   } else {
     info('Dependencies changed, installing…');
     try {
-      await $`bun install`;
+      await $`bun install`.cwd(REPO_ROOT);
       success('Dependencies installed');
     } catch {
       warning('bun install failed; run it manually');
     }
+    // bun install may regenerate bun.lock even when the staged copy looked
+    // up-to-date. Reject the commit if the working-tree lockfile no longer
+    // matches what's staged — otherwise the commit ships a stale lockfile.
+    const drift = await $`git diff --name-only -- bun.lock`.cwd(REPO_ROOT).text();
+    if (drift.trim().length > 0) {
+      error('bun.lock was modified by `bun install`; stage the regenerated lockfile and retry');
+      process.exit(1);
+    }
   }
 }
 
-// 2) lint:fix
-info('Running lint:fix…');
-try {
-  await $`bun run lint:fix`.cwd(PACKAGE_ROOT);
-  success('lint:fix passed');
-} catch {
-  error('lint:fix failed');
-  ok = false;
-}
-
-// 3) typecheck
-info('Running typecheck…');
-try {
-  await $`bun run typecheck`.cwd(PACKAGE_ROOT);
-  success('typecheck passed');
-} catch {
-  error('typecheck failed');
-  ok = false;
-}
-
-// 4) test
-info('Running test…');
-try {
-  await $`bun run test`.cwd(PACKAGE_ROOT);
-  success('test passed');
-} catch {
-  error('test failed');
-  ok = false;
-}
-
-// 5) lint-staged (format staged files; always last)
+// 2) Run lint-staged FIRST so formatters write to disk before typecheck/test
+// observe the source.
 info('Running lint-staged…');
 try {
-  await $`bunx lint-staged`;
-  success('Lint-staged passed');
+  await $`bunx lint-staged`.cwd(REPO_ROOT);
+  success('lint-staged passed');
 } catch {
-  error('Lint-staged failed');
-  ok = false;
-}
-
-if (!ok) {
-  error('Pre-commit checks failed');
+  error('lint-staged failed');
   process.exit(1);
 }
 
-success('All pre-commit checks passed');
+// 3) Recompute staged files (lint-staged may have re-staged formatted files).
+const staged = await getStagedFiles();
 
+// 4) Root config escalation → full workspace validate.
+if (rootConfigStaged(staged)) {
+  warning('Root config file staged; escalating to full workspace typecheck + test');
+  let escalationOk = true;
+  try {
+    info('Running workspace typecheck…');
+    await $`bun run typecheck`.cwd(REPO_ROOT);
+    success('typecheck passed');
+  } catch {
+    error('typecheck failed');
+    escalationOk = false;
+  }
+  try {
+    info('Running workspace test…');
+    await $`bun run test`.cwd(REPO_ROOT);
+    success('test passed');
+  } catch {
+    error('test failed');
+    escalationOk = false;
+  }
+  if (!escalationOk) {
+    error('Pre-commit checks failed');
+    process.exit(1);
+  }
+  success('All pre-commit checks passed');
+  process.exit(0);
+}
+
+// 5) Scoped per-package validate.
+const workspace = await loadWorkspacePackages();
+const touched = getTouchedPackages(workspace, staged);
+
+if (touched.length === 0) {
+  success('No source files staged; skipping typecheck/test');
+  process.exit(0);
+}
+
+info(`Touched packages: ${touched.map((p) => p.name).join(', ')}`);
+
+type Job = {
+  readonly packageName: string;
+  readonly script: 'typecheck' | 'test';
+};
+
+const jobs: Job[] = [];
+for (const pkg of touched) {
+  if (pkg.hasTypecheck) {
+    jobs.push({ packageName: pkg.name, script: 'typecheck' });
+  } else {
+    info(`${pkg.name}: no typecheck script; skipping`);
+  }
+  if (pkg.hasTest) {
+    jobs.push({ packageName: pkg.name, script: 'test' });
+  } else {
+    info(`${pkg.name}: no test script; skipping`);
+  }
+}
+
+if (jobs.length === 0) {
+  success('No applicable scripts for touched packages; nothing to run');
+  process.exit(0);
+}
+
+type JobResult = {
+  readonly job: Job;
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+};
+
+const concurrency = Math.min(navigator.hardwareConcurrency, 4);
+
+const start = Date.now();
+const elapsed = () => Date.now() - start;
+
+/**
+ * Run one `bun run --filter` invocation, capturing output for later display
+ * and emitting start/done timestamps so parallel dispatch can be verified
+ * mechanically from the hook log.
+ */
+async function runJob(job: Job): Promise<JobResult> {
+  console.log(`[start ${job.packageName} ${job.script}] T+${elapsed()}ms`);
+  const result = await $`bun run --filter=${job.packageName} ${job.script}`
+    .cwd(REPO_ROOT)
+    .nothrow()
+    .quiet();
+  const exitCode = result.exitCode;
+  console.log(`[done ${job.packageName} ${job.script}] T+${elapsed()}ms (exit ${exitCode})`);
+  return {
+    job,
+    exitCode,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+  };
+}
+
+// Small inline async pool — `concurrency` workers pull jobs off a shared index.
+// `results` is keyed by job index so the output order matches the job order
+// regardless of worker scheduling.
+const results: JobResult[] = [];
+let nextIndex = 0;
+const workers: Promise<void>[] = [];
+for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
+  workers.push(
+    (async () => {
+      while (true) {
+        const index = nextIndex++;
+        if (index >= jobs.length) return;
+        results[index] = await runJob(jobs[index]!);
+      }
+    })(),
+  );
+}
+await Promise.all(workers);
+
+const failures = results.filter((r) => r.exitCode !== 0);
+if (failures.length > 0) {
+  for (const failure of failures) {
+    error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
+    if (failure.stdout.trim().length > 0) {
+      console.log(failure.stdout);
+    }
+    if (failure.stderr.trim().length > 0) {
+      console.error(failure.stderr);
+    }
+  }
+  error(`Pre-commit checks failed (${failures.length} of ${results.length} jobs)`);
+  process.exit(1);
+}
+
+success(`All pre-commit checks passed (${results.length} jobs in ${elapsed()}ms)`);
 process.exit(0);

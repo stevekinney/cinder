@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { expect, test } from '../src/fixtures/component-page.ts';
 import { runAxe } from '../src/helpers/axe.ts';
 import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
+import { applyInteractions } from '../src/helpers/interact.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
@@ -52,26 +53,63 @@ const knownSlugs = new Set(allEntries.map((entry) => entry.slug));
 const filterSlugs = parseComponentFilter(process.env['CINDER_TEST_COMPONENTS'], knownSlugs);
 const entries = applyComponentFilter(allEntries, filterSlugs);
 
+/** The synthesised default fixture used when a component has no explicit fixture list. */
+const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
+
 for (const entry of entries) {
   test.describe(entry.name, () => {
+    // Use the entry's explicit fixture list when provided; otherwise synthesise a
+    // single 'default' fixture so every component is exercised at least once.
+    const fixtures =
+      entry.fixtures !== undefined && entry.fixtures.length > 0 ? entry.fixtures : DEFAULT_FIXTURE;
+
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {
-        test(`${theme}-${viewport.name}`, async ({ componentPage }) => {
-          const page = await componentPage.open({ entry, theme, viewport });
+        for (const fixture of fixtures) {
+          test(`${theme}-${viewport.name}-${fixture.name}`, async ({ componentPage }) => {
+            // Pass the fixture name so the playground renders with the
+            // fixture's props via ?fixture=<name>. 'default' is omitted
+            // (no query param) — the playground renders the component's
+            // default state.
+            const openArgs =
+              fixture.name !== 'default'
+                ? ({ entry, theme, viewport, fixtureName: fixture.name } as const)
+                : ({ entry, theme, viewport } as const);
+            const page = await componentPage.open(openArgs);
 
-          const key = { slug: entry.slug, theme, viewport: viewport.name };
+            const key = {
+              slug: entry.slug,
+              theme,
+              viewport: viewport.name,
+              fixture: fixture.name,
+            };
 
-          const buckets = await runAxe(page, key);
+            // Apply interaction steps (e.g. click trigger, focus input) before
+            // capture so the screenshot shows the post-interaction state.
+            if (
+              'interact' in fixture &&
+              Array.isArray(fixture.interact) &&
+              fixture.interact.length > 0
+            ) {
+              await applyInteractions(page, fixture.interact);
+            }
 
-          test.info().annotations.push({
-            type: 'axe',
-            description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
+            const buckets = await runAxe(page, key);
+
+            test.info().annotations.push({
+              type: 'axe',
+              description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
+            });
+
+            // Pass mask rules from the fixture so toHaveScreenshot can exclude
+            // dynamic regions from the pixel comparison.
+            const masks =
+              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
+            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+
+            // v1: no assertions on axe buckets — record only.
           });
-
-          await captureScreenshot(page, key);
-
-          // v1: no assertions on axe buckets — record only.
-        });
+        }
       }
     }
   });

@@ -5,8 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, NavigationBar, NavigationItem } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { NavigationBar } from 'cinder/navigation-bar';
+  import { NavigationItem } from 'cinder/navigation-item';
   let active = $state('home');
   let mobileMenuOpen = $state(false);
 </script>

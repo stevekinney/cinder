@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Page-number control for paged result sets that exposes previous, next, and numeric jumps with elided middle pages.
+   * @tag navigation
+   * @tag paging
+   * @useWhen Moving through a large, ordered dataset split into discrete pages of fixed size.
+   * @useWhen Showing the current page in context of the total page count.
+   * @avoidWhen Switching between named sibling views — use tabs instead.
+   * @avoidWhen Streaming results as the user scrolls — wire up infinite scroll directly.
+   * @related tabs
+   */
   export type { PaginationProps } from './pagination.types.ts';
 </script>
 

@@ -1,4 +1,18 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category domain
+   * @status domain-suite
+   * @purpose Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, toolbar, and mark or block introspection helpers.
+   * @tag markdown
+   * @tag editor
+   * @tag domain-suite
+   * @useWhen Composing or editing Markdown documents and wanting the bundled toolbar, link-aware selection, and source or WYSIWYG mode toggle.
+   * @useWhen Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite.
+   * @avoidWhen Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle.
+   * @avoidWhen The surface needs inline review threads on top of the editor — use review-editor for that composition.
+   * @related review-editor, code-block
+   */
   export type {
     EditorHandle,
     EditorMode,
@@ -77,8 +91,24 @@
     toolbar,
     toolbarActions,
     toolbarLeading,
+    snapshotMode = false,
     ...rest
   }: MarkdownEditorProps = $props();
+
+  // Blur any focused element inside this component on mount when snapshotMode
+  // is active. This prevents the initial screenshot from capturing a focused
+  // ring or blinking caret at an arbitrary position. We target the wrapper
+  // element via a reactive reference set during rendering.
+  let wrapperElement = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    if (!snapshotMode) return;
+    if (!wrapperElement) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && wrapperElement.contains(active)) {
+      active.blur();
+    }
+  });
 
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
@@ -506,11 +536,13 @@
 </script>
 
 <div
+  bind:this={wrapperElement}
   class={classNames('markdown-editor-wrapper', className)}
   data-initializing={isInitializing || undefined}
   data-ready={!isInitializing ? true : undefined}
   data-mode={mode}
   data-has-toolbar={toolbarVisible || undefined}
+  data-snapshot-mode={snapshotMode || undefined}
   {...rest}
 >
   {#if toolbarVisible}
@@ -766,6 +798,17 @@
     text-decoration: wavy underline var(--cinder-warning, #e5a200);
     text-decoration-skip-ink: none;
     text-underline-offset: 2px;
+  }
+
+  /*
+   * Snapshot mode: suppress the blinking caret and text selection highlights
+   * so visual regression screenshots are pixel-stable across runs.
+   * Scoped to [data-snapshot-mode] so normal editing is completely unaffected.
+   */
+  .markdown-editor-wrapper[data-snapshot-mode],
+  .markdown-editor-wrapper[data-snapshot-mode] * {
+    caret-color: transparent;
+    user-select: none;
   }
 
   /* Template completion popup (DEP-583) */

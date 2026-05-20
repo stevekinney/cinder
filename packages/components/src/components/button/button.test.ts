@@ -11,8 +11,15 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // "document is not defined" inside testing-library's internals.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Button } = await import('./button.svelte');
+
+// Without per-test cleanup the rendered tree from a previous test (in this file
+// or — when bun-test runs files in shared globals — a previous file) lingers
+// in document.body, and getByText/getByRole queries hit unrelated content.
+afterEach(() => {
+  cleanup();
+});
 
 function readTokenSource(): string {
   return readFileSync(new URL('../../styles/tokens-base.css', import.meta.url), 'utf8');

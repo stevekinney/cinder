@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "kbd",
+  "import": "cinder/kbd",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic kbd",
+      "description": "Single keys and key chords styled like physical keyboard keys.",
+      "code": "<script lang=\"ts\">\n  import { Kbd } from 'cinder/kbd';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <span style=\"display: inline-flex; gap: 0.25rem; align-items: center;\">\n    <Kbd label=\"Esc\" />\n  </span>\n\n  <span style=\"display: inline-flex; gap: 0.25rem; align-items: center;\">\n    Press <Kbd label=\"⌘\" /> + <Kbd label=\"K\" /> to open the command palette\n  </span>\n\n  <span style=\"display: inline-flex; gap: 0.25rem; align-items: center;\">\n    <Kbd size=\"sm\" label=\"Shift\" /> + <Kbd size=\"sm\" label=\"Tab\" />\n  </span>\n</div>\n"
+    }
+  ]
+}

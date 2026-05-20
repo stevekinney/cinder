@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category feedback
+   * @status stable
+   * @purpose Static role="img" badge that communicates an entity's state through a colored dot with an accessible text label.
+   * @tag feedback
+   * @tag status
+   * @useWhen Indicating the current state of a list row, user, deployment, or other entity alongside its name.
+   * @useWhen Communicating status compactly when many indicators appear together without triggering live-region announcements.
+   * @avoidWhen Counting items or showing a numeric value — use badge instead.
+   * @avoidWhen Announcing a transient status change — use toast-region or alert so assistive tech reads it.
+   * @related badge
+   */
   export type { StatusDotProps, StatusDotSize, StatusDotStatus } from './status-dot.types.ts';
 </script>
 

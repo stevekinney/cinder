@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "button-group",
+  "import": "cinder/button-group",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic button group",
+      "description": "Horizontal layout container with border-collapsed buttons. Use consistent variants across children.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { ButtonGroup } from 'cinder/button-group';\n</script>\n\n<ButtonGroup label=\"Document actions\">\n  <Button variant=\"secondary\">Save</Button>\n  <Button variant=\"secondary\">Duplicate</Button>\n  <Button variant=\"secondary\">Archive</Button>\n</ButtonGroup>\n"
+    },
+    {
+      "id": "rtl",
+      "title": "Right-to-left (RTL)",
+      "description": "Logical properties automatically flip collapsed borders and outer corner rounding when the writing direction is RTL.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { ButtonGroup } from 'cinder/button-group';\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<div dir=\"rtl\">\n  <ButtonGroup label=\"خيارات الحفظ\">\n    <Button>حفظ</Button>\n    <Dropdown id=\"save-options-rtl\">\n      <DropdownTrigger aria-label=\"المزيد من خيارات الحفظ\" />\n      <DropdownMenu>\n        <DropdownItem>حفظ كمسودة</DropdownItem>\n        <DropdownItem>حفظ ونشر</DropdownItem>\n      </DropdownMenu>\n    </Dropdown>\n  </ButtonGroup>\n</div>\n"
+    },
+    {
+      "id": "split-button",
+      "title": "Split button composition",
+      "description": "A primary action button paired with a dropdown for related secondary actions. This is composition — ButtonGroup does no split-button work itself.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { ButtonGroup } from 'cinder/button-group';\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<ButtonGroup label=\"Save options\">\n  <Button>Save</Button>\n  <Dropdown id=\"save-options\">\n    <DropdownTrigger aria-label=\"More save options\" />\n    <DropdownMenu>\n      <DropdownItem>Save as draft</DropdownItem>\n      <DropdownItem>Save and publish</DropdownItem>\n      <DropdownItem variant=\"danger\">Discard changes</DropdownItem>\n    </DropdownMenu>\n  </Dropdown>\n</ButtonGroup>\n"
+    },
+    {
+      "id": "vertical",
+      "title": "Vertical button group",
+      "description": "Vertically stacked buttons with collapsed borders.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { ButtonGroup } from 'cinder/button-group';\n</script>\n\n<ButtonGroup label=\"Document actions\" orientation=\"vertical\">\n  <Button variant=\"secondary\">Save</Button>\n  <Button variant=\"secondary\">Duplicate</Button>\n  <Button variant=\"secondary\">Archive</Button>\n</ButtonGroup>\n"
+    }
+  ]
+}

@@ -137,3 +137,10 @@ svg.icon-lg {
 .cinder-markdown-content :where(pre) {
   line-height: var(--cinder-leading-relaxed);
 }
+
+/* INTERNAL — used by Cinder components. Not a public API. May change without notice. */
+.cinder-_truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

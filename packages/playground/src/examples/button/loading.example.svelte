@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Button } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
   let loading = $state(false);
 
   async function handleClick() {

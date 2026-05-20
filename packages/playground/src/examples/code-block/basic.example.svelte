@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { CodeBlock } from '../../../../components/src/index.ts';
-
+  import { CodeBlock } from 'cinder/code-block';
   const code = `function greet(name: string): string {
   return \`Hello, \${name}!\`;
 }

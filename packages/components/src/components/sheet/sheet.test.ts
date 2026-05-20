@@ -596,11 +596,13 @@ describe('Sheet', () => {
     expect(closeRule).toContain('height: 2.75rem');
   });
 
-  test('sheet.css drag handle meets 44px touch target (min-height: 2.75rem)', async () => {
+  test('sheet.css drag handle meets 44px touch target', async () => {
     const cssFile = Bun.file(new URL('./sheet.css', import.meta.url));
     const cssText = await cssFile.text();
     const handleRule = cssText.split('.cinder-sheet__drag-handle {')[1]?.split('}')[0];
-    expect(handleRule).toContain('min-height: 2.75rem');
+    // Accept either the literal 2.75rem or the --cinder-touch-target-min token
+    // (both resolve to 44px). The audit migrated this site to the token.
+    expect(handleRule).toMatch(/min-height:\s*(?:2\.75rem|var\(--cinder-touch-target-min\))/);
   });
 
   // Documents that successive open/close cycles do not leak escape-stack

@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Alert } from '../../../../components/src/index.ts';
+  import { Alert } from 'cinder/alert';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">

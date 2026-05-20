@@ -1,0 +1,6 @@
+# Resolver-matrix fixture: the `node_modules/cinder/` directory is a committed
+# stub package that mirrors the cinder exports shape so `tsc --noEmit` can
+# exercise condition resolution under both `nodenext` and `bundler`. It is
+# NOT installed via package manager; it is hand-curated and must be tracked.
+!node_modules/
+!node_modules/**

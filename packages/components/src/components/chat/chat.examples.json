@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat",
+  "import": "cinder/chat",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic chat",
+      "description": "A conversation with editable input and markdown rendering.",
+      "code": "<script lang=\"ts\">\n  import { Chat } from 'cinder/chat';\n  import { appendAssistantMessage, appendUserMessage, createConversation } from 'conversationalist';\n\n  let conversation = $state(\n    appendAssistantMessage(\n      appendUserMessage(createConversation({ id: 'basic-chat' }), 'Can you summarize this plan?'),\n      `The plan is ready to implement.\n\n1. Port the component surface.\n2. Add focused demos.\n3. Keep the public API importable by subpath.`,\n    ),\n  );\n</script>\n\n<div style=\"height: 34rem;\">\n  <Chat id=\"playground-basic-chat\" {conversation} allowAttachments={false} />\n</div>\n"
+    },
+    {
+      "id": "streaming",
+      "title": "Streaming chat",
+      "description": "Streaming status keeps the composer in stop mode.",
+      "code": "<script lang=\"ts\">\n  import { Chat } from 'cinder/chat';\n  import { appendAssistantMessage, appendUserMessage, createConversation } from 'conversationalist';\n\n  let conversation = $state(\n    appendAssistantMessage(\n      appendUserMessage(\n        createConversation({ id: 'streaming-chat' }),\n        'What is happening in the current run?',\n      ),\n      'The assistant is applying the port, checking compiler feedback, and updating the demos as each component lands.',\n    ),\n  );\n</script>\n\n<div style=\"height: 34rem;\">\n  <Chat\n    id=\"playground-streaming-chat\"\n    {conversation}\n    isStreaming\n    streamingStatus=\"Writing response...\"\n    allowAttachments={false}\n  />\n</div>\n"
+    },
+    {
+      "id": "with-tool-calls",
+      "title": "With tool calls",
+      "description": "Tool call and result messages render as paired expandable groups.",
+      "code": "<script lang=\"ts\">\n  import { Chat } from 'cinder/chat';\n  import { appendMessages, appendUserMessage, createConversation } from 'conversationalist';\n\n  let conversation = $state(\n    appendMessages(\n      appendUserMessage(\n        createConversation({ id: 'tool-call-chat' }),\n        'Check whether the package has drift.',\n      ),\n      {\n        role: 'tool-use',\n        content: '',\n        toolCall: {\n          id: 'call-exports-check',\n          name: 'exports_check',\n          arguments: { package: 'cinder' },\n        },\n      },\n      {\n        role: 'tool-result',\n        content: '',\n        toolResult: {\n          callId: 'call-exports-check',\n          outcome: 'success',\n          content: { status: 'ok', drift: false },\n        },\n      },\n      {\n        role: 'assistant',\n        content: 'The exports map is current and the component subpaths are available.',\n      },\n    ),\n  );\n</script>\n\n<div style=\"height: 34rem;\">\n  <Chat id=\"playground-tool-call-chat\" {conversation} allowAttachments={false} />\n</div>\n"
+    }
+  ]
+}

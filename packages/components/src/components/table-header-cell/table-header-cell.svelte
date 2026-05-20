@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Column header cell within a table-header that labels a column and optionally triggers sort changes when sortable.
+   * @tag table
+   * @tag header
+   * @useWhen Labeling a column inside a table-header row.
+   * @useWhen Making a column user-sortable by setting the sortable prop and supplying a column identifier.
+   * @avoidWhen Rendering a body data cell — use table-cell instead.
+   * @related table-header, table-cell
+   */
   export type { TableHeaderCellProps } from './table-header-cell.types.ts';
 </script>
 

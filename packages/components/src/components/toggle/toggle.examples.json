@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "toggle",
+  "import": "cinder/toggle",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic toggle",
+      "description": "Switch using the WAI-ARIA switch pattern (aria-checked reflects state).",
+      "code": "<script lang=\"ts\">\n  import { Toggle } from 'cinder/toggle';\n  let emailNotifications = $state(false);\n</script>\n\n<Toggle id=\"email-notifications\" bind:checked={emailNotifications} label=\"Email notifications\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}\n</p>\n"
+    },
+    {
+      "id": "group",
+      "title": "Multiple switches",
+      "description": "Several independent on/off settings inside a fieldset/legend, each with a visible <label for> tied to its switch.",
+      "code": "<script lang=\"ts\">\n  import { FormSection } from 'cinder/form-section';\n  import { Toggle } from 'cinder/toggle';\n\n  let emailNotifications = $state(true);\n  let darkMode = $state(false);\n  let autoSave = $state(true);\n</script>\n\n<FormSection as=\"fieldset\" heading=\"Account preferences\" columns={1}>\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-email\" bind:checked={emailNotifications} label=\"Email notifications\" />\n    <label for=\"pref-email\">Email notifications</label>\n  </div>\n\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-dark\" bind:checked={darkMode} label=\"Dark mode\" />\n    <label for=\"pref-dark\">Dark mode</label>\n  </div>\n\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-autosave\" bind:checked={autoSave} label=\"Auto-save drafts\" />\n    <label for=\"pref-autosave\">Auto-save drafts</label>\n  </div>\n</FormSection>\n"
+    }
+  ]
+}

@@ -4,7 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, EmptyState } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { EmptyState } from 'cinder/empty-state';
 </script>
 
 <EmptyState title="No results found" description="Try adjusting your filters or search query.">

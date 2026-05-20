@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Individual entry within a feed that pairs a timestamp with a content snippet and optional leading icon.
+   * @tag timeline
+   * @tag event
+   * @useWhen Rendering a single activity or audit entry inside a feed parent.
+   * @useWhen Switching between an icon-led and a connector-led visual treatment via the variant prop.
+   * @avoidWhen Standing alone outside a feed — it expects the feed list semantics around it.
+   * @related feed
+   */
   export type { FeedEventProps, FeedEventVariant } from './feed-event.types.ts';
 </script>
 

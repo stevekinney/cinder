@@ -1,0 +1,22 @@
+{
+  "name": "@cinder-fixture/resolver-matrix",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Resolver matrix fixture: mirrors the cinder exports shape for a single component (`button`) so we can validate TypeScript `nodenext` and `bundler` module resolution without touching the published package.json.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./src/index.ts",
+      "node": "./dist/server/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./button": {
+      "types": "./dist/components/button/index.d.ts",
+      "svelte": "./src/components/button/index.ts",
+      "node": "./dist/server/components/button/index.js",
+      "default": "./dist/components/button/index.js"
+    }
+  }
+}

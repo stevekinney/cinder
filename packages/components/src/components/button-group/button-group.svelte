@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category action
+   * @status stable
+   * @purpose Visual and semantic grouping of related buttons that share a single accessible label and present as one connected control.
+   * @tag action
+   * @tag grouping
+   * @useWhen Clustering related actions such as align-left/center/right that read as a single toolset.
+   * @useWhen Visually joining multiple buttons into a single segmented bar without implying selection.
+   * @avoidWhen Selecting exactly one option from a fixed set — use segmented-control instead.
+   * @avoidWhen Rendering a single button — use button on its own.
+   * @related button, segmented-control
+   */
   let groupIdCounter = 0;
 
   export type { ButtonGroupOrientation, ButtonGroupProps } from './button-group.types.ts';

@@ -6,7 +6,8 @@
 
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity';
-  import { Segment, SegmentedControl } from '../../../../components/src/index.ts';
+  import { Segment } from 'cinder/segment';
+  import { SegmentedControl } from 'cinder/segmented-control';
 
   let formats = new SvelteSet<string>();
 

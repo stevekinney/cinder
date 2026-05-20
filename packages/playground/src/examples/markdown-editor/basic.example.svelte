@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { MarkdownEditor } from '../../../../components/src/index.ts';
-
+  import { MarkdownEditor } from 'cinder/markdown-editor';
   let value = $state(`# Release notes
 
 This editor supports **rich markdown editing**, toolbar actions, and a source mode.

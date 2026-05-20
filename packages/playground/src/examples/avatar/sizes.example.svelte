@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Avatar } from '../../../../components/src/index.ts';
+  import { Avatar } from 'cinder/avatar';
 </script>
 
 <div class="example-preview-row" style="align-items: center;">

@@ -65,7 +65,7 @@
 .cinder-color-picker__alpha {
   position: relative;
   height: 12px;
-  border-radius: 999px;
+  border-radius: var(--cinder-radius-full);
   outline: none;
   touch-action: none;
 }
@@ -86,6 +86,7 @@
 
 .cinder-color-picker__alpha {
   grid-area: alpha;
+  /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
   background-color: #fff;
   background-image:
     linear-gradient(to right, transparent, var(--cinder-color-picker-base, currentColor)),
@@ -140,6 +141,7 @@
 }
 
 .cinder-color-picker__preview[data-cinder-alpha] {
+  /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
   background-color: #fff;
   background-image:
     linear-gradient(

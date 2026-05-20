@@ -5,8 +5,10 @@
 </script>
 
 <script lang="ts">
-  import { Alert, Button, FormField, Input } from '../../../../components/src/index.ts';
-
+  import { Alert } from 'cinder/alert';
+  import { Button } from 'cinder/button';
+  import { FormField } from 'cinder/form-field';
+  import { Input } from 'cinder/input';
   let email = $state('');
   let password = $state('');
   let authError = $state<string | undefined>(undefined);

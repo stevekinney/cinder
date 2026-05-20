@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "form-section",
+  "import": "cinder/form-section",
+  "examples": [
+    {
+      "id": "fieldset-legend",
+      "title": "Fieldset with legend",
+      "description": "Use as=\"fieldset\" for semantically grouped inputs. The heading prop becomes a <legend>.",
+      "code": "<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { FormSection } from 'cinder/form-section';\n  import { Input } from 'cinder/input';\n  let street = $state('');\n  let city = $state('');\n  let postalCode = $state('');\n</script>\n\n<FormSection\n  as=\"fieldset\"\n  heading=\"Shipping address\"\n  description=\"Where should we send your order?\"\n  columns={2}\n>\n  <FormField id=\"street\" label=\"Street address\" class=\"cinder-form-section__span-2\">\n    <Input id=\"street\" bind:value={street} placeholder=\"123 Main St\" />\n  </FormField>\n  <FormField id=\"city\" label=\"City\">\n    <Input id=\"city\" bind:value={city} placeholder=\"Springfield\" />\n  </FormField>\n  <FormField id=\"postal-code\" label=\"Postal code\">\n    <Input id=\"postal-code\" bind:value={postalCode} placeholder=\"12345\" />\n  </FormField>\n</FormSection>\n"
+    },
+    {
+      "id": "responsive-grid",
+      "title": "Responsive grid",
+      "description": "Container-query-driven layout. Resize the outer container to see the grid respond. ",
+      "code": "<script lang=\"ts\" module>\n  export const title = 'Responsive grid';\n  export const description =\n    'Container-query-driven layout. Resize the outer container to see the grid respond. ' +\n    'Below 40rem: 1 column. At 40rem: 2 columns (for columns≥2). At 60rem: 3 (for columns≥3). At 80rem: 4.';\n</script>\n\n<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { FormSection } from 'cinder/form-section';\n  import { Input } from 'cinder/input';\n  let firstName = $state('');\n  let lastName = $state('');\n  let email = $state('');\n  let phone = $state('');\n</script>\n\n<!--\n  Resize this example in the playground to observe container-query breakpoints.\n  columns=4 means up to four columns; actual count is determined by the container width.\n-->\n<div\n  style=\"resize: horizontal; overflow: hidden; min-width: 18rem; padding: 0.5rem; border: 1px dashed var(--cinder-border);\"\n>\n  <FormSection heading=\"Contact information\" columns={4}>\n    <FormField id=\"first-name\" label=\"First name\">\n      <Input id=\"first-name\" bind:value={firstName} placeholder=\"Jane\" />\n    </FormField>\n    <FormField id=\"last-name\" label=\"Last name\">\n      <Input id=\"last-name\" bind:value={lastName} placeholder=\"Smith\" />\n    </FormField>\n    <FormField id=\"email-address\" label=\"Email\">\n      <Input id=\"email-address\" bind:value={email} type=\"email\" placeholder=\"you@example.com\" />\n    </FormField>\n    <FormField id=\"phone\" label=\"Phone\">\n      <Input id=\"phone\" bind:value={phone} type=\"tel\" placeholder=\"+1 555 000 0000\" />\n    </FormField>\n  </FormSection>\n</div>\n"
+    }
+  ]
+}

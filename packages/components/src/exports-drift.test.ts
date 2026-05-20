@@ -19,10 +19,11 @@ import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 
 import {
+  assertNoForbiddenExportKeys,
   computeExports,
-  discoverDirectoryComponents,
   type ExportEntry,
 } from '../scripts/generate-exports.ts';
+import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(ROOT, 'src', 'components');
@@ -33,7 +34,7 @@ describe('exports drift', () => {
     const existing = packageJson.exports as Record<string, ExportEntry>;
 
     // 1. Directory-shaped (migrated) components.
-    const migrated = await discoverDirectoryComponents();
+    const migrated = await discoverComponents();
     const directoryExports = computeExports(migrated);
 
     // 2. Flat (legacy) components — every `*.svelte` at top level + experimental that
@@ -52,8 +53,8 @@ describe('exports drift', () => {
       const key = `./${name}`;
       if (migratedNames.has(key)) continue;
       flatExpected[key] = {
-        svelte: `./src/components/${name}.svelte`,
         types: `./dist/components/${name}.svelte.d.ts`,
+        svelte: `./src/components/${name}.svelte`,
       };
     }
     for await (const file of new Glob('src/components/experimental/*.svelte').scan(ROOT)) {
@@ -65,8 +66,8 @@ describe('exports drift', () => {
       const key = `./experimental/${name}`;
       if (migratedNames.has(key)) continue;
       flatExpected[key] = {
-        svelte: `./src/components/experimental/${name}.svelte`,
         types: `./dist/components/experimental/${name}.svelte.d.ts`,
+        svelte: `./src/components/experimental/${name}.svelte`,
       };
     }
 
@@ -84,8 +85,15 @@ describe('exports drift', () => {
 
     // Orphan entries — a key in package.json that doesn't match either a flat
     // component or a directory-shaped component.
+    const RESERVED = new Set([
+      '.',
+      './package.json',
+      './styles',
+      './styles/tokens',
+      './styles/foundation',
+    ]);
     for (const key of Object.keys(existing)) {
-      if (key === '.' || key === './styles') continue;
+      if (RESERVED.has(key)) continue;
       if (key in expected) continue;
       issues.push(
         `Orphan export "${key}" has no matching component — run bun run exports:generate`,
@@ -100,6 +108,14 @@ describe('exports drift', () => {
     const exports = packageJson.exports as Record<string, unknown>;
     expect(exports['.']).toBeDefined();
     expect(exports['./styles']).toBeDefined();
+    expect(exports['./styles/tokens']).toBeDefined();
+    expect(exports['./styles/foundation']).toBeDefined();
+  });
+
+  test('checked-in exports contain no forbidden keys', async () => {
+    const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf-8'));
+    const exports = packageJson.exports as Record<string, unknown>;
+    expect(() => assertNoForbiddenExportKeys(exports)).not.toThrow();
   });
 
   test('no _internal components appear as export keys', async () => {
@@ -119,7 +135,7 @@ describe('exports drift', () => {
     const missing: string[] = [];
 
     // Migrated components are imported from `./components/<name>/index.ts`.
-    const migrated = await discoverDirectoryComponents();
+    const migrated = await discoverComponents();
     for (const component of migrated) {
       const expectedImport = component.isExperimental
         ? `from './components/experimental/${component.name}/index.ts'`

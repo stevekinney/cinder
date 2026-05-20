@@ -57,3 +57,15 @@ When `left`/`right` carries semantic placement (e.g. `data-placement="left"` sel
 - Conventional commit prefixes (`feat`, `fix`, `refactor`, `docs`, `chore`).
 - Run `bun run lint && bun run typecheck && bun test` before opening a PR.
 - PRs go through the multi-agent committee review before merging.
+
+## Changesets
+
+If your pull request changes anything that ships in the `cinder` npm package (the workspace at `packages/components/`), add a changeset:
+
+```bash
+bun x changeset
+```
+
+Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summary, and commit the generated file under `.changeset/`. The release workflow (`.github/workflows/release.yaml`) consumes pending changesets to open a "Version Packages" pull request; merging that PR publishes to npm with provenance.
+
+Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.

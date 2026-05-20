@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Progress } from '../../../../components/src/index.ts';
+  import { Progress } from 'cinder/progress';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.4rem;">

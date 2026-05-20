@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Compact pill that displays a value and optionally supports removal or toggle interactions via its mode prop.
+   * @tag tag
+   * @tag filter
+   * @useWhen Representing applied filters, selected entities, or tags the user can remove.
+   * @useWhen Offering a small toggleable option inside a group of choices.
+   * @avoidWhen The label is purely decorative and non-interactive — use badge instead.
+   * @avoidWhen Picking one of a small fixed set — use segmented-control instead.
+   * @related badge, status-dot
+   */
   export type {
     ChipDensity,
     ChipDisplayProps,

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "segmented-control",
+  "import": "cinder/segmented-control",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic segmented control",
+      "description": "A compact radio-group control with keyboard navigation.",
+      "code": "<script lang=\"ts\">\n  import { SegmentedControl } from 'cinder/segmented-control';\n  let value = $state('rendered');\n\n  const options = [\n    { value: 'source', label: 'Source' },\n    { value: 'rendered', label: 'Rendered' },\n    { value: 'diff', label: 'Diff' },\n  ];\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; justify-items: start;\">\n  <SegmentedControl\n    id=\"playground-view\"\n    selectionMode=\"single\"\n    bind:value\n    label=\"Document view\"\n    {options}\n  />\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Current view: {value}</p>\n</div>\n"
+    },
+    {
+      "id": "multiple",
+      "title": "Multi-select segmented control",
+      "description": "Multiple options can be toggled independently. Bind a SvelteSet to track selection.",
+      "code": "<script lang=\"ts\">\n  import { SvelteSet } from 'svelte/reactivity';\n  import { SegmentedControl } from 'cinder/segmented-control';\n  let formats = new SvelteSet<string>();\n\n  const options = [\n    { value: 'bold', label: 'Bold' },\n    { value: 'italic', label: 'Italic' },\n    { value: 'underline', label: 'Underline' },\n    { value: 'strikethrough', label: 'Strike' },\n  ];\n\n  const selected = $derived([...formats].join(', ') || 'none');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; justify-items: start;\">\n  <SegmentedControl\n    id=\"playground-format\"\n    selectionMode=\"multiple\"\n    bind:value={formats}\n    label=\"Text formatting\"\n    {options}\n  />\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Active formats: {selected}</p>\n</div>\n"
+    }
+  ]
+}

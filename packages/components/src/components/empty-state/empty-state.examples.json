@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "empty-state",
+  "import": "cinder/empty-state",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic empty state",
+      "description": "Title, description, and an action button.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { EmptyState } from 'cinder/empty-state';\n</script>\n\n<EmptyState title=\"No results found\" description=\"Try adjusting your filters or search query.\">\n  {#snippet action()}\n    <Button variant=\"primary\" label=\"Clear filters\" />\n  {/snippet}\n</EmptyState>\n"
+    },
+    {
+      "id": "with-icon",
+      "title": "With icon",
+      "description": "An icon snippet above the title.",
+      "code": "<script lang=\"ts\">\n  import { EmptyState } from 'cinder/empty-state';\n</script>\n\n<EmptyState title=\"No documents\" description=\"Upload your first document to get started.\">\n  {#snippet icon()}\n    <svg\n      xmlns=\"http://www.w3.org/2000/svg\"\n      width=\"48\"\n      height=\"48\"\n      viewBox=\"0 0 24 24\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      stroke-width=\"1.5\"\n      aria-hidden=\"true\"\n    >\n      <path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"></path>\n      <polyline points=\"14 2 14 8 20 8\"></polyline>\n    </svg>\n  {/snippet}\n</EmptyState>\n"
+    }
+  ]
+}

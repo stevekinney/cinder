@@ -1,4 +1,19 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status alpha
+   * @purpose Chat-style bubble that renders a role label, optional timestamp, and arbitrary body content for transcript or run-stream views.
+   * @tag chat
+   * @tag message
+   * @tag conversation
+   * @useWhen Composing a transcript of user, assistant, and system turns outside the full chat suite.
+   * @useWhen Rendering AI agent runs, support threads, or audit logs where each entry has a speaker and a body.
+   * @avoidWhen Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead.
+   * @avoidWhen Communicating a single non-conversational notice — callout is more appropriate.
+   * @avoidWhen Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta.
+   * @related chat, callout
+   */
   export type { MessageProps, MessageRole } from './message.types.ts';
 </script>
 

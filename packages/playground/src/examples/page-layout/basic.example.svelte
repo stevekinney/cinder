@@ -4,7 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, PageLayout } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { PageLayout } from 'cinder/page-layout';
 </script>
 
 <PageLayout title="Team members">

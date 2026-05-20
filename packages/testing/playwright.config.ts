@@ -33,6 +33,9 @@ export default defineConfig({
   // runner. Post-#39 they mount in single-digit seconds; the per-test 90s
   // timeout leaves generous headroom for runAxe + captureScreenshot.
   timeout: 90_000,
+  // In block mode, retries would create spurious baseline-update prompts;
+  // disable them so failures surface cleanly and immediately.
+  ...(process.env['CINDER_VISUAL_DIFF'] === 'block' ? { retries: 0 } : {}),
   // CI uses 2 workers (the chunk-[hash].js fix in #39 resolved the
   // "Multiple files share the same output path" race that previously forced
   // workers=1). Local stays parallel (default = cores).
@@ -48,6 +51,18 @@ export default defineConfig({
     screenshot: 'off',
     video: 'off',
   },
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 2,
+      threshold: 0.1,
+      animations: 'disabled',
+      caret: 'hide',
+    },
+  },
+  // Snapshots are written to packages/testing/snapshots/<slug>/<theme>-<viewport>-<fixture>.png.
+  // The basename passed to toHaveScreenshot() carries the full slug/theme/viewport/fixture
+  // pattern; Playwright resolves the directory from this template.
+  snapshotPathTemplate: '{testDir}/../snapshots/{arg}{ext}',
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // Intentionally no `webServer` block. `scripts/start-server.ts` owns the
   // dev-server lifecycle so that manifest preparation (which must run before

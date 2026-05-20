@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Accordion, AccordionItem } from '../../../../components/src/index.ts';
-
+  import { Accordion } from 'cinder/accordion';
+  import { AccordionItem } from 'cinder/accordion-item';
   let expandedIds = $state<string[]>(['faq-1', 'faq-3']);
 </script>
 

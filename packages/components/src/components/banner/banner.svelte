@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category feedback
+   * @status stable
+   * @purpose Page-level dismissible region landmark that surfaces a persistent informational, success, warning, or danger message.
+   * @tag feedback
+   * @tag notice
+   * @useWhen Communicating a persistent page-level status the user can dismiss, such as a maintenance window or trial expiry.
+   * @useWhen Pinning a non-urgent message above page content that should remain readable until acknowledged.
+   * @avoidWhen Announcing an urgent, time-sensitive message — use alert so assistive tech reads it immediately.
+   * @avoidWhen Highlighting an inline aside next to related prose — use callout instead.
+   * @related alert, callout, toast-region
+   */
   const VARIANT_LABEL = {
     info: 'Information',
     success: 'Success',
@@ -117,7 +130,7 @@
     {#if dismissible}
       <button
         type="button"
-        class="cinder-banner__dismiss"
+        class="cinder-_dismiss-button cinder-banner__dismiss"
         onclick={handleDismiss}
         aria-label="Dismiss banner"
       >

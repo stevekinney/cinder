@@ -1,4 +1,15 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Body section of a table that groups data rows and establishes the body section context for nested rows.
+   * @tag table
+   * @tag section
+   * @useWhen Wrapping the data rows of a table to distinguish them from header rows.
+   * @avoidWhen Wrapping header rows — use table-header instead.
+   * @related table, table-row
+   */
   export type { TableBodyProps } from './table-body.types.ts';
 </script>
 

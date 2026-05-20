@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Breadcrumbs } from '../../../../components/src/index.ts';
+  import { Breadcrumbs } from 'cinder/breadcrumbs';
 </script>
 
 <Breadcrumbs

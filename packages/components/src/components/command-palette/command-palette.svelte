@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Modal search overlay that lets users find and trigger commands, navigate to destinations, or jump to records via a fuzzy-filtered list.
+   * @tag overlay
+   * @tag command
+   * @useWhen Exposing a global keyboard-first launcher for power-user actions and navigation.
+   * @useWhen Letting users search across heterogeneous results such as commands, pages, and records in one input.
+   * @avoidWhen Picking a single value bound to a form field — use combobox instead.
+   * @avoidWhen Showing a contextual action menu attached to a trigger — use dropdown instead.
+   * @related combobox, dropdown, command-item
+   */
   export type { CommandPaletteProps } from './command-palette.types.ts';
 </script>
 

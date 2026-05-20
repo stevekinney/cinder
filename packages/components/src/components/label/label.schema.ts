@@ -4,6 +4,11 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    for: {
+      type: 'string',
+      description:
+        'The id of the form control this label labels. Sets `for` on the rendered `<label>`.',
+    },
     required: {
       type: 'boolean',
       description: 'When true, append a visual indicator that the field is required.',
@@ -14,8 +19,13 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['for'],
   metadata: {
     unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
       {
         name: 'class',
         reason: 'unknown-shape',

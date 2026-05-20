@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Select } from '../../../../components/src/index.ts';
-
+  import { Select } from 'cinder/select';
   const options = [
     { value: 'us', label: 'United States' },
     { value: 'ca', label: 'Canada' },

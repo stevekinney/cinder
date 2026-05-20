@@ -14,13 +14,17 @@
 
   let { lines = 8, class: className, ...rest }: EditorSkeletonProps = $props();
 
-  // Generate varied line widths for realistic appearance
-  // Use $derived.by to properly track the `lines` prop reactively
+  // Deterministic shimmer widths cycled by line index.
+  // The table provides visual variety without Math.random() so snapshot runs
+  // are stable across renders. First and last lines get fixed heading/tail widths;
+  // interior lines cycle through the table.
+  const SHIMMER_WIDTHS = [68, 84, 56, 92, 72, 80, 60, 88] as const;
+
   const lineWidths = $derived.by(() =>
     Array.from({ length: lines }, (_, i) => {
       if (i === 0) return 45; // First line shorter (heading)
       if (i === lines - 1) return 30; // Last line shorter
-      return 60 + Math.floor(Math.random() * 30); // Vary between 60-90%
+      return SHIMMER_WIDTHS[i % SHIMMER_WIDTHS.length] ?? 68;
     }),
   );
 </script>

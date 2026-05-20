@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category layout
+   * @status stable
+   * @purpose Responsive layout shell that anchors a collapsible column beside main content and swaps to a drawer below a configurable breakpoint.
+   * @tag layout
+   * @tag responsive
+   * @useWhen Wrapping the page chrome so a navigation column can collapse and become a mobile drawer automatically.
+   * @useWhen Sharing collapsed state between a side-navigation column and the rest of the app shell via context.
+   * @avoidWhen Building the page body itself rather than the surrounding shell — use page-layout instead.
+   * @avoidWhen Rendering navigation entries directly — place side-navigation inside the sidebar column.
+   * @related page-layout, side-navigation, drawer
+   */
   export type { SidebarProps } from './sidebar.types.ts';
 </script>
 

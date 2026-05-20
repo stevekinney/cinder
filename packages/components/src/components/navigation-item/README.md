@@ -23,6 +23,7 @@ A NavigationItem component. Replace this sentence with a one-line purpose statem
 | `disabled` | `boolean`                    | no       | —       |                                                                                   |
 | `variant`  | `"horizontal"` \| `"mobile"` | no       | —       | Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'. |
 | `children` | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
+| `onclick`  | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
 
 <!-- generated:props:end -->
 

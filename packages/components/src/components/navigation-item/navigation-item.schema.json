@@ -22,6 +22,10 @@
       {
         "name": "children",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "onclick",
+        "reason": "function-or-snippet"
       }
     ]
   }

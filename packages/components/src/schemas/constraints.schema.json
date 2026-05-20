@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "constraints.schema.json",
+  "title": "cinder component constraints",
+  "description": "Per-component discriminated-union usage rules that cannot be cleanly expressed in JSON Schema. Each rule encodes a cross-prop constraint using a small four-combinator DSL. The reference evaluator in the cinder package checks props at runtime and returns violations.",
+  "type": "object",
+  "required": ["$schema", "component", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Relative path to the JSON Schema that validates this file."
+    },
+    "component": {
+      "type": "string",
+      "description": "Kebab-case id of the component these constraints apply to. Must match a component id in components.json.",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": ["button"]
+    },
+    "rules": {
+      "type": "array",
+      "description": "Ordered list of constraint rules. All rules are evaluated independently; multiple rules may fire simultaneously.",
+      "items": {
+        "$ref": "#/$defs/Rule"
+      }
+    }
+  },
+  "$defs": {
+    "Rule": {
+      "type": "object",
+      "description": "A single constraint rule. The rule's 'of' predicate tree is evaluated against the component's rendered props. When the rule fires, the evaluator returns a violation with the rule's id, severity, and message derived from 'description'.",
+      "required": ["id", "severity", "kind", "description", "of"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable kebab-case identifier for this rule. Referenced in violation reports and test fixtures.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "examples": ["visual-content-source", "accessible-name"]
+        },
+        "severity": {
+          "type": "string",
+          "description": "How severe a violation of this rule is. 'error' means the component will not render correctly or accessibly; 'warning' means a likely mistake; 'info' means a best-practice note.",
+          "enum": ["error", "warning", "info"]
+        },
+        "kind": {
+          "type": "string",
+          "description": "The logical combinator for the 'of' array. 'exactlyOne': exactly one predicate in 'of' must be satisfied. 'anyOf': at least one predicate in 'of' must be satisfied. 'allOf': all predicates in 'of' must be satisfied. 'requires': when the optional 'when' condition is satisfied, all predicates in 'of' must be satisfied.",
+          "enum": ["exactlyOne", "anyOf", "allOf", "requires"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of the constraint, written as a positive statement of what must hold. Shown to developers in violation messages.",
+          "minLength": 1
+        },
+        "when": {
+          "description": "Optional pre-condition for 'requires' rules. When present, the rule only fires if this predicate is satisfied. Not used by 'exactlyOne', 'anyOf', or 'allOf' rules.",
+          "$ref": "#/$defs/Predicate"
+        },
+        "of": {
+          "type": "array",
+          "description": "The predicate branches evaluated by the 'kind' combinator.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Predicate"
+          }
+        },
+        "examples": {
+          "type": "object",
+          "description": "Representative valid and invalid prop objects for documentation and testing. The evaluator test suite uses these as fixtures.",
+          "additionalProperties": false,
+          "properties": {
+            "valid": {
+              "type": "array",
+              "description": "Prop objects that satisfy this rule.",
+              "items": { "type": "object" }
+            },
+            "invalid": {
+              "type": "array",
+              "description": "Prop objects that violate this rule.",
+              "items": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "Predicate": {
+      "description": "A leaf or composite predicate in the constraint DSL. Each predicate tests one aspect of the component's rendered props.",
+      "oneOf": [
+        { "$ref": "#/$defs/PropEqualsPredicate" },
+        { "$ref": "#/$defs/PropExistsPredicate" },
+        { "$ref": "#/$defs/PropNonEmptyPredicate" },
+        { "$ref": "#/$defs/SnippetPredicate" },
+        { "$ref": "#/$defs/AllOfPredicate" },
+        { "$ref": "#/$defs/AnyOfPredicate" }
+      ]
+    },
+    "PropEqualsPredicate": {
+      "type": "object",
+      "description": "True when the named prop is strictly equal to the given value.",
+      "required": ["prop", "equals"],
+      "additionalProperties": false,
+      "properties": {
+        "prop": {
+          "type": "string",
+          "description": "The prop name to test.",
+          "examples": ["iconOnly", "variant"]
+        },
+        "equals": {
+          "description": "The value the prop must equal. May be any JSON-serializable scalar.",
+          "examples": [true, false, "primary", 0]
+        }
+      }
+    },
+    "PropExistsPredicate": {
+      "type": "object",
+      "description": "True when the named prop is present (not undefined or null).",
+      "required": ["prop", "exists"],
+      "additionalProperties": false,
+      "properties": {
+        "prop": {
+          "type": "string",
+          "description": "The prop name to test for presence.",
+          "examples": ["aria-label", "leadingIcon"]
+        },
+        "exists": {
+          "type": "boolean",
+          "const": true,
+          "description": "Must always be true; the predicate type is 'prop exists'."
+        }
+      }
+    },
+    "PropNonEmptyPredicate": {
+      "type": "object",
+      "description": "True when the named prop is a non-empty string.",
+      "required": ["prop", "nonEmpty"],
+      "additionalProperties": false,
+      "properties": {
+        "prop": {
+          "type": "string",
+          "description": "The prop name to test for a non-empty string value.",
+          "examples": ["label", "aria-label"]
+        },
+        "nonEmpty": {
+          "type": "boolean",
+          "const": true,
+          "description": "Must always be true; the predicate type is 'prop non-empty'."
+        }
+      }
+    },
+    "SnippetPredicate": {
+      "type": "object",
+      "description": "True when the named Svelte snippet is passed (i.e. the slot/snippet prop is truthy).",
+      "required": ["snippet"],
+      "additionalProperties": false,
+      "properties": {
+        "snippet": {
+          "type": "string",
+          "description": "The snippet (slot) prop name to test for presence.",
+          "examples": ["children", "leadingContent"]
+        }
+      }
+    },
+    "AllOfPredicate": {
+      "type": "object",
+      "description": "Composite predicate that is true when all nested predicates are satisfied.",
+      "required": ["allOf"],
+      "additionalProperties": false,
+      "properties": {
+        "allOf": {
+          "type": "array",
+          "description": "All predicates in this array must be satisfied.",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/Predicate" }
+        }
+      }
+    },
+    "AnyOfPredicate": {
+      "type": "object",
+      "description": "Composite predicate that is true when at least one nested predicate is satisfied.",
+      "required": ["anyOf"],
+      "additionalProperties": false,
+      "properties": {
+        "anyOf": {
+          "type": "array",
+          "description": "At least one predicate in this array must be satisfied.",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/Predicate" }
+        }
+      }
+    }
+  }
+}

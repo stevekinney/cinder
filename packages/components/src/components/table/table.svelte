@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Composite root that establishes table semantics, density, and sort context for nested header, body, row, and cell parts.
+   * @tag table
+   * @tag grid
+   * @useWhen Comparing rows of structured records across consistent columns.
+   * @useWhen Coordinating column sort state across header cells via the sort prop.
+   * @avoidWhen Rendering a responsive card grid — use grid-list instead.
+   * @avoidWhen Listing key-value attributes of one entity — use description-list instead.
+   * @related table-header, table-body, table-row, table-cell, table-header-cell
+   */
   export {
     TABLE_CONTEXT_KEY,
     TABLE_HEADER_SELECTION_CONTEXT_KEY,

@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category feedback
+   * @status stable
+   * @purpose Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or region.
+   * @tag feedback
+   * @tag notice
+   * @useWhen Surfacing the result of a just-completed action such as a save failure or success.
+   * @useWhen Calling out a transient condition the user must notice immediately within a specific region.
+   * @avoidWhen Communicating a page- or app-wide notice that persists across views — use a banner instead.
+   * @avoidWhen Providing supplemental commentary or guidance inline with content — use a callout instead.
+   * @related banner, callout, toast-region
+   */
   export type { AlertProps, AlertVariant } from './alert.types.ts';
 </script>
 
@@ -39,7 +52,7 @@
     {#if dismissible}
       <button
         type="button"
-        class="cinder-alert__dismiss"
+        class="cinder-_dismiss-button cinder-alert__dismiss"
         onclick={handleDismiss}
         aria-label="Dismiss alert"
       >

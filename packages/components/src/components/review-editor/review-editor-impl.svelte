@@ -83,7 +83,22 @@
     oncommentcreate,
     oncommentupdate,
     oncommentdelete,
+    snapshotMode = false,
   }: ReviewEditorProps = $props();
+
+  // Blur any focused element inside this component on mount when snapshotMode
+  // is active. This prevents the initial screenshot from capturing a focused
+  // ring or blinking caret. We track the container element via bind:this.
+  let containerElement = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    if (!snapshotMode) return;
+    if (!containerElement) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && containerElement.contains(active)) {
+      active.blur();
+    }
+  });
 
   // Reference to the underlying MarkdownEditor. Using the imported component
   // as a type is the Svelte ambient pattern — `*.svelte` declares the import
@@ -1582,11 +1597,13 @@
 -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  bind:this={containerElement}
   data-testid="review-editor"
   class={classNames('review-editor-container', className)}
   data-mode={mode}
   data-view={activeView}
   data-ready={editorViewReady && !pendingState ? true : undefined}
+  data-snapshot-mode={snapshotMode || undefined}
   onkeydown={handleContainerKeyDown}
 >
   <!-- Screen reader announcements (DEP-47) -->
@@ -1660,6 +1677,7 @@
           readonly={isReadonly}
           {placeholder}
           plugins={[anchorPlugin]}
+          {snapshotMode}
           onchange={handleEditorBodyChange}
           onReady={() => {
             if (!editorViewReady) {
@@ -1771,5 +1789,16 @@
 
   .review-editor-view-panel {
     min-width: 0;
+  }
+
+  /*
+   * Snapshot mode: suppress the blinking caret and text selection highlights
+   * so visual regression screenshots are pixel-stable across runs.
+   * Scoped to [data-snapshot-mode] so normal editing is completely unaffected.
+   */
+  .review-editor-container[data-snapshot-mode],
+  .review-editor-container[data-snapshot-mode] * {
+    caret-color: transparent;
+    user-select: none;
   }
 </style>

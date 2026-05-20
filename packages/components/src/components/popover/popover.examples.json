@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "popover",
+  "import": "cinder/popover",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic popover",
+      "description": "A button trigger that opens an interactive floating panel. Anchor positioning via floating-ui; focus moves into the panel on open and restores to the trigger on close.",
+      "code": "<script lang=\"ts\">\n  import { Popover } from 'cinder/popover';\n  let open = $state(false);\n  let triggerEl: HTMLButtonElement | null = $state(null);\n</script>\n\n<div style=\"padding: 4rem; display: flex; flex-direction: column; gap: 1rem;\">\n  <button type=\"button\" bind:this={triggerEl} onclick={() => (open = !open)}>\n    Toggle popover\n  </button>\n\n  <Popover bind:open triggerRef={triggerEl} label=\"Account settings\" showArrow>\n    <div style=\"display: flex; flex-direction: column; gap: 0.5rem; min-width: 14rem;\">\n      <strong>Account</strong>\n      <p style=\"margin: 0; font-size: 0.875rem; color: var(--cinder-text-muted, currentColor);\">\n        Edit your profile, manage billing, or sign out.\n      </p>\n      <button type=\"button\" onclick={() => (open = false)}>Edit profile</button>\n      <button type=\"button\" onclick={() => (open = false)}>Sign out</button>\n    </div>\n  </Popover>\n</div>\n"
+    }
+  ]
+}

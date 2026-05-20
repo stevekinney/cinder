@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "spinner",
+  "import": "cinder/spinner",
+  "examples": [
+    {
+      "id": "inline",
+      "title": "Inline spinner",
+      "description": "Spinner used inline alongside text.",
+      "code": "<script lang=\"ts\">\n  import { Spinner } from 'cinder/spinner';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center; gap: 0.5rem;\">\n  <Spinner size=\"sm\" />\n  <span>Saving changes…</span>\n</div>\n"
+    },
+    {
+      "id": "sizes",
+      "title": "Spinner sizes",
+      "description": "Small, medium, and large loading spinners.",
+      "code": "<script lang=\"ts\">\n  import { Spinner } from 'cinder/spinner';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <Spinner size=\"sm\" label=\"Loading small\" />\n  <Spinner size=\"md\" label=\"Loading medium\" />\n  <Spinner size=\"lg\" label=\"Loading large\" />\n</div>\n"
+    }
+  ]
+}

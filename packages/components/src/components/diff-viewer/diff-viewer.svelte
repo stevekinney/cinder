@@ -1,4 +1,18 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category domain
+   * @status domain-suite
+   * @purpose Side-by-side or unified Markdown diff surface with hunk grouping, word-level inline changes, and size-based debounce gating.
+   * @tag diff
+   * @tag markdown
+   * @tag domain-suite
+   * @useWhen Comparing two Markdown documents and wanting the bundled toolbar, view-mode toggle, front-matter handling, and large-payload safeguards.
+   * @useWhen Building a review workflow that needs hunked, line-anchored Markdown diffs out of the box as a heavyweight suite.
+   * @avoidWhen Showing only a counts summary — use diff-statistics on its own for a lightweight presentation.
+   * @avoidWhen Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering.
+   * @related diff-statistics, code-block
+   */
   export type { DiffToolbarContext, DiffViewerProps, ViewMode } from './diff-viewer.types.ts';
 </script>
 

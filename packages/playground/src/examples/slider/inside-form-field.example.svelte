@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FormField, Slider } from '../../../../components/src/index.ts';
-
+  import { FormField } from 'cinder/form-field';
+  import { Slider } from 'cinder/slider';
   let value = $state(50);
 </script>
 

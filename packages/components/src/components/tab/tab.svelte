@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel.
+   * @tag navigation
+   * @tag tabs
+   * @useWhen Declaring one tab heading inside a tabs ancestor with a stable value identifier.
+   * @useWhen Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls.
+   * @avoidWhen Used outside a tabs ancestor — the component throws at construction.
+   * @avoidWhen Rendering a generic action button — use button instead.
+   * @related tabs, tab-list, tab-panel
+   */
   export type { TabProps } from './tab.types.ts';
 </script>
 

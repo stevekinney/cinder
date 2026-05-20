@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from '../../../../components/src/index.ts';
+  import { Checkbox } from 'cinder/checkbox';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.75rem;">

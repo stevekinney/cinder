@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Single- or two-thumb slider implementing the WAI-ARIA slider pattern for picking a value or range along a numeric scale.
+   * @tag form
+   * @tag numeric
+   * @useWhen Picking a value within a continuous range where visual position communicates magnitude.
+   * @useWhen Selecting a low and high bound together via the range mode.
+   * @avoidWhen Entering a precise numeric value typed by the user — use number-input instead.
+   * @avoidWhen Displaying read-only completion — use progress instead.
+   * @related number-input, progress
+   */
   export type {
     SliderMode,
     SliderProps,

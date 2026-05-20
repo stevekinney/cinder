@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Surface } from '../../../../components/src/index.ts';
+  import { Surface } from 'cinder/surface';
 </script>
 
 <div style="display: grid; gap: 0.75rem;">

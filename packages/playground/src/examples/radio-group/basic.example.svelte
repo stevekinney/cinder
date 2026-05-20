@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Radio, RadioGroup } from '../../../../components/src/index.ts';
-
+  import { Radio } from 'cinder/radio';
+  import { RadioGroup } from 'cinder/radio-group';
   let plan = $state('pro');
 </script>
 
