@@ -20,9 +20,16 @@
       event.preventDefault();
       return;
     }
-    if (!isLink) {
-      (props as { onclick: (event: MouseEvent) => void }).onclick(event);
+    if (isLink) {
+      // Link arm: forward to consumer onclick if provided. The consumer
+      // decides whether to preventDefault — useful for SPA navigation that
+      // wants modified clicks (cmd/ctrl/shift/alt, middle-click) to fall
+      // through to native browser behavior.
+      const linkOnclick = (props as LinkArm).onclick;
+      linkOnclick?.(event);
+      return;
     }
+    (props as { onclick: (event: MouseEvent) => void }).onclick(event);
   }
 </script>
 

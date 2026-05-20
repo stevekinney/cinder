@@ -117,3 +117,51 @@ describe('Divider — class forwarding and rest props', () => {
     expect(container.querySelector('[data-testid="sep"]')).not.toBeNull();
   });
 });
+
+describe('Divider — semantic attributes cannot be overridden via rest spread', () => {
+  // Regression: Svelte 5 "last attribute wins" semantics mean if the rest
+  // spread is rendered after the component's aria-hidden/role/data-* the
+  // caller can defeat the accessibility contract. The template spreads
+  // rest first to keep component-owned attributes authoritative.
+
+  test('caller cannot override aria-hidden on decorative divider', () => {
+    const { container } = render(Divider, { 'aria-hidden': 'false' });
+    const el = container.querySelector('.cinder-divider');
+    expect(el?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('caller cannot override role on non-decorative vertical divider', () => {
+    const { container } = render(Divider, {
+      decorative: false,
+      orientation: 'vertical',
+      role: 'presentation',
+    });
+    const el = container.querySelector('.cinder-divider');
+    expect(el?.getAttribute('role')).toBe('separator');
+  });
+
+  test('caller cannot override aria-orientation on non-decorative vertical divider', () => {
+    const { container } = render(Divider, {
+      decorative: false,
+      orientation: 'vertical',
+      'aria-orientation': 'horizontal',
+    });
+    const el = container.querySelector('.cinder-divider');
+    expect(el?.getAttribute('aria-orientation')).toBe('vertical');
+  });
+
+  test('caller cannot override data-cinder-orientation', () => {
+    const { container } = render(Divider, {
+      orientation: 'vertical',
+      'data-cinder-orientation': 'horizontal',
+    });
+    const el = container.querySelector('.cinder-divider');
+    expect(el?.getAttribute('data-cinder-orientation')).toBe('vertical');
+  });
+
+  test('non-decorative horizontal <hr> does not carry aria-orientation', () => {
+    const { container } = render(Divider, { decorative: false });
+    const el = container.querySelector('hr.cinder-divider');
+    expect(el?.hasAttribute('aria-orientation')).toBe(false);
+  });
+});

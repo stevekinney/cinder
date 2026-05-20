@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SideNavigation } from '../../../components/src/index.ts';
+  import { SideNavigation, SideNavigationItem } from '../../../components/src/index.ts';
   import { buildShellHref } from './routing.ts';
 
   type Props = {
@@ -31,16 +31,13 @@
 <div class="sidebar-chrome">
   <SideNavigation ariaLabel="Components">
     {#each components as name (name)}
-      {@const isActive = name === currentComponent}
-      <li class="cinder-side-navigation__item">
-        <a
-          href={buildShellHref(name)}
-          aria-current={isActive ? 'page' : undefined}
-          onclick={(event) => handleClick(event, name)}
-        >
-          {name}
-        </a>
-      </li>
+      <SideNavigationItem
+        href={buildShellHref(name)}
+        active={name === currentComponent}
+        onclick={(event) => handleClick(event, name)}
+      >
+        {name}
+      </SideNavigationItem>
     {/each}
   </SideNavigation>
 </div>
@@ -63,29 +60,5 @@
     /* stylelint-disable-next-line csstools/use-logical */
     border-right: 1px solid var(--cinder-border);
     overflow-y: auto;
-  }
-
-  .sidebar-chrome :global(ul) {
-    padding: 8px 0;
-  }
-
-  .sidebar-chrome :global(li a) {
-    display: block;
-    padding: 6px 16px;
-    text-decoration: none;
-    color: var(--cinder-text);
-    border-radius: 4px;
-    margin: 1px 8px;
-    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
-  .sidebar-chrome :global(li a:hover) {
-    background: var(--cinder-surface-hover);
-  }
-
-  .sidebar-chrome :global(li a[aria-current='page']) {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
-    color: var(--cinder-accent);
-    font-weight: 600;
   }
 </style>

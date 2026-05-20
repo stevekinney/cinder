@@ -26,6 +26,10 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
       },
+      {
+        name: 'onclick',
+        reason: 'function-or-snippet',
+      },
     ],
   },
 } satisfies ComponentSchema;

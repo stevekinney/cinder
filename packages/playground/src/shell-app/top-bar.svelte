@@ -28,13 +28,13 @@
   }));
 
   // Derive the SegmentedControl value from store.previewWidth. When no preset
-  // matches exactly (custom width), the derived key won't match any option so
-  // no preset segment appears selected — correct behavior.
-  let viewportPresetKey = $derived<string>(
+  // matches exactly (custom width), pass `undefined` so SegmentedControl
+  // renders without a selected segment instead of trying to select a phantom
+  // option — the NumberInput is the visual indicator of custom mode.
+  let viewportPresetKey = $derived<string | undefined>(
     store.previewWidth === null
       ? 'full'
-      : (VIEWPORT_PRESETS.find((p) => p.value === store.previewWidth)?.key ??
-          String(store.previewWidth)),
+      : VIEWPORT_PRESETS.find((p) => p.value === store.previewWidth)?.key,
   );
 
   // The custom width NumberInput is only visible when the viewport is
@@ -49,10 +49,12 @@
   }
 
   function handleCustomWidthChange(newValue: number | null): void {
-    if (newValue === null) {
-      store.previewWidth = null;
-      return;
-    }
+    // NumberInput defers commit to blur; clearing the input then blurring
+    // surfaces as `newValue === null`. Treat that as "keep the current width"
+    // — the user navigates to Full via the SegmentedControl, not by clearing
+    // this input. Without this guard, clearing-to-retype kicks the user out
+    // of custom-width mode and hides the input mid-edit.
+    if (newValue === null) return;
     store.previewWidth = newValue;
     announce(`Viewport: custom, ${newValue} pixels`);
   }
@@ -131,7 +133,8 @@
         hideLabel
         density="toolbar"
         options={VIEWPORT_SEGMENTED_OPTIONS}
-        value={viewportPresetKey}
+        {...viewportPresetKey !== undefined ? { value: viewportPresetKey } : {}}
+        disallowEmptySelection={false}
         onchange={handleViewportChange}
       />
 

@@ -19,42 +19,47 @@
   const mergedClass = $derived(classNames('cinder-divider', customClassName));
 </script>
 
+<!--
+  `{...rest}` is spread first so the component's own accessibility/identity
+  attributes (aria-hidden, role, aria-orientation, data-cinder-*) win against
+  any caller overrides — Svelte 5 attribute order is "last wins."
+-->
 {#if decorative}
   {#if orientation === 'vertical'}
     <span
+      {...rest}
       class={mergedClass}
       aria-hidden="true"
       data-cinder-orientation={orientation}
       data-cinder-tone={tone}
       data-cinder-inset={inset || undefined}
-      {...rest}
     ></span>
   {:else}
     <div
+      {...rest}
       class={mergedClass}
       aria-hidden="true"
       data-cinder-orientation={orientation}
       data-cinder-tone={tone}
       data-cinder-inset={inset || undefined}
-      {...rest}
     ></div>
   {/if}
 {:else if orientation === 'vertical'}
   <span
+    {...rest}
     class={mergedClass}
     role="separator"
     aria-orientation="vertical"
     data-cinder-orientation={orientation}
     data-cinder-tone={tone}
     data-cinder-inset={inset || undefined}
-    {...rest}
   ></span>
 {:else}
   <hr
+    {...rest}
     class={mergedClass}
     data-cinder-orientation={orientation}
     data-cinder-tone={tone}
     data-cinder-inset={inset || undefined}
-    {...rest}
   />
 {/if}

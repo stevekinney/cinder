@@ -128,38 +128,22 @@
 
   {#each examples as { scenario, title, description } (scenario)}
     {@const accordionEntry = getAccordionEntry(scenario)}
+    {@const source = fetchedSource[scenario]}
     {#if accordionEntry}
-      {#if description}
-        <Card {title} {description}>
-          <div class="example-preview" id="example-mount-{scenario}"></div>
-          <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-            <AccordionItem id="source" title="View source">
-              {#if loadingSource[scenario]}
-                <p class="source-loading">Loading…</p>
-              {:else if fetchedSource[scenario] === null}
-                <p class="source-error">Could not load source.</p>
-              {:else if fetchedSource[scenario] !== undefined}
-                <CodeBlock code={fetchedSource[scenario] as string} language="svelte" copyable />
-              {/if}
-            </AccordionItem>
-          </Accordion>
-        </Card>
-      {:else}
-        <Card {title}>
-          <div class="example-preview" id="example-mount-{scenario}"></div>
-          <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-            <AccordionItem id="source" title="View source">
-              {#if loadingSource[scenario]}
-                <p class="source-loading">Loading…</p>
-              {:else if fetchedSource[scenario] === null}
-                <p class="source-error">Could not load source.</p>
-              {:else if fetchedSource[scenario] !== undefined}
-                <CodeBlock code={fetchedSource[scenario] as string} language="svelte" copyable />
-              {/if}
-            </AccordionItem>
-          </Accordion>
-        </Card>
-      {/if}
+      <Card {title} {...description !== undefined ? { description } : {}}>
+        <div class="example-preview" id="example-mount-{scenario}"></div>
+        <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+          <AccordionItem id="source" title="View source">
+            {#if loadingSource[scenario]}
+              <p class="source-loading">Loading…</p>
+            {:else if source === null}
+              <p class="source-error">Could not load source.</p>
+            {:else if source !== undefined}
+              <CodeBlock code={source} language="svelte" copyable />
+            {/if}
+          </AccordionItem>
+        </Accordion>
+      </Card>
     {/if}
   {/each}
 </div>
