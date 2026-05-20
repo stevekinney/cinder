@@ -17,9 +17,9 @@ import { setupHappyDom } from './happy-dom.ts';
 setupHappyDom();
 
 const { renderThenHydrate } = await import('./hydrate.ts');
-const { default: Input } = await import('../components/input.svelte');
+const { default: Input } = await import('../components/input/input.svelte');
 
-const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input.svelte');
+const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
 
 describe('renderThenHydrate', () => {
   test('renders Input on the server and hydrates without warnings', async () => {

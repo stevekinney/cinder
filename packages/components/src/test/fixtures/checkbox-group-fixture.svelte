@@ -21,8 +21,8 @@
 </script>
 
 <script lang="ts">
-  import CheckboxGroup from '../../components/checkbox-group.svelte';
-  import Checkbox from '../../components/checkbox.svelte';
+  import CheckboxGroup from '../../components/checkbox-group/checkbox-group.svelte';
+  import Checkbox from '../../components/checkbox/checkbox.svelte';
 
   let {
     legend,

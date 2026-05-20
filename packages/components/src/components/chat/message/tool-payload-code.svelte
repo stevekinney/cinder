@@ -25,7 +25,7 @@
 </script>
 
 <script lang="ts">
-  import CodeBlock from '../../code-block.svelte';
+  import CodeBlock from '../../code-block/code-block.svelte';
   import { classNames } from '../../../utilities/class-names.ts';
 
   let { code, class: className }: ToolPayloadCodeProps = $props();

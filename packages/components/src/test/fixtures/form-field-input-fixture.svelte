@@ -24,8 +24,8 @@
 </script>
 
 <script lang="ts">
-  import FormField from '../../components/form-field.svelte';
-  import Input from '../../components/input.svelte';
+  import FormField from '../../components/form-field/form-field.svelte';
+  import Input from '../../components/input/input.svelte';
 
   let {
     fieldId,

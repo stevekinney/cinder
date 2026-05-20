@@ -22,8 +22,8 @@ export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/
 export { default as Button } from './components/button/index.ts';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './components/button/index.ts';
 
-export { default as ButtonGroup } from './components/button-group.svelte';
-export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group.svelte';
+export { default as ButtonGroup } from './components/button-group/index.ts';
+export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group/index.ts';
 
 export { default as Callout } from './components/callout/index.ts';
 export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
@@ -46,14 +46,14 @@ export type {
   ChipVariant,
 } from './components/chip/index.ts';
 
-export { default as Checkbox } from './components/checkbox.svelte';
-export type { CheckboxProps } from './components/checkbox.svelte';
+export { default as Checkbox } from './components/checkbox/index.ts';
+export type { CheckboxProps } from './components/checkbox/index.ts';
 
-export { default as CheckboxGroup } from './components/checkbox-group.svelte';
-export type { CheckboxGroupProps } from './components/checkbox-group.svelte';
+export { default as CheckboxGroup } from './components/checkbox-group/index.ts';
+export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 
-export { default as CodeBlock } from './components/code-block.svelte';
-export type { CodeBlockProps } from './components/code-block.svelte';
+export { default as CodeBlock } from './components/code-block/index.ts';
+export type { CodeBlockProps } from './components/code-block/index.ts';
 
 export { default as ColorPicker } from './components/color-picker.svelte';
 export type { ColorPickerProps } from './components/color-picker.svelte';
@@ -64,8 +64,8 @@ export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swa
 export { default as Combobox } from './components/combobox.svelte';
 export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
 
-export { default as CommandItem } from './components/command-item.svelte';
-export type { CommandItemProps } from './components/command-item.svelte';
+export { default as CommandItem } from './components/command-item/index.ts';
+export type { CommandItemProps } from './components/command-item/index.ts';
 
 export { default as CommandPalette } from './components/command-palette.svelte';
 export type { CommandPaletteProps } from './components/command-palette.svelte';
@@ -78,22 +78,22 @@ export type { CopyButtonProps } from './components/copy-button/index.ts';
 
 export { copyToClipboard } from './utilities/clipboard.ts';
 
-export { default as DataList } from './components/data-list.svelte';
-export type { DataListProps } from './components/data-list.svelte';
+export { default as DataList } from './components/data-list/index.ts';
+export type { DataListProps } from './components/data-list/index.ts';
 
-export { default as DescriptionList } from './components/description-list.svelte';
+export { default as DescriptionList } from './components/description-list/index.ts';
 export type {
   DescriptionListItem,
   DescriptionListProps,
   DescriptionListVariant,
-} from './components/description-list.svelte';
+} from './components/description-list/index.ts';
 
-export { default as DiffStatistics } from './components/diff-statistics.svelte';
+export { default as DiffStatistics } from './components/diff-statistics/index.ts';
 export type {
   DiffStatisticsDensity,
   DiffStatisticsProps,
   DiffStatisticsVariant,
-} from './components/diff-statistics.svelte';
+} from './components/diff-statistics/index.ts';
 
 export { default as DiffViewer } from './components/diff-viewer.svelte';
 export type {
@@ -130,31 +130,31 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte'
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
 
-export { default as FeedEvent } from './components/feed-event.svelte';
-export type { FeedEventProps, FeedEventVariant } from './components/feed-event.svelte';
+export { default as FeedEvent } from './components/feed-event/index.ts';
+export type { FeedEventProps, FeedEventVariant } from './components/feed-event/index.ts';
 
-export { default as Feed } from './components/feed.svelte';
-export type { FeedProps } from './components/feed.svelte';
+export { default as Feed } from './components/feed/index.ts';
+export type { FeedProps } from './components/feed/index.ts';
 
-export { default as FormField } from './components/form-field.svelte';
-export type { FormFieldProps } from './components/form-field.svelte';
+export { default as FormField } from './components/form-field/index.ts';
+export type { FormFieldProps } from './components/form-field/index.ts';
 
-export { default as FormSection } from './components/form-section.svelte';
-export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section.svelte';
+export { default as FormSection } from './components/form-section/index.ts';
+export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section/index.ts';
 
 export type { FormFieldContext } from './_internal/form-field-context.ts';
 
-export { default as GridList } from './components/grid-list.svelte';
-export type { GridListProps } from './components/grid-list.svelte';
+export { default as GridList } from './components/grid-list/index.ts';
+export type { GridListProps } from './components/grid-list/index.ts';
 
-export { default as GridListItem } from './components/grid-list-item.svelte';
-export type { GridListItemProps } from './components/grid-list-item.svelte';
+export { default as GridListItem } from './components/grid-list-item/index.ts';
+export type { GridListItemProps } from './components/grid-list-item/index.ts';
 
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
 
-export { default as Input } from './components/input.svelte';
-export type { InputProps, InputType } from './components/input.svelte';
+export { default as Input } from './components/input/index.ts';
+export type { InputProps, InputType } from './components/input/index.ts';
 
 export { default as JsonSchemaEditor } from './components/json-schema-editor.svelte';
 export type {

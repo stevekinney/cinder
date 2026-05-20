@@ -450,9 +450,16 @@ async function migrateOne(context: MigrationContext): Promise<void> {
 
   await writeFile(sveltePath, svelteSource);
 
-  // 6. Write the types.ts file.
+  // 6. Write the types.ts file. Dedent first — Svelte module scripts are
+  // indented by 2 spaces relative to the surrounding <script> tag, so the
+  // extracted blocks carry a leading 2-space indent that's invalid at file
+  // top level.
   if (typesFileContent.trim().length > 0) {
-    await writeFile(join(newDirectory, `${name}.types.ts`), typesFileContent);
+    const dedented = typesFileContent
+      .split('\n')
+      .map((line) => line.replace(/^ {2}/, ''))
+      .join('\n');
+    await writeFile(join(newDirectory, `${name}.types.ts`), dedented);
   } else {
     // Component had no module-script types — write a minimal placeholder so the
     // schema generator and exports drift-check can still discover the component.

@@ -87,8 +87,8 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import Checkbox from '../checkbox.svelte';
-  import Input from '../input.svelte';
+  import Checkbox from '../checkbox/checkbox.svelte';
+  import Input from '../input/input.svelte';
   import Tooltip from '../tooltip/tooltip.svelte';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';

@@ -31,7 +31,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: CommandPalette } = await import('./command-palette.svelte');
-const { default: CommandItem } = await import('./command-item.svelte');
+const { default: CommandItem } = await import('./command-item/command-item.svelte');
 const { default: CommandPaletteFixture } =
   await import('../test/fixtures/command-palette-fixture.svelte');
 const { default: CommandPaletteRichItemFixture } =

@@ -31,7 +31,7 @@
     createClickOutside,
   } from '../../../utilities/attachments.ts';
   import Button from '../../button/button.svelte';
-  import Input from '../../input.svelte';
+  import Input from '../../input/input.svelte';
   import { Link, Unlink, X } from '../../icons/index.ts';
 
   let {

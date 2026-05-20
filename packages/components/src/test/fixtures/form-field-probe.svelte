@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-  import FormField from '../../components/form-field.svelte';
+  import FormField from '../../components/form-field/form-field.svelte';
   import FormFieldContextProbe from './form-field-context-probe.svelte';
 
   let { id, label, description, error, required, disabled }: FormFieldProbeProps = $props();

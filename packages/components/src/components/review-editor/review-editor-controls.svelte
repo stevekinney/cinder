@@ -45,7 +45,7 @@
   import SegmentedControl, {
     type SegmentedControlOption,
   } from '../segmented-control/segmented-control.svelte';
-  import DiffStatistics from '../diff-statistics.svelte';
+  import DiffStatistics from '../diff-statistics/diff-statistics.svelte';
   import { FileText, GitBranch, MessageSquare, Pencil, RotateCcw } from '../icons/index.ts';
 
   let {

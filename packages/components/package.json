@@ -17,25 +17,9 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
-    "./button-group": {
-      "svelte": "./src/components/button-group.svelte",
-      "types": "./dist/components/button-group.svelte.d.ts"
-    },
     "./chat": {
       "svelte": "./src/components/chat.svelte",
       "types": "./dist/components/chat.svelte.d.ts"
-    },
-    "./checkbox-group": {
-      "svelte": "./src/components/checkbox-group.svelte",
-      "types": "./dist/components/checkbox-group.svelte.d.ts"
-    },
-    "./checkbox": {
-      "svelte": "./src/components/checkbox.svelte",
-      "types": "./dist/components/checkbox.svelte.d.ts"
-    },
-    "./code-block": {
-      "svelte": "./src/components/code-block.svelte",
-      "types": "./dist/components/code-block.svelte.d.ts"
     },
     "./color-picker": {
       "svelte": "./src/components/color-picker.svelte",
@@ -49,25 +33,9 @@
       "svelte": "./src/components/combobox.svelte",
       "types": "./dist/components/combobox.svelte.d.ts"
     },
-    "./command-item": {
-      "svelte": "./src/components/command-item.svelte",
-      "types": "./dist/components/command-item.svelte.d.ts"
-    },
     "./command-palette": {
       "svelte": "./src/components/command-palette.svelte",
       "types": "./dist/components/command-palette.svelte.d.ts"
-    },
-    "./data-list": {
-      "svelte": "./src/components/data-list.svelte",
-      "types": "./dist/components/data-list.svelte.d.ts"
-    },
-    "./description-list": {
-      "svelte": "./src/components/description-list.svelte",
-      "types": "./dist/components/description-list.svelte.d.ts"
-    },
-    "./diff-statistics": {
-      "svelte": "./src/components/diff-statistics.svelte",
-      "types": "./dist/components/diff-statistics.svelte.d.ts"
     },
     "./diff-viewer": {
       "svelte": "./src/components/diff-viewer.svelte",
@@ -108,34 +76,6 @@
     "./experimental/message": {
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
-    },
-    "./feed-event": {
-      "svelte": "./src/components/feed-event.svelte",
-      "types": "./dist/components/feed-event.svelte.d.ts"
-    },
-    "./feed": {
-      "svelte": "./src/components/feed.svelte",
-      "types": "./dist/components/feed.svelte.d.ts"
-    },
-    "./form-field": {
-      "svelte": "./src/components/form-field.svelte",
-      "types": "./dist/components/form-field.svelte.d.ts"
-    },
-    "./form-section": {
-      "svelte": "./src/components/form-section.svelte",
-      "types": "./dist/components/form-section.svelte.d.ts"
-    },
-    "./grid-list-item": {
-      "svelte": "./src/components/grid-list-item.svelte",
-      "types": "./dist/components/grid-list-item.svelte.d.ts"
-    },
-    "./grid-list": {
-      "svelte": "./src/components/grid-list.svelte",
-      "types": "./dist/components/grid-list.svelte.d.ts"
-    },
-    "./input": {
-      "svelte": "./src/components/input.svelte",
-      "types": "./dist/components/input.svelte.d.ts"
     },
     "./json-schema-editor": {
       "svelte": "./src/components/json-schema-editor.svelte",
@@ -349,6 +289,18 @@
       "svelte": "./src/components/button/button.variables.ts",
       "types": "./dist/components/button/button.variables.d.ts"
     },
+    "./button-group": {
+      "svelte": "./src/components/button-group/index.ts",
+      "types": "./dist/components/button-group/index.d.ts"
+    },
+    "./button-group/schema": {
+      "svelte": "./src/components/button-group/button-group.schema.ts",
+      "types": "./dist/components/button-group/button-group.schema.d.ts"
+    },
+    "./button-group/variables": {
+      "svelte": "./src/components/button-group/button-group.variables.ts",
+      "types": "./dist/components/button-group/button-group.variables.d.ts"
+    },
     "./callout": {
       "svelte": "./src/components/callout/index.ts",
       "types": "./dist/components/callout/index.d.ts"
@@ -373,6 +325,30 @@
       "svelte": "./src/components/card/card.variables.ts",
       "types": "./dist/components/card/card.variables.d.ts"
     },
+    "./checkbox": {
+      "svelte": "./src/components/checkbox/index.ts",
+      "types": "./dist/components/checkbox/index.d.ts"
+    },
+    "./checkbox/schema": {
+      "svelte": "./src/components/checkbox/checkbox.schema.ts",
+      "types": "./dist/components/checkbox/checkbox.schema.d.ts"
+    },
+    "./checkbox/variables": {
+      "svelte": "./src/components/checkbox/checkbox.variables.ts",
+      "types": "./dist/components/checkbox/checkbox.variables.d.ts"
+    },
+    "./checkbox-group": {
+      "svelte": "./src/components/checkbox-group/index.ts",
+      "types": "./dist/components/checkbox-group/index.d.ts"
+    },
+    "./checkbox-group/schema": {
+      "svelte": "./src/components/checkbox-group/checkbox-group.schema.ts",
+      "types": "./dist/components/checkbox-group/checkbox-group.schema.d.ts"
+    },
+    "./checkbox-group/variables": {
+      "svelte": "./src/components/checkbox-group/checkbox-group.variables.ts",
+      "types": "./dist/components/checkbox-group/checkbox-group.variables.d.ts"
+    },
     "./chip": {
       "svelte": "./src/components/chip/index.ts",
       "types": "./dist/components/chip/index.d.ts"
@@ -384,6 +360,30 @@
     "./chip/variables": {
       "svelte": "./src/components/chip/chip.variables.ts",
       "types": "./dist/components/chip/chip.variables.d.ts"
+    },
+    "./code-block": {
+      "svelte": "./src/components/code-block/index.ts",
+      "types": "./dist/components/code-block/index.d.ts"
+    },
+    "./code-block/schema": {
+      "svelte": "./src/components/code-block/code-block.schema.ts",
+      "types": "./dist/components/code-block/code-block.schema.d.ts"
+    },
+    "./code-block/variables": {
+      "svelte": "./src/components/code-block/code-block.variables.ts",
+      "types": "./dist/components/code-block/code-block.variables.d.ts"
+    },
+    "./command-item": {
+      "svelte": "./src/components/command-item/index.ts",
+      "types": "./dist/components/command-item/index.d.ts"
+    },
+    "./command-item/schema": {
+      "svelte": "./src/components/command-item/command-item.schema.ts",
+      "types": "./dist/components/command-item/command-item.schema.d.ts"
+    },
+    "./command-item/variables": {
+      "svelte": "./src/components/command-item/command-item.variables.ts",
+      "types": "./dist/components/command-item/command-item.variables.d.ts"
     },
     "./confirm-dialog": {
       "svelte": "./src/components/confirm-dialog/index.ts",
@@ -409,6 +409,42 @@
       "svelte": "./src/components/copy-button/copy-button.variables.ts",
       "types": "./dist/components/copy-button/copy-button.variables.d.ts"
     },
+    "./data-list": {
+      "svelte": "./src/components/data-list/index.ts",
+      "types": "./dist/components/data-list/index.d.ts"
+    },
+    "./data-list/schema": {
+      "svelte": "./src/components/data-list/data-list.schema.ts",
+      "types": "./dist/components/data-list/data-list.schema.d.ts"
+    },
+    "./data-list/variables": {
+      "svelte": "./src/components/data-list/data-list.variables.ts",
+      "types": "./dist/components/data-list/data-list.variables.d.ts"
+    },
+    "./description-list": {
+      "svelte": "./src/components/description-list/index.ts",
+      "types": "./dist/components/description-list/index.d.ts"
+    },
+    "./description-list/schema": {
+      "svelte": "./src/components/description-list/description-list.schema.ts",
+      "types": "./dist/components/description-list/description-list.schema.d.ts"
+    },
+    "./description-list/variables": {
+      "svelte": "./src/components/description-list/description-list.variables.ts",
+      "types": "./dist/components/description-list/description-list.variables.d.ts"
+    },
+    "./diff-statistics": {
+      "svelte": "./src/components/diff-statistics/index.ts",
+      "types": "./dist/components/diff-statistics/index.d.ts"
+    },
+    "./diff-statistics/schema": {
+      "svelte": "./src/components/diff-statistics/diff-statistics.schema.ts",
+      "types": "./dist/components/diff-statistics/diff-statistics.schema.d.ts"
+    },
+    "./diff-statistics/variables": {
+      "svelte": "./src/components/diff-statistics/diff-statistics.variables.ts",
+      "types": "./dist/components/diff-statistics/diff-statistics.variables.d.ts"
+    },
     "./drawer": {
       "svelte": "./src/components/drawer/index.ts",
       "types": "./dist/components/drawer/index.d.ts"
@@ -433,6 +469,78 @@
       "svelte": "./src/components/empty-state/empty-state.variables.ts",
       "types": "./dist/components/empty-state/empty-state.variables.d.ts"
     },
+    "./feed": {
+      "svelte": "./src/components/feed/index.ts",
+      "types": "./dist/components/feed/index.d.ts"
+    },
+    "./feed/schema": {
+      "svelte": "./src/components/feed/feed.schema.ts",
+      "types": "./dist/components/feed/feed.schema.d.ts"
+    },
+    "./feed/variables": {
+      "svelte": "./src/components/feed/feed.variables.ts",
+      "types": "./dist/components/feed/feed.variables.d.ts"
+    },
+    "./feed-event": {
+      "svelte": "./src/components/feed-event/index.ts",
+      "types": "./dist/components/feed-event/index.d.ts"
+    },
+    "./feed-event/schema": {
+      "svelte": "./src/components/feed-event/feed-event.schema.ts",
+      "types": "./dist/components/feed-event/feed-event.schema.d.ts"
+    },
+    "./feed-event/variables": {
+      "svelte": "./src/components/feed-event/feed-event.variables.ts",
+      "types": "./dist/components/feed-event/feed-event.variables.d.ts"
+    },
+    "./form-field": {
+      "svelte": "./src/components/form-field/index.ts",
+      "types": "./dist/components/form-field/index.d.ts"
+    },
+    "./form-field/schema": {
+      "svelte": "./src/components/form-field/form-field.schema.ts",
+      "types": "./dist/components/form-field/form-field.schema.d.ts"
+    },
+    "./form-field/variables": {
+      "svelte": "./src/components/form-field/form-field.variables.ts",
+      "types": "./dist/components/form-field/form-field.variables.d.ts"
+    },
+    "./form-section": {
+      "svelte": "./src/components/form-section/index.ts",
+      "types": "./dist/components/form-section/index.d.ts"
+    },
+    "./form-section/schema": {
+      "svelte": "./src/components/form-section/form-section.schema.ts",
+      "types": "./dist/components/form-section/form-section.schema.d.ts"
+    },
+    "./form-section/variables": {
+      "svelte": "./src/components/form-section/form-section.variables.ts",
+      "types": "./dist/components/form-section/form-section.variables.d.ts"
+    },
+    "./grid-list": {
+      "svelte": "./src/components/grid-list/index.ts",
+      "types": "./dist/components/grid-list/index.d.ts"
+    },
+    "./grid-list/schema": {
+      "svelte": "./src/components/grid-list/grid-list.schema.ts",
+      "types": "./dist/components/grid-list/grid-list.schema.d.ts"
+    },
+    "./grid-list/variables": {
+      "svelte": "./src/components/grid-list/grid-list.variables.ts",
+      "types": "./dist/components/grid-list/grid-list.variables.d.ts"
+    },
+    "./grid-list-item": {
+      "svelte": "./src/components/grid-list-item/index.ts",
+      "types": "./dist/components/grid-list-item/index.d.ts"
+    },
+    "./grid-list-item/schema": {
+      "svelte": "./src/components/grid-list-item/grid-list-item.schema.ts",
+      "types": "./dist/components/grid-list-item/grid-list-item.schema.d.ts"
+    },
+    "./grid-list-item/variables": {
+      "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts",
+      "types": "./dist/components/grid-list-item/grid-list-item.variables.d.ts"
+    },
     "./image": {
       "svelte": "./src/components/image/index.ts",
       "types": "./dist/components/image/index.d.ts"
@@ -444,6 +552,18 @@
     "./image/variables": {
       "svelte": "./src/components/image/image.variables.ts",
       "types": "./dist/components/image/image.variables.d.ts"
+    },
+    "./input": {
+      "svelte": "./src/components/input/index.ts",
+      "types": "./dist/components/input/index.d.ts"
+    },
+    "./input/schema": {
+      "svelte": "./src/components/input/input.schema.ts",
+      "types": "./dist/components/input/input.schema.d.ts"
+    },
+    "./input/variables": {
+      "svelte": "./src/components/input/input.variables.ts",
+      "types": "./dist/components/input/input.variables.d.ts"
     },
     "./kbd": {
       "svelte": "./src/components/kbd/index.ts",

@@ -10,8 +10,8 @@
 
 <script lang="ts">
   import { parseFrontMatter, validateFrontMatter } from '@cinder/markdown/pipeline';
-  import Checkbox from '../checkbox.svelte';
-  import Input from '../input.svelte';
+  import Checkbox from '../checkbox/checkbox.svelte';
+  import Input from '../input/input.svelte';
   import Textarea from '../textarea/textarea.svelte';
   import { parseYamlFieldValue, serializeYamlFieldValue } from './review-editor-front-matter.ts';
 

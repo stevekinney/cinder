@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Required stable id — used for `<label for>`, description, error, and the child control's id via context."
+    },
+    "label": {
+      "type": "string",
+      "description": "Visible label text. Required — the primitive's whole purpose is label association."
+    },
+    "description": {
+      "type": "string",
+      "description": "Helper text rendered below the control; wired into `aria-describedby`."
+    },
+    "error": {
+      "type": "string",
+      "description": "Validation error; sets `aria-invalid=\"true\"` on opted-in controls via context."
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Renders a visual required marker and exposes `required: true` on the context."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Propagated to opted-in controls via context. Does not style FormField itself."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class merged with `.cinder-form-field`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "label"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}
