@@ -1,10 +1,13 @@
+import ReviewEditor from './review-editor.svelte';
+
+export default ReviewEditor;
 export type {
   CommentAnchor,
   PersistedThread,
   ReviewState,
   Thread,
 } from '@cinder/commentary/comments';
-export { default as ReviewEditor } from './review-editor.svelte';
+export { ReviewEditor };
 
 // DEP-422: Shared types
 export type {

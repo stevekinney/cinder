@@ -15,7 +15,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
-const { default: JsonSchemaEditor } = await import('../json-schema-editor.svelte');
+const { default: JsonSchemaEditor } = await import('./json-schema-editor.svelte');
 
 describe('JsonSchemaEditor — mount', () => {
   test('renders empty state for invalid initial schema', () => {

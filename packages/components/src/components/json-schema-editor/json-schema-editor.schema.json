@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Required for ARIA wiring."
+    },
+    "schemaKey": {
+      "type": "string",
+      "description": "Changing this triggers a full reset (history clears)."
+    },
+    "view": {
+      "enum": ["form", "json", "diff"],
+      "description": "Active view: form / json / diff. Bindable."
+    },
+    "readonly": {
+      "type": "boolean",
+      "description": "Read-only mode disables all mutations."
+    },
+    "maxHistory": {
+      "type": "number",
+      "description": "Maximum history entries (default 100)."
+    },
+    "draftOverride": {
+      "enum": ["2020-12", "2019-09", "draft-07"],
+      "description": "Force a draft override regardless of $schema."
+    },
+    "class": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onrevert",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onvalidate",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "original",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "schema",
+        "reason": "unknown-shape"
+      }
+    ]
+  }
+}

@@ -1,121 +1,24 @@
 <script lang="ts" module>
-  import type { HTMLAttributes } from 'svelte/elements';
-  import type { Snippet } from 'svelte';
-  import type { MilkdownPlugin } from '@milkdown/ctx';
-  import type { Ctx } from '@milkdown/kit/ctx';
-  import type {
-    EditorHandle as EditorHandleType,
-    EditorSelection,
-    ActiveMarks,
-    ActiveBlockType,
-    PlaceholderCompletionConfiguration,
-    PlaceholderDecorationConfiguration,
-  } from '@cinder/editor/component-runtime';
-
-  /** Editor display mode */
-  export type EditorMode = 'wysiwyg' | 'source';
-
-  /** Context passed to toolbar snippets for custom rendering */
-  export interface ToolbarContext {
-    /** The Milkdown editor context (null if not ready) */
-    editorContext: Ctx | null;
-    /** Currently active marks at cursor position */
-    activeMarks: ActiveMarks;
-    /** Currently active block type at cursor position */
-    activeBlockType: ActiveBlockType;
-    /** Whether undo is available */
-    canUndo: boolean;
-    /** Whether redo is available */
-    canRedo: boolean;
-    /** Whether the editor is readonly */
-    readonly: boolean;
-  }
-
-  export type MarkdownEditorProps = Omit<
-    HTMLAttributes<HTMLDivElement>,
-    'id' | 'class' | 'onchange'
-  > & {
-    /** Unique identifier for accessibility (required) */
-    id: string;
-    /** Accessible label for the editor (required for screen readers) */
-    label?: string;
-    /** Current markdown content (two-way bindable) */
-    value?: string;
-    /** Editor display mode (two-way bindable) */
-    mode?: EditorMode;
-    /** Show an inline toggle for switching between WYSIWYG and raw Markdown */
-    showModeToggle?: boolean;
-    /** Accessible label for the mode toggle (visually hidden) */
-    modeLabel?: string;
-    /** Read-only mode */
-    readonly?: boolean;
-    /** Placeholder text when empty */
-    placeholder?: string;
-    /** Show formatting toolbar (DEP-37) */
-    showToolbar?: boolean;
-    /** Additional CSS classes */
-    class?: string;
-    /** Called when content changes */
-    onchange?: (value: string) => void;
-    /** Called when the editor is ready (Milkdown initialized) */
-    onReady?: () => void;
-    /** Called when editor mode changes */
-    onmodechange?: (mode: EditorMode) => void;
-    /** Called when selection changes (stub for DEP-39) */
-    onSelectionChange?: (selection: EditorSelection | null) => void;
-    /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-    onCommentShortcut?: () => void;
-    /**
-     * Additional Milkdown plugins to load.
-     * Used for comment anchoring (DEP-39), decorations, and other extensions.
-     */
-    plugins?: MilkdownPlugin[];
-
-    /**
-     * Placeholder completion configuration (DEP-583).
-     * When provided, enables inline suggestion menu for {{…}} tokens in WYSIWYG mode.
-     */
-    placeholderCompletion?: PlaceholderCompletionConfiguration;
-
-    /**
-     * Placeholder decoration configuration (DEP-583).
-     * When provided, decorates invalid {{…}} tokens with CSS class and data attributes.
-     */
-    placeholderDecoration?: PlaceholderDecorationConfiguration;
-
-    // =========================================================================
-    // Snippet-based Extensibility
-    // =========================================================================
-
-    /**
-     * Custom toolbar content. When provided, replaces default toolbar.
-     * Receives ToolbarContext for building custom toolbar UI.
-     */
-    toolbar?: Snippet<[ToolbarContext]>;
-
-    /**
-     * Additional toolbar actions (appended to default toolbar).
-     * Use this for adding buttons without replacing the entire toolbar.
-     */
-    toolbarActions?: Snippet<[ToolbarContext]>;
-
-    /**
-     * Leading toolbar content (prepended before default toolbar items).
-     * Useful for adding undo/redo or other leading actions.
-     */
-    toolbarLeading?: Snippet<[ToolbarContext]>;
-  };
-
-  /** Re-export EditorHandle type for convenience */
-  export type EditorHandle = EditorHandleType;
+  export type {
+    EditorHandle,
+    EditorMode,
+    MarkdownEditorProps,
+    ToolbarContext,
+  } from './markdown-editor.types.ts';
 </script>
 
 <script lang="ts">
   import { BROWSER as browser } from 'esm-env';
   import { onDestroy } from 'svelte';
-  import './markdown-editor/prosemirror.css';
-  // Ctx is imported in module script
-  import { classNames } from '../utilities/class-names.ts';
+  import type { Ctx } from '@milkdown/kit/ctx';
+  import type {
+    ActiveBlockType,
+    ActiveMarks,
+    EditorSelection,
+  } from '@cinder/editor/component-runtime';
+
+  import './prosemirror.css';
+  import { classNames } from '../../utilities/class-names.ts';
   import {
     createEditorAttachment,
     setEditorReadonly,
@@ -135,10 +38,11 @@
     redo as redoCommand,
     DEFAULT_DEBOUNCE_MS,
   } from '@cinder/editor/component-runtime';
-  import { EditorToolbar, LinkPopover } from './markdown-editor/editor-toolbar/index.ts';
-  import type { LinkPopoverMode } from './markdown-editor/editor-toolbar/link-popover.svelte';
-  import SegmentedControl from './segmented-control/segmented-control.svelte';
-  import EditorSkeleton from './markdown-editor/editor-skeleton.svelte';
+  import SegmentedControl from '../segmented-control/segmented-control.svelte';
+  import EditorSkeleton from './editor-skeleton.svelte';
+  import { EditorToolbar, LinkPopover } from './editor-toolbar/index.ts';
+  import type { LinkPopoverMode } from './editor-toolbar/link-popover.svelte';
+  import type { EditorMode, MarkdownEditorProps, ToolbarContext } from './markdown-editor.types.ts';
 
   type HistoryUtilities = Pick<
     typeof import('@milkdown/kit/prose/history'),

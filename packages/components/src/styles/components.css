@@ -38,7 +38,7 @@
 @import '../components/image/image.css';
 @import '../components/input/input.css';
 @import './components/json-highlight.css';
-@import './components/json-schema-editor.css';
+@import '../components/json-schema-editor/json-schema-editor.css';
 @import '../components/kbd/kbd.css';
 @import '../components/label/label.css';
 @import '../components/modal/modal.css';
@@ -51,7 +51,7 @@
 @import '../components/progress/progress.css';
 @import '../components/radio/radio.css';
 @import '../components/radio-group/radio-group.css';
-@import './components/review-editor.css';
+@import '../components/review-editor/review-editor.css';
 @import '../components/scroll-area/scroll-area.css';
 @import '../components/search-field/search-field.css';
 @import '../components/section-heading/section-heading.css';

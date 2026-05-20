@@ -6,6 +6,15 @@
  * @module
  */
 
+// Top-level Chat wrapper — the public component consumers import as
+// `cinder/chat`. It composes the inner implementation in container/ with a
+// custom class-merge layer.
+import Chat from './chat.svelte';
+
+export default Chat;
+export type { ChatProps } from './chat.types.ts';
+export { Chat };
+
 // Utilities
 export {
   formatMessageAsMarkdown,
@@ -29,9 +38,11 @@ export {
   ToolCallGroup,
 } from './message';
 
-// Container
+// Container — internal implementation utilities. The inner `Chat`
+// implementation is intentionally NOT re-exported here; consumers should use
+// the wrapper above. (The wrapper provides the documented public API and
+// class-merge behavior the inner implementation lacks.)
 export {
-  Chat,
   DEFAULT_SCROLL_CONFIGURATION,
   calculateScrollToBottom,
   calculateUnreadCount,

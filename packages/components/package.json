@@ -17,14 +17,6 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
-    "./chat": {
-      "svelte": "./src/components/chat.svelte",
-      "types": "./dist/components/chat.svelte.d.ts"
-    },
-    "./diff-viewer": {
-      "svelte": "./src/components/diff-viewer.svelte",
-      "types": "./dist/components/diff-viewer.svelte.d.ts"
-    },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
       "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
@@ -36,18 +28,6 @@
     "./experimental/message": {
       "svelte": "./src/components/experimental/message.svelte",
       "types": "./dist/components/experimental/message.svelte.d.ts"
-    },
-    "./json-schema-editor": {
-      "svelte": "./src/components/json-schema-editor.svelte",
-      "types": "./dist/components/json-schema-editor.svelte.d.ts"
-    },
-    "./markdown-editor": {
-      "svelte": "./src/components/markdown-editor.svelte",
-      "types": "./dist/components/markdown-editor.svelte.d.ts"
-    },
-    "./review-editor": {
-      "svelte": "./src/components/review-editor.svelte",
-      "types": "./dist/components/review-editor.svelte.d.ts"
     },
     "./accordion": {
       "svelte": "./src/components/accordion/index.ts",
@@ -180,6 +160,18 @@
     "./card/variables": {
       "svelte": "./src/components/card/card.variables.ts",
       "types": "./dist/components/card/card.variables.d.ts"
+    },
+    "./chat": {
+      "svelte": "./src/components/chat/index.ts",
+      "types": "./dist/components/chat/index.d.ts"
+    },
+    "./chat/schema": {
+      "svelte": "./src/components/chat/chat.schema.ts",
+      "types": "./dist/components/chat/chat.schema.d.ts"
+    },
+    "./chat/variables": {
+      "svelte": "./src/components/chat/chat.variables.ts",
+      "types": "./dist/components/chat/chat.variables.d.ts"
     },
     "./checkbox": {
       "svelte": "./src/components/checkbox/index.ts",
@@ -348,6 +340,18 @@
     "./diff-statistics/variables": {
       "svelte": "./src/components/diff-statistics/diff-statistics.variables.ts",
       "types": "./dist/components/diff-statistics/diff-statistics.variables.d.ts"
+    },
+    "./diff-viewer": {
+      "svelte": "./src/components/diff-viewer/index.ts",
+      "types": "./dist/components/diff-viewer/index.d.ts"
+    },
+    "./diff-viewer/schema": {
+      "svelte": "./src/components/diff-viewer/diff-viewer.schema.ts",
+      "types": "./dist/components/diff-viewer/diff-viewer.schema.d.ts"
+    },
+    "./diff-viewer/variables": {
+      "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
+      "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts"
     },
     "./drawer": {
       "svelte": "./src/components/drawer/index.ts",
@@ -541,6 +545,18 @@
       "svelte": "./src/components/input/input.variables.ts",
       "types": "./dist/components/input/input.variables.d.ts"
     },
+    "./json-schema-editor": {
+      "svelte": "./src/components/json-schema-editor/index.ts",
+      "types": "./dist/components/json-schema-editor/index.d.ts"
+    },
+    "./json-schema-editor/schema": {
+      "svelte": "./src/components/json-schema-editor/json-schema-editor.schema.ts",
+      "types": "./dist/components/json-schema-editor/json-schema-editor.schema.d.ts"
+    },
+    "./json-schema-editor/variables": {
+      "svelte": "./src/components/json-schema-editor/json-schema-editor.variables.ts",
+      "types": "./dist/components/json-schema-editor/json-schema-editor.variables.d.ts"
+    },
     "./kbd": {
       "svelte": "./src/components/kbd/index.ts",
       "types": "./dist/components/kbd/index.d.ts"
@@ -564,6 +580,18 @@
     "./label/variables": {
       "svelte": "./src/components/label/label.variables.ts",
       "types": "./dist/components/label/label.variables.d.ts"
+    },
+    "./markdown-editor": {
+      "svelte": "./src/components/markdown-editor/index.ts",
+      "types": "./dist/components/markdown-editor/index.d.ts"
+    },
+    "./markdown-editor/schema": {
+      "svelte": "./src/components/markdown-editor/markdown-editor.schema.ts",
+      "types": "./dist/components/markdown-editor/markdown-editor.schema.d.ts"
+    },
+    "./markdown-editor/variables": {
+      "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts",
+      "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts"
     },
     "./modal": {
       "svelte": "./src/components/modal/index.ts",
@@ -684,6 +712,18 @@
     "./radio-group/variables": {
       "svelte": "./src/components/radio-group/radio-group.variables.ts",
       "types": "./dist/components/radio-group/radio-group.variables.d.ts"
+    },
+    "./review-editor": {
+      "svelte": "./src/components/review-editor/index.ts",
+      "types": "./dist/components/review-editor/index.d.ts"
+    },
+    "./review-editor/schema": {
+      "svelte": "./src/components/review-editor/review-editor.schema.ts",
+      "types": "./dist/components/review-editor/review-editor.schema.d.ts"
+    },
+    "./review-editor/variables": {
+      "svelte": "./src/components/review-editor/review-editor.variables.ts",
+      "types": "./dist/components/review-editor/review-editor.variables.d.ts"
     },
     "./scroll-area": {
       "svelte": "./src/components/scroll-area/index.ts",

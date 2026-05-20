@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 const domainSuiteModules = [
-  ['chat', './components/chat.svelte'],
-  ['diff-viewer', './components/diff-viewer.svelte'],
+  ['chat', './components/chat/index.ts'],
+  ['diff-viewer', './components/diff-viewer/index.ts'],
   ['surface', './components/surface/index.ts'],
-  ['markdown-editor', './components/markdown-editor.svelte'],
+  ['markdown-editor', './components/markdown-editor/index.ts'],
 ] as const;
 
 describe('domain-suite public components', () => {

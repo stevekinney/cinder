@@ -1,0 +1,79 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    id: {
+      type: 'string',
+      description: 'Unique identifier for accessibility (required).',
+    },
+    original: {
+      type: 'string',
+      description: 'Original/baseline content for diff comparison.',
+    },
+    value: {
+      type: 'string',
+      description: 'Current markdown content (two-way bindable).',
+    },
+    threads: {
+      type: 'array',
+      items: {
+        type: 'object',
+      },
+      description: 'Comment threads (two-way bindable).',
+    },
+    mode: {
+      enum: ['edit', 'readonly'],
+      description: 'Editor mode.',
+    },
+    currentUserId: {
+      type: 'string',
+      description: 'Current user ID for permissions.',
+    },
+    placeholder: {
+      type: 'string',
+      description: 'Placeholder text when empty.',
+    },
+    name: {
+      type: 'string',
+      description: 'Form field name prefix for hidden inputs (enables form participation).',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS classes.',
+    },
+  },
+  additionalProperties: false,
+  required: ['id'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'oncommentcreate',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'oncommentdelete',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'oncommentupdate',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onthreadcreate',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onthreaddelete',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -51,9 +51,34 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
   'markdown-editor',
 ]);
 
+/**
+ * Discover the public-component .svelte files. After the per-directory migration
+ * each public component lives at `<name>/<name>.svelte`; this helper returns
+ * paths in that nested form (e.g. `button/button.svelte`) so the readFile
+ * step below resolves correctly. Falls back to top-level `<name>.svelte`
+ * files for any components that have not yet been migrated.
+ */
 async function getSvelteFiles(): Promise<string[]> {
-  const entries = await readdir(COMPONENTS_DIR);
-  return entries.filter((f) => f.endsWith('.svelte') && !f.startsWith('_')).toSorted();
+  const entries = await readdir(COMPONENTS_DIR, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    if (entry.name.startsWith('_')) continue;
+    if (entry.isFile() && entry.name.endsWith('.svelte')) {
+      files.push(entry.name);
+      continue;
+    }
+    if (entry.isDirectory()) {
+      if (entry.name === 'experimental' || entry.name === 'icons') continue;
+      const inner = `${entry.name}/${entry.name}.svelte`;
+      try {
+        await readFile(join(COMPONENTS_DIR, inner), 'utf-8');
+        files.push(inner);
+      } catch {
+        // Directory without a matching .svelte (e.g. chat container) — skip.
+      }
+    }
+  }
+  return files.toSorted();
 }
 
 function toPascal(kebab: string): string {
@@ -132,7 +157,10 @@ describe('component conventions', () => {
     const errors: string[] = [];
 
     for (const file of files) {
-      const name = file.replace(/\.svelte$/, '');
+      // file is either `<name>.svelte` (flat) or `<name>/<name>.svelte`
+      // (migrated). Strip both shapes to a bare kebab name.
+      const base = file.includes('/') ? file.split('/').pop()! : file;
+      const name = base.replace(/\.svelte$/, '');
       const pascal = toPascal(name);
       const source = await readFile(join(COMPONENTS_DIR, file), 'utf-8');
 
@@ -161,12 +189,26 @@ describe('component conventions', () => {
         if (!node || typeof node !== 'object') return false;
         const n = node as Record<string, unknown>;
         if (n.type !== 'ExportNamedDeclaration') return false;
+
+        // Direct declaration: `export type ${Pascal}Props = ...`
         const decl = n.declaration as Record<string, unknown> | null;
-        if (!decl) return false;
-        return (
-          decl.type === 'TSTypeAliasDeclaration' &&
-          (decl.id as Record<string, unknown>)?.name === `${pascal}Props`
-        );
+        if (decl?.type === 'TSTypeAliasDeclaration') {
+          if ((decl.id as Record<string, unknown>)?.name === `${pascal}Props`) return true;
+        }
+
+        // Re-export: `export type { ${Pascal}Props } from './...';` After the
+        // per-directory migration the type itself lives in `<name>.types.ts`
+        // and the .svelte module script only re-exports it.
+        const specifiers = n.specifiers as unknown[] | undefined;
+        if (Array.isArray(specifiers)) {
+          for (const spec of specifiers) {
+            if (!spec || typeof spec !== 'object') continue;
+            const s = spec as Record<string, unknown>;
+            const exported = s.exported as Record<string, unknown> | undefined;
+            if (exported?.name === `${pascal}Props`) return true;
+          }
+        }
+        return false;
       });
 
       if (!hasPropsExport) {
@@ -269,9 +311,13 @@ describe('component conventions', () => {
       }
 
       // 8. Interactive components must have a sibling .a11y.md file.
+      // After migration, the .a11y.md lives inside the component directory next
+      // to the .svelte; check both the migrated and the legacy flat locations.
       if (INTERACTIVE_ALLOW_LIST.has(name)) {
-        const a11yPath = join(COMPONENTS_DIR, `${name}.a11y.md`);
-        const exists = await Bun.file(a11yPath).exists();
+        const directoryPath = join(COMPONENTS_DIR, name, `${name}.a11y.md`);
+        const flatPath = join(COMPONENTS_DIR, `${name}.a11y.md`);
+        const exists =
+          (await Bun.file(directoryPath).exists()) || (await Bun.file(flatPath).exists());
         if (!exists) {
           errors.push(`${file}: interactive component missing ${name}.a11y.md`);
         }

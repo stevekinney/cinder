@@ -31,8 +31,8 @@ export type { CalloutProps, CalloutVariant } from './components/callout/index.ts
 export { default as Card } from './components/card/index.ts';
 export type { CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
-export { default as Chat } from './components/chat.svelte';
-export type { ChatProps } from './components/chat.svelte';
+export { default as Chat } from './components/chat/index.ts';
+export type { ChatProps } from './components/chat/index.ts';
 
 export { default as Chip } from './components/chip/index.ts';
 export type {
@@ -98,12 +98,12 @@ export type {
   DiffStatisticsVariant,
 } from './components/diff-statistics/index.ts';
 
-export { default as DiffViewer } from './components/diff-viewer.svelte';
+export { default as DiffViewer } from './components/diff-viewer/index.ts';
 export type {
   DiffToolbarContext,
   DiffViewerProps,
   ViewMode,
-} from './components/diff-viewer.svelte';
+} from './components/diff-viewer/index.ts';
 
 export { default as Drawer } from './components/drawer/index.ts';
 export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer/index.ts';
@@ -159,7 +159,7 @@ export type { ImageProps } from './components/image/index.ts';
 export { default as Input } from './components/input/index.ts';
 export type { InputProps, InputType } from './components/input/index.ts';
 
-export { default as JsonSchemaEditor } from './components/json-schema-editor.svelte';
+export { default as JsonSchemaEditor } from './components/json-schema-editor/index.ts';
 export type {
   JsonSchemaDraft,
   JsonSchemaEditorChangeEvent,
@@ -173,7 +173,7 @@ export type {
   JsonSchemaValidationResult,
   JsonSchemaValidationStatus,
   JsonSchemaValue,
-} from './components/json-schema-editor.svelte';
+} from './components/json-schema-editor/index.ts';
 
 export { default as Kbd } from './components/kbd/index.ts';
 export type { KbdProps } from './components/kbd/index.ts';
@@ -181,13 +181,13 @@ export type { KbdProps } from './components/kbd/index.ts';
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
 
-export { default as MarkdownEditor } from './components/markdown-editor.svelte';
+export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
   EditorHandle,
   EditorMode,
   MarkdownEditorProps,
   ToolbarContext,
-} from './components/markdown-editor.svelte';
+} from './components/markdown-editor/index.ts';
 
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
@@ -224,9 +224,8 @@ export type { RadioProps } from './components/radio/index.ts';
 export { default as RadioGroup } from './components/radio-group/index.ts';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
 
-export { default as ReviewEditor } from './components/review-editor.svelte';
-export type { ReviewEditorProps } from './components/review-editor.svelte';
 export {
+  default as ReviewEditor,
   buildFormData,
   buildFormDataFromValues,
   createAnchorManager,
@@ -250,6 +249,7 @@ export {
   type ThreadManager,
   type ThreadManagerOptions,
 } from './components/review-editor/index.ts';
+export type { ReviewEditorProps } from './components/review-editor/index.ts';
 
 export { default as ScrollArea } from './components/scroll-area/index.ts';
 export type {
