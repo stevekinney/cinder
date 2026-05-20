@@ -6,6 +6,7 @@ type SegmentOwnedAttributes =
   | 'type'
   | 'disabled'
   | 'tabindex'
+  | 'class'
   | 'aria-checked'
   | 'aria-selected'
   | 'aria-pressed'
@@ -18,6 +19,8 @@ type SegmentOwnedAttributes =
 export type SegmentProps = Omit<HTMLButtonAttributes, SegmentOwnedAttributes> & {
   /** Value this segment represents. Must be unique within the parent control. */
   value: string;
+  /** Custom class merged with `.cinder-segmented-control-option`. */
+  class?: string | undefined;
   /** Disable just this segment (independent of the control-level `disabled`). */
   disabled?: boolean | undefined;
   /**

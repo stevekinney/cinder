@@ -72,6 +72,17 @@
     restoreFocusTo(target);
   }
 
+  function handleNativeCancel(event: Event) {
+    // The browser's native ESC handler on <dialog> fires `cancel` then closes
+    // the dialog. preventDefault keeps the close out of the native path so it
+    // goes through `dialogElement.close()` here — which fires the `close`
+    // event and lets handleClose() run as the single canonical close path.
+    // This matches modal.svelte's pattern; without it, ESC would close the
+    // dialog out from under Svelte's `open` state for one tick.
+    event.preventDefault();
+    dialogElement?.close();
+  }
+
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {
       dialogElement?.close();
@@ -104,6 +115,7 @@
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
     onclose={handleClose}
+    oncancel={handleNativeCancel}
     onclick={handleBackdropClick}
   >
     {#snippet closeButton()}

@@ -4,6 +4,10 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-segmented-control-option`.',
+    },
     disabled: {
       type: 'boolean',
       description: 'Disable just this segment (independent of the control-level `disabled`).',
@@ -17,10 +21,6 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-      },
       {
         name: 'leading',
         reason: 'function-or-snippet',

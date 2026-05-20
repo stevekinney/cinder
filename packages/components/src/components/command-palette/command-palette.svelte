@@ -7,7 +7,7 @@
   import { onDestroy } from 'svelte';
 
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
@@ -286,7 +286,7 @@
     onclick={handleBackdropClick}
   >
     {#if open}
-      <div class={cn('cinder-command-palette__panel', className)}>
+      <div class={classNames('cinder-command-palette__panel', className)}>
         <div class="cinder-command-palette__search">
           <svg
             class="cinder-command-palette__search-icon"

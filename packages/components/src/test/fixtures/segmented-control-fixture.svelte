@@ -60,24 +60,13 @@
   void onValueChange;
 </script>
 
-<SegmentedControl
-  {id}
-  {label}
-  {selectionMode}
-  bind:value
-  {variant}
-  {size}
-  {density}
-  {orientation}
-  {detached}
-  {fullWidth}
-  {hideLabel}
-  {disabled}
-  {disallowEmptySelection}
-  {onchange}
-  class={className}
-  {...rest}
->
+<!--
+  Branching by selectionMode narrows the SegmentedControlProps discriminated
+  union for `svelte-check`. Each branch can resolve `value` to the right type
+  (string for single, SvelteSet for multiple) without a cast at the spread
+  site.
+-->
+{#snippet segments()}
   {#each options as option (option.value)}
     {#if showLeadingIcon}
       <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
@@ -90,4 +79,47 @@
       </Segment>
     {/if}
   {/each}
-</SegmentedControl>
+{/snippet}
+
+{#if selectionMode === 'multiple'}
+  <SegmentedControl
+    {id}
+    {label}
+    selectionMode="multiple"
+    bind:value={value as SvelteSet<string> | undefined}
+    variant={variant === 'tablist' ? undefined : variant}
+    {size}
+    {density}
+    {orientation}
+    {detached}
+    {fullWidth}
+    {hideLabel}
+    {disabled}
+    {onchange}
+    class={className}
+    {...rest}
+  >
+    {@render segments()}
+  </SegmentedControl>
+{:else}
+  <SegmentedControl
+    {id}
+    {label}
+    selectionMode="single"
+    bind:value={value as string | undefined}
+    {variant}
+    {size}
+    {density}
+    {orientation}
+    {detached}
+    {fullWidth}
+    {hideLabel}
+    {disabled}
+    {disallowEmptySelection}
+    {onchange}
+    class={className}
+    {...rest}
+  >
+    {@render segments()}
+  </SegmentedControl>
+{/if}
