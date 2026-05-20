@@ -18,7 +18,11 @@ import { join } from 'node:path';
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 
-import { computeExports, type ExportEntry } from '../scripts/generate-exports.ts';
+import {
+  assertNoForbiddenExportKeys,
+  computeExports,
+  type ExportEntry,
+} from '../scripts/generate-exports.ts';
 import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
@@ -97,6 +101,12 @@ describe('exports drift', () => {
     const exports = packageJson.exports as Record<string, unknown>;
     expect(exports['.']).toBeDefined();
     expect(exports['./styles']).toBeDefined();
+  });
+
+  test('checked-in exports contain no forbidden keys', async () => {
+    const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf-8'));
+    const exports = packageJson.exports as Record<string, unknown>;
+    expect(() => assertNoForbiddenExportKeys(exports)).not.toThrow();
   });
 
   test('no _internal components appear as export keys', async () => {
