@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Keyboard-and-pointer reorderable list that emits onreorder when the user drags or arrow-keys an item into a new position with announcer feedback.
+   * @tag data-display
+   * @tag reorder
+   * @useWhen Letting users manually reorder a small to medium list of items via drag handle or keyboard.
+   * @useWhen Surfacing live region announcements during a reorder for accessible feedback.
+   * @avoidWhen Showing a read-only list with no reorder affordance — use grid-list instead.
+   * @avoidWhen Sorting by a column or computed key — sort the source array and rerender.
+   * @related grid-list
+   */
   export type { SortableListProps } from './sortable-list.types.ts';
 </script>
 

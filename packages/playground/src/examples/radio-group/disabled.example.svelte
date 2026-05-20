@@ -4,7 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Radio, RadioGroup } from '../../../../components/src/index.ts';
+  import { Radio } from 'cinder/radio';
+  import { RadioGroup } from 'cinder/radio-group';
 </script>
 
 <RadioGroup name="disabled-region" legend="Region (locked for trial accounts)" value="us" disabled>

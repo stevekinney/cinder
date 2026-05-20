@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category feedback
+   * @status stable
+   * @purpose Provider region that hosts polite and assertive toast stacks and exposes an imperative show/dismiss API via context.
+   * @tag feedback
+   * @tag toast
+   * @useWhen Surfacing transient, non-blocking confirmations or errors that auto-dismiss after a short duration.
+   * @useWhen Announcing the outcome of a background action that the user does not need to acknowledge.
+   * @avoidWhen Communicating a persistent page-level message — use banner so it stays until dismissed.
+   * @avoidWhen Reporting an urgent error that must remain on screen — use alert.
+   * @related alert, banner
+   */
   import { TOAST_CONTEXT_KEY } from '../../_internal/toast-context.ts';
 
   // Re-export so consumers using the public package surface get a single

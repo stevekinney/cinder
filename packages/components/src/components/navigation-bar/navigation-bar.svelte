@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Top-level application header that pairs a brand mark with a horizontal set of navigation items and an optional mobile menu toggle.
+   * @tag navigation
+   * @tag chrome
+   * @useWhen Anchoring an app shell with primary sections, branding, and account actions across the top edge.
+   * @useWhen Providing a responsive nav that collapses items behind a menu toggle below a breakpoint.
+   * @avoidWhen Showing the ancestor trail of the current page — use breadcrumbs instead.
+   * @avoidWhen Building a tall, dense sidebar of grouped sections — use side-navigation instead.
+   * @related navigation-item, breadcrumbs, side-navigation
+   */
   export type {
     NavigationBarItemsContext,
     NavigationBarProps,

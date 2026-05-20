@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Popover } from '../../../../components/src/index.ts';
-
+  import { Popover } from 'cinder/popover';
   let open = $state(false);
   let triggerEl: HTMLButtonElement | null = $state(null);
 </script>

@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { SegmentedControl } from '../../../../components/src/index.ts';
-
+  import { SegmentedControl } from 'cinder/segmented-control';
   let value = $state('rendered');
 
   const options = [

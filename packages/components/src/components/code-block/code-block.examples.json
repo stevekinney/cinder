@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "code-block",
+  "import": "cinder/code-block",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic code block",
+      "description": "Multi-line preformatted code.",
+      "code": "<script lang=\"ts\">\n  import { CodeBlock } from 'cinder/code-block';\n  const code = `function greet(name: string): string {\n  return \\`Hello, \\${name}!\\`;\n}\n\nconst message = greet('world');`;\n</script>\n\n<CodeBlock {code} />\n"
+    },
+    {
+      "id": "with-language",
+      "title": "With language label and copy",
+      "description": "Header shows the language and a copy-to-clipboard button.",
+      "code": "<script lang=\"ts\">\n  import { codeToHtml } from 'shiki';\n  import { CodeBlock } from 'cinder/code-block';\n  const code = `SELECT id, name, created_at\nFROM users\nWHERE active = true\nORDER BY created_at DESC\nLIMIT 10;`;\n\n  async function highlighter(source: string, lang: string): Promise<string> {\n    return codeToHtml(source, { lang, theme: 'github-light' });\n  }\n</script>\n\n<CodeBlock {code} language=\"sql\" copyable {highlighter} />\n"
+    }
+  ]
+}

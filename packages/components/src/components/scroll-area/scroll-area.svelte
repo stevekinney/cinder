@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category layout
+   * @status stable
+   * @purpose Bounded scrolling container that constrains overflowing content within a max height or width while remaining keyboard-focusable.
+   * @tag layout
+   * @tag overflow
+   * @useWhen Containing a long list or large block of content inside a fixed-size region.
+   * @useWhen Preserving keyboard scrollability for overflow content in a card or surface.
+   * @avoidWhen Wrapping the entire page — let the document scroll natively.
+   * @avoidWhen Hiding overflow without scrollbars — use plain CSS overflow utilities instead.
+   * @related surface
+   */
   import type { ScrollAreaElement } from './scroll-area.types.ts';
 
   const explicitRegionElements = new Set<ScrollAreaElement>(['div', 'pre']);

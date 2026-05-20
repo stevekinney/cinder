@@ -5,8 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, Input, Modal } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Input } from 'cinder/input';
+  import { Modal } from 'cinder/modal';
   let open = $state(false);
   let name = $state('');
   let triggerRef: HTMLElement | null = $state(null);

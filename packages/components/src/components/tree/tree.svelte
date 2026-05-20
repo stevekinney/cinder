@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Composite root that renders a hierarchical tree of tree-item nodes with keyboard navigation and selection state.
+   * @tag tree
+   * @tag hierarchy
+   * @useWhen Presenting hierarchical data such as a file system, organization, or nested categories.
+   * @useWhen Coordinating single- or multi-select state across all descendant tree-items via the selectionMode prop.
+   * @avoidWhen Disclosing flat sibling sections — use accordion instead.
+   * @avoidWhen Switching between sibling views of the same region — use tabs instead.
+   * @related tree-item, accordion
+   */
   export const TREE_CONTEXT_KEY = Symbol('cinder-tree');
   export const TREE_ITEM_PARENT_KEY = Symbol('cinder-tree-item-parent');
 

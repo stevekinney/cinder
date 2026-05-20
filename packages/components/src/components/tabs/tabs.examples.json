@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "tabs",
+  "import": "cinder/tabs",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic tabs",
+      "description": "Three tabs with associated panels; clicking a tab switches the panel.",
+      "code": "<script lang=\"ts\">\n  import { Tab } from 'cinder/tab';\n  import { TabList } from 'cinder/tab-list';\n  import { TabPanel } from 'cinder/tab-panel';\n  import { Tabs } from 'cinder/tabs';\n  let active = $state('overview');\n</script>\n\n<Tabs bind:value={active}>\n  <TabList label=\"Project sections\">\n    <Tab value=\"overview\">Overview</Tab>\n    <Tab value=\"activity\">Activity</Tab>\n    <Tab value=\"settings\">Settings</Tab>\n  </TabList>\n\n  <TabPanel value=\"overview\">\n    <p>Cinder is a small but opinionated component library for Svelte 5.</p>\n  </TabPanel>\n  <TabPanel value=\"activity\">\n    <p>You have 3 unread comments and 1 pending review.</p>\n  </TabPanel>\n  <TabPanel value=\"settings\">\n    <p>Adjust your project preferences here.</p>\n  </TabPanel>\n</Tabs>\n"
+    },
+    {
+      "id": "with-keyboard",
+      "title": "Tabs with keyboard navigation",
+      "description": "Focus a tab and use ←/→ to move; horizontal tablists activate on focus per the WAI-ARIA pattern.",
+      "code": "<script lang=\"ts\">\n  import { Tab } from 'cinder/tab';\n  import { TabList } from 'cinder/tab-list';\n  import { TabPanel } from 'cinder/tab-panel';\n  import { Tabs } from 'cinder/tabs';\n  let active = $state('design');\n</script>\n\n<Tabs bind:value={active}>\n  <TabList label=\"Workflow stages\">\n    <Tab value=\"design\">Design</Tab>\n    <Tab value=\"develop\">Develop</Tab>\n    <Tab value=\"ship\" disabled>Ship</Tab>\n    <Tab value=\"review\">Review</Tab>\n  </TabList>\n\n  <TabPanel value=\"design\">\n    <p>Sketch the user experience before writing code.</p>\n  </TabPanel>\n  <TabPanel value=\"develop\">\n    <p>Build the components and wire up the state.</p>\n  </TabPanel>\n  <TabPanel value=\"ship\">\n    <p>Disabled tab — its panel is unreachable.</p>\n  </TabPanel>\n  <TabPanel value=\"review\">\n    <p>Review and iterate based on feedback.</p>\n  </TabPanel>\n</Tabs>\n"
+    }
+  ]
+}

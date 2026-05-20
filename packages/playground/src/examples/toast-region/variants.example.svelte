@@ -5,7 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, ToastRegion, useToast } from '../../../../components/src/index.ts';
+  import { useToast } from 'cinder';
+  import { Button } from 'cinder/button';
+  import { ToastRegion } from 'cinder/toast-region';
 </script>
 
 <ToastRegion>

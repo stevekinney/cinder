@@ -4,24 +4,11 @@
 </script>
 
 <script lang="ts">
-  import { Card } from '../../../../components/src/index.ts';
+  import { Card } from 'cinder/card';
 </script>
 
 <Card variant="well" edgeToEdgeOnMobile>
-  <div class="placeholder"></div>
+  <div
+    style="min-block-size: 8rem; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-sm); background: repeating-linear-gradient(-45deg, transparent, transparent 0.5rem, color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5rem, color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5625rem);"
+  ></div>
 </Card>
-
-<style>
-  .placeholder {
-    min-block-size: 8rem;
-    border: 1px dashed var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-sm);
-    background: repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 0.5rem,
-      color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5rem,
-      color-mix(in oklch, var(--cinder-border-muted), transparent 70%) 0.5625rem
-    );
-  }
-</style>

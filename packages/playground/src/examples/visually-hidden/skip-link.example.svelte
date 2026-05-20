@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { VisuallyHidden } from '../../../../components/src/index.ts';
+  import { VisuallyHidden } from 'cinder/visually-hidden';
 </script>
 
 <div

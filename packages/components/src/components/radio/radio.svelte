@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Single radio button that contributes a value, label, and id to a parent radio-group for one-of-many selection.
+   * @tag form
+   * @tag selection
+   * @useWhen Rendering one option inside a radio-group where exactly one value must be chosen.
+   * @useWhen Overriding the group disabled state for a single option.
+   * @avoidWhen Selecting zero or more independent options — use checkbox instead.
+   * @avoidWhen Used outside a radio-group — the group owns the shared name and value.
+   * @related radio-group, checkbox
+   */
   export type { RadioProps } from './radio.types.ts';
 </script>
 

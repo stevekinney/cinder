@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Node within a tree that exposes a label, optional children, and expand and selection state through the tree context.
+   * @tag tree
+   * @tag node
+   * @useWhen Rendering a single branch or leaf inside a tree parent.
+   * @useWhen Nesting further tree-items as children to form a hierarchy.
+   * @avoidWhen Standing alone outside a tree — it requires the tree context and registry.
+   * @related tree
+   */
   export type { TreeItemProps } from './tree-item.types.ts';
 </script>
 

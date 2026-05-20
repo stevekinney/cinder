@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Content region inside a tabs composite that becomes visible when its sibling tab with the matching value is active.
+   * @tag navigation
+   * @tag tabs
+   * @useWhen Hosting the body content associated with a specific tab inside a tabs ancestor.
+   * @useWhen Letting the tabs context drive aria-labelledby and visibility automatically from the shared value.
+   * @avoidWhen Used outside a tabs ancestor — the component throws at construction.
+   * @avoidWhen Rendering the tab trigger itself — use tab inside a tab-list.
+   * @related tabs, tab, tab-list
+   */
   export type { TabPanelProps } from './tab-panel.types.ts';
 </script>
 

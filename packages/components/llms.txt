@@ -1,0 +1,44 @@
+# cinder
+A Svelte 5 component library with ~100 accessible primitives and domain suites.
+
+Install: bun add cinder svelte
+Import root: cinder
+Styles: import 'cinder/styles';
+
+## Manifest
+- /components.json — Every component with category, status, purpose, useWhen/avoidWhen, and subpath pointers.
+
+## Per-component subpaths
+- cinder/{name}             — Svelte component export
+- cinder/{name}/schema      — JSON Schema (props)
+- cinder/{name}/variables   — CSS custom property names
+- cinder/{name}/examples    — Code examples (JSON, when hasExamples is true)
+- cinder/{name}/constraints — Discriminated-union rules (when hasConstraints is true)
+
+## Experimental components
+Experimental components use cinder/experimental/{name} instead of cinder/{name}.
+Their artifact subpaths follow the same pattern: cinder/experimental/{name}/schema, etc.
+
+## Conventions
+- Class prefix: cinder-
+- CSS var prefix: --cinder-
+- All components are SSR-safe and use Svelte 5 runes.
+- Do NOT redefine --_cinder-* private custom properties (prefixed with underscore).
+  These are implementation details subject to change without notice.
+
+## Start here for agents
+1. Fetch /components.json
+2. Filter components[] by category, tags, or overlapFamilies for the user's need
+3. Fetch /{name}/schema and (if hasConstraints) /{name}/constraints
+4. Fetch /{name}/examples for canonical usage
+
+## Overlap families
+Components in the same overlapFamily serve related purposes. Use useWhen and
+avoidWhen on each component's manifest entry to decide between them.
+Families are defined in components.json#overlapFamilies.
+
+## Artifact schemas
+The machine-readable files follow documented JSON Schema shapes:
+- components.json validates against ./src/schemas/manifest.schema.json
+- {name}.examples.json validates against ./src/schemas/examples.schema.json
+- {name}.constraints.json validates against ./src/schemas/constraints.schema.json

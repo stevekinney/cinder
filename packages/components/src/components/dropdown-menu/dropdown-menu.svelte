@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Popover-backed menu surface that hosts dropdown-item rows and owns arrow-key, Home, End, and Escape navigation.
+   * @tag overlay
+   * @tag menu
+   * @useWhen Rendering the floating panel that holds a dropdown's menu items.
+   * @useWhen Composing a dropdown's body from dropdown-item, dropdown-label, and dropdown-separator children.
+   * @avoidWhen Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.
+   * @avoidWhen Showing arbitrary non-menu content — use popover.
+   * @related dropdown, dropdown-trigger, dropdown-item, dropdown-label, dropdown-separator
+   */
   export type { DropdownMenuProps } from './dropdown-menu.types.ts';
 </script>
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "combobox",
+  "import": "cinder/combobox",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic combobox",
+      "description": "Type to filter; the list is filtered with a case-insensitive substring match.",
+      "code": "<script lang=\"ts\">\n  import { Combobox } from 'cinder/combobox';\n  const fruits = [\n    { value: 'apple', label: 'Apple' },\n    { value: 'apricot', label: 'Apricot' },\n    { value: 'banana', label: 'Banana' },\n    { value: 'blackberry', label: 'Blackberry' },\n    { value: 'cherry', label: 'Cherry' },\n    { value: 'grape', label: 'Grape' },\n    { value: 'mango', label: 'Mango' },\n    { value: 'peach', label: 'Peach' },\n    { value: 'pineapple', label: 'Pineapple' },\n    { value: 'raspberry', label: 'Raspberry' },\n  ];\n\n  let selected = $state('');\n</script>\n\n<Combobox\n  id=\"combobox-fruit\"\n  label=\"Favorite fruit\"\n  placeholder=\"Start typing…\"\n  options={fruits}\n  bind:value={selected}\n/>\n"
+    },
+    {
+      "id": "disabled",
+      "title": "Disabled combobox",
+      "description": "Disabled combobox cannot be focused or edited.",
+      "code": "<script lang=\"ts\">\n  import { Combobox } from 'cinder/combobox';\n  const options = [\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise', disabled: true },\n  ];\n</script>\n\n<Combobox\n  id=\"combobox-disabled\"\n  label=\"Plan\"\n  placeholder=\"Locked plan selection\"\n  {options}\n  value=\"pro\"\n  disabled\n/>\n"
+    }
+  ]
+}

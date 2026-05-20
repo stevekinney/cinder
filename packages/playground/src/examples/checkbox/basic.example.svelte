@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from '../../../../components/src/index.ts';
-
+  import { Checkbox } from 'cinder/checkbox';
   let acceptTerms = $state(false);
   let subscribed = $state(true);
 </script>

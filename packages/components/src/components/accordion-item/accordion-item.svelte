@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Collapsible panel within an accordion that toggles its content visibility under a heading button.
+   * @tag disclosure
+   * @tag collapsible
+   * @useWhen Rendering one expandable section inside an accordion parent.
+   * @useWhen Disabling a single section while leaving siblings interactive via the disabled prop.
+   * @avoidWhen Standing alone outside an accordion — it requires the accordion context to function.
+   * @related accordion
+   */
   export type { AccordionItemProps } from './accordion-item.types.ts';
 </script>
 

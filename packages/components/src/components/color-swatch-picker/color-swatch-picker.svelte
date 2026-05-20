@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Keyboard-navigable listbox of preset color swatches that constrains selection to a curated palette.
+   * @tag form
+   * @tag color
+   * @useWhen Restricting color choice to a fixed brand or theme palette.
+   * @useWhen Pairing with color-picker as a shortcut for common values.
+   * @avoidWhen Letting users author arbitrary colors across the spectrum — use color-picker instead.
+   * @related color-picker
+   */
   export type { ColorSwatch, ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
 </script>
 

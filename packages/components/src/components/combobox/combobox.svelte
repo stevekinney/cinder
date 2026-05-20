@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Single-select input that filters a fixed option list as the user types, combining free-text search with constrained values.
+   * @tag form
+   * @tag autocomplete
+   * @useWhen Choosing one value from a long list where typing is faster than scrolling.
+   * @useWhen Letting users narrow options by substring while still requiring a constrained selection.
+   * @avoidWhen Picking from a short fixed list with no need to filter — use select instead.
+   * @avoidWhen Querying remote data or accepting free-text submissions — use search-field instead.
+   * @related select, search-field, dropdown
+   */
   export type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
 </script>
 

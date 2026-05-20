@@ -5,16 +5,13 @@
 </script>
 
 <script lang="ts">
-  import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHeader,
-    TableHeaderCell,
-    TableRow,
-    type TableSort,
-  } from '../../../../components/src/index.ts';
-
+  import { Table } from 'cinder/table';
+  import type { TableSort } from 'cinder/table';
+  import { TableBody } from 'cinder/table-body';
+  import { TableCell } from 'cinder/table-cell';
+  import { TableHeader } from 'cinder/table-header';
+  import { TableHeaderCell } from 'cinder/table-header-cell';
+  import { TableRow } from 'cinder/table-row';
   let sort: TableSort | undefined = $state(undefined);
 
   const people = [

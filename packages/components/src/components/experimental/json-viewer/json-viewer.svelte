@@ -1,4 +1,19 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status alpha
+   * @purpose Collapsible tree visualization of an arbitrary JSON value with hard depth and byte caps and a fallback for oversized payloads.
+   * @tag json
+   * @tag inspector
+   * @tag tree
+   * @useWhen Inspecting structured API responses, debug payloads, or configuration documents inside an admin or developer surface.
+   * @useWhen Rendering a JSON-serializable value with predictable initial-collapse behavior and no virtualization needs.
+   * @avoidWhen The payload is large enough to need search, filter, or virtualization — compose a custom viewer instead.
+   * @avoidWhen Showing arbitrary source code rather than a JSON value — code-block is the right surface for that.
+   * @avoidWhen Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta.
+   * @related code-block, tree
+   */
   export type { JsonViewerProps } from './json-viewer.types.ts';
 </script>
 

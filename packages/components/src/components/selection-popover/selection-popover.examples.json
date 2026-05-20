@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "selection-popover",
+  "import": "cinder/selection-popover",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic selection popover",
+      "description": "A positioned comment action that expands into a composer.",
+      "code": "<script lang=\"ts\">\n  import { SelectionPopover } from 'cinder/selection-popover';\n  type Comment = { id: string; body: string };\n\n  let comments = $state<Comment[]>([]);\n\n  function addComment(body: string): void {\n    comments = [...comments, { id: crypto.randomUUID(), body }];\n  }\n</script>\n\n<div style=\"position: relative; min-height: 9rem;\">\n  <p style=\"max-width: 36rem; margin: 0;\">\n    Select text in a review editor and this control can appear near the selection. The playground\n    keeps it pinned here so the interaction is easy to inspect.\n  </p>\n\n  <SelectionPopover\n    id=\"playground-selection-popover\"\n    open\n    position={{ x: 180, y: 96 }}\n    oncommentsubmit={addComment}\n  />\n\n  {#if comments.length > 0}\n    <section style=\"margin: 1rem 0 0;\" aria-label=\"Submitted comments\">\n      <h3\n        style=\"margin: 0 0 0.5rem; font-size: var(--cinder-text-xs); font-weight: var(--cinder-font-medium); color: var(--cinder-text-muted); text-transform: uppercase; letter-spacing: 0.04em;\"\n      >\n        Submitted comments\n      </h3>\n      {#each comments as comment (comment.id)}\n        <article\n          style=\"padding: 0.5rem 0.75rem; margin-bottom: 0.375rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-sm); background: var(--cinder-surface);\"\n        >\n          {comment.body}\n        </article>\n      {/each}\n    </section>\n  {/if}\n</div>\n"
+    }
+  ]
+}

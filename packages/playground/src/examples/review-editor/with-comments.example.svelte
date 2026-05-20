@@ -4,9 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { ReviewEditor } from '../../../../components/src/index.ts';
-  import type { Thread } from '../../../../components/src/components/review-editor/index.ts';
-
+  import { ReviewEditor } from 'cinder/review-editor';
+  import type { Thread } from 'cinder/review-editor';
   const original = `# Architecture Notes
 
 This document describes the review workflow for collaborative editing.

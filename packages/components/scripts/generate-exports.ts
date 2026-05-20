@@ -1,18 +1,25 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes three subpaths:
+ * `src/components/`. Each component contributes up to five subpaths:
  *
  *   ./<name>            → component (svelte/types conditions)
  *   ./<name>/schema     → schema module (svelte/types conditions)
  *   ./<name>/variables  → variables module (svelte/types conditions)
+ *   ./<name>/examples   → examples JSON (import/default only; emitted when file exists)
+ *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
  * Experimental components export under `./experimental/<name>` etc.
  *
- * Reserved (non-component) entries are preserved verbatim from a hard-coded
- * allowlist snapshotted from today's manifest:
+ * Additionally, a package-level `./manifest` entry is emitted pointing at
+ * `./components.json` with `import`/`default` conditions only (no `svelte`
+ * or `types` — JSON isn't Svelte source and TS resolves JSON via
+ * `resolveJsonModule`).
+ *
+ * Reserved (non-component) entries are preserved verbatim:
  *
  *   .          → root entry
  *   ./styles   → public styles entry
+ *   ./manifest → components.json (JSON; import+default only)
  *
  * If a newly-emitted subpath would collide with a non-generated reserved
  * entry, the generator aborts with a named error rather than silently
@@ -33,10 +40,22 @@ import { join } from 'node:path';
 export type ExportEntry = {
   svelte?: string;
   types?: string;
+  import?: string;
   default?: string;
   node?: string;
 };
 
+/** JSON-only export entry: no `svelte` or `types` conditions. */
+type JsonExportEntry = {
+  import: string;
+  default: string;
+};
+
+/**
+ * Subpath keys that are hand-authored in `package.json` and must not be
+ * overwritten by the component generator. The `./manifest` entry is NOT listed
+ * here because it is computed by `computeExports` and written programmatically.
+ */
 const RESERVED_KEYS = new Set(['.', './styles']);
 
 export interface ComponentDiscovery {
@@ -77,8 +96,36 @@ export async function discoverDirectoryComponents(): Promise<ComponentDiscovery[
   });
 }
 
-export function computeExports(components: ComponentDiscovery[]): Record<string, ExportEntry> {
-  const out: Record<string, ExportEntry> = {};
+/**
+ * Emit the `./manifest` JSON entry pointing at `./components.json`.
+ * Uses `import`+`default` conditions only — no `svelte` or `types`.
+ */
+function manifestExport(): JsonExportEntry {
+  return { import: './components.json', default: './components.json' };
+}
+
+/**
+ * Build a JSON-only export entry for a per-component sidecar file.
+ * The file path is relative to the package root.
+ */
+function jsonSidecarExport(filePath: string): JsonExportEntry {
+  return { import: filePath, default: filePath };
+}
+
+/**
+ * Default package root used when `computeExports` is called without one.
+ * Resolves to the components package this script lives in.
+ */
+const DEFAULT_PACKAGE_ROOT = join(import.meta.dir, '..');
+
+export function computeExports(
+  components: ComponentDiscovery[],
+  packageRoot: string = DEFAULT_PACKAGE_ROOT,
+): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+
+  // Package-level manifest entry (always present).
+  out['./manifest'] = manifestExport();
 
   for (const { name, isExperimental } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
@@ -107,23 +154,51 @@ export function computeExports(components: ComponentDiscovery[]): Record<string,
       svelte: `${srcDir}/${name}.variables.ts`,
       types: `${distDir}/${name}.variables.d.ts`,
     };
+
+    // JSON sidecar subpaths — emitted only when the file exists on disk.
+    // Uses import+default conditions only (no svelte/types).
+    const examplesJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.examples.json`,
+    );
+    if (existsSync(examplesJsonPath)) {
+      const relPath = `${srcDir}/${name}.examples.json`;
+      out[`${prefix}/examples`] = jsonSidecarExport(relPath);
+    }
+
+    const constraintsJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.constraints.json`,
+    );
+    if (existsSync(constraintsJsonPath)) {
+      const relPath = `${srcDir}/${name}.constraints.json`;
+      out[`${prefix}/constraints`] = jsonSidecarExport(relPath);
+    }
   }
 
   return out;
 }
 
 interface PackageJson {
-  exports: Record<string, ExportEntry>;
+  exports: Record<string, ExportEntry | JsonExportEntry>;
   [key: string]: unknown;
 }
 
+const PACKAGE_ROOT = join(import.meta.dir, '..');
+
 async function main(): Promise<void> {
   const checkMode = process.argv.includes('--check');
-  const packageJsonPath = join(import.meta.dir, '..', 'package.json');
+  const packageJsonPath = join(PACKAGE_ROOT, 'package.json');
   const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
 
   const components = await discoverDirectoryComponents();
-  const computed = computeExports(components);
+  const computed = computeExports(components, PACKAGE_ROOT);
 
   // Collision check: any computed subpath that collides with a non-component
   // reserved entry aborts. We never silently overwrite.
@@ -177,7 +252,7 @@ async function main(): Promise<void> {
   // Generate mode: preserve reserved entries, replace computed entries,
   // preserve any flat (legacy) component entries that have not yet been
   // migrated. This is the partial-migration phase.
-  const next: Record<string, ExportEntry> = {};
+  const next: Record<string, ExportEntry | JsonExportEntry> = {};
   for (const key of RESERVED_KEYS) {
     if (packageJson.exports[key]) next[key] = packageJson.exports[key];
   }
@@ -190,11 +265,20 @@ async function main(): Promise<void> {
   for (const [key, entry] of Object.entries(packageJson.exports)) {
     if (RESERVED_KEYS.has(key)) continue;
     if (migratedNames.has(key)) continue;
-    if (key.endsWith('/schema') || key.endsWith('/variables')) continue;
+    // Skip schema/variables/examples/constraints from previous generation passes
+    // — they will be re-emitted by `computed` if the file still exists.
+    if (
+      key.endsWith('/schema') ||
+      key.endsWith('/variables') ||
+      key.endsWith('/examples') ||
+      key.endsWith('/constraints')
+    )
+      continue;
     const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
     if (flatPattern.test(key)) next[key] = entry;
   }
 
+  // `./manifest` is inside `computed`; it replaces any hand-authored version.
   for (const [key, entry] of Object.entries(computed)) {
     next[key] = entry;
   }

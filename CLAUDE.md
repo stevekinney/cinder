@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+> **Building an app that uses cinder?** Read [`packages/components/AGENTS.md`](./packages/components/AGENTS.md) § Using cinder in your app.
+>
+> **Editing cinder itself?** Read [`packages/components/AGENTS.md`](./packages/components/AGENTS.md) § Contributing to cinder.
+
+The rest of this file covers the repo-wide Bun/runtime/testing conventions.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Essential Commands

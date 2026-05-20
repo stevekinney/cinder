@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Generic iterator that renders a typed collection through a consumer-supplied row snippet with empty-state fallback.
+   * @tag list
+   * @tag iterator
+   * @useWhen Mapping a homogenous array of records to identical row markup defined by the caller.
+   * @useWhen Showing a dedicated empty state when the collection has no items.
+   * @avoidWhen Presenting key-value metadata for a single entity — use description-list instead.
+   * @avoidWhen Rendering tabular data with rows and columns — use table instead.
+   * @related description-list, table, stacked-list-item
+   */
   export type { DataListProps } from './data-list.types.ts';
 </script>
 

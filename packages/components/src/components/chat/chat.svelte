@@ -1,4 +1,18 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category domain
+   * @status domain-suite
+   * @purpose Opinionated conversation surface bundling message list, composer, attachments, and scroll affordances for AI or support transcripts.
+   * @tag chat
+   * @tag conversation
+   * @tag domain-suite
+   * @useWhen Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.
+   * @useWhen Building an AI assistant or support thread where conversation state is modeled via the conversationalist package.
+   * @avoidWhen Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.
+   * @avoidWhen The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit.
+   * @related markdown-editor
+   */
   export type { ChatProps } from './chat.types.ts';
 </script>
 

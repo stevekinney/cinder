@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Native select control with label, description, and error wiring for picking one value from a short fixed option list.
+   * @tag form
+   * @tag selection
+   * @useWhen Picking one value from a short list where the native control's mobile behavior is desirable.
+   * @useWhen Composing inside a form with built-in label and aria-describedby plumbing.
+   * @avoidWhen Filtering a long list by typing — use combobox instead.
+   * @avoidWhen Building a custom-styled menu trigger — use dropdown instead.
+   * @related combobox, dropdown, radio-group
+   */
   export type { SelectOption, SelectProps } from './select.types.ts';
 </script>
 

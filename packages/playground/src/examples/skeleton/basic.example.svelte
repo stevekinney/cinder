@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Skeleton } from '../../../../components/src/index.ts';
+  import { Skeleton } from 'cinder/skeleton';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
