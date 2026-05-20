@@ -544,13 +544,21 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
 
     if (publishedExamples.length === 0) continue;
 
+    // Resolve the target namespace from the override (if present), not from
+    // the source directory. An override always refers to a target component;
+    // that target's `isExperimental` flag determines `import`, `$schema`,
+    // and the output path — never the source directory's flag.
     const effectiveComponentId = componentImportOverride ?? componentId;
-    const importPath = isExperimental
+    const targetIsExperimental =
+      componentImportOverride !== undefined
+        ? components.some((c) => c.name === componentImportOverride && c.isExperimental)
+        : isExperimental;
+    const importPath = targetIsExperimental
       ? `cinder/experimental/${effectiveComponentId}`
       : `cinder/${effectiveComponentId}`;
     // Experimental example artifacts live one directory deeper so the
     // `src/components/experimental/<id>/` layout matches the source tree.
-    const $schema = isExperimental
+    const $schema = targetIsExperimental
       ? '../../../schemas/examples.schema.json'
       : '../../schemas/examples.schema.json';
     exampleSets.push({
@@ -629,10 +637,12 @@ export async function writeExampleArtifacts(result: GenerateExamplesResult): Pro
  */
 export async function checkExamplesDrift(result: GenerateExamplesResult): Promise<string[]> {
   const issues: string[] = [];
+  const expectedPaths = new Set<string>();
 
   // Check each example set against the committed JSON.
   for (const exampleSet of result.exampleSets) {
     const outputPath = exampleSetOutputPath(exampleSet);
+    expectedPaths.add(outputPath);
     const generated = JSON.stringify(exampleSet, null, 2) + '\n';
 
     if (!existsSync(outputPath)) {
@@ -666,7 +676,68 @@ export async function checkExamplesDrift(result: GenerateExamplesResult): Promis
     }
   }
 
+  // Orphan detection: walk every committed `*.examples.json` and flag any
+  // that wasn't produced by the current run. A stale artifact whose source
+  // example was removed would otherwise ship in the tarball forever.
+  const orphans = await findOrphanArtifacts('.examples.json', expectedPaths);
+  for (const orphan of orphans) {
+    issues.push(`orphan artifact (no corresponding source example): ${orphan}`);
+  }
+
   return issues;
+}
+
+/**
+ * Walk `src/components/` (including the experimental subtree) for files
+ * matching `suffix` and return any that aren't in `expectedPaths`.
+ */
+async function findOrphanArtifacts(
+  suffix: string,
+  expectedPaths: ReadonlySet<string>,
+): Promise<string[]> {
+  const found: string[] = [];
+  for (const dir of await componentDirectoriesOnDisk()) {
+    const entries = await readdir(dir).catch(() => [] as string[]);
+    for (const entry of entries) {
+      if (!entry.endsWith(suffix)) continue;
+      const fullPath = join(dir, entry);
+      if (!expectedPaths.has(fullPath)) found.push(fullPath);
+    }
+  }
+  return found.toSorted();
+}
+
+/** All component directories on disk, including experimental subdirectories. */
+async function componentDirectoriesOnDisk(): Promise<string[]> {
+  const result: string[] = [];
+  const topEntries = await readdir(COMPONENTS_SRC_ROOT).catch(() => [] as string[]);
+  for (const name of topEntries) {
+    if (name.startsWith('_')) continue;
+    if (name === 'icons') continue;
+    const fullPath = join(COMPONENTS_SRC_ROOT, name);
+    if (!(await isDirectory(fullPath))) continue;
+    if (name === 'experimental') {
+      const expEntries = await readdir(fullPath).catch(() => [] as string[]);
+      for (const subName of expEntries) {
+        if (subName.startsWith('_')) continue;
+        const subFull = join(fullPath, subName);
+        if (await isDirectory(subFull)) result.push(subFull);
+      }
+      continue;
+    }
+    result.push(fullPath);
+  }
+  return result;
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    const { stat } = await import('node:fs/promises');
+    const info = await stat(path);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------

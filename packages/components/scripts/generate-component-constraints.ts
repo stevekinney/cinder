@@ -205,10 +205,16 @@ function validatePredicate(predicate: unknown, context: string): string | null {
   const disc = presentDiscriminators[0]!;
   if (disc === 'equals') {
     const v = p['equals'];
-    if (typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') {
-      return `${context}: "equals" must be a string, number, or boolean`;
+    if (typeof v === 'string' || typeof v === 'boolean') return null;
+    if (typeof v === 'number') {
+      // `NaN`, `Infinity`, and `-Infinity` round-trip as `null` through
+      // `JSON.stringify`, breaking the serialized predicate. Reject them.
+      if (!Number.isFinite(v)) {
+        return `${context}: "equals" number must be finite (got ${v})`;
+      }
+      return null;
     }
-    return null;
+    return `${context}: "equals" must be a string, number, or boolean`;
   }
   if (disc === 'exists') {
     return p['exists'] === true ? null : `${context}: "exists" must be \`true\``;
@@ -299,6 +305,7 @@ type DriftIssue = {
 export async function checkConstraintsDrift(): Promise<DriftIssue[]> {
   const components = await discoverComponentDirectories();
   const issues: DriftIssue[] = [];
+  const expectedPaths = new Set<string>();
 
   for (const component of components) {
     const result = await processConstraintsFile(component.directory, component.name);
@@ -306,6 +313,7 @@ export async function checkConstraintsDrift(): Promise<DriftIssue[]> {
 
     const outputPath = join(component.directory, `${component.name}.constraints.json`);
     const filename = `${component.name}.constraints.json`;
+    expectedPaths.add(outputPath);
 
     if (!existsSync(outputPath)) {
       issues.push({ name: component.name, file: filename, reason: 'missing' });
@@ -315,6 +323,20 @@ export async function checkConstraintsDrift(): Promise<DriftIssue[]> {
     const onDisk = await Bun.file(outputPath).text();
     if (onDisk !== result.json) {
       issues.push({ name: component.name, file: filename, reason: 'stale' });
+    }
+  }
+
+  // Orphan detection: any committed `.constraints.json` without a source
+  // sidecar is reported as drift so the manifest can't keep advertising a
+  // stale artifact after the source `.constraints.ts` is removed.
+  for (const component of components) {
+    const orphanPath = join(component.directory, `${component.name}.constraints.json`);
+    if (existsSync(orphanPath) && !expectedPaths.has(orphanPath)) {
+      issues.push({
+        name: component.name,
+        file: `${component.name}.constraints.json`,
+        reason: 'stale',
+      });
     }
   }
 
