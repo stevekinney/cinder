@@ -1,71 +1,98 @@
 name: release
 
+# Changesets-driven release pipeline for the `cinder` npm package.
+#
+# On every push to `main`:
+#   - If unreleased changesets exist, the action opens (or updates) a
+#     "Version Packages" pull request that bumps `packages/components/package.json`
+#     and updates the changelog. Merging that PR re-triggers this workflow,
+#     which then publishes to npm with provenance.
+#   - If no changesets are pending, the workflow is a no-op.
+#
+# `workflow_dispatch` exists for manual dry-runs — see the `dry-run` input.
+
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run `changeset publish --dry-run` instead of publishing. Surfaces `npm notice provenance` in the logs without touching the registry.'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  verify:
+  release:
+    name: Version or publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.3.2
-
-      - name: Verify tag matches package.json version
-        run: bun run scripts/verify-release-version.ts
-
-  publish-npm:
-    needs: verify
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Configure npm for trusted publishing
-        shell: bash
-        run: |
-          echo "NPM_CONFIG_USERCONFIG=$HOME/.npmrc" >> "$GITHUB_ENV"
-          cat > "$HOME/.npmrc" <<'EOF'
-          registry=https://registry.npmjs.org/
-          always-auth=false
-          EOF
-
-      - name: Upgrade npm
-        run: npm install -g npm@11.5.1
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.3.2
+          always-auth: true
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Verify tag matches package.json version
-        run: bun run scripts/verify-release-version.ts
+      - name: Validate workspace
+        run: bun run validate
 
       - name: Build package
         run: bun run build
 
-      - name: Publish to npm
+      - name: Create Release Pull Request or publish to npm
+        if: github.event_name == 'push'
+        uses: changesets/action@v1
+        with:
+          version: bun run changeset:version
+          publish: bun run changeset:publish
+          setupGitUser: true
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
-        run: npm publish
+
+      - name: Publish (dry-run)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: bun run changeset:publish:dry
+
+      - name: Publish (real)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: bun run changeset:publish
