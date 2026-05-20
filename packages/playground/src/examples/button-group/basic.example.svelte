@@ -5,7 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, ButtonGroup } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { ButtonGroup } from 'cinder/button-group';
 </script>
 
 <ButtonGroup label="Document actions">

@@ -4,8 +4,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, CommandItem, CommandPalette } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { CommandItem } from 'cinder/command-item';
+  import { CommandPalette } from 'cinder/command-palette';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let lastSelected = $state('');

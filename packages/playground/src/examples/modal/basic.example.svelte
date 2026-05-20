@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, Modal } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Modal } from 'cinder/modal';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
 </script>

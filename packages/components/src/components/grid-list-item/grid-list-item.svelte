@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Tile within a grid-list that combines an image, title, subtitle, meta, and action slots and may link via href.
+   * @tag grid
+   * @tag tile
+   * @useWhen Rendering a single card cell inside a grid-list parent.
+   * @useWhen Turning the tile into an anchor by passing href.
+   * @avoidWhen Standing alone outside a grid-list — it inherits the grid layout context.
+   * @related grid-list
+   */
   export type { GridListItemProps } from './grid-list-item.types.ts';
 </script>
 

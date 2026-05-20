@@ -27,11 +27,12 @@ import { computeLineDiff } from '../../diff/line-diff.js';
 import { clearNormalizeCache, normalize, normalizeWithCache } from '../../pipeline/index.js';
 import { FIXTURES, generateModifiedDocument } from './generate-fixtures';
 
-// Skip performance tests in CI - they're benchmarks, not correctness tests.
-// CI runners have variable performance (2-10x slower than local) so absolute
-// timing thresholds don't work across environments.
-const isCI = process.env.CI === 'true' || process.env.CI === '1';
-const describeUnlessCI = isCI ? describe.skip : describe;
+// Skipped by default everywhere. These are wall-clock benchmarks that flake
+// on any contended machine (CI runners, busy laptops, parallel test runs).
+// Opt in explicitly with RUN_MARKDOWN_BENCHMARKS=1 — see performance.test.ts
+// for rationale.
+const runBenchmarks = process.env.RUN_MARKDOWN_BENCHMARKS === '1';
+const describeBenchmark = runBenchmarks ? describe : describe.skip;
 
 // Result storage for CI artifacts
 const results: Array<{
@@ -42,7 +43,7 @@ const results: Array<{
   passed: boolean;
 }> = [];
 
-describeUnlessCI('Diff Computation Performance', () => {
+describeBenchmark('Diff Computation Performance', () => {
   // Clear cache before each test to ensure clean measurements
   beforeEach(() => {
     clearNormalizeCache();

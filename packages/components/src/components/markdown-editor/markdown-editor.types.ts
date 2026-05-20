@@ -103,6 +103,21 @@ export type MarkdownEditorProps = Omit<
    * Useful for adding undo/redo or other leading actions.
    */
   toolbarLeading?: Snippet<[ToolbarContext]>;
+
+  /**
+   * Snapshot mode for visual regression testing.
+   *
+   * When `true`:
+   * - Applies `caret-color: transparent` and `user-select: none` to the editor
+   *   root via a `data-snapshot-mode` attribute, producing a stable visual
+   *   state (no blinking cursor, no selection highlights).
+   * - Blurs any focused element inside the component on mount so the initial
+   *   screenshot does not capture a focused ring or active caret.
+   *
+   * This is a purely visual / CSS concern. It does NOT affect editability,
+   * ProseMirror state, or any prop controlled by `readonly` / `mode`.
+   */
+  snapshotMode?: boolean;
 };
 
 /** Re-export EditorHandle type for convenience */

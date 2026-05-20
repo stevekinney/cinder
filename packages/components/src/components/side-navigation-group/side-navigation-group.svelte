@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Collapsible labelled bucket inside side-navigation that groups related side-navigation-item entries under a single heading.
+   * @tag navigation
+   * @tag grouping
+   * @useWhen Splitting a long side-navigation column into clearly named sections.
+   * @useWhen Letting users collapse rarely used groups to reduce visual noise in the sidebar.
+   * @avoidWhen Used outside a side-navigation ancestor — it expects that landmark for context.
+   * @avoidWhen Hosting a single flat list with no grouping — place side-navigation-item entries directly.
+   * @related side-navigation, side-navigation-item
+   */
   export type { SideNavigationGroupProps } from './side-navigation-group.types.ts';
 </script>
 

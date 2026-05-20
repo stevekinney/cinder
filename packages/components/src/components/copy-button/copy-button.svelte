@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category action
+   * @status stable
+   * @purpose Button that writes a string value to the clipboard and flips to a confirmation state for a short window after a successful copy.
+   * @tag action
+   * @tag clipboard
+   * @useWhen Offering one-click copy of a token, snippet, share link, or code sample.
+   * @useWhen Pairing with code-block so readers can grab the rendered source.
+   * @avoidWhen Triggering a generic non-clipboard action — use button instead.
+   * @avoidWhen Copying long-form rich content that needs format preservation — handle clipboard logic directly.
+   * @related button, code-block
+   */
   export type { CopyButtonProps } from './copy-button.types.ts';
 </script>
 

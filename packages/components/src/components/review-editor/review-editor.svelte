@@ -1,4 +1,18 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category domain
+   * @status domain-suite
+   * @purpose Markdown editor extended with inline review threads, anchored comments, and collaborative annotation state.
+   * @tag markdown
+   * @tag review
+   * @tag domain-suite
+   * @useWhen Building a document review experience that needs both a Markdown editor and anchored comment threads in one bundled surface.
+   * @useWhen Threading reviewer commentary against specific selections inside a long-form document.
+   * @avoidWhen Plain authoring with no review threads — markdown-editor is the lighter primitive.
+   * @avoidWhen Reviewing diffs between two documents rather than annotating one — use diff-viewer instead.
+   * @related markdown-editor
+   */
   export type { ReviewEditorProps } from './review-editor.types.ts';
 </script>
 

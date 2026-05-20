@@ -2,21 +2,33 @@
   "name": "@cinder/testing",
   "private": true,
   "type": "module",
+  "exports": {
+    "./fixture-schema": "./src/helpers/fixture-schema.ts"
+  },
   "scripts": {
     "install-browsers": "playwright install chromium",
     "install-browsers:ci": "playwright install --with-deps chromium",
     "report": "playwright show-report ./playwright-report",
-    "test": "bun run typecheck",
+    "test": "bun run typecheck && bun test",
+    "test:browser:update": "bun run scripts/update-snapshots.ts",
+    "test:browser:update:docker": "bun run scripts/update-snapshots-docker.ts",
     "test:playwright": "bun run scripts/start-server.ts",
     "test:playwright:headed": "bun run scripts/start-server.ts -- --headed",
     "test:playwright:ui": "bun run scripts/start-server.ts -- --ui",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "zod": "4.4.1"
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",
-    "@playwright/test": "^1.49.0",
+    "@playwright/test": "1.60.0",
     "@types/node": "^22.0.0",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "axe-core": "^4.10.0",
+    "pixelmatch": "7.1.0",
+    "pngjs": "7.0.0",
     "typescript": "^5.6.0"
   }
 }

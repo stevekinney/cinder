@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category action
+   * @status stable
+   * @purpose Primary interactive control for triggering actions or rendering an anchor styled as a button via href.
+   * @tag action
+   * @tag cta
+   * @useWhen Triggering a discrete action such as submit, save, or delete.
+   * @useWhen Rendering a link that should look and behave like a button by passing href.
+   * @avoidWhen Toggling a binary on or off state — use toggle instead.
+   * @avoidWhen Selecting one of a small fixed set of options — use segmented-control instead.
+   * @related button-group, copy-button
+   */
   export type { ButtonProps, ButtonSize, ButtonVariant } from './button.types.ts';
 </script>
 

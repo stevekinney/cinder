@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Row within a table that groups header or body cells and participates in row-selection state when configured.
+   * @tag table
+   * @tag row
+   * @useWhen Grouping table-cell or table-header-cell children into a single horizontal record.
+   * @useWhen Wiring per-row selection by passing the selection prop in a selectable table.
+   * @avoidWhen Standing alone outside a table — it requires the table section context.
+   * @related table-body, table-cell
+   */
   export type { TableRowProps, TableRowSelectionProps } from './table-row.types.ts';
 </script>
 

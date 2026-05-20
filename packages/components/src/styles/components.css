@@ -27,6 +27,7 @@
 @import '../components/data-list/data-list.css';
 @import '../components/description-list/description-list.css';
 @import '../components/diff-statistics/diff-statistics.css';
+@import '../components/divider/divider.css';
 @import '../components/drawer/drawer.css';
 @import '../components/dropdown/dropdown.css';
 @import '../components/empty-state/empty-state.css';

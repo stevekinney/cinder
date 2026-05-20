@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Alert } from '../../../../components/src/index.ts';
-
+  import { Alert } from 'cinder/alert';
   let dismissed = $state(false);
 </script>
 

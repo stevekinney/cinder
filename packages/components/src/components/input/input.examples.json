@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "input",
+  "import": "cinder/input",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic input",
+      "description": "Text input with label and bound value.",
+      "code": "<script lang=\"ts\">\n  import { Input } from 'cinder/input';\n  let name = $state('');\n</script>\n\n<Input id=\"name\" bind:value={name} label=\"Full name\" placeholder=\"Jane Smith\" />\n{#if name}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Hello, {name}!</p>\n{/if}\n"
+    },
+    {
+      "id": "sign-in",
+      "title": "Sign-in composition",
+      "description": "Composition of FormField + Input + Button with a top-of-form Alert auth-error region. Demonstrates the required autocomplete values and the assertive announcement pattern via role=\"alert\".",
+      "code": "<script lang=\"ts\">\n  import { Alert } from 'cinder/alert';\n  import { Button } from 'cinder/button';\n  import { FormField } from 'cinder/form-field';\n  import { Input } from 'cinder/input';\n  let email = $state('');\n  let password = $state('');\n  let authError = $state<string | undefined>(undefined);\n  let submitting = $state(false);\n\n  function handleSignIn() {\n    if (submitting) return;\n    // Clear any prior error so a re-submit re-announces by re-mounting the Alert\n    // rather than mutating its text (assistive tech announces on mount of role=\"alert\").\n    authError = undefined;\n    submitting = true;\n\n    // Static example: simulate an auth failure. A real implementation would\n    // POST { email, password } and redirect on success.\n    setTimeout(() => {\n      authError = 'Email or password is incorrect.';\n      submitting = false;\n    }, 600);\n  }\n</script>\n\n<form\n  novalidate\n  aria-labelledby=\"sign-in-heading\"\n  style=\"display: flex; flex-direction: column; gap: 1rem;\"\n  onsubmit={(event) => {\n    event.preventDefault();\n    handleSignIn();\n  }}\n>\n  <h2 id=\"sign-in-heading\">Sign in</h2>\n\n  <!--\n    Top-of-form auth-error region.\n    Alert's role=\"alert\" implies aria-live=\"assertive\" and aria-atomic=\"true\".\n    We intentionally do NOT add an explicit aria-live attribute (see alert.test.ts:\n    \"has role=alert on root element and does not set an explicit aria-live\").\n    Mounting the Alert in response to submit triggers the assertive announcement.\n  -->\n  {#if authError}\n    <Alert variant=\"error\">\n      {authError}\n    </Alert>\n  {/if}\n\n  <FormField id=\"sign-in-email\" label=\"Email\" required>\n    <!-- autocomplete=\"email\" — the identifier is an email address.\n         Use \"username\" instead when the field collects an opaque handle. -->\n    <Input\n      id=\"sign-in-email\"\n      type=\"email\"\n      bind:value={email}\n      autocomplete=\"email\"\n      required\n      placeholder=\"you@example.com\"\n    />\n  </FormField>\n\n  <FormField id=\"sign-in-password\" label=\"Password\" required>\n    <!-- autocomplete=\"current-password\" — required for password managers to\n         recognize this as a sign-in form and offer saved credentials. -->\n    <Input\n      id=\"sign-in-password\"\n      type=\"password\"\n      bind:value={password}\n      autocomplete=\"current-password\"\n      required\n    />\n  </FormField>\n\n  <Button type=\"submit\" variant=\"primary\" loading={submitting}>\n    {submitting ? 'Signing in…' : 'Sign in'}\n  </Button>\n</form>\n"
+    },
+    {
+      "id": "types",
+      "title": "Input types",
+      "description": "Text, email, password, search, date, tel, and url types.",
+      "code": "<script lang=\"ts\">\n  import { Input } from 'cinder/input';\n  let text = $state('');\n  let email = $state('');\n  let password = $state('');\n  let search = $state('');\n  let date = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Input id=\"t-text\" type=\"text\" bind:value={text} label=\"Text\" placeholder=\"Plain text\" />\n  <Input id=\"t-email\" type=\"email\" bind:value={email} label=\"Email\" placeholder=\"you@example.com\" />\n  <Input id=\"t-password\" type=\"password\" bind:value={password} label=\"Password\" />\n  <Input id=\"t-search\" type=\"search\" bind:value={search} label=\"Search\" placeholder=\"Search…\" />\n  <Input id=\"t-date\" type=\"date\" bind:value={date} label=\"Date\" />\n</div>\n"
+    },
+    {
+      "id": "with-error",
+      "title": "Input with error",
+      "description": "Error message wired via aria-invalid and aria-describedby.",
+      "code": "<script lang=\"ts\">\n  import { Input } from 'cinder/input';\n  let email = $state('not-an-email');\n  const hasError = $derived(!email.includes('@'));\n</script>\n\n<Input\n  id=\"email\"\n  type=\"email\"\n  bind:value={email}\n  label=\"Email address\"\n  description=\"We'll never share your email.\"\n  {...hasError ? { error: 'Enter a valid email address.' } : {}}\n/>\n"
+    }
+  ]
+}

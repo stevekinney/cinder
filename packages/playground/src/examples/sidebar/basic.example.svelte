@@ -5,15 +5,12 @@
 </script>
 
 <script lang="ts">
-  import {
-    Button,
-    NavigationItem,
-    Sidebar,
-    SideNavigation,
-    SideNavigationGroup,
-    SideNavigationItem,
-  } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { NavigationItem } from 'cinder/navigation-item';
+  import { SideNavigation } from 'cinder/side-navigation';
+  import { SideNavigationGroup } from 'cinder/side-navigation-group';
+  import { SideNavigationItem } from 'cinder/side-navigation-item';
+  import { Sidebar } from 'cinder/sidebar';
   let collapsed = $state(false);
 </script>
 

@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first sheet patterns.
+   * @tag overlay
+   * @tag dialog
+   * @useWhen Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces.
+   * @useWhen Showing a contextual surface that should feel anchored to the screen edge rather than centered like a modal.
+   * @avoidWhen Interrupting the user with a centered task or confirmation — use modal instead.
+   * @avoidWhen Showing supplementary side navigation or filters — use drawer or popover.
+   * @related modal, drawer, popover
+   */
   export type { SheetProps } from './sheet.types.ts';
 </script>
 

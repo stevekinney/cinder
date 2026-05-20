@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Spinner } from '../../../../components/src/index.ts';
+  import { Spinner } from 'cinder/spinner';
 </script>
 
 <div class="example-preview-row" style="align-items: center;">

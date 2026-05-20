@@ -5,7 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, VisuallyHidden } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { VisuallyHidden } from 'cinder/visually-hidden';
 </script>
 
 <Button>

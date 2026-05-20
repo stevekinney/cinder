@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Root container that wires a trigger to a popover-backed menu and coordinates open state, keyboard navigation, and CSS Anchor Positioning for descendant menu parts.
+   * @tag overlay
+   * @tag menu
+   * @useWhen Composing a menu of actions or links revealed by clicking a button trigger.
+   * @useWhen Building a custom dropdown layout from dropdown-trigger, dropdown-menu, dropdown-item, dropdown-label, and dropdown-separator parts.
+   * @avoidWhen Selecting a value from a list of options — use select or combobox instead.
+   * @avoidWhen Showing supplementary content rather than a menu of choices — use popover.
+   * @related dropdown-trigger, dropdown-menu, dropdown-item, dropdown-label, dropdown-separator
+   */
   export {
     DROPDOWN_CONTEXT,
     DROPDOWN_REGISTER,

@@ -75,4 +75,32 @@ describe('renderShell', () => {
     expect(html).not.toContain('</script><script>alert(1)</script>');
     expect(html).toContain('id="cinder-initial"');
   });
+
+  it('registers cinder.reset layer before /styles/index.css so component CSS wins', () => {
+    // Regression: when the universal `* { padding: 0 }` reset was unlayered
+    // it beat every cinder.components layered rule, leaving SegmentedControl,
+    // NumberInput, Card, Accordion all rendered without padding in the shell.
+    // The fix declares the layer order in an inline <style> BEFORE the
+    // stylesheet link so cinder.reset is reserved at the bottom of the
+    // cascade. If anyone reorders these elements this test fails loudly.
+    const html = renderShell('button', ['button']);
+    const layerDeclaration =
+      '@layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities';
+    const stylesheetLink = '<link rel="stylesheet" href="/styles/index.css"';
+    const layerIndex = html.indexOf(layerDeclaration);
+    const linkIndex = html.indexOf(stylesheetLink);
+    expect(layerIndex).toBeGreaterThan(-1);
+    expect(linkIndex).toBeGreaterThan(-1);
+    expect(layerIndex).toBeLessThan(linkIndex);
+  });
+
+  it('wraps the universal reset in the cinder.reset layer', () => {
+    // Catches accidental un-layering of the reset block.
+    const html = renderShell('button', ['button']);
+    const layerBlockMatch =
+      /@layer cinder\.reset\s*\{[^}]*\*,\s*\*::before,\s*\*::after\s*\{[^}]*padding:\s*0/i.exec(
+        html,
+      );
+    expect(layerBlockMatch).not.toBeNull();
+  });
 });

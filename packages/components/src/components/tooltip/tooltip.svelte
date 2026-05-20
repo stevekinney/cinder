@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Hover-and-focus triggered descriptive hint anchored to a focusable child element, wired through aria-describedby.
+   * @tag overlay
+   * @tag hint
+   * @useWhen Showing a short non-interactive label or description for an icon-only button or terse control.
+   * @useWhen Supplementing a control with a hint that should appear on hover or keyboard focus and dismiss on Escape.
+   * @avoidWhen Hosting interactive content or focusable controls — use popover instead, since tooltip content is not reachable.
+   * @avoidWhen Communicating the only accessible name for a control — use aria-label or visible text rather than tooltip text.
+   * @related popover
+   */
   export type { TooltipPlacement, TooltipProps } from './tooltip.types.ts';
 </script>
 

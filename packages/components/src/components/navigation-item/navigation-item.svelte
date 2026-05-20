@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category navigation
+   * @status stable
+   * @purpose Single wayfinding item that renders as an anchor when given href or as a button when given onclick, with active-state aria-current.
+   * @tag navigation
+   * @tag link
+   * @useWhen Rendering one entry in a navigation bar, sidebar, or side-navigation group.
+   * @useWhen Switching the active view or section while signalling current location via aria-current.
+   * @avoidWhen Showing a hierarchical trail of ancestors — use breadcrumbs instead.
+   * @avoidWhen Triggering a generic action unrelated to navigation — use button instead.
+   * @related navigation-bar, side-navigation-item, breadcrumbs, tab
+   */
   export type { NavigationItemProps } from './navigation-item.types.ts';
 </script>
 
@@ -20,9 +33,16 @@
       event.preventDefault();
       return;
     }
-    if (!isLink) {
-      (props as { onclick: (event: MouseEvent) => void }).onclick(event);
+    if (isLink) {
+      // Link arm: forward to consumer onclick if provided. The consumer
+      // decides whether to preventDefault — useful for SPA navigation that
+      // wants modified clicks (cmd/ctrl/shift/alt, middle-click) to fall
+      // through to native browser behavior.
+      const linkOnclick = (props as LinkArm).onclick;
+      linkOnclick?.(event);
+      return;
     }
+    (props as { onclick: (event: MouseEvent) => void }).onclick(event);
   }
 </script>
 

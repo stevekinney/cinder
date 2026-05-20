@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Modal-backed confirmation prompt with cancel and confirm actions, including a destructive variant for irreversible operations.
+   * @tag overlay
+   * @tag dialog
+   * @useWhen Requiring an explicit yes/no acknowledgement before performing a destructive or irreversible action.
+   * @useWhen Asking the user to confirm a discrete decision with two clear outcomes.
+   * @avoidWhen Collecting structured input or multiple fields — compose a modal with form controls instead.
+   * @avoidWhen Announcing a non-blocking result — use toast-region or banner.
+   * @related modal, drawer, sheet
+   */
   export type { ConfirmDialogProps } from './confirm-dialog.types.ts';
 </script>
 

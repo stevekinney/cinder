@@ -6,8 +6,9 @@
 </script>
 
 <script lang="ts">
-  import { FormField, FormSection, Input } from '../../../../components/src/index.ts';
-
+  import { FormField } from 'cinder/form-field';
+  import { FormSection } from 'cinder/form-section';
+  import { Input } from 'cinder/input';
   let firstName = $state('');
   let lastName = $state('');
   let email = $state('');

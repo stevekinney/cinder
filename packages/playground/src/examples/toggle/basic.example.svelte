@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Toggle } from '../../../../components/src/index.ts';
-
+  import { Toggle } from 'cinder/toggle';
   let emailNotifications = $state(false);
 </script>
 

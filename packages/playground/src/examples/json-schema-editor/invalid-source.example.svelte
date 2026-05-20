@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { JsonSchemaEditor } from '../../../../components/src/index.ts';
-
+  import { JsonSchemaEditor } from 'cinder/json-schema-editor';
   const malformed = '{ "type": "not-a-real-type" }';
 </script>
 

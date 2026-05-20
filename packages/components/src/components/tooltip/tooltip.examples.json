@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "tooltip",
+  "import": "cinder/tooltip",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic tooltip",
+      "description": "Hover or focus the trigger to show the tooltip text.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Tooltip } from 'cinder/tooltip';\n</script>\n\n<Tooltip text=\"This is a helpful explanation.\">\n  <Button variant=\"secondary\">Hover me</Button>\n</Tooltip>\n"
+    },
+    {
+      "id": "placements",
+      "title": "Tooltip placements",
+      "description": "Top, right, bottom, and left placement options.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Tooltip } from 'cinder/tooltip';\n</script>\n\n<div class=\"example-preview-row\" style=\"padding: 1rem;\">\n  <Tooltip text=\"Appears above\" placement=\"top\">\n    <Button variant=\"secondary\">Top</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears to the right\" placement=\"right\">\n    <Button variant=\"secondary\">Right</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears below\" placement=\"bottom\">\n    <Button variant=\"secondary\">Bottom</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears to the left\" placement=\"left\">\n    <Button variant=\"secondary\">Left</Button>\n  </Tooltip>\n</div>\n"
+    }
+  ]
+}

@@ -1,20 +1,26 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes three subpaths:
+ * `src/components/`. Each component contributes up to five subpaths:
  *
- *   ./<name>            → component (types/svelte/node/default conditions)
- *   ./<name>/schema     → schema module (svelte + types only)
- *   ./<name>/variables  → variables module (svelte + types only)
+ *   ./<name>             → component (types/svelte/node/default conditions)
+ *   ./<name>/schema      → schema module (types + svelte only)
+ *   ./<name>/variables   → variables module (types + svelte only)
+ *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
+ *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
  * Experimental components export under `./experimental/<name>` etc.
  *
- * Condition ordering follows TypeScript `nodenext` requirements: `types` MUST
- * be first within any conditional object, followed by `svelte` (source for
- * Svelte-aware tooling), `node` (per-component SSR build), and `default`
- * (per-component browser ESM build) last.
+ * Condition ordering for component subpaths follows TypeScript `nodenext`
+ * requirements: `types` MUST be first within any conditional object, followed
+ * by `svelte` (source for Svelte-aware tooling), `node` (per-component SSR
+ * build), and `default` (per-component browser ESM build) last.
  *
- * Reserved (non-component) entries are preserved verbatim from a hard-coded
- * allowlist snapshotted from today's manifest:
+ * Additionally, a package-level `./manifest` entry is emitted pointing at
+ * `./components.json` with `import`/`default` conditions only (no `svelte` or
+ * `types` — JSON isn't Svelte source and TS resolves JSON via
+ * `resolveJsonModule`).
+ *
+ * Reserved (non-component) entries are preserved verbatim:
  *
  *   .              → root entry (also rewritten with the four-condition shape)
  *   ./styles       → public styles entry
@@ -28,15 +34,32 @@
  * Run with `bun run exports:check` to verify there is no drift — exits non-zero on drift.
  */
 
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 
+export type { ComponentDiscovery } from './lib/discover-components.ts';
+
+/**
+ * Back-compat alias used by AI-agent-legibility generators that were authored
+ * before `discoverComponents` was extracted to `lib/`. New callers should
+ * import directly from `./lib/discover-components.ts`.
+ */
+export const discoverDirectoryComponents = discoverComponents;
+
 export type ExportEntry = {
   types?: string;
   svelte?: string;
+  import?: string;
   node?: string;
   default?: string;
+};
+
+/** JSON-only export entry: no `svelte` or `types` conditions. */
+type JsonExportEntry = {
+  import: string;
+  default: string;
 };
 
 const STYLES_KEY = './styles';
@@ -103,8 +126,27 @@ export function computeRootExport(): ExportEntry {
   });
 }
 
-export function computeExports(components: ComponentDiscovery[]): Record<string, ExportEntry> {
-  const out: Record<string, ExportEntry> = {};
+/** Default package root used when `computeExports` is called without one. */
+const DEFAULT_PACKAGE_ROOT = join(import.meta.dir, '..');
+
+/** Emit the `./manifest` JSON entry pointing at `./components.json`. */
+function manifestExport(): JsonExportEntry {
+  return { import: './components.json', default: './components.json' };
+}
+
+/** Build a JSON-only export entry for a per-component sidecar file. */
+function jsonSidecarExport(filePath: string): JsonExportEntry {
+  return { import: filePath, default: filePath };
+}
+
+export function computeExports(
+  components: ComponentDiscovery[],
+  packageRoot: string = DEFAULT_PACKAGE_ROOT,
+): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+
+  // Package-level manifest entry (always present).
+  out['./manifest'] = manifestExport();
 
   for (const { name, isExperimental } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
@@ -141,6 +183,32 @@ export function computeExports(components: ComponentDiscovery[]): Record<string,
       types: `${distDir}/${name}.variables.d.ts`,
       svelte: `${srcDir}/${name}.variables.ts`,
     });
+
+    // JSON sidecar subpaths — emitted only when the file exists on disk.
+    // Uses import+default conditions only (no svelte/types).
+    const examplesJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.examples.json`,
+    );
+    if (existsSync(examplesJsonPath)) {
+      const relPath = `${srcDir}/${name}.examples.json`;
+      out[`${prefix}/examples`] = jsonSidecarExport(relPath);
+    }
+
+    const constraintsJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.constraints.json`,
+    );
+    if (existsSync(constraintsJsonPath)) {
+      const relPath = `${srcDir}/${name}.constraints.json`;
+      out[`${prefix}/constraints`] = jsonSidecarExport(relPath);
+    }
   }
 
   return out;
@@ -165,7 +233,7 @@ export function assertNoForbiddenExportKeys(
 }
 
 interface PackageJson {
-  exports: Record<string, ExportEntry | string>;
+  exports: Record<string, ExportEntry | JsonExportEntry | string>;
   [key: string]: unknown;
 }
 
@@ -249,9 +317,9 @@ async function main(): Promise<void> {
   //   1. `.` (root, four-condition shape)
   //   2. `./package.json` self-export
   //   3. `./styles` (preserved verbatim)
-  //   4. computed component subpaths
+  //   4. computed component subpaths (incl. /examples, /constraints when present)
   //   5. preserved legacy flat component subpaths (partial-migration window)
-  const next: Record<string, ExportEntry | string> = {};
+  const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
   next[ROOT_KEY] = rootExport;
   next[PACKAGE_JSON_KEY] = './package.json';
   if (packageJson.exports[STYLES_KEY]) next[STYLES_KEY] = packageJson.exports[STYLES_KEY];
@@ -261,11 +329,18 @@ async function main(): Promise<void> {
   const migratedNames = new Set(
     components.map((c) => (c.isExperimental ? `./experimental/${c.name}` : `./${c.name}`)),
   );
-  const legacy: Record<string, ExportEntry | string> = {};
+  const legacy: Record<string, ExportEntry | JsonExportEntry | string> = {};
   for (const [key, entry] of Object.entries(packageJson.exports)) {
     if (RESERVED_KEYS.has(key)) continue;
     if (migratedNames.has(key)) continue;
-    if (key.endsWith('/schema') || key.endsWith('/variables')) continue;
+    if (
+      key.endsWith('/schema') ||
+      key.endsWith('/variables') ||
+      key.endsWith('/examples') ||
+      key.endsWith('/constraints')
+    )
+      continue;
+    if (key === './manifest') continue;
     const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
     if (flatPattern.test(key)) legacy[key] = entry;
   }

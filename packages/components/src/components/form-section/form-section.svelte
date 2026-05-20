@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Sectioning wrapper that groups related form fields under a heading or legend and applies a responsive column layout.
+   * @tag form
+   * @tag layout
+   * @useWhen Splitting a long form into labelled segments such as "Account" or "Billing".
+   * @useWhen Rendering a fieldset with a legend for a set of tightly related inputs.
+   * @avoidWhen Wrapping a single control with its label and error — use form-field instead.
+   * @related form-field, section-heading
+   */
   import { DEV } from 'esm-env';
 
   const headingTags: Record<FormSectionHeadingLevel, string> = {

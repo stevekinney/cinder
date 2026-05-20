@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Pagination } from '../../../../components/src/index.ts';
-
+  import { Pagination } from 'cinder/pagination';
   let currentPage = $state(1);
 </script>
 

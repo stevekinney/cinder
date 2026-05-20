@@ -4,15 +4,12 @@
 </script>
 
 <script lang="ts">
-  import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHeader,
-    TableHeaderCell,
-    TableRow,
-  } from '../../../../components/src/index.ts';
-
+  import { Table } from 'cinder/table';
+  import { TableBody } from 'cinder/table-body';
+  import { TableCell } from 'cinder/table-cell';
+  import { TableHeader } from 'cinder/table-header';
+  import { TableHeaderCell } from 'cinder/table-header-cell';
+  import { TableRow } from 'cinder/table-row';
   const people = [
     { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
     { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },

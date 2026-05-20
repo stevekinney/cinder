@@ -1,0 +1,6 @@
+{
+  "$schema": "./determinism-config.schema.json",
+  "componentSlugs": null,
+  "exclusions": [],
+  "rationale": "Default: run determinism gate against the full manifest. To reduce scope, set componentSlugs to an array of allowed slugs and document the reduction in docs/visual-regression/phase-0-inventory.md."
+}

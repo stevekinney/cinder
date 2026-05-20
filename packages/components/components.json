@@ -1,0 +1,2624 @@
+{
+  "$schema": "./src/schemas/manifest.schema.json",
+  "manifestVersion": 1,
+  "package": {
+    "name": "cinder",
+    "version": "0.0.1",
+    "framework": "svelte",
+    "frameworkVersionRange": ">=5.55.0 <5.56.0",
+    "classPrefix": "cinder-",
+    "cssVarPrefix": "--cinder-",
+    "tokenNamespaces": ["color", "space", "radius", "ring", "type", "motion", "shadow"],
+    "stylesEntry": "cinder/styles",
+    "schemaDialect": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "categories": {
+    "action": {
+      "label": "Actions",
+      "description": "Controls that trigger operations, submit data, or navigate."
+    },
+    "overlay": {
+      "label": "Overlays",
+      "description": "Floating surfaces that layer above page content and require user dismissal."
+    },
+    "form": {
+      "label": "Forms",
+      "description": "Input controls and layout primitives for collecting structured user data."
+    },
+    "feedback": {
+      "label": "Feedback",
+      "description": "Non-interactive indicators that communicate status, progress, or results."
+    },
+    "navigation": {
+      "label": "Navigation",
+      "description": "Wayfinding controls that move users between views, sections, or steps."
+    },
+    "data-display": {
+      "label": "Data Display",
+      "description": "Read-only presentational components for structured data and content."
+    },
+    "layout": {
+      "label": "Layout",
+      "description": "Structural primitives that control spacing, containment, and composition."
+    },
+    "typography": {
+      "label": "Typography",
+      "description": "Text-rendering components that enforce hierarchy and typographic conventions."
+    },
+    "domain": {
+      "label": "Domain",
+      "description": "Application-specific components that encode product-level business concepts."
+    }
+  },
+  "statusLevels": {
+    "stable": "Public API under semver protection; breaking changes require a major version bump.",
+    "beta": "API is near-final but may have breaking changes in minor versions before promotion.",
+    "alpha": "Experimental; no stability guarantee and subject to removal or significant redesign.",
+    "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
+  },
+  "overlapFamilies": {
+    "overlay": ["modal", "drawer", "sheet", "popover"],
+    "notice": ["banner", "alert", "callout"],
+    "selection": ["toggle", "checkbox", "segmented-control"],
+    "hover": ["tooltip", "popover"],
+    "tabs": ["tabs", "segmented-control"]
+  },
+  "components": [
+    {
+      "name": "Accordion",
+      "id": "accordion",
+      "import": "cinder/accordion",
+      "exportName": "Accordion",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Composite root that coordinates a stack of collapsible accordion-item panels with single or multiple expansion.",
+      "tags": ["disclosure", "collapsible"],
+      "useWhen": [
+        "Progressively disclosing several sections of content that share a parent heading.",
+        "Letting the consumer expand one or multiple panels at once via the multiple prop."
+      ],
+      "avoidWhen": [
+        "Switching between mutually exclusive views of the same region — use tabs instead.",
+        "Hiding a single optional region — use a plain disclosure or details element."
+      ],
+      "related": ["accordion-item", "tabs", "tree"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/accordion/schema",
+        "variables": "cinder/accordion/variables",
+        "examples": "cinder/accordion/examples"
+      }
+    },
+    {
+      "name": "AccordionItem",
+      "id": "accordion-item",
+      "import": "cinder/accordion-item",
+      "exportName": "AccordionItem",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Collapsible panel within an accordion that toggles its content visibility under a heading button.",
+      "tags": ["disclosure", "collapsible"],
+      "useWhen": [
+        "Rendering one expandable section inside an accordion parent.",
+        "Disabling a single section while leaving siblings interactive via the disabled prop."
+      ],
+      "avoidWhen": [
+        "Standing alone outside an accordion — it requires the accordion context to function."
+      ],
+      "related": ["accordion"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/accordion-item/schema",
+        "variables": "cinder/accordion-item/variables"
+      }
+    },
+    {
+      "name": "Alert",
+      "id": "alert",
+      "import": "cinder/alert",
+      "exportName": "Alert",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or region.",
+      "tags": ["feedback", "notice"],
+      "useWhen": [
+        "Surfacing the result of a just-completed action such as a save failure or success.",
+        "Calling out a transient condition the user must notice immediately within a specific region."
+      ],
+      "avoidWhen": [
+        "Communicating a page- or app-wide notice that persists across views — use a banner instead.",
+        "Providing supplemental commentary or guidance inline with content — use a callout instead."
+      ],
+      "related": ["banner", "callout", "toast-region"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/alert/schema",
+        "variables": "cinder/alert/variables",
+        "examples": "cinder/alert/examples"
+      }
+    },
+    {
+      "name": "Avatar",
+      "id": "avatar",
+      "import": "cinder/avatar",
+      "exportName": "Avatar",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Profile graphic that renders a user image with automatic initials fallback when the source is missing or fails to load.",
+      "tags": ["identity", "image"],
+      "useWhen": [
+        "Representing a person or account next to their name or activity.",
+        "Displaying initials when no avatar image is available."
+      ],
+      "avoidWhen": ["Showing a small status or count indicator — use badge or status-dot instead."],
+      "related": ["badge", "status-dot", "image"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/avatar/schema",
+        "variables": "cinder/avatar/variables",
+        "examples": "cinder/avatar/examples"
+      }
+    },
+    {
+      "name": "Badge",
+      "id": "badge",
+      "import": "cinder/badge",
+      "exportName": "Badge",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Compact non-interactive label that annotates an adjacent element with a short status, count, or category.",
+      "tags": ["label", "indicator"],
+      "useWhen": [
+        "Annotating a value with a short status word like \"new\" or \"beta\".",
+        "Displaying a numeric count next to an icon or title."
+      ],
+      "avoidWhen": [
+        "The label must be interactive or removable — use chip instead.",
+        "Showing only a colored dot for presence — use status-dot instead."
+      ],
+      "related": ["chip", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/badge/schema",
+        "variables": "cinder/badge/variables",
+        "examples": "cinder/badge/examples"
+      }
+    },
+    {
+      "name": "Banner",
+      "id": "banner",
+      "import": "cinder/banner",
+      "exportName": "Banner",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Page-level dismissible region landmark that surfaces a persistent informational, success, warning, or danger message.",
+      "tags": ["feedback", "notice"],
+      "useWhen": [
+        "Communicating a persistent page-level status the user can dismiss, such as a maintenance window or trial expiry.",
+        "Pinning a non-urgent message above page content that should remain readable until acknowledged."
+      ],
+      "avoidWhen": [
+        "Announcing an urgent, time-sensitive message — use alert so assistive tech reads it immediately.",
+        "Highlighting an inline aside next to related prose — use callout instead."
+      ],
+      "related": ["alert", "callout", "toast-region"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/banner/schema",
+        "variables": "cinder/banner/variables"
+      }
+    },
+    {
+      "name": "Breadcrumbs",
+      "id": "breadcrumbs",
+      "import": "cinder/breadcrumbs",
+      "exportName": "Breadcrumbs",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Hierarchical wayfinding trail showing the ancestor path of the current page with the final entry marked as aria-current.",
+      "tags": ["navigation", "wayfinding"],
+      "useWhen": [
+        "Surfacing where the user sits inside a deep, nested hierarchy.",
+        "Letting the user jump back to any ancestor view in one click."
+      ],
+      "avoidWhen": [
+        "Switching between sibling sections at the same level — use navigation-bar or tabs.",
+        "Showing an ordered task progression — use steps instead."
+      ],
+      "related": ["navigation-bar", "side-navigation", "steps"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/breadcrumbs/schema",
+        "variables": "cinder/breadcrumbs/variables",
+        "examples": "cinder/breadcrumbs/examples"
+      }
+    },
+    {
+      "name": "Button",
+      "id": "button",
+      "import": "cinder/button",
+      "exportName": "Button",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Primary interactive control for triggering actions or rendering an anchor styled as a button via href.",
+      "tags": ["action", "cta"],
+      "useWhen": [
+        "Triggering a discrete action such as submit, save, or delete.",
+        "Rendering a link that should look and behave like a button by passing href."
+      ],
+      "avoidWhen": [
+        "Toggling a binary on or off state — use toggle instead.",
+        "Selecting one of a small fixed set of options — use segmented-control instead."
+      ],
+      "related": ["button-group", "copy-button"],
+      "hasConstraints": true,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/button/schema",
+        "variables": "cinder/button/variables",
+        "examples": "cinder/button/examples",
+        "constraints": "cinder/button/constraints"
+      }
+    },
+    {
+      "name": "ButtonGroup",
+      "id": "button-group",
+      "import": "cinder/button-group",
+      "exportName": "ButtonGroup",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Visual and semantic grouping of related buttons that share a single accessible label and present as one connected control.",
+      "tags": ["action", "grouping"],
+      "useWhen": [
+        "Clustering related actions such as align-left/center/right that read as a single toolset.",
+        "Visually joining multiple buttons into a single segmented bar without implying selection."
+      ],
+      "avoidWhen": [
+        "Selecting exactly one option from a fixed set — use segmented-control instead.",
+        "Rendering a single button — use button on its own."
+      ],
+      "related": ["button", "segmented-control"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/button-group/schema",
+        "variables": "cinder/button-group/variables",
+        "examples": "cinder/button-group/examples"
+      }
+    },
+    {
+      "name": "Callout",
+      "id": "callout",
+      "import": "cinder/callout",
+      "exportName": "Callout",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Inline aside that highlights supporting commentary alongside body content without claiming live-region urgency.",
+      "tags": ["feedback", "notice"],
+      "useWhen": [
+        "Drawing attention to tangential information nested inside prose, documentation, or article content.",
+        "Calling out a tip, note, or caveat that belongs next to the content it qualifies."
+      ],
+      "avoidWhen": [
+        "Announcing a transient or urgent status — use alert or banner instead.",
+        "Communicating a page-wide system message — use banner so it reads as a landmark region."
+      ],
+      "related": ["alert", "banner"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/callout/schema",
+        "variables": "cinder/callout/variables"
+      }
+    },
+    {
+      "name": "Card",
+      "id": "card",
+      "import": "cinder/card",
+      "exportName": "Card",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Surface container that groups related content with optional header, title, description, and footer regions.",
+      "tags": ["layout", "container"],
+      "useWhen": [
+        "Grouping a self-contained unit of content such as a summary, preview, or settings panel.",
+        "Composing a list of comparable items where each needs its own framed region."
+      ],
+      "avoidWhen": [
+        "Rendering a bare visual surface without slotted regions — use surface instead.",
+        "Presenting a single key metric — use stat or stat-group instead."
+      ],
+      "related": ["surface", "stat", "stacked-list-item", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/card/schema",
+        "variables": "cinder/card/variables",
+        "examples": "cinder/card/examples"
+      }
+    },
+    {
+      "name": "Chat",
+      "id": "chat",
+      "import": "cinder/chat",
+      "exportName": "Chat",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Opinionated conversation surface bundling message list, composer, attachments, and scroll affordances for AI or support transcripts.",
+      "tags": ["chat", "conversation", "domain-suite"],
+      "useWhen": [
+        "Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.",
+        "Building an AI assistant or support thread where conversation state is modeled via the conversationalist package."
+      ],
+      "avoidWhen": [
+        "Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.",
+        "The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit."
+      ],
+      "related": ["markdown-editor"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/chat/schema",
+        "variables": "cinder/chat/variables",
+        "examples": "cinder/chat/examples"
+      }
+    },
+    {
+      "name": "Checkbox",
+      "id": "checkbox",
+      "import": "cinder/checkbox",
+      "exportName": "Checkbox",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Binary or tri-state selection control with bindable checked and indeterminate state for forms and lists.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Selecting zero or more independent options from a list.",
+        "Representing a parent state that aggregates child selections via indeterminate."
+      ],
+      "avoidWhen": [
+        "Flipping a single setting on or off with immediate effect — use toggle instead.",
+        "Picking exactly one option from a small fixed set — use radio or segmented-control instead."
+      ],
+      "related": ["checkbox-group", "radio", "toggle", "segmented-control"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/checkbox/schema",
+        "variables": "cinder/checkbox/variables",
+        "examples": "cinder/checkbox/examples"
+      }
+    },
+    {
+      "name": "CheckboxGroup",
+      "id": "checkbox-group",
+      "import": "cinder/checkbox-group",
+      "exportName": "CheckboxGroup",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Fieldset wrapper that groups independent checkboxes under a shared legend, description, and group-level error.",
+      "tags": ["form", "group"],
+      "useWhen": [
+        "Presenting several unrelated checkboxes that share a common heading or validation message.",
+        "Cascading a disabled state to every child checkbox via native fieldset propagation."
+      ],
+      "avoidWhen": ["Picking exactly one option from a fixed set — use radio-group instead."],
+      "related": ["checkbox", "radio-group", "form-field"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/checkbox-group/schema",
+        "variables": "cinder/checkbox-group/variables"
+      }
+    },
+    {
+      "name": "Chip",
+      "id": "chip",
+      "import": "cinder/chip",
+      "exportName": "Chip",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Compact pill that displays a value and optionally supports removal or toggle interactions via its mode prop.",
+      "tags": ["tag", "filter"],
+      "useWhen": [
+        "Representing applied filters, selected entities, or tags the user can remove.",
+        "Offering a small toggleable option inside a group of choices."
+      ],
+      "avoidWhen": [
+        "The label is purely decorative and non-interactive — use badge instead.",
+        "Picking one of a small fixed set — use segmented-control instead."
+      ],
+      "related": ["badge", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/chip/schema",
+        "variables": "cinder/chip/variables",
+        "examples": "cinder/chip/examples"
+      }
+    },
+    {
+      "name": "CodeBlock",
+      "id": "code-block",
+      "import": "cinder/code-block",
+      "exportName": "CodeBlock",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.",
+      "tags": ["code", "snippet"],
+      "useWhen": [
+        "Displaying a multi-line code sample or terminal transcript inside documentation or chat.",
+        "Letting the reader copy a snippet to the clipboard via the copyable prop."
+      ],
+      "avoidWhen": [
+        "Annotating a single inline keystroke or shortcut — use kbd instead.",
+        "Rendering rich prose that happens to include code — embed it in markdown instead."
+      ],
+      "related": ["kbd", "copy-button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/code-block/schema",
+        "variables": "cinder/code-block/variables",
+        "examples": "cinder/code-block/examples"
+      }
+    },
+    {
+      "name": "ColorPicker",
+      "id": "color-picker",
+      "import": "cinder/color-picker",
+      "exportName": "ColorPicker",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Interactive saturation, hue, and alpha control for picking an arbitrary color and emitting a normalized hex value.",
+      "tags": ["form", "color"],
+      "useWhen": [
+        "Letting users pick any color from the full spectrum with optional alpha.",
+        "Composing a custom color with a fallback palette of preset swatches."
+      ],
+      "avoidWhen": [
+        "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
+      ],
+      "related": ["color-swatch-picker", "input"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/color-picker/schema",
+        "variables": "cinder/color-picker/variables"
+      }
+    },
+    {
+      "name": "ColorSwatchPicker",
+      "id": "color-swatch-picker",
+      "import": "cinder/color-swatch-picker",
+      "exportName": "ColorSwatchPicker",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Keyboard-navigable listbox of preset color swatches that constrains selection to a curated palette.",
+      "tags": ["form", "color"],
+      "useWhen": [
+        "Restricting color choice to a fixed brand or theme palette.",
+        "Pairing with color-picker as a shortcut for common values."
+      ],
+      "avoidWhen": [
+        "Letting users author arbitrary colors across the spectrum — use color-picker instead."
+      ],
+      "related": ["color-picker"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/color-swatch-picker/schema",
+        "variables": "cinder/color-swatch-picker/variables"
+      }
+    },
+    {
+      "name": "Combobox",
+      "id": "combobox",
+      "import": "cinder/combobox",
+      "exportName": "Combobox",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Single-select input that filters a fixed option list as the user types, combining free-text search with constrained values.",
+      "tags": ["form", "autocomplete"],
+      "useWhen": [
+        "Choosing one value from a long list where typing is faster than scrolling.",
+        "Letting users narrow options by substring while still requiring a constrained selection."
+      ],
+      "avoidWhen": [
+        "Picking from a short fixed list with no need to filter — use select instead.",
+        "Querying remote data or accepting free-text submissions — use search-field instead."
+      ],
+      "related": ["select", "search-field", "dropdown"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/combobox/schema",
+        "variables": "cinder/combobox/variables",
+        "examples": "cinder/combobox/examples"
+      }
+    },
+    {
+      "name": "CommandItem",
+      "id": "command-item",
+      "import": "cinder/command-item",
+      "exportName": "CommandItem",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Single selectable row inside a command-palette that registers itself with the parent and invokes its onselect handler when chosen.",
+      "tags": ["action", "command"],
+      "useWhen": [
+        "Declaring an individual command, action, or result row inside a command-palette.",
+        "Composing a custom palette layout via children rather than the items prop."
+      ],
+      "avoidWhen": [
+        "Used outside a command-palette ancestor — the component throws at construction.",
+        "Rendering a generic dropdown choice — use dropdown-item instead."
+      ],
+      "related": ["command-palette", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/command-item/schema",
+        "variables": "cinder/command-item/variables"
+      }
+    },
+    {
+      "name": "CommandPalette",
+      "id": "command-palette",
+      "import": "cinder/command-palette",
+      "exportName": "CommandPalette",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Modal search overlay that lets users find and trigger commands, navigate to destinations, or jump to records via a fuzzy-filtered list.",
+      "tags": ["overlay", "command"],
+      "useWhen": [
+        "Exposing a global keyboard-first launcher for power-user actions and navigation.",
+        "Letting users search across heterogeneous results such as commands, pages, and records in one input."
+      ],
+      "avoidWhen": [
+        "Picking a single value bound to a form field — use combobox instead.",
+        "Showing a contextual action menu attached to a trigger — use dropdown instead."
+      ],
+      "related": ["combobox", "dropdown", "command-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/command-palette/schema",
+        "variables": "cinder/command-palette/variables",
+        "examples": "cinder/command-palette/examples"
+      }
+    },
+    {
+      "name": "ConfirmDialog",
+      "id": "confirm-dialog",
+      "import": "cinder/confirm-dialog",
+      "exportName": "ConfirmDialog",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Modal-backed confirmation prompt with cancel and confirm actions, including a destructive variant for irreversible operations.",
+      "tags": ["overlay", "dialog"],
+      "useWhen": [
+        "Requiring an explicit yes/no acknowledgement before performing a destructive or irreversible action.",
+        "Asking the user to confirm a discrete decision with two clear outcomes."
+      ],
+      "avoidWhen": [
+        "Collecting structured input or multiple fields — compose a modal with form controls instead.",
+        "Announcing a non-blocking result — use toast-region or banner."
+      ],
+      "related": ["modal", "drawer", "sheet"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/confirm-dialog/schema",
+        "variables": "cinder/confirm-dialog/variables"
+      }
+    },
+    {
+      "name": "ConnectionIndicator",
+      "id": "connection-indicator",
+      "import": "cinder/experimental/connection-indicator",
+      "exportName": "ConnectionIndicator",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Live-status pill pairing a semantic dot with a label to communicate real-time WebSocket, SSE, or polling connection state.",
+      "tags": ["connection", "status", "realtime"],
+      "useWhen": [
+        "Surfacing whether a realtime channel is connected, connecting, disconnected, or errored on a dashboard or app chrome.",
+        "Giving operators an at-a-glance health signal for a long-lived transport."
+      ],
+      "avoidWhen": [
+        "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive.",
+        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+      ],
+      "related": ["status-dot", "spinner"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/experimental/connection-indicator/schema",
+        "variables": "cinder/experimental/connection-indicator/variables"
+      }
+    },
+    {
+      "name": "CopyButton",
+      "id": "copy-button",
+      "import": "cinder/copy-button",
+      "exportName": "CopyButton",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Button that writes a string value to the clipboard and flips to a confirmation state for a short window after a successful copy.",
+      "tags": ["action", "clipboard"],
+      "useWhen": [
+        "Offering one-click copy of a token, snippet, share link, or code sample.",
+        "Pairing with code-block so readers can grab the rendered source."
+      ],
+      "avoidWhen": [
+        "Triggering a generic non-clipboard action — use button instead.",
+        "Copying long-form rich content that needs format preservation — handle clipboard logic directly."
+      ],
+      "related": ["button", "code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/copy-button/schema",
+        "variables": "cinder/copy-button/variables",
+        "examples": "cinder/copy-button/examples"
+      }
+    },
+    {
+      "name": "DataList",
+      "id": "data-list",
+      "import": "cinder/data-list",
+      "exportName": "DataList",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Generic iterator that renders a typed collection through a consumer-supplied row snippet with empty-state fallback.",
+      "tags": ["list", "iterator"],
+      "useWhen": [
+        "Mapping a homogenous array of records to identical row markup defined by the caller.",
+        "Showing a dedicated empty state when the collection has no items."
+      ],
+      "avoidWhen": [
+        "Presenting key-value metadata for a single entity — use description-list instead.",
+        "Rendering tabular data with rows and columns — use table instead."
+      ],
+      "related": ["description-list", "table", "stacked-list-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/data-list/schema",
+        "variables": "cinder/data-list/variables",
+        "examples": "cinder/data-list/examples"
+      }
+    },
+    {
+      "name": "DescriptionList",
+      "id": "description-list",
+      "import": "cinder/description-list",
+      "exportName": "DescriptionList",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Renders an ordered set of term and value pairs that describe attributes of a single entity.",
+      "tags": ["metadata", "key-value"],
+      "useWhen": [
+        "Summarizing the properties of one record such as a user profile or order detail.",
+        "Switching between stacked and inline term layouts via the variant prop."
+      ],
+      "avoidWhen": [
+        "Iterating over a homogenous collection of records — use data-list or table instead."
+      ],
+      "related": ["data-list", "table"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/description-list/schema",
+        "variables": "cinder/description-list/variables"
+      }
+    },
+    {
+      "name": "DiffStatistics",
+      "id": "diff-statistics",
+      "import": "cinder/diff-statistics",
+      "exportName": "DiffStatistics",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Compact added, removed, and modified line-count summary that accompanies a Markdown diff view.",
+      "tags": ["diff", "statistics", "domain-suite"],
+      "useWhen": [
+        "Surfacing a quick numeric summary of changes alongside or in lieu of a full diff surface.",
+        "Annotating a list of files or pull requests with line-change counts as part of the diff-viewer suite."
+      ],
+      "avoidWhen": [
+        "Rendering the actual hunked diff content — pair with diff-viewer for the full document comparison.",
+        "Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead."
+      ],
+      "related": ["diff-viewer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/diff-statistics/schema",
+        "variables": "cinder/diff-statistics/variables",
+        "examples": "cinder/diff-statistics/examples"
+      }
+    },
+    {
+      "name": "DiffViewer",
+      "id": "diff-viewer",
+      "import": "cinder/diff-viewer",
+      "exportName": "DiffViewer",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Side-by-side or unified Markdown diff surface with hunk grouping, word-level inline changes, and size-based debounce gating.",
+      "tags": ["diff", "markdown", "domain-suite"],
+      "useWhen": [
+        "Comparing two Markdown documents and wanting the bundled toolbar, view-mode toggle, front-matter handling, and large-payload safeguards.",
+        "Building a review workflow that needs hunked, line-anchored Markdown diffs out of the box as a heavyweight suite."
+      ],
+      "avoidWhen": [
+        "Showing only a counts summary — use diff-statistics on its own for a lightweight presentation.",
+        "Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering."
+      ],
+      "related": ["diff-statistics", "code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/diff-viewer/schema",
+        "variables": "cinder/diff-viewer/variables",
+        "examples": "cinder/diff-viewer/examples"
+      }
+    },
+    {
+      "name": "Divider",
+      "id": "divider",
+      "import": "cinder/divider",
+      "exportName": "Divider",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Thin decorative or semantic separator between content regions, with optional vertical orientation and tonal variants.",
+      "tags": ["layout", "separator"],
+      "useWhen": [
+        "Visually separating sections of a card, list, or toolbar without adding heading-level structure.",
+        "Splitting a row of inline controls (e.g. a button-group toolbar) with a vertical rule."
+      ],
+      "avoidWhen": [
+        "The split between sections deserves a heading — use section-heading instead.",
+        "Wrapping the entire viewport edge — use surface or page-layout instead."
+      ],
+      "related": ["surface", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/divider/schema",
+        "variables": "cinder/divider/variables",
+        "examples": "cinder/divider/examples"
+      }
+    },
+    {
+      "name": "Drawer",
+      "id": "drawer",
+      "import": "cinder/drawer",
+      "exportName": "Drawer",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form supporting content.",
+      "tags": ["overlay", "dialog"],
+      "useWhen": [
+        "Showing supplementary navigation, filters, or settings that should slide in from a page edge.",
+        "Presenting long-form content that benefits from a side panel without leaving the current view."
+      ],
+      "avoidWhen": [
+        "Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped.",
+        "Anchoring a small surface to a trigger — use popover or sheet instead."
+      ],
+      "related": ["modal", "sheet", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/drawer/schema",
+        "variables": "cinder/drawer/variables",
+        "examples": "cinder/drawer/examples"
+      }
+    },
+    {
+      "name": "Dropdown",
+      "id": "dropdown",
+      "import": "cinder/dropdown",
+      "exportName": "Dropdown",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Root container that wires a trigger to a popover-backed menu and coordinates open state, keyboard navigation, and CSS Anchor Positioning for descendant menu parts.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Composing a menu of actions or links revealed by clicking a button trigger.",
+        "Building a custom dropdown layout from dropdown-trigger, dropdown-menu, dropdown-item, dropdown-label, and dropdown-separator parts."
+      ],
+      "avoidWhen": [
+        "Selecting a value from a list of options — use select or combobox instead.",
+        "Showing supplementary content rather than a menu of choices — use popover."
+      ],
+      "related": [
+        "dropdown-trigger",
+        "dropdown-menu",
+        "dropdown-item",
+        "dropdown-label",
+        "dropdown-separator"
+      ],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/dropdown/schema",
+        "variables": "cinder/dropdown/variables",
+        "examples": "cinder/dropdown/examples"
+      }
+    },
+    {
+      "name": "DropdownItem",
+      "id": "dropdown-item",
+      "import": "cinder/dropdown-item",
+      "exportName": "DropdownItem",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Selectable menuitem inside a dropdown-menu that handles activation, keyboard support, and optional close-on-select behavior.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Rendering an individual action or link row inside a dropdown-menu.",
+        "Composing menu rows that should close the parent dropdown after selection unless closeOnSelect is disabled."
+      ],
+      "avoidWhen": [
+        "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.",
+        "Grouping a static heading row above menu items — use dropdown-label."
+      ],
+      "related": ["dropdown", "dropdown-menu", "dropdown-label", "dropdown-separator"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-item/schema",
+        "variables": "cinder/dropdown-item/variables"
+      }
+    },
+    {
+      "name": "DropdownLabel",
+      "id": "dropdown-label",
+      "import": "cinder/dropdown-label",
+      "exportName": "DropdownLabel",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Non-interactive heading row that groups related dropdown-item rows inside a dropdown-menu.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Labeling a group of related menu items with a short heading.",
+        "Providing a visual section title above a cluster of dropdown-item rows."
+      ],
+      "avoidWhen": [
+        "Rendering a selectable row — use dropdown-item.",
+        "Visually dividing groups without a heading — use dropdown-separator."
+      ],
+      "related": ["dropdown", "dropdown-menu", "dropdown-item", "dropdown-separator"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-label/schema",
+        "variables": "cinder/dropdown-label/variables"
+      }
+    },
+    {
+      "name": "DropdownMenu",
+      "id": "dropdown-menu",
+      "import": "cinder/dropdown-menu",
+      "exportName": "DropdownMenu",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Popover-backed menu surface that hosts dropdown-item rows and owns arrow-key, Home, End, and Escape navigation.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Rendering the floating panel that holds a dropdown's menu items.",
+        "Composing a dropdown's body from dropdown-item, dropdown-label, and dropdown-separator children."
+      ],
+      "avoidWhen": [
+        "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.",
+        "Showing arbitrary non-menu content — use popover."
+      ],
+      "related": [
+        "dropdown",
+        "dropdown-trigger",
+        "dropdown-item",
+        "dropdown-label",
+        "dropdown-separator"
+      ],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-menu/schema",
+        "variables": "cinder/dropdown-menu/variables"
+      }
+    },
+    {
+      "name": "DropdownSeparator",
+      "id": "dropdown-separator",
+      "import": "cinder/dropdown-separator",
+      "exportName": "DropdownSeparator",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Horizontal divider with role=\"separator\" that visually segments groups of rows inside a dropdown-menu.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Visually splitting unrelated groups of dropdown-item rows without adding a heading.",
+        "Marking a boundary between primary actions and destructive or secondary actions in a menu."
+      ],
+      "avoidWhen": [
+        "Labeling a section of items — use dropdown-label so the group has an accessible heading.",
+        "Rendering an interactive row — use dropdown-item."
+      ],
+      "related": ["dropdown", "dropdown-menu", "dropdown-label", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-separator/schema",
+        "variables": "cinder/dropdown-separator/variables"
+      }
+    },
+    {
+      "name": "DropdownTrigger",
+      "id": "dropdown-trigger",
+      "import": "cinder/dropdown-trigger",
+      "exportName": "DropdownTrigger",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Button-shaped trigger that opens a dropdown menu, optionally rendering a trailing disclosure caret.",
+      "tags": ["form", "trigger"],
+      "useWhen": [
+        "Opening a dropdown-menu from a button styled to match cinder's form controls.",
+        "Pairing with dropdown to expose a custom menu from a labelled affordance."
+      ],
+      "avoidWhen": ["Triggering a discrete action with no menu — use button instead."],
+      "related": ["dropdown", "dropdown-menu"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-trigger/schema",
+        "variables": "cinder/dropdown-trigger/variables"
+      }
+    },
+    {
+      "name": "EmptyState",
+      "id": "empty-state",
+      "import": "cinder/empty-state",
+      "exportName": "EmptyState",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Centered placeholder with optional icon, title, description, and call-to-action for views that have no data to render.",
+      "tags": ["feedback", "empty"],
+      "useWhen": [
+        "Communicating that a list, table, or workspace has no items yet and suggesting a next step.",
+        "Replacing a primary content region after a filter or search returns no results."
+      ],
+      "avoidWhen": [
+        "Indicating that data is still loading — use skeleton or spinner instead.",
+        "Reporting a transient error — use alert, banner, or toast-region."
+      ],
+      "related": ["skeleton", "spinner"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/empty-state/schema",
+        "variables": "cinder/empty-state/variables",
+        "examples": "cinder/empty-state/examples"
+      }
+    },
+    {
+      "name": "Feed",
+      "id": "feed",
+      "import": "cinder/feed",
+      "exportName": "Feed",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.",
+      "tags": ["timeline", "activity"],
+      "useWhen": [
+        "Rendering an activity log, audit trail, or notification timeline.",
+        "Announcing newly appended entries to assistive technology via the live prop."
+      ],
+      "avoidWhen": ["Displaying a one-off transient notice — use toast-region or banner instead."],
+      "related": ["feed-event"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/feed/schema",
+        "variables": "cinder/feed/variables"
+      }
+    },
+    {
+      "name": "FeedEvent",
+      "id": "feed-event",
+      "import": "cinder/feed-event",
+      "exportName": "FeedEvent",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Individual entry within a feed that pairs a timestamp with a content snippet and optional leading icon.",
+      "tags": ["timeline", "event"],
+      "useWhen": [
+        "Rendering a single activity or audit entry inside a feed parent.",
+        "Switching between an icon-led and a connector-led visual treatment via the variant prop."
+      ],
+      "avoidWhen": [
+        "Standing alone outside a feed — it expects the feed list semantics around it."
+      ],
+      "related": ["feed"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/feed-event/schema",
+        "variables": "cinder/feed-event/variables"
+      }
+    },
+    {
+      "name": "FormField",
+      "id": "form-field",
+      "import": "cinder/form-field",
+      "exportName": "FormField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Wrapper primitive that pairs a single control with its label, description, and error and wires the ARIA association via context.",
+      "tags": ["form", "wrapper"],
+      "useWhen": [
+        "Composing a one-off field where the input does not own its own label rendering.",
+        "Forwarding shared required, disabled, and error state to an opted-in child control."
+      ],
+      "avoidWhen": [
+        "Grouping multiple related controls under one heading — use form-section instead."
+      ],
+      "related": ["form-section", "label", "input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/form-field/schema",
+        "variables": "cinder/form-field/variables",
+        "examples": "cinder/form-field/examples"
+      }
+    },
+    {
+      "name": "FormSection",
+      "id": "form-section",
+      "import": "cinder/form-section",
+      "exportName": "FormSection",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Sectioning wrapper that groups related form fields under a heading or legend and applies a responsive column layout.",
+      "tags": ["form", "layout"],
+      "useWhen": [
+        "Splitting a long form into labelled segments such as \"Account\" or \"Billing\".",
+        "Rendering a fieldset with a legend for a set of tightly related inputs."
+      ],
+      "avoidWhen": ["Wrapping a single control with its label and error — use form-field instead."],
+      "related": ["form-field", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/form-section/schema",
+        "variables": "cinder/form-section/variables",
+        "examples": "cinder/form-section/examples"
+      }
+    },
+    {
+      "name": "GridList",
+      "id": "grid-list",
+      "import": "cinder/grid-list",
+      "exportName": "GridList",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Responsive grid container that arranges grid-list-item tiles into auto-sized columns.",
+      "tags": ["grid", "gallery"],
+      "useWhen": [
+        "Presenting a homogenous collection of cards that should reflow into multiple columns.",
+        "Constraining tile minimum widths per breakpoint via the columns prop."
+      ],
+      "avoidWhen": [
+        "Comparing rows of structured data — use table instead.",
+        "Stacking dense list rows vertically — use stacked-list-item instead."
+      ],
+      "related": ["grid-list-item", "table"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/grid-list/schema",
+        "variables": "cinder/grid-list/variables"
+      }
+    },
+    {
+      "name": "GridListItem",
+      "id": "grid-list-item",
+      "import": "cinder/grid-list-item",
+      "exportName": "GridListItem",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Tile within a grid-list that combines an image, title, subtitle, meta, and action slots and may link via href.",
+      "tags": ["grid", "tile"],
+      "useWhen": [
+        "Rendering a single card cell inside a grid-list parent.",
+        "Turning the tile into an anchor by passing href."
+      ],
+      "avoidWhen": ["Standing alone outside a grid-list — it inherits the grid layout context."],
+      "related": ["grid-list"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/grid-list-item/schema",
+        "variables": "cinder/grid-list-item/variables"
+      }
+    },
+    {
+      "name": "Image",
+      "id": "image",
+      "import": "cinder/image",
+      "exportName": "Image",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Responsive image wrapper that handles aspect ratio, lazy loading, placeholder, and a fallback for load failures.",
+      "tags": ["image", "media"],
+      "useWhen": [
+        "Rendering content imagery with a consistent ratio and lazy-loading behavior.",
+        "Supplying a placeholder while loading and a fallback when the source errors."
+      ],
+      "avoidWhen": [
+        "Representing a person or account — use avatar instead.",
+        "Rendering a decorative icon — use an icon component instead."
+      ],
+      "related": ["avatar"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/image/schema",
+        "variables": "cinder/image/variables"
+      }
+    },
+    {
+      "name": "Input",
+      "id": "input",
+      "import": "cinder/input",
+      "exportName": "Input",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Single-line text input with bound value, label, description, and error wiring for form-field accessibility.",
+      "tags": ["form", "field"],
+      "useWhen": [
+        "Collecting a single line of free-form text such as a name, email, or URL.",
+        "Composing inside a form-field with leading or trailing adornments."
+      ],
+      "avoidWhen": [
+        "Collecting multi-line prose — use textarea instead.",
+        "Collecting a numeric value with stepping controls — use number-input instead."
+      ],
+      "related": ["textarea", "number-input", "search-field", "form-field"],
+      "hasConstraints": true,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/input/schema",
+        "variables": "cinder/input/variables",
+        "examples": "cinder/input/examples",
+        "constraints": "cinder/input/constraints"
+      }
+    },
+    {
+      "name": "JsonSchemaEditor",
+      "id": "json-schema-editor",
+      "import": "cinder/json-schema-editor",
+      "exportName": "JsonSchemaEditor",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Multi-view editor for authoring JSON Schema documents with form, raw JSON, and diff modes plus undo history and validation.",
+      "tags": ["form", "editor"],
+      "useWhen": [
+        "Letting users edit a JSON Schema with a guided form alongside the raw source.",
+        "Reviewing schema changes against a baseline via the built-in diff view."
+      ],
+      "avoidWhen": [
+        "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
+      ],
+      "related": ["markdown-editor", "review-editor"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/json-schema-editor/schema",
+        "variables": "cinder/json-schema-editor/variables",
+        "examples": "cinder/json-schema-editor/examples"
+      }
+    },
+    {
+      "name": "JsonViewer",
+      "id": "json-viewer",
+      "import": "cinder/experimental/json-viewer",
+      "exportName": "JsonViewer",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Collapsible tree visualization of an arbitrary JSON value with hard depth and byte caps and a fallback for oversized payloads.",
+      "tags": ["json", "inspector", "tree"],
+      "useWhen": [
+        "Inspecting structured API responses, debug payloads, or configuration documents inside an admin or developer surface.",
+        "Rendering a JSON-serializable value with predictable initial-collapse behavior and no virtualization needs."
+      ],
+      "avoidWhen": [
+        "The payload is large enough to need search, filter, or virtualization — compose a custom viewer instead.",
+        "Showing arbitrary source code rather than a JSON value — code-block is the right surface for that.",
+        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+      ],
+      "related": ["code-block", "tree"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/experimental/json-viewer/schema",
+        "variables": "cinder/experimental/json-viewer/variables"
+      }
+    },
+    {
+      "name": "Kbd",
+      "id": "kbd",
+      "import": "cinder/kbd",
+      "exportName": "Kbd",
+      "category": "typography",
+      "status": "stable",
+      "purpose": "Inline element that styles a single keystroke or shortcut sequence with the semantic kbd tag.",
+      "tags": ["shortcut", "inline"],
+      "useWhen": [
+        "Calling out a keyboard shortcut inline within prose or a tooltip.",
+        "Composing chorded shortcuts by rendering multiple kbd elements side by side."
+      ],
+      "avoidWhen": ["Displaying a block of source code — use code-block instead."],
+      "related": ["code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/kbd/schema",
+        "variables": "cinder/kbd/variables",
+        "examples": "cinder/kbd/examples"
+      }
+    },
+    {
+      "name": "Label",
+      "id": "label",
+      "import": "cinder/label",
+      "exportName": "Label",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Standalone label primitive that associates text with a custom control via for and matches the visual treatment of built-in inputs.",
+      "tags": ["form", "primitive"],
+      "useWhen": [
+        "Building a hand-rolled field that wraps multiple inputs needing one shared label.",
+        "Matching the disabled or required visual treatment of cinder inputs on a custom control."
+      ],
+      "avoidWhen": [
+        "Labelling a built-in input that already renders its own label prop — pass label instead."
+      ],
+      "related": ["form-field", "input", "checkbox", "radio"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/label/schema",
+        "variables": "cinder/label/variables"
+      }
+    },
+    {
+      "name": "MarkdownEditor",
+      "id": "markdown-editor",
+      "import": "cinder/markdown-editor",
+      "exportName": "MarkdownEditor",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, toolbar, and mark or block introspection helpers.",
+      "tags": ["markdown", "editor", "domain-suite"],
+      "useWhen": [
+        "Composing or editing Markdown documents and wanting the bundled toolbar, link-aware selection, and source or WYSIWYG mode toggle.",
+        "Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite."
+      ],
+      "avoidWhen": [
+        "Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle.",
+        "The surface needs inline review threads on top of the editor — use review-editor for that composition."
+      ],
+      "related": ["review-editor", "code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/markdown-editor/schema",
+        "variables": "cinder/markdown-editor/variables",
+        "examples": "cinder/markdown-editor/examples"
+      }
+    },
+    {
+      "name": "Message",
+      "id": "message",
+      "import": "cinder/experimental/message",
+      "exportName": "Message",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Chat-style bubble that renders a role label, optional timestamp, and arbitrary body content for transcript or run-stream views.",
+      "tags": ["chat", "message", "conversation"],
+      "useWhen": [
+        "Composing a transcript of user, assistant, and system turns outside the full chat suite.",
+        "Rendering AI agent runs, support threads, or audit logs where each entry has a speaker and a body."
+      ],
+      "avoidWhen": [
+        "Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead.",
+        "Communicating a single non-conversational notice — callout is more appropriate.",
+        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+      ],
+      "related": ["chat", "callout"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/experimental/message/schema",
+        "variables": "cinder/experimental/message/variables"
+      }
+    },
+    {
+      "name": "Modal",
+      "id": "modal",
+      "import": "cinder/modal",
+      "exportName": "Modal",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Centered modal dialog built on the native dialog element with focus capture, restoration, and dismissal handling.",
+      "tags": ["overlay", "dialog"],
+      "useWhen": [
+        "Interrupting the user for a focused task or decision that blocks the rest of the page.",
+        "Confirming a destructive action where the user must explicitly acknowledge before proceeding."
+      ],
+      "avoidWhen": [
+        "Showing side-anchored navigation or settings — use a drawer instead.",
+        "Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead."
+      ],
+      "related": ["drawer", "sheet", "popover", "confirm-dialog"],
+      "hasConstraints": true,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/modal/schema",
+        "variables": "cinder/modal/variables",
+        "examples": "cinder/modal/examples",
+        "constraints": "cinder/modal/constraints"
+      }
+    },
+    {
+      "name": "NavigationBar",
+      "id": "navigation-bar",
+      "import": "cinder/navigation-bar",
+      "exportName": "NavigationBar",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Top-level application header that pairs a brand mark with a horizontal set of navigation items and an optional mobile menu toggle.",
+      "tags": ["navigation", "chrome"],
+      "useWhen": [
+        "Anchoring an app shell with primary sections, branding, and account actions across the top edge.",
+        "Providing a responsive nav that collapses items behind a menu toggle below a breakpoint."
+      ],
+      "avoidWhen": [
+        "Showing the ancestor trail of the current page — use breadcrumbs instead.",
+        "Building a tall, dense sidebar of grouped sections — use side-navigation instead."
+      ],
+      "related": ["navigation-item", "breadcrumbs", "side-navigation"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/navigation-bar/schema",
+        "variables": "cinder/navigation-bar/variables",
+        "examples": "cinder/navigation-bar/examples"
+      }
+    },
+    {
+      "name": "NavigationItem",
+      "id": "navigation-item",
+      "import": "cinder/navigation-item",
+      "exportName": "NavigationItem",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Single wayfinding item that renders as an anchor when given href or as a button when given onclick, with active-state aria-current.",
+      "tags": ["navigation", "link"],
+      "useWhen": [
+        "Rendering one entry in a navigation bar, sidebar, or side-navigation group.",
+        "Switching the active view or section while signalling current location via aria-current."
+      ],
+      "avoidWhen": [
+        "Showing a hierarchical trail of ancestors — use breadcrumbs instead.",
+        "Triggering a generic action unrelated to navigation — use button instead."
+      ],
+      "related": ["navigation-bar", "side-navigation-item", "breadcrumbs", "tab"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/navigation-item/schema",
+        "variables": "cinder/navigation-item/variables"
+      }
+    },
+    {
+      "name": "NumberInput",
+      "id": "number-input",
+      "import": "cinder/number-input",
+      "exportName": "NumberInput",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Numeric input with locale-aware formatting, min and max bounds, and step increments emitting a number or null.",
+      "tags": ["form", "numeric"],
+      "useWhen": [
+        "Collecting a bounded numeric value such as a quantity, price, or age.",
+        "Needing locale-aware display formatting on top of a native number input."
+      ],
+      "avoidWhen": [
+        "Selecting a value within a continuous range visually — use slider instead.",
+        "Collecting free-form text or non-numeric content — use input instead."
+      ],
+      "related": ["input", "slider"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/number-input/schema",
+        "variables": "cinder/number-input/variables"
+      }
+    },
+    {
+      "name": "PageLayout",
+      "id": "page-layout",
+      "import": "cinder/page-layout",
+      "exportName": "PageLayout",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Opinionated page scaffold combining a breadcrumb row, title, optional avatar and metadata, primary actions, and a body slot.",
+      "tags": ["layout", "scaffold"],
+      "useWhen": [
+        "Standing up a record or detail page that needs the standard cinder header treatment.",
+        "Keeping page titles, actions, and breadcrumbs visually consistent across an application."
+      ],
+      "avoidWhen": [
+        "Building an unstructured marketing or landing page — compose surface and primitives directly.",
+        "Rendering inside a sidebar or modal — its spacing assumes a full page width."
+      ],
+      "related": ["surface", "sidebar"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/page-layout/schema",
+        "variables": "cinder/page-layout/variables",
+        "examples": "cinder/page-layout/examples"
+      }
+    },
+    {
+      "name": "Pagination",
+      "id": "pagination",
+      "import": "cinder/pagination",
+      "exportName": "Pagination",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Page-number control for paged result sets that exposes previous, next, and numeric jumps with elided middle pages.",
+      "tags": ["navigation", "paging"],
+      "useWhen": [
+        "Moving through a large, ordered dataset split into discrete pages of fixed size.",
+        "Showing the current page in context of the total page count."
+      ],
+      "avoidWhen": [
+        "Switching between named sibling views — use tabs instead.",
+        "Streaming results as the user scrolls — wire up infinite scroll directly."
+      ],
+      "related": ["tabs"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/pagination/schema",
+        "variables": "cinder/pagination/variables",
+        "examples": "cinder/pagination/examples"
+      }
+    },
+    {
+      "name": "Popover",
+      "id": "popover",
+      "import": "cinder/popover",
+      "exportName": "Popover",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger element.",
+      "tags": ["overlay", "floating"],
+      "useWhen": [
+        "Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or listbox surface.",
+        "Presenting non-blocking supplementary controls that should dismiss on outside click or Escape."
+      ],
+      "avoidWhen": [
+        "Showing a short descriptive hint on hover or focus — use tooltip instead.",
+        "Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal."
+      ],
+      "related": ["modal", "drawer", "sheet", "tooltip"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/popover/schema",
+        "variables": "cinder/popover/variables",
+        "examples": "cinder/popover/examples"
+      }
+    },
+    {
+      "name": "Progress",
+      "id": "progress",
+      "import": "cinder/progress",
+      "exportName": "Progress",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Determinate or indeterminate progressbar rendered as a horizontal bar or ring with full ARIA value semantics.",
+      "tags": ["feedback", "progress"],
+      "useWhen": [
+        "Reporting measurable progress of a known task such as a file upload or multi-step import.",
+        "Showing an indeterminate work indicator when the task duration is unknown but the surface needs a progressbar role."
+      ],
+      "avoidWhen": [
+        "Showing a small inline busy state next to a control — use spinner.",
+        "Reserving placeholder space for incoming content — use skeleton."
+      ],
+      "related": ["spinner", "skeleton"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/progress/schema",
+        "variables": "cinder/progress/variables",
+        "examples": "cinder/progress/examples"
+      }
+    },
+    {
+      "name": "Radio",
+      "id": "radio",
+      "import": "cinder/radio",
+      "exportName": "Radio",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Single radio button that contributes a value, label, and id to a parent radio-group for one-of-many selection.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Rendering one option inside a radio-group where exactly one value must be chosen.",
+        "Overriding the group disabled state for a single option."
+      ],
+      "avoidWhen": [
+        "Selecting zero or more independent options — use checkbox instead.",
+        "Used outside a radio-group — the group owns the shared name and value."
+      ],
+      "related": ["radio-group", "checkbox"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/radio/schema",
+        "variables": "cinder/radio/variables"
+      }
+    },
+    {
+      "name": "RadioGroup",
+      "id": "radio-group",
+      "import": "cinder/radio-group",
+      "exportName": "RadioGroup",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Fieldset that owns the bound value, shared name, and validation state for a set of mutually exclusive radio children.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Picking exactly one option from a small fixed set where every choice should stay visible.",
+        "Sharing a single error and description across a set of related radios."
+      ],
+      "avoidWhen": ["Selecting zero or more independent options — use checkbox-group instead."],
+      "related": ["radio", "checkbox-group"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/radio-group/schema",
+        "variables": "cinder/radio-group/variables",
+        "examples": "cinder/radio-group/examples"
+      }
+    },
+    {
+      "name": "ReviewEditor",
+      "id": "review-editor",
+      "import": "cinder/review-editor",
+      "exportName": "ReviewEditor",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Markdown editor extended with inline review threads, anchored comments, and collaborative annotation state.",
+      "tags": ["markdown", "review", "domain-suite"],
+      "useWhen": [
+        "Building a document review experience that needs both a Markdown editor and anchored comment threads in one bundled surface.",
+        "Threading reviewer commentary against specific selections inside a long-form document."
+      ],
+      "avoidWhen": [
+        "Plain authoring with no review threads — markdown-editor is the lighter primitive.",
+        "Reviewing diffs between two documents rather than annotating one — use diff-viewer instead."
+      ],
+      "related": ["markdown-editor"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/review-editor/schema",
+        "variables": "cinder/review-editor/variables",
+        "examples": "cinder/review-editor/examples"
+      }
+    },
+    {
+      "name": "ScrollArea",
+      "id": "scroll-area",
+      "import": "cinder/scroll-area",
+      "exportName": "ScrollArea",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Bounded scrolling container that constrains overflowing content within a max height or width while remaining keyboard-focusable.",
+      "tags": ["layout", "overflow"],
+      "useWhen": [
+        "Containing a long list or large block of content inside a fixed-size region.",
+        "Preserving keyboard scrollability for overflow content in a card or surface."
+      ],
+      "avoidWhen": [
+        "Wrapping the entire page — let the document scroll natively.",
+        "Hiding overflow without scrollbars — use plain CSS overflow utilities instead."
+      ],
+      "related": ["surface"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/scroll-area/schema",
+        "variables": "cinder/scroll-area/variables"
+      }
+    },
+    {
+      "name": "SearchField",
+      "id": "search-field",
+      "import": "cinder/search-field",
+      "exportName": "SearchField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Search input with a leading icon, automatic clear button, and optional keyboard shortcut hint badge.",
+      "tags": ["form", "search"],
+      "useWhen": [
+        "Capturing a free-text query that filters or queries a larger dataset.",
+        "Surfacing a global search affordance with a visible keyboard shortcut."
+      ],
+      "avoidWhen": ["Selecting from a constrained list of known options — use combobox instead."],
+      "related": ["input", "combobox"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/search-field/schema",
+        "variables": "cinder/search-field/variables"
+      }
+    },
+    {
+      "name": "SectionHeading",
+      "id": "section-heading",
+      "import": "cinder/section-heading",
+      "exportName": "SectionHeading",
+      "category": "typography",
+      "status": "stable",
+      "purpose": "Section header that renders a leveled heading with optional eyebrow label, description, actions, and tabs row.",
+      "tags": ["typography", "heading"],
+      "useWhen": [
+        "Introducing a top-level section of a page with a title and supporting metadata.",
+        "Pairing a section title with inline actions or a tab row beneath the heading."
+      ],
+      "avoidWhen": [
+        "Labelling a single form control or field — use label instead.",
+        "Rendering a page-wide header with primary navigation — use page-layout primitives instead."
+      ],
+      "related": ["page-layout", "card", "tab-list"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/section-heading/schema",
+        "variables": "cinder/section-heading/variables"
+      }
+    },
+    {
+      "name": "SegmentedControl",
+      "id": "segmented-control",
+      "import": "cinder/segmented-control",
+      "exportName": "SegmentedControl",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Compact radio-style selector that surfaces a small fixed set of options as a single connected bar and binds the chosen value.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Choosing one of two to five mutually exclusive options that all fit on screen at once.",
+        "Picking a view filter where seeing every option beats hiding them inside a toggle or tabs control."
+      ],
+      "avoidWhen": [
+        "Toggling a single binary on or off — use toggle or checkbox instead.",
+        "Switching between panels of associated content — use tabs instead."
+      ],
+      "related": ["toggle", "checkbox", "tabs", "button-group"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/segmented-control/schema",
+        "variables": "cinder/segmented-control/variables",
+        "examples": "cinder/segmented-control/examples"
+      }
+    },
+    {
+      "name": "Select",
+      "id": "select",
+      "import": "cinder/select",
+      "exportName": "Select",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Native select control with label, description, and error wiring for picking one value from a short fixed option list.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Picking one value from a short list where the native control's mobile behavior is desirable.",
+        "Composing inside a form with built-in label and aria-describedby plumbing."
+      ],
+      "avoidWhen": [
+        "Filtering a long list by typing — use combobox instead.",
+        "Building a custom-styled menu trigger — use dropdown instead."
+      ],
+      "related": ["combobox", "dropdown", "radio-group"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/select/schema",
+        "variables": "cinder/select/variables",
+        "examples": "cinder/select/examples"
+      }
+    },
+    {
+      "name": "SelectionPopover",
+      "id": "selection-popover",
+      "import": "cinder/selection-popover",
+      "exportName": "SelectionPopover",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Floating toolbar anchored to a text selection that exposes a comment-on-selection action with an inline composer.",
+      "tags": ["overlay", "selection"],
+      "useWhen": [
+        "Letting readers annotate or comment on a highlighted range of text in a document or article surface.",
+        "Surfacing selection-scoped actions such as quote, share, or comment near the user's pointer."
+      ],
+      "avoidWhen": [
+        "Anchoring generic non-selection content to a trigger — use popover.",
+        "Building a general-purpose floating toolbar unrelated to text selection — compose a popover with custom controls."
+      ],
+      "related": ["popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/selection-popover/schema",
+        "variables": "cinder/selection-popover/variables",
+        "examples": "cinder/selection-popover/examples"
+      }
+    },
+    {
+      "name": "Sheet",
+      "id": "sheet",
+      "import": "cinder/sheet",
+      "exportName": "Sheet",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first sheet patterns.",
+      "tags": ["overlay", "dialog"],
+      "useWhen": [
+        "Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces.",
+        "Showing a contextual surface that should feel anchored to the screen edge rather than centered like a modal."
+      ],
+      "avoidWhen": [
+        "Interrupting the user with a centered task or confirmation — use modal instead.",
+        "Showing supplementary side navigation or filters — use drawer or popover."
+      ],
+      "related": ["modal", "drawer", "popover"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/sheet/schema",
+        "variables": "cinder/sheet/variables"
+      }
+    },
+    {
+      "name": "SideNavigation",
+      "id": "side-navigation",
+      "import": "cinder/side-navigation",
+      "exportName": "SideNavigation",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Vertical navigation column that hosts grouped side-navigation-item entries with a required accessible label for the landmark.",
+      "tags": ["navigation", "sidebar"],
+      "useWhen": [
+        "Building a tall, dense application sidebar with many sections and nested groups.",
+        "Pairing with sidebar so the column collapses responsively on narrow viewports."
+      ],
+      "avoidWhen": [
+        "Anchoring primary navigation across the top of the page — use navigation-bar instead.",
+        "Rendering a single flat horizontal nav row — use navigation-bar instead."
+      ],
+      "related": ["side-navigation-item", "side-navigation-group", "navigation-bar", "sidebar"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/side-navigation/schema",
+        "variables": "cinder/side-navigation/variables"
+      }
+    },
+    {
+      "name": "SideNavigationGroup",
+      "id": "side-navigation-group",
+      "import": "cinder/side-navigation-group",
+      "exportName": "SideNavigationGroup",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Collapsible labelled bucket inside side-navigation that groups related side-navigation-item entries under a single heading.",
+      "tags": ["navigation", "grouping"],
+      "useWhen": [
+        "Splitting a long side-navigation column into clearly named sections.",
+        "Letting users collapse rarely used groups to reduce visual noise in the sidebar."
+      ],
+      "avoidWhen": [
+        "Used outside a side-navigation ancestor — it expects that landmark for context.",
+        "Hosting a single flat list with no grouping — place side-navigation-item entries directly."
+      ],
+      "related": ["side-navigation", "side-navigation-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/side-navigation-group/schema",
+        "variables": "cinder/side-navigation-group/variables"
+      }
+    },
+    {
+      "name": "SideNavigationItem",
+      "id": "side-navigation-item",
+      "import": "cinder/side-navigation-item",
+      "exportName": "SideNavigationItem",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Single list-wrapped navigation entry tuned for the vertical layout of side-navigation, delegating rendering to navigation-item.",
+      "tags": ["navigation", "sidebar"],
+      "useWhen": [
+        "Rendering one entry inside a side-navigation column or side-navigation-group.",
+        "Keeping list semantics correct so screen readers announce sidebar entry counts."
+      ],
+      "avoidWhen": [
+        "Placing entries in a horizontal navigation-bar — use navigation-item directly.",
+        "Rendering outside a side-navigation list — use navigation-item without the list wrapper."
+      ],
+      "related": ["side-navigation", "side-navigation-group", "navigation-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/side-navigation-item/schema",
+        "variables": "cinder/side-navigation-item/variables"
+      }
+    },
+    {
+      "name": "Sidebar",
+      "id": "sidebar",
+      "import": "cinder/sidebar",
+      "exportName": "Sidebar",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Responsive layout shell that anchors a collapsible column beside main content and swaps to a drawer below a configurable breakpoint.",
+      "tags": ["layout", "responsive"],
+      "useWhen": [
+        "Wrapping the page chrome so a navigation column can collapse and become a mobile drawer automatically.",
+        "Sharing collapsed state between a side-navigation column and the rest of the app shell via context."
+      ],
+      "avoidWhen": [
+        "Building the page body itself rather than the surrounding shell — use page-layout instead.",
+        "Rendering navigation entries directly — place side-navigation inside the sidebar column."
+      ],
+      "related": ["page-layout", "side-navigation", "drawer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/sidebar/schema",
+        "variables": "cinder/sidebar/variables",
+        "examples": "cinder/sidebar/examples"
+      }
+    },
+    {
+      "name": "Skeleton",
+      "id": "skeleton",
+      "import": "cinder/skeleton",
+      "exportName": "Skeleton",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Decorative placeholder block that reserves layout space while real content loads.",
+      "tags": ["feedback", "loading"],
+      "useWhen": [
+        "Reserving the rough shape of incoming content during an initial fetch to avoid layout shift.",
+        "Indicating progressive load of cards, rows, or media tiles where the final shape is known."
+      ],
+      "avoidWhen": [
+        "Indicating indeterminate background work without a known target shape — use spinner.",
+        "Communicating that a view has no data at all — use empty-state."
+      ],
+      "related": ["spinner", "empty-state", "progress"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/skeleton/schema",
+        "variables": "cinder/skeleton/variables",
+        "examples": "cinder/skeleton/examples"
+      }
+    },
+    {
+      "name": "Slider",
+      "id": "slider",
+      "import": "cinder/slider",
+      "exportName": "Slider",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Single- or two-thumb slider implementing the WAI-ARIA slider pattern for picking a value or range along a numeric scale.",
+      "tags": ["form", "numeric"],
+      "useWhen": [
+        "Picking a value within a continuous range where visual position communicates magnitude.",
+        "Selecting a low and high bound together via the range mode."
+      ],
+      "avoidWhen": [
+        "Entering a precise numeric value typed by the user — use number-input instead.",
+        "Displaying read-only completion — use progress instead."
+      ],
+      "related": ["number-input", "progress"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/slider/schema",
+        "variables": "cinder/slider/variables",
+        "examples": "cinder/slider/examples"
+      }
+    },
+    {
+      "name": "SortableList",
+      "id": "sortable-list",
+      "import": "cinder/sortable-list",
+      "exportName": "SortableList",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Keyboard-and-pointer reorderable list that emits onreorder when the user drags or arrow-keys an item into a new position with announcer feedback.",
+      "tags": ["data-display", "reorder"],
+      "useWhen": [
+        "Letting users manually reorder a small to medium list of items via drag handle or keyboard.",
+        "Surfacing live region announcements during a reorder for accessible feedback."
+      ],
+      "avoidWhen": [
+        "Showing a read-only list with no reorder affordance — use grid-list instead.",
+        "Sorting by a column or computed key — sort the source array and rerender."
+      ],
+      "related": ["grid-list"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/sortable-list/schema",
+        "variables": "cinder/sortable-list/variables"
+      }
+    },
+    {
+      "name": "Spinner",
+      "id": "spinner",
+      "import": "cinder/spinner",
+      "exportName": "Spinner",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Compact role=\"status\" indicator that communicates indeterminate background work with an accessible loading label.",
+      "tags": ["feedback", "loading"],
+      "useWhen": [
+        "Showing that a short asynchronous action is in progress without a predictable completion time.",
+        "Indicating inline busy state next to a control while a request resolves."
+      ],
+      "avoidWhen": [
+        "Reserving layout space for content with a known final shape — use skeleton.",
+        "Reporting determinate progress with a measurable percentage — use progress."
+      ],
+      "related": ["skeleton", "progress"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/spinner/schema",
+        "variables": "cinder/spinner/variables",
+        "examples": "cinder/spinner/examples"
+      }
+    },
+    {
+      "name": "StackedListItem",
+      "id": "stacked-list-item",
+      "import": "cinder/stacked-list-item",
+      "exportName": "StackedListItem",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Dense list row with leading, title, description, meta, and trailing slots that may optionally render as an anchor.",
+      "tags": ["list", "row"],
+      "useWhen": [
+        "Listing entities vertically with consistent leading icons or avatars and trailing actions.",
+        "Linking each row to a detail view by passing href."
+      ],
+      "avoidWhen": [
+        "Comparing tabular data across columns — use table instead.",
+        "Rendering cards in a responsive grid — use grid-list instead."
+      ],
+      "related": ["grid-list-item", "table-row", "avatar"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/stacked-list-item/schema",
+        "variables": "cinder/stacked-list-item/variables"
+      }
+    },
+    {
+      "name": "Stat",
+      "id": "stat",
+      "import": "cinder/stat",
+      "exportName": "Stat",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Single key metric with a label, formatted value, and optional change indicator that pairs into a stat-group dashboard tile.",
+      "tags": ["data-display", "metric"],
+      "useWhen": [
+        "Highlighting one important number such as revenue, signups, or error rate.",
+        "Composing a dashboard tile alongside other Stat instances inside stat-group."
+      ],
+      "avoidWhen": [
+        "Conveying status with a short label or icon — use badge instead.",
+        "Showing tabular numeric breakdowns — use table or data-list instead."
+      ],
+      "related": ["stat-group", "badge"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/stat/schema",
+        "variables": "cinder/stat/variables"
+      }
+    },
+    {
+      "name": "StatGroup",
+      "id": "stat-group",
+      "import": "cinder/stat-group",
+      "exportName": "StatGroup",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Grid container that arranges a set of stat tiles into a responsive multi-column layout with shared labelling.",
+      "tags": ["data-display", "dashboard"],
+      "useWhen": [
+        "Showing a row of related stat tiles such as the top metrics of a dashboard.",
+        "Giving a cluster of stat entries a single accessible group label."
+      ],
+      "avoidWhen": [
+        "Rendering exactly one metric — use stat on its own.",
+        "Building a freeform card grid unrelated to numeric metrics — compose surface or grid-list directly."
+      ],
+      "related": ["stat"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/stat-group/schema",
+        "variables": "cinder/stat-group/variables"
+      }
+    },
+    {
+      "name": "StatusDot",
+      "id": "status-dot",
+      "import": "cinder/status-dot",
+      "exportName": "StatusDot",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Static role=\"img\" badge that communicates an entity's state through a colored dot with an accessible text label.",
+      "tags": ["feedback", "status"],
+      "useWhen": [
+        "Indicating the current state of a list row, user, deployment, or other entity alongside its name.",
+        "Communicating status compactly when many indicators appear together without triggering live-region announcements."
+      ],
+      "avoidWhen": [
+        "Counting items or showing a numeric value — use badge instead.",
+        "Announcing a transient status change — use toast-region or alert so assistive tech reads it."
+      ],
+      "related": ["badge"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/status-dot/schema",
+        "variables": "cinder/status-dot/variables"
+      }
+    },
+    {
+      "name": "Steps",
+      "id": "steps",
+      "import": "cinder/steps",
+      "exportName": "Steps",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Ordered progress indicator that visualizes a fixed sequence of steps with completed, current, and upcoming states.",
+      "tags": ["navigation", "progress"],
+      "useWhen": [
+        "Walking the user through a multi-step wizard or checkout flow with strict ordering.",
+        "Showing how far the user has advanced through a known number of stages."
+      ],
+      "avoidWhen": [
+        "Switching between independent peer views with no order — use tabs instead.",
+        "Showing ancestor hierarchy of the current page — use breadcrumbs instead."
+      ],
+      "related": ["tabs", "breadcrumbs", "pagination"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/steps/schema",
+        "variables": "cinder/steps/variables"
+      }
+    },
+    {
+      "name": "Surface",
+      "id": "surface",
+      "import": "cinder/surface",
+      "exportName": "Surface",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Neutral background primitive that establishes a tonal layer for nested content and broadcasts its tone to descendants via context.",
+      "tags": ["layout", "container"],
+      "useWhen": [
+        "Wrapping a region in a consistent background tone such as default, raised, or sunken.",
+        "Letting nested components adapt their styling based on the surrounding surface tone."
+      ],
+      "avoidWhen": [
+        "Building a self-contained content card with padding and elevation — use card instead.",
+        "Standing up a full page scaffold with header and actions — use page-layout instead."
+      ],
+      "related": ["card", "page-layout"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/surface/schema",
+        "variables": "cinder/surface/variables",
+        "examples": "cinder/surface/examples"
+      }
+    },
+    {
+      "name": "Tab",
+      "id": "tab",
+      "import": "cinder/tab",
+      "exportName": "Tab",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel.",
+      "tags": ["navigation", "tabs"],
+      "useWhen": [
+        "Declaring one tab heading inside a tabs ancestor with a stable value identifier.",
+        "Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls."
+      ],
+      "avoidWhen": [
+        "Used outside a tabs ancestor — the component throws at construction.",
+        "Rendering a generic action button — use button instead."
+      ],
+      "related": ["tabs", "tab-list", "tab-panel"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tab/schema",
+        "variables": "cinder/tab/variables"
+      }
+    },
+    {
+      "name": "TabList",
+      "id": "tab-list",
+      "import": "cinder/tab-list",
+      "exportName": "TabList",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Tablist container inside a tabs composite that wraps tab triggers and exposes the ARIA tablist role with orientation metadata.",
+      "tags": ["navigation", "tabs"],
+      "useWhen": [
+        "Wrapping a row or column of tab triggers inside a tabs ancestor.",
+        "Providing the accessible label or labelledby reference for the tablist landmark."
+      ],
+      "avoidWhen": [
+        "Used outside a tabs ancestor — the component throws at construction.",
+        "Rendering tab-panel content — keep panels as siblings outside the tab-list."
+      ],
+      "related": ["tabs", "tab", "tab-panel"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tab-list/schema",
+        "variables": "cinder/tab-list/variables"
+      }
+    },
+    {
+      "name": "TabPanel",
+      "id": "tab-panel",
+      "import": "cinder/tab-panel",
+      "exportName": "TabPanel",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Content region inside a tabs composite that becomes visible when its sibling tab with the matching value is active.",
+      "tags": ["navigation", "tabs"],
+      "useWhen": [
+        "Hosting the body content associated with a specific tab inside a tabs ancestor.",
+        "Letting the tabs context drive aria-labelledby and visibility automatically from the shared value."
+      ],
+      "avoidWhen": [
+        "Used outside a tabs ancestor — the component throws at construction.",
+        "Rendering the tab trigger itself — use tab inside a tab-list."
+      ],
+      "related": ["tabs", "tab", "tab-list"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tab-panel/schema",
+        "variables": "cinder/tab-panel/variables"
+      }
+    },
+    {
+      "name": "Table",
+      "id": "table",
+      "import": "cinder/table",
+      "exportName": "Table",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Composite root that establishes table semantics, density, and sort context for nested header, body, row, and cell parts.",
+      "tags": ["table", "grid"],
+      "useWhen": [
+        "Comparing rows of structured records across consistent columns.",
+        "Coordinating column sort state across header cells via the sort prop."
+      ],
+      "avoidWhen": [
+        "Rendering a responsive card grid — use grid-list instead.",
+        "Listing key-value attributes of one entity — use description-list instead."
+      ],
+      "related": ["table-header", "table-body", "table-row", "table-cell", "table-header-cell"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/table/schema",
+        "variables": "cinder/table/variables",
+        "examples": "cinder/table/examples"
+      }
+    },
+    {
+      "name": "TableBody",
+      "id": "table-body",
+      "import": "cinder/table-body",
+      "exportName": "TableBody",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Body section of a table that groups data rows and establishes the body section context for nested rows.",
+      "tags": ["table", "section"],
+      "useWhen": ["Wrapping the data rows of a table to distinguish them from header rows."],
+      "avoidWhen": ["Wrapping header rows — use table-header instead."],
+      "related": ["table", "table-row"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/table-body/schema",
+        "variables": "cinder/table-body/variables"
+      }
+    },
+    {
+      "name": "TableCell",
+      "id": "table-cell",
+      "import": "cinder/table-cell",
+      "exportName": "TableCell",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Data cell within a table-row that renders one column value with configurable horizontal alignment.",
+      "tags": ["table", "cell"],
+      "useWhen": [
+        "Rendering a single value inside a body row of a table.",
+        "Aligning numeric or trailing-action columns via the align prop."
+      ],
+      "avoidWhen": ["Rendering a column header — use table-header-cell instead."],
+      "related": ["table-row", "table-header-cell"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/table-cell/schema",
+        "variables": "cinder/table-cell/variables"
+      }
+    },
+    {
+      "name": "TableHeader",
+      "id": "table-header",
+      "import": "cinder/table-header",
+      "exportName": "TableHeader",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Header section of a table that groups column-header rows and exposes selection state to its descendants.",
+      "tags": ["table", "section"],
+      "useWhen": ["Wrapping the column-header row that labels each column of a table."],
+      "avoidWhen": ["Wrapping body data rows — use table-body instead."],
+      "related": ["table", "table-header-cell"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/table-header/schema",
+        "variables": "cinder/table-header/variables"
+      }
+    },
+    {
+      "name": "TableHeaderCell",
+      "id": "table-header-cell",
+      "import": "cinder/table-header-cell",
+      "exportName": "TableHeaderCell",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Column header cell within a table-header that labels a column and optionally triggers sort changes when sortable.",
+      "tags": ["table", "header"],
+      "useWhen": [
+        "Labeling a column inside a table-header row.",
+        "Making a column user-sortable by setting the sortable prop and supplying a column identifier."
+      ],
+      "avoidWhen": ["Rendering a body data cell — use table-cell instead."],
+      "related": ["table-header", "table-cell"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/table-header-cell/schema",
+        "variables": "cinder/table-header-cell/variables"
+      }
+    },
+    {
+      "name": "TableRow",
+      "id": "table-row",
+      "import": "cinder/table-row",
+      "exportName": "TableRow",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Row within a table that groups header or body cells and participates in row-selection state when configured.",
+      "tags": ["table", "row"],
+      "useWhen": [
+        "Grouping table-cell or table-header-cell children into a single horizontal record.",
+        "Wiring per-row selection by passing the selection prop in a selectable table."
+      ],
+      "avoidWhen": ["Standing alone outside a table — it requires the table section context."],
+      "related": ["table-body", "table-cell"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/table-row/schema",
+        "variables": "cinder/table-row/variables"
+      }
+    },
+    {
+      "name": "Tabs",
+      "id": "tabs",
+      "import": "cinder/tabs",
+      "exportName": "Tabs",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Root tabs composite that owns the active value and orientation and coordinates tab, tab-list, and tab-panel descendants via context.",
+      "tags": ["navigation", "tabs"],
+      "useWhen": [
+        "Switching between several panels of related content under one heading area.",
+        "Building the WAI-ARIA tabs pattern with shared keyboard navigation and activation rules."
+      ],
+      "avoidWhen": [
+        "Picking one of two to five short values inline — use segmented-control instead.",
+        "Showing ordered progress through a wizard — use steps instead."
+      ],
+      "related": ["tab", "tab-list", "tab-panel", "segmented-control"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/tabs/schema",
+        "variables": "cinder/tabs/variables",
+        "examples": "cinder/tabs/examples"
+      }
+    },
+    {
+      "name": "Textarea",
+      "id": "textarea",
+      "import": "cinder/textarea",
+      "exportName": "Textarea",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Multi-line text input with label, description, and error wiring plus an optional live character counter against maxlength.",
+      "tags": ["form", "field"],
+      "useWhen": [
+        "Collecting multi-line prose such as comments, descriptions, or messages.",
+        "Surfacing a remaining-character counter as the user types against a maxlength."
+      ],
+      "avoidWhen": ["Collecting a single short line of text — use input instead."],
+      "related": ["input", "markdown-editor"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/textarea/schema",
+        "variables": "cinder/textarea/variables",
+        "examples": "cinder/textarea/examples"
+      }
+    },
+    {
+      "name": "Timeline",
+      "id": "timeline",
+      "import": "cinder/experimental/timeline",
+      "exportName": "Timeline",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Vertical event-rail container that renders timeline-item children along a shared axis for workflow, audit, or run histories.",
+      "tags": ["timeline", "history", "events"],
+      "useWhen": [
+        "Visualizing an ordered sequence of events with consistent marker and content layout along a vertical rail.",
+        "Displaying workflow steps, audit logs, or run histories where each entry needs a status-colored marker."
+      ],
+      "avoidWhen": [
+        "Surfacing a real-time social or activity stream — feed is the higher-affordance composition.",
+        "Guiding users through a numbered procedural flow — steps conveys progress more clearly.",
+        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+      ],
+      "related": ["timeline-item", "feed", "steps"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/experimental/timeline/schema",
+        "variables": "cinder/experimental/timeline/variables"
+      }
+    },
+    {
+      "name": "TimelineItem",
+      "id": "timeline-item",
+      "import": "cinder/experimental/timeline-item",
+      "exportName": "TimelineItem",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Single entry inside a timeline rail with a status-colored marker, optional title and timestamp header, and a body slot.",
+      "tags": ["timeline", "event"],
+      "useWhen": [
+        "Rendering one event along a timeline rail with consistent marker, header, and body structure.",
+        "Coloring marker semantics by status (info, success, warning, danger) to communicate severity at a glance."
+      ],
+      "avoidWhen": [
+        "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better.",
+        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+      ],
+      "related": ["timeline", "feed-event"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/experimental/timeline-item/schema",
+        "variables": "cinder/experimental/timeline-item/variables"
+      }
+    },
+    {
+      "name": "ToastRegion",
+      "id": "toast-region",
+      "import": "cinder/toast-region",
+      "exportName": "ToastRegion",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "Provider region that hosts polite and assertive toast stacks and exposes an imperative show/dismiss API via context.",
+      "tags": ["feedback", "toast"],
+      "useWhen": [
+        "Surfacing transient, non-blocking confirmations or errors that auto-dismiss after a short duration.",
+        "Announcing the outcome of a background action that the user does not need to acknowledge."
+      ],
+      "avoidWhen": [
+        "Communicating a persistent page-level message — use banner so it stays until dismissed.",
+        "Reporting an urgent error that must remain on screen — use alert."
+      ],
+      "related": ["alert", "banner"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/toast-region/schema",
+        "variables": "cinder/toast-region/variables",
+        "examples": "cinder/toast-region/examples"
+      }
+    },
+    {
+      "name": "Toggle",
+      "id": "toggle",
+      "import": "cinder/toggle",
+      "exportName": "Toggle",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Sliding switch implementing the WAI-ARIA switch pattern for a single on or off setting that applies immediately.",
+      "tags": ["form", "switch"],
+      "useWhen": [
+        "Flipping a single setting on or off with immediate effect such as notifications or dark mode."
+      ],
+      "avoidWhen": [
+        "Selecting zero or more options inside a form submission — use checkbox instead.",
+        "Picking one option from a small fixed set — use segmented-control instead."
+      ],
+      "related": ["checkbox", "segmented-control"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/toggle/schema",
+        "variables": "cinder/toggle/variables",
+        "examples": "cinder/toggle/examples"
+      }
+    },
+    {
+      "name": "Tooltip",
+      "id": "tooltip",
+      "import": "cinder/tooltip",
+      "exportName": "Tooltip",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Hover-and-focus triggered descriptive hint anchored to a focusable child element, wired through aria-describedby.",
+      "tags": ["overlay", "hint"],
+      "useWhen": [
+        "Showing a short non-interactive label or description for an icon-only button or terse control.",
+        "Supplementing a control with a hint that should appear on hover or keyboard focus and dismiss on Escape."
+      ],
+      "avoidWhen": [
+        "Hosting interactive content or focusable controls — use popover instead, since tooltip content is not reachable.",
+        "Communicating the only accessible name for a control — use aria-label or visible text rather than tooltip text."
+      ],
+      "related": ["popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/tooltip/schema",
+        "variables": "cinder/tooltip/variables",
+        "examples": "cinder/tooltip/examples"
+      }
+    },
+    {
+      "name": "Tree",
+      "id": "tree",
+      "import": "cinder/tree",
+      "exportName": "Tree",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Composite root that renders a hierarchical tree of tree-item nodes with keyboard navigation and selection state.",
+      "tags": ["tree", "hierarchy"],
+      "useWhen": [
+        "Presenting hierarchical data such as a file system, organization, or nested categories.",
+        "Coordinating single- or multi-select state across all descendant tree-items via the selectionMode prop."
+      ],
+      "avoidWhen": [
+        "Disclosing flat sibling sections — use accordion instead.",
+        "Switching between sibling views of the same region — use tabs instead."
+      ],
+      "related": ["tree-item", "accordion"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tree/schema",
+        "variables": "cinder/tree/variables"
+      }
+    },
+    {
+      "name": "TreeItem",
+      "id": "tree-item",
+      "import": "cinder/tree-item",
+      "exportName": "TreeItem",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Node within a tree that exposes a label, optional children, and expand and selection state through the tree context.",
+      "tags": ["tree", "node"],
+      "useWhen": [
+        "Rendering a single branch or leaf inside a tree parent.",
+        "Nesting further tree-items as children to form a hierarchy."
+      ],
+      "avoidWhen": ["Standing alone outside a tree — it requires the tree context and registry."],
+      "related": ["tree"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tree-item/schema",
+        "variables": "cinder/tree-item/variables"
+      }
+    },
+    {
+      "name": "VisuallyHidden",
+      "id": "visually-hidden",
+      "import": "cinder/visually-hidden",
+      "exportName": "VisuallyHidden",
+      "category": "typography",
+      "status": "stable",
+      "purpose": "Utility primitive that hides content visually while keeping it available to assistive technology, with an optional focusable mode for skip links.",
+      "tags": ["typography", "accessibility"],
+      "useWhen": [
+        "Exposing label or helper text only to screen readers without affecting the visual layout.",
+        "Implementing a skip-to-content link that appears on keyboard focus."
+      ],
+      "avoidWhen": [
+        "Hiding content from everyone — use the hidden attribute or display none instead.",
+        "Labelling a form control where a visible label is acceptable — use label directly."
+      ],
+      "related": ["label"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/visually-hidden/schema",
+        "variables": "cinder/visually-hidden/variables",
+        "examples": "cinder/visually-hidden/examples"
+      }
+    }
+  ]
+}

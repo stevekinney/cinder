@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Numeric input with locale-aware formatting, min and max bounds, and step increments emitting a number or null.
+   * @tag form
+   * @tag numeric
+   * @useWhen Collecting a bounded numeric value such as a quantity, price, or age.
+   * @useWhen Needing locale-aware display formatting on top of a native number input.
+   * @avoidWhen Selecting a value within a continuous range visually — use slider instead.
+   * @avoidWhen Collecting free-form text or non-numeric content — use input instead.
+   * @related input, slider
+   */
   export type { NumberInputProps } from './number-input.types.ts';
 </script>
 

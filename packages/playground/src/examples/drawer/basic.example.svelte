@@ -5,9 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button, Drawer } from '../../../../components/src/index.ts';
-  import type { DrawerSide, DrawerSize } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Drawer } from 'cinder/drawer';
+  import type { DrawerSide, DrawerSize } from 'cinder/drawer';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let side = $state<DrawerSide>('right');

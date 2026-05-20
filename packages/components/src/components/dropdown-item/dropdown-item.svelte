@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status stable
+   * @purpose Selectable menuitem inside a dropdown-menu that handles activation, keyboard support, and optional close-on-select behavior.
+   * @tag overlay
+   * @tag menu
+   * @useWhen Rendering an individual action or link row inside a dropdown-menu.
+   * @useWhen Composing menu rows that should close the parent dropdown after selection unless closeOnSelect is disabled.
+   * @avoidWhen Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.
+   * @avoidWhen Grouping a static heading row above menu items — use dropdown-label.
+   * @related dropdown, dropdown-menu, dropdown-label, dropdown-separator
+   */
   export type { DropdownItemProps, DropdownItemVariant } from './dropdown-item.types.ts';
 </script>
 

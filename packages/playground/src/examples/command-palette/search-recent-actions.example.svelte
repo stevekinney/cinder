@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { CommandItem, CommandPalette } from '../../../../components/src/index.ts';
-
+  import { CommandItem } from 'cinder/command-item';
+  import { CommandPalette } from 'cinder/command-palette';
   // ── State ──────────────────────────────────────────────────────────────
   let open = $state(false);
   let query = $state('');
@@ -108,13 +108,21 @@
 
 <CommandPalette bind:open bind:query label="Command palette" {triggerRef}>
   {#snippet items({ query: paletteQuery })}
+    {@const headerBase =
+      'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}
+    {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}
+    {@const headerWithDivider =
+      'padding: 0.625rem 1.25rem 0.375rem 1.25rem; padding-block-start: 0.625rem; margin-block-start: 0.25rem; border-block-start: 1px solid var(--cinder-border);'}
+    {@const showPages = filteredPages.length > 0}
+    {@const showRecent = !paletteQuery}
+    {@const showActions = filteredActions.length > 0}
     <!--
       Search results section — only shown while typing.
       `paletteQuery` comes from the snippet parameter and mirrors CommandPalette's query.
       using the snippet parameter keeps the pattern explicit for consumers.
     -->
-    {#if filteredPages.length > 0}
-      <li role="none" class="palette-section-header">Pages</li>
+    {#if showPages}
+      <li role="none" style="{headerBase} {headerFirst}">Pages</li>
       {#each filteredPages as page (page.id)}
         <CommandItem
           value={page.id}
@@ -130,8 +138,8 @@
       Recent section — shown only when query is empty.
       Uses `role="none"` for the group label (purely visual; children remain in the AT).
     -->
-    {#if !paletteQuery}
-      <li role="none" class="palette-section-header">Recent</li>
+    {#if showRecent}
+      <li role="none" style="{headerBase} {showPages ? headerWithDivider : headerFirst}">Recent</li>
       {#each recentItems as item (item.id)}
         <CommandItem value={item.id} onselect={() => select(item.label)}>
           {item.label}
@@ -142,8 +150,13 @@
     <!--
       Actions section — always visible (filtered when typing).
     -->
-    {#if filteredActions.length > 0}
-      <li role="none" class="palette-section-header">Actions</li>
+    {#if showActions}
+      <li
+        role="none"
+        style="{headerBase} {showPages || showRecent ? headerWithDivider : headerFirst}"
+      >
+        Actions
+      </li>
       {#each filteredActions as action (action.id)}
         <CommandItem
           value={action.id}
@@ -151,7 +164,8 @@
           onselect={() => select(action.label)}
         >
           {#snippet leading()}
-            <span class="palette-action-icon">{action.icon}</span>
+            <span style="font-size: 0.875rem; font-weight: 700; line-height: 1;">{action.icon}</span
+            >
           {/snippet}
           {action.label}
           {#snippet trailing()}
@@ -174,27 +188,3 @@
     </span>
   {/snippet}
 </CommandPalette>
-
-<style>
-  .palette-section-header {
-    padding: 0.625rem 1.25rem 0.375rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--cinder-text-muted);
-    pointer-events: none;
-  }
-
-  .palette-section-header:not(:first-child) {
-    border-block-start: 1px solid var(--cinder-border);
-    margin-block-start: 0.25rem;
-    padding-block-start: 0.625rem;
-  }
-
-  .palette-action-icon {
-    font-size: 0.875rem;
-    font-weight: 700;
-    line-height: 1;
-  }
-</style>

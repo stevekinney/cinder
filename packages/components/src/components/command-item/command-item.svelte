@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category action
+   * @status stable
+   * @purpose Single selectable row inside a command-palette that registers itself with the parent and invokes its onselect handler when chosen.
+   * @tag action
+   * @tag command
+   * @useWhen Declaring an individual command, action, or result row inside a command-palette.
+   * @useWhen Composing a custom palette layout via children rather than the items prop.
+   * @avoidWhen Used outside a command-palette ancestor — the component throws at construction.
+   * @avoidWhen Rendering a generic dropdown choice — use dropdown-item instead.
+   * @related command-palette, dropdown-item
+   */
   export type { CommandItemProps } from './command-item.types.ts';
 </script>
 

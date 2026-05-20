@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Badge } from '../../../../components/src/index.ts';
+  import { Badge } from 'cinder/badge';
 </script>
 
 <div class="example-preview-row">

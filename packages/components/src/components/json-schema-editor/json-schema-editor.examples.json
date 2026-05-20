@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "json-schema-editor",
+  "import": "cinder/json-schema-editor",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic JSON Schema editor",
+      "description": "Edit a flat object schema with form, JSON, and diff views.",
+      "code": "<script lang=\"ts\">\n  import { JsonSchemaEditor } from 'cinder/json-schema-editor';\n  import type { JsonSchemaValue } from 'cinder/json-schema-editor';\n  const personSchema: JsonSchemaValue = {\n    $schema: 'https://json-schema.org/draft/2020-12/schema',\n    title: 'Person',\n    type: 'object',\n    properties: {\n      name: { type: 'string', title: 'Full name', minLength: 1 },\n      age: { type: 'integer', minimum: 0 },\n      email: { type: 'string', format: 'email' },\n    },\n    required: ['name'],\n  };\n</script>\n\n<JsonSchemaEditor id=\"basic-jse\" schema={personSchema} />\n"
+    },
+    {
+      "id": "composition",
+      "title": "Composition (oneOf)",
+      "description": "A schema using oneOf alongside type — both render as separate sections.",
+      "code": "<script lang=\"ts\">\n  import { JsonSchemaEditor } from 'cinder/json-schema-editor';\n  import type { JsonSchemaValue } from 'cinder/json-schema-editor';\n  const schema: JsonSchemaValue = {\n    type: 'object',\n    properties: {\n      identifier: {\n        oneOf: [\n          { type: 'string', pattern: '^[a-z]+$' },\n          { type: 'integer', minimum: 1 },\n        ],\n      },\n    },\n  };\n</script>\n\n<JsonSchemaEditor id=\"composition-jse\" {schema} />\n"
+    },
+    {
+      "id": "invalid-source",
+      "title": "Invalid initial schema",
+      "description": "When the input cannot be parsed, the form is disabled and the JSON view is the entry point.",
+      "code": "<script lang=\"ts\">\n  import { JsonSchemaEditor } from 'cinder/json-schema-editor';\n  const malformed = '{ \"type\": \"not-a-real-type\" }';\n</script>\n\n<JsonSchemaEditor id=\"invalid-jse\" schema={malformed} />\n"
+    }
+  ]
+}

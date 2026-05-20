@@ -7,6 +7,9 @@ on:
       - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
+      - '!packages/**/*.md'
+      - '!packages/**/README*'
+      - '!packages/**/CHANGELOG*'
   push:
     branches:
       - main
@@ -15,7 +18,37 @@ on:
       - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
+      - '!packages/**/*.md'
+      - '!packages/**/README*'
+      - '!packages/**/CHANGELOG*'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'visual-regression mode (off | report | block) — only honored by the playwright job, not update-baselines'
+        required: false
+        default: 'off'
+        type: choice
+        options:
+          - off
+          - report
+          - block
+      update_baselines:
+        description: 'Set to true to run the update-baselines job (writes new snapshot PNGs and opens a follow-up PR).'
+        required: false
+        default: false
+        type: boolean
+      source_ref:
+        description: 'Source ref to render baselines from (required when update_baselines=true).'
+        required: false
+        type: string
+      base_ref:
+        description: 'Branch the snapshot-only PR targets (required when update_baselines=true).'
+        required: false
+        type: string
+      pull_request_number:
+        description: 'Optional originating PR number; used to name the bot branch and link the snapshot PR.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -86,6 +119,14 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -128,8 +169,12 @@ jobs:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
           # Trace recording is kept only for the full main-branch run.
           PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.mode == 'full' && 'retain-on-failure' || 'off' }}
+          # Visual-regression dispatch mode. Defaults to 'off' (legacy capture);
+          # flip to 'report' during soak, 'block' once approved (Phase 5 single-line PR).
+          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
         run: |
           echo "Scope: ${{ needs.scope.outputs.mode }}"
+          echo "Visual-diff mode: $CINDER_VISUAL_DIFF"
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
@@ -173,3 +218,161 @@ jobs:
           path: packages/testing/screenshots
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Merge visual-report fragments
+        # Phase 3 'report' mode writes per-test JSON fragments under
+        # test-results/visual-report/. Merge them into a single report,
+        # then surface a job summary so reviewers see mismatched cases
+        # without downloading the artifact.
+        if: always() && env.CINDER_VISUAL_DIFF == 'report'
+        env:
+          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
+        run: |
+          set -euo pipefail
+          REPORT_DIR=packages/testing/test-results/visual-report
+          if [ ! -d "$REPORT_DIR" ]; then
+            echo "No visual-report fragments emitted; nothing to merge."
+            exit 0
+          fi
+          MERGED=packages/testing/test-results/visual-report.json
+          find "$REPORT_DIR" -name '*.json' -print0 \
+            | xargs -0 -I {} cat {} \
+            | jq -s '.' > "$MERGED"
+          COUNT=$(jq 'length' "$MERGED")
+          {
+            echo "## Visual-regression report ($COUNT mismatched case(s))"
+            echo ""
+            if [ "$COUNT" -gt 0 ]; then
+              echo "| Slug | Theme | Viewport | Fixture | Diff Pixels |"
+              echo "| --- | --- | --- | --- | --- |"
+              jq -r '.[] | "| \(.slug) | \(.theme) | \(.viewport) | \(.fixture) | \(.diffPixels) |"' "$MERGED"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload visual-report
+        if: always() && env.CINDER_VISUAL_DIFF == 'report'
+        env:
+          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-report
+          path: packages/testing/test-results/visual-report.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Post sticky PR comment (best-effort)
+        # Best-effort: forked PRs lack pull-requests:write permission.
+        # The Job Summary and HTML report artifact are the authoritative
+        # signal; this comment is convenience.
+        if: always() && env.CINDER_VISUAL_DIFF == 'report' && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: visual-regression-report
+          path: packages/testing/test-results/visual-report.json
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  baseline-coverage:
+    # Runs when visual diffing is active (report or block mode) to catch new
+    # components added without baselines. Skipped in off mode — no baselines
+    # are committed yet at off-mode launch, so the check would always fail.
+    if: ${{ (github.event.inputs.mode || 'off') != 'off' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prepare manifest
+        # baseline-coverage-check reads the cached manifest; ensure it's fresh.
+        run: bun run --filter=@cinder/testing scripts/prepare-manifest.ts
+
+      - name: Verify baseline coverage
+        # Fails with a named list of missing slugs when any committed
+        # baseline is absent. The exit code drives the job result.
+        run: bun run --filter=@cinder/testing scripts/baseline-coverage-check.ts
+
+  update-baselines:
+    # Manual-only. Runs inside the canonical Playwright Docker image,
+    # writes baselines, and opens a snapshot-only follow-up PR.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.update_baselines == 'true'
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Validate inputs
+        env:
+          SOURCE_REF: ${{ github.event.inputs.source_ref }}
+          BASE_REF: ${{ github.event.inputs.base_ref }}
+        run: |
+          if [ -z "$SOURCE_REF" ] || [ -z "$BASE_REF" ]; then
+            echo "update-baselines requires both source_ref and base_ref inputs." >&2
+            exit 1
+          fi
+
+      - name: Checkout source ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_ref }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Docker image and update baselines
+        run: bun run --filter=@cinder/testing test:browser:update:docker
+
+      - name: Check for snapshot changes
+        id: changes
+        run: |
+          if git diff --quiet packages/testing/snapshots; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No snapshot changes; nothing to PR."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create snapshot-only PR
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          SOURCE_REF: ${{ github.event.inputs.source_ref }}
+          BASE_REF: ${{ github.event.inputs.base_ref }}
+          PR_NUMBER: ${{ github.event.inputs.pull_request_number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BRANCH="bot/snapshots/${PR_NUMBER:-$SHORT_SHA}"
+          git config user.name "cinder-bot"
+          git config user.email "cinder-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add packages/testing/snapshots
+          git commit -m "chore(snapshots): regenerate baselines from ${SOURCE_REF}"
+          git push origin "$BRANCH" --force-with-lease
+          BODY="Snapshot-only update generated by the update-baselines workflow from \`${SOURCE_REF}\`."
+          if [ -n "${PR_NUMBER:-}" ]; then
+            BODY="$BODY"$'\n\n'"Related: #${PR_NUMBER}"
+          fi
+          gh pr create \
+            --base "$BASE_REF" \
+            --head "$BRANCH" \
+            --title "chore(snapshots): regenerate from ${SOURCE_REF}" \
+            --body "$BODY"

@@ -5,8 +5,7 @@
 
 <script lang="ts">
   import { codeToHtml } from 'shiki';
-  import { CodeBlock } from '../../../../components/src/index.ts';
-
+  import { CodeBlock } from 'cinder/code-block';
   const code = `SELECT id, name, created_at
 FROM users
 WHERE active = true

@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Chip } from '../../../../components/src/index.ts';
+  import { Chip } from 'cinder/chip';
 </script>
 
 <div class="example-preview-row">
