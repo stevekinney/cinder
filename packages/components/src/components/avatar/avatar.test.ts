@@ -60,6 +60,46 @@ describe('Avatar', () => {
     expect(placeholder).not.toBeNull();
   });
 
+  test('falls back to initials when the image fails to load', async () => {
+    const { container } = render(Avatar, { src: '/missing.jpg', name: 'Alice Smith' });
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    img?.dispatchEvent(new Event('error'));
+    await Promise.resolve();
+    expect(container.querySelector('img')).toBeNull();
+    const initials = container.querySelector('.cinder-avatar__initials');
+    expect(initials?.textContent).toBe('AS');
+  });
+
+  test('re-shows the image when src changes to a new URL after a failure', async () => {
+    const { container, rerender } = render(Avatar, {
+      src: '/missing.jpg',
+      name: 'Alice Smith',
+    });
+    container.querySelector('img')?.dispatchEvent(new Event('error'));
+    await Promise.resolve();
+    expect(container.querySelector('img')).toBeNull();
+
+    await rerender({ src: '/different.jpg', name: 'Alice Smith' });
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('src')).toBe('/different.jpg');
+  });
+
+  test('keeps the failure when the same failed src is re-set', async () => {
+    const { container, rerender } = render(Avatar, {
+      src: '/missing.jpg',
+      name: 'Alice Smith',
+    });
+    container.querySelector('img')?.dispatchEvent(new Event('error'));
+    await Promise.resolve();
+    expect(container.querySelector('img')).toBeNull();
+
+    await rerender({ src: '/missing.jpg', name: 'Alice Smith' });
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.cinder-avatar__initials')?.textContent).toBe('AS');
+  });
+
   test('sr-only span exposes accessible name to AT when falling back to initials', () => {
     const { container } = render(Avatar, { name: 'Alice' });
     const srOnly = container.querySelector('.cinder-sr-only');
