@@ -4,13 +4,13 @@
 
 <script lang="ts">
   import type { CommandPaletteProps } from './command-palette.types.ts';
-  import { setContext, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
 
   import { captureFocus, pushEscapeHandler, restoreFocusTo } from '../../_internal/overlay.ts';
   import { cn } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
-    COMMAND_PALETTE_CONTEXT,
+    setCommandPaletteContext,
     type CommandItemRegistrationInput,
     type CommandPaletteContext,
   } from '../_internal/command-palette-context.ts';
@@ -48,8 +48,21 @@
   let capturedFocus: HTMLElement | null = null;
 
   // ── Item registration ─────────────────────────────────────────────────────
-  type RegistrationRecord = CommandItemRegistrationInput & { id: string };
+  type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
   let registrations = $state<RegistrationRecord[]>([]);
+
+  // Sort registrations by DOM document order. {@attach} fires after the node is
+  // mounted, so registration order usually equals DOM order — but conditional
+  // ({#if}) blocks that re-mount middle items can desync the list. Sorting on
+  // read keeps keyboard navigation always aligned with visual order.
+  function inDocumentOrder(items: RegistrationRecord[]): RegistrationRecord[] {
+    return [...items].sort((a, b) => {
+      const position = a.node.compareDocumentPosition(b.node);
+      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+  }
 
   // Stable incrementing counter for item ids within this palette instance.
   let itemCounter = 0;
@@ -61,7 +74,9 @@
   // always walks the current set, including after prop changes (e.g. toggling
   // disabled on a mounted item).
   const enabledIds = $derived.by(() => {
-    return registrations.filter((r) => !r.getDisabled()).map((r) => r.id);
+    return inDocumentOrder(registrations)
+      .filter((r) => !r.getDisabled())
+      .map((r) => r.id);
   });
 
   // Repair activeItemId whenever the enabled set changes (registration churn,
@@ -230,12 +245,13 @@
     get activeItemId() {
       return activeItemId;
     },
-    register(input: CommandItemRegistrationInput) {
+    register(input: CommandItemRegistrationInput, node: HTMLElement) {
       const id = `${listboxId}-item-${++itemCounter}`;
       registrations = [
         ...registrations,
         {
           id,
+          node,
           getValue: input.getValue,
           getOnselect: input.getOnselect,
           getDisabled: input.getDisabled,
@@ -253,7 +269,7 @@
     },
   };
 
-  setContext<CommandPaletteContext>(COMMAND_PALETTE_CONTEXT, context);
+  setCommandPaletteContext(context);
 
   const showEmpty = $derived(mounted && registrationsReady && registrations.length === 0);
 </script>

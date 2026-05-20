@@ -11,6 +11,8 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 const { default: Tree } = await import('./tree.svelte');
 const { default: TreeItem } = await import('../tree-item/tree-item.svelte');
 const { default: TreeTestHarness } = await import('../_tree-test-harness.svelte');
+const { default: TreeAttachFixture } =
+  await import('../../test/fixtures/tree-attach-fixture.svelte');
 
 afterEach(() => cleanup());
 
@@ -1303,5 +1305,76 @@ describe('Tree — event filtering', () => {
     const btn = container.querySelector('.inner-btn') as HTMLElement;
     await fireEvent.click(btn);
     expect(selectedIds).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Attachment-based registration (DOM-order navigation)
+// ---------------------------------------------------------------------------
+
+describe('Tree — attachment registration', () => {
+  test('arrow keys walk items in DOM order after the middle item remounts', async () => {
+    const { container, rerender } = render(TreeAttachFixture, {
+      props: { ids: ['a', 'b', 'c'], showMiddle: true },
+    });
+
+    expect(container.querySelectorAll('[role="treeitem"]')).toHaveLength(3);
+
+    // Unmount the middle item; navigation should now skip over the missing slot.
+    await rerender({ ids: ['a', 'b', 'c'], showMiddle: false });
+    await waitFor(() => {
+      expect(container.querySelectorAll('[role="treeitem"]')).toHaveLength(2);
+    });
+
+    const a = treeItem(container, 'a') as HTMLElement;
+    a.focus();
+    await fireEvent.keyDown(a, { key: 'ArrowDown' });
+    const c = treeItem(container, 'c') as HTMLElement;
+    expect(c.getAttribute('tabindex')).toBe('0');
+
+    // Remount the middle item; navigation should once again include it.
+    await rerender({ ids: ['a', 'b', 'c'], showMiddle: true });
+    await waitFor(() => {
+      expect(container.querySelectorAll('[role="treeitem"]')).toHaveLength(3);
+    });
+
+    const aAgain = treeItem(container, 'a') as HTMLElement;
+    aAgain.focus();
+    await fireEvent.keyDown(aAgain, { key: 'ArrowDown' });
+    const b = treeItem(container, 'b') as HTMLElement;
+    expect(b.getAttribute('tabindex')).toBe('0');
+    await fireEvent.keyDown(b, { key: 'ArrowDown' });
+    const cAgain = treeItem(container, 'c') as HTMLElement;
+    expect(cAgain.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('conditional item unmount/remount returns the registry to baseline', async () => {
+    const { container, rerender } = render(TreeAttachFixture, {
+      props: { ids: ['a', 'b', 'c'], showMiddle: true },
+    });
+
+    const baseline = container.querySelectorAll('[role="treeitem"]').length;
+    expect(baseline).toBe(3);
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      await rerender({ ids: ['a', 'b', 'c'], showMiddle: false });
+      await waitFor(() => {
+        expect(container.querySelectorAll('[role="treeitem"]')).toHaveLength(baseline - 1);
+      });
+      await rerender({ ids: ['a', 'b', 'c'], showMiddle: true });
+      await waitFor(() => {
+        expect(container.querySelectorAll('[role="treeitem"]')).toHaveLength(baseline);
+      });
+    }
+
+    // After the cycles, ArrowDown still visits each item in DOM order.
+    const a = treeItem(container, 'a') as HTMLElement;
+    a.focus();
+    await fireEvent.keyDown(a, { key: 'ArrowDown' });
+    const b = treeItem(container, 'b') as HTMLElement;
+    expect(b.getAttribute('tabindex')).toBe('0');
+    await fireEvent.keyDown(b, { key: 'ArrowDown' });
+    const c = treeItem(container, 'c') as HTMLElement;
+    expect(c.getAttribute('tabindex')).toBe('0');
   });
 });

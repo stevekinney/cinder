@@ -6,6 +6,26 @@ import { TreeRegistry } from './tree-registry.svelte.ts';
 // Helpers
 // ---------------------------------------------------------------------------
 
+// The registry sorts children by document order using compareDocumentPosition.
+// In this pure-unit test there is no DOM, so we hand each registration a stub
+// node that compares by a monotonically increasing counter — preserving
+// registration order in the resulting sibling lists.
+let nodeCounter = 0;
+
+function makeStubNode(): HTMLElement {
+  const order = nodeCounter++;
+  const stub = {
+    __order: order,
+    compareDocumentPosition(other: HTMLElement) {
+      const otherOrder = (other as unknown as { __order: number }).__order;
+      if (order < otherOrder) return 0x04; // Node.DOCUMENT_POSITION_FOLLOWING
+      if (order > otherOrder) return 0x02; // Node.DOCUMENT_POSITION_PRECEDING
+      return 0;
+    },
+  };
+  return stub as unknown as HTMLElement;
+}
+
 function makeNode(
   id: string,
   parentId: string | null,
@@ -16,6 +36,7 @@ function makeNode(
     id,
     parentId,
     level,
+    node: makeStubNode(),
     disabled: options.disabled ?? false,
     isBranch: () => options.isBranch ?? false,
     label: () => options.label ?? id,
