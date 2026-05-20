@@ -1,0 +1,36 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    disabled: {
+      type: 'boolean',
+      description: 'Disable just this segment (independent of the control-level `disabled`).',
+    },
+    controls: {
+      type: 'string',
+      description:
+        'ID of the panel this segment controls — only meaningful when the parent\n`SegmentedControl` uses `variant="tablist"`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'leading',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'trailing',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

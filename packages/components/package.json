@@ -749,6 +749,18 @@
       "svelte": "./src/components/section-heading/section-heading.variables.ts",
       "types": "./dist/components/section-heading/section-heading.variables.d.ts"
     },
+    "./segment": {
+      "svelte": "./src/components/segment/index.ts",
+      "types": "./dist/components/segment/index.d.ts"
+    },
+    "./segment/schema": {
+      "svelte": "./src/components/segment/segment.schema.ts",
+      "types": "./dist/components/segment/segment.schema.d.ts"
+    },
+    "./segment/variables": {
+      "svelte": "./src/components/segment/segment.variables.ts",
+      "types": "./dist/components/segment/segment.variables.d.ts"
+    },
     "./segmented-control": {
       "svelte": "./src/components/segmented-control/index.ts",
       "types": "./dist/components/segmented-control/index.d.ts"

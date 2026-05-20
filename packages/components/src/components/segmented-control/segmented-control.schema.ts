@@ -35,7 +35,7 @@ const schema = {
     },
     detached: {
       type: 'boolean',
-      description: 'Show options as detached individual buttons instead of a unified strip.',
+      description: 'Render segments as detached individual buttons instead of a unified strip.',
     },
     fullWidth: {
       type: 'boolean',
@@ -44,13 +44,6 @@ const schema = {
     variant: {
       enum: ['radiogroup', 'tablist'],
       description: 'ARIA interaction pattern. Use `tablist` when options switch visible panels.',
-    },
-    options: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Available options.',
     },
     class: {
       type: 'string',
@@ -66,7 +59,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id', 'label', 'options'],
+  required: ['id', 'label'],
   metadata: {
     unsupportedProps: [
       {

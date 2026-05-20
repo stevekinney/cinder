@@ -266,11 +266,11 @@ export type {
   SectionHeadingProps,
 } from './components/section-heading/index.ts';
 
+export { default as Segment } from './components/segment/index.ts';
+export type { SegmentProps } from './components/segment/index.ts';
+
 export { default as SegmentedControl } from './components/segmented-control/index.ts';
-export type {
-  SegmentedControlOption,
-  SegmentedControlProps,
-} from './components/segmented-control/index.ts';
+export type { SegmentedControlProps } from './components/segmented-control/index.ts';
 
 export { default as Select } from './components/select/index.ts';
 export type { SelectOption, SelectProps } from './components/select/index.ts';

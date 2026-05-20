@@ -1,0 +1,34 @@
+import type { Snippet } from 'svelte';
+import type { HTMLButtonAttributes } from 'svelte/elements';
+
+type SegmentOwnedAttributes =
+  | 'role'
+  | 'type'
+  | 'disabled'
+  | 'tabindex'
+  | 'aria-checked'
+  | 'aria-selected'
+  | 'aria-pressed'
+  | 'aria-controls'
+  | 'aria-disabled'
+  | 'onclick'
+  | 'onfocus'
+  | 'onblur';
+
+export type SegmentProps = Omit<HTMLButtonAttributes, SegmentOwnedAttributes> & {
+  /** Value this segment represents. Must be unique within the parent control. */
+  value: string;
+  /** Disable just this segment (independent of the control-level `disabled`). */
+  disabled?: boolean | undefined;
+  /**
+   * ID of the panel this segment controls — only meaningful when the parent
+   * `SegmentedControl` uses `variant="tablist"`.
+   */
+  controls?: string | undefined;
+  /** Optional decorative content rendered before the label, inside `aria-hidden`. */
+  leading?: Snippet | undefined;
+  /** Optional decorative content rendered after the label, inside `aria-hidden`. */
+  trailing?: Snippet | undefined;
+  /** The segment's label content. */
+  children: Snippet;
+};
