@@ -433,17 +433,17 @@ export type {
 // promotion criteria documented in the "Library boundary" section of README.md.
 // ---------------------------------------------------------------------------
 
-export { default as ConnectionIndicator } from './components/experimental/connection-indicator.svelte';
+export { default as ConnectionIndicator } from './components/experimental/connection-indicator/index.ts';
 export type {
   ConnectionIndicatorProps,
   ConnectionState,
-} from './components/experimental/connection-indicator.svelte';
+} from './components/experimental/connection-indicator/index.ts';
 
-export { default as JsonViewer } from './components/experimental/json-viewer.svelte';
-export type { JsonViewerProps } from './components/experimental/json-viewer.svelte';
+export { default as JsonViewer } from './components/experimental/json-viewer/index.ts';
+export type { JsonViewerProps } from './components/experimental/json-viewer/index.ts';
 
-export { default as Message } from './components/experimental/message.svelte';
-export type { MessageProps, MessageRole } from './components/experimental/message.svelte';
+export { default as Message } from './components/experimental/message/index.ts';
+export type { MessageProps, MessageRole } from './components/experimental/message/index.ts';
 
 export { default as Timeline } from './components/experimental/timeline/index.ts';
 export type { TimelineProps } from './components/experimental/timeline/index.ts';

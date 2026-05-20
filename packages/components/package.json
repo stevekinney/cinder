@@ -17,18 +17,6 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
-    "./experimental/connection-indicator": {
-      "svelte": "./src/components/experimental/connection-indicator.svelte",
-      "types": "./dist/components/experimental/connection-indicator.svelte.d.ts"
-    },
-    "./experimental/json-viewer": {
-      "svelte": "./src/components/experimental/json-viewer.svelte",
-      "types": "./dist/components/experimental/json-viewer.svelte.d.ts"
-    },
-    "./experimental/message": {
-      "svelte": "./src/components/experimental/message.svelte",
-      "types": "./dist/components/experimental/message.svelte.d.ts"
-    },
     "./accordion": {
       "svelte": "./src/components/accordion/index.ts",
       "types": "./dist/components/accordion/index.d.ts"
@@ -1180,6 +1168,42 @@
     "./visually-hidden/variables": {
       "svelte": "./src/components/visually-hidden/visually-hidden.variables.ts",
       "types": "./dist/components/visually-hidden/visually-hidden.variables.d.ts"
+    },
+    "./experimental/connection-indicator": {
+      "svelte": "./src/components/experimental/connection-indicator/index.ts",
+      "types": "./dist/components/experimental/connection-indicator/index.d.ts"
+    },
+    "./experimental/connection-indicator/schema": {
+      "svelte": "./src/components/experimental/connection-indicator/connection-indicator.schema.ts",
+      "types": "./dist/components/experimental/connection-indicator/connection-indicator.schema.d.ts"
+    },
+    "./experimental/connection-indicator/variables": {
+      "svelte": "./src/components/experimental/connection-indicator/connection-indicator.variables.ts",
+      "types": "./dist/components/experimental/connection-indicator/connection-indicator.variables.d.ts"
+    },
+    "./experimental/json-viewer": {
+      "svelte": "./src/components/experimental/json-viewer/index.ts",
+      "types": "./dist/components/experimental/json-viewer/index.d.ts"
+    },
+    "./experimental/json-viewer/schema": {
+      "svelte": "./src/components/experimental/json-viewer/json-viewer.schema.ts",
+      "types": "./dist/components/experimental/json-viewer/json-viewer.schema.d.ts"
+    },
+    "./experimental/json-viewer/variables": {
+      "svelte": "./src/components/experimental/json-viewer/json-viewer.variables.ts",
+      "types": "./dist/components/experimental/json-viewer/json-viewer.variables.d.ts"
+    },
+    "./experimental/message": {
+      "svelte": "./src/components/experimental/message/index.ts",
+      "types": "./dist/components/experimental/message/index.d.ts"
+    },
+    "./experimental/message/schema": {
+      "svelte": "./src/components/experimental/message/message.schema.ts",
+      "types": "./dist/components/experimental/message/message.schema.d.ts"
+    },
+    "./experimental/message/variables": {
+      "svelte": "./src/components/experimental/message/message.variables.ts",
+      "types": "./dist/components/experimental/message/message.variables.d.ts"
     },
     "./experimental/timeline": {
       "svelte": "./src/components/experimental/timeline/index.ts",

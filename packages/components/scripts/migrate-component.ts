@@ -382,7 +382,7 @@ async function migrateOne(context: MigrationContext): Promise<void> {
       ? `@import './experimental/${name}.css';`
       : `@import './components/${name}.css';`;
     const newImport = isExperimental
-      ? `@import '../components/experimental/${name}/${name}.css';`
+      ? `@import '../../components/experimental/${name}/${name}.css';`
       : `@import '../components/${name}/${name}.css';`;
     const aggPath = isExperimental
       ? join(STYLES_COMPONENTS_DIR, 'experimental.css')
