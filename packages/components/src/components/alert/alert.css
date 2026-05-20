@@ -60,52 +60,21 @@
  * Dismiss button
  * ---------------------------------------- */
 
+/* Box-model reset, hit-area, and idle :hover live on .cinder-_dismiss-button
+ * (see src/styles/components.css). Only Alert-specific layout positioning
+ * and status-driven focus chrome live here.
+ *
+ * Layout note: the button sits as a flex sibling so it never overlaps the
+ * content. Its box height is sized to the body line-height (1.25rem) so a
+ * dismissible alert is the same height as a non-dismissible one — the
+ * WCAG 2.5.5 hit-area expansion happens via the shared ::after pseudo-
+ * element, which is absolutely positioned and doesn't influence layout. */
 .cinder-alert__dismiss {
-  /* Sits as a flex sibling so it never overlaps the content. The button's
-   * box height is sized to the body line-height (1.25rem) so a dismissible
-   * alert is the same height as a non-dismissible one — the WCAG 2.5.5
-   * hit-area expansion happens via the ::after pseudo-element below, which
-   * is absolutely positioned and doesn't influence layout. */
-  flex-shrink: 0;
   align-self: flex-start;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-
-  border-radius: var(--cinder-radius-sm);
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-
-  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
-  position: relative;
 
   transition:
     background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
-
-/*
- * Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting
- * layout. The ::after pseudo-element is absolutely positioned relative to the
- * button, so it doesn't push adjacent content around.
- */
-.cinder-alert__dismiss::after {
-  content: '';
-  position: absolute;
-  inset: 50% auto auto 50%;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
-}
-
-.cinder-alert__dismiss:hover {
-  background: color-mix(in oklch, currentColor, transparent 80%);
 }
 
 .cinder-alert__dismiss:focus-visible {
@@ -130,6 +99,15 @@
 
 /* ----------------------------------------
  * Variant: info
+ *
+ * NOTE (CSS audit, Batch D): The four status variants below intentionally
+ * keep the inline `oklch(from var(--cinder-{status}) …)` math instead of
+ * switching to the `--cinder-color-{status}-{bg,fg,border}` triples in
+ * tokens-base.css. The dark-theme triple background sits 8 oklch-L points
+ * lighter than the surface synthesized here (28% L vs 20% L), which exceeds
+ * the audit's 0.02 ΔL threshold, and the light-theme triple border is
+ * borderline on WCAG 1.4.11. See docs/css-audit/status-triple-equivalence.md
+ * for the full pre-flight table.
  * ---------------------------------------- */
 
 .cinder-alert[data-cinder-variant='info'] {

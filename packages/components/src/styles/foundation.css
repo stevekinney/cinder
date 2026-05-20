@@ -58,6 +58,18 @@
   font-size: var(--cinder-text-base);
 }
 
+/* INTERNAL: shared box-shadow ring formula. Components that paint a focus
+   ring with the standard "transparent outline + two-stop box-shadow" pattern
+   reference this variable so the formula lives in exactly one place. Not part
+   of the public token surface — do not document, do not export. The leading
+   `_` after `--` marks it as private/internal per the Cinder convention. */
+:root {
+  --_cinder-focus-ring-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--cinder-ring-color);
+}
+
 :focus-visible {
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);
@@ -221,4 +233,36 @@
 
 :where(dialog)::backdrop {
   background: transparent;
+}
+
+/* ----------------------------------------------------------------------------
+ * Disabled visual treatment — VISUAL only, does NOT suppress interaction.
+ *
+ * Centralizes `opacity: 0.6` for components whose disabled selector shapes
+ * vary (`:disabled`, `[aria-disabled]`, `[data-disabled]`). Interaction
+ * suppression (`pointer-events`, `cursor`, `aria-disabled`) stays component-
+ * local because it's behavior, not appearance.
+ *
+ * `:where()` keeps specificity at 0 so consumers can override freely.
+ * Component CSS in the `cinder.components` layer no longer redeclares these.
+ * ---------------------------------------------------------------------------- */
+:where(
+  .cinder-button:disabled:not([data-cinder-loading]),
+  .cinder-button[aria-disabled='true']:not([data-cinder-loading]),
+  .cinder-dropdown-item[data-disabled],
+  .cinder-toggle:disabled,
+  .cinder-segmented-control[aria-disabled='true'],
+  .cinder-segmented-control-option:disabled
+) {
+  opacity: 0.6;
+}
+
+/* Label/description text-disabled color for field components. */
+:where(
+  .cinder-checkbox-field__label[data-disabled],
+  .cinder-input-field__label[data-disabled],
+  .cinder-radio-row__label[data-disabled],
+  .cinder-radio-row__description[data-disabled]
+) {
+  color: var(--cinder-text-disabled);
 }

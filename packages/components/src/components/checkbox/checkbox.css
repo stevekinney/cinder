@@ -36,8 +36,12 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-checkbox:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-checkbox:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-checkbox:focus-visible {
@@ -104,7 +108,7 @@
 }
 
 .cinder-checkbox-field__label[data-disabled] {
-  color: var(--cinder-text-disabled);
+  /* color centralized in foundation.css disabled-visual text rule */
   cursor: not-allowed;
 }
 

@@ -29,10 +29,6 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-dropdown-trigger:hover {
-  background: var(--cinder-surface-hover);
-}
-
 .cinder-dropdown-trigger:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow:
@@ -121,7 +117,7 @@
   align-items: center;
   gap: var(--cinder-space-2);
   width: 100%;
-  min-height: 2.75rem;
+  min-height: var(--cinder-control-height-lg);
   padding-block: var(--cinder-space-2-5);
   padding-inline: var(--cinder-space-3);
   border: 0;
@@ -149,38 +145,48 @@
 
 .cinder-dropdown-item[data-disabled] {
   pointer-events: none;
-  opacity: 0.5;
+  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
 }
 
-.cinder-dropdown-item[data-cinder-variant='default']:hover,
 .cinder-dropdown-item[data-cinder-variant='default']:focus-visible {
   background: var(--cinder-surface-hover);
-}
-
-.cinder-dropdown-item[data-cinder-variant='default']:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow: inset 0 0 0 var(--cinder-ring-width)
     var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
-}
-
-.cinder-dropdown-item[data-cinder-variant='default']:active {
-  background: var(--cinder-surface-pressed);
 }
 
 .cinder-dropdown-item[data-cinder-variant='danger'] {
   color: var(--cinder-danger);
 }
 
-.cinder-dropdown-item[data-cinder-variant='danger']:hover,
 .cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
   background: var(--cinder-color-danger-bg);
   color: var(--cinder-color-danger-fg);
-}
-
-.cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow: inset 0 0 0 var(--cinder-ring-width)
     var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
+}
+
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap. Placed before :active rules so press feedback wins on tap. */
+@media (hover: hover) {
+  .cinder-dropdown-trigger:hover {
+    background: var(--cinder-surface-hover);
+  }
+
+  .cinder-dropdown-item[data-cinder-variant='default']:hover {
+    background: var(--cinder-surface-hover);
+  }
+
+  .cinder-dropdown-item[data-cinder-variant='danger']:hover {
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+  }
+}
+
+/* :active stays unwrapped — fires on tap. */
+.cinder-dropdown-item[data-cinder-variant='default']:active {
+  background: var(--cinder-surface-pressed);
 }
 
 .cinder-dropdown-item[data-cinder-variant='danger']:active {

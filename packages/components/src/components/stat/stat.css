@@ -33,7 +33,7 @@
 
 .cinder-stat__value {
   font-size: var(--cinder-font-size-2xl, 1.875rem);
-  font-weight: 600;
+  font-weight: var(--cinder-font-semibold);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }

@@ -131,11 +131,11 @@
 
       {#if trailing}
         <span
-          class="cinder-input-group__trailing"
+          class="cinder-input-group__trailing cinder-_truncate"
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
       {:else if rendersNativeDateIcon}
-        <span class="cinder-input-group__trailing cinder-input-group__date-icon" aria-hidden="true">
+        <span class="cinder-input-group__trailing cinder-input-group__date-icon cinder-_truncate" aria-hidden="true">
           {@render calendarIcon()}
         </span>
       {/if}

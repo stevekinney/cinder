@@ -68,6 +68,7 @@
 /* ── Alpha checkerboard — color layer on top, checkerboard beneath ──────── */
 
 .cinder-color-swatch-picker__swatch[data-cinder-alpha] {
+  /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
   background-color: #fff;
   background-image:
     linear-gradient(var(--swatch-color), var(--swatch-color)),

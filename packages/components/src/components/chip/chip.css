@@ -122,14 +122,17 @@ button.cinder-chip {
  * Hover states (button chips only)
  * ---------------------------------------- */
 
+/* Hover tint: a flat overlay drawn over the chip's existing background.
+ * Uses `light-dark()` so the overlay darkens in light mode and lightens
+ * in dark mode, following `color-scheme` (driven by `prefers-color-scheme`
+ * and any `[data-theme]` override on an ancestor). This replaces a
+ * `filter: brightness()` toggle that previously needed a
+ * prefers-color-scheme media query. */
 button.cinder-chip:hover:not(:disabled) {
-  filter: brightness(0.95);
-}
-
-@media (prefers-color-scheme: dark) {
-  button.cinder-chip:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
+  background-image: linear-gradient(
+    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+  );
 }
 
 /* ----------------------------------------
@@ -267,14 +270,12 @@ button.cinder-chip:disabled {
   transform: translateY(-50%);
 }
 
+/* Same overlay technique as the chip-body hover above. */
 .cinder-chip__remove:hover:not(:disabled) {
-  filter: brightness(0.95);
-}
-
-@media (prefers-color-scheme: dark) {
-  .cinder-chip__remove:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
+  background-image: linear-gradient(
+    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+  );
 }
 
 /* ----------------------------------------

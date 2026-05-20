@@ -28,7 +28,7 @@
 }
 
 .cinder-input-field__label[data-disabled] {
-  color: var(--cinder-text-disabled);
+  /* color centralized in foundation.css disabled-visual text rule */
   cursor: not-allowed;
 }
 
@@ -243,9 +243,6 @@
   color: var(--cinder-text-muted);
   font-size: var(--cinder-text-sm);
   line-height: var(--cinder-leading-normal);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Interactive addons get a tighter wrapper so the consumer's control owns the inset.
