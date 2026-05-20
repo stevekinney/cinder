@@ -11,7 +11,7 @@
   height: 1.25rem;
   padding: 0 var(--cinder-space-1-5);
   font-family: var(--cinder-font-mono);
-  font-size: 0.6875rem;
+  font-size: var(--cinder-text-2xs);
   font-weight: var(--cinder-font-medium);
   line-height: 1;
   color: var(--cinder-text);
@@ -42,5 +42,5 @@
   min-width: 1.25rem;
   height: 1.25rem;
   padding: 0 var(--cinder-space-1-5);
-  font-size: 0.6875rem;
+  font-size: var(--cinder-text-2xs);
 }

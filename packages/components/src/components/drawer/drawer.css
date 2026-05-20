@@ -126,6 +126,7 @@
   overflow-y: auto;
   padding: var(--cinder-space-6);
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   outline: none;
 }
 

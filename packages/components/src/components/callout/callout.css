@@ -41,7 +41,7 @@
   justify-content: center;
   width: 1.25rem;
   height: 1.25rem;
-  margin-block-start: 0.125rem;
+  margin-block-start: var(--cinder-space-0-5);
   color: inherit;
 }
 
@@ -74,6 +74,14 @@
 
 /* ----------------------------------------
  * Variant: info
+ *
+ * NOTE (CSS audit, Batch D): The four status variants below intentionally
+ * keep the inline `oklch(from var(--cinder-{status}) …)` math instead of
+ * switching to the `--cinder-color-{status}-{bg,fg,border}` triples in
+ * tokens-base.css. The dark-theme triple background sits 8 oklch-L points
+ * lighter than the surface synthesized here (28% L vs 20% L), which exceeds
+ * the audit's 0.02 ΔL threshold. See
+ * docs/css-audit/status-triple-equivalence.md for the full pre-flight table.
  * ---------------------------------------- */
 
 .cinder-callout[data-cinder-variant='info'] {

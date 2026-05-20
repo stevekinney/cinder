@@ -34,9 +34,13 @@
  * Hover — only when interactive (not disabled)
  * ---------------------------------------- */
 
-.cinder-navigation-item:hover:not([aria-disabled='true']) {
-  color: var(--cinder-text);
-  background-color: var(--cinder-surface-hover);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-navigation-item:hover:not([aria-disabled='true']) {
+    color: var(--cinder-text);
+    background-color: var(--cinder-surface-hover);
+  }
 }
 
 /* ----------------------------------------
@@ -45,9 +49,7 @@
 
 .cinder-navigation-item:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 /* Forced Colors Mode — box-shadow focus rings are invisible; use a real outline. */

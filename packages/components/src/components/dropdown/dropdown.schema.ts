@@ -4,6 +4,9 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    id: {
+      type: 'string',
+    },
     class: {
       type: 'string',
     },
@@ -17,6 +20,10 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
       {
         name: 'trigger',
         reason: 'function-or-snippet',

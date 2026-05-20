@@ -39,7 +39,7 @@
     {#if dismissible}
       <button
         type="button"
-        class="cinder-alert__dismiss"
+        class="cinder-_dismiss-button cinder-alert__dismiss"
         onclick={handleDismiss}
         aria-label="Dismiss alert"
       >

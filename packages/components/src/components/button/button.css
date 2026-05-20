@@ -28,10 +28,6 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-button:hover {
-  text-decoration: none;
-}
-
 .cinder-button:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow:
@@ -64,7 +60,7 @@
   background: var(--cinder-surface-inset);
   color: var(--cinder-text-disabled);
   border-color: var(--cinder-border-muted);
-  opacity: 0.6;
+  /* opacity centralized in foundation.css disabled-visual rule */
 }
 
 /* Loading state — cursor + visible feedback. Per-variant loading overrides below restore
@@ -202,15 +198,6 @@
   border-color: transparent;
 }
 
-.cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-accent-hover);
-  border-color: transparent;
-}
-
-.cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-accent-active);
-}
-
 /* Variant-specific disabled overrides are now :not([data-cinder-loading]) so loading buttons
  * keep their variant colors instead of falling through to the grey disabled palette.
  */
@@ -227,28 +214,11 @@
   border-color: var(--cinder-border);
 }
 
-.cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-hover);
-}
-
-.cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-pressed);
-}
-
 .cinder-button[data-cinder-variant='danger'] {
   --_cinder-button-ring: var(--cinder-danger);
   background: var(--cinder-danger);
   color: var(--cinder-danger-contrast);
   border-color: transparent;
-}
-
-.cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-danger-hover);
-  border-color: transparent;
-}
-
-.cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-danger-active);
 }
 
 .cinder-button[data-cinder-variant='danger']:disabled:not([data-cinder-loading]),
@@ -264,33 +234,11 @@
   border-color: transparent;
 }
 
-.cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-hover);
-  color: var(--cinder-text);
-}
-
 .cinder-button[data-cinder-variant='ghost-danger'] {
   --_cinder-button-ring: var(--cinder-danger);
   background: transparent;
   color: var(--cinder-danger);
   border-color: transparent;
-}
-
-.cinder-button[data-cinder-variant='ghost-danger']:hover:not(:disabled):not(
-    [aria-disabled='true']
-  ) {
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-}
-
-.cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
-    [aria-disabled='true']
-  ) {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 86%);
-}
-
-.cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-pressed);
 }
 
 .cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
@@ -328,14 +276,6 @@
   border-color: transparent;
 }
 
-.cinder-button[data-cinder-variant='soft']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 80%);
-}
-
-.cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 74%);
-}
-
 .cinder-button[data-cinder-variant='soft']:disabled:not([data-cinder-loading]),
 .cinder-button[data-cinder-variant='soft'][aria-disabled='true']:not([data-cinder-loading]) {
   background: var(--cinder-surface-inset);
@@ -358,16 +298,6 @@
   border-color: transparent;
 }
 
-.cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 80%);
-}
-
-.cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
-    [aria-disabled='true']
-  ) {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 74%);
-}
-
 .cinder-button[data-cinder-variant='soft-danger']:disabled:not([data-cinder-loading]),
 .cinder-button[data-cinder-variant='soft-danger'][aria-disabled='true']:not([data-cinder-loading]) {
   background: var(--cinder-surface-inset);
@@ -380,4 +310,83 @@
   .cinder-button[data-cinder-variant='soft-danger'] {
     border: 1px solid ButtonBorder;
   }
+}
+
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-button:hover {
+    text-decoration: none;
+  }
+
+  .cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-accent-hover);
+    border-color: transparent;
+  }
+
+  .cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-surface-hover);
+  }
+
+  .cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-danger-hover);
+    border-color: transparent;
+  }
+
+  .cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+  }
+
+  .cinder-button[data-cinder-variant='ghost-danger']:hover:not(:disabled):not(
+      [aria-disabled='true']
+    ) {
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+  }
+
+  .cinder-button[data-cinder-variant='soft']:hover:not(:disabled):not([aria-disabled='true']) {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 80%);
+  }
+
+  .cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not(
+      [aria-disabled='true']
+    ) {
+    background: color-mix(in oklch, var(--cinder-danger), transparent 80%);
+  }
+}
+
+/* :active rules placed AFTER @media (hover: hover) so press feedback overrides
+ * hover paint when both states are active on hover-capable devices. Unwrapped
+ * so they fire on tap. */
+.cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-accent-active);
+}
+
+.cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-danger-active);
+}
+
+.cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
+    [aria-disabled='true']
+  ) {
+  background: color-mix(in oklch, var(--cinder-danger), transparent 86%);
+}
+
+.cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
+  background: color-mix(in oklch, var(--cinder-accent), transparent 74%);
+}
+
+.cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
+    [aria-disabled='true']
+  ) {
+  background: color-mix(in oklch, var(--cinder-danger), transparent 74%);
 }

@@ -4,6 +4,7 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { discoverComponents } from './lib/discover-components.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -189,67 +190,66 @@ type TarballExpectations = {
   forbiddenPrefixes: string[];
 };
 
-// All public component source files and their CSS partials that must be in the tarball.
-const PUBLIC_COMPONENTS = [
-  'accordion-item',
-  'accordion',
-  'alert',
-  'badge',
-  'button',
-  'card',
-  'data-list',
-  'dropdown',
-  'empty-state',
-  'input',
-  'modal',
-  'navigation-bar',
-  'navigation-item',
-  'page-layout',
-  'pagination',
-  'select',
-  'skeleton',
-  'spinner',
-  'textarea',
-  'toggle',
-  'tooltip',
-];
-
-const tarballExpectations: TarballExpectations = {
-  required: [
-    'package/package.json',
-    'package/src/index.ts',
-    'package/src/utilities/class-names.ts',
-    'package/src/utilities/use-history.svelte.ts',
-    'package/src/styles/index.css',
-    'package/src/styles/tokens.css',
-    'package/src/styles/tokens-base.css',
-    'package/src/styles/foundation.css',
-    'package/src/styles/components.css',
-    'package/src/styles/utilities.css',
-    'package/dist/index.d.ts',
-    'package/dist/server/index.js',
-    // All public component source + CSS partials.
-    ...PUBLIC_COMPONENTS.map((name) => `package/src/components/${name}.svelte`),
-    ...PUBLIC_COMPONENTS.map((name) => `package/src/styles/components/${name}.css`),
-    // Type declarations for all components.
-    ...PUBLIC_COMPONENTS.map((name) => `package/dist/components/${name}.svelte.d.ts`),
-  ],
-  forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
-  forbiddenPrefixes: [
-    'package/fixtures/',
-    'package/tmp/',
-    'package/dist/client/',
-    'package/dist/test/',
-    'package/scripts/',
-    'package/src/components/_internal/',
-  ],
-};
+/**
+ * Build the tarball expectations from the live filesystem.
+ *
+ * Every directory-shaped component contributes both its Svelte source
+ * (`package/src/components/<name>/<name>.svelte`) and its compiled
+ * declaration (`package/dist/components/<name>/<name>.svelte.d.ts`).
+ * Experimental components contribute the same paths under `experimental/`.
+ *
+ * This replaces the previous hand-maintained `PUBLIC_COMPONENTS` allowlist —
+ * `discoverComponents()` is the same walk the exports generator uses, so the
+ * two cannot drift.
+ */
+async function buildTarballExpectations(): Promise<TarballExpectations> {
+  const components = await discoverComponents();
+  const componentRequiredEntries: string[] = [];
+  for (const { name, isExperimental } of components) {
+    const sourceDirectory = isExperimental
+      ? `package/src/components/experimental/${name}`
+      : `package/src/components/${name}`;
+    const distributionDirectory = isExperimental
+      ? `package/dist/components/experimental/${name}`
+      : `package/dist/components/${name}`;
+    componentRequiredEntries.push(
+      `${sourceDirectory}/${name}.svelte`,
+      `${distributionDirectory}/${name}.svelte.d.ts`,
+    );
+  }
+  return {
+    required: [
+      'package/package.json',
+      'package/src/index.ts',
+      'package/src/utilities/class-names.ts',
+      'package/src/utilities/use-history.svelte.ts',
+      'package/src/styles/index.css',
+      'package/src/styles/tokens.css',
+      'package/src/styles/tokens-base.css',
+      'package/src/styles/foundation.css',
+      'package/src/styles/components.css',
+      'package/src/styles/utilities.css',
+      'package/dist/index.d.ts',
+      'package/dist/server/index.js',
+      ...componentRequiredEntries,
+    ],
+    forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
+    forbiddenPrefixes: [
+      'package/fixtures/',
+      'package/tmp/',
+      'package/dist/client/',
+      'package/dist/test/',
+      'package/scripts/',
+    ],
+  };
+}
 
 async function inspectTarball(): Promise<void> {
   process.stdout.write('[validate-consumers] step 3: inspecting tarball…\n');
   if (tarBinaryPath === null) {
     fail('tar is required to inspect the packed tarball. Install a tar CLI and re-run.');
   }
+  const tarballExpectations = await buildTarballExpectations();
   // Bun's $ passes `tarballFilePath` as a single argv value, not interpolated into a shell
   // string, so it can't be split on whitespace or interpreted as flags. BSD tar (macOS) doesn't
   // accept `--` as end-of-options the way GNU tar does, so omitting it is correct here.

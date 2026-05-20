@@ -20,13 +20,16 @@ A NumberInput component. Replace this sentence with a one-line purpose statement
 | -------------- | ------------------ | -------- | ------- | ------------------- |
 | `defaultValue` | `number` \| `null` | no       | —       |                     |
 | `description`  | `string`           | no       | —       |                     |
+| `disabled`     | `boolean`          | no       | —       |                     |
 | `error`        | `string`           | no       | —       |                     |
 | `format`       | `object`           | no       | —       |                     |
+| `id`           | `string`           | yes      | —       |                     |
 | `label`        | `string`           | no       | —       |                     |
 | `locale`       | `string`           | no       | —       |                     |
 | `max`          | `number`           | no       | —       |                     |
 | `min`          | `number`           | no       | —       |                     |
 | `name`         | `string`           | no       | —       |                     |
+| `required`     | `boolean`          | no       | —       |                     |
 | `step`         | `number`           | no       | —       |                     |
 | `value`        | `number` \| `null` | no       | —       |                     |
 | `class`        | `(opaque)`         | —        | —       | unknown-shape       |

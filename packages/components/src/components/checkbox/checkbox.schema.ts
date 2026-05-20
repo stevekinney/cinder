@@ -4,6 +4,22 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    checked: {
+      type: 'boolean',
+      description: 'Bound checked state.',
+    },
+    disabled: {
+      type: 'boolean',
+      description: 'Disables the checkbox.',
+    },
+    indeterminate: {
+      type: 'boolean',
+      description: 'Bound indeterminate state. Mutually exclusive with `checked` visually.',
+    },
+    id: {
+      type: 'string',
+      description: 'Unique identifier — required for label association and ARIA wiring.',
+    },
     label: {
       type: 'string',
       description: 'Visible label rendered in a `<label>` element associated via `for`.',
@@ -18,6 +34,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {

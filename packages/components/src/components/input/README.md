@@ -16,16 +16,21 @@ A Input component. Replace this sentence with a one-line purpose statement once 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type       | Required | Default | Description         |
-| --------------------- | ---------- | -------- | ------- | ------------------- |
-| `description`         | `string`   | no       | —       |                     |
-| `error`               | `string`   | no       | —       |                     |
-| `label`               | `string`   | no       | —       |                     |
-| `leadingInteractive`  | `boolean`  | no       | —       |                     |
-| `trailingInteractive` | `boolean`  | no       | —       |                     |
-| `class`               | `(opaque)` | —        | —       | unknown-shape       |
-| `leading`             | `(opaque)` | —        | —       | function-or-snippet |
-| `trailing`            | `(opaque)` | —        | —       | function-or-snippet |
+| Prop                  | Type                                                                                  | Required | Default | Description         |
+| --------------------- | ------------------------------------------------------------------------------------- | -------- | ------- | ------------------- |
+| `description`         | `string`                                                                              | no       | —       |                     |
+| `disabled`            | `boolean`                                                                             | no       | —       |                     |
+| `error`               | `string`                                                                              | no       | —       |                     |
+| `id`                  | `string`                                                                              | yes      | —       |                     |
+| `label`               | `string`                                                                              | no       | —       |                     |
+| `leadingInteractive`  | `boolean`                                                                             | no       | —       |                     |
+| `required`            | `boolean`                                                                             | no       | —       |                     |
+| `trailingInteractive` | `boolean`                                                                             | no       | —       |                     |
+| `type`                | `"date"` \| `"email"` \| `"password"` \| `"search"` \| `"tel"` \| `"text"` \| `"url"` | no       | —       |                     |
+| `class`               | `(opaque)`                                                                            | —        | —       | unknown-shape       |
+| `leading`             | `(opaque)`                                                                            | —        | —       | function-or-snippet |
+| `trailing`            | `(opaque)`                                                                            | —        | —       | function-or-snippet |
+| `value`               | `(opaque)`                                                                            | —        | —       | unknown-shape       |
 
 <!-- generated:props:end -->
 

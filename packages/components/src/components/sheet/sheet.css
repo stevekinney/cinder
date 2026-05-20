@@ -47,7 +47,7 @@
   justify-content: center;
   width: 100%;
   /* 44px minimum touch target. */
-  min-height: 2.75rem;
+  min-height: var(--cinder-touch-target-min);
   flex-shrink: 0;
   /* The handle is decorative until swipe-to-close ships — no grab cursor. */
   cursor: default;
@@ -58,7 +58,7 @@
   display: block;
   width: 2.5rem;
   height: 0.25rem;
-  border-radius: 999px;
+  border-radius: var(--cinder-radius-full);
   background: var(--cinder-border);
 }
 
@@ -128,6 +128,7 @@
   overflow-y: auto;
   padding: var(--cinder-space-6);
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 /* Suppress the focus ring only for programmatic (mouse / open-effect) focus —

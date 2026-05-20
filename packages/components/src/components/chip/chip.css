@@ -122,13 +122,20 @@ button.cinder-chip {
  * Hover states (button chips only)
  * ---------------------------------------- */
 
-button.cinder-chip:hover:not(:disabled) {
-  filter: brightness(0.95);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Hover tint: a flat overlay drawn over the chip's existing background.
+ * Uses `light-dark()` so the overlay darkens in light mode and lightens
+ * in dark mode, following `color-scheme` (driven by `prefers-color-scheme`
+ * and any `[data-theme]` override on an ancestor). This replaces a
+ * `filter: brightness()` toggle that previously needed a
+ * prefers-color-scheme media query. */
+/* Sticky-hover suppression on touch: hover-only chrome wrapped so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
   button.cinder-chip:hover:not(:disabled) {
-    filter: brightness(1.1);
+    background-image: linear-gradient(
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+    );
   }
 }
 
@@ -191,9 +198,7 @@ button.cinder-chip:hover:not(:disabled) {
 button.cinder-chip:focus-visible,
 .cinder-chip__remove:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {
@@ -267,13 +272,13 @@ button.cinder-chip:disabled {
   transform: translateY(-50%);
 }
 
-.cinder-chip__remove:hover:not(:disabled) {
-  filter: brightness(0.95);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Same overlay technique as the chip-body hover above. */
+@media (hover: hover) {
   .cinder-chip__remove:hover:not(:disabled) {
-    filter: brightness(1.1);
+    background-image: linear-gradient(
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+    );
   }
 }
 

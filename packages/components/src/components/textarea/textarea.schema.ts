@@ -4,6 +4,18 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+      description: 'Disables the textarea.',
+    },
+    rows: {
+      type: 'number',
+      description: 'Number of visible text rows. Defaults to 4.',
+    },
+    id: {
+      type: 'string',
+      description: 'Unique identifier — required for label association and ARIA wiring.',
+    },
     label: {
       type: 'string',
       description: 'Visible label rendered in a `<label>` element associated via `for`.',
@@ -23,10 +35,15 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {
         name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'value',
         reason: 'unknown-shape',
       },
     ],
