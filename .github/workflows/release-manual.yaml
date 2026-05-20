@@ -21,8 +21,14 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # Check out the exact commit the tag points at. Without `ref`, the
+      # workflow would publish from the dispatch ref (default branch),
+      # producing provenance metadata that disagrees with the tag.
+      - name: Checkout tag
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -42,8 +48,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout tag
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v5
