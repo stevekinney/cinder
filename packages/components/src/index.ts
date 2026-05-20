@@ -257,8 +257,8 @@ export type {
   ScrollAreaElement,
   ScrollAreaProps,
 } from './components/scroll-area/index.ts';
-export { default as SearchField } from './components/search-field.svelte';
-export type { SearchFieldProps } from './components/search-field.svelte';
+export { default as SearchField } from './components/search-field/index.ts';
+export type { SearchFieldProps } from './components/search-field/index.ts';
 
 export { default as SectionHeading } from './components/section-heading/index.ts';
 export type {
@@ -272,32 +272,32 @@ export type {
   SegmentedControlProps,
 } from './components/segmented-control/index.ts';
 
-export { default as Select } from './components/select.svelte';
-export type { SelectOption, SelectProps } from './components/select.svelte';
+export { default as Select } from './components/select/index.ts';
+export type { SelectOption, SelectProps } from './components/select/index.ts';
 
-export { default as SelectionPopover } from './components/selection-popover.svelte';
+export { default as SelectionPopover } from './components/selection-popover/index.ts';
 export type {
   SelectionPopoverPosition,
   SelectionPopoverProps,
-} from './components/selection-popover.svelte';
+} from './components/selection-popover/index.ts';
 
 export { default as Sheet } from './components/sheet/index.ts';
 export type { SheetProps } from './components/sheet/index.ts';
 
-export { default as SideNavigation } from './components/side-navigation.svelte';
-export type { SideNavigationProps } from './components/side-navigation.svelte';
+export { default as SideNavigation } from './components/side-navigation/index.ts';
+export type { SideNavigationProps } from './components/side-navigation/index.ts';
 
-export { default as SideNavigationGroup } from './components/side-navigation-group.svelte';
-export type { SideNavigationGroupProps } from './components/side-navigation-group.svelte';
+export { default as SideNavigationGroup } from './components/side-navigation-group/index.ts';
+export type { SideNavigationGroupProps } from './components/side-navigation-group/index.ts';
 
-export { default as SideNavigationItem } from './components/side-navigation-item.svelte';
-export type { SideNavigationItemProps } from './components/side-navigation-item.svelte';
+export { default as SideNavigationItem } from './components/side-navigation-item/index.ts';
+export type { SideNavigationItemProps } from './components/side-navigation-item/index.ts';
 
-export { default as Sidebar } from './components/sidebar.svelte';
-export type { SidebarProps } from './components/sidebar.svelte';
+export { default as Sidebar } from './components/sidebar/index.ts';
+export type { SidebarProps } from './components/sidebar/index.ts';
 
-export { default as SortableList } from './components/sortable-list.svelte';
-export type { SortableListProps } from './components/sortable-list.svelte';
+export { default as SortableList } from './components/sortable-list/index.ts';
+export type { SortableListProps } from './components/sortable-list/index.ts';
 export type {
   SortableAnnouncements,
   SortableItemContext,
@@ -307,30 +307,30 @@ export type {
 export { default as Skeleton } from './components/skeleton/index.ts';
 export type { SkeletonProps } from './components/skeleton/index.ts';
 
-export { default as Slider } from './components/slider.svelte';
-export type { SliderMode, SliderProps, SliderValue } from './components/slider.svelte';
+export { default as Slider } from './components/slider/index.ts';
+export type { SliderMode, SliderProps, SliderValue } from './components/slider/index.ts';
 
-export { default as StackedListItem } from './components/stacked-list-item.svelte';
+export { default as StackedListItem } from './components/stacked-list-item/index.ts';
 export type {
   StackedListItemDensity,
   StackedListItemProps,
-} from './components/stacked-list-item.svelte';
+} from './components/stacked-list-item/index.ts';
 
 export { default as Spinner } from './components/spinner/index.ts';
 export type { SpinnerProps, SpinnerSize } from './components/spinner/index.ts';
 
-export { default as Steps } from './components/steps.svelte';
-export type { StepItem, StepsOrientation, StepsProps } from './components/steps.svelte';
+export { default as Steps } from './components/steps/index.ts';
+export type { StepItem, StepsOrientation, StepsProps } from './components/steps/index.ts';
 
-export { default as Stat } from './components/stat.svelte';
-export type { StatChange, StatChangeDirection, StatProps } from './components/stat.svelte';
+export { default as Stat } from './components/stat/index.ts';
+export type { StatChange, StatChangeDirection, StatProps } from './components/stat/index.ts';
 
-export { default as StatGroup } from './components/stat-group.svelte';
+export { default as StatGroup } from './components/stat-group/index.ts';
 export type {
   StatGroupColumns,
   StatGroupProps,
   StatGroupVariant,
-} from './components/stat-group.svelte';
+} from './components/stat-group/index.ts';
 
 export { default as StatusDot } from './components/status-dot/index.ts';
 export type {
@@ -351,7 +351,7 @@ export type { TabListProps } from './components/tab-list/index.ts';
 export { default as TabPanel } from './components/tab-panel/index.ts';
 export type { TabPanelProps } from './components/tab-panel/index.ts';
 
-export { default as Table } from './components/table.svelte';
+export { default as Table } from './components/table/index.ts';
 export type {
   SortDirection,
   TableContext,
@@ -360,25 +360,25 @@ export type {
   TableProps,
   TableSectionContext,
   TableSort,
-} from './components/table.svelte';
+} from './components/table/index.ts';
 
-export { default as TableBody } from './components/table-body.svelte';
-export type { TableBodyProps } from './components/table-body.svelte';
+export { default as TableBody } from './components/table-body/index.ts';
+export type { TableBodyProps } from './components/table-body/index.ts';
 
-export { default as TableCell } from './components/table-cell.svelte';
-export type { TableCellProps } from './components/table-cell.svelte';
+export { default as TableCell } from './components/table-cell/index.ts';
+export type { TableCellProps } from './components/table-cell/index.ts';
 
-export { default as TableHeader } from './components/table-header.svelte';
-export type { TableHeaderProps } from './components/table-header.svelte';
+export { default as TableHeader } from './components/table-header/index.ts';
+export type { TableHeaderProps } from './components/table-header/index.ts';
 
-export { default as TableHeaderCell } from './components/table-header-cell.svelte';
-export type { TableHeaderCellProps } from './components/table-header-cell.svelte';
+export { default as TableHeaderCell } from './components/table-header-cell/index.ts';
+export type { TableHeaderCellProps } from './components/table-header-cell/index.ts';
 
-export { default as TableRow } from './components/table-row.svelte';
-export type { TableRowProps, TableRowSelectionProps } from './components/table-row.svelte';
+export { default as TableRow } from './components/table-row/index.ts';
+export type { TableRowProps, TableRowSelectionProps } from './components/table-row/index.ts';
 
-export { default as Tabs } from './components/tabs.svelte';
-export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs.svelte';
+export { default as Tabs } from './components/tabs/index.ts';
+export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/index.ts';
 
 export { default as Textarea } from './components/textarea/index.ts';
 export type { TextareaProps } from './components/textarea/index.ts';
@@ -412,8 +412,8 @@ export { useToast } from './utilities/use-toast.ts';
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
 
-export { default as Tree } from './components/tree.svelte';
-export type { TreeProps, TreeSelectionMode } from './components/tree.svelte';
+export { default as Tree } from './components/tree/index.ts';
+export type { TreeProps, TreeSelectionMode } from './components/tree/index.ts';
 
 export { default as TreeItem } from './components/tree-item/index.ts';
 export type { TreeItemProps } from './components/tree-item/index.ts';

@@ -6,7 +6,7 @@
   import type { TabListProps } from './tab-list.types.ts';
   import { getContext } from 'svelte';
 
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs.svelte';
+  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
   let { label, labelledBy, class: className, children }: TabListProps = $props();

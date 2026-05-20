@@ -6,7 +6,7 @@
 
 <script lang="ts">
   import FormField from '../../components/form-field/form-field.svelte';
-  import Slider from '../../components/slider.svelte';
+  import Slider from '../../components/slider/slider.svelte';
 
   let { renderSecond = false }: SliderFormFieldFixtureProps = $props();
 </script>

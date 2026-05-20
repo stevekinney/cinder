@@ -61,7 +61,7 @@
   import Tab from '../tab/tab.svelte';
   import TabList from '../tab-list/tab-list.svelte';
   import TabPanel from '../tab-panel/tab-panel.svelte';
-  import Tabs from '../tabs.svelte';
+  import Tabs from '../tabs/tabs.svelte';
 
   import DiffView from './diff-view.svelte';
   import FormView from './form-view.svelte';

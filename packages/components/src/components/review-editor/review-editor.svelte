@@ -55,7 +55,7 @@
     ReviewEditorViewType as ViewType,
   } from './review-editor-types.ts';
   import DiffViewer from '../diff-viewer.svelte';
-  import SelectionPopover from '../selection-popover.svelte';
+  import SelectionPopover from '../selection-popover/selection-popover.svelte';
   import { computeLineDiff, getDiffStats } from '@cinder/markdown/diff/line-diff';
   import {
     generateMarkdownSummary,

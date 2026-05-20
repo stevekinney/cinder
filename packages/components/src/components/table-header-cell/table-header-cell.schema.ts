@@ -1,0 +1,37 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    column: {
+      type: 'string',
+      description:
+        'Column key. Required when `sortable=true` so the parent Table can\ntrack which column the user activated.',
+    },
+    sortable: {
+      type: 'boolean',
+      description:
+        "When true, render a button inside the `<th>` and dispatch sort intents\nto the parent Table. The cell's `aria-sort` reflects the current sort\ndirection (`ascending`, `descending`, or `none`).",
+    },
+    scope: {
+      enum: ['col', 'colgroup'],
+      description: 'When set, hint to assistive tech that the column groups multiple rows.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-table__header-cell`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

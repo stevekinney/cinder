@@ -12,7 +12,7 @@
   import Tab from '../../components/tab/tab.svelte';
   import TabList from '../../components/tab-list/tab-list.svelte';
   import TabPanel from '../../components/tab-panel/tab-panel.svelte';
-  import Tabs from '../../components/tabs.svelte';
+  import Tabs from '../../components/tabs/tabs.svelte';
 
   let {
     value = $bindable(''),

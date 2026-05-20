@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Sidebar from '../../components/sidebar.svelte';
+  import Sidebar from '../../components/sidebar/sidebar.svelte';
   import Probe from './sidebar-context-probe.svelte';
 
   type Props = { collapsed?: boolean };

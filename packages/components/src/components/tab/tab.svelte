@@ -7,7 +7,7 @@
   import { getContext, onDestroy } from 'svelte';
 
   import { rovingTabIndex } from '../../_internal/collection.ts';
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs.svelte';
+  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
   let { value, id, disabled = false, class: className, children }: TabProps = $props();

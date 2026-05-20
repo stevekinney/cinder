@@ -1,6 +1,6 @@
 <script lang="ts" module>
-  import type { TableSort } from '../../components/table.svelte';
-  import type { TableDensity } from '../../components/table.svelte';
+  import type { TableSort } from '../../components/table/table.types.ts';
+  import type { TableDensity } from '../../components/table/table.types.ts';
   /** Test-only fixture composing a sortable table. */
   export type TableFixtureProps = {
     sort?: TableSort;
@@ -21,12 +21,12 @@
 </script>
 
 <script lang="ts">
-  import Table from '../../components/table.svelte';
-  import TableBody from '../../components/table-body.svelte';
-  import TableCell from '../../components/table-cell.svelte';
-  import TableHeader from '../../components/table-header.svelte';
-  import TableHeaderCell from '../../components/table-header-cell.svelte';
-  import TableRow from '../../components/table-row.svelte';
+  import Table from '../../components/table/table.svelte';
+  import TableBody from '../../components/table-body/table-body.svelte';
+  import TableCell from '../../components/table-cell/table-cell.svelte';
+  import TableHeader from '../../components/table-header/table-header.svelte';
+  import TableHeaderCell from '../../components/table-header-cell/table-header-cell.svelte';
+  import TableRow from '../../components/table-row/table-row.svelte';
 
   let {
     sort = $bindable(),

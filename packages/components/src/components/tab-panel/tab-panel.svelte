@@ -6,7 +6,7 @@
   import type { TabPanelProps } from './tab-panel.types.ts';
   import { getContext } from 'svelte';
 
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs.svelte';
+  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
   let { value, class: className, children }: TabPanelProps = $props();

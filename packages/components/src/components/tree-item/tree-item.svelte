@@ -7,7 +7,7 @@
   import { getContext, onMount, setContext } from 'svelte';
 
   import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
-  import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from '../tree.svelte';
+  import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from '../tree/tree.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
 

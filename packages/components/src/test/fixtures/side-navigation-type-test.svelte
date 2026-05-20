@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SideNavigationProps } from '../../components/side-navigation.svelte';
+  import type { SideNavigationProps } from '../../components/side-navigation/side-navigation.types.ts';
 
   // ariaLabel is required; omitting it must be a compile error.
   // @ts-expect-error - ariaLabel is required

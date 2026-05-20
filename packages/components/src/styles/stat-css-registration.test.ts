@@ -6,7 +6,7 @@ describe('stat CSS registration', () => {
   test('components.css imports stat.css and stat-group.css', async () => {
     const componentsCssPath = join(import.meta.dir, 'components.css');
     const contents = await Bun.file(componentsCssPath).text();
-    expect(contents).toMatch(/@import\s+['"]\.\/components\/stat\.css['"];/);
-    expect(contents).toMatch(/@import\s+['"]\.\/components\/stat-group\.css['"];/);
+    expect(contents).toMatch(/@import\s+['"]\.\.\/components\/stat\/stat\.css['"];/);
+    expect(contents).toMatch(/@import\s+['"]\.\.\/components\/stat-group\/stat-group\.css['"];/);
   });
 });

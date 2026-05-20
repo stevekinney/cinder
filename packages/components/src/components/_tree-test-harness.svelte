@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import Tree from './tree.svelte';
-  import type { TreeSelectionMode } from './tree.svelte';
+  import Tree from './tree/tree.svelte';
+  import type { TreeSelectionMode } from './tree/tree.types.ts';
 
   let {
     'aria-label': ariaLabel,

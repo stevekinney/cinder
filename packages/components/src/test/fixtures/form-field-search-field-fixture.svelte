@@ -18,7 +18,7 @@
 
 <script lang="ts">
   import FormField from '../../components/form-field/form-field.svelte';
-  import SearchField from '../../components/search-field.svelte';
+  import SearchField from '../../components/search-field/search-field.svelte';
 
   let {
     fieldId,
