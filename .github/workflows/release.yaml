@@ -15,16 +15,11 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      dry-run:
-        description: 'Run `changeset publish --dry-run` instead of publishing. Surfaces `npm notice provenance` in the logs without touching the registry.'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+  # workflow_dispatch is intentionally dry-run only. Real publishes go
+  # through merging the "Version Packages" PR into main. If that path
+  # breaks, use release-manual.yaml as the break-glass fallback — never
+  # publish directly from this workflow on an arbitrary ref.
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -81,18 +76,11 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
 
+      # Diagnostic dry-run: `npm publish --dry-run` from the cinder
+      # workspace. No NPM_TOKEN — the registry is not contacted, so
+      # withholding credentials here keeps blast radius tight if a
+      # contributor dispatches the workflow. Provenance is opt-in via
+      # publishConfig and only attests on real publishes anyway.
       - name: Publish (dry-run)
-        if: github.event_name == 'workflow_dispatch' && inputs.dry-run == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
+        if: github.event_name == 'workflow_dispatch'
         run: bun run changeset:publish:dry
-
-      - name: Publish (real)
-        if: github.event_name == 'workflow_dispatch' && inputs.dry-run == 'false'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
-        run: bun run changeset:publish

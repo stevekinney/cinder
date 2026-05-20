@@ -68,4 +68,4 @@ bun x changeset
 
 Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summary, and commit the generated file under `.changeset/`. The release workflow (`.github/workflows/release.yaml`) consumes pending changesets to open a "Version Packages" pull request; merging that PR publishes to npm with provenance.
 
-Changes confined to private `@cinder/*` workspaces (playground, testing, editor, etc.) do not need a changeset — those packages are listed under `ignore` in `.changeset/config.json`.
+Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.

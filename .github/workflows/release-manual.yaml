@@ -80,6 +80,12 @@ jobs:
       - name: Build package
         run: bun run --filter=cinder build
 
+      # Break-glass publish. Authentication uses NPM_TOKEN intentionally
+      # (the same secret release.yaml uses) rather than npm trusted
+      # publishing — trusted publishing requires additional registry-side
+      # configuration that is out of scope for this fallback path.
+      # Provenance is still emitted via NPM_CONFIG_PROVENANCE and the
+      # `id-token: write` permission on this job.
       - name: Publish to npm
         working-directory: packages/components
         env:
