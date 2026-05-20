@@ -96,12 +96,23 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
+    <style>
+      /* Register cinder.reset as the FIRST layer (least priority) so the universal
+         box/margin/padding reset below can never beat component styles. This
+         declaration runs before /styles/index.css so the reset slot is reserved
+         at the bottom of the cascade — index.css then registers the rest of the
+         order (cinder.tokens, foundation, components, utilities) which all come
+         later and therefore win over the reset. */
+      @layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+    </style>
     <link rel="stylesheet" href="/styles/index.css" />
     <style>
-      *, *::before, *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
+      @layer cinder.reset {
+        *, *::before, *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
       }
 
       /* light-dark() needs an active color-scheme to know which value to

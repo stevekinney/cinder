@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "orientation": {
+      "enum": ["horizontal", "vertical"],
+      "description": "Layout axis the rule spans.",
+      "default": "horizontal"
+    },
+    "inset": {
+      "type": "boolean",
+      "description": "Shortens the rule by `--cinder-space-2` on the perpendicular axis.",
+      "default": false
+    },
+    "tone": {
+      "enum": ["subtle", "strong"],
+      "description": "Visual weight of the divider line.",
+      "default": "subtle"
+    },
+    "decorative": {
+      "type": "boolean",
+      "description": "When `true` the element is hidden from assistive technology.",
+      "default": true
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-divider`."
+    }
+  },
+  "additionalProperties": false
+}

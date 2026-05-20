@@ -64,7 +64,7 @@
 .cinder-jse-section__title {
   margin: 0;
   font-size: var(--cinder-text-2xs);
-  font-weight: 600;
+  font-weight: var(--cinder-font-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--cinder-text-subtle);
@@ -99,7 +99,7 @@
   content: '▸';
   font-size: var(--cinder-text-xs);
   color: var(--cinder-text-subtle);
-  transition: transform 120ms ease;
+  transition: transform var(--cinder-duration-fast) ease;
 }
 
 .cinder-jse-section--collapsible[open] > summary::before {
@@ -229,7 +229,7 @@
   display: inline-block;
   font-size: var(--cinder-text-xs);
   color: var(--cinder-text-subtle);
-  transition: transform 120ms ease;
+  transition: transform var(--cinder-duration-fast) ease;
   width: 0.75rem;
   text-align: center;
 }
@@ -241,7 +241,7 @@
 .cinder-jse-property-row__name {
   font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-sm);
-  font-weight: 600;
+  font-weight: var(--cinder-font-semibold);
   color: var(--cinder-text);
 }
 
@@ -336,7 +336,7 @@
 textarea.cinder-jse-json-view__textarea {
   font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-sm);
-  line-height: 1.5;
+  line-height: var(--cinder-leading-normal);
   min-height: 16rem;
   /* Tab characters render as 2 spaces' worth — matches the canonical text we serialise. */
   tab-size: 2;

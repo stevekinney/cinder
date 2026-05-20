@@ -2,6 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "disabled": {
+      "type": "boolean",
+      "description": "Disables the input and the clear button."
+    },
+    "name": {
+      "type": "string",
+      "description": "`name` attribute for form submission."
+    },
+    "placeholder": {
+      "type": "string",
+      "description": "Placeholder text."
+    },
+    "readonly": {
+      "type": "boolean",
+      "description": "Marks the input as read-only; the clear button becomes inert."
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable id for the input element. Required when composing with `FormField`."
+    },
     "value": {
       "type": "string",
       "description": "Controlled value. When provided, the field is fully controlled by the parent."

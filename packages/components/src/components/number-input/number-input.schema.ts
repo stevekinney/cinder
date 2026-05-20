@@ -4,6 +4,15 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+    },
+    required: {
+      type: 'boolean',
+    },
+    id: {
+      type: 'string',
+    },
     value: {
       anyOf: [
         {
@@ -53,6 +62,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {

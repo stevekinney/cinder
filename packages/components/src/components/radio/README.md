@@ -19,8 +19,11 @@ A Radio component. Replace this sentence with a one-line purpose statement once 
 | Prop          | Type       | Required | Default | Description                                                                      |
 | ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
 | `description` | `string`   | no       | —       | Helper text rendered as `<p id="{id}-description">`, wired via aria-describedby. |
+| `disabled`    | `boolean`  | no       | —       | Override the group's `disabled` for this single radio.                           |
+| `id`          | `string`   | yes      | —       | Unique identifier — required for label association.                              |
 | `label`       | `string`   | yes      | —       | Visible label rendered in a `<label>` element associated via `for`.              |
 | `class`       | `(opaque)` | —        | —       | unknown-shape                                                                    |
+| `value`       | `(opaque)` | —        | —       | unknown-shape                                                                    |
 
 <!-- generated:props:end -->
 
