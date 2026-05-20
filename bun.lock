@@ -169,9 +169,12 @@
     },
     "packages/testing": {
       "name": "@cinder/testing",
+      "dependencies": {
+        "zod": "4.4.1",
+      },
       "devDependencies": {
         "@axe-core/playwright": "^4.10.0",
-        "@playwright/test": "^1.49.0",
+        "@playwright/test": "1.60.0",
         "@types/node": "^22.0.0",
         "axe-core": "^4.10.0",
         "typescript": "^5.6.0",
