@@ -246,11 +246,17 @@ async function main(): Promise<void> {
     }
 
     // Stage 4: manifest drift check.
+    // The format must match what `writeManifest()` produces — JSON.stringify
+    // run through prettier — so the comparison succeeds against the
+    // committed-and-formatted file.
     let manifestDrift = false;
     try {
       const manifest = await buildManifest();
       const MANIFEST_PATH = join(import.meta.dir, '..', 'components.json');
-      const generated = JSON.stringify(manifest, null, 2) + '\n';
+      const generated = await formatGenerated(
+        JSON.stringify(manifest, null, 2) + '\n',
+        MANIFEST_PATH,
+      );
       if (!existsSync(MANIFEST_PATH)) {
         manifestDrift = true;
         process.stderr.write('components:check — components.json is missing\n');

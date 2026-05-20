@@ -14,6 +14,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
+import prettier from 'prettier';
 
 import type { CategoryId, StatusLevel } from '../src/manifest.meta.ts';
 import { categories, overlapFamilies, statusLevels } from '../src/manifest.meta.ts';
@@ -299,12 +300,22 @@ export async function buildManifest(): Promise<Manifest> {
 }
 
 /**
+ * Format JSON output through prettier so the on-disk form matches what
+ * lint-staged's prettier pass would produce. Without this, prettier reformats
+ * the file on commit and `manifest:check` then reports drift on the next run.
+ */
+async function formatJson(content: string, filepath: string): Promise<string> {
+  const options = await prettier.resolveConfig(filepath);
+  return prettier.format(content, { ...options, filepath, parser: 'json' });
+}
+
+/**
  * Build the manifest and write it to `packages/components/components.json`.
  * Throws if extraction errors exist (never writes a partial manifest).
  */
 export async function writeManifest(): Promise<void> {
   const manifest = await buildManifest();
-  const content = JSON.stringify(manifest, null, 2) + '\n';
+  const content = await formatJson(JSON.stringify(manifest, null, 2) + '\n', MANIFEST_PATH);
   await Bun.write(MANIFEST_PATH, content);
 }
 
@@ -326,7 +337,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    const generated = JSON.stringify(manifest, null, 2) + '\n';
+    const generated = await formatJson(JSON.stringify(manifest, null, 2) + '\n', MANIFEST_PATH);
 
     if (!existsSync(MANIFEST_PATH)) {
       process.stderr.write(
