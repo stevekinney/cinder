@@ -571,18 +571,38 @@ async function runSveltekitFixture(): Promise<void> {
         fail(`fixture /no-styles returned ${noStylesResponse.status}, want 200`);
       }
       const noStylesBody = await noStylesResponse.text();
-      const stylesheetHrefPattern =
-        /<link[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["']/g;
-      const clientOutputDirectory = join(fixtureDirectory, '.svelte-kit/output/client');
+      // Match every <link> tag, then check attributes order-insensitively.
+      // SvelteKit can emit href before rel, and `rel` is a space-separated
+      // token list (`rel="preload stylesheet"`) — we must not miss stylesheets
+      // because of attribute ordering or compound rel values.
+      const linkTagPattern = /<link\b[^>]*>/gi;
+      const noStylesUrl = `http://127.0.0.1:${httpPort}/no-styles`;
+      const stylesheetHrefs: string[] = [];
+      for (const match of noStylesBody.matchAll(linkTagPattern)) {
+        const tag = match[0];
+        const relMatch = /\brel\s*=\s*["']([^"']+)["']/i.exec(tag);
+        if (!relMatch) continue;
+        const relTokens = relMatch[1]!.toLowerCase().split(/\s+/);
+        if (!relTokens.includes('stylesheet')) continue;
+        const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag);
+        if (!hrefMatch) continue;
+        stylesheetHrefs.push(hrefMatch[1]!);
+      }
+      // Fetch each stylesheet through the running fixture server. The server
+      // is the source of truth for what /no-styles actually loads, and this
+      // avoids fragile on-disk path resolution (relative hrefs like
+      // `../_app/immutable/...` would otherwise resolve outside the client
+      // output directory and silently be skipped).
       const offendingStylesheets: string[] = [];
-      for (const match of noStylesBody.matchAll(stylesheetHrefPattern)) {
-        const href = match[1]!;
-        // SvelteKit serves /_app/immutable/... — strip the leading slash to
-        // resolve under the client output directory.
-        const relativePath = href.replace(/^\//, '');
-        const cssFilePath = join(clientOutputDirectory, relativePath);
-        if (!existsSync(cssFilePath)) continue;
-        const source = await Bun.file(cssFilePath).text();
+      for (const href of stylesheetHrefs) {
+        const stylesheetUrl = new URL(href, noStylesUrl).toString();
+        const stylesheetResponse = await fetch(stylesheetUrl);
+        if (stylesheetResponse.status !== 200) {
+          fail(
+            `/no-styles references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the side-effect contract`,
+          );
+        }
+        const source = await stylesheetResponse.text();
         if (source.includes('.cinder-button') || /--cinder-button-/.test(source)) {
           offendingStylesheets.push(`${href} contains .cinder-button or --cinder-button-*`);
         }
