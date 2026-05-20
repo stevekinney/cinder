@@ -49,8 +49,8 @@ describe('exports drift', () => {
       const key = `./${name}`;
       if (migratedNames.has(key)) continue;
       flatExpected[key] = {
-        svelte: `./src/components/${name}.svelte`,
         types: `./dist/components/${name}.svelte.d.ts`,
+        svelte: `./src/components/${name}.svelte`,
       };
     }
     for await (const file of new Glob('src/components/experimental/*.svelte').scan(ROOT)) {
@@ -62,8 +62,8 @@ describe('exports drift', () => {
       const key = `./experimental/${name}`;
       if (migratedNames.has(key)) continue;
       flatExpected[key] = {
-        svelte: `./src/components/experimental/${name}.svelte`,
         types: `./dist/components/experimental/${name}.svelte.d.ts`,
+        svelte: `./src/components/experimental/${name}.svelte`,
       };
     }
 
@@ -82,7 +82,7 @@ describe('exports drift', () => {
     // Orphan entries — a key in package.json that doesn't match either a flat
     // component or a directory-shaped component.
     for (const key of Object.keys(existing)) {
-      if (key === '.' || key === './styles') continue;
+      if (key === '.' || key === './styles' || key === './package.json') continue;
       if (key in expected) continue;
       issues.push(
         `Orphan export "${key}" has no matching component — run bun run exports:generate`,
