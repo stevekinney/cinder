@@ -16,12 +16,16 @@ A Checkbox component. Replace this sentence with a one-line purpose statement on
 
 <!-- generated:props:start -->
 
-| Prop          | Type       | Required | Default | Description                                                                  |
-| ------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------- |
-| `description` | `string`   | no       | —       | Helper text displayed below the checkbox; wired via `aria-describedby`.      |
-| `error`       | `string`   | no       | —       | Validation error message; sets `aria-invalid="true"` and `aria-describedby`. |
-| `label`       | `string`   | no       | —       | Visible label rendered in a `<label>` element associated via `for`.          |
-| `class`       | `(opaque)` | —        | —       | unknown-shape                                                                |
+| Prop            | Type       | Required | Default | Description                                                                  |
+| --------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------- |
+| `checked`       | `boolean`  | no       | —       | Bound checked state.                                                         |
+| `description`   | `string`   | no       | —       | Helper text displayed below the checkbox; wired via `aria-describedby`.      |
+| `disabled`      | `boolean`  | no       | —       | Disables the checkbox.                                                       |
+| `error`         | `string`   | no       | —       | Validation error message; sets `aria-invalid="true"` and `aria-describedby`. |
+| `id`            | `string`   | yes      | —       | Unique identifier — required for label association and ARIA wiring.          |
+| `indeterminate` | `boolean`  | no       | —       | Bound indeterminate state. Mutually exclusive with `checked` visually.       |
+| `label`         | `string`   | no       | —       | Visible label rendered in a `<label>` element associated via `for`.          |
+| `class`         | `(opaque)` | —        | —       | unknown-shape                                                                |
 
 <!-- generated:props:end -->
 

@@ -8,6 +8,11 @@ const schema = {
       type: 'boolean',
       description: 'Whether the sheet is open. Bindable via `bind:open`.',
     },
+    title: {
+      type: 'string',
+      description:
+        'Accessible name for the sheet. Required for screen-reader labelling.\nRendered as a visible `<h2>` in the default header. When a custom\n`header` snippet is provided without `ariaLabelledBy`, this text is\nrendered in a visually-hidden `<h2>` as the accessible name fallback.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-sheet`.',
@@ -36,6 +41,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['title'],
   metadata: {
     unsupportedProps: [
       {

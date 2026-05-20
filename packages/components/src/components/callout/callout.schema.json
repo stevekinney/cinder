@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "title": {
+      "type": "string",
+      "description": "Optional title rendered as a `<p class=\"cinder-callout__title\">`.\n\nRendered as a paragraph rather than a heading element so the\ncallout does not inject an entry into the document outline. If a\ncallout genuinely participates in the outline (e.g. it titles a\nstandalone section), wrap it in a `<section>` with its own heading\nrather than promoting this prop to `<h*>`.\n\nWhen supplied and no `aria-label` or `aria-labelledby` is passed\non rest props, the title also becomes the `aria-label` of the\nroot `<aside>` so the landmark has an accessible name."
+    },
     "variant": {
       "enum": ["info", "success", "warning", "danger"],
       "description": "Visual + semantic variant. Default `'info'`."

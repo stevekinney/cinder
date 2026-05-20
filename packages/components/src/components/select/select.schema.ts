@@ -4,6 +4,18 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+      description: 'Disables the control.',
+    },
+    required: {
+      type: 'boolean',
+      description: 'Marks the control required and sets the native `required` attribute.',
+    },
+    id: {
+      type: 'string',
+      description: 'Unique identifier — required for label association and ARIA wiring.',
+    },
     options: {
       type: 'array',
       items: {
@@ -26,11 +38,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['options'],
+  required: ['id', 'options'],
   metadata: {
     unsupportedProps: [
       {
         name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'value',
         reason: 'unknown-shape',
       },
     ],

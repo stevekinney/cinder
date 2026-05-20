@@ -16,10 +16,11 @@ A DropdownTrigger component. Replace this sentence with a one-line purpose state
 
 <!-- generated:props:start -->
 
-| Prop        | Type      | Required | Default | Description                                             |
-| ----------- | --------- | -------- | ------- | ------------------------------------------------------- |
-| `class`     | `string`  | no       | —       |                                                         |
-| `showCaret` | `boolean` | no       | —       | Render the trailing disclosure caret. Defaults to true. |
+| Prop        | Type       | Required | Default | Description                                             |
+| ----------- | ---------- | -------- | ------- | ------------------------------------------------------- |
+| `class`     | `string`   | no       | —       |                                                         |
+| `showCaret` | `boolean`  | no       | —       | Render the trailing disclosure caret. Defaults to true. |
+| `children`  | `(opaque)` | —        | —       | function-or-snippet                                     |
 
 <!-- generated:props:end -->
 

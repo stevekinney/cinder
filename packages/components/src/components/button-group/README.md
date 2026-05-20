@@ -22,6 +22,7 @@ A ButtonGroup component. Replace this sentence with a one-line purpose statement
 | `label`       | `string`                       | no       | —       |                                                            |
 | `labelledBy`  | `string`                       | no       | —       |                                                            |
 | `orientation` | `"horizontal"` \| `"vertical"` | no       | —       | Orientation of the visual collapse. Default: 'horizontal'. |
+| `children`    | `(opaque)`                     | —        | —       | function-or-snippet                                        |
 
 <!-- generated:props:end -->
 
