@@ -18,7 +18,7 @@
 
   padding: 0;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--cinder-radius-full);
   cursor: pointer;
   vertical-align: middle;
 
@@ -79,8 +79,8 @@
 
 .cinder-toggle:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
-  /* Preserve the current track color at half opacity so on/off is still readable. */
+  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
+  /* Preserve the current track color via grayscale so on/off is still readable. */
   filter: grayscale(0.4);
 }
 

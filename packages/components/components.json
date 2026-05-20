@@ -774,6 +774,32 @@
       }
     },
     {
+      "name": "Divider",
+      "id": "divider",
+      "import": "cinder/divider",
+      "exportName": "Divider",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Thin decorative or semantic separator between content regions, with optional vertical orientation and tonal variants.",
+      "tags": ["layout", "separator"],
+      "useWhen": [
+        "Visually separating sections of a card, list, or toolbar without adding heading-level structure.",
+        "Splitting a row of inline controls (e.g. a button-group toolbar) with a vertical rule."
+      ],
+      "avoidWhen": [
+        "The split between sections deserves a heading — use section-heading instead.",
+        "Wrapping the entire viewport edge — use surface or page-layout instead."
+      ],
+      "related": ["surface", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/divider/schema",
+        "variables": "cinder/divider/variables",
+        "examples": "cinder/divider/examples"
+      }
+    },
+    {
       "name": "Drawer",
       "id": "drawer",
       "import": "cinder/drawer",

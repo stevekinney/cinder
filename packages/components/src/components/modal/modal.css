@@ -129,6 +129,7 @@
   overflow-y: auto;
   padding: var(--cinder-space-6);
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   /* The body container is focused on open (tabindex=-1) when the dialog has
      no autofocus target. The ring is hidden because focus arrived
      programmatically — pressing Tab forward will move into real content. */

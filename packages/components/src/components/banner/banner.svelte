@@ -130,7 +130,7 @@
     {#if dismissible}
       <button
         type="button"
-        class="cinder-banner__dismiss"
+        class="cinder-_dismiss-button cinder-banner__dismiss"
         onclick={handleDismiss}
         aria-label="Dismiss banner"
       >

@@ -9,7 +9,7 @@
  * unresolvable references) throw.
  */
 
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import {
   Project,
@@ -280,30 +280,84 @@ function literalValue(type: Type): string | number | boolean {
 }
 
 /**
- * True when the property is declared inside `svelte/elements` (or its
- * `@types`-style equivalents) — i.e. it's an inherited HTML attribute like
- * `aria-label`, `onclick`, `class`, `id`. Used to skip those props when
- * falling back to a `<Name>Props` type that intersects with `HTMLAttributes`.
+ * True when the property symbol's declaration sites are *all* inside
+ * `svelte/elements` — i.e. it's a purely-inherited HTML attribute like
+ * `aria-label`, `onclick`, `id`. Used to skip those props when falling back
+ * to a `<Name>Props` type that intersects with `HTMLAttributes`.
  *
- * `class` is NOT a member of HTMLAttributes per se (Svelte adds it via its own
- * declaration), so it survives this filter; that's intentional — `class` is a
- * meaningful prop on every component and should appear in the schema.
+ * Filtering is by **declaration site**, not by name. A component-defined
+ * `disabled: boolean` declared in `src/` is preserved even though
+ * `HTMLButtonAttributes` also declares a `disabled?: boolean | null` — at
+ * least one declaration is local, so the property keeps its place in the
+ * schema. The same logic handles `Omit<...> & { disabled: ... }` (the Omit
+ * removes the svelte/elements declaration, leaving only the local one) and
+ * straight intersection shadows (both declarations present; one is local).
+ *
+ * `class` is declared inside `svelte/elements` but is meaningful for every
+ * component and is allowlisted by name as a deliberate exception.
  */
 function isInheritedFromSvelteElements(symbol: MorphSymbol): boolean {
+  if (symbol.getName() === 'class') return false;
   const declarations = symbol.getDeclarations();
-  for (const decl of declarations) {
-    const sourceFile = decl.getSourceFile();
-    const path = sourceFile.getFilePath();
-    // svelte/elements lives in `node_modules/svelte/elements.d.ts` (and
-    // sometimes a few sibling .d.ts files under `node_modules/svelte/`).
-    if (/\bnode_modules\/svelte\b/.test(path)) {
-      // The `class` prop is declared in svelte/elements but is meaningful for
-      // every component; let it through.
-      if (symbol.getName() === 'class') return false;
-      return true;
+  if (declarations.length === 0) return false;
+  const htmlAttributeDeclarationPaths = getHtmlAttributeDeclarationSites();
+  for (const declaration of declarations) {
+    const sourceFilePath = declaration.getSourceFile().getFilePath();
+    if (!htmlAttributeDeclarationPaths.has(sourceFilePath)) {
+      // At least one declaration lives outside svelte/elements — this is a
+      // local prop (possibly shadowing an HTML attribute). Keep it.
+      return false;
     }
   }
-  return false;
+  return true;
+}
+
+/**
+ * Set of absolute source-file paths whose declarations define HTML attributes
+ * inherited by Svelte components (i.e. `svelte/elements.d.ts` and its sibling
+ * `.d.ts` files in `node_modules/svelte/`).
+ *
+ * Computed once per process. The Project used to ask ts-morph for these paths
+ * is the cached schema project — already pointed at the workspace tsconfig —
+ * so resolution sees the same `svelte` package the consumers see.
+ */
+let cachedHtmlAttributeDeclarationSites: Set<string> | null = null;
+function getHtmlAttributeDeclarationSites(): Set<string> {
+  if (cachedHtmlAttributeDeclarationSites) return cachedHtmlAttributeDeclarationSites;
+  const sites = new Set<string>();
+  const project = getProject();
+  // Resolve `svelte/elements` via Bun (works whether or not ts-morph has the
+  // file in its project) then add every sibling `.d.ts` under that directory
+  // to the set. Svelte spreads its HTML attribute interfaces across
+  // `elements.d.ts` plus a handful of internal helper files; matching by
+  // directory is robust to that layout without hard-coding filenames.
+  let sveltePackageEntry: string;
+  try {
+    sveltePackageEntry = Bun.resolveSync('svelte/package.json', process.cwd());
+  } catch {
+    // No svelte in scope — return empty set. The filter degrades to "filter
+    // nothing", which is the conservative behaviour for the fallback path.
+    cachedHtmlAttributeDeclarationSites = sites;
+    return sites;
+  }
+  const svelteDirectory = dirname(sveltePackageEntry);
+  const elementsFilePath = join(svelteDirectory, 'elements.d.ts');
+  const declarationGlob = new Bun.Glob('*.d.ts');
+  for (const relativePath of declarationGlob.scanSync({ cwd: svelteDirectory, absolute: true })) {
+    sites.add(relativePath);
+  }
+  // Ensure ts-morph knows about elements.d.ts itself — some downstream callers
+  // walk back from a property's declaration through ts-morph and need the
+  // source file resolvable. Adding it here is a no-op if it's already loaded.
+  if (project.getSourceFile(elementsFilePath) === undefined) {
+    try {
+      project.addSourceFileAtPath(elementsFilePath);
+    } catch {
+      // Best-effort; the path-set is the source of truth for filtering.
+    }
+  }
+  cachedHtmlAttributeDeclarationSites = sites;
+  return sites;
 }
 
 function getPropType(symbol: MorphSymbol): Type {
@@ -397,6 +451,7 @@ function renderSchemaModule(schema: ComponentSchemaOutput, depthToSrc: number): 
 
 export function resetSchemaProjectCache(): void {
   cachedProject = null;
+  cachedHtmlAttributeDeclarationSites = null;
 }
 
 if (import.meta.main) {

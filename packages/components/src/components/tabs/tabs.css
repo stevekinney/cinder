@@ -51,9 +51,13 @@
     background var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-tab:hover:not([data-cinder-disabled]) {
-  color: var(--cinder-text);
-  background: var(--cinder-surface-hover);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-tab:hover:not([data-cinder-disabled]) {
+    color: var(--cinder-text);
+    background: var(--cinder-surface-hover);
+  }
 }
 
 .cinder-tab[data-cinder-active] {
@@ -88,9 +92,7 @@
 
 .cinder-tab:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {

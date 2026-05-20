@@ -16,12 +16,13 @@ A DropdownItem component. Replace this sentence with a one-line purpose statemen
 
 <!-- generated:props:start -->
 
-| Prop            | Type                      | Required | Default | Description |
-| --------------- | ------------------------- | -------- | ------- | ----------- |
-| `class`         | `string`                  | no       | —       |             |
-| `closeOnSelect` | `boolean`                 | no       | —       |             |
-| `inset`         | `boolean`                 | no       | —       |             |
-| `variant`       | `"default"` \| `"danger"` | no       | —       |             |
+| Prop            | Type                      | Required | Default | Description         |
+| --------------- | ------------------------- | -------- | ------- | ------------------- |
+| `class`         | `string`                  | no       | —       |                     |
+| `closeOnSelect` | `boolean`                 | no       | —       |                     |
+| `inset`         | `boolean`                 | no       | —       |                     |
+| `variant`       | `"default"` \| `"danger"` | no       | —       |                     |
+| `children`      | `(opaque)`                | —        | —       | function-or-snippet |
 
 <!-- generated:props:end -->
 

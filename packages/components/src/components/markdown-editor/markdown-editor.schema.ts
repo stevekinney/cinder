@@ -4,6 +4,10 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    placeholder: {
+      type: 'string',
+      description: 'Placeholder text when empty',
+    },
     id: {
       type: 'string',
       description: 'Unique identifier for accessibility (required)',

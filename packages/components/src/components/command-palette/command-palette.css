@@ -109,6 +109,7 @@
   padding: var(--cinder-space-2) 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   flex: 1;
 }
 
@@ -207,19 +208,10 @@
   gap: var(--cinder-space-0-5);
 }
 
-.cinder-command-item__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .cinder-command-item__description {
-  overflow: hidden;
   color: var(--cinder-text-muted);
   font-size: var(--cinder-text-xs);
   line-height: var(--cinder-leading-normal);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .cinder-command-item[data-cinder-active] .cinder-command-item__description {

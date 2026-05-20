@@ -4,6 +4,9 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    id: {
+      type: 'string',
+    },
     conversation: {
       type: 'object',
     },
@@ -57,7 +60,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['conversation'],
+  required: ['conversation', 'id'],
   metadata: {
     unsupportedProps: [
       {
@@ -110,6 +113,10 @@ const schema = {
       },
       {
         name: 'onstopgenerating',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onsubmit',
         reason: 'function-or-snippet',
       },
       {
