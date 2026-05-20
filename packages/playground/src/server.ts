@@ -915,6 +915,10 @@ async function renderComponentPage(componentName: string): Promise<string> {
     <link rel="stylesheet" href="/styles/index.css" />
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
+      /* Iframe scaffold: scope the reset narrowly. Unlike the shell, the
+         universal selectors here set ONLY box-sizing — not margin/padding —
+         so they cannot beat layered component styles. The shell's reset is
+         broader and lives in @layer cinder.reset (see render-shell.ts). */
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
       body {

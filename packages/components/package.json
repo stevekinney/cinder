@@ -358,6 +358,18 @@
       "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
       "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts"
     },
+    "./divider": {
+      "svelte": "./src/components/divider/index.ts",
+      "types": "./dist/components/divider/index.d.ts"
+    },
+    "./divider/schema": {
+      "svelte": "./src/components/divider/divider.schema.ts",
+      "types": "./dist/components/divider/divider.schema.d.ts"
+    },
+    "./divider/variables": {
+      "svelte": "./src/components/divider/divider.variables.ts",
+      "types": "./dist/components/divider/divider.variables.d.ts"
+    },
     "./drawer": {
       "svelte": "./src/components/drawer/index.ts",
       "types": "./dist/components/drawer/index.d.ts"

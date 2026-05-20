@@ -105,6 +105,9 @@ export type {
   ViewMode,
 } from './components/diff-viewer/index.ts';
 
+export { default as Divider } from './components/divider/index.ts';
+export type { DividerOrientation, DividerProps, DividerTone } from './components/divider/index.ts';
+
 export { default as Drawer } from './components/drawer/index.ts';
 export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer/index.ts';
 

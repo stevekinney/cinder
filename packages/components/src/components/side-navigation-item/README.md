@@ -24,6 +24,7 @@ A SideNavigationItem component. Replace this sentence with a one-line purpose st
 | `listItemClass` | `string`                     | no       | —       | Class merged onto the outer <li>.                                                 |
 | `variant`       | `"horizontal"` \| `"mobile"` | no       | —       | Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'. |
 | `children`      | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
+| `onclick`       | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
 
 <!-- generated:props:end -->
 
