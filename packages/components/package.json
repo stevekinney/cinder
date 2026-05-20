@@ -257,13 +257,10 @@
       "svelte": "./src/components/chat/chat.variables.ts",
       "types": "./dist/components/chat/chat.variables.d.ts"
     },
-<<<<<<< HEAD
     "./chat/examples": {
       "import": "./src/components/chat/chat.examples.json",
       "default": "./src/components/chat/chat.examples.json"
     },
-=======
->>>>>>> 139325c (Address review committee feedback (round 1))
     "./checkbox": {
       "svelte": "./src/components/checkbox/index.ts",
       "types": "./dist/components/checkbox/index.d.ts"
@@ -512,13 +509,10 @@
       "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
       "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts"
     },
-<<<<<<< HEAD
     "./diff-viewer/examples": {
       "import": "./src/components/diff-viewer/diff-viewer.examples.json",
       "default": "./src/components/diff-viewer/diff-viewer.examples.json"
     },
-=======
->>>>>>> 139325c (Address review committee feedback (round 1))
     "./divider": {
       "svelte": "./src/components/divider/index.ts",
       "types": "./dist/components/divider/index.d.ts"
@@ -850,13 +844,10 @@
       "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts",
       "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts"
     },
-<<<<<<< HEAD
     "./markdown-editor/examples": {
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
     },
-=======
->>>>>>> 139325c (Address review committee feedback (round 1))
     "./modal": {
       "svelte": "./src/components/modal/index.ts",
       "types": "./dist/components/modal/index.d.ts"
@@ -1675,13 +1666,10 @@
       "svelte": "./src/components/visually-hidden/visually-hidden.variables.ts",
       "types": "./dist/components/visually-hidden/visually-hidden.variables.d.ts"
     },
-<<<<<<< HEAD
     "./visually-hidden/examples": {
       "import": "./src/components/visually-hidden/visually-hidden.examples.json",
       "default": "./src/components/visually-hidden/visually-hidden.examples.json"
     },
-=======
->>>>>>> 139325c (Address review committee feedback (round 1))
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator/index.ts",
       "types": "./dist/components/experimental/connection-indicator/index.d.ts"
