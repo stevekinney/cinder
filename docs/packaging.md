@@ -6,14 +6,17 @@ in CSS.
 
 ## Conditional exports — resolution table
 
-Every component subpath is published with the same conditional shape:
+Every component subpath is published with the same conditional shape. The
+component JS lives behind two conditions; the CSS sidecar lives behind its own
+`/styles` subpath:
 
 ```jsonc
 "./button": {
-  "types": "./dist/components/button/index.d.ts",
   "svelte": "./src/components/button/index.ts",
-  "node": "./dist/server/components/button/index.js",
-  "default": "./dist/components/button/index.js"
+  "types": "./dist/components/button/index.d.ts"
+},
+"./button/styles": {
+  "default": "./dist/components/button/button.css"
 }
 ```
 
@@ -21,19 +24,24 @@ Which file a given consumer actually loads depends on the resolver and its
 condition set. Resolvers stop at the first condition they match. The table below
 captures what wins where.
 
-| Consumer / resolver                        | Condition matched | File loaded                                |
-| ------------------------------------------ | ----------------- | ------------------------------------------ |
-| TypeScript (`moduleResolution: nodenext`)  | `types`           | `./dist/components/button/index.d.ts`      |
-| TypeScript (`moduleResolution: bundler`)   | `types`           | `./dist/components/button/index.d.ts`      |
-| Vite / SvelteKit dev + build               | `svelte`          | `./src/components/button/index.ts`         |
-| `svelte-package` / Svelte-aware tooling    | `svelte`          | `./src/components/button/index.ts`         |
-| Node SSR without Svelte tooling            | `node`            | `./dist/server/components/button/index.js` |
-| Bun consumer                               | `default`         | `./dist/components/button/index.js`        |
-| Browser bundler (esbuild, Rollup, Webpack) | `default`         | `./dist/components/button/index.js`        |
+| Consumer / resolver                       | Subpath                | Condition matched | File loaded                           |
+| ----------------------------------------- | ---------------------- | ----------------- | ------------------------------------- |
+| TypeScript (`moduleResolution: nodenext`) | `cinder/button`        | `types`           | `./dist/components/button/index.d.ts` |
+| TypeScript (`moduleResolution: bundler`)  | `cinder/button`        | `types`           | `./dist/components/button/index.d.ts` |
+| Vite / SvelteKit dev + build              | `cinder/button`        | `svelte`          | `./src/components/button/index.ts`    |
+| `svelte-package` / Svelte-aware tooling   | `cinder/button`        | `svelte`          | `./src/components/button/index.ts`    |
+| Any resolver                              | `cinder/button/styles` | `default`         | `./dist/components/button/button.css` |
 
 The `svelte` condition is the public contract for Svelte-aware tooling. Source
 paths it names are stable. Any other path under `src/` is implementation detail
-and may move at any time. `dist/` is the contract for all non-Svelte tooling.
+and may move at any time. `dist/` is the contract for all non-Svelte tooling
+and for every CSS sidecar.
+
+Consumers using Bun, Node SSR, or a browser bundler without Svelte tooling
+will resolve via `types` for typechecking, but the component subpaths do not
+currently expose a runtime `node` or `default` JS condition. Track 4 ships
+the underlying per-component browser-ESM and SSR builds; wiring those into
+the exports map is a follow-up track.
 
 ## Styles — two consumption modes
 

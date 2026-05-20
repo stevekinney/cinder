@@ -5,7 +5,7 @@
  *   ./<name>             → component (svelte/types conditions)
  *   ./<name>/schema      → schema module (svelte/types conditions)
  *   ./<name>/variables   → variables module (svelte/types conditions)
- *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when CSS exists)
+ *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css)
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
@@ -121,8 +121,10 @@ export function computeExports(
     // Per-component CSS sidecar — layer-unwrapped. Consumers using these
     // à la carte must also import `cinder/styles/tokens` and
     // `cinder/styles/foundation` to get tokens, resets, and layer assignments.
-    // Gated on `hasCss` to avoid publishing dead exports for components
-    // without a `<name>.css` file.
+    //
+    // Only emitted when the component ships a source CSS sidecar — emitting
+    // `/styles` for a component without CSS would publish a dead export
+    // pointing at a non-existent dist artifact.
     if (hasCss) {
       out[`${prefix}/styles`] = {
         default: `${distDir}/${name}.css`,

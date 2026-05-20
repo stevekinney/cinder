@@ -29,7 +29,13 @@ export type ComponentDiscovery = {
   name: string;
   /** True when the component lives under `src/components/experimental/`. */
   isExperimental: boolean;
-  /** True when a `<name>.css` sidecar file exists in the component directory. */
+  /**
+   * True when the component directory contains a source CSS sidecar
+   * (`<name>.css`). Drives whether `generate-exports.ts` emits a
+   * `./<name>/styles` subpath — components with no CSS sidecar would
+   * otherwise publish a dead export pointing at a non-existent
+   * `dist/components/<name>/<name>.css`.
+   */
   hasCss: boolean;
 };
 

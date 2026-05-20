@@ -420,6 +420,17 @@ async function runSveltekitFixture(): Promise<void> {
     // only — no `/styles` subpath, no aggregator. Its route-scoped CSS must
     // not contain button selectors. Proves component JS does not pull CSS as
     // a side effect.
+    //
+    // Triangulation against false-positives (route walk silently broken):
+    //   1. The /a-la-carte assertion above proved the route-scoped walk DOES
+    //      surface .cinder-button when the route opts into the CSS.
+    //   2. The build-wide combinedStylesheet check above proved .cinder-button
+    //      exists somewhere in the client CSS output.
+    //   3. The walk below resolves the SvelteKit wrapper or fails loudly
+    //      (readRouteCssArtifacts calls fail() if the wrapper isn't found).
+    // Together these mean: a passing absence assertion below cannot be
+    // explained by a silently-empty walk — it can only mean the no-styles
+    // route legitimately has no transitive .cinder-button CSS.
     const noStylesCss = await readRouteCssArtifacts(
       fixtureDirectory,
       'src/routes/no-styles/+page.svelte',
@@ -427,6 +438,14 @@ async function runSveltekitFixture(): Promise<void> {
     if (hasSelectorContaining(noStylesCss, '.cinder-button')) {
       fail(
         `/no-styles route CSS contains .cinder-button — component JS pulled CSS as a side effect`,
+      );
+    }
+    // Also assert that any --cinder-button-* custom property is absent,
+    // catching the case where CSS leaks via custom-property declarations on
+    // a shared chunk even if no selector tokens match.
+    if (hasCustomPropertyStartingWith(noStylesCss, '--cinder-button-')) {
+      fail(
+        `/no-styles route CSS contains --cinder-button-* — component JS pulled CSS as a side effect`,
       );
     }
 
