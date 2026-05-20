@@ -14,6 +14,7 @@
    * bleed into an ancestor scroller (rubber-band on iOS, page-scroll on
    * desktop). Matches the modal / command-palette body convention. */
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 
   /* Firefox scrollbar theming. */
   scrollbar-width: thin;
@@ -62,9 +63,7 @@
  * for offset + ring colors. */
 .cinder-scroll-area:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 /* Windows High Contrast Mode (forced-colors) ignores box-shadow and
