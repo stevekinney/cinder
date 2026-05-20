@@ -1,7 +1,7 @@
 /**
  * Internal surface context shape, factored out of `surface.svelte` so that
- * plain `.ts` consumers can import the symbol key and types without going
- * through the `.svelte` module path.
+ * plain `.ts` consumers can import the context handles and types without
+ * going through the `.svelte` module path.
  *
  * `surface.svelte` re-exports `SurfaceTone` so the public type still surfaces
  * through the existing `Surface` re-export in the package barrel.
@@ -11,7 +11,7 @@
  * review before being added.
  */
 
-import { getContext } from 'svelte';
+import { createContext } from 'svelte';
 
 /** The visual affordance of a surface — describes what the surface looks like. */
 export type SurfaceTone = 'default' | 'raised' | 'inset' | 'transparent';
@@ -29,22 +29,24 @@ export type SurfaceContextValue = {
   readonly tone: SurfaceTone;
 };
 
-/** Symbol key for the surface Svelte context. Not exported from package root. */
-export const SURFACE_CONTEXT_KEY = Symbol('cinder.surface');
+const [getSurfaceContextStrict, setSurfaceContextRaw] = createContext<SurfaceContextValue>();
+
+/** Publish the surface context for descendants. */
+export function setSurfaceContext(context: SurfaceContextValue): SurfaceContextValue {
+  return setSurfaceContextRaw(context);
+}
 
 /**
  * Read the nearest enclosing `<Surface>` context. Returns `undefined` when no
  * `<Surface>` ancestor exists. All readers MUST handle the `undefined` case;
  * cinder makes no implicit "default" assumption when there is no parent.
  *
- * The try-catch handles the same SSR/test-environment edge case documented in
- * `form-field-context.ts`: compiling with `generate:'server'` while resolving
- * 'svelte' to the client build causes `getContext` to throw
- * `lifecycle_outside_component`. Returning `undefined` is the correct fallback.
+ * Svelte 5's `createContext` getter throws when no provider exists; we wrap
+ * it here so the consumer contract — `undefined` on no provider — is preserved.
  */
 export function getSurfaceContext(): SurfaceContextValue | undefined {
   try {
-    return getContext<SurfaceContextValue | undefined>(SURFACE_CONTEXT_KEY);
+    return getSurfaceContextStrict();
   } catch {
     return undefined;
   }

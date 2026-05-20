@@ -1,14 +1,20 @@
 /**
  * Shared context contract between CommandPalette and CommandItem.
  *
- * This module is intentionally kept under `_internal/` so the symbol is
- * accessible to both components without being part of the package's public
- * surface. Consumers cannot reach `COMMAND_PALETTE_CONTEXT` without dotting
- * into `_internal/`, which serves as a social signal matching the convention
- * already established by `_internal/overlay.ts`.
+ * This module is intentionally kept under `_internal/` so the context handles
+ * are accessible to both components without being part of the package's public
+ * surface. Consumers cannot reach the context without dotting into
+ * `_internal/`, matching the convention already established by
+ * `_internal/overlay.ts`.
+ *
+ * The context is *required* — a `CommandItem` outside a `CommandPalette` is a
+ * programmer error. The `getCommandPaletteContext` getter therefore throws
+ * (via Svelte 5's `createContext`) when no provider exists; `CommandItem`
+ * still calls `hasCommandPaletteContext` first so it can throw a more helpful
+ * domain-specific error.
  */
 
-export const COMMAND_PALETTE_CONTEXT: unique symbol = Symbol('cinder-command-palette');
+import { createContext } from 'svelte';
 
 /**
  * Live registration input provided by each CommandItem on mount.
@@ -38,7 +44,37 @@ export type CommandPaletteContext = {
    * Called by each CommandItem when it mounts.
    * Returns a stable id and an unregister function.
    */
-  register: (input: CommandItemRegistrationInput) => { id: string; unregister: () => void };
+  register: (
+    input: CommandItemRegistrationInput,
+    node: HTMLElement,
+  ) => { id: string; unregister: () => void };
   /** Called by items on pointerenter to sync hover with arrow-key navigation. */
   setActiveById: (id: string) => void;
 };
+
+const [getCommandPaletteContextStrict, setCommandPaletteContextRaw] =
+  createContext<CommandPaletteContext>();
+
+/** Publish the command palette context for descendant CommandItems. */
+export function setCommandPaletteContext(context: CommandPaletteContext): CommandPaletteContext {
+  return setCommandPaletteContextRaw(context);
+}
+
+/**
+ * Read the enclosing `<CommandPalette>` context. Throws via Svelte 5's
+ * `createContext` if no provider exists — callers that want a friendlier
+ * domain-specific error should gate with `hasCommandPaletteContext` first.
+ */
+export function getCommandPaletteContext(): CommandPaletteContext {
+  return getCommandPaletteContextStrict();
+}
+
+/** True when a `<CommandPalette>` ancestor has published its context. */
+export function hasCommandPaletteContext(): boolean {
+  try {
+    getCommandPaletteContextStrict();
+    return true;
+  } catch {
+    return false;
+  }
+}

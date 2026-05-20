@@ -7,7 +7,7 @@
  * coordination signals require a separate API review.
  */
 
-import { getContext } from 'svelte';
+import { createContext } from 'svelte';
 
 /**
  * Context published by `<Sidebar>` for descendant components. `collapsed` is a
@@ -19,19 +19,23 @@ export type SidebarContextValue = {
   readonly collapsed: boolean;
 };
 
-/** Symbol key for the sidebar Svelte context. Not exported from package root. */
-export const SIDEBAR_CONTEXT_KEY = Symbol('cinder.sidebar');
+const [getSidebarContextStrict, setSidebarContextRaw] = createContext<SidebarContextValue>();
+
+/** Publish the sidebar context for descendants. */
+export function setSidebarContext(context: SidebarContextValue): SidebarContextValue {
+  return setSidebarContextRaw(context);
+}
 
 /**
  * Read the nearest enclosing `<Sidebar>` context. Returns `undefined` when no
  * `<Sidebar>` ancestor exists. Readers must handle the `undefined` case.
  *
- * The try-catch mirrors the SSR/test-environment edge case documented in
- * `form-field-context.ts` and `surface-context.ts`.
+ * Svelte 5's `createContext` getter throws when no provider exists; the wrap
+ * preserves the consumer contract — `undefined` on no provider.
  */
 export function getSidebarContext(): SidebarContextValue | undefined {
   try {
-    return getContext<SidebarContextValue | undefined>(SIDEBAR_CONTEXT_KEY);
+    return getSidebarContextStrict();
   } catch {
     return undefined;
   }
