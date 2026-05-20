@@ -22,7 +22,7 @@ import { describe, expect, it } from 'bun:test';
 import { parse, parseOrThrow, roundTrip, serialize } from './pipeline/index.js';
 
 const runBenchmarks = process.env.RUN_MARKDOWN_BENCHMARKS === '1';
-const describeUnlessCI = runBenchmarks ? describe : describe.skip;
+const describeBenchmark = runBenchmarks ? describe : describe.skip;
 
 /**
  * Generate a Markdown document of approximately the specified size.
@@ -97,7 +97,7 @@ const section${sectionNumber} = {
   return '# Performance Test Document\n\n' + sections.join('');
 }
 
-describeUnlessCI('performance: parsing', () => {
+describeBenchmark('performance: parsing', () => {
   it('parses 1KB document in <10ms', () => {
     const doc = generateDocument(1_000);
     const iterations = 10;
@@ -159,7 +159,7 @@ describeUnlessCI('performance: parsing', () => {
   });
 });
 
-describeUnlessCI('performance: serialization', () => {
+describeBenchmark('performance: serialization', () => {
   it('serializes 1KB document in <10ms', () => {
     const doc = generateDocument(1_000);
     const ast = parseOrThrow(doc);
@@ -225,7 +225,7 @@ describeUnlessCI('performance: serialization', () => {
   });
 });
 
-describeUnlessCI('performance: round-trip', () => {
+describeBenchmark('performance: round-trip', () => {
   it('round-trips 5KB document in <50ms', () => {
     const doc = generateDocument(5_000);
     const iterations = 5;
@@ -257,7 +257,7 @@ describeUnlessCI('performance: round-trip', () => {
   });
 });
 
-describeUnlessCI('performance: concurrent operations', () => {
+describeBenchmark('performance: concurrent operations', () => {
   it('handles multiple sequential parses efficiently', () => {
     const docs = Array.from({ length: 10 }, (_, i) => generateDocument(2_000 + i * 500));
 
@@ -287,7 +287,7 @@ describeUnlessCI('performance: concurrent operations', () => {
   });
 });
 
-describeUnlessCI('performance: memory efficiency', () => {
+describeBenchmark('performance: memory efficiency', () => {
   it('does not leak significant memory on repeated parsing', () => {
     const doc = generateDocument(10_000);
 
@@ -338,7 +338,7 @@ describeUnlessCI('performance: memory efficiency', () => {
   });
 });
 
-describeUnlessCI('performance: pathological cases', () => {
+describeBenchmark('performance: pathological cases', () => {
   it('handles document with 1000 list items efficiently', () => {
     const items = Array.from({ length: 1000 }, (_, i) => `- Item ${i + 1}`).join('\n');
     const doc = `# Large List\n\n${items}`;

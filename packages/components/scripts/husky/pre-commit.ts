@@ -44,6 +44,14 @@ if (stagedForLockCheck.includes('package.json')) {
     } catch {
       warning('bun install failed; run it manually');
     }
+    // bun install may regenerate bun.lock even when the staged copy looked
+    // up-to-date. Reject the commit if the working-tree lockfile no longer
+    // matches what's staged — otherwise the commit ships a stale lockfile.
+    const drift = await $`git diff --name-only -- bun.lock`.cwd(REPO_ROOT).text();
+    if (drift.trim().length > 0) {
+      error('bun.lock was modified by `bun install`; stage the regenerated lockfile and retry');
+      process.exit(1);
+    }
   }
 }
 
@@ -131,10 +139,7 @@ type JobResult = {
   readonly stderr: string;
 };
 
-const hardwareConcurrency =
-  (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ??
-  4;
-const concurrency = Math.min(hardwareConcurrency, 4);
+const concurrency = Math.min(navigator.hardwareConcurrency, 4);
 
 const start = Date.now();
 const elapsed = () => Date.now() - start;
@@ -161,7 +166,9 @@ async function runJob(job: Job): Promise<JobResult> {
 }
 
 // Small inline async pool — `concurrency` workers pull jobs off a shared index.
-const results: JobResult[] = Array.from({ length: jobs.length });
+// `results` is keyed by job index so the output order matches the job order
+// regardless of worker scheduling.
+const results: JobResult[] = [];
 let nextIndex = 0;
 const workers: Promise<void>[] = [];
 for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {

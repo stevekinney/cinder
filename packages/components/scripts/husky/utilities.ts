@@ -60,7 +60,11 @@ type PackageManifest = {
 };
 
 function isManifest(value: unknown): value is PackageManifest {
-  return typeof value === 'object' && value !== null;
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  const scripts = record['scripts'];
+  if (scripts !== undefined && (typeof scripts !== 'object' || scripts === null)) return false;
+  return true;
 }
 
 /**
@@ -92,22 +96,28 @@ export async function loadWorkspacePackages(): Promise<readonly WorkspacePackage
   return result;
 }
 
+// Extensions that trigger typecheck/test when modified. `.svelte` and `.css`
+// are project-specific (Svelte components, component-scoped styles); `.json`
+// catches in-package config such as tsconfig.json. Markdown is excluded
+// outright in `isSourceFile` because it never affects typecheck/test outcomes.
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.svelte', '.css', '.json']);
 
 /**
  * Decide whether a staged path should trigger typecheck/test for its package.
- * Markdown and `README*`/`CHANGELOG*` files (any case) are explicitly excluded
- * so docs-only commits don't drag heavy work in.
+ * Markdown is excluded outright. Standalone `README*` / `CHANGELOG*` documents
+ * (files with no source extension) are also excluded so doc-only commits
+ * inside a package don't drag heavy work in. A source file whose basename
+ * happens to start with one of those words (`changelog-helpers.ts`) is still
+ * treated as source — the extension check runs first.
  */
-function isSourceFile(path: string): boolean {
+export function isSourceFile(path: string): boolean {
   const lower = path.toLowerCase();
   if (lower.endsWith('.md')) return false;
+  const hasSourceExtension = [...SOURCE_EXTENSIONS].some((ext) => lower.endsWith(ext));
+  if (hasSourceExtension) return true;
   const slashIndex = lower.lastIndexOf('/');
   const basename = slashIndex === -1 ? lower : lower.slice(slashIndex + 1);
   if (basename.startsWith('readme') || basename.startsWith('changelog')) return false;
-  for (const ext of SOURCE_EXTENSIONS) {
-    if (lower.endsWith(ext)) return true;
-  }
   return false;
 }
 
@@ -132,17 +142,23 @@ export function getTouchedPackages(
 /**
  * Root-level files whose changes affect every package and therefore force
  * the pre-commit hook to escalate to a full workspace typecheck + test.
+ *
+ * Maintenance: this list is hardcoded and there is no automated drift check.
+ * When a new root-level lint, formatter, or compiler config is added (or an
+ * existing one is renamed), update this list. Code review should flag any
+ * new root config that isn't represented here.
  */
 const HIGH_IMPACT_ROOT: readonly string[] = [
   'package.json',
   'bun.lock',
   'tsconfig.json',
   'tsconfig.base.json',
+  'tsconfig.build.json',
+  'tsconfig.check.json',
+  'tsconfig.test.json',
   '.oxlintrc.json',
   'bunfig.toml',
-  '.prettierrc',
   '.prettierrc.json',
-  'prettier.config.js',
   '.stylelintrc.json',
 ];
 

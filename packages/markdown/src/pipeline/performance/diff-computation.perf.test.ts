@@ -32,7 +32,7 @@ import { FIXTURES, generateModifiedDocument } from './generate-fixtures';
 // Opt in explicitly with RUN_MARKDOWN_BENCHMARKS=1 — see performance.test.ts
 // for rationale.
 const runBenchmarks = process.env.RUN_MARKDOWN_BENCHMARKS === '1';
-const describeUnlessCI = runBenchmarks ? describe : describe.skip;
+const describeBenchmark = runBenchmarks ? describe : describe.skip;
 
 // Result storage for CI artifacts
 const results: Array<{
@@ -43,7 +43,7 @@ const results: Array<{
   passed: boolean;
 }> = [];
 
-describeUnlessCI('Diff Computation Performance', () => {
+describeBenchmark('Diff Computation Performance', () => {
   // Clear cache before each test to ensure clean measurements
   beforeEach(() => {
     clearNormalizeCache();
