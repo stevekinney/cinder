@@ -16,9 +16,27 @@ import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import prettier from 'prettier';
+
 import { generateSchemaForComponent } from './generate-component-schema.ts';
 import { generateVariablesForComponent } from './generate-component-variables.ts';
 import { renderComponentReadme } from './render-component-readme.ts';
+
+/**
+ * Run prettier over the generated content using the repo's prettier config.
+ * Without this, lint-staged's prettier --write pass reformats our generated
+ * files on every commit, which then makes `components:check` fail with a
+ * "stale" drift report on the next build cycle. Running prettier inline keeps
+ * the on-disk form identical to what lint-staged would produce.
+ */
+async function formatGenerated(content: string, filepath: string): Promise<string> {
+  try {
+    const options = await prettier.resolveConfig(filepath);
+    return await prettier.format(content, { ...options, filepath });
+  } catch {
+    return content;
+  }
+}
 
 export interface DiscoveredComponent {
   /** Absolute path to the component directory. */
@@ -101,13 +119,18 @@ export async function generateArtifactsForComponent(
     });
   }
 
+  const schemaJsonPath = join(directory, `${name}.schema.json`);
+  const schemaModulePath = join(directory, `${name}.schema.ts`);
+  const variablesJsonPath = join(directory, `${name}.variables.json`);
+  const variablesModulePath = join(directory, `${name}.variables.ts`);
+
   return {
     component,
-    schemaJson: schema.schemaJson,
-    schemaModule: schema.schemaModule,
-    variablesJson: variables.variablesJson,
-    variablesModule: variables.variablesModule,
-    readme,
+    schemaJson: await formatGenerated(schema.schemaJson, schemaJsonPath),
+    schemaModule: await formatGenerated(schema.schemaModule, schemaModulePath),
+    variablesJson: await formatGenerated(variables.variablesJson, variablesJsonPath),
+    variablesModule: await formatGenerated(variables.variablesModule, variablesModulePath),
+    readme: readme === null ? null : await formatGenerated(readme, readmePath),
   };
 }
 
