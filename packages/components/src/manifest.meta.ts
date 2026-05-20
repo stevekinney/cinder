@@ -115,8 +115,6 @@ export const requiredConstraints = [
   'button',
   'input',
   'modal',
-  'combobox',
-  'tabs',
 ] as const satisfies readonly string[];
 
 // ---------------------------------------------------------------------------

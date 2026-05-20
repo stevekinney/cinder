@@ -10,10 +10,11 @@ Styles: import 'cinder/styles';
 
 ## Per-component subpaths
 - cinder/{name}             — Svelte component export
-- cinder/{name}/schema      — JSON Schema (props)
-- cinder/{name}/variables   — CSS custom property names
-- cinder/{name}/examples    — Code examples (JSON, when hasExamples is true)
-- cinder/{name}/constraints — Discriminated-union rules (when hasConstraints is true)
+- cinder/{name}/schema      — TS module; default export is a JSON Schema document
+- cinder/{name}/variables   — TS module; default export is the array of CSS custom property names
+- cinder/{name}/examples    — JSON file (import with `with { type: 'json' }`), present when hasExamples is true
+- cinder/{name}/constraints — JSON file (import with `with { type: 'json' }`), present when hasConstraints is true
+- cinder/manifest           — JSON file (import with `with { type: 'json' }`), the top-level components.json
 
 ## Experimental components
 Experimental components use cinder/experimental/{name} instead of cinder/{name}.

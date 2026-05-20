@@ -132,6 +132,20 @@ const ALL_STRING_EXPORTS_REGEX = /export\s+const\s+(\w+)\s*=\s*(['"`])([\s\S]*?)
 /** Matches `from 'specifier'` or `from "specifier"` in import statements. */
 const IMPORT_FROM_REGEX = /^\s*import\b[^;]*\bfrom\s+['"]([^'"]+)['"]/gm;
 
+/**
+ * Matches side-effect imports: `import 'specifier';` (no `from` clause).
+ * Catches CSS imports, polyfills, and `$lib` shim loads that would otherwise
+ * slip past `IMPORT_FROM_REGEX`.
+ */
+const IMPORT_SIDE_EFFECT_REGEX = /^\s*import\s+['"]([^'"]+)['"]\s*;?/gm;
+
+/**
+ * Matches dynamic imports: `import('specifier')`.
+ * Examples that dynamically load arbitrary specifiers also escape the static
+ * import contract.
+ */
+const IMPORT_DYNAMIC_REGEX = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
+
 /** Matches `@cinder-example-exclude: <reason>` anywhere in the file. */
 const EXCLUSION_MARKER_REGEX = /\/\/\s*@cinder-example-exclude:\s*(.+)/;
 
@@ -212,6 +226,24 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
 
   const componentOverride = metadataExports.get('component');
 
+  // Validate the override against the closed set of public component ids.
+  // Without this check, a bad `export const component = '../../bad/path'`
+  // could write artifacts outside the canonical component directory.
+  if (componentOverride !== undefined) {
+    if (!/^[a-z][a-z0-9-]*$/.test(componentOverride)) {
+      return {
+        kind: 'error',
+        reason: `"export const component = '${componentOverride}'" in ${filePath} is not a kebab-case id`,
+      };
+    }
+    if (!validCinderSubpaths.has(componentOverride)) {
+      return {
+        kind: 'error',
+        reason: `"export const component = '${componentOverride}'" in ${filePath} does not match any public component`,
+      };
+    }
+  }
+
   // Step 4: reject `<style>` blocks.
   if (STYLE_BLOCK_REGEX.test(source)) {
     return {
@@ -277,47 +309,68 @@ function validateImports(
   _componentId: string,
   validCinderSubpaths: ReadonlySet<string>,
 ): string | null {
-  const regex = new RegExp(IMPORT_FROM_REGEX.source, IMPORT_FROM_REGEX.flags);
-  let match: RegExpExecArray | null;
+  // Validate every form an import can take in a Svelte module: bound (`from`),
+  // side-effect (`import 'x';`), and dynamic (`import('x')`). Any specifier
+  // that escapes one regex would have slipped past the contract.
+  const patterns: Array<{ regex: RegExp; kind: 'bound' | 'side-effect' | 'dynamic' }> = [
+    { regex: new RegExp(IMPORT_FROM_REGEX.source, IMPORT_FROM_REGEX.flags), kind: 'bound' },
+    {
+      regex: new RegExp(IMPORT_SIDE_EFFECT_REGEX.source, IMPORT_SIDE_EFFECT_REGEX.flags),
+      kind: 'side-effect',
+    },
+    { regex: new RegExp(IMPORT_DYNAMIC_REGEX.source, IMPORT_DYNAMIC_REGEX.flags), kind: 'dynamic' },
+  ];
 
-  while ((match = regex.exec(source)) !== null) {
-    const specifier = match[1];
-    if (specifier === undefined) continue;
+  for (const { regex, kind } of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(source)) !== null) {
+      const specifier = match[1];
+      if (specifier === undefined) continue;
 
-    // Relative imports are always banned.
-    if (specifier.startsWith('./') || specifier.startsWith('../') || specifier === '..') {
-      return `relative import "${specifier}" not allowed in ${filePath}; use "cinder/<subpath>"`;
-    }
+      const verdict = classifySpecifier(specifier, validCinderSubpaths);
+      if (verdict === 'allowed') continue;
 
-    // $lib and other internal playground aliases are banned.
-    if (specifier.startsWith('$')) {
-      return `import "${specifier}" not allowed in ${filePath}; only cinder/* and allowed packages permitted`;
-    }
-
-    // `cinder` exact is allowed.
-    if (specifier === 'cinder') continue;
-
-    // `cinder/<subpath>` — validate the subpath exists.
-    if (specifier.startsWith('cinder/')) {
-      const subpath = specifier.slice('cinder/'.length);
-      // Accept any valid cinder subpath (component name, or schema/variables suffix).
-      if (
-        validCinderSubpaths.has(subpath) ||
-        isValidCinderSubpathWithSuffix(subpath, validCinderSubpaths)
-      ) {
-        continue;
+      const prefix =
+        kind === 'bound'
+          ? 'import'
+          : kind === 'side-effect'
+            ? 'side-effect import'
+            : 'dynamic import';
+      if (verdict === 'relative') {
+        return `relative ${prefix} "${specifier}" not allowed in ${filePath}; use "cinder/<subpath>"`;
       }
-      return `import "cinder/${subpath}" does not match a known cinder subpath in ${filePath}`;
+      if (verdict === 'unknown-cinder-subpath') {
+        return `${prefix} "cinder/${specifier.slice('cinder/'.length)}" does not match a known cinder subpath in ${filePath}`;
+      }
+      return `${prefix} "${specifier}" not allowed in ${filePath}; only cinder/* and allowed packages permitted`;
     }
-
-    // Packages in the allowed list.
-    if (ALLOWED_EXAMPLE_PACKAGES.includes(specifier)) continue;
-
-    // Everything else is a hard error.
-    return `import "${specifier}" not allowed in ${filePath}; only cinder/* and allowed packages permitted`;
   }
 
   return null;
+}
+
+/** Decide whether a single specifier satisfies the example authoring contract. */
+function classifySpecifier(
+  specifier: string,
+  validCinderSubpaths: ReadonlySet<string>,
+): 'allowed' | 'relative' | 'unknown-cinder-subpath' | 'banned' {
+  if (specifier.startsWith('./') || specifier.startsWith('../') || specifier === '..') {
+    return 'relative';
+  }
+  if (specifier.startsWith('$')) return 'banned';
+  if (specifier === 'cinder') return 'allowed';
+  if (specifier.startsWith('cinder/')) {
+    const subpath = specifier.slice('cinder/'.length);
+    if (
+      validCinderSubpaths.has(subpath) ||
+      isValidCinderSubpathWithSuffix(subpath, validCinderSubpaths)
+    ) {
+      return 'allowed';
+    }
+    return 'unknown-cinder-subpath';
+  }
+  if (ALLOWED_EXAMPLE_PACKAGES.includes(specifier)) return 'allowed';
+  return 'banned';
 }
 
 /**
@@ -624,6 +677,11 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
+    if (result.errors.length > 0) {
+      // Extraction errors are hard failures, independent of drift.
+      process.exit(1);
+    }
+
     process.stdout.write(
       `examples:check — OK (${totalExamples} published, ${totalExclusions} excluded, ${totalErrors} errors)\n`,
     );
@@ -631,6 +689,19 @@ async function main(): Promise<void> {
   }
 
   // Generate mode.
+  // Extraction errors must short-circuit before writing any artifact — a
+  // partial set of `.examples.json` files would leave the manifest stage with
+  // stale `hasExamples` flags.
+  if (totalErrors > 0) {
+    process.stderr.write(
+      `examples:generate — refusing to write artifacts: ${totalErrors} error(s)\n`,
+    );
+    for (const error of result.errors.slice(0, 10)) {
+      process.stderr.write(`  [${error.componentId}] ${error.reason}\n`);
+    }
+    if (totalErrors > 10) process.stderr.write(`  … and ${totalErrors - 10} more\n`);
+    process.exit(1);
+  }
   await writeExampleArtifacts(result);
 
   process.stdout.write(`examples:generate — complete\n`);
@@ -638,13 +709,6 @@ async function main(): Promise<void> {
   process.stdout.write(`  total examples published: ${totalExamples}\n`);
   process.stdout.write(`  excluded: ${totalExclusions}\n`);
   process.stdout.write(`  errors: ${totalErrors}\n`);
-
-  if (totalErrors > 0) {
-    process.stderr.write(`\nexamples:generate — errors (first 10 of ${totalErrors}):\n`);
-    for (const error of result.errors.slice(0, 10)) {
-      process.stderr.write(`  [${error.componentId}] ${error.reason}\n`);
-    }
-  }
 
   if (totalExclusions > 0) {
     const reasonBreakdown = new Map<string, number>();

@@ -17,7 +17,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { ConstraintsDocument, ConstraintSeverity } from '../src/_internal/constraints.ts';
+import type {
+  Combinator,
+  ConstraintsDocument,
+  ConstraintSeverity,
+} from '../src/_internal/constraints.ts';
 import { discoverComponentDirectories } from './generate-component-artifacts.ts';
 
 // ---------------------------------------------------------------------------
@@ -26,6 +30,7 @@ import { discoverComponentDirectories } from './generate-component-artifacts.ts'
 
 const SCHEMA_REF = '../../schemas/constraints.schema.json';
 const VALID_SEVERITIES = new Set<ConstraintSeverity>(['error', 'warning', 'info']);
+const VALID_COMBINATORS = new Set<Combinator>(['exactlyOne', 'anyOf', 'allOf', 'requires']);
 const KEBAB_CASE_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 // ---------------------------------------------------------------------------
@@ -92,12 +97,81 @@ function validateDocument(document: ConstraintsDocument, expectedId: string): Va
       errors.push(`rule "${rule.id}" must have a non-empty description`);
     }
 
+    if (!VALID_COMBINATORS.has(rule.kind)) {
+      errors.push(
+        `rule "${rule.id}" has invalid kind "${rule.kind}"; must be one of: exactlyOne, anyOf, allOf, requires`,
+      );
+    }
+
     if (!rule.of || rule.of.length === 0) {
       errors.push(`rule "${rule.id}" must have at least one predicate in "of"`);
+    } else {
+      if (rule.kind === 'requires' && rule.of.length !== 1) {
+        errors.push(
+          `rule "${rule.id}" uses "requires" kind but has ${rule.of.length} predicates in "of"; "requires" expects exactly one`,
+        );
+      }
+      for (const [index, predicate] of rule.of.entries()) {
+        const predicateError = validatePredicate(predicate, `rule "${rule.id}" of[${index}]`);
+        if (predicateError) errors.push(predicateError);
+      }
+    }
+
+    if (rule.when !== undefined) {
+      const whenError = validatePredicate(rule.when, `rule "${rule.id}" when clause`);
+      if (whenError) errors.push(whenError);
     }
   }
 
   return errors;
+}
+
+/**
+ * Recursively validate the shape of a predicate. Returns the first error found
+ * or `null` if the predicate is well-formed.
+ */
+function validatePredicate(predicate: unknown, context: string): string | null {
+  if (predicate === null || typeof predicate !== 'object') {
+    return `${context}: predicate must be an object`;
+  }
+  const p = predicate as Record<string, unknown>;
+
+  if ('allOf' in p) {
+    if (!Array.isArray(p['allOf']) || p['allOf'].length === 0) {
+      return `${context}: "allOf" must be a non-empty array`;
+    }
+    for (const [i, child] of p['allOf'].entries()) {
+      const err = validatePredicate(child, `${context} allOf[${i}]`);
+      if (err) return err;
+    }
+    return null;
+  }
+  if ('anyOf' in p) {
+    if (!Array.isArray(p['anyOf']) || p['anyOf'].length === 0) {
+      return `${context}: "anyOf" must be a non-empty array`;
+    }
+    for (const [i, child] of p['anyOf'].entries()) {
+      const err = validatePredicate(child, `${context} anyOf[${i}]`);
+      if (err) return err;
+    }
+    return null;
+  }
+  if ('snippet' in p) {
+    return typeof p['snippet'] === 'string' && p['snippet'].length > 0
+      ? null
+      : `${context}: "snippet" must be a non-empty string`;
+  }
+  if (!('prop' in p) || typeof p['prop'] !== 'string' || p['prop'].length === 0) {
+    return `${context}: predicate must include a non-empty "prop" string or one of allOf/anyOf/snippet`;
+  }
+  if ('equals' in p) return null;
+  if ('exists' in p) {
+    return p['exists'] === true ? null : `${context}: "exists" must be \`true\``;
+  }
+  if ('nonEmpty' in p) {
+    return p['nonEmpty'] === true ? null : `${context}: "nonEmpty" must be \`true\``;
+  }
+  return `${context}: predicate must include one of equals/exists/nonEmpty when "prop" is set`;
 }
 
 // ---------------------------------------------------------------------------

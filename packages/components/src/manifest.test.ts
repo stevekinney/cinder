@@ -305,14 +305,33 @@ describe('manifest size budget', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. Required-constraints ids are valid (typo guard — sidecar check is Phase 4)
+// 11. Required-constraints components actually ship a sidecar
 // ---------------------------------------------------------------------------
 
 describe('required constraints', () => {
   test('every id in requiredConstraints is a known component', () => {
-    // Runs even during the pilot phase: catches typos in manifest.meta.ts.
-    // The "must ship a sidecar" check lives in Phase 4 work.
     const violations = requiredConstraints.filter((id) => !discoveredIds.has(id));
     expect(violations).toEqual([]);
+  });
+
+  test('every id in requiredConstraints ships a {name}.constraints.ts sidecar', async () => {
+    const { existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const componentsRoot = join(import.meta.dir, 'components');
+    // discoverDirectoryComponents tracks which ids are experimental — we need
+    // that flag to resolve the path correctly for experimental components.
+    const components = await discoverDirectoryComponents();
+    const byId = new Map(components.map((c) => [c.name, c]));
+
+    const missing: string[] = [];
+    for (const id of requiredConstraints) {
+      const component = byId.get(id);
+      if (!component) continue; // Already reported by the previous test.
+      const sidecarPath = component.isExperimental
+        ? join(componentsRoot, 'experimental', id, `${id}.constraints.ts`)
+        : join(componentsRoot, id, `${id}.constraints.ts`);
+      if (!existsSync(sidecarPath)) missing.push(id);
+    }
+    expect(missing).toEqual([]);
   });
 });

@@ -99,17 +99,23 @@ type ParsedTag = { name: string; value: string };
  * Returns `null` when no `@cinder` tag is present.
  */
 function parseCinderTags(scriptContent: string): ParsedTag[] | null {
-  const jsdocMatch = JSDOC_REGEX.exec(scriptContent);
-  if (!jsdocMatch) return null;
+  // Walk every JSDoc block in the module script. Use the first block that
+  // contains an `@cinder` tag — components may have a preceding banner JSDoc
+  // (license header, etc.) that is unrelated to metadata.
+  const allBlocks = new RegExp(JSDOC_REGEX.source, 'g');
+  let blockMatch: RegExpExecArray | null;
+  while ((blockMatch = allBlocks.exec(scriptContent)) !== null) {
+    const body = blockMatch[1];
+    if (body === undefined) continue;
+    const lines = body.split('\n').map((line) => line.replace(JSDOC_LINE_PREFIX, '').trimEnd());
+    const cinderIndex = lines.findIndex((line) => /^\s*@cinder\b/.test(line));
+    if (cinderIndex !== -1) return parseTagsFromLines(lines, cinderIndex);
+  }
+  return null;
+}
 
-  const lines = jsdocMatch[1]!
-    .split('\n')
-    .map((line) => line.replace(JSDOC_LINE_PREFIX, '').trimEnd());
-
-  // Everything before the first `@cinder` line is prose — skip it.
-  const cinderIndex = lines.findIndex((line) => /^\s*@cinder\b/.test(line));
-  if (cinderIndex === -1) return null;
-
+/** Parse tag lines starting at the `@cinder` index. Multi-line values are joined with single spaces. */
+function parseTagsFromLines(lines: string[], cinderIndex: number): ParsedTag[] {
   const tags: ParsedTag[] = [];
   let current: ParsedTag | null = null;
 
@@ -145,12 +151,14 @@ function didYouMean(actual: string, candidates: string[]): string {
 
 /** Type guard: narrows `value` to `CategoryId` without an `as` assertion. */
 function isCategoryId(value: string): value is CategoryId {
-  return value in categories;
+  // Own-property check rejects inherited keys like `toString` that would
+  // otherwise satisfy `in` and bypass the closed vocabulary.
+  return Object.prototype.hasOwnProperty.call(categories, value);
 }
 
 /** Type guard: narrows `value` to `StatusLevel` without an `as` assertion. */
 function isStatusLevel(value: string): value is StatusLevel {
-  return value in statusLevels;
+  return Object.prototype.hasOwnProperty.call(statusLevels, value);
 }
 
 // ---------------------------------------------------------------------------

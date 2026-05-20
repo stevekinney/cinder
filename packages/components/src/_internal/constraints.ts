@@ -145,11 +145,14 @@ export function evaluatePredicate(predicate: Predicate, attributes: ComponentAtt
   }
 
   if ('snippet' in predicate) {
-    const value = attributes[predicate.snippet];
-    return isNonEmpty(value);
+    // Own-property check so inherited keys (e.g. `toString`) cannot satisfy
+    // a missing snippet by accident.
+    if (!Object.prototype.hasOwnProperty.call(attributes, predicate.snippet)) return false;
+    return isNonEmpty(attributes[predicate.snippet]);
   }
 
   if ('equals' in predicate) {
+    if (!Object.prototype.hasOwnProperty.call(attributes, predicate.prop)) return false;
     return attributes[predicate.prop] === predicate.equals;
   }
 

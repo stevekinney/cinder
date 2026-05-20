@@ -72,11 +72,14 @@ subpaths you fetch next.
 **2. Fetch the prop signature.**
 
 ```ts
-import buttonSchema from 'cinder/button/schema' with { type: 'json' };
+import buttonSchema from 'cinder/button/schema';
 ```
 
-The result is a JSON Schema draft 2020-12 document. Required props, prop
-types, enum values, and defaults are all there.
+`cinder/<name>/schema` and `cinder/<name>/variables` are **TypeScript modules**
+whose default export is the data — you can import them as regular ESM and
+TypeScript will type-narrow the result. The schema itself is a JSON Schema
+draft 2020-12 document. Required props, prop types, enum values, and defaults
+are all there.
 
 **3. Fetch the cross-prop constraints — when `hasConstraints` is true.**
 
@@ -84,15 +87,20 @@ types, enum values, and defaults are all there.
 import buttonConstraints from 'cinder/button/constraints' with { type: 'json' };
 ```
 
-JSON Schema cannot cleanly express rules like _"exactly one of `label`,
-`children`, or `iconOnly`"_ or _"`iconOnly` requires an accessible name
-source."_ Those rules live in the constraints sidecar as a small DSL.
+`cinder/<name>/constraints` is a JSON file (use the `with { type: 'json' }`
+import attribute, or `import.meta.resolve` + `fetch` if your runtime
+predates the proposal). JSON Schema cannot cleanly express rules like
+_"exactly one of `label`, `children`, or `iconOnly`"_ or _"`iconOnly` requires
+an accessible name source"_ — those rules live in the constraints sidecar as
+a small DSL.
 
 **4. Fetch canonical examples — when `hasExamples` is true.**
 
 ```ts
 import buttonExamples from 'cinder/button/examples' with { type: 'json' };
 ```
+
+Like `/constraints`, the `/examples` subpath ships as JSON.
 
 Each example has a `title`, `description`, and a `code` string you can show
 the user or copy into their codebase verbatim.

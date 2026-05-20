@@ -226,9 +226,12 @@ async function main(): Promise<void> {
 
     // Stage 3: examples drift check.
     let exampleIssues: string[] = [];
+    let exampleExtractionErrors = 0;
+    let examplesStageFailed = false;
     try {
       const result = await generateAllExamples();
       exampleIssues = await checkExamplesDrift(result);
+      exampleExtractionErrors = result.errors.length;
       if (result.errors.length > 0) {
         process.stderr.write(
           `components:check — ${result.errors.length} example(s) have extraction errors\n`,
@@ -243,6 +246,7 @@ async function main(): Promise<void> {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`components:check — examples stage failed: ${message}\n`);
+      examplesStageFailed = true;
     }
 
     // Stage 4: manifest drift check.
@@ -273,13 +277,19 @@ async function main(): Promise<void> {
       manifestDrift = true;
     }
 
-    // Collect and report all failures.
+    // Collect and report all failures. Generator stage failures and example
+    // extraction errors are non-drift issues — they must still fail the check
+    // even when the on-disk artifacts match.
     const allIssues: string[] = [
       ...perComponentIssues.map((issue) => `${issue.component}/${issue.file} (${issue.reason})`),
       ...constraintIssues.map(
         (issue) => `constraints: ${issue.component}/${issue.file} (${issue.reason})`,
       ),
       ...exampleIssues.map((issue) => `examples: ${issue}`),
+      ...(exampleExtractionErrors > 0
+        ? [`examples: ${exampleExtractionErrors} example(s) have extraction errors`]
+        : []),
+      ...(examplesStageFailed ? ['examples: stage threw — see error above'] : []),
       ...(manifestDrift ? ['manifest: components.json is missing or stale'] : []),
     ];
 
@@ -331,7 +341,21 @@ async function main(): Promise<void> {
   }
 
   // Stage 3: examples.
+  // Extraction errors are hard failures — never write artifacts or proceed to
+  // the manifest stage when the examples set is incomplete.
   const examplesResult = await generateAllExamples();
+  if (examplesResult.errors.length > 0) {
+    process.stderr.write(
+      `components:generate — refusing to write artifacts: ${examplesResult.errors.length} example(s) have extraction errors\n`,
+    );
+    for (const error of examplesResult.errors.slice(0, 10)) {
+      process.stderr.write(`  [${error.componentId}] ${error.reason}\n`);
+    }
+    if (examplesResult.errors.length > 10) {
+      process.stderr.write(`  … and ${examplesResult.errors.length - 10} more\n`);
+    }
+    process.exit(1);
+  }
   await writeExampleArtifacts(examplesResult);
   process.stdout.write(
     `generated examples: ${examplesResult.exampleSets.length} component(s), ` +
