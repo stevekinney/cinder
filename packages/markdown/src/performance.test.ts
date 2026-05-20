@@ -3,22 +3,26 @@
  *
  * DEP-35: Markdown dialect + deterministic serialization pipeline
  *
- * These tests verify that parsing and serialization meet performance
- * requirements. They are SKIPPED in CI because:
- * 1. CI runners have variable performance (2-10x slower than local)
- * 2. Absolute timing thresholds don't work across environments
- * 3. These are benchmarks, not correctness tests
+ * These tests assert absolute wall-clock thresholds and are therefore
+ * benchmarks, not correctness tests. They are skipped by default in every
+ * environment — CI and local — because:
+ * 1. Wall-clock thresholds are noisy under any load (CI runner contention,
+ *    a busy laptop, a parallel test run).
+ * 2. They produced flaky failures during normal `bun run test` invocations.
+ * 3. They were never expected to gate the suite.
  *
- * Run locally with: bun run test src/lib/document/performance.test.ts
- * For proper benchmarking, consider using `vitest bench` instead.
+ * Opt in to benchmarking explicitly:
+ *   RUN_MARKDOWN_BENCHMARKS=1 bun run --filter='@cinder/markdown' test src/performance.test.ts
+ *
+ * For ongoing benchmarking, prefer a dedicated runner (`vitest bench`,
+ * `mitata`, or `bun:bench` when it ships) rather than `expect(time).toBeLessThan(...)`.
  */
 
 import { describe, expect, it } from 'bun:test';
 import { parse, parseOrThrow, roundTrip, serialize } from './pipeline/index.js';
 
-// Skip performance tests in CI - they're benchmarks, not correctness tests
-const isCI = process.env.CI === 'true' || process.env.CI === '1';
-const describeUnlessCI = isCI ? describe.skip : describe;
+const runBenchmarks = process.env.RUN_MARKDOWN_BENCHMARKS === '1';
+const describeUnlessCI = runBenchmarks ? describe : describe.skip;
 
 /**
  * Generate a Markdown document of approximately the specified size.
