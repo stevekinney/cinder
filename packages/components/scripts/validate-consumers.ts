@@ -286,6 +286,38 @@ async function inspectTarball(): Promise<void> {
   if (leakedEntries.length) {
     fail(`Tarball contains forbidden entries:\n  ${leakedEntries.join('\n  ')}`);
   }
+
+  // Every published `*/styles` export must resolve to a real CSS artifact
+  // inside the tarball. `generate-exports.ts` gates emission on the source
+  // sidecar existing (`hasCss`), but that only proves the input — this is the
+  // post-build assertion that catches a CSS file silently dropped from the
+  // build output (e.g. a build step that skips a component, a `files`
+  // whitelist that omits the path).
+  const packageJsonPath = join(repositoryRoot, 'package.json');
+  const packageJsonContent = JSON.parse(await Bun.file(packageJsonPath).text()) as {
+    exports?: Record<string, { default?: string }>;
+  };
+  const stylesExports = Object.entries(packageJsonContent.exports ?? {}).filter(
+    ([key, entry]) =>
+      key.endsWith('/styles') && key !== './styles' && typeof entry.default === 'string',
+  );
+  const tarballEntrySet = new Set(entries);
+  const danglingStylesExports: string[] = [];
+  for (const [key, entry] of stylesExports) {
+    // package.json `default` paths are package-relative (`./dist/...`); npm
+    // pack rewrites tarball entries as `package/dist/...`.
+    const tarballEntry = `package/${entry.default!.replace(/^\.\//, '')}`;
+    if (!tarballEntrySet.has(tarballEntry)) {
+      danglingStylesExports.push(
+        `${key} -> ${entry.default} (expected tarball entry ${tarballEntry})`,
+      );
+    }
+  }
+  if (danglingStylesExports.length > 0) {
+    fail(
+      `Tarball is missing CSS artifacts for published /styles exports:\n  ${danglingStylesExports.join('\n  ')}`,
+    );
+  }
 }
 
 /** Allocate an ephemeral port so concurrent CI runs don't collide on a shared one.
@@ -449,6 +481,16 @@ async function runSveltekitFixture(): Promise<void> {
       );
     }
 
+    // Runtime-truth check (defends against hoisted shared CSS): the route
+    // walk above reads from the Vite client manifest, which can drift from
+    // what the runtime SvelteKit loader actually serves if Vite hoists CSS
+    // into a shared chunk. Below, after the fixture server is up, we ALSO
+    // fetch the rendered /no-styles HTML and assert no CSS file referenced
+    // via <link rel="stylesheet"> contains .cinder-button. That closes the
+    // loop: if any path — manifest, shared chunk, or otherwise — caused
+    // .cinder-button CSS to load on /no-styles, the runtime HTML would
+    // reference a stylesheet that contains it, and the check below fails.
+
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
     const ALWAYS_RENDERED_CLASSES = [
@@ -515,6 +557,40 @@ async function runSveltekitFixture(): Promise<void> {
         if (!subpathBody.includes(cls)) {
           fail(`fixture HTML (/subpath) does not contain class "${cls}"`);
         }
+      }
+
+      // Runtime-truth check for the no-styles side-effect contract.
+      // Fetch the rendered /no-styles HTML, extract every stylesheet href,
+      // resolve it under the client build, and assert none of those CSS
+      // files contain `.cinder-button`. This is the strongest possible
+      // in-fixture assertion: if any path (manifest, shared chunk, server
+      // injection) caused button CSS to load on /no-styles, the runtime
+      // would reference a stylesheet that contains it.
+      const noStylesResponse = await fetch(`http://127.0.0.1:${httpPort}/no-styles`);
+      if (noStylesResponse.status !== 200) {
+        fail(`fixture /no-styles returned ${noStylesResponse.status}, want 200`);
+      }
+      const noStylesBody = await noStylesResponse.text();
+      const stylesheetHrefPattern =
+        /<link[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["']/g;
+      const clientOutputDirectory = join(fixtureDirectory, '.svelte-kit/output/client');
+      const offendingStylesheets: string[] = [];
+      for (const match of noStylesBody.matchAll(stylesheetHrefPattern)) {
+        const href = match[1]!;
+        // SvelteKit serves /_app/immutable/... — strip the leading slash to
+        // resolve under the client output directory.
+        const relativePath = href.replace(/^\//, '');
+        const cssFilePath = join(clientOutputDirectory, relativePath);
+        if (!existsSync(cssFilePath)) continue;
+        const source = await Bun.file(cssFilePath).text();
+        if (source.includes('.cinder-button') || /--cinder-button-/.test(source)) {
+          offendingStylesheets.push(`${href} contains .cinder-button or --cinder-button-*`);
+        }
+      }
+      if (offendingStylesheets.length > 0) {
+        fail(
+          `/no-styles rendered HTML references stylesheets that contain button CSS — component JS pulled CSS as a side effect:\n  ${offendingStylesheets.join('\n  ')}`,
+        );
       }
     } finally {
       fixtureServer.kill();
