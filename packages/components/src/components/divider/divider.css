@@ -1,0 +1,56 @@
+/* ========================================
+ * DIVIDER
+ * 1px visual separator between content regions.
+ * Token-driven; no magic colors.
+ * ======================================== */
+
+.cinder-divider {
+  display: block;
+  flex-shrink: 0;
+  border: none;
+  background-color: var(--cinder-border-muted);
+}
+
+/* ---- Horizontal (default) ---- */
+
+.cinder-divider[data-cinder-orientation='horizontal'] {
+  width: 100%;
+  height: 1px;
+  margin-block: 0;
+}
+
+.cinder-divider[data-cinder-orientation='horizontal'][data-cinder-inset] {
+  margin-inline: var(--cinder-space-2);
+  width: calc(100% - 2 * var(--cinder-space-2));
+}
+
+/* ---- Vertical ---- */
+
+.cinder-divider[data-cinder-orientation='vertical'] {
+  display: inline-block;
+  width: 1px;
+  height: auto;
+  align-self: stretch;
+  min-height: 1em;
+}
+
+.cinder-divider[data-cinder-orientation='vertical'][data-cinder-inset] {
+  margin-block: var(--cinder-space-2);
+}
+
+/* ---- Tone ---- */
+
+.cinder-divider[data-cinder-tone='strong'] {
+  background-color: var(--cinder-border-strong);
+}
+
+/* The default (subtle) tone uses the muted border token already set on the base rule. */
+
+/* ---- Reset <hr> browser defaults ---- */
+
+hr.cinder-divider {
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: inherit;
+}
