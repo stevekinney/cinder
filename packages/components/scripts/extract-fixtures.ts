@@ -551,6 +551,9 @@ if (import.meta.main) {
     for (const violation of result.violations) {
       process.stderr.write(`  • ${violation}\n`);
     }
+    // Exit non-zero without writing a manifest — violations mean the fixture
+    // data is malformed and must not enter the pipeline.
+    process.exit(1);
   }
 
   if (result.entries.length > 0) {

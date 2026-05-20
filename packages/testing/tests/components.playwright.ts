@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { expect, test } from '../src/fixtures/component-page.ts';
 import { runAxe } from '../src/helpers/axe.ts';
 import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
+import { applyInteractions } from '../src/helpers/interact.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
@@ -66,7 +67,15 @@ for (const entry of entries) {
       for (const viewport of VIEWPORTS) {
         for (const fixture of fixtures) {
           test(`${theme}-${viewport.name}-${fixture.name}`, async ({ componentPage }) => {
-            const page = await componentPage.open({ entry, theme, viewport });
+            // Pass the fixture name so the playground renders with the
+            // fixture's props via ?fixture=<name>. 'default' is omitted
+            // (no query param) — the playground renders the component's
+            // default state.
+            const openArgs =
+              fixture.name !== 'default'
+                ? ({ entry, theme, viewport, fixtureName: fixture.name } as const)
+                : ({ entry, theme, viewport } as const);
+            const page = await componentPage.open(openArgs);
 
             const key = {
               slug: entry.slug,
@@ -75,6 +84,16 @@ for (const entry of entries) {
               fixture: fixture.name,
             };
 
+            // Apply interaction steps (e.g. click trigger, focus input) before
+            // capture so the screenshot shows the post-interaction state.
+            if (
+              'interact' in fixture &&
+              Array.isArray(fixture.interact) &&
+              fixture.interact.length > 0
+            ) {
+              await applyInteractions(page, fixture.interact);
+            }
+
             const buckets = await runAxe(page, key);
 
             test.info().annotations.push({
@@ -82,7 +101,11 @@ for (const entry of entries) {
               description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
             });
 
-            await captureScreenshot(page, key);
+            // Pass mask rules from the fixture so toHaveScreenshot can exclude
+            // dynamic regions from the pixel comparison.
+            const masks =
+              'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
+            await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
 
             // v1: no assertions on axe buckets — record only.
           });

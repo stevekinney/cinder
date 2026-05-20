@@ -261,8 +261,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   baseline-coverage:
-    # Always runs, unscoped. Catches new components added without
-    # baselines regardless of CINDER_TEST_COMPONENTS filtering.
+    # Runs when visual diffing is active (report or block mode) to catch new
+    # components added without baselines. Skipped in off mode — no baselines
+    # are committed yet at off-mode launch, so the check would always fail.
+    if: ${{ (github.event.inputs.mode || 'off') != 'off' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

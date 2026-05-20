@@ -70,12 +70,19 @@ const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
  * Schema for a single interaction step. An interaction targets an element
  * identified by its `data-testid` value and performs one supported action.
  */
-const InteractionStepSchema = z.object({
-  action: z.enum(INTERACTION_ACTIONS),
-  target: z.object({
-    testId: z.string().min(1),
-  }),
-});
+const InteractionStepSchema = z
+  .object({
+    action: z.enum(INTERACTION_ACTIONS),
+    target: z.object({
+      testId: z.string().min(1),
+    }),
+    /** Required and non-empty when `action === 'press'`. Ignored for other actions. */
+    key: z.string().min(1).optional(),
+  })
+  .refine((step) => step.action !== 'press' || (step.key !== undefined && step.key.length > 0), {
+    message: "The 'key' field is required and must be non-empty when action is 'press'.",
+    path: ['key'],
+  });
 
 /**
  * Schema for a single mask rule. A mask hides a region of the snapshot during

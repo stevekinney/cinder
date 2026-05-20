@@ -41,7 +41,10 @@ async function main(): Promise<void> {
     {
       cwd: packageRoot,
       stdio: 'inherit',
-      env: { ...process.env, CINDER_UPDATE_SNAPSHOTS: '1' },
+      // CINDER_VISUAL_DIFF=block ensures toHaveScreenshot is active so
+      // Playwright actually writes/updates the committed baseline PNGs rather
+      // than writing legacy review screenshots under screenshots/.
+      env: { ...process.env, CINDER_UPDATE_SNAPSHOTS: '1', CINDER_VISUAL_DIFF: 'block' },
     },
   );
 

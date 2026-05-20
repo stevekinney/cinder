@@ -71,7 +71,9 @@ export async function applyInteractions(
   let index = 0;
   for (const step of steps) {
     const { testId } = step.target;
-    const locator = page.locator(`[data-testid="${testId}"]`);
+    // Use getByTestId() rather than interpolating into a CSS selector — testId
+    // values containing quotes or brackets would break selector parsing.
+    const locator = page.getByTestId(testId);
 
     const count = await locator.count();
 

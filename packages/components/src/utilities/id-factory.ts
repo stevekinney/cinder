@@ -94,14 +94,24 @@ export const defaultIdFactory: IdFactory = createIdFactory('cinder');
  * useStableId();                            // 'cinder-1'   (fallback counter)
  * ```
  */
+/**
+ * A browser-safe djb2 hash that converts a string to an 8-character lowercase
+ * hex string. Not cryptographic — used only for deterministic ID derivation.
+ */
+function djb2Hex(value: string): string {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index++) {
+    // djb2: hash * 33 XOR charCode. The `| 0` coerces to a 32-bit int on each
+    // iteration so the value stays in the signed-32-bit range across all runtimes.
+    hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0;
+  }
+  // Convert to unsigned 32-bit then to 8-char hex.
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 export function useStableId(seed?: string): string {
   if (seed === undefined) {
     return defaultIdFactory.next();
   }
-
-  const hasher = new Bun.CryptoHasher('sha1');
-  hasher.update(seed);
-  // digest('hex') returns the full 40-char hex string; take the first 8 chars.
-  const digest = hasher.digest('hex').slice(0, 8);
-  return `id-${digest}`;
+  return `id-${djb2Hex(seed)}`;
 }

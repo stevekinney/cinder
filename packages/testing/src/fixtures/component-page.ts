@@ -3,7 +3,13 @@ import type { ComponentEntry, Theme, Viewport } from '../helpers/manifest.ts';
 import { PLAYGROUND_URL } from '../helpers/playground-url.ts';
 import { THEME_STORAGE_KEY, themeContextOptions } from '../helpers/theme.ts';
 
-export type OpenArgs = { entry: ComponentEntry; theme: Theme; viewport: Viewport };
+export type OpenArgs = {
+  entry: ComponentEntry;
+  theme: Theme;
+  viewport: Viewport;
+  /** Fixture name to request from the playground via `?fixture=<name>`. Omit for the synthesized default. */
+  fixtureName?: string | undefined;
+};
 export type ComponentPage = {
   open(args: OpenArgs): Promise<Page>;
 };
@@ -11,15 +17,17 @@ export type ComponentPage = {
 type Fixtures = { componentPage: ComponentPage };
 
 /**
- * Append `?snapshot=1` to a route URL, merging it into any existing query
- * string. The `snapshot` param takes priority over any existing value with
- * that key (there should be none in practice, but merging is safer than
- * concatenating with `?` vs `&` conditionally).
+ * Builds the playground URL for a component route with snapshot mode and an
+ * optional fixture selection. Always sets `?snapshot=1`; appends
+ * `&fixture=<name>` when a non-default fixture name is provided.
  */
-function withSnapshotParam(route: string): string {
+function buildRoute(route: string, fixtureName?: string): string {
   const [path, existingSearch] = route.split('?') as [string, string | undefined];
   const params = new URLSearchParams(existingSearch ?? '');
   params.set('snapshot', '1');
+  if (fixtureName !== undefined && fixtureName !== 'default') {
+    params.set('fixture', fixtureName);
+  }
   return `${path}?${params.toString()}`;
 }
 
@@ -28,7 +36,7 @@ export const test = base.extend<Fixtures>({
     const contexts: BrowserContext[] = [];
 
     const componentPage: ComponentPage = {
-      async open({ entry, theme, viewport }) {
+      async open({ entry, theme, viewport, fixtureName }) {
         const context = await browser.newContext({
           ...themeContextOptions(theme),
           viewport: { width: viewport.width, height: viewport.height },
@@ -51,7 +59,7 @@ export const test = base.extend<Fixtures>({
         // data-snapshot-mode on <html>. This is the Phase 1 determinism
         // foundation — all visual captures go through snapshot mode so
         // screenshots are stable across repeated runs.
-        await page.goto(withSnapshotParam(entry.route), { waitUntil: 'load' });
+        await page.goto(buildRoute(entry.route, fixtureName), { waitUntil: 'load' });
         // Post-#39 (chunk-[hash].js naming), all components — including the
         // Milkdown-backed editors (Chat, MarkdownEditor, ReviewEditor) —
         // mount in single-digit seconds on the CI runner. 20s leaves

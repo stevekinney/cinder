@@ -41,10 +41,9 @@ function createMockLocator(resolvedCount: number): MockLocator {
  */
 function createMockPage(locatorsByTestId: Record<string, MockLocator>) {
   return {
-    locator: mock((selector: string) => {
-      // Extract the testId from '[data-testid="<id>"]'
-      const match = /\[data-testid="([^"]+)"\]/.exec(selector);
-      const testId = match?.[1] ?? selector;
+    // interact.ts now uses page.getByTestId() rather than page.locator() to
+    // avoid CSS selector injection. The mock exposes getByTestId accordingly.
+    getByTestId: mock((testId: string) => {
       return locatorsByTestId[testId] ?? createMockLocator(1);
     }),
   };
@@ -58,23 +57,21 @@ describe('runtime defence against non-testId targets', () => {
   it('rejects an object with a selector key cast through unknown', async () => {
     // The TypeScript type only allows { testId: string }, so an accidental
     // any-cast is the only way this could arrive at runtime. We confirm the
-    // function does not silently act on it.
+    // raw selector string (.foo) is never passed to the page — getByTestId()
+    // receives the testId value, not a CSS selector, so injection is impossible.
     const badStep = { action: 'click', target: { selector: '.foo' } } as unknown as InteractionStep;
-    const locator = createMockLocator(1);
     const page = createMockPage({});
 
-    // locator() will be called with '[data-testid="undefined"]' because
-    // target.testId is undefined on the bad object — count() returns 1 from
-    // the default fallback locator (no testId key in our map), meaning the
-    // locator selector itself becomes '[data-testid="undefined"]'.
-    // The important assertion is that the call does NOT go through with the
-    // raw CSS selector string — the page.locator call always uses the
-    // data-testid pattern.
+    // target.testId is undefined on the bad object, so getByTestId('undefined')
+    // is called; the default fallback locator (count=1) handles it. The important
+    // assertion: the raw CSS string '.foo' was never passed to the page.
     await applyInteractions(page as never, [badStep]);
-    const calledWith: string = (page.locator.mock.calls[0] as [string])[0];
-    expect(calledWith).toMatch(/\[data-testid=/);
-    expect(calledWith).not.toContain('.foo');
-    void locator; // referenced to satisfy unused-variable lint
+    // getByTestId should have been called exactly once
+    expect(page.getByTestId.mock.calls).toHaveLength(1);
+    const calledWithArg = (page.getByTestId.mock.calls[0] as unknown[])[0];
+    // The raw CSS string '.foo' must never be passed to getByTestId
+    expect(String(calledWithArg)).not.toContain('.foo');
+    expect(String(calledWithArg)).not.toContain('[data-testid=');
   });
 });
 
@@ -169,7 +166,7 @@ describe('applyInteractions — happy paths', () => {
     expect(calls).toEqual(['focus:input', 'press:input', 'click:button']);
   });
 
-  it('resolves the locator via the data-testid attribute selector', async () => {
+  it('resolves the locator via page.getByTestId() (not a CSS selector)', async () => {
     const locator = createMockLocator(1);
     const page = createMockPage({ 'dialog-close': locator });
 
@@ -177,7 +174,7 @@ describe('applyInteractions — happy paths', () => {
       { action: 'click', target: { testId: 'dialog-close' } },
     ]);
 
-    expect(page.locator).toHaveBeenCalledWith('[data-testid="dialog-close"]');
+    expect(page.getByTestId).toHaveBeenCalledWith('dialog-close');
   });
 });
 

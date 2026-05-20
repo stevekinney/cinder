@@ -91,8 +91,12 @@
   import { deriveAttachmentKind } from './attachment-kind.js';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';
 
-  // Per-instance fallback factory for attachments whose file metadata is unavailable.
+  // Per-instance fallback factory for attachments whose file metadata is unavailable
+  // AND as a collision-disambiguation counter when two files share identical metadata.
   const attachmentIdFactory = createIdFactory('attachment');
+  // Tracks hash-derived IDs used in this instance so collisions (same name/size/mtime)
+  // get a unique suffix rather than a duplicate DOM ID.
+  const usedAttachmentIds = new Set<string>();
 
   let {
     id,
@@ -204,10 +208,16 @@
     // renders of the same attachment produce the same DOM ID. Fall back to the
     // per-instance counter when lastModified is absent (e.g. synthetic File objects
     // constructed in tests with lastModified = 0).
-    const attachmentId =
+    // If two different files hash to the same ID (identical name/size/mtime),
+    // append the counter-factory suffix to guarantee document-level uniqueness.
+    let attachmentId =
       file.lastModified !== 0
-        ? useStableId(`${file.name}${file.size}${file.lastModified}`)
+        ? useStableId(`${file.name}\0${file.size}\0${file.lastModified}`)
         : attachmentIdFactory.next();
+    if (usedAttachmentIds.has(attachmentId)) {
+      attachmentId = `${attachmentId}-${attachmentIdFactory.next()}`;
+    }
+    usedAttachmentIds.add(attachmentId);
 
     const attachment: ChatAttachment = {
       id: attachmentId,

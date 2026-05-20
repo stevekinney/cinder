@@ -8,7 +8,7 @@ import {
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { basename, dirname } from 'node:path';
+import { dirname } from 'node:path';
 import { screenshotPath, snapshotPath, type ArtifactKey } from './artifact-path.ts';
 import type { MaskRule } from './fixture-schema.ts';
 
@@ -110,7 +110,9 @@ type ReportFragment = {
 
 /** Converts a list of MaskRule entries to Playwright Locators for the given page. */
 function masksToLocators(page: Page, masks: MaskRule[]): Locator[] {
-  return masks.map((rule) => page.locator(`[data-testid="${rule.testId}"]`));
+  // page.getByTestId() is safe against CSS selector injection — never interpolate
+  // testId values directly into a CSS selector string.
+  return masks.map((rule) => page.getByTestId(rule.testId));
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +181,10 @@ async function captureBlockMode(
   key: ArtifactKey,
   options: CaptureScreenshotOptions | undefined,
 ): Promise<void> {
-  const name = basename(snapshotPath(key));
+  // Pass [slug, filename] so Playwright nests under `snapshots/<slug>/` via
+  // snapshotPathTemplate. Using only basename would collapse all components
+  // into a flat directory and cause cross-component name collisions.
+  const name: [string, string] = [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
   const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
 
   if (options?.masks !== undefined && options.masks.length > 0) {
@@ -203,7 +208,7 @@ async function captureReportMode(
   }
 
   try {
-    const name = basename(baseline);
+    const name: [string, string] = [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
     const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
 
     if (options?.masks !== undefined && options.masks.length > 0) {
