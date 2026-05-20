@@ -90,6 +90,22 @@ describe('computeExports', () => {
   });
 });
 
+describe('assertNoForbiddenExportKeys — generate-mode integration', () => {
+  // Regression: an earlier draft of the generator only ran the guard against
+  // the freshly built `next` map. That let generate mode silently drop a
+  // pre-existing forbidden key (e.g. `./__debug`) during regeneration instead
+  // of surfacing the violation. The guard now runs against `packageJson.exports`
+  // BEFORE any filtering/preservation. This test pins the contract.
+  it('throws on a pre-existing forbidden key, before any filtering', () => {
+    const onDisk: Record<string, unknown> = {
+      '.': {},
+      './button': {},
+      './__debug': { default: './dist/scratch.js' },
+    };
+    expect(() => assertNoForbiddenExportKeys(onDisk)).toThrow(/__debug/);
+  });
+});
+
 describe('assertNoForbiddenExportKeys', () => {
   it('passes for a clean exports map', () => {
     expect(() =>

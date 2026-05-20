@@ -32,6 +32,10 @@ let failed = false;
 
 for (const { label, tsconfig } of matrix) {
   process.stdout.write(`resolver-matrix [${label}] — tsc --noEmit -p ${tsconfig}\n`);
+  // `bunx tsc` resolves to the workspace-pinned TypeScript (declared in
+  // packages/components/package.json devDependencies). This matches the
+  // existing `typecheck` script's invocation so the resolver matrix always
+  // runs through the same compiler version as the rest of CI.
   const result = spawnSync('bunx', ['tsc', '--noEmit', '-p', tsconfig], {
     cwd: fixtureDirectory,
     stdio: 'inherit',

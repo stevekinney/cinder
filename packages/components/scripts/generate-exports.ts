@@ -164,6 +164,12 @@ async function main(): Promise<void> {
   const packageJsonPath = join(import.meta.dir, '..', 'package.json');
   const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
 
+  // First gate: surface any forbidden keys already on disk BEFORE we filter
+  // or rewrite anything. Otherwise generate mode would silently drop a key
+  // like `./__debug` during regeneration and never raise it as a violation.
+  // Track 3 requires the guard to fire in both check and generate modes.
+  assertNoForbiddenExportKeys(packageJson.exports);
+
   const components = await discoverComponents();
   const computed = computeExports(components);
   const rootExport = computeRootExport();
@@ -214,11 +220,8 @@ async function main(): Promise<void> {
       issues.push(`Orphan subpath export: "${key}"`);
     }
 
-    try {
-      assertNoForbiddenExportKeys(existing);
-    } catch (error) {
-      issues.push((error as Error).message);
-    }
+    // The forbidden-key guard already ran at the top of main() against
+    // packageJson.exports; we don't need to repeat it here.
 
     if (issues.length > 0) {
       process.stderr.write(
