@@ -1,5 +1,7 @@
 import { SvelteMap } from 'svelte/reactivity';
 
+import { inDocumentOrder } from '../utilities/document-order.ts';
+
 /** A single registered tree node. */
 export type TreeNodeRegistration = {
   id: string;
@@ -63,13 +65,7 @@ export class TreeRegistry {
     const withNodes = ids
       .map((id) => ({ id, node: this.#nodes.get(id)?.node }))
       .filter((entry): entry is { id: string; node: HTMLElement } => entry.node !== undefined);
-    withNodes.sort((a, b) => {
-      const position = a.node.compareDocumentPosition(b.node);
-      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
-    });
-    return withNodes.map((entry) => entry.id);
+    return inDocumentOrder(withNodes).map((entry) => entry.id);
   }
 
   /**

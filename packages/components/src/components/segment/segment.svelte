@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Individual option inside a SegmentedControl that renders the button, wires the value, and forwards leading/trailing decorations.
+   * @tag form
+   * @tag selection
+   * @useWhen Authoring SegmentedControl children declaratively so consumers can compose icons, labels, and badges per segment.
+   * @useWhen Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata.
+   * @avoidWhen Building a standalone toggle button — use Button or Toggle instead.
+   * @avoidWhen Selecting one option from a long list — use Select or Combobox instead.
+   * @related segmented-control, button, toggle
+   */
   export type { SegmentProps } from './segment.types.ts';
 </script>
 

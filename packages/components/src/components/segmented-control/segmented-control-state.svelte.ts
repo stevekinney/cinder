@@ -1,7 +1,12 @@
 import { createContext } from 'svelte';
 import type { SvelteSet } from 'svelte/reactivity';
 
+import { inDocumentOrder } from '../../utilities/document-order.ts';
 import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
+
+// Re-export for backward compatibility with anything that imported the helper
+// from this module before the utility was promoted to its own file.
+export { inDocumentOrder };
 
 /**
  * A registered child segment, as seen by the parent control.
@@ -41,29 +46,6 @@ export type SegmentedControlContextValue = {
 
 export const [getSegmentedControlContext, setSegmentedControlContext] =
   createContext<SegmentedControlContextValue>();
-
-/**
- * Sort segment registrations by DOM order using `compareDocumentPosition`.
- * Segments register on attach, which is post-mount — but conditional `{#if}`
- * remounts and reordered children can put the registration list out of DOM
- * order. Always sort before iterating for keyboard nav.
- *
- * Edge case: if a node is temporarily disconnected from the document,
- * `compareDocumentPosition` returns a platform-specific disconnected mask
- * (`DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC`).
- * The sort remains stable but order is undefined for disconnected nodes. In
- * practice this is unreachable during normal teardown — unregister runs
- * synchronously inside the attachment cleanup, before the node is removed.
- */
-export function inDocumentOrder<T extends { node: Node }>(items: readonly T[]): T[] {
-  return [...items].sort((a, b) => {
-    if (a.node === b.node) return 0;
-    const position = a.node.compareDocumentPosition(b.node);
-    if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-    if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-    return 0;
-  });
-}
 
 /**
  * Options for building a SegmentedControlController.

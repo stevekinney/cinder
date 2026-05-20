@@ -80,9 +80,17 @@
       releaseEscape = null;
     }
     open = false;
-    const target = triggerRef ?? capturedFocus;
+    returnFocus();
+  }
+
+  // Iterate candidates so a disconnected `triggerRef` falls through to the
+  // captured pre-open focus. Matches modal/sheet/popover/command-palette.
+  function returnFocus(): void {
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
+    }
     capturedFocus = null;
-    restoreFocusTo(target);
   }
 
   function handleNativeCancel(event: Event) {
@@ -113,9 +121,7 @@
       releaseEscape = null;
     }
     if (wasOpen) {
-      const target = triggerRef ?? capturedFocus;
-      capturedFocus = null;
-      if (target) restoreFocusTo(target);
+      returnFocus();
     }
   });
 </script>

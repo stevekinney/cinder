@@ -22,12 +22,20 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
         name: 'leading',
         reason: 'function-or-snippet',
       },
       {
         name: 'trailing',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'value',
+        reason: 'unknown-shape',
       },
     ],
   },

@@ -5,7 +5,10 @@
 </script>
 
 <script lang="ts">
-  import { Tab, TabList, TabPanel, Tabs } from '../../../../components/src/index.ts';
+  import { Tab } from 'cinder/tab';
+  import { TabList } from 'cinder/tab-list';
+  import { TabPanel } from 'cinder/tab-panel';
+  import { Tabs } from 'cinder/tabs';
 
   let active = $state('inbox');
 </script>

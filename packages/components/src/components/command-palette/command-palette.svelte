@@ -21,6 +21,7 @@
 
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { inDocumentOrder } from '../../utilities/document-order.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
@@ -64,19 +65,6 @@
   // ── Item registration ─────────────────────────────────────────────────────
   type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
   let registrations = $state<RegistrationRecord[]>([]);
-
-  // Sort registrations by DOM document order. {@attach} fires after the node is
-  // mounted, so registration order usually equals DOM order — but conditional
-  // ({#if}) blocks that re-mount middle items can desync the list. Sorting on
-  // read keeps keyboard navigation always aligned with visual order.
-  function inDocumentOrder(items: RegistrationRecord[]): RegistrationRecord[] {
-    return [...items].sort((a, b) => {
-      const position = a.node.compareDocumentPosition(b.node);
-      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
-    });
-  }
 
   // Stable incrementing counter for item ids within this palette instance.
   let itemCounter = 0;
@@ -128,10 +116,12 @@
 
   // ── Focus restoration ─────────────────────────────────────────────────────
   function returnFocus() {
-    if (triggerRef) {
-      restoreFocusTo(triggerRef);
-    } else {
-      restoreFocusTo(capturedFocus);
+    // Iterate candidates so a disconnected `triggerRef` falls through to
+    // capturedFocus. Matches the modal/sheet/popover pattern; without this
+    // a removed trigger would silently drop focus on the floor.
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
     }
     capturedFocus = null;
   }
