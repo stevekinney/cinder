@@ -23,6 +23,7 @@ A SideNavigationGroup component. Replace this sentence with a one-line purpose s
 | `id`       | `string`   | no       | —       | Optional stable id for the root <li>. Trigger uses `${id}-trigger`, panel uses `${id}-panel`. If omitted, generated via useId. |
 | `label`    | `string`   | yes      | —       | Visible section header label.                                                                                                  |
 | `badge`    | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
+| `children` | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
 | `class`    | `(opaque)` | —        | —       | unknown-shape                                                                                                                  |
 | `icon`     | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
 

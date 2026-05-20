@@ -21,5 +21,13 @@
       "description": "Additional class names merged with `.cinder-stat-group`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

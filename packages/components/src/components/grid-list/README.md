@@ -16,10 +16,11 @@ A GridList component. Replace this sentence with a one-line purpose statement on
 
 <!-- generated:props:start -->
 
-| Prop      | Type       | Required | Default | Description                                                                                                                                                                                                                                                     |
-| --------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `columns` | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first argument to `minmax()` inside a `repeat(auto-fill, ...)` track. Default: `"16rem"`. Empty string is treated as unset. |
-| `class`   | `(opaque)` | —        | —       | unknown-shape                                                                                                                                                                                                                                                   |
+| Prop       | Type       | Required | Default | Description                                                                                                                                                                                                                                                     |
+| ---------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `columns`  | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first argument to `minmax()` inside a `repeat(auto-fill, ...)` track. Default: `"16rem"`. Empty string is treated as unset. |
+| `children` | `(opaque)` | —        | —       | function-or-snippet                                                                                                                                                                                                                                             |
+| `class`    | `(opaque)` | —        | —       | unknown-shape                                                                                                                                                                                                                                                   |
 
 <!-- generated:props:end -->
 

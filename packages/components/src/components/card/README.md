@@ -22,7 +22,9 @@ A Card component. Replace this sentence with a one-line purpose statement once t
 | `description`        | `string`                 | no       | —       |                                                                              |
 | `edgeToEdgeOnMobile` | `boolean`                | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens. |
 | `footerTone`         | `"default"` \| `"muted"` | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.        |
+| `title`              | `string`                 | no       | —       |                                                                              |
 | `variant`            | `"card"` \| `"well"`     | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.       |
+| `children`           | `(opaque)`               | —        | —       | function-or-snippet                                                          |
 | `class`              | `(opaque)`               | —        | —       | unknown-shape                                                                |
 | `footer`             | `(opaque)`               | —        | —       | function-or-snippet                                                          |
 | `header`             | `(opaque)`               | —        | —       | function-or-snippet                                                          |

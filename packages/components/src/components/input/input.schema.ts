@@ -4,6 +4,18 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+    },
+    required: {
+      type: 'boolean',
+    },
+    type: {
+      enum: ['date', 'email', 'password', 'search', 'tel', 'text', 'url'],
+    },
+    id: {
+      type: 'string',
+    },
     leadingInteractive: {
       type: 'boolean',
     },
@@ -21,6 +33,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {
@@ -34,6 +47,10 @@ const schema = {
       {
         name: 'trailing',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'value',
+        reason: 'unknown-shape',
       },
     ],
   },

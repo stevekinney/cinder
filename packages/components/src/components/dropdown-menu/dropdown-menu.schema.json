@@ -6,5 +6,13 @@
       "type": "string"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

@@ -31,6 +31,10 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
         name: 'class',
         reason: 'unknown-shape',
       },

@@ -4,6 +4,9 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    title: {
+      type: 'string',
+    },
     variant: {
       enum: ['card', 'well'],
       description: 'Visual container style. `card` is raised; `well` is flatter and inset.',
@@ -27,6 +30,10 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
       {
         name: 'class',
         reason: 'unknown-shape',

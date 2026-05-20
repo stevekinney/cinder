@@ -10,5 +10,13 @@
       "description": "Render the trailing disclosure caret. Defaults to true."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }
