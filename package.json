@@ -13,6 +13,10 @@
   ],
   "scripts": {
     "build": "bun run --filter=cinder build",
+    "changeset": "changeset",
+    "changeset:publish": "changeset publish",
+    "changeset:publish:dry": "bun run --filter=cinder build && cd packages/components && npm publish --dry-run",
+    "changeset:version": "changeset version",
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
@@ -76,6 +80,8 @@
     ]
   },
   "devDependencies": {
+    "@changesets/changelog-github": "0.7.0",
+    "@changesets/cli": "2.31.0",
     "@types/bun": "1.3.14",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
