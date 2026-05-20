@@ -4,6 +4,8 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import postcss from 'postcss';
+
 import { discoverComponents } from './lib/discover-components.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
@@ -387,6 +389,47 @@ async function runSveltekitFixture(): Promise<void> {
       fail(`no built CSS contains @layer cinder — @layer declaration lost during bundling`);
     }
 
+    // À la carte CSS contract — AST assertions (no text grep).
+    //
+    // The /a-la-carte route imports only `cinder/button` + `cinder/button/styles`
+    // + tokens + foundation. Its route-scoped CSS must contain a button selector
+    // and a `--cinder-button-*` custom property, and must NOT leak any selector
+    // or custom property unique to the accordion component.
+    const aLaCarteCss = await readRouteCssArtifacts(
+      fixtureDirectory,
+      'src/routes/a-la-carte/+page.svelte',
+    );
+    if (!hasSelectorContaining(aLaCarteCss, '.cinder-button')) {
+      fail(`/a-la-carte route CSS missing .cinder-button selector (à la carte presence)`);
+    }
+    if (!hasCustomPropertyStartingWith(aLaCarteCss, '--cinder-button-')) {
+      fail(
+        `/a-la-carte route CSS missing any --cinder-button-* custom property (à la carte presence)`,
+      );
+    }
+    if (hasSelectorContaining(aLaCarteCss, '.cinder-accordion')) {
+      fail(`/a-la-carte route CSS leaked .cinder-accordion selector (à la carte absence)`);
+    }
+    if (hasCustomPropertyStartingWith(aLaCarteCss, '--cinder-accordion-')) {
+      fail(
+        `/a-la-carte route CSS leaked --cinder-accordion-* custom property (à la carte absence)`,
+      );
+    }
+
+    // No-styles import contract: the /no-styles route imports `cinder/button`
+    // only — no `/styles` subpath, no aggregator. Its route-scoped CSS must
+    // not contain button selectors. Proves component JS does not pull CSS as
+    // a side effect.
+    const noStylesCss = await readRouteCssArtifacts(
+      fixtureDirectory,
+      'src/routes/no-styles/+page.svelte',
+    );
+    if (hasSelectorContaining(noStylesCss, '.cinder-button')) {
+      fail(
+        `/no-styles route CSS contains .cinder-button — component JS pulled CSS as a side effect`,
+      );
+    }
+
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
     const ALWAYS_RENDERED_CLASSES = [
@@ -461,6 +504,113 @@ async function runSveltekitFixture(): Promise<void> {
   } finally {
     restoreManifest();
   }
+}
+
+type CssArtifact = {
+  /** Absolute path to the CSS file. */
+  filePath: string;
+  /** Selector strings encountered at the top level of the AST (or inside @layer). */
+  selectors: string[];
+  /** Custom-property names declared anywhere in the file (e.g. `--cinder-button-bg`). */
+  customProperties: string[];
+};
+
+/**
+ * Find the CSS artifacts that belong to a specific route's chunk. SvelteKit
+ * emits per-page CSS chunks indexed by a generated wrapper at
+ * `.svelte-kit/generated/client-optimized/nodes/<N>.js`. We find the wrapper
+ * that re-exports our `+page.svelte` source, then look that wrapper up in
+ * Vite's client manifest at `.svelte-kit/output/client/.vite/manifest.json`
+ * and walk its CSS imports.
+ */
+async function readRouteCssArtifacts(
+  fixtureDirectory: string,
+  routeSourceRelative: string,
+): Promise<CssArtifact[]> {
+  const clientOutputDirectory = join(fixtureDirectory, '.svelte-kit/output/client');
+  const generatedNodesDirectory = join(
+    fixtureDirectory,
+    '.svelte-kit/generated/client-optimized/nodes',
+  );
+  const manifestPath = join(clientOutputDirectory, '.vite/manifest.json');
+  if (!existsSync(manifestPath)) {
+    fail(`Vite client manifest not found at ${manifestPath}`);
+  }
+  const manifest = JSON.parse(await Bun.file(manifestPath).text()) as Record<
+    string,
+    { css?: string[]; imports?: string[]; dynamicImports?: string[]; file?: string }
+  >;
+
+  // Find the generated node wrapper that re-exports the target route source.
+  let routeSource: string | null = null;
+  const wrapperGlob = new Glob('*.js');
+  for await (const wrapperPath of wrapperGlob.scan({
+    cwd: generatedNodesDirectory,
+    absolute: true,
+  })) {
+    const content = await Bun.file(wrapperPath).text();
+    if (content.includes(`/${routeSourceRelative}`)) {
+      // Normalize to the manifest key form (paths relative to fixtureDirectory).
+      const wrapperFileName = wrapperPath.slice(generatedNodesDirectory.length + 1);
+      routeSource = `.svelte-kit/generated/client-optimized/nodes/${wrapperFileName}`;
+      break;
+    }
+  }
+  if (routeSource === null) {
+    fail(`could not locate SvelteKit node wrapper for route ${routeSourceRelative}`);
+  }
+
+  const entry = manifest[routeSource];
+  if (!entry) {
+    fail(
+      `route wrapper ${routeSource} not in Vite manifest. Keys sample: ${Object.keys(manifest)
+        .slice(0, 8)
+        .join(', ')}`,
+    );
+  }
+  const cssAssets = new Set<string>();
+  const visited = new Set<string>();
+  const stack = [routeSource];
+  while (stack.length > 0) {
+    const next = stack.pop();
+    if (next === undefined || visited.has(next)) continue;
+    visited.add(next);
+    const node = manifest[next];
+    if (!node) continue;
+    for (const css of node.css ?? []) cssAssets.add(css);
+    for (const imp of node.imports ?? []) stack.push(imp);
+    for (const imp of node.dynamicImports ?? []) stack.push(imp);
+  }
+  if (cssAssets.size === 0) return [];
+  const artifacts: CssArtifact[] = [];
+  for (const relativePath of cssAssets) {
+    const filePath = join(clientOutputDirectory, relativePath);
+    if (!existsSync(filePath)) continue;
+    const source = await Bun.file(filePath).text();
+    const root_ = postcss.parse(source, { from: filePath });
+    const selectors: string[] = [];
+    const customProperties: string[] = [];
+    root_.walkRules((rule) => {
+      for (const selector of rule.selectors) selectors.push(selector);
+    });
+    root_.walkDecls((decl) => {
+      if (decl.prop.startsWith('--')) customProperties.push(decl.prop);
+    });
+    artifacts.push({ filePath, selectors, customProperties });
+  }
+  return artifacts;
+}
+
+function hasSelectorContaining(artifacts: CssArtifact[], fragment: string): boolean {
+  return artifacts.some((artifact) =>
+    artifact.selectors.some((selector) => selector.includes(fragment)),
+  );
+}
+
+function hasCustomPropertyStartingWith(artifacts: CssArtifact[], prefix: string): boolean {
+  return artifacts.some((artifact) =>
+    artifact.customProperties.some((property) => property.startsWith(prefix)),
+  );
 }
 
 async function readAllBuiltStylesheets(roots: string[]): Promise<string> {
