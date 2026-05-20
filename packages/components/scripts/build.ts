@@ -148,6 +148,15 @@ if (!serverBuildResult.success) {
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
 const browserEntrypoints = [`${sourceRoot}/index.ts`, ...perComponentEntrypoints];
 
+// `splitting: false` is a deliberate trade-off mandated by the Track 4 plan:
+// it gives each entrypoint a predictable, single-file output so the eventual
+// `default` condition in `package.json#exports` points at exactly one JS file
+// per subpath. The cost is that shared internal modules (utilities, runes,
+// helpers) get duplicated across component bundles. Module-identity-sensitive
+// patterns (cross-component Svelte context keys, shared stores, exported
+// singletons) MUST live in the root barrel and be imported from there by
+// consumers — never re-imported from two different `cinder/<name>` subpaths.
+// Track 5's à la carte fixture will assert this contract once it lands.
 const browserBuildResult = await Bun.build({
   entrypoints: browserEntrypoints,
   outdir: distributionDirectory,
@@ -251,6 +260,11 @@ const expectedPaths: string[] = [
 for (const component of components) {
   const directory = componentDistributionDirectory(component);
   expectedPaths.push(`${directory}/index.js`);
+  // The per-component declaration entrypoint is what `package.json#exports`
+  // resolves for the `types` condition once Track 3 lands. Check it lands
+  // alongside the JS so consumers cannot end up with untyped per-component
+  // subpaths.
+  expectedPaths.push(`${directory}/index.d.ts`);
   expectedPaths.push(
     component.isExperimental
       ? `${distributionDirectory}/server/components/experimental/${component.name}/index.js`
@@ -269,16 +283,20 @@ if (missingPaths.length > 0) {
 }
 
 // Component JS must NOT import the CSS sidecar. Contract: à la carte CSS is
-// opt-in by the consumer via `cinder/<name>/styles`. Spot-check a few well-
-// known components rather than scanning every output for performance.
-const noCssImportSpotChecks = ['button', 'alert', 'card'];
-for (const name of noCssImportSpotChecks) {
-  const distributionFile = `${distributionDirectory}/components/${name}/index.js`;
+// opt-in by the consumer via `cinder/<name>/styles`. Scan EVERY per-component
+// bundle (including experimental) for CSS imports in all the forms a bundler
+// could emit — bare side-effect imports, named imports, namespace imports,
+// and dynamic `import('./foo.css')`. Spot-checking a handful of components
+// leaves a backdoor where any unsweep'd bundle could ship a CSS import.
+const cssImportPattern =
+  /(?:\bimport\s*(?:[\w*${},\s]+\s+from\s*)?['"][^'"]*\.css['"]|\bimport\s*\(\s*['"][^'"]*\.css['"])/i;
+for (const component of components) {
+  const distributionFile = `${componentDistributionDirectory(component)}/index.js`;
   if (!existsSync(distributionFile)) continue;
   const text = await Bun.file(distributionFile).text();
-  if (/\bimport\s+['"][^'"]*\.css['"]/i.test(text)) {
+  if (cssImportPattern.test(text)) {
     process.stderr.write(
-      `Build aborted: ${distributionFile} contains a CSS import. Component JS must not pull its sidecar.\n`,
+      `Build aborted: ${distributionFile} contains a CSS import. Component JS must not pull its sidecar — à la carte CSS is opt-in via \`cinder/<name>/styles\`.\n`,
     );
     process.exit(1);
   }

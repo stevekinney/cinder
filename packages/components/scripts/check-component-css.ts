@@ -25,9 +25,6 @@
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
-const FORBIDDEN_TAGS = new Set(['html', 'body']);
-const FORBIDDEN_PSEUDOS = new Set([':root']);
-
 export type CssViolation = {
   file: string;
   line: number;
@@ -36,39 +33,79 @@ export type CssViolation = {
   message: string;
 };
 
+const FUNCTIONAL_PSEUDOS = new Set([':is', ':where', ':not', ':has', ':matches']);
+
 /**
- * Inspect a single CSS selector and decide whether its FIRST compound targets
- * a forbidden global. Compounds inside `:is()`, `:where()`, `:not()`, etc. on
- * a non-global anchor are tolerated — only a top-level selector whose initial
- * compound is itself global is rejected.
+ * Decide whether a compound selector contains a class anchor — directly, or
+ * recursively inside a functional pseudo like `:is(.button)` / `:where(.button)`.
+ * Component CSS sidecars must always start with a class anchor so the rules
+ * stay scoped to the component. Everything else (`:root`, `html`, `body`,
+ * universal `*`, bare attribute selectors, raw tags) is global at the top
+ * level and belongs in the foundation / tokens layer.
+ */
+function compoundHasClassAnchor(nodes: readonly selectorParser.Node[]): boolean {
+  for (const node of nodes) {
+    if (node.type === 'combinator') break;
+    if (node.type === 'class') return true;
+    // Attribute selectors anchored to the `data-cinder-*` namespace are the
+    // documented convention for state-driven scoping in cinder (see
+    // `steps.css`: `[data-cinder-state='current'] .cinder-steps__marker`).
+    // The `data-cinder-` prefix is component-scoped by namespace, equivalent
+    // in intent to a `.cinder-*` class anchor.
+    if (node.type === 'attribute' && node.attribute.toLowerCase().startsWith('data-cinder-')) {
+      return true;
+    }
+    // `:is(.button)` and `:where(.button-icon, .button-label)` are valid
+    // scoped anchors — recurse into the functional pseudo's argument selectors.
+    if (node.type === 'pseudo' && FUNCTIONAL_PSEUDOS.has(node.value.toLowerCase())) {
+      for (const inner of node.nodes ?? []) {
+        if (compoundHasClassAnchor(inner.nodes)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Render the first compound of a parsed selector back to a string for use in
+ * a violation message. We stop at the first combinator so the message points
+ * at the offending anchor rather than the whole selector chain.
+ */
+function describeFirstCompound(nodes: readonly selectorParser.Node[]): string {
+  const compoundParts: string[] = [];
+  for (const node of nodes) {
+    if (node.type === 'combinator') break;
+    compoundParts.push(String(node));
+  }
+  const joined = compoundParts.join('').trim();
+  return joined === '' ? '(empty)' : joined;
+}
+
+/**
+ * Inspect a single CSS selector and decide whether its FIRST compound is
+ * suitably component-scoped. Returns the offending compound as a string when
+ * the selector targets a global; returns `null` when the compound is anchored
+ * to a class (or to a class nested inside `:is()` / `:where()` / `:not()` /
+ * `:has()`).
+ *
+ * The "first compound must have a class anchor" rule is strict by design:
+ * - Rejects `:root`, `html`, `body`, raw `button`, `[data-theme]`, `*:focus`,
+ *   `:where(:root)`, `:is(html, body)`, etc.
+ * - Accepts `.cinder-button`, `.cinder-button:hover`, `.button[data-state]`,
+ *   `:where(.button, .button-icon)`, etc.
+ * - Scoped descendants like `.button *`, `.button > [data-slot]` start with
+ *   `.button` so they pass.
  */
 function firstCompoundIsGlobal(selectorString: string): string | null {
-  let offendingMatch: string | null = null;
+  let offendingCompound: string | null = null;
   selectorParser((root) => {
     root.each((selector) => {
-      // Walk the first compound: nodes until the first combinator.
-      for (const node of selector.nodes) {
-        if (node.type === 'combinator') break;
-        if (node.type === 'tag' && FORBIDDEN_TAGS.has(node.value.toLowerCase())) {
-          offendingMatch = node.value;
-          return;
-        }
-        if (node.type === 'pseudo' && FORBIDDEN_PSEUDOS.has(node.value.toLowerCase())) {
-          offendingMatch = node.value;
-          return;
-        }
-        if (node.type === 'universal') {
-          // Only flag bare `*` as the entire first compound — `.button *` is a
-          // descendant universal, not a top-level target.
-          if (selector.nodes.length === 1 || selector.nodes[1]?.type === 'combinator') {
-            offendingMatch = '*';
-            return;
-          }
-        }
+      if (!compoundHasClassAnchor(selector.nodes)) {
+        offendingCompound = describeFirstCompound(selector.nodes);
       }
     });
   }).processSync(selectorString);
-  return offendingMatch;
+  return offendingCompound;
 }
 
 export async function checkComponentCss(file: string): Promise<CssViolation[]> {
@@ -92,6 +129,19 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     return violations;
   }
 
+  // Sidecars are copied verbatim into `dist/components/<name>/`. An `@import`
+  // would try to resolve from that directory, where its target was never
+  // copied. Reject upfront rather than ship a broken sidecar.
+  root.walkAtRules('import', (atRule) => {
+    violations.push({
+      file,
+      line: atRule.source?.start?.line ?? 1,
+      column: atRule.source?.start?.column ?? 1,
+      message:
+        '`@import` is not allowed inside a component CSS sidecar. The sidecar is copied verbatim into `dist/components/<name>/` and `@import` paths would not resolve. Inline the rules instead.',
+    });
+  });
+
   root.walkAtRules('layer', (atRule) => {
     violations.push({
       file,
@@ -107,6 +157,20 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     // parent compound — they cannot define globals at the effective top level.
     if (rule.parent?.type === 'rule') return;
 
+    // `@keyframes` selectors are stop markers (`from`, `to`, `50%`), not
+    // descendant selectors that target the document tree. The keyframes rule
+    // itself is scoped via its `animation-name` consumer.
+    for (
+      let ancestor: postcss.Container | postcss.Document | undefined = rule.parent;
+      ancestor && ancestor.type !== 'root';
+      ancestor = ancestor.parent
+    ) {
+      if (ancestor.type === 'atrule') {
+        const atRule = ancestor as postcss.AtRule;
+        if (/^(-\w+-)?keyframes$/i.test(atRule.name)) return;
+      }
+    }
+
     // Rules nested under at-rules other than `@layer` (e.g. `@media`,
     // `@supports`, `@container`) are still subject to their own top-level
     // selector rules.
@@ -118,7 +182,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
           line: rule.source?.start?.line ?? 1,
           column: rule.source?.start?.column ?? 1,
           selector: rawSelector,
-          message: `Selector \`${rawSelector}\` targets the global \`${offending}\` at the top level. Component CSS sidecars must scope rules to component classes; tokens, resets, and globals belong in the foundation layer.`,
+          message: `Selector \`${rawSelector}\` is not anchored to a class — its first compound is \`${offending}\`. Component CSS sidecars must scope rules to component classes (or class lists nested in \`:is()\` / \`:where()\`); tokens, resets, and globals belong in the foundation layer.`,
         });
       }
     }
