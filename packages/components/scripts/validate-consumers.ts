@@ -228,11 +228,11 @@ const tarballExpectations: TarballExpectations = {
     'package/src/styles/utilities.css',
     'package/dist/index.d.ts',
     'package/dist/server/index.js',
-    // All public component source + CSS partials.
-    ...PUBLIC_COMPONENTS.map((name) => `package/src/components/${name}.svelte`),
-    ...PUBLIC_COMPONENTS.map((name) => `package/src/styles/components/${name}.css`),
-    // Type declarations for all components.
-    ...PUBLIC_COMPONENTS.map((name) => `package/dist/components/${name}.svelte.d.ts`),
+    // All public component source + co-located CSS (per-directory layout).
+    ...PUBLIC_COMPONENTS.map((name) => `package/src/components/${name}/${name}.svelte`),
+    ...PUBLIC_COMPONENTS.map((name) => `package/src/components/${name}/${name}.css`),
+    // Type declarations for all components (per-directory layout mirrors src).
+    ...PUBLIC_COMPONENTS.map((name) => `package/dist/components/${name}/${name}.svelte.d.ts`),
   ],
   forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
   forbiddenPrefixes: [
@@ -241,7 +241,6 @@ const tarballExpectations: TarballExpectations = {
     'package/dist/client/',
     'package/dist/test/',
     'package/scripts/',
-    'package/src/components/_internal/',
   ],
 };
 
