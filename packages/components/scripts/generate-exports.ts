@@ -1,10 +1,11 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes up to five subpaths:
+ * `src/components/`. Each component contributes up to six subpaths:
  *
  *   ./<name>             → component (svelte/types conditions)
  *   ./<name>/schema      → schema module (svelte/types conditions)
  *   ./<name>/variables   → variables module (svelte/types conditions)
+ *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css)
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
@@ -17,8 +18,14 @@
  *
  * Reserved (non-component) entries are preserved verbatim:
  *
- *   .          → root entry
- *   ./styles   → public styles entry
+ *   .                    → root entry
+ *   ./styles             → full-cascade aggregator (tokens + foundation + components + utilities)
+ *   ./styles/tokens      → token-layer-only aggregator
+ *   ./styles/foundation  → foundation-layer-only aggregator
+ *
+ * The per-component `/styles` exports emit layer-unwrapped CSS. Consumers using
+ * à la carte CSS must also import `cinder/styles/tokens` and
+ * `cinder/styles/foundation` to get tokens, resets, and layer assignments.
  *
  * If a newly-emitted subpath would collide with a non-generated reserved
  * entry, the generator aborts with a named error rather than silently
@@ -60,7 +67,7 @@ type JsonExportEntry = {
   default: string;
 };
 
-const RESERVED_KEYS = new Set(['.', './styles']);
+const RESERVED_KEYS = new Set(['.', './styles', './styles/tokens', './styles/foundation']);
 
 /** Default package root used when `computeExports` is called without one. */
 const DEFAULT_PACKAGE_ROOT = join(import.meta.dir, '..');
@@ -84,7 +91,7 @@ export function computeExports(
   // Package-level manifest entry (always present).
   out['./manifest'] = manifestExport();
 
-  for (const { name, isExperimental } of components) {
+  for (const { name, isExperimental, hasCss } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
     const srcDir = isExperimental
       ? `./src/components/experimental/${name}`
@@ -111,6 +118,18 @@ export function computeExports(
       svelte: `${srcDir}/${name}.variables.ts`,
       types: `${distDir}/${name}.variables.d.ts`,
     };
+    // Per-component CSS sidecar — layer-unwrapped. Consumers using these
+    // à la carte must also import `cinder/styles/tokens` and
+    // `cinder/styles/foundation` to get tokens, resets, and layer assignments.
+    //
+    // Only emitted when the component ships a source CSS sidecar — emitting
+    // `/styles` for a component without CSS would publish a dead export
+    // pointing at a non-existent dist artifact.
+    if (hasCss) {
+      out[`${prefix}/styles`] = {
+        default: `${distDir}/${name}.css`,
+      };
+    }
 
     // JSON sidecar subpaths — emitted only when the file exists on disk.
     // Uses import+default conditions only (no svelte/types).
@@ -223,6 +242,7 @@ async function main(): Promise<void> {
     if (
       key.endsWith('/schema') ||
       key.endsWith('/variables') ||
+      key.endsWith('/styles') ||
       key.endsWith('/examples') ||
       key.endsWith('/constraints')
     )
