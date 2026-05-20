@@ -128,11 +128,15 @@ button.cinder-chip {
  * and any `[data-theme]` override on an ancestor). This replaces a
  * `filter: brightness()` toggle that previously needed a
  * prefers-color-scheme media query. */
-button.cinder-chip:hover:not(:disabled) {
-  background-image: linear-gradient(
-    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
-    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
-  );
+/* Sticky-hover suppression on touch: hover-only chrome wrapped so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  button.cinder-chip:hover:not(:disabled) {
+    background-image: linear-gradient(
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+    );
+  }
 }
 
 /* ----------------------------------------
@@ -194,9 +198,7 @@ button.cinder-chip:hover:not(:disabled) {
 button.cinder-chip:focus-visible,
 .cinder-chip__remove:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {
@@ -271,11 +273,13 @@ button.cinder-chip:disabled {
 }
 
 /* Same overlay technique as the chip-body hover above. */
-.cinder-chip__remove:hover:not(:disabled) {
-  background-image: linear-gradient(
-    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
-    light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
-  );
+@media (hover: hover) {
+  .cinder-chip__remove:hover:not(:disabled) {
+    background-image: linear-gradient(
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+    );
+  }
 }
 
 /* ----------------------------------------

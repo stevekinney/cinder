@@ -135,6 +135,10 @@
   transform: translate(-50%, -50%);
 }
 
-.cinder-_dismiss-button:hover {
-  background: color-mix(in oklch, currentColor, transparent 80%);
+/* Sticky-hover suppression on touch: hover-only background wrapped so it
+ * doesn't "stick" after tap. */
+@media (hover: hover) {
+  .cinder-_dismiss-button:hover {
+    background: color-mix(in oklch, currentColor, transparent 80%);
+  }
 }
