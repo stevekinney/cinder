@@ -43,6 +43,11 @@ const schema = {
       type: 'string',
       description: 'Additional CSS classes.',
     },
+    snapshotMode: {
+      type: 'boolean',
+      description:
+        'Snapshot mode for visual regression testing.\n\nWhen `true`:\n- Applies `caret-color: transparent` and `user-select: none` to the editor\n  root via a `data-snapshot-mode` attribute, producing a stable visual\n  state (no blinking cursor, no selection highlights).\n- Blurs any focused element inside the component on mount so the initial\n  screenshot does not capture a focused ring or active caret.\n- The inner MarkdownEditor instance also receives `snapshotMode={true}`.\n\nThis is a purely visual / CSS concern. It does NOT affect editability,\nProseMirror state, or any prop controlled by `readonly` / `mode`.',
+    },
   },
   additionalProperties: false,
   required: ['id'],

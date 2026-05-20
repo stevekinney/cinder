@@ -36,6 +36,12 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
+    "./styles/tokens": {
+      "default": "./src/styles/tokens.css"
+    },
+    "./styles/foundation": {
+      "default": "./src/styles/foundation.css"
+    },
     "./manifest": {
       "import": "./components.json",
       "default": "./components.json"
@@ -53,6 +59,9 @@
     "./accordion/variables": {
       "types": "./dist/components/accordion/accordion.variables.d.ts",
       "svelte": "./src/components/accordion/accordion.variables.ts"
+    },
+    "./accordion/styles": {
+      "default": "./dist/components/accordion/accordion.css"
     },
     "./accordion/examples": {
       "import": "./src/components/accordion/accordion.examples.json",
@@ -72,6 +81,9 @@
       "types": "./dist/components/accordion-item/accordion-item.variables.d.ts",
       "svelte": "./src/components/accordion-item/accordion-item.variables.ts"
     },
+    "./accordion-item/styles": {
+      "default": "./dist/components/accordion-item/accordion-item.css"
+    },
     "./alert": {
       "types": "./dist/components/alert/index.d.ts",
       "svelte": "./src/components/alert/index.ts",
@@ -85,6 +97,9 @@
     "./alert/variables": {
       "types": "./dist/components/alert/alert.variables.d.ts",
       "svelte": "./src/components/alert/alert.variables.ts"
+    },
+    "./alert/styles": {
+      "default": "./dist/components/alert/alert.css"
     },
     "./alert/examples": {
       "import": "./src/components/alert/alert.examples.json",
@@ -104,6 +119,9 @@
       "types": "./dist/components/avatar/avatar.variables.d.ts",
       "svelte": "./src/components/avatar/avatar.variables.ts"
     },
+    "./avatar/styles": {
+      "default": "./dist/components/avatar/avatar.css"
+    },
     "./avatar/examples": {
       "import": "./src/components/avatar/avatar.examples.json",
       "default": "./src/components/avatar/avatar.examples.json"
@@ -121,6 +139,9 @@
     "./badge/variables": {
       "types": "./dist/components/badge/badge.variables.d.ts",
       "svelte": "./src/components/badge/badge.variables.ts"
+    },
+    "./badge/styles": {
+      "default": "./dist/components/badge/badge.css"
     },
     "./badge/examples": {
       "import": "./src/components/badge/badge.examples.json",
@@ -140,6 +161,9 @@
       "types": "./dist/components/banner/banner.variables.d.ts",
       "svelte": "./src/components/banner/banner.variables.ts"
     },
+    "./banner/styles": {
+      "default": "./dist/components/banner/banner.css"
+    },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
       "svelte": "./src/components/breadcrumbs/index.ts",
@@ -153,6 +177,9 @@
     "./breadcrumbs/variables": {
       "types": "./dist/components/breadcrumbs/breadcrumbs.variables.d.ts",
       "svelte": "./src/components/breadcrumbs/breadcrumbs.variables.ts"
+    },
+    "./breadcrumbs/styles": {
+      "default": "./dist/components/breadcrumbs/breadcrumbs.css"
     },
     "./breadcrumbs/examples": {
       "import": "./src/components/breadcrumbs/breadcrumbs.examples.json",
@@ -171,6 +198,9 @@
     "./button/variables": {
       "types": "./dist/components/button/button.variables.d.ts",
       "svelte": "./src/components/button/button.variables.ts"
+    },
+    "./button/styles": {
+      "default": "./dist/components/button/button.css"
     },
     "./button/examples": {
       "import": "./src/components/button/button.examples.json",
@@ -194,6 +224,9 @@
       "types": "./dist/components/button-group/button-group.variables.d.ts",
       "svelte": "./src/components/button-group/button-group.variables.ts"
     },
+    "./button-group/styles": {
+      "default": "./dist/components/button-group/button-group.css"
+    },
     "./button-group/examples": {
       "import": "./src/components/button-group/button-group.examples.json",
       "default": "./src/components/button-group/button-group.examples.json"
@@ -212,6 +245,9 @@
       "types": "./dist/components/callout/callout.variables.d.ts",
       "svelte": "./src/components/callout/callout.variables.ts"
     },
+    "./callout/styles": {
+      "default": "./dist/components/callout/callout.css"
+    },
     "./card": {
       "types": "./dist/components/card/index.d.ts",
       "svelte": "./src/components/card/index.ts",
@@ -225,6 +261,9 @@
     "./card/variables": {
       "types": "./dist/components/card/card.variables.d.ts",
       "svelte": "./src/components/card/card.variables.ts"
+    },
+    "./card/styles": {
+      "default": "./dist/components/card/card.css"
     },
     "./card/examples": {
       "import": "./src/components/card/card.examples.json",
@@ -262,6 +301,9 @@
       "types": "./dist/components/checkbox/checkbox.variables.d.ts",
       "svelte": "./src/components/checkbox/checkbox.variables.ts"
     },
+    "./checkbox/styles": {
+      "default": "./dist/components/checkbox/checkbox.css"
+    },
     "./checkbox/examples": {
       "import": "./src/components/checkbox/checkbox.examples.json",
       "default": "./src/components/checkbox/checkbox.examples.json"
@@ -280,6 +322,9 @@
       "types": "./dist/components/checkbox-group/checkbox-group.variables.d.ts",
       "svelte": "./src/components/checkbox-group/checkbox-group.variables.ts"
     },
+    "./checkbox-group/styles": {
+      "default": "./dist/components/checkbox-group/checkbox-group.css"
+    },
     "./chip": {
       "types": "./dist/components/chip/index.d.ts",
       "svelte": "./src/components/chip/index.ts",
@@ -293,6 +338,9 @@
     "./chip/variables": {
       "types": "./dist/components/chip/chip.variables.d.ts",
       "svelte": "./src/components/chip/chip.variables.ts"
+    },
+    "./chip/styles": {
+      "default": "./dist/components/chip/chip.css"
     },
     "./chip/examples": {
       "import": "./src/components/chip/chip.examples.json",
@@ -312,6 +360,9 @@
       "types": "./dist/components/code-block/code-block.variables.d.ts",
       "svelte": "./src/components/code-block/code-block.variables.ts"
     },
+    "./code-block/styles": {
+      "default": "./dist/components/code-block/code-block.css"
+    },
     "./code-block/examples": {
       "import": "./src/components/code-block/code-block.examples.json",
       "default": "./src/components/code-block/code-block.examples.json"
@@ -330,6 +381,9 @@
       "types": "./dist/components/color-picker/color-picker.variables.d.ts",
       "svelte": "./src/components/color-picker/color-picker.variables.ts"
     },
+    "./color-picker/styles": {
+      "default": "./dist/components/color-picker/color-picker.css"
+    },
     "./color-swatch-picker": {
       "types": "./dist/components/color-swatch-picker/index.d.ts",
       "svelte": "./src/components/color-swatch-picker/index.ts",
@@ -344,6 +398,9 @@
       "types": "./dist/components/color-swatch-picker/color-swatch-picker.variables.d.ts",
       "svelte": "./src/components/color-swatch-picker/color-swatch-picker.variables.ts"
     },
+    "./color-swatch-picker/styles": {
+      "default": "./dist/components/color-swatch-picker/color-swatch-picker.css"
+    },
     "./combobox": {
       "types": "./dist/components/combobox/index.d.ts",
       "svelte": "./src/components/combobox/index.ts",
@@ -357,6 +414,9 @@
     "./combobox/variables": {
       "types": "./dist/components/combobox/combobox.variables.d.ts",
       "svelte": "./src/components/combobox/combobox.variables.ts"
+    },
+    "./combobox/styles": {
+      "default": "./dist/components/combobox/combobox.css"
     },
     "./combobox/examples": {
       "import": "./src/components/combobox/combobox.examples.json",
@@ -390,6 +450,9 @@
       "types": "./dist/components/command-palette/command-palette.variables.d.ts",
       "svelte": "./src/components/command-palette/command-palette.variables.ts"
     },
+    "./command-palette/styles": {
+      "default": "./dist/components/command-palette/command-palette.css"
+    },
     "./command-palette/examples": {
       "import": "./src/components/command-palette/command-palette.examples.json",
       "default": "./src/components/command-palette/command-palette.examples.json"
@@ -422,6 +485,9 @@
       "types": "./dist/components/copy-button/copy-button.variables.d.ts",
       "svelte": "./src/components/copy-button/copy-button.variables.ts"
     },
+    "./copy-button/styles": {
+      "default": "./dist/components/copy-button/copy-button.css"
+    },
     "./copy-button/examples": {
       "import": "./src/components/copy-button/copy-button.examples.json",
       "default": "./src/components/copy-button/copy-button.examples.json"
@@ -439,6 +505,9 @@
     "./data-list/variables": {
       "types": "./dist/components/data-list/data-list.variables.d.ts",
       "svelte": "./src/components/data-list/data-list.variables.ts"
+    },
+    "./data-list/styles": {
+      "default": "./dist/components/data-list/data-list.css"
     },
     "./data-list/examples": {
       "import": "./src/components/data-list/data-list.examples.json",
@@ -458,6 +527,9 @@
       "types": "./dist/components/description-list/description-list.variables.d.ts",
       "svelte": "./src/components/description-list/description-list.variables.ts"
     },
+    "./description-list/styles": {
+      "default": "./dist/components/description-list/description-list.css"
+    },
     "./diff-statistics": {
       "types": "./dist/components/diff-statistics/index.d.ts",
       "svelte": "./src/components/diff-statistics/index.ts",
@@ -471,6 +543,9 @@
     "./diff-statistics/variables": {
       "types": "./dist/components/diff-statistics/diff-statistics.variables.d.ts",
       "svelte": "./src/components/diff-statistics/diff-statistics.variables.ts"
+    },
+    "./diff-statistics/styles": {
+      "default": "./dist/components/diff-statistics/diff-statistics.css"
     },
     "./diff-statistics/examples": {
       "import": "./src/components/diff-statistics/diff-statistics.examples.json",
@@ -508,6 +583,9 @@
       "types": "./dist/components/divider/divider.variables.d.ts",
       "svelte": "./src/components/divider/divider.variables.ts"
     },
+    "./divider/styles": {
+      "default": "./dist/components/divider/divider.css"
+    },
     "./divider/examples": {
       "import": "./src/components/divider/divider.examples.json",
       "default": "./src/components/divider/divider.examples.json"
@@ -526,6 +604,9 @@
       "types": "./dist/components/drawer/drawer.variables.d.ts",
       "svelte": "./src/components/drawer/drawer.variables.ts"
     },
+    "./drawer/styles": {
+      "default": "./dist/components/drawer/drawer.css"
+    },
     "./drawer/examples": {
       "import": "./src/components/drawer/drawer.examples.json",
       "default": "./src/components/drawer/drawer.examples.json"
@@ -543,6 +624,9 @@
     "./dropdown/variables": {
       "types": "./dist/components/dropdown/dropdown.variables.d.ts",
       "svelte": "./src/components/dropdown/dropdown.variables.ts"
+    },
+    "./dropdown/styles": {
+      "default": "./dist/components/dropdown/dropdown.css"
     },
     "./dropdown/examples": {
       "import": "./src/components/dropdown/dropdown.examples.json",
@@ -632,6 +716,9 @@
       "types": "./dist/components/empty-state/empty-state.variables.d.ts",
       "svelte": "./src/components/empty-state/empty-state.variables.ts"
     },
+    "./empty-state/styles": {
+      "default": "./dist/components/empty-state/empty-state.css"
+    },
     "./empty-state/examples": {
       "import": "./src/components/empty-state/empty-state.examples.json",
       "default": "./src/components/empty-state/empty-state.examples.json"
@@ -649,6 +736,9 @@
     "./feed/variables": {
       "types": "./dist/components/feed/feed.variables.d.ts",
       "svelte": "./src/components/feed/feed.variables.ts"
+    },
+    "./feed/styles": {
+      "default": "./dist/components/feed/feed.css"
     },
     "./feed-event": {
       "types": "./dist/components/feed-event/index.d.ts",
@@ -678,6 +768,9 @@
       "types": "./dist/components/form-field/form-field.variables.d.ts",
       "svelte": "./src/components/form-field/form-field.variables.ts"
     },
+    "./form-field/styles": {
+      "default": "./dist/components/form-field/form-field.css"
+    },
     "./form-field/examples": {
       "import": "./src/components/form-field/form-field.examples.json",
       "default": "./src/components/form-field/form-field.examples.json"
@@ -696,6 +789,9 @@
       "types": "./dist/components/form-section/form-section.variables.d.ts",
       "svelte": "./src/components/form-section/form-section.variables.ts"
     },
+    "./form-section/styles": {
+      "default": "./dist/components/form-section/form-section.css"
+    },
     "./form-section/examples": {
       "import": "./src/components/form-section/form-section.examples.json",
       "default": "./src/components/form-section/form-section.examples.json"
@@ -713,6 +809,9 @@
     "./grid-list/variables": {
       "types": "./dist/components/grid-list/grid-list.variables.d.ts",
       "svelte": "./src/components/grid-list/grid-list.variables.ts"
+    },
+    "./grid-list/styles": {
+      "default": "./dist/components/grid-list/grid-list.css"
     },
     "./grid-list-item": {
       "types": "./dist/components/grid-list-item/index.d.ts",
@@ -742,6 +841,9 @@
       "types": "./dist/components/image/image.variables.d.ts",
       "svelte": "./src/components/image/image.variables.ts"
     },
+    "./image/styles": {
+      "default": "./dist/components/image/image.css"
+    },
     "./input": {
       "types": "./dist/components/input/index.d.ts",
       "svelte": "./src/components/input/index.ts",
@@ -755,6 +857,9 @@
     "./input/variables": {
       "types": "./dist/components/input/input.variables.d.ts",
       "svelte": "./src/components/input/input.variables.ts"
+    },
+    "./input/styles": {
+      "default": "./dist/components/input/input.css"
     },
     "./input/examples": {
       "import": "./src/components/input/input.examples.json",
@@ -778,6 +883,9 @@
       "types": "./dist/components/json-schema-editor/json-schema-editor.variables.d.ts",
       "svelte": "./src/components/json-schema-editor/json-schema-editor.variables.ts"
     },
+    "./json-schema-editor/styles": {
+      "default": "./dist/components/json-schema-editor/json-schema-editor.css"
+    },
     "./json-schema-editor/examples": {
       "import": "./src/components/json-schema-editor/json-schema-editor.examples.json",
       "default": "./src/components/json-schema-editor/json-schema-editor.examples.json"
@@ -796,6 +904,9 @@
       "types": "./dist/components/kbd/kbd.variables.d.ts",
       "svelte": "./src/components/kbd/kbd.variables.ts"
     },
+    "./kbd/styles": {
+      "default": "./dist/components/kbd/kbd.css"
+    },
     "./kbd/examples": {
       "import": "./src/components/kbd/kbd.examples.json",
       "default": "./src/components/kbd/kbd.examples.json"
@@ -813,6 +924,9 @@
     "./label/variables": {
       "types": "./dist/components/label/label.variables.d.ts",
       "svelte": "./src/components/label/label.variables.ts"
+    },
+    "./label/styles": {
+      "default": "./dist/components/label/label.css"
     },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
@@ -846,6 +960,9 @@
       "types": "./dist/components/modal/modal.variables.d.ts",
       "svelte": "./src/components/modal/modal.variables.ts"
     },
+    "./modal/styles": {
+      "default": "./dist/components/modal/modal.css"
+    },
     "./modal/examples": {
       "import": "./src/components/modal/modal.examples.json",
       "default": "./src/components/modal/modal.examples.json"
@@ -868,6 +985,9 @@
       "types": "./dist/components/navigation-bar/navigation-bar.variables.d.ts",
       "svelte": "./src/components/navigation-bar/navigation-bar.variables.ts"
     },
+    "./navigation-bar/styles": {
+      "default": "./dist/components/navigation-bar/navigation-bar.css"
+    },
     "./navigation-bar/examples": {
       "import": "./src/components/navigation-bar/navigation-bar.examples.json",
       "default": "./src/components/navigation-bar/navigation-bar.examples.json"
@@ -886,6 +1006,9 @@
       "types": "./dist/components/navigation-item/navigation-item.variables.d.ts",
       "svelte": "./src/components/navigation-item/navigation-item.variables.ts"
     },
+    "./navigation-item/styles": {
+      "default": "./dist/components/navigation-item/navigation-item.css"
+    },
     "./number-input": {
       "types": "./dist/components/number-input/index.d.ts",
       "svelte": "./src/components/number-input/index.ts",
@@ -900,6 +1023,9 @@
       "types": "./dist/components/number-input/number-input.variables.d.ts",
       "svelte": "./src/components/number-input/number-input.variables.ts"
     },
+    "./number-input/styles": {
+      "default": "./dist/components/number-input/number-input.css"
+    },
     "./page-layout": {
       "types": "./dist/components/page-layout/index.d.ts",
       "svelte": "./src/components/page-layout/index.ts",
@@ -913,6 +1039,9 @@
     "./page-layout/variables": {
       "types": "./dist/components/page-layout/page-layout.variables.d.ts",
       "svelte": "./src/components/page-layout/page-layout.variables.ts"
+    },
+    "./page-layout/styles": {
+      "default": "./dist/components/page-layout/page-layout.css"
     },
     "./page-layout/examples": {
       "import": "./src/components/page-layout/page-layout.examples.json",
@@ -932,6 +1061,9 @@
       "types": "./dist/components/pagination/pagination.variables.d.ts",
       "svelte": "./src/components/pagination/pagination.variables.ts"
     },
+    "./pagination/styles": {
+      "default": "./dist/components/pagination/pagination.css"
+    },
     "./pagination/examples": {
       "import": "./src/components/pagination/pagination.examples.json",
       "default": "./src/components/pagination/pagination.examples.json"
@@ -949,6 +1081,9 @@
     "./popover/variables": {
       "types": "./dist/components/popover/popover.variables.d.ts",
       "svelte": "./src/components/popover/popover.variables.ts"
+    },
+    "./popover/styles": {
+      "default": "./dist/components/popover/popover.css"
     },
     "./popover/examples": {
       "import": "./src/components/popover/popover.examples.json",
@@ -968,6 +1103,9 @@
       "types": "./dist/components/progress/progress.variables.d.ts",
       "svelte": "./src/components/progress/progress.variables.ts"
     },
+    "./progress/styles": {
+      "default": "./dist/components/progress/progress.css"
+    },
     "./progress/examples": {
       "import": "./src/components/progress/progress.examples.json",
       "default": "./src/components/progress/progress.examples.json"
@@ -986,6 +1124,9 @@
       "types": "./dist/components/radio/radio.variables.d.ts",
       "svelte": "./src/components/radio/radio.variables.ts"
     },
+    "./radio/styles": {
+      "default": "./dist/components/radio/radio.css"
+    },
     "./radio-group": {
       "types": "./dist/components/radio-group/index.d.ts",
       "svelte": "./src/components/radio-group/index.ts",
@@ -999,6 +1140,9 @@
     "./radio-group/variables": {
       "types": "./dist/components/radio-group/radio-group.variables.d.ts",
       "svelte": "./src/components/radio-group/radio-group.variables.ts"
+    },
+    "./radio-group/styles": {
+      "default": "./dist/components/radio-group/radio-group.css"
     },
     "./radio-group/examples": {
       "import": "./src/components/radio-group/radio-group.examples.json",
@@ -1018,6 +1162,9 @@
       "types": "./dist/components/review-editor/review-editor.variables.d.ts",
       "svelte": "./src/components/review-editor/review-editor.variables.ts"
     },
+    "./review-editor/styles": {
+      "default": "./dist/components/review-editor/review-editor.css"
+    },
     "./review-editor/examples": {
       "import": "./src/components/review-editor/review-editor.examples.json",
       "default": "./src/components/review-editor/review-editor.examples.json"
@@ -1036,6 +1183,9 @@
       "types": "./dist/components/scroll-area/scroll-area.variables.d.ts",
       "svelte": "./src/components/scroll-area/scroll-area.variables.ts"
     },
+    "./scroll-area/styles": {
+      "default": "./dist/components/scroll-area/scroll-area.css"
+    },
     "./search-field": {
       "types": "./dist/components/search-field/index.d.ts",
       "svelte": "./src/components/search-field/index.ts",
@@ -1049,6 +1199,9 @@
     "./search-field/variables": {
       "types": "./dist/components/search-field/search-field.variables.d.ts",
       "svelte": "./src/components/search-field/search-field.variables.ts"
+    },
+    "./search-field/styles": {
+      "default": "./dist/components/search-field/search-field.css"
     },
     "./section-heading": {
       "types": "./dist/components/section-heading/index.d.ts",
@@ -1064,6 +1217,9 @@
       "types": "./dist/components/section-heading/section-heading.variables.d.ts",
       "svelte": "./src/components/section-heading/section-heading.variables.ts"
     },
+    "./section-heading/styles": {
+      "default": "./dist/components/section-heading/section-heading.css"
+    },
     "./segmented-control": {
       "types": "./dist/components/segmented-control/index.d.ts",
       "svelte": "./src/components/segmented-control/index.ts",
@@ -1077,6 +1233,9 @@
     "./segmented-control/variables": {
       "types": "./dist/components/segmented-control/segmented-control.variables.d.ts",
       "svelte": "./src/components/segmented-control/segmented-control.variables.ts"
+    },
+    "./segmented-control/styles": {
+      "default": "./dist/components/segmented-control/segmented-control.css"
     },
     "./segmented-control/examples": {
       "import": "./src/components/segmented-control/segmented-control.examples.json",
@@ -1096,6 +1255,9 @@
       "types": "./dist/components/select/select.variables.d.ts",
       "svelte": "./src/components/select/select.variables.ts"
     },
+    "./select/styles": {
+      "default": "./dist/components/select/select.css"
+    },
     "./select/examples": {
       "import": "./src/components/select/select.examples.json",
       "default": "./src/components/select/select.examples.json"
@@ -1113,6 +1275,9 @@
     "./selection-popover/variables": {
       "types": "./dist/components/selection-popover/selection-popover.variables.d.ts",
       "svelte": "./src/components/selection-popover/selection-popover.variables.ts"
+    },
+    "./selection-popover/styles": {
+      "default": "./dist/components/selection-popover/selection-popover.css"
     },
     "./selection-popover/examples": {
       "import": "./src/components/selection-popover/selection-popover.examples.json",
@@ -1132,6 +1297,9 @@
       "types": "./dist/components/sheet/sheet.variables.d.ts",
       "svelte": "./src/components/sheet/sheet.variables.ts"
     },
+    "./sheet/styles": {
+      "default": "./dist/components/sheet/sheet.css"
+    },
     "./side-navigation": {
       "types": "./dist/components/side-navigation/index.d.ts",
       "svelte": "./src/components/side-navigation/index.ts",
@@ -1146,6 +1314,9 @@
       "types": "./dist/components/side-navigation/side-navigation.variables.d.ts",
       "svelte": "./src/components/side-navigation/side-navigation.variables.ts"
     },
+    "./side-navigation/styles": {
+      "default": "./dist/components/side-navigation/side-navigation.css"
+    },
     "./side-navigation-group": {
       "types": "./dist/components/side-navigation-group/index.d.ts",
       "svelte": "./src/components/side-navigation-group/index.ts",
@@ -1159,6 +1330,9 @@
     "./side-navigation-group/variables": {
       "types": "./dist/components/side-navigation-group/side-navigation-group.variables.d.ts",
       "svelte": "./src/components/side-navigation-group/side-navigation-group.variables.ts"
+    },
+    "./side-navigation-group/styles": {
+      "default": "./dist/components/side-navigation-group/side-navigation-group.css"
     },
     "./side-navigation-item": {
       "types": "./dist/components/side-navigation-item/index.d.ts",
@@ -1188,6 +1362,9 @@
       "types": "./dist/components/sidebar/sidebar.variables.d.ts",
       "svelte": "./src/components/sidebar/sidebar.variables.ts"
     },
+    "./sidebar/styles": {
+      "default": "./dist/components/sidebar/sidebar.css"
+    },
     "./sidebar/examples": {
       "import": "./src/components/sidebar/sidebar.examples.json",
       "default": "./src/components/sidebar/sidebar.examples.json"
@@ -1205,6 +1382,9 @@
     "./skeleton/variables": {
       "types": "./dist/components/skeleton/skeleton.variables.d.ts",
       "svelte": "./src/components/skeleton/skeleton.variables.ts"
+    },
+    "./skeleton/styles": {
+      "default": "./dist/components/skeleton/skeleton.css"
     },
     "./skeleton/examples": {
       "import": "./src/components/skeleton/skeleton.examples.json",
@@ -1224,6 +1404,9 @@
       "types": "./dist/components/slider/slider.variables.d.ts",
       "svelte": "./src/components/slider/slider.variables.ts"
     },
+    "./slider/styles": {
+      "default": "./dist/components/slider/slider.css"
+    },
     "./slider/examples": {
       "import": "./src/components/slider/slider.examples.json",
       "default": "./src/components/slider/slider.examples.json"
@@ -1242,6 +1425,9 @@
       "types": "./dist/components/sortable-list/sortable-list.variables.d.ts",
       "svelte": "./src/components/sortable-list/sortable-list.variables.ts"
     },
+    "./sortable-list/styles": {
+      "default": "./dist/components/sortable-list/sortable-list.css"
+    },
     "./spinner": {
       "types": "./dist/components/spinner/index.d.ts",
       "svelte": "./src/components/spinner/index.ts",
@@ -1255,6 +1441,9 @@
     "./spinner/variables": {
       "types": "./dist/components/spinner/spinner.variables.d.ts",
       "svelte": "./src/components/spinner/spinner.variables.ts"
+    },
+    "./spinner/styles": {
+      "default": "./dist/components/spinner/spinner.css"
     },
     "./spinner/examples": {
       "import": "./src/components/spinner/spinner.examples.json",
@@ -1274,6 +1463,9 @@
       "types": "./dist/components/stacked-list-item/stacked-list-item.variables.d.ts",
       "svelte": "./src/components/stacked-list-item/stacked-list-item.variables.ts"
     },
+    "./stacked-list-item/styles": {
+      "default": "./dist/components/stacked-list-item/stacked-list-item.css"
+    },
     "./stat": {
       "types": "./dist/components/stat/index.d.ts",
       "svelte": "./src/components/stat/index.ts",
@@ -1287,6 +1479,9 @@
     "./stat/variables": {
       "types": "./dist/components/stat/stat.variables.d.ts",
       "svelte": "./src/components/stat/stat.variables.ts"
+    },
+    "./stat/styles": {
+      "default": "./dist/components/stat/stat.css"
     },
     "./stat-group": {
       "types": "./dist/components/stat-group/index.d.ts",
@@ -1302,6 +1497,9 @@
       "types": "./dist/components/stat-group/stat-group.variables.d.ts",
       "svelte": "./src/components/stat-group/stat-group.variables.ts"
     },
+    "./stat-group/styles": {
+      "default": "./dist/components/stat-group/stat-group.css"
+    },
     "./status-dot": {
       "types": "./dist/components/status-dot/index.d.ts",
       "svelte": "./src/components/status-dot/index.ts",
@@ -1315,6 +1513,9 @@
     "./status-dot/variables": {
       "types": "./dist/components/status-dot/status-dot.variables.d.ts",
       "svelte": "./src/components/status-dot/status-dot.variables.ts"
+    },
+    "./status-dot/styles": {
+      "default": "./dist/components/status-dot/status-dot.css"
     },
     "./steps": {
       "types": "./dist/components/steps/index.d.ts",
@@ -1330,6 +1531,9 @@
       "types": "./dist/components/steps/steps.variables.d.ts",
       "svelte": "./src/components/steps/steps.variables.ts"
     },
+    "./steps/styles": {
+      "default": "./dist/components/steps/steps.css"
+    },
     "./surface": {
       "types": "./dist/components/surface/index.d.ts",
       "svelte": "./src/components/surface/index.ts",
@@ -1343,6 +1547,9 @@
     "./surface/variables": {
       "types": "./dist/components/surface/surface.variables.d.ts",
       "svelte": "./src/components/surface/surface.variables.ts"
+    },
+    "./surface/styles": {
+      "default": "./dist/components/surface/surface.css"
     },
     "./surface/examples": {
       "import": "./src/components/surface/surface.examples.json",
@@ -1362,6 +1569,9 @@
       "types": "./dist/components/tab/tab.variables.d.ts",
       "svelte": "./src/components/tab/tab.variables.ts"
     },
+    "./tab/styles": {
+      "default": "./dist/components/tab/tab.css"
+    },
     "./tab-list": {
       "types": "./dist/components/tab-list/index.d.ts",
       "svelte": "./src/components/tab-list/index.ts",
@@ -1375,6 +1585,9 @@
     "./tab-list/variables": {
       "types": "./dist/components/tab-list/tab-list.variables.d.ts",
       "svelte": "./src/components/tab-list/tab-list.variables.ts"
+    },
+    "./tab-list/styles": {
+      "default": "./dist/components/tab-list/tab-list.css"
     },
     "./tab-panel": {
       "types": "./dist/components/tab-panel/index.d.ts",
@@ -1390,6 +1603,9 @@
       "types": "./dist/components/tab-panel/tab-panel.variables.d.ts",
       "svelte": "./src/components/tab-panel/tab-panel.variables.ts"
     },
+    "./tab-panel/styles": {
+      "default": "./dist/components/tab-panel/tab-panel.css"
+    },
     "./table": {
       "types": "./dist/components/table/index.d.ts",
       "svelte": "./src/components/table/index.ts",
@@ -1403,6 +1619,9 @@
     "./table/variables": {
       "types": "./dist/components/table/table.variables.d.ts",
       "svelte": "./src/components/table/table.variables.ts"
+    },
+    "./table/styles": {
+      "default": "./dist/components/table/table.css"
     },
     "./table/examples": {
       "import": "./src/components/table/table.examples.json",
@@ -1422,6 +1641,9 @@
       "types": "./dist/components/table-body/table-body.variables.d.ts",
       "svelte": "./src/components/table-body/table-body.variables.ts"
     },
+    "./table-body/styles": {
+      "default": "./dist/components/table-body/table-body.css"
+    },
     "./table-cell": {
       "types": "./dist/components/table-cell/index.d.ts",
       "svelte": "./src/components/table-cell/index.ts",
@@ -1435,6 +1657,9 @@
     "./table-cell/variables": {
       "types": "./dist/components/table-cell/table-cell.variables.d.ts",
       "svelte": "./src/components/table-cell/table-cell.variables.ts"
+    },
+    "./table-cell/styles": {
+      "default": "./dist/components/table-cell/table-cell.css"
     },
     "./table-header": {
       "types": "./dist/components/table-header/index.d.ts",
@@ -1450,6 +1675,9 @@
       "types": "./dist/components/table-header/table-header.variables.d.ts",
       "svelte": "./src/components/table-header/table-header.variables.ts"
     },
+    "./table-header/styles": {
+      "default": "./dist/components/table-header/table-header.css"
+    },
     "./table-header-cell": {
       "types": "./dist/components/table-header-cell/index.d.ts",
       "svelte": "./src/components/table-header-cell/index.ts",
@@ -1463,6 +1691,9 @@
     "./table-header-cell/variables": {
       "types": "./dist/components/table-header-cell/table-header-cell.variables.d.ts",
       "svelte": "./src/components/table-header-cell/table-header-cell.variables.ts"
+    },
+    "./table-header-cell/styles": {
+      "default": "./dist/components/table-header-cell/table-header-cell.css"
     },
     "./table-row": {
       "types": "./dist/components/table-row/index.d.ts",
@@ -1478,6 +1709,9 @@
       "types": "./dist/components/table-row/table-row.variables.d.ts",
       "svelte": "./src/components/table-row/table-row.variables.ts"
     },
+    "./table-row/styles": {
+      "default": "./dist/components/table-row/table-row.css"
+    },
     "./tabs": {
       "types": "./dist/components/tabs/index.d.ts",
       "svelte": "./src/components/tabs/index.ts",
@@ -1491,6 +1725,9 @@
     "./tabs/variables": {
       "types": "./dist/components/tabs/tabs.variables.d.ts",
       "svelte": "./src/components/tabs/tabs.variables.ts"
+    },
+    "./tabs/styles": {
+      "default": "./dist/components/tabs/tabs.css"
     },
     "./tabs/examples": {
       "import": "./src/components/tabs/tabs.examples.json",
@@ -1510,6 +1747,9 @@
       "types": "./dist/components/textarea/textarea.variables.d.ts",
       "svelte": "./src/components/textarea/textarea.variables.ts"
     },
+    "./textarea/styles": {
+      "default": "./dist/components/textarea/textarea.css"
+    },
     "./textarea/examples": {
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
@@ -1527,6 +1767,9 @@
     "./toast-region/variables": {
       "types": "./dist/components/toast-region/toast-region.variables.d.ts",
       "svelte": "./src/components/toast-region/toast-region.variables.ts"
+    },
+    "./toast-region/styles": {
+      "default": "./dist/components/toast-region/toast-region.css"
     },
     "./toast-region/examples": {
       "import": "./src/components/toast-region/toast-region.examples.json",
@@ -1546,6 +1789,9 @@
       "types": "./dist/components/toggle/toggle.variables.d.ts",
       "svelte": "./src/components/toggle/toggle.variables.ts"
     },
+    "./toggle/styles": {
+      "default": "./dist/components/toggle/toggle.css"
+    },
     "./toggle/examples": {
       "import": "./src/components/toggle/toggle.examples.json",
       "default": "./src/components/toggle/toggle.examples.json"
@@ -1564,6 +1810,9 @@
       "types": "./dist/components/tooltip/tooltip.variables.d.ts",
       "svelte": "./src/components/tooltip/tooltip.variables.ts"
     },
+    "./tooltip/styles": {
+      "default": "./dist/components/tooltip/tooltip.css"
+    },
     "./tooltip/examples": {
       "import": "./src/components/tooltip/tooltip.examples.json",
       "default": "./src/components/tooltip/tooltip.examples.json"
@@ -1581,6 +1830,9 @@
     "./tree/variables": {
       "types": "./dist/components/tree/tree.variables.d.ts",
       "svelte": "./src/components/tree/tree.variables.ts"
+    },
+    "./tree/styles": {
+      "default": "./dist/components/tree/tree.css"
     },
     "./tree-item": {
       "types": "./dist/components/tree-item/index.d.ts",
@@ -1628,6 +1880,9 @@
       "types": "./dist/components/experimental/connection-indicator/connection-indicator.variables.d.ts",
       "svelte": "./src/components/experimental/connection-indicator/connection-indicator.variables.ts"
     },
+    "./experimental/connection-indicator/styles": {
+      "default": "./dist/components/experimental/connection-indicator/connection-indicator.css"
+    },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",
       "svelte": "./src/components/experimental/json-viewer/index.ts",
@@ -1641,6 +1896,9 @@
     "./experimental/json-viewer/variables": {
       "types": "./dist/components/experimental/json-viewer/json-viewer.variables.d.ts",
       "svelte": "./src/components/experimental/json-viewer/json-viewer.variables.ts"
+    },
+    "./experimental/json-viewer/styles": {
+      "default": "./dist/components/experimental/json-viewer/json-viewer.css"
     },
     "./experimental/message": {
       "types": "./dist/components/experimental/message/index.d.ts",
@@ -1656,6 +1914,9 @@
       "types": "./dist/components/experimental/message/message.variables.d.ts",
       "svelte": "./src/components/experimental/message/message.variables.ts"
     },
+    "./experimental/message/styles": {
+      "default": "./dist/components/experimental/message/message.css"
+    },
     "./experimental/timeline": {
       "types": "./dist/components/experimental/timeline/index.d.ts",
       "svelte": "./src/components/experimental/timeline/index.ts",
@@ -1670,6 +1931,9 @@
       "types": "./dist/components/experimental/timeline/timeline.variables.d.ts",
       "svelte": "./src/components/experimental/timeline/timeline.variables.ts"
     },
+    "./experimental/timeline/styles": {
+      "default": "./dist/components/experimental/timeline/timeline.css"
+    },
     "./experimental/timeline-item": {
       "types": "./dist/components/experimental/timeline-item/index.d.ts",
       "svelte": "./src/components/experimental/timeline-item/index.ts",
@@ -1683,6 +1947,9 @@
     "./experimental/timeline-item/variables": {
       "types": "./dist/components/experimental/timeline-item/timeline-item.variables.d.ts",
       "svelte": "./src/components/experimental/timeline-item/timeline-item.variables.ts"
+    },
+    "./experimental/timeline-item/styles": {
+      "default": "./dist/components/experimental/timeline-item/timeline-item.css"
     }
   },
   "main": "./dist/server/index.js",
@@ -1695,7 +1962,6 @@
     "src/components/**/*.ts",
     "!src/components/**/*.test.ts",
     "!src/components/**/*.spec.ts",
-    "!src/components/**/*.fixtures.ts",
     "src/components/**/*.svelte",
     "src/components/**/*.json",
     "src/components/**/*.md",
@@ -1703,42 +1969,30 @@
     "src/components/**/*.css",
     "src/_internal/**/*.ts",
     "!src/_internal/**/*.test.ts",
-    "src/schemas/**",
     "src/styles/**/*.css",
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
     "!src/utilities/**/*.test.ts",
-    "components.json",
-    "llms.txt",
     "README.md"
   ],
   "scripts": {
-    "agents:check": "bun run scripts/render-agents-md.ts --check",
-    "agents:generate": "bun run scripts/render-agents-md.ts",
     "build": "bun run scripts/build.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
     "components:fixture": "bun run scripts/run-consumer-fixture.ts",
     "components:generate": "bun run scripts/generate-component-artifacts.ts",
-    "constraints:check": "bun run scripts/generate-component-constraints.ts --check",
-    "constraints:generate": "bun run scripts/generate-component-constraints.ts",
-    "examples:check": "bun run scripts/generate-component-examples.ts --check",
-    "examples:generate": "bun run scripts/generate-component-examples.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
-    "manifest:check": "bun run scripts/generate-manifest.ts --check",
-    "manifest:generate": "bun run scripts/generate-manifest.ts",
     "prepack": "bun run build",
     "prepare": "cd ../.. && husky",
     "prepublishOnly": "bun run validate && bun run build",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --parallel=1",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --parallel=1 --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
-    "validate": "bun run lint && bun run typecheck && bun run test && bun run validate:workflow && bun run validate:resolver-matrix && bun run validate:consumer",
+    "validate": "bun run lint && bun run typecheck && bun run test && bun run validate:workflow && bun run validate:consumer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
-    "validate:resolver-matrix": "bun run scripts/validate-resolver-matrix.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },

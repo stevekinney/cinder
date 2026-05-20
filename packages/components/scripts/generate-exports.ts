@@ -1,10 +1,11 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes up to five subpaths:
+ * `src/components/`. Each component contributes up to six subpaths:
  *
  *   ./<name>             → component (types/svelte/node/default conditions)
  *   ./<name>/schema      → schema module (types + svelte only)
  *   ./<name>/variables   → variables module (types + svelte only)
+ *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css)
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
@@ -22,9 +23,15 @@
  *
  * Reserved (non-component) entries are preserved verbatim:
  *
- *   .              → root entry (also rewritten with the four-condition shape)
- *   ./styles       → public styles entry
- *   ./package.json → self-export, required for some resolvers
+ *   .                    → root entry (also rewritten with the four-condition shape)
+ *   ./package.json       → self-export, required for some resolvers
+ *   ./styles             → full-cascade aggregator (tokens + foundation + components + utilities)
+ *   ./styles/tokens      → token-layer-only aggregator
+ *   ./styles/foundation  → foundation-layer-only aggregator
+ *
+ * The per-component `/styles` exports emit layer-unwrapped CSS. Consumers using
+ * à la carte CSS must also import `cinder/styles/tokens` and
+ * `cinder/styles/foundation` to get tokens, resets, and layer assignments.
  *
  * If a newly-emitted subpath would collide with a non-generated reserved
  * entry, the generator aborts with a named error rather than silently
@@ -63,6 +70,8 @@ type JsonExportEntry = {
 };
 
 const STYLES_KEY = './styles';
+const STYLES_TOKENS_KEY = './styles/tokens';
+const STYLES_FOUNDATION_KEY = './styles/foundation';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
 
@@ -72,7 +81,13 @@ const PACKAGE_JSON_KEY = './package.json';
  * exports map keeps them and the generator never overwrites them with a
  * computed value.
  */
-const RESERVED_KEYS = new Set([ROOT_KEY, STYLES_KEY, PACKAGE_JSON_KEY]);
+const RESERVED_KEYS = new Set([
+  ROOT_KEY,
+  STYLES_KEY,
+  STYLES_TOKENS_KEY,
+  STYLES_FOUNDATION_KEY,
+  PACKAGE_JSON_KEY,
+]);
 
 /**
  * The exports map must never contain entries whose key contains a forbidden
@@ -148,7 +163,7 @@ export function computeExports(
   // Package-level manifest entry (always present).
   out['./manifest'] = manifestExport();
 
-  for (const { name, isExperimental } of components) {
+  for (const { name, isExperimental, hasCss } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
     const srcDir = isExperimental
       ? `./src/components/experimental/${name}`
@@ -183,6 +198,19 @@ export function computeExports(
       types: `${distDir}/${name}.variables.d.ts`,
       svelte: `${srcDir}/${name}.variables.ts`,
     });
+
+    // Per-component CSS sidecar — layer-unwrapped. Consumers using these
+    // à la carte must also import `cinder/styles/tokens` and
+    // `cinder/styles/foundation` to get tokens, resets, and layer assignments.
+    //
+    // Only emitted when the component ships a source CSS sidecar — emitting
+    // `/styles` for a component without CSS would publish a dead export
+    // pointing at a non-existent dist artifact.
+    if (hasCss) {
+      out[`${prefix}/styles`] = {
+        default: `${distDir}/${name}.css`,
+      };
+    }
 
     // JSON sidecar subpaths — emitted only when the file exists on disk.
     // Uses import+default conditions only (no svelte/types).
@@ -273,6 +301,12 @@ async function main(): Promise<void> {
     }
 
     if (!existing[STYLES_KEY]) issues.push(`Reserved export "${STYLES_KEY}" is missing`);
+    if (!existing[STYLES_TOKENS_KEY]) {
+      issues.push(`Reserved export "${STYLES_TOKENS_KEY}" is missing`);
+    }
+    if (!existing[STYLES_FOUNDATION_KEY]) {
+      issues.push(`Reserved export "${STYLES_FOUNDATION_KEY}" is missing`);
+    }
 
     if (existing[PACKAGE_JSON_KEY] !== './package.json') {
       issues.push(`Missing or stale self-export "${PACKAGE_JSON_KEY}"`);
@@ -323,6 +357,12 @@ async function main(): Promise<void> {
   next[ROOT_KEY] = rootExport;
   next[PACKAGE_JSON_KEY] = './package.json';
   if (packageJson.exports[STYLES_KEY]) next[STYLES_KEY] = packageJson.exports[STYLES_KEY];
+  if (packageJson.exports[STYLES_TOKENS_KEY]) {
+    next[STYLES_TOKENS_KEY] = packageJson.exports[STYLES_TOKENS_KEY];
+  }
+  if (packageJson.exports[STYLES_FOUNDATION_KEY]) {
+    next[STYLES_FOUNDATION_KEY] = packageJson.exports[STYLES_FOUNDATION_KEY];
+  }
 
   // Preserve legacy flat component subpaths whose component still exists as
   // a flat .svelte file (not yet migrated to a directory).
@@ -336,6 +376,7 @@ async function main(): Promise<void> {
     if (
       key.endsWith('/schema') ||
       key.endsWith('/variables') ||
+      key.endsWith('/styles') ||
       key.endsWith('/examples') ||
       key.endsWith('/constraints')
     )

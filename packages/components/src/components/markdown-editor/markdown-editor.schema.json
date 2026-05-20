@@ -49,6 +49,10 @@
     "placeholderDecoration": {
       "type": "object",
       "description": "Placeholder decoration configuration (DEP-583).\nWhen provided, decorates invalid {{…}} tokens with CSS class and data attributes."
+    },
+    "snapshotMode": {
+      "type": "boolean",
+      "description": "Snapshot mode for visual regression testing.\n\nWhen `true`:\n- Applies `caret-color: transparent` and `user-select: none` to the editor\n  root via a `data-snapshot-mode` attribute, producing a stable visual\n  state (no blinking cursor, no selection highlights).\n- Blurs any focused element inside the component on mount so the initial\n  screenshot does not capture a focused ring or active caret.\n\nThis is a purely visual / CSS concern. It does NOT affect editability,\nProseMirror state, or any prop controlled by `readonly` / `mode`."
     }
   },
   "additionalProperties": false,

@@ -29,6 +29,14 @@ export type ComponentDiscovery = {
   name: string;
   /** True when the component lives under `src/components/experimental/`. */
   isExperimental: boolean;
+  /**
+   * True when the component directory contains a source CSS sidecar
+   * (`<name>.css`). Drives whether `generate-exports.ts` emits a
+   * `./<name>/styles` subpath — components with no CSS sidecar would
+   * otherwise publish a dead export pointing at a non-existent
+   * `dist/components/<name>/<name>.css`.
+   */
+  hasCss: boolean;
 };
 
 /**
@@ -52,7 +60,8 @@ export async function discoverComponents(): Promise<ComponentDiscovery[]> {
         const directory = join(experimentalRoot, subEntry.name);
         if (!existsSync(join(directory, `${subEntry.name}.svelte`))) continue;
         if (!existsSync(join(directory, `${subEntry.name}.types.ts`))) continue;
-        result.push({ name: subEntry.name, isExperimental: true });
+        const hasCss = existsSync(join(directory, `${subEntry.name}.css`));
+        result.push({ name: subEntry.name, isExperimental: true, hasCss });
       }
       continue;
     }
@@ -60,7 +69,8 @@ export async function discoverComponents(): Promise<ComponentDiscovery[]> {
     const directory = join(COMPONENTS_ROOT, entry.name);
     if (!existsSync(join(directory, `${entry.name}.svelte`))) continue;
     if (!existsSync(join(directory, `${entry.name}.types.ts`))) continue;
-    result.push({ name: entry.name, isExperimental: false });
+    const hasCss = existsSync(join(directory, `${entry.name}.css`));
+    result.push({ name: entry.name, isExperimental: false, hasCss });
   }
   return result.toSorted((a, b) => {
     if (a.isExperimental !== b.isExperimental) return a.isExperimental ? 1 : -1;

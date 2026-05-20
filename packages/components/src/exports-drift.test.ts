@@ -85,8 +85,15 @@ describe('exports drift', () => {
 
     // Orphan entries — a key in package.json that doesn't match either a flat
     // component or a directory-shaped component.
+    const RESERVED = new Set([
+      '.',
+      './package.json',
+      './styles',
+      './styles/tokens',
+      './styles/foundation',
+    ]);
     for (const key of Object.keys(existing)) {
-      if (key === '.' || key === './styles' || key === './package.json') continue;
+      if (RESERVED.has(key)) continue;
       if (key in expected) continue;
       issues.push(
         `Orphan export "${key}" has no matching component — run bun run exports:generate`,
@@ -101,6 +108,8 @@ describe('exports drift', () => {
     const exports = packageJson.exports as Record<string, unknown>;
     expect(exports['.']).toBeDefined();
     expect(exports['./styles']).toBeDefined();
+    expect(exports['./styles/tokens']).toBeDefined();
+    expect(exports['./styles/foundation']).toBeDefined();
   });
 
   test('checked-in exports contain no forbidden keys', async () => {

@@ -57,7 +57,7 @@ describe('computeRootExport', () => {
 
 describe('computeExports', () => {
   it('emits the four-condition shape for component subpaths', () => {
-    const out = computeExports([{ name: 'button', isExperimental: false }]);
+    const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button']).toEqual({
       types: './dist/components/button/index.d.ts',
       svelte: './src/components/button/index.ts',
@@ -68,7 +68,7 @@ describe('computeExports', () => {
   });
 
   it('emits source+types only for /schema and /variables (no JS is built)', () => {
-    const out = computeExports([{ name: 'button', isExperimental: false }]);
+    const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
       svelte: './src/components/button/button.schema.ts',
@@ -80,7 +80,7 @@ describe('computeExports', () => {
   });
 
   it('routes experimental components through the experimental dist paths', () => {
-    const out = computeExports([{ name: 'lab', isExperimental: true }]);
+    const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: false }]);
     expect(out['./experimental/lab']).toEqual({
       types: './dist/components/experimental/lab/index.d.ts',
       svelte: './src/components/experimental/lab/index.ts',
