@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Dense list row with leading, title, description, meta, and trailing slots that may optionally render as an anchor.
+   * @tag list
+   * @tag row
+   * @useWhen Listing entities vertically with consistent leading icons or avatars and trailing actions.
+   * @useWhen Linking each row to a detail view by passing href.
+   * @avoidWhen Comparing tabular data across columns — use table instead.
+   * @avoidWhen Rendering cards in a responsive grid — use grid-list instead.
+   * @related grid-list-item, table-row, avatar
+   */
   export type { StackedListItemDensity, StackedListItemProps } from './stacked-list-item.types.ts';
 </script>
 

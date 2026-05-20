@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FormField, Input } from '../../../../components/src/index.ts';
-
+  import { FormField } from 'cinder/form-field';
+  import { Input } from 'cinder/input';
   let email = $state('not-an-email');
 </script>
 

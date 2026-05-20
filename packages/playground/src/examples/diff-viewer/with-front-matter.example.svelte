@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DiffViewer } from '../../../../components/src/index.ts';
-
+  import { DiffViewer } from 'cinder/diff-viewer';
   const original = `---
 title: Getting Started
 status: draft

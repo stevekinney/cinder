@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Input } from '../../../../components/src/index.ts';
-
+  import { Input } from 'cinder/input';
   let name = $state('');
 </script>
 

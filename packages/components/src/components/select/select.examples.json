@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "select",
+  "import": "cinder/select",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic select",
+      "description": "Native select with label and bound string value.",
+      "code": "<script lang=\"ts\">\n  import { Select } from 'cinder/select';\n  const options = [\n    { value: 'us', label: 'United States' },\n    { value: 'ca', label: 'Canada' },\n    { value: 'gb', label: 'United Kingdom' },\n    { value: 'au', label: 'Australia' },\n  ];\n\n  let country = $state(options[0]?.value ?? 'us');\n</script>\n\n<Select id=\"country\" bind:value={country} {options} label=\"Country\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {country}</p>\n"
+    },
+    {
+      "id": "disabled-option",
+      "title": "Select with disabled option",
+      "description": "Individual options can be marked disabled.",
+      "code": "<script lang=\"ts\">\n  import { Select } from 'cinder/select';\n  const options = [\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise (contact sales)', disabled: true },\n  ];\n\n  let plan = $state(options[0]?.value ?? 'free');\n</script>\n\n<Select id=\"plan\" bind:value={plan} {options} label=\"Plan\" />\n"
+    }
+  ]
+}

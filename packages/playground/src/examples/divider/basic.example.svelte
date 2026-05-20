@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Divider } from '../../../../components/src/index.ts';
+  import { Divider } from 'cinder/divider';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px;">

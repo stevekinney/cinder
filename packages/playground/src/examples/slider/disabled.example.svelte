@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Slider } from '../../../../components/src/index.ts';
+  import { Slider } from 'cinder/slider';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;">

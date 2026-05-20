@@ -1,0 +1,37 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "dropdown",
+  "import": "cinder/dropdown",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic dropdown",
+      "description": "A button trigger with a list of menu items.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<Dropdown id=\"dropdown-basic\">\n  <DropdownTrigger>Options</DropdownTrigger>\n  <DropdownMenu>\n    <DropdownItem>Edit</DropdownItem>\n    <DropdownItem>Duplicate</DropdownItem>\n    <DropdownItem variant=\"danger\">Delete</DropdownItem>\n  </DropdownMenu>\n</Dropdown>\n"
+    },
+    {
+      "id": "placement",
+      "title": "Placement",
+      "description": "bottom-start and bottom-end placement options.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Dropdown } from 'cinder/dropdown';\n  let openStart = $state(false);\n  let openEnd = $state(false);\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown bind:open={openStart} placement=\"bottom-start\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-start</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to left edge</div>\n  </Dropdown>\n\n  <Dropdown bind:open={openEnd} placement=\"bottom-end\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-end</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to right edge</div>\n  </Dropdown>\n</div>\n"
+    },
+    {
+      "id": "with-items",
+      "title": "With clickable items",
+      "description": "DropdownItem accepts onclick handlers and a danger variant for destructive actions.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n  let selected = $state('None');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <Dropdown id=\"dropdown-with-items\">\n    <DropdownTrigger>Document actions</DropdownTrigger>\n    <DropdownMenu>\n      <DropdownItem onclick={() => (selected = 'Copy link')}>Copy link</DropdownItem>\n      <DropdownItem onclick={() => (selected = 'Duplicate')}>Duplicate</DropdownItem>\n      <DropdownItem variant=\"danger\" onclick={() => (selected = 'Delete')}>Delete</DropdownItem>\n    </DropdownMenu>\n  </Dropdown>\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Selected: {selected}</p>\n</div>\n"
+    },
+    {
+      "id": "with-label",
+      "title": "With group labels",
+      "description": "DropdownLabel groups related menu actions without entering the tab order.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownLabel } from 'cinder/dropdown-label';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <DropdownTrigger>Grouped menu</DropdownTrigger>\n  <DropdownMenu>\n    <DropdownLabel>Document</DropdownLabel>\n    <DropdownItem>Rename</DropdownItem>\n    <DropdownItem>Move</DropdownItem>\n    <DropdownLabel>Sharing</DropdownLabel>\n    <DropdownItem>Copy link</DropdownItem>\n    <DropdownItem>Invite people</DropdownItem>\n  </DropdownMenu>\n</Dropdown>\n"
+    },
+    {
+      "id": "with-separator",
+      "title": "With separators",
+      "description": "DropdownSeparator divides menu item groups; useful before destructive actions.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownSeparator } from 'cinder/dropdown-separator';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<Dropdown id=\"dropdown-with-separator\">\n  <DropdownTrigger>More actions</DropdownTrigger>\n  <DropdownMenu>\n    <DropdownItem>Copy link</DropdownItem>\n    <DropdownItem>Duplicate</DropdownItem>\n    <DropdownSeparator />\n    <DropdownItem variant=\"danger\">Delete</DropdownItem>\n  </DropdownMenu>\n</Dropdown>\n"
+    }
+  ]
+}

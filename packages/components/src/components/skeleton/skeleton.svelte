@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category feedback
+   * @status stable
+   * @purpose Decorative placeholder block that reserves layout space while real content loads.
+   * @tag feedback
+   * @tag loading
+   * @useWhen Reserving the rough shape of incoming content during an initial fetch to avoid layout shift.
+   * @useWhen Indicating progressive load of cards, rows, or media tiles where the final shape is known.
+   * @avoidWhen Indicating indeterminate background work without a known target shape — use spinner.
+   * @avoidWhen Communicating that a view has no data at all — use empty-state.
+   * @related spinner, empty-state, progress
+   */
   export type { SkeletonProps } from './skeleton.types.ts';
 </script>
 

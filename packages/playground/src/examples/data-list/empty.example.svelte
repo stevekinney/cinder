@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DataList } from '../../../../components/src/index.ts';
+  import { DataList } from 'cinder/data-list';
 </script>
 
 <DataList items={[]}>

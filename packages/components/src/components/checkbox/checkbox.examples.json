@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "checkbox",
+  "import": "cinder/checkbox",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic checkbox",
+      "description": "Unchecked and checked variants with associated labels.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from 'cinder/checkbox';\n  let acceptTerms = $state(false);\n  let subscribed = $state(true);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"checkbox-terms\" label=\"I accept the terms of service\" bind:checked={acceptTerms} />\n  <Checkbox\n    id=\"checkbox-newsletter\"\n    label=\"Subscribe to the newsletter\"\n    bind:checked={subscribed}\n  />\n</div>\n"
+    },
+    {
+      "id": "disabled",
+      "title": "Disabled checkbox",
+      "description": "Disabled state for both unchecked and checked checkboxes.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from 'cinder/checkbox';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"checkbox-disabled-off\" label=\"Disabled, unchecked\" disabled />\n  <Checkbox id=\"checkbox-disabled-on\" label=\"Disabled, checked\" disabled checked />\n</div>\n"
+    },
+    {
+      "id": "indeterminate",
+      "title": "Indeterminate checkbox",
+      "description": "A parent checkbox driven by its children. Indeterminate clears once the user toggles checked.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from 'cinder/checkbox';\n  let red = $state(true);\n  let green = $state(false);\n  let blue = $state(true);\n\n  let allChecked = $derived(red && green && blue);\n  let someChecked = $derived(red || green || blue);\n  let parentIndeterminate = $derived(someChecked && !allChecked);\n\n  function toggleAll(checked: boolean) {\n    red = checked;\n    green = checked;\n    blue = checked;\n  }\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Checkbox\n    id=\"checkbox-parent\"\n    label=\"All colors\"\n    checked={allChecked}\n    indeterminate={parentIndeterminate}\n    onchange={(event) => toggleAll((event.currentTarget as HTMLInputElement).checked)}\n  />\n  <div style=\"padding-inline-start: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem;\">\n    <Checkbox id=\"checkbox-red\" label=\"Red\" bind:checked={red} />\n    <Checkbox id=\"checkbox-green\" label=\"Green\" bind:checked={green} />\n    <Checkbox id=\"checkbox-blue\" label=\"Blue\" bind:checked={blue} />\n  </div>\n</div>\n"
+    },
+    {
+      "id": "with-error",
+      "title": "Checkbox with error",
+      "description": "Validation error message surfaces via aria-invalid and aria-describedby.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Checkbox } from 'cinder/checkbox';\n  let accepted = $state(false);\n  let submitted = $state(false);\n  const showError = $derived(submitted && !accepted);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;\">\n  {#if showError}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n      error=\"You must accept the terms to continue.\"\n    />\n  {:else}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n    />\n  {/if}\n  <Button variant=\"secondary\" onclick={() => (submitted = true)}>Try to submit</Button>\n</div>\n"
+    }
+  ]
+}

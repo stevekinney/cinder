@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { ReviewEditor } from '../../../../components/src/index.ts';
-
+  import { ReviewEditor } from 'cinder/review-editor';
   const original = `# Release Plan
 
 The first release includes a dashboard, export actions, and inline review.

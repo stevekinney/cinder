@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Button-shaped trigger that opens a dropdown menu, optionally rendering a trailing disclosure caret.
+   * @tag form
+   * @tag trigger
+   * @useWhen Opening a dropdown-menu from a button styled to match cinder's form controls.
+   * @useWhen Pairing with dropdown to expose a custom menu from a labelled affordance.
+   * @avoidWhen Triggering a discrete action with no menu — use button instead.
+   * @related dropdown, dropdown-menu
+   */
   export type { DropdownTriggerProps } from './dropdown-trigger.types.ts';
 </script>
 

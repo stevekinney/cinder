@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category layout
+   * @status stable
+   * @purpose Opinionated page scaffold combining a breadcrumb row, title, optional avatar and metadata, primary actions, and a body slot.
+   * @tag layout
+   * @tag scaffold
+   * @useWhen Standing up a record or detail page that needs the standard cinder header treatment.
+   * @useWhen Keeping page titles, actions, and breadcrumbs visually consistent across an application.
+   * @avoidWhen Building an unstructured marketing or landing page — compose surface and primitives directly.
+   * @avoidWhen Rendering inside a sidebar or modal — its spacing assumes a full page width.
+   * @related surface, sidebar
+   */
   export type { PageLayoutProps, PageLayoutTitle } from './page-layout.types.ts';
 </script>
 

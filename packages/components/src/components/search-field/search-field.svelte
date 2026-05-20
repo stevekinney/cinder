@@ -1,4 +1,16 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose Search input with a leading icon, automatic clear button, and optional keyboard shortcut hint badge.
+   * @tag form
+   * @tag search
+   * @useWhen Capturing a free-text query that filters or queries a larger dataset.
+   * @useWhen Surfacing a global search affordance with a visible keyboard shortcut.
+   * @avoidWhen Selecting from a constrained list of known options — use combobox instead.
+   * @related input, combobox
+   */
   export type { SearchFieldProps } from './search-field.types.ts';
 </script>
 

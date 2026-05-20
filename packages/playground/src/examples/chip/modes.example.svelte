@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Chip } from '../../../../components/src/index.ts';
-
+  import { Chip } from 'cinder/chip';
   let pressed = $state(false);
   let tags = $state(['JavaScript', 'TypeScript', 'Svelte']);
 </script>

@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Slider } from '../../../../components/src/index.ts';
-
+  import { Slider } from 'cinder/slider';
   let value = $state(50);
 </script>
 

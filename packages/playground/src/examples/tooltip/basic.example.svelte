@@ -4,7 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, Tooltip } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { Tooltip } from 'cinder/tooltip';
 </script>
 
 <Tooltip text="This is a helpful explanation.">

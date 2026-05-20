@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, Dropdown } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Dropdown } from 'cinder/dropdown';
   let openStart = $state(false);
   let openEnd = $state(false);
 </script>

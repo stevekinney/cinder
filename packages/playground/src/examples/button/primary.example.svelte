@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Button } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
 </script>
 
 <Button label="Click me" />

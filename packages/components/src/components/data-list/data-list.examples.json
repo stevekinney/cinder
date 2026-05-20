@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "data-list",
+  "import": "cinder/data-list",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic data list",
+      "description": "Renders each item using the parameterized children snippet.",
+      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  const users = [\n    { name: 'Alice Chen', role: 'Engineer' },\n    { name: 'Bob Osei', role: 'Designer' },\n    { name: 'Carol Mwangi', role: 'Product' },\n  ];\n</script>\n\n<DataList items={users}>\n  {#snippet children(user)}\n    <div style=\"display: flex; justify-content: space-between; padding: 0.5rem 0;\">\n      <strong>{user.name}</strong>\n      <span style=\"color: var(--cinder-text-muted);\">{user.role}</span>\n    </div>\n  {/snippet}\n</DataList>\n"
+    },
+    {
+      "id": "empty",
+      "title": "Empty state fallback",
+      "description": "The empty snippet renders when items is an empty array.",
+      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n</script>\n\n<DataList items={[]}>\n  {#snippet children(item)}\n    <span>{item}</span>\n  {/snippet}\n  {#snippet empty()}\n    <p style=\"color: var(--cinder-text-muted); font-style: italic;\">No items to display.</p>\n  {/snippet}\n</DataList>\n"
+    }
+  ]
+}

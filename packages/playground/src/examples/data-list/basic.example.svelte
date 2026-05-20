@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DataList } from '../../../../components/src/index.ts';
-
+  import { DataList } from 'cinder/data-list';
   const users = [
     { name: 'Alice Chen', role: 'Engineer' },
     { name: 'Bob Osei', role: 'Designer' },

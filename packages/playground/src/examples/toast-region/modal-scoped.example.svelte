@@ -5,8 +5,10 @@
 </script>
 
 <script lang="ts">
-  import { Button, Modal, ToastRegion, useToast } from '../../../../components/src/index.ts';
-
+  import { useToast } from 'cinder';
+  import { Button } from 'cinder/button';
+  import { Modal } from 'cinder/modal';
+  import { ToastRegion } from 'cinder/toast-region';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
 </script>

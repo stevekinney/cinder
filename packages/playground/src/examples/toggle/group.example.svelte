@@ -5,7 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FormSection, Toggle } from '../../../../components/src/index.ts';
+  import { FormSection } from 'cinder/form-section';
+  import { Toggle } from 'cinder/toggle';
 
   let emailNotifications = $state(true);
   let darkMode = $state(false);

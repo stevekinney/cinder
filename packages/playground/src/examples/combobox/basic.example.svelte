@@ -5,8 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Combobox } from '../../../../components/src/index.ts';
-
+  import { Combobox } from 'cinder/combobox';
   const fruits = [
     { value: 'apple', label: 'Apple' },
     { value: 'apricot', label: 'Apricot' },

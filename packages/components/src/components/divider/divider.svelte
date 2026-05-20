@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category layout
+   * @status stable
+   * @purpose Thin decorative or semantic separator between content regions, with optional vertical orientation and tonal variants.
+   * @tag layout
+   * @tag separator
+   * @useWhen Visually separating sections of a card, list, or toolbar without adding heading-level structure.
+   * @useWhen Splitting a row of inline controls (e.g. a button-group toolbar) with a vertical rule.
+   * @avoidWhen The split between sections deserves a heading — use section-heading instead.
+   * @avoidWhen Wrapping the entire viewport edge — use surface or page-layout instead.
+   * @related surface, section-heading
+   */
   export type { DividerOrientation, DividerProps, DividerTone } from './divider.types.ts';
 </script>
 

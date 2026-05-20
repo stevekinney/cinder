@@ -5,14 +5,12 @@
 </script>
 
 <script lang="ts">
-  import {
-    Button,
-    ButtonGroup,
-    Dropdown,
-    DropdownItem,
-    DropdownMenu,
-    DropdownTrigger,
-  } from '../../../../components/src/index.ts';
+  import { Button } from 'cinder/button';
+  import { ButtonGroup } from 'cinder/button-group';
+  import { Dropdown } from 'cinder/dropdown';
+  import { DropdownItem } from 'cinder/dropdown-item';
+  import { DropdownMenu } from 'cinder/dropdown-menu';
+  import { DropdownTrigger } from 'cinder/dropdown-trigger';
 </script>
 
 <ButtonGroup label="Save options">

@@ -1,15 +1,21 @@
 /**
  * Generates subpath exports for every directory-shaped component under
- * `src/components/`. Each component contributes three subpaths:
+ * `src/components/`. Each component contributes up to five subpaths:
  *
- *   ./<name>            → component (svelte/types conditions)
- *   ./<name>/schema     → schema module (svelte/types conditions)
- *   ./<name>/variables  → variables module (svelte/types conditions)
+ *   ./<name>             → component (svelte/types conditions)
+ *   ./<name>/schema      → schema module (svelte/types conditions)
+ *   ./<name>/variables   → variables module (svelte/types conditions)
+ *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
+ *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
  * Experimental components export under `./experimental/<name>` etc.
  *
- * Reserved (non-component) entries are preserved verbatim from a hard-coded
- * allowlist snapshotted from today's manifest:
+ * Additionally, a package-level `./manifest` entry is emitted pointing at
+ * `./components.json` with `import`/`default` conditions only (no `svelte`
+ * or `types` — JSON isn't Svelte source and TS resolves JSON via
+ * `resolveJsonModule`).
+ *
+ * Reserved (non-component) entries are preserved verbatim:
  *
  *   .          → root entry
  *   ./styles   → public styles entry
@@ -26,21 +32,57 @@
  * land the remaining directory-shaped components.
  */
 
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 
+export type { ComponentDiscovery } from './lib/discover-components.ts';
+
+/**
+ * Back-compat alias used by AI-agent-legibility generators that were authored
+ * before `discoverComponents` was extracted to `lib/`. New callers should
+ * import directly from `./lib/discover-components.ts`.
+ */
+export const discoverDirectoryComponents = discoverComponents;
+
 export type ExportEntry = {
   svelte?: string;
   types?: string;
+  import?: string;
   default?: string;
   node?: string;
 };
 
+/** JSON-only export entry: no `svelte` or `types` conditions. */
+type JsonExportEntry = {
+  import: string;
+  default: string;
+};
+
 const RESERVED_KEYS = new Set(['.', './styles']);
 
-export function computeExports(components: ComponentDiscovery[]): Record<string, ExportEntry> {
-  const out: Record<string, ExportEntry> = {};
+/** Default package root used when `computeExports` is called without one. */
+const DEFAULT_PACKAGE_ROOT = join(import.meta.dir, '..');
+
+/** Emit the `./manifest` JSON entry pointing at `./components.json`. */
+function manifestExport(): JsonExportEntry {
+  return { import: './components.json', default: './components.json' };
+}
+
+/** Build a JSON-only export entry for a per-component sidecar file. */
+function jsonSidecarExport(filePath: string): JsonExportEntry {
+  return { import: filePath, default: filePath };
+}
+
+export function computeExports(
+  components: ComponentDiscovery[],
+  packageRoot: string = DEFAULT_PACKAGE_ROOT,
+): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+
+  // Package-level manifest entry (always present).
+  out['./manifest'] = manifestExport();
 
   for (const { name, isExperimental } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
@@ -69,13 +111,39 @@ export function computeExports(components: ComponentDiscovery[]): Record<string,
       svelte: `${srcDir}/${name}.variables.ts`,
       types: `${distDir}/${name}.variables.d.ts`,
     };
+
+    // JSON sidecar subpaths — emitted only when the file exists on disk.
+    // Uses import+default conditions only (no svelte/types).
+    const examplesJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.examples.json`,
+    );
+    if (existsSync(examplesJsonPath)) {
+      const relPath = `${srcDir}/${name}.examples.json`;
+      out[`${prefix}/examples`] = jsonSidecarExport(relPath);
+    }
+
+    const constraintsJsonPath = join(
+      packageRoot,
+      'src',
+      'components',
+      ...(isExperimental ? ['experimental', name] : [name]),
+      `${name}.constraints.json`,
+    );
+    if (existsSync(constraintsJsonPath)) {
+      const relPath = `${srcDir}/${name}.constraints.json`;
+      out[`${prefix}/constraints`] = jsonSidecarExport(relPath);
+    }
   }
 
   return out;
 }
 
 interface PackageJson {
-  exports: Record<string, ExportEntry>;
+  exports: Record<string, ExportEntry | JsonExportEntry>;
   [key: string]: unknown;
 }
 
@@ -139,7 +207,7 @@ async function main(): Promise<void> {
   // Generate mode: preserve reserved entries, replace computed entries,
   // preserve any flat (legacy) component entries that have not yet been
   // migrated. This is the partial-migration phase.
-  const next: Record<string, ExportEntry> = {};
+  const next: Record<string, ExportEntry | JsonExportEntry> = {};
   for (const key of RESERVED_KEYS) {
     if (packageJson.exports[key]) next[key] = packageJson.exports[key];
   }
@@ -152,7 +220,14 @@ async function main(): Promise<void> {
   for (const [key, entry] of Object.entries(packageJson.exports)) {
     if (RESERVED_KEYS.has(key)) continue;
     if (migratedNames.has(key)) continue;
-    if (key.endsWith('/schema') || key.endsWith('/variables')) continue;
+    if (
+      key.endsWith('/schema') ||
+      key.endsWith('/variables') ||
+      key.endsWith('/examples') ||
+      key.endsWith('/constraints')
+    )
+      continue;
+    if (key === './manifest') continue;
     const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
     if (flatPattern.test(key)) next[key] = entry;
   }

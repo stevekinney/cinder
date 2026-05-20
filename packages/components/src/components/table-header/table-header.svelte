@@ -1,4 +1,15 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Header section of a table that groups column-header rows and exposes selection state to its descendants.
+   * @tag table
+   * @tag section
+   * @useWhen Wrapping the column-header row that labels each column of a table.
+   * @avoidWhen Wrapping body data rows — use table-body instead.
+   * @related table, table-header-cell
+   */
   export type { TableHeaderProps } from './table-header.types.ts';
 </script>
 

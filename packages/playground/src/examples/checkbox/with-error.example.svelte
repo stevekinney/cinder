@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button, Checkbox } from '../../../../components/src/index.ts';
-
+  import { Button } from 'cinder/button';
+  import { Checkbox } from 'cinder/checkbox';
   let accepted = $state(false);
   let submitted = $state(false);
   const showError = $derived(submitted && !accepted);

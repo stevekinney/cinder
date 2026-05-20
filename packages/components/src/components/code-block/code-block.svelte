@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.
+   * @tag code
+   * @tag snippet
+   * @useWhen Displaying a multi-line code sample or terminal transcript inside documentation or chat.
+   * @useWhen Letting the reader copy a snippet to the clipboard via the copyable prop.
+   * @avoidWhen Annotating a single inline keystroke or shortcut — use kbd instead.
+   * @avoidWhen Rendering rich prose that happens to include code — embed it in markdown instead.
+   * @related kbd, copy-button
+   */
   export type { CodeBlockProps } from './code-block.types.ts';
 </script>
 

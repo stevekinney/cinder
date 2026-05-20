@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Responsive image wrapper that handles aspect ratio, lazy loading, placeholder, and a fallback for load failures.
+   * @tag image
+   * @tag media
+   * @useWhen Rendering content imagery with a consistent ratio and lazy-loading behavior.
+   * @useWhen Supplying a placeholder while loading and a fallback when the source errors.
+   * @avoidWhen Representing a person or account — use avatar instead.
+   * @avoidWhen Rendering a decorative icon — use an icon component instead.
+   * @related avatar
+   */
   export type { ImageProps } from './image.types.ts';
 </script>
 

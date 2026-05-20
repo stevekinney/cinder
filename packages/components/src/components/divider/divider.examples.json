@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "divider",
+  "import": "cinder/divider",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic divider",
+      "description": "Default horizontal rule, subtle tone.",
+      "code": "<script lang=\"ts\">\n  import { Divider } from 'cinder/divider';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 12px; padding: 16px;\">\n  <span>Section A</span>\n  <Divider />\n  <span>Section B</span>\n</div>\n"
+    },
+    {
+      "id": "inset",
+      "title": "Inset divider",
+      "description": "Horizontal rule shortened by --cinder-space-2 on each side.",
+      "code": "<script lang=\"ts\">\n  import { Divider } from 'cinder/divider';\n</script>\n\n<div\n  style=\"display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md);\"\n>\n  <span>Item one</span>\n  <Divider inset />\n  <span>Item two</span>\n  <Divider inset />\n  <span>Item three</span>\n</div>\n"
+    },
+    {
+      "id": "vertical",
+      "title": "Vertical divider",
+      "description": "Vertical separator between toolbar groups in a flex row.",
+      "code": "<script lang=\"ts\">\n  import { Divider } from 'cinder/divider';\n</script>\n\n<div\n  style=\"display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md);\"\n>\n  <span>Bold</span>\n  <span>Italic</span>\n  <Divider orientation=\"vertical\" />\n  <span>Insert link</span>\n  <span>Insert image</span>\n  <Divider orientation=\"vertical\" />\n  <span>Preview</span>\n</div>\n"
+    }
+  ]
+}

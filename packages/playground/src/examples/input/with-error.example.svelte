@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Input } from '../../../../components/src/index.ts';
-
+  import { Input } from 'cinder/input';
   let email = $state('not-an-email');
   const hasError = $derived(!email.includes('@'));
 </script>

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "modal",
+  "import": "cinder/modal",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic modal",
+      "description": "A dialog opened by a button; Escape key closes it.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Modal } from 'cinder/modal';\n  let open = $state(false);\n  let triggerRef: HTMLElement | null = $state(null);\n</script>\n\n<Button\n  label=\"Open modal\"\n  onclick={(event) => {\n    triggerRef = event.currentTarget;\n    open = true;\n  }}\n/>\n\n<Modal bind:open title=\"Confirm action\" {triggerRef}>\n  <p>Are you sure you want to proceed? This action cannot be undone.</p>\n  {#snippet footer()}\n    <div style=\"display: flex; gap: 0.5rem; justify-content: flex-end;\">\n      <Button variant=\"secondary\" label=\"Cancel\" onclick={() => (open = false)} />\n      <Button variant=\"danger\" label=\"Confirm\" onclick={() => (open = false)} />\n    </div>\n  {/snippet}\n</Modal>\n"
+    },
+    {
+      "id": "with-form",
+      "title": "Modal with form",
+      "description": "A modal whose first input carries autofocus; the native dialog focuses it on open.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Input } from 'cinder/input';\n  import { Modal } from 'cinder/modal';\n  let open = $state(false);\n  let name = $state('');\n  let triggerRef: HTMLElement | null = $state(null);\n</script>\n\n<Button\n  label=\"Rename item\"\n  onclick={(event) => {\n    triggerRef = event.currentTarget;\n    open = true;\n  }}\n/>\n\n<Modal bind:open title=\"Rename item\" {triggerRef}>\n  <Input id=\"modal-name\" bind:value={name} label=\"New name\" placeholder=\"Enter a name…\" autofocus />\n  {#snippet footer()}\n    <div style=\"display: flex; gap: 0.5rem; justify-content: flex-end;\">\n      <Button variant=\"secondary\" label=\"Cancel\" onclick={() => (open = false)} />\n      <Button variant=\"primary\" label=\"Save\" onclick={() => (open = false)} />\n    </div>\n  {/snippet}\n</Modal>\n"
+    }
+  ]
+}

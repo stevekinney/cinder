@@ -1,4 +1,18 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category domain
+   * @status domain-suite
+   * @purpose Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, toolbar, and mark or block introspection helpers.
+   * @tag markdown
+   * @tag editor
+   * @tag domain-suite
+   * @useWhen Composing or editing Markdown documents and wanting the bundled toolbar, link-aware selection, and source or WYSIWYG mode toggle.
+   * @useWhen Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite.
+   * @avoidWhen Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle.
+   * @avoidWhen The surface needs inline review threads on top of the editor — use review-editor for that composition.
+   * @related review-editor, code-block
+   */
   export type {
     EditorHandle,
     EditorMode,

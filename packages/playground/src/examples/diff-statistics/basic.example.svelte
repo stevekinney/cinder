@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DiffStatistics } from '../../../../components/src/index.ts';
+  import { DiffStatistics } from 'cinder/diff-statistics';
 </script>
 
 <div style="display: grid; gap: 0.75rem;">

@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Composite root that coordinates a stack of collapsible accordion-item panels with single or multiple expansion.
+   * @tag disclosure
+   * @tag collapsible
+   * @useWhen Progressively disclosing several sections of content that share a parent heading.
+   * @useWhen Letting the consumer expand one or multiple panels at once via the multiple prop.
+   * @avoidWhen Switching between mutually exclusive views of the same region — use tabs instead.
+   * @avoidWhen Hiding a single optional region — use a plain disclosure or details element.
+   * @related accordion-item, tabs, tree
+   */
   export { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';
   export type { AccordionContext, AccordionProps } from './accordion.types.ts';
 </script>

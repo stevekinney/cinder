@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "cinder component manifest",
+  "description": "Machine-readable index of every public component shipped by the cinder package. Agents fetch this file first to discover available components, then follow artifact subpath pointers.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "manifestVersion",
+    "package",
+    "categories",
+    "statusLevels",
+    "overlapFamilies",
+    "components"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Relative path to the JSON Schema that validates this file."
+    },
+    "manifestVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version sentinel. Always 1 for this format."
+    },
+    "package": {
+      "type": "object",
+      "description": "Package-level metadata describing the library and its conventions.",
+      "required": [
+        "name",
+        "version",
+        "framework",
+        "frameworkVersionRange",
+        "classPrefix",
+        "cssVarPrefix",
+        "tokenNamespaces",
+        "stylesEntry",
+        "schemaDialect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The npm package name.",
+          "examples": ["cinder"]
+        },
+        "version": {
+          "type": "string",
+          "description": "The npm package version (semver string).",
+          "examples": ["0.0.1"]
+        },
+        "framework": {
+          "type": "string",
+          "const": "svelte",
+          "description": "The UI framework this package targets."
+        },
+        "frameworkVersionRange": {
+          "type": "string",
+          "description": "The peer-dependency range for the UI framework.",
+          "examples": [">=5.36"]
+        },
+        "classPrefix": {
+          "type": "string",
+          "description": "CSS class name prefix applied to all generated class names.",
+          "examples": ["cinder-"]
+        },
+        "cssVarPrefix": {
+          "type": "string",
+          "description": "Prefix for all CSS custom properties exposed by this package.",
+          "examples": ["--cinder-"]
+        },
+        "tokenNamespaces": {
+          "type": "array",
+          "description": "Design-token namespaces this package defines CSS custom properties for.",
+          "items": { "type": "string" },
+          "examples": [["color", "space", "radius", "ring", "type", "motion", "shadow"]]
+        },
+        "stylesEntry": {
+          "type": "string",
+          "description": "The import specifier consumers must import to load the global stylesheet.",
+          "examples": ["cinder/styles"]
+        },
+        "schemaDialect": {
+          "type": "string",
+          "description": "The JSON Schema dialect URI used by per-component schema files.",
+          "examples": ["https://json-schema.org/draft/2020-12/schema"]
+        }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "description": "Closed set of component categories. Keys are kebab-case category identifiers.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Human-readable category name for display."
+          },
+          "description": {
+            "type": "string",
+            "description": "One-sentence description of what components in this category do."
+          }
+        }
+      }
+    },
+    "statusLevels": {
+      "type": "object",
+      "description": "Closed set of component maturity statuses. Keys are status identifiers; values are human-readable descriptions.",
+      "additionalProperties": { "type": "string" }
+    },
+    "overlapFamilies": {
+      "type": "object",
+      "description": "Named groupings of components that serve overlapping purposes. Use these to decide between similar components. Keys are family names; values are arrays of kebab-case component ids.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 2
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "Ordered list of every public component. Stable components appear first, then experimental, each sub-group sorted alphabetically by id.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "import",
+          "exportName",
+          "category",
+          "status",
+          "purpose",
+          "tags",
+          "useWhen",
+          "avoidWhen",
+          "related",
+          "hasConstraints",
+          "hasExamples",
+          "artifacts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "PascalCase component name for use in prose and documentation.",
+            "examples": ["Button"]
+          },
+          "id": {
+            "type": "string",
+            "description": "Kebab-case canonical identifier. Used in cross-references, artifact file names, and URL subpaths.",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "examples": ["button", "button-group"]
+          },
+          "import": {
+            "type": "string",
+            "description": "The import specifier consumers use to import this component. E.g. 'cinder/button' or 'cinder/experimental/connection-indicator'.",
+            "examples": ["cinder/button", "cinder/experimental/connection-indicator"]
+          },
+          "exportName": {
+            "type": "string",
+            "description": "The PascalCase named export that this component ships under.",
+            "examples": ["Button", "ButtonGroup"]
+          },
+          "category": {
+            "type": "string",
+            "description": "Category identifier from the closed set defined in the 'categories' field.",
+            "examples": ["action", "overlay", "form"]
+          },
+          "status": {
+            "type": "string",
+            "description": "Maturity status from the closed set defined in 'statusLevels'.",
+            "examples": ["stable", "beta", "alpha", "domain-suite"]
+          },
+          "purpose": {
+            "type": "string",
+            "description": "One-sentence description of what this component is for. 1–200 characters.",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "tags": {
+            "type": "array",
+            "description": "Free-form classification tags for search and filtering.",
+            "items": { "type": "string" }
+          },
+          "useWhen": {
+            "type": "array",
+            "description": "Guidance on when to reach for this component instead of a similar alternative.",
+            "items": { "type": "string", "maxLength": 140 }
+          },
+          "avoidWhen": {
+            "type": "array",
+            "description": "Guidance on when NOT to use this component and what to reach for instead.",
+            "items": { "type": "string", "maxLength": 140 }
+          },
+          "related": {
+            "type": "array",
+            "description": "Kebab-case ids of components that are frequently used alongside this one or serve related purposes.",
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+          },
+          "hasConstraints": {
+            "type": "boolean",
+            "description": "True when this component ships a constraints sidecar (cinder/{id}/constraints) encoding discriminated-union usage rules."
+          },
+          "hasExamples": {
+            "type": "boolean",
+            "description": "True when this component ships an examples sidecar (cinder/{id}/examples) with canonical code samples."
+          },
+          "artifacts": {
+            "type": "object",
+            "description": "Subpath import specifiers for the machine-readable artifacts this component ships.",
+            "required": ["schema", "variables"],
+            "additionalProperties": false,
+            "properties": {
+              "schema": {
+                "type": "string",
+                "description": "Import specifier for the JSON Schema describing this component's props.",
+                "examples": ["cinder/button/schema"]
+              },
+              "variables": {
+                "type": "string",
+                "description": "Import specifier for the CSS custom property definitions for this component.",
+                "examples": ["cinder/button/variables"]
+              },
+              "examples": {
+                "type": "string",
+                "description": "Import specifier for the examples sidecar. Present only when hasExamples is true.",
+                "examples": ["cinder/button/examples"]
+              },
+              "constraints": {
+                "type": "string",
+                "description": "Import specifier for the constraints sidecar. Present only when hasConstraints is true.",
+                "examples": ["cinder/button/constraints"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

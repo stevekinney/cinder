@@ -1,4 +1,17 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category overlay
+   * @status beta
+   * @purpose Floating toolbar anchored to a text selection that exposes a comment-on-selection action with an inline composer.
+   * @tag overlay
+   * @tag selection
+   * @useWhen Letting readers annotate or comment on a highlighted range of text in a document or article surface.
+   * @useWhen Surfacing selection-scoped actions such as quote, share, or comment near the user's pointer.
+   * @avoidWhen Anchoring generic non-selection content to a trigger — use popover.
+   * @avoidWhen Building a general-purpose floating toolbar unrelated to text selection — compose a popover with custom controls.
+   * @related popover
+   */
   export type {
     SelectionPopoverPosition,
     SelectionPopoverProps,
