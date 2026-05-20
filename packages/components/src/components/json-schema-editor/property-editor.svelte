@@ -89,7 +89,7 @@
   import Button from '../button/button.svelte';
   import Checkbox from '../checkbox.svelte';
   import Input from '../input.svelte';
-  import Tooltip from '../tooltip.svelte';
+  import Tooltip from '../tooltip/tooltip.svelte';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import type { JsonSchemaObject } from './json-schema-editor-types.ts';

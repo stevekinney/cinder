@@ -38,7 +38,7 @@
 </script>
 
 <script lang="ts">
-  import CopyButton from './copy-button.svelte';
+  import CopyButton from './copy-button/copy-button.svelte';
   import { cn } from '../utilities/class-names.ts';
 
   let {

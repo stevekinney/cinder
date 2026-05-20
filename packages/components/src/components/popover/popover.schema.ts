@@ -1,0 +1,75 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    open: {
+      type: 'boolean',
+      description: 'Open state. Bindable. Default `false`.',
+    },
+    placement: {
+      enum: [
+        'top',
+        'bottom',
+        'left',
+        'right',
+        'top-start',
+        'top-end',
+        'bottom-start',
+        'bottom-end',
+      ],
+      description: "Anchor placement. Default `'bottom-start'`.",
+    },
+    offset: {
+      type: 'number',
+      description: 'Distance in px between trigger and panel. Default `8`.',
+    },
+    showArrow: {
+      type: 'boolean',
+      description: 'Render a directional arrow on the panel. Default `false`.',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible name. Sets `aria-label` when `ariaLabelledby` is not supplied.',
+    },
+    ariaLabelledby: {
+      type: 'string',
+      description: 'Id of an element labelling the panel. Wins over `label`.',
+    },
+    triggerRef: {
+      anyOf: [
+        {
+          type: 'object',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description: 'Explicit anchor element. Wins over the snippet-resolved focusable.',
+    },
+    role: {
+      enum: ['dialog', 'group', 'listbox'],
+      description: "ARIA role for the panel. Default `'dialog'`.",
+    },
+    class: {
+      type: 'string',
+      description: 'Extra class merged onto `.cinder-popover`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'trigger',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

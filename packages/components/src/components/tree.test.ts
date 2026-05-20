@@ -9,7 +9,7 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Tree } = await import('./tree.svelte');
-const { default: TreeItem } = await import('./tree-item.svelte');
+const { default: TreeItem } = await import('./tree-item/tree-item.svelte');
 const { default: TreeTestHarness } = await import('./_tree-test-harness.svelte');
 
 afterEach(() => cleanup());

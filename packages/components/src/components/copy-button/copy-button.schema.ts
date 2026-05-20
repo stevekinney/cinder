@@ -1,0 +1,50 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    value: {
+      type: 'string',
+      description: 'Text to copy to the clipboard.',
+    },
+    confirmDuration: {
+      type: 'number',
+      description: 'Duration in ms to show the confirmation state. Default 1500.',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible label for the idle state. Defaults to "Copy to clipboard".',
+    },
+    copiedLabel: {
+      type: 'string',
+      description:
+        'Accessible label for the copied state — what `aria-live="polite"` announces\nwhen the copy succeeds. Defaults to "Copied". Override this when `label` is\ncustomized so the live-region announcement reflects what just happened\n(e.g. label="Copy code" + copiedLabel="Code copied").',
+    },
+    iconOnly: {
+      type: 'boolean',
+      description:
+        'Render the button with only an icon and a visually hidden label.\nWhen true, defaults to a Copy icon (idle) and a Check icon (copied).',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-copy-button`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['value'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'confirmation',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

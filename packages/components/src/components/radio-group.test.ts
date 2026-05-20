@@ -8,7 +8,7 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { createRawSnippet, mount, unmount } = await import('svelte');
 const { default: RadioGroup } = await import('./radio-group.svelte');
-const { default: Radio } = await import('./radio.svelte');
+const { default: Radio } = await import('./radio/radio.svelte');
 
 /**
  * RadioGroup uses Svelte context, so we need to render a parent that contains

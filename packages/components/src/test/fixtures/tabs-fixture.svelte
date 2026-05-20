@@ -9,9 +9,9 @@
 </script>
 
 <script lang="ts">
-  import Tab from '../../components/tab.svelte';
-  import TabList from '../../components/tab-list.svelte';
-  import TabPanel from '../../components/tab-panel.svelte';
+  import Tab from '../../components/tab/tab.svelte';
+  import TabList from '../../components/tab-list/tab-list.svelte';
+  import TabPanel from '../../components/tab-panel/tab-panel.svelte';
   import Tabs from '../../components/tabs.svelte';
 
   let {

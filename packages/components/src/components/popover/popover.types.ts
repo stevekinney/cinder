@@ -1,0 +1,44 @@
+import type { Snippet } from 'svelte';
+/**
+ * Input placements accepted by the `placement` prop. Floating-ui's `flip`
+ * middleware may resolve the panel to any of the 12 standard placements at
+ * runtime — the resolved value is exposed on `data-cinder-placement` and is
+ * typed internally as floating-ui's full `Placement` union. The four
+ * diagonal-side variants (`right-start`, `right-end`, `left-start`,
+ * `left-end`) are intentionally omitted from this public input union; pass
+ * `right` or `left` as the starting hint and let flip refine if needed.
+ */
+export type PopoverPlacement =
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+  | 'top-start'
+  | 'top-end'
+  | 'bottom-start'
+  | 'bottom-end';
+export type PopoverRole = 'dialog' | 'group' | 'listbox';
+export type PopoverProps = {
+  /** Open state. Bindable. Default `false`. */
+  open?: boolean;
+  /** Anchor placement. Default `'bottom-start'`. */
+  placement?: PopoverPlacement;
+  /** Distance in px between trigger and panel. Default `8`. */
+  offset?: number;
+  /** Render a directional arrow on the panel. Default `false`. */
+  showArrow?: boolean;
+  /** Accessible name. Sets `aria-label` when `ariaLabelledby` is not supplied. */
+  label?: string;
+  /** Id of an element labelling the panel. Wins over `label`. */
+  ariaLabelledby?: string;
+  /** Explicit anchor element. Wins over the snippet-resolved focusable. */
+  triggerRef?: HTMLElement | null;
+  /** Panel content. Required. */
+  children: Snippet;
+  /** Optional trigger snippet rendered inside a wrapper. */
+  trigger?: Snippet;
+  /** ARIA role for the panel. Default `'dialog'`. */
+  role?: PopoverRole;
+  /** Extra class merged onto `.cinder-popover`. */
+  class?: string;
+};

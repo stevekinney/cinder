@@ -70,11 +70,11 @@ export type { CommandItemProps } from './components/command-item.svelte';
 export { default as CommandPalette } from './components/command-palette.svelte';
 export type { CommandPaletteProps } from './components/command-palette.svelte';
 
-export { default as ConfirmDialog } from './components/confirm-dialog.svelte';
-export type { ConfirmDialogProps } from './components/confirm-dialog.svelte';
+export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
+export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
-export { default as CopyButton } from './components/copy-button.svelte';
-export type { CopyButtonProps } from './components/copy-button.svelte';
+export { default as CopyButton } from './components/copy-button/index.ts';
+export type { CopyButtonProps } from './components/copy-button/index.ts';
 
 export { copyToClipboard } from './utilities/clipboard.ts';
 
@@ -102,8 +102,8 @@ export type {
   ViewMode,
 } from './components/diff-viewer.svelte';
 
-export { default as Drawer } from './components/drawer.svelte';
-export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer.svelte';
+export { default as Drawer } from './components/drawer/index.ts';
+export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer/index.ts';
 
 export { default as Dropdown } from './components/dropdown.svelte';
 export type {
@@ -186,8 +186,8 @@ export type {
   ToolbarContext,
 } from './components/markdown-editor.svelte';
 
-export { default as Modal } from './components/modal.svelte';
-export type { ModalProps } from './components/modal.svelte';
+export { default as Modal } from './components/modal/index.ts';
+export type { ModalProps } from './components/modal/index.ts';
 
 export { default as NavigationBar } from './components/navigation-bar.svelte';
 export type {
@@ -209,14 +209,14 @@ export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/
 export { default as Pagination } from './components/pagination.svelte';
 export type { PaginationProps } from './components/pagination.svelte';
 
-export { default as Popover } from './components/popover.svelte';
-export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover.svelte';
+export { default as Popover } from './components/popover/index.ts';
+export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
 
-export { default as Progress } from './components/progress.svelte';
-export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress.svelte';
+export { default as Progress } from './components/progress/index.ts';
+export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
 
-export { default as Radio } from './components/radio.svelte';
-export type { RadioProps } from './components/radio.svelte';
+export { default as Radio } from './components/radio/index.ts';
+export type { RadioProps } from './components/radio/index.ts';
 
 export { default as RadioGroup } from './components/radio-group.svelte';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group.svelte';
@@ -278,8 +278,8 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover.svelte';
 
-export { default as Sheet } from './components/sheet.svelte';
-export type { SheetProps } from './components/sheet.svelte';
+export { default as Sheet } from './components/sheet/index.ts';
+export type { SheetProps } from './components/sheet/index.ts';
 
 export { default as SideNavigation } from './components/side-navigation.svelte';
 export type { SideNavigationProps } from './components/side-navigation.svelte';
@@ -339,14 +339,14 @@ export type {
 export { default as Surface } from './components/surface/index.ts';
 export type { SurfaceProps, SurfaceTone } from './components/surface/index.ts';
 
-export { default as Tab } from './components/tab.svelte';
-export type { TabProps } from './components/tab.svelte';
+export { default as Tab } from './components/tab/index.ts';
+export type { TabProps } from './components/tab/index.ts';
 
-export { default as TabList } from './components/tab-list.svelte';
-export type { TabListProps } from './components/tab-list.svelte';
+export { default as TabList } from './components/tab-list/index.ts';
+export type { TabListProps } from './components/tab-list/index.ts';
 
-export { default as TabPanel } from './components/tab-panel.svelte';
-export type { TabPanelProps } from './components/tab-panel.svelte';
+export { default as TabPanel } from './components/tab-panel/index.ts';
+export type { TabPanelProps } from './components/tab-panel/index.ts';
 
 export { default as Table } from './components/table.svelte';
 export type {
@@ -377,17 +377,17 @@ export type { TableRowProps, TableRowSelectionProps } from './components/table-r
 export { default as Tabs } from './components/tabs.svelte';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs.svelte';
 
-export { default as Textarea } from './components/textarea.svelte';
-export type { TextareaProps } from './components/textarea.svelte';
+export { default as Textarea } from './components/textarea/index.ts';
+export type { TextareaProps } from './components/textarea/index.ts';
 
-export { default as ToastRegion } from './components/toast-region.svelte';
+export { default as ToastRegion } from './components/toast-region/index.ts';
 export type {
   ToastApi,
   ToastItem,
   ToastOptions,
   ToastRegionProps,
   ToastVariant,
-} from './components/toast-region.svelte';
+} from './components/toast-region/index.ts';
 
 export { useAnnouncer } from './utilities/use-announcer.svelte.ts';
 export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.svelte.ts';
@@ -412,11 +412,11 @@ export type { ToggleProps } from './components/toggle/index.ts';
 export { default as Tree } from './components/tree.svelte';
 export type { TreeProps, TreeSelectionMode } from './components/tree.svelte';
 
-export { default as TreeItem } from './components/tree-item.svelte';
-export type { TreeItemProps } from './components/tree-item.svelte';
+export { default as TreeItem } from './components/tree-item/index.ts';
+export type { TreeItemProps } from './components/tree-item/index.ts';
 
-export { default as Tooltip } from './components/tooltip.svelte';
-export type { TooltipPlacement, TooltipProps } from './components/tooltip.svelte';
+export { default as Tooltip } from './components/tooltip/index.ts';
+export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';
 
 export { default as VisuallyHidden } from './components/visually-hidden/index.ts';
 export type {

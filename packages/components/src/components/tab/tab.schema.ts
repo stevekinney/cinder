@@ -1,0 +1,36 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    value: {
+      type: 'string',
+      description: 'Identifier — matches the value of the corresponding TabPanel.',
+    },
+    id: {
+      type: 'string',
+      description: 'Optional explicit id override; auto-generated otherwise for ARIA wiring.',
+    },
+    disabled: {
+      type: 'boolean',
+      description: 'Disables this single tab. The panel content is hidden but its DOM stays.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-tab`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['value'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -1,0 +1,67 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    open: {
+      type: 'boolean',
+      description: 'Controls visibility. Bindable.',
+    },
+    title: {
+      type: 'string',
+      description: 'Modal title; passed through to <Modal>.',
+    },
+    description: {
+      type: 'string',
+      description:
+        'Optional body description — short, plain text only. Rendered as a single <p> and wired\nto aria-describedby. For rich content (markup, lists, multiple paragraphs), compose\n<Modal> + <Button> directly — screen readers announce aria-describedby targets as one\ncontinuous run.',
+    },
+    cancelLabel: {
+      type: 'string',
+      description: 'Cancel button label. Defaults to "Cancel".',
+    },
+    confirmLabel: {
+      type: 'string',
+      description:
+        'Confirm button label. Required — no default. Name the action being confirmed:\n- Destructive: "Delete", "Discard changes", "Remove from organization".\n- Non-destructive: "Save", "Continue", "Publish".\nNever use "OK" or "Confirm" in production — they don\'t describe the action.',
+    },
+    destructive: {
+      type: 'boolean',
+      description:
+        'When true, the confirm button uses variant="danger". The cancel button still\nreceives default focus regardless — color is never the sole destructive signal.',
+    },
+    triggerRef: {
+      anyOf: [
+        {
+          type: 'object',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description: 'Forwarded to <Modal>; focus is restored here on close.',
+    },
+    class: {
+      type: 'string',
+      description:
+        'Optional extra class on the underlying <Modal>. Destructured as `class: className` per repo convention.',
+    },
+  },
+  additionalProperties: false,
+  required: ['confirmLabel', 'open', 'title'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'oncancel',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onconfirm',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

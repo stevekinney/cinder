@@ -20,7 +20,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import Tooltip from '../../tooltip.svelte';
+  import Tooltip from '../../tooltip/tooltip.svelte';
 
   let {
     icon: Icon,

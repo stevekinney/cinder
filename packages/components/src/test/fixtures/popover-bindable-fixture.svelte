@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Popover from '../../components/popover.svelte';
+  import Popover from '../../components/popover/popover.svelte';
 
   type Props = { initialOpen?: boolean };
   let { initialOpen = true }: Props = $props();

@@ -1,0 +1,42 @@
+# Tooltip
+
+A Tooltip component. Replace this sentence with a one-line purpose statement once the migration settles.
+
+## Usage
+
+```svelte
+<script lang="ts">
+  import Tooltip from 'cinder/tooltip';
+</script>
+
+<Tooltip />
+```
+
+## Props
+
+<!-- generated:props:start -->
+
+| Prop        | Type                                           | Required | Default | Description         |
+| ----------- | ---------------------------------------------- | -------- | ------- | ------------------- |
+| `class`     | `string`                                       | no       | —       |                     |
+| `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       |                     |
+| `text`      | `string`                                       | yes      | —       |                     |
+| `children`  | `(opaque)`                                     | —        | —       | function-or-snippet |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+
+<!-- generated:variables:end -->
+
+## Subcomponents
+
+<!-- generated:subcomponents:start -->
+
+None.
+
+<!-- generated:subcomponents:end -->

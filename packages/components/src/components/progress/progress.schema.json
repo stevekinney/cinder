@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "number",
+      "description": "Current progress value. Omit for indeterminate."
+    },
+    "max": {
+      "type": "number",
+      "description": "Maximum value. Defaults to 100."
+    },
+    "variant": {
+      "enum": ["bar", "ring"],
+      "description": "Visual variant. Default `bar`."
+    },
+    "size": {
+      "enum": ["sm", "md", "lg"],
+      "description": "Size token. Default `md`."
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable status, exposed as `aria-valuetext`."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-progress`."
+    }
+  },
+  "additionalProperties": false
+}

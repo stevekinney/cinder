@@ -18,7 +18,7 @@
 </script>
 
 <script lang="ts">
-  import ToastRegion from '../../components/toast-region.svelte';
+  import ToastRegion from '../../components/toast-region/toast-region.svelte';
   import ToastProbe from './toast-probe.svelte';
 
   let { onReady, maxStack = 5, defaultDuration = 5000 }: ToastFixtureProps = $props();

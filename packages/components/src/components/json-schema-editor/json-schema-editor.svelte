@@ -58,9 +58,9 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
-  import Tab from '../tab.svelte';
-  import TabList from '../tab-list.svelte';
-  import TabPanel from '../tab-panel.svelte';
+  import Tab from '../tab/tab.svelte';
+  import TabList from '../tab-list/tab-list.svelte';
+  import TabPanel from '../tab-panel/tab-panel.svelte';
   import Tabs from '../tabs.svelte';
 
   import DiffView from './diff-view.svelte';

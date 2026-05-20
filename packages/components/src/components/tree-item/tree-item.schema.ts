@@ -1,0 +1,53 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    id: {
+      type: 'string',
+      description: 'Stable unique id within the tree.',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible name for the item. Also used as the typeahead key.',
+    },
+    disabled: {
+      type: 'boolean',
+      description: 'When true, the item cannot be selected or actioned. Still keyboard-reachable.',
+    },
+    branch: {
+      type: 'boolean',
+      description:
+        "Required to make a node behave as a branch. Without `branch` or `loadChildren`,\nthe node is a leaf regardless of any `children` snippet. The children snippet's\npresence is NOT sufficient — see tree.svelte plan for rationale.",
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS class merged with `.cinder-tree-item`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['id', 'label'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'loadChildren',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onLoadError',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'row',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

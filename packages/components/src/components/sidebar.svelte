@@ -40,7 +40,7 @@
 
   import { SIDEBAR_CONTEXT_KEY, type SidebarContextValue } from '../_internal/sidebar-context.ts';
   import { classNames } from '../utilities/class-names.ts';
-  import Drawer from './drawer.svelte';
+  import Drawer from './drawer/drawer.svelte';
 
   type SidebarRuntimeProps = SidebarProps & {
     'aria-label'?: unknown;

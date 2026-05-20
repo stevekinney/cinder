@@ -12,7 +12,7 @@
   import { parseFrontMatter, validateFrontMatter } from '@cinder/markdown/pipeline';
   import Checkbox from '../checkbox.svelte';
   import Input from '../input.svelte';
-  import Textarea from '../textarea.svelte';
+  import Textarea from '../textarea/textarea.svelte';
   import { parseYamlFieldValue, serializeYamlFieldValue } from './review-editor-front-matter.ts';
 
   let { id, data, raw, readonly = false, onchange }: FrontMatterFieldsProps = $props();

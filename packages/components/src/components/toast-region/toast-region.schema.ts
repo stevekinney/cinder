@@ -1,0 +1,31 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    maxStack: {
+      type: 'number',
+      description: 'Maximum simultaneous toasts in each region. Default 5.',
+    },
+    defaultDuration: {
+      type: 'number',
+      description: 'Default auto-dismiss duration in ms. Default 5000. Set to 0 for sticky.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-toast-region`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

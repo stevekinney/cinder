@@ -13,7 +13,7 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import Textarea from '../textarea.svelte';
+  import Textarea from '../textarea/textarea.svelte';
 
   import { tryParseJson, validateMetaSchema } from './json-schema-validator.ts';
 

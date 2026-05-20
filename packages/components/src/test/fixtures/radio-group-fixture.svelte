@@ -22,7 +22,7 @@
 
 <script lang="ts">
   import RadioGroup from '../../components/radio-group.svelte';
-  import Radio from '../../components/radio.svelte';
+  import Radio from '../../components/radio/radio.svelte';
 
   let {
     name,
