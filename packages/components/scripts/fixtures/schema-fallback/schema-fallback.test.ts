@@ -76,6 +76,17 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     expect(Object.keys(properties)).not.toContain('onclick');
   });
 
+  test('Pick<> / Partial<> mapped utility types still filter inherited HTML attributes', () => {
+    const { properties } = generate('mapped-utility', 'mapped-utility');
+    // Local prop must survive.
+    expect(Object.keys(properties)).toContain('tone');
+    // Pick-selected HTML attributes must still be filtered — their declaration
+    // site is `svelte/elements` even after mapping.
+    expect(Object.keys(properties)).not.toContain('id');
+    expect(Object.keys(properties)).not.toContain('name');
+    expect(Object.keys(properties)).not.toContain('disabled');
+  });
+
   test('locally-declared prop shadowing an HTML attribute is preserved', () => {
     const { properties, required } = generate('local-shadow', 'local-shadow');
     expect(Object.keys(properties)).toContain('disabled');
