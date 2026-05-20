@@ -117,9 +117,23 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
   const required: string[] = [];
   const unsupportedProps: UnsupportedProp[] = [];
 
+  // When falling back to `<Name>Props`, filter out properties inherited from
+  // svelte/elements HTML attribute types. Without this, every component that
+  // intersects with `HTMLAttributes` produces 200+ rows of aria-*, on*, and
+  // global-attribute props in its generated schema and README — drowning the
+  // cinder-specific props in noise. A focused `<Name>SchemaProps` interface
+  // (when present) is the authored allowlist; in its absence, we apply a
+  // declared-in-svelte-elements heuristic.
+  const usedFocusedAllowList = Boolean(findExportedType(sourceFile, schemaPropsName));
+
   const memberSymbols = propsType.getProperties();
   for (const symbol of memberSymbols) {
     const propName = symbol.getName();
+
+    if (!usedFocusedAllowList && isInheritedFromSvelteElements(symbol)) {
+      continue;
+    }
+
     const propType = getPropType(symbol);
 
     const converted = convertType(propType);
@@ -263,6 +277,33 @@ function literalValue(type: Type): string | number | boolean {
   if (type.isNumberLiteral()) return type.getLiteralValueOrThrow() as number;
   if (type.isBooleanLiteral()) return type.getText() === 'true';
   throw new Error(`literalValue called on non-literal type: ${type.getText()}`);
+}
+
+/**
+ * True when the property is declared inside `svelte/elements` (or its
+ * `@types`-style equivalents) — i.e. it's an inherited HTML attribute like
+ * `aria-label`, `onclick`, `class`, `id`. Used to skip those props when
+ * falling back to a `<Name>Props` type that intersects with `HTMLAttributes`.
+ *
+ * `class` is NOT a member of HTMLAttributes per se (Svelte adds it via its own
+ * declaration), so it survives this filter; that's intentional — `class` is a
+ * meaningful prop on every component and should appear in the schema.
+ */
+function isInheritedFromSvelteElements(symbol: MorphSymbol): boolean {
+  const declarations = symbol.getDeclarations();
+  for (const decl of declarations) {
+    const sourceFile = decl.getSourceFile();
+    const path = sourceFile.getFilePath();
+    // svelte/elements lives in `node_modules/svelte/elements.d.ts` (and
+    // sometimes a few sibling .d.ts files under `node_modules/svelte/`).
+    if (/\bnode_modules\/svelte\b/.test(path)) {
+      // The `class` prop is declared in svelte/elements but is meaningful for
+      // every component; let it through.
+      if (symbol.getName() === 'class') return false;
+      return true;
+    }
+  }
+  return false;
 }
 
 function getPropType(symbol: MorphSymbol): Type {
