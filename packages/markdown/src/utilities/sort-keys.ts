@@ -25,8 +25,10 @@ export function sortKeys(obj: unknown): unknown {
   // For non-null objects, sort keys and recurse into values
   if (obj !== null && typeof obj === 'object') {
     const entries = Object.entries(obj)
-      .map(([key, value]) => [key, sortKeys(value)] as const)
-      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      .map(([key, value]: [string, unknown]) => [key, sortKeys(value)] as const)
+      .toSorted(([a]: readonly [string, unknown], [b]: readonly [string, unknown]) =>
+        a < b ? -1 : a > b ? 1 : 0,
+      );
 
     return Object.fromEntries(entries);
   }

@@ -202,7 +202,9 @@ const cache = new Map<string, RenderResult>();
 function stableStringifyOptions(options: RenderOptions): string {
   const entries = Object.entries(options).toSorted(([a], [b]) => a.localeCompare(b));
 
-  return entries.map(([key, value]) => `${key}:${JSON.stringify(value)}`).join('|');
+  return entries
+    .map(([key, value]: [string, unknown]) => `${key}:${JSON.stringify(value)}`)
+    .join('|');
 }
 
 /**
