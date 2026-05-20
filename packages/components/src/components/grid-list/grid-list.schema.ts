@@ -14,6 +14,10 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
         name: 'class',
         reason: 'unknown-shape',
       },

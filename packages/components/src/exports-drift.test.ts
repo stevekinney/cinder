@@ -18,11 +18,8 @@ import { join } from 'node:path';
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 
-import {
-  computeExports,
-  discoverDirectoryComponents,
-  type ExportEntry,
-} from '../scripts/generate-exports.ts';
+import { computeExports, type ExportEntry } from '../scripts/generate-exports.ts';
+import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(ROOT, 'src', 'components');
@@ -33,7 +30,7 @@ describe('exports drift', () => {
     const existing = packageJson.exports as Record<string, ExportEntry>;
 
     // 1. Directory-shaped (migrated) components.
-    const migrated = await discoverDirectoryComponents();
+    const migrated = await discoverComponents();
     const directoryExports = computeExports(migrated);
 
     // 2. Flat (legacy) components — every `*.svelte` at top level + experimental that
@@ -119,7 +116,7 @@ describe('exports drift', () => {
     const missing: string[] = [];
 
     // Migrated components are imported from `./components/<name>/index.ts`.
-    const migrated = await discoverDirectoryComponents();
+    const migrated = await discoverComponents();
     for (const component of migrated) {
       const expectedImport = component.isExperimental
         ? `from './components/experimental/${component.name}/index.ts'`

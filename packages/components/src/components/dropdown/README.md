@@ -19,8 +19,10 @@ A Dropdown component. Replace this sentence with a one-line purpose statement on
 | Prop        | Type                               | Required | Default | Description         |
 | ----------- | ---------------------------------- | -------- | ------- | ------------------- |
 | `class`     | `string`                           | no       | —       |                     |
+| `id`        | `string`                           | no       | —       |                     |
 | `open`      | `boolean`                          | no       | —       |                     |
 | `placement` | `"bottom-start"` \| `"bottom-end"` | no       | —       |                     |
+| `children`  | `(opaque)`                         | —        | —       | function-or-snippet |
 | `trigger`   | `(opaque)`                         | —        | —       | function-or-snippet |
 
 <!-- generated:props:end -->
