@@ -42,9 +42,8 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '../button/button.svelte';
-  import SegmentedControl, {
-    type SegmentedControlOption,
-  } from '../segmented-control/segmented-control.svelte';
+  import Segment from '../segment/segment.svelte';
+  import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import DiffStatistics from '../diff-statistics/diff-statistics.svelte';
   import { FileText, GitBranch, MessageSquare, Pencil, RotateCcw } from '../icons/index.ts';
 
@@ -65,28 +64,6 @@
     trailing,
     class: className,
   }: ReviewEditorControlsProps = $props();
-
-  const diffViewModeOptions: { value: DiffViewMode; label: string }[] = [
-    { value: 'unified', label: 'Unified' },
-    { value: 'final', label: 'Final' },
-    { value: 'original', label: 'Original' },
-  ];
-
-  const viewOptions = $derived.by((): SegmentedControlOption<ViewType>[] => {
-    const options: SegmentedControlOption<ViewType>[] = [
-      { value: 'editor', label: 'Editor', icon: Pencil, controls: viewPanelIds?.editor },
-    ];
-    if (showDiffTabs) {
-      options.push({ value: 'diff', label: 'Diff', icon: GitBranch, controls: viewPanelIds?.diff });
-      options.push({
-        value: 'summary',
-        label: 'Summary',
-        icon: FileText,
-        controls: viewPanelIds?.summary,
-      });
-    }
-    return options;
-  });
 
   function handleViewChange(view: ViewType) {
     onViewChange?.(view);
@@ -114,9 +91,23 @@
       size="sm"
       density="toolbar"
       value={activeView}
-      options={viewOptions}
       onchange={handleViewChange}
-    />
+    >
+      <Segment value="editor" controls={viewPanelIds?.editor}>
+        {#snippet leading()}<Pencil class="icon-xs" />{/snippet}
+        Editor
+      </Segment>
+      {#if showDiffTabs}
+        <Segment value="diff" controls={viewPanelIds?.diff}>
+          {#snippet leading()}<GitBranch class="icon-xs" />{/snippet}
+          Diff
+        </Segment>
+        <Segment value="summary" controls={viewPanelIds?.summary}>
+          {#snippet leading()}<FileText class="icon-xs" />{/snippet}
+          Summary
+        </Segment>
+      {/if}
+    </SegmentedControl>
 
     {#if diffStats && (diffStats.added > 0 || diffStats.removed > 0 || diffStats.modified > 0)}
       <DiffStatistics
@@ -139,8 +130,11 @@
         label="Diff view mode"
         hideLabel
         bind:value={diffViewMode}
-        options={diffViewModeOptions}
-      />
+      >
+        <Segment value="unified">Unified</Segment>
+        <Segment value="final">Final</Segment>
+        <Segment value="original">Original</Segment>
+      </SegmentedControl>
     {/if}
   </div>
 

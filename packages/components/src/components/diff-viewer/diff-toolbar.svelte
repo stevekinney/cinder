@@ -41,6 +41,7 @@
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Kbd from '../kbd/kbd.svelte';
+  import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import Spinner from '../spinner/spinner.svelte';
   import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw } from '../icons/index.ts';
@@ -67,12 +68,6 @@
   const isStale = $derived(diffState?.isStale ?? false);
   const isComputing = $derived(diffState?.isComputing ?? false);
 
-  // View mode options for the segmented control
-  const viewModeOptions: { value: ViewMode; label: string }[] = [
-    { value: 'unified', label: 'Unified' },
-    { value: 'final', label: 'Final' },
-    { value: 'original', label: 'Original' },
-  ];
 </script>
 
 <div class={classNames('diff-toolbar', className)} {...rest}>
@@ -84,8 +79,11 @@
       label="View mode"
       hideLabel
       bind:value={viewMode}
-      options={viewModeOptions}
-    />
+    >
+      <Segment value="unified">Unified</Segment>
+      <Segment value="final">Final</Segment>
+      <Segment value="original">Original</Segment>
+    </SegmentedControl>
     <div class="stats">
       {#if stats.added > 0}
         <Badge variant="success" size="xs" class="stat-badge">+{stats.added}</Badge>

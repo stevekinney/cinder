@@ -19,13 +19,9 @@
   import type { DrawerProps } from './drawer.types.ts';
   import { onDestroy } from 'svelte';
 
-  import {
-    captureFocus,
-    lockBodyScroll,
-    pushEscapeHandler,
-    restoreFocusTo,
-  } from '../../_internal/overlay.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
 
   let {
@@ -84,9 +80,28 @@
       releaseEscape = null;
     }
     open = false;
-    const target = triggerRef ?? capturedFocus;
+    returnFocus();
+  }
+
+  // Iterate candidates so a disconnected `triggerRef` falls through to the
+  // captured pre-open focus. Matches modal/sheet/popover/command-palette.
+  function returnFocus(): void {
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
+    }
     capturedFocus = null;
-    restoreFocusTo(target);
+  }
+
+  function handleNativeCancel(event: Event) {
+    // The browser's native ESC handler on <dialog> fires `cancel` then closes
+    // the dialog. preventDefault keeps the close out of the native path so it
+    // goes through `dialogElement.close()` here — which fires the `close`
+    // event and lets handleClose() run as the single canonical close path.
+    // This matches modal.svelte's pattern; without it, ESC would close the
+    // dialog out from under Svelte's `open` state for one tick.
+    event.preventDefault();
+    dialogElement?.close();
   }
 
   function handleBackdropClick(event: MouseEvent) {
@@ -106,9 +121,7 @@
       releaseEscape = null;
     }
     if (wasOpen) {
-      const target = triggerRef ?? capturedFocus;
-      capturedFocus = null;
-      if (target) restoreFocusTo(target);
+      returnFocus();
     }
   });
 </script>
@@ -117,10 +130,11 @@
   <dialog
     {...rest}
     bind:this={dialogElement}
-    class={cn('cinder-drawer', className)}
+    class={classNames('cinder-drawer', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
     onclose={handleClose}
+    oncancel={handleNativeCancel}
     onclick={handleBackdropClick}
   >
     {#snippet closeButton()}

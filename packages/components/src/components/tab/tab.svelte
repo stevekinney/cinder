@@ -17,13 +17,20 @@
 
 <script lang="ts">
   import type { TabProps } from './tab.types.ts';
-  import { getContext, onDestroy } from 'svelte';
+  import { getContext } from 'svelte';
 
   import { rovingTabIndex } from '../../_internal/collection.ts';
   import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
-  let { value, id, disabled = false, class: className, children }: TabProps = $props();
+  let {
+    value,
+    id,
+    disabled = false,
+    class: className,
+    children,
+    trailing,
+  }: TabProps = $props();
 
   const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
   if (!rawTabs) {
@@ -42,7 +49,9 @@
   let buttonElement: HTMLButtonElement | undefined = $state();
 
   // Register on mount and re-register if the button element changes; unregister
-  // on unmount so the parent's navigation order stays accurate.
+  // on unmount so the parent's navigation order stays accurate. The effect's
+  // cleanup function already handles unmount unregistration — no separate
+  // onDestroy is needed.
   $effect(() => {
     if (buttonElement) {
       tabs.register(value, buttonElement);
@@ -50,10 +59,6 @@
     return () => {
       tabs.unregister(value);
     };
-  });
-
-  onDestroy(() => {
-    tabs.unregister(value);
   });
 
   function handleClick(): void {
@@ -67,7 +72,7 @@
   type="button"
   role="tab"
   id={tabId}
-  class={cn('cinder-tab', className)}
+  class={classNames('cinder-tab', className)}
   data-cinder-value={value}
   data-cinder-active={isActive ? '' : undefined}
   data-cinder-disabled={disabled || undefined}
@@ -79,4 +84,9 @@
   onkeydown={tabs.handleKeydown}
 >
   {@render children()}
+  {#if trailing}
+    <span class="cinder-tab__trailing" aria-hidden="true">
+      {@render trailing()}
+    </span>
+  {/if}
 </button>

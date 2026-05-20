@@ -1220,6 +1220,20 @@
     "./section-heading/styles": {
       "default": "./dist/components/section-heading/section-heading.css"
     },
+    "./segment": {
+      "types": "./dist/components/segment/index.d.ts",
+      "svelte": "./src/components/segment/index.ts",
+      "node": "./dist/server/components/segment/index.js",
+      "default": "./dist/components/segment/index.js"
+    },
+    "./segment/schema": {
+      "types": "./dist/components/segment/segment.schema.d.ts",
+      "svelte": "./src/components/segment/segment.schema.ts"
+    },
+    "./segment/variables": {
+      "types": "./dist/components/segment/segment.variables.d.ts",
+      "svelte": "./src/components/segment/segment.variables.ts"
+    },
     "./segmented-control": {
       "types": "./dist/components/segmented-control/index.d.ts",
       "svelte": "./src/components/segmented-control/index.ts",

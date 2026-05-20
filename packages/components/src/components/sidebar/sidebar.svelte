@@ -17,11 +17,10 @@
 
 <script lang="ts">
   import type { SidebarProps } from './sidebar.types.ts';
-  import { setContext } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import {
-    SIDEBAR_CONTEXT_KEY,
+    setSidebarContext,
     type SidebarContextValue,
   } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -68,7 +67,7 @@
       return collapsed;
     },
   };
-  setContext(SIDEBAR_CONTEXT_KEY, context);
+  setSidebarContext(context);
 </script>
 
 {#if mobile.current}

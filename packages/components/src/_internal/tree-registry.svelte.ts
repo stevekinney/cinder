@@ -1,10 +1,14 @@
 import { SvelteMap } from 'svelte/reactivity';
 
+import { inDocumentOrder } from '../utilities/document-order.ts';
+
 /** A single registered tree node. */
 export type TreeNodeRegistration = {
   id: string;
   parentId: string | null;
   level: number;
+  /** The outer role="treeitem" DOM node, used for document-order sorting. */
+  node: HTMLElement;
   /** Getter so runtime prop changes stay in sync without re-registration. */
   readonly disabled: boolean;
   isBranch: () => boolean;
@@ -49,6 +53,22 @@ export class TreeRegistry {
   }
 
   /**
+   * Returns the ordered child id list for a parent, sorted by DOM document
+   * order. Registration order normally matches DOM order because {@attach}
+   * fires after mount, but conditional ({#if}) blocks that re-mount middle
+   * items can desync the registry. Sorting on read keeps navigation aligned
+   * with the visual tree.
+   */
+  #orderedChildren(parentId: string | null): string[] {
+    const ids = this.#children.get(parentId);
+    if (!ids || ids.length <= 1) return ids ?? [];
+    const withNodes = ids
+      .map((id) => ({ id, node: this.#nodes.get(id)?.node }))
+      .filter((entry): entry is { id: string; node: HTMLElement } => entry.node !== undefined);
+    return inDocumentOrder(withNodes).map((entry) => entry.id);
+  }
+
+  /**
    * Returns the flat list of node ids in DFS visible order, respecting the
    * current expansion state. Collapsed subtrees are excluded entirely.
    */
@@ -57,7 +77,7 @@ export class TreeRegistry {
     const expandedSet = new Set(expandedIds);
 
     const visit = (parentId: string | null): void => {
-      const childIds = this.#children.get(parentId) ?? [];
+      const childIds = this.#orderedChildren(parentId);
       for (const id of childIds) {
         result.push(id);
         const node = this.#nodes.get(id);
@@ -80,13 +100,13 @@ export class TreeRegistry {
   }
 
   firstChildOf(id: string): string | undefined {
-    return this.#children.get(id)?.[0];
+    return this.#orderedChildren(id)[0];
   }
 
   siblingsOf(id: string): string[] {
     const node = this.#nodes.get(id);
     if (!node) return [];
-    return this.#children.get(node.parentId) ?? [];
+    return this.#orderedChildren(node.parentId);
   }
 
   /**

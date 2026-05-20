@@ -36,6 +36,8 @@ const { default: CommandPaletteFixture } =
   await import('../../test/fixtures/command-palette-fixture.svelte');
 const { default: CommandPaletteRichItemFixture } =
   await import('../../test/fixtures/command-palette-rich-item-fixture.svelte');
+const { default: CommandPaletteAttachFixture } =
+  await import('../../test/fixtures/command-palette-attach-fixture.svelte');
 
 // ── Snippet helpers ────────────────────────────────────────────────────────
 
@@ -614,6 +616,82 @@ describe('CommandPalette — class prop', () => {
     });
     const panel = container.querySelector('.cinder-command-palette__panel');
     expect(panel?.classList.contains('my-custom-palette')).toBe(true);
+  });
+});
+
+// ── Attachment-based registration ─────────────────────────────────────────
+
+describe('CommandPalette — attachment registration', () => {
+  test('arrow keys walk items in DOM order after the middle item remounts', async () => {
+    const { container, rerender } = render(CommandPaletteAttachFixture, {
+      props: { showMiddle: true },
+    });
+    await settleCommandPalette();
+
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(3);
+    expectActiveOption(container, 'alpha');
+
+    // Unmount the middle item; remaining items are alpha and gamma in DOM order.
+    await rerender({ showMiddle: false });
+    await tick();
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(2);
+
+    const input = getInput(container);
+    expect(input.getAttribute('aria-activedescendant')).not.toBeNull();
+    expectActiveOption(container, 'alpha');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'gamma');
+
+    // Remount the middle item; navigation should once again pass through beta.
+    await rerender({ showMiddle: true });
+    await tick();
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(3);
+
+    // From gamma, ArrowDown wraps to first DOM-order item: alpha.
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'alpha');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'beta');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'gamma');
+  });
+
+  test('conditional item unmount/remount keeps the registry clean (no leaks)', async () => {
+    const { container, rerender } = render(CommandPaletteAttachFixture, {
+      props: { showMiddle: true },
+    });
+    await settleCommandPalette();
+
+    const initialCount = container.querySelectorAll('[role="option"]').length;
+    expect(initialCount).toBe(3);
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      await rerender({ showMiddle: false });
+      await tick();
+      expect(container.querySelectorAll('[role="option"]')).toHaveLength(initialCount - 1);
+
+      await rerender({ showMiddle: true });
+      await tick();
+      expect(container.querySelectorAll('[role="option"]')).toHaveLength(initialCount);
+    }
+
+    // After repeated mount/unmount cycles, arrow navigation still visits every
+    // currently-mounted item exactly once before wrapping.
+    const input = getInput(container);
+    expectActiveOption(container, 'alpha');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'beta');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'gamma');
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await tick();
+    expectActiveOption(container, 'alpha');
   });
 });
 

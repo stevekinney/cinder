@@ -1,13 +1,7 @@
+import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import type { SvelteSet } from 'svelte/reactivity';
-import type { IconComponent } from '../icons/index.ts';
-export type SegmentedControlOption<T extends string = string> = {
-  value: T;
-  label: string;
-  icon?: IconComponent;
-  controls?: string | undefined;
-  disabled?: boolean;
-};
+
 type ComponentOwnedAttributes =
   | 'id'
   | 'class'
@@ -19,6 +13,7 @@ type ComponentOwnedAttributes =
   | 'aria-orientation'
   | 'onchange'
   | 'onkeydown';
+
 type CommonProps<T extends string> = Omit<
   HTMLAttributes<HTMLDivElement>,
   ComponentOwnedAttributes
@@ -28,50 +23,53 @@ type CommonProps<T extends string> = Omit<
   /** Accessible label for the group. */
   label: string;
   /** Visually hide the label while keeping it available to assistive technology. */
-  hideLabel?: boolean;
+  hideLabel?: boolean | undefined;
   /** Disable the whole control. */
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   /** Visual size of the control. */
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | undefined;
   /**
    * Opt the control into a shared toolbar height (via
    * `--cinder-control-height-sm`) so it lines up cleanly with sibling
    * `Button` (size="sm"), `Chip` (density="toolbar"), and other toolbar
    * elements. Default rendering is unchanged.
    */
-  density?: 'toolbar';
+  density?: 'toolbar' | undefined;
   /** Layout orientation. */
-  orientation?: 'horizontal' | 'vertical';
-  /** Show options as detached individual buttons instead of a unified strip. */
-  detached?: boolean;
+  orientation?: 'horizontal' | 'vertical' | undefined;
+  /** Render segments as detached individual buttons instead of a unified strip. */
+  detached?: boolean | undefined;
   /** Stretch the control to fill available width. */
-  fullWidth?: boolean;
+  fullWidth?: boolean | undefined;
   /** ARIA interaction pattern. Use `tablist` when options switch visible panels. */
-  variant?: 'radiogroup' | 'tablist';
-  /** Available options. */
-  options: readonly SegmentedControlOption<T>[];
+  variant?: 'radiogroup' | 'tablist' | undefined;
   /** Additional class names merged with `.cinder-segmented-control`. */
-  class?: string;
-  /** Called when the selected value changes. */
-  onchange?: (value: T) => void;
+  class?: string | undefined;
+  /** Called when the selected value changes (single mode only). */
+  onchange?: ((value: T) => void) | undefined;
+  /** Child `<Segment>` elements. */
+  children: Snippet;
 };
+
 type SingleProps<T extends string> = CommonProps<T> & {
-  selectionMode?: 'single';
-  /** Selected option value. */
-  value?: T;
+  selectionMode?: 'single' | undefined;
+  /** Currently selected value. */
+  value?: T | undefined;
   /**
    * When true (default), clicking the already-selected option is a no-op.
    * When false, clicking the selected option clears value to undefined.
    */
-  disallowEmptySelection?: boolean;
+  disallowEmptySelection?: boolean | undefined;
 };
+
 type MultipleProps<T extends string> = CommonProps<T> & {
   selectionMode: 'multiple';
-  /** Set of selected option values. Must be a SvelteSet for reactivity. */
-  value?: SvelteSet<T>;
+  /** Set of selected values. Must be a SvelteSet for reactivity. */
+  value?: SvelteSet<T> | undefined;
   /** Not applicable in multiple mode — present for Svelte destructuring compatibility. */
   disallowEmptySelection?: undefined;
   /** Tablist semantics are only valid for single selection. */
-  variant?: 'radiogroup';
+  variant?: 'radiogroup' | undefined;
 };
+
 export type SegmentedControlProps<T extends string = string> = SingleProps<T> | MultipleProps<T>;

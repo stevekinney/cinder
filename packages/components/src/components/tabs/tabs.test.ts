@@ -7,6 +7,9 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
+const { default: TrailingWrapper } = await import(
+  '../../test/fixtures/tabs-trailing-fixture.svelte'
+);
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
@@ -81,6 +84,47 @@ describe('Tabs activation', () => {
     await fireEvent.click(dTab as Element);
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('A body');
+  });
+});
+
+describe('Tab trailing snippet', () => {
+  test('renders the trailing content inside a span with aria-hidden="true"', () => {
+    const { container } = render(TrailingWrapper, { value: 'inbox', trailingText: '3' });
+    const trailing = container.querySelector('.cinder-tab__trailing');
+    expect(trailing).not.toBeNull();
+    expect(trailing?.getAttribute('aria-hidden')).toBe('true');
+    expect(trailing?.textContent).toContain('3');
+  });
+
+  test("accessible name excludes trailing content (aria-hidden subtree is omitted)", () => {
+    const { container } = render(TrailingWrapper, { value: 'inbox', trailingText: '3' });
+    const tab = container.querySelector('[role="tab"][aria-selected="true"]') as HTMLElement;
+    expect(tab).not.toBeNull();
+    // Compute the accessible name by walking children and skipping aria-hidden subtrees.
+    // happy-dom does not implement the full AccName algorithm, so do it manually.
+    const name = (function getName(element: Element): string {
+      let text = '';
+      for (const node of Array.from(element.childNodes)) {
+        if (node.nodeType === node.TEXT_NODE) {
+          text += node.textContent ?? '';
+        } else if (node.nodeType === node.ELEMENT_NODE) {
+          const child = node as Element;
+          if (child.getAttribute('aria-hidden') === 'true') continue;
+          text += getName(child);
+        }
+      }
+      return text;
+    })(tab);
+    expect(name.trim()).toBe('Inbox');
+    expect(name).not.toContain('3');
+  });
+
+  test('omits the trailing wrapper when no snippet is provided', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items: [{ value: 'a', title: 'A tab', body: 'A body' }],
+    });
+    expect(container.querySelector('.cinder-tab__trailing')).toBeNull();
   });
 });
 

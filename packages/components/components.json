@@ -1708,6 +1708,31 @@
       }
     },
     {
+      "name": "Segment",
+      "id": "segment",
+      "import": "cinder/segment",
+      "exportName": "Segment",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Individual option inside a SegmentedControl that renders the button, wires the value, and forwards leading/trailing decorations.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Authoring SegmentedControl children declaratively so consumers can compose icons, labels, and badges per segment.",
+        "Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata."
+      ],
+      "avoidWhen": [
+        "Building a standalone toggle button — use Button or Toggle instead.",
+        "Selecting one option from a long list — use Select or Combobox instead."
+      ],
+      "related": ["segmented-control", "button", "toggle"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/segment/schema",
+        "variables": "cinder/segment/variables"
+      }
+    },
+    {
       "name": "SegmentedControl",
       "id": "segmented-control",
       "import": "cinder/segmented-control",

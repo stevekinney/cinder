@@ -4,23 +4,17 @@
 </script>
 
 <script lang="ts">
+  import { Segment } from 'cinder/segment';
   import { SegmentedControl } from 'cinder/segmented-control';
-  let value = $state('rendered');
 
-  const options = [
-    { value: 'source', label: 'Source' },
-    { value: 'rendered', label: 'Rendered' },
-    { value: 'diff', label: 'Diff' },
-  ];
+  let value = $state('rendered');
 </script>
 
 <div style="display: grid; gap: 0.75rem; justify-items: start;">
-  <SegmentedControl
-    id="playground-view"
-    selectionMode="single"
-    bind:value
-    label="Document view"
-    {options}
-  />
+  <SegmentedControl id="playground-view" selectionMode="single" bind:value label="Document view">
+    <Segment value="source">Source</Segment>
+    <Segment value="rendered">Rendered</Segment>
+    <Segment value="diff">Diff</Segment>
+  </SegmentedControl>
   <p style="margin: 0; color: var(--cinder-text-muted);">Current view: {value}</p>
 </div>

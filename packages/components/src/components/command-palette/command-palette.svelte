@@ -17,13 +17,15 @@
 
 <script lang="ts">
   import type { CommandPaletteProps } from './command-palette.types.ts';
-  import { setContext, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
 
-  import { captureFocus, pushEscapeHandler, restoreFocusTo } from '../../_internal/overlay.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { inDocumentOrder } from '../../utilities/document-order.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
-    COMMAND_PALETTE_CONTEXT,
+    setCommandPaletteContext,
     type CommandItemRegistrationInput,
     type CommandPaletteContext,
   } from '../_internal/command-palette-context.ts';
@@ -61,7 +63,7 @@
   let capturedFocus: HTMLElement | null = null;
 
   // ── Item registration ─────────────────────────────────────────────────────
-  type RegistrationRecord = CommandItemRegistrationInput & { id: string };
+  type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
   let registrations = $state<RegistrationRecord[]>([]);
 
   // Stable incrementing counter for item ids within this palette instance.
@@ -74,7 +76,9 @@
   // always walks the current set, including after prop changes (e.g. toggling
   // disabled on a mounted item).
   const enabledIds = $derived.by(() => {
-    return registrations.filter((r) => !r.getDisabled()).map((r) => r.id);
+    return inDocumentOrder(registrations)
+      .filter((r) => !r.getDisabled())
+      .map((r) => r.id);
   });
 
   // Repair activeItemId whenever the enabled set changes (registration churn,
@@ -112,10 +116,12 @@
 
   // ── Focus restoration ─────────────────────────────────────────────────────
   function returnFocus() {
-    if (triggerRef) {
-      restoreFocusTo(triggerRef);
-    } else {
-      restoreFocusTo(capturedFocus);
+    // Iterate candidates so a disconnected `triggerRef` falls through to
+    // capturedFocus. Matches the modal/sheet/popover pattern; without this
+    // a removed trigger would silently drop focus on the floor.
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
     }
     capturedFocus = null;
   }
@@ -243,12 +249,13 @@
     get activeItemId() {
       return activeItemId;
     },
-    register(input: CommandItemRegistrationInput) {
+    register(input: CommandItemRegistrationInput, node: HTMLElement) {
       const id = `${listboxId}-item-${++itemCounter}`;
       registrations = [
         ...registrations,
         {
           id,
+          node,
           getValue: input.getValue,
           getOnselect: input.getOnselect,
           getDisabled: input.getDisabled,
@@ -266,7 +273,7 @@
     },
   };
 
-  setContext<CommandPaletteContext>(COMMAND_PALETTE_CONTEXT, context);
+  setCommandPaletteContext(context);
 
   const showEmpty = $derived(mounted && registrationsReady && registrations.length === 0);
 </script>
@@ -282,7 +289,7 @@
     onclick={handleBackdropClick}
   >
     {#if open}
-      <div class={cn('cinder-command-palette__panel', className)}>
+      <div class={classNames('cinder-command-palette__panel', className)}>
         <div class="cinder-command-palette__search">
           <svg
             class="cinder-command-palette__search-icon"

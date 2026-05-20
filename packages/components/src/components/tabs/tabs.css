@@ -45,10 +45,22 @@
   color: var(--cinder-text-muted);
   cursor: pointer;
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
   border-radius: var(--cinder-radius-sm) var(--cinder-radius-sm) 0 0;
   transition:
     color var(--cinder-duration-fast) var(--cinder-ease-standard),
     background var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Decorative trailing slot (badges, kbd hints, counters). Wrapped in
+ * `aria-hidden="true"` in the markup so it never enters the accessible name. */
+.cinder-tab__trailing {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
 }
 
 /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't

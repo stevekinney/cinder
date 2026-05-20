@@ -417,6 +417,79 @@ describe('Popover — focus management', () => {
     });
     expect(document.activeElement).toBe(triggerButton);
   });
+
+  test('focus restores to capturedFocus when triggerRef is unmounted before close', async () => {
+    const previouslyFocused = document.createElement('button');
+    previouslyFocused.id = 'popover-prev-focus';
+    attachScratch(previouslyFocused);
+    previouslyFocused.focus();
+
+    const triggerEl = document.createElement('button');
+    triggerEl.id = 'popover-transient-trigger';
+    attachScratch(triggerEl);
+
+    let openValue = true;
+    render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerEl,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    // Drop the trigger before close.
+    triggerEl.remove();
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await waitFor(() => {
+      expect(openValue).toBe(false);
+    });
+    expect(document.activeElement).toBe(previouslyFocused);
+  });
+
+  test('no focus is forced when all candidates are disconnected', async () => {
+    const triggerEl = document.createElement('button');
+    attachScratch(triggerEl);
+
+    let openValue = true;
+    render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerEl,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    triggerEl.remove();
+    // Ensure no element is focused before the close — captured focus was null
+    // (focus on body) at open time, and the trigger is now gone.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await waitFor(() => {
+      expect(openValue).toBe(false);
+    });
+    // No fallback to document.body — focus left where the close landed.
+    expect(document.activeElement).not.toBe(triggerEl);
+  });
 });
 
 // ---------------------------------------------------------------------------
