@@ -4,6 +4,11 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    placeholder: {
+      type: 'string',
+      description:
+        'Low-resolution image source (typically a base64 data URI) shown as a\npixelated background while the main image loads. Fades out once the\n`<img>` fires `load`.',
+    },
     src: {
       type: 'string',
       description: 'Image source URL.',

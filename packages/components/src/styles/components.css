@@ -88,3 +88,58 @@
 @import '../components/toggle/toggle.css';
 @import '../components/tooltip/tooltip.css';
 @import '../components/tree/tree.css';
+
+/* INTERNAL — used by Alert and Banner dismiss buttons.
+ * Provides hit-area + icon sizing + baseline interaction chrome.
+ * Layout positioning and status-driven coloring stay component-local.
+ *
+ * Split breakdown:
+ *   Truly-shared (here): box-model reset (display/size/padding/border/radius/
+ *   background/color/cursor), flex-shrink, position relative, the WCAG 2.5.5
+ *   44x44 ::after hit-area pseudo-element, and the idle :hover background
+ *   color-mix. These are byte-for-byte identical between Alert and Banner.
+ *
+ *   Component-local (stays in alert.css / banner.css): align-self (flex-start
+ *   vs center), the transition declaration (Alert applies unconditionally,
+ *   Banner gates on prefers-reduced-motion), :focus-visible box-shadow (each
+ *   reads a host-specific status-driven custom property), and the
+ *   forced-colors overrides (Banner has additional hover/box-shadow rules).
+ */
+.cinder-_dismiss-button {
+  flex-shrink: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+
+  border-radius: var(--cinder-radius-sm);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
+  position: relative;
+}
+
+/* Expand the interactive hit area to 44x44 px (WCAG 2.5.5) without
+ * affecting layout. Absolutely positioned so it doesn't shift siblings. */
+.cinder-_dismiss-button::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* Sticky-hover suppression on touch: hover-only background wrapped so it
+ * doesn't "stick" after tap. */
+@media (hover: hover) {
+  .cinder-_dismiss-button:hover {
+    background: color-mix(in oklch, currentColor, transparent 80%);
+  }
+}

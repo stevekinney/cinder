@@ -16,9 +16,10 @@ A DropdownMenu component. Replace this sentence with a one-line purpose statemen
 
 <!-- generated:props:start -->
 
-| Prop    | Type     | Required | Default | Description |
-| ------- | -------- | -------- | ------- | ----------- |
-| `class` | `string` | no       | —       |             |
+| Prop       | Type       | Required | Default | Description         |
+| ---------- | ---------- | -------- | ------- | ------------------- |
+| `class`    | `string`   | no       | —       |                     |
+| `children` | `(opaque)` | —        | —       | function-or-snippet |
 
 <!-- generated:props:end -->
 

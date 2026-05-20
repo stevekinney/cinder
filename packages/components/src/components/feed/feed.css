@@ -26,7 +26,7 @@
   justify-content: center;
   inline-size: var(--cinder-space-6);
   block-size: var(--cinder-space-6);
-  border-radius: 9999px;
+  border-radius: var(--cinder-radius-full);
   background: var(--cinder-surface-muted);
   color: var(--cinder-text-muted);
   flex-shrink: 0;
@@ -43,7 +43,7 @@
 .cinder-feed-event-dot {
   inline-size: var(--cinder-space-2);
   block-size: var(--cinder-space-2);
-  border-radius: 9999px;
+  border-radius: var(--cinder-radius-full);
   background: var(--cinder-border-strong);
 }
 

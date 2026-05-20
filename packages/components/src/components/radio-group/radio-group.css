@@ -145,7 +145,7 @@
 .cinder-radio-row[data-has-description] .cinder-radio {
   grid-row: 1;
   grid-column: 1;
-  margin-top: 0.125rem; /* align input with label's first cap-height line */
+  margin-top: var(--cinder-space-0-5); /* align input with label's first cap-height line */
 }
 
 .cinder-radio-row[data-has-description] .cinder-radio-row__label {

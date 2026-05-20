@@ -42,7 +42,7 @@
   z-index: 1;
   width: 0.875rem;
   height: 0.875rem;
-  margin-top: 0.25rem;
+  margin-top: var(--cinder-space-1);
   border-radius: var(--cinder-radius-full);
   background: var(--cinder-surface-raised);
   border: 2px solid currentColor;

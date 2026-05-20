@@ -4,6 +4,14 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+      description: "Override the group's `disabled` for this single radio.",
+    },
+    id: {
+      type: 'string',
+      description: 'Unique identifier — required for label association.',
+    },
     label: {
       type: 'string',
       description: 'Visible label rendered in a `<label>` element associated via `for`.',
@@ -15,11 +23,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['label'],
+  required: ['id', 'label'],
   metadata: {
     unsupportedProps: [
       {
         name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'value',
         reason: 'unknown-shape',
       },
     ],

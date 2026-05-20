@@ -26,9 +26,9 @@
  * land the remaining directory-shaped components.
  */
 
-import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 
 export type ExportEntry = {
   svelte?: string;
@@ -38,44 +38,6 @@ export type ExportEntry = {
 };
 
 const RESERVED_KEYS = new Set(['.', './styles']);
-
-export interface ComponentDiscovery {
-  name: string;
-  isExperimental: boolean;
-}
-
-const COMPONENTS_ROOT = join(import.meta.dir, '..', 'src', 'components');
-
-export async function discoverDirectoryComponents(): Promise<ComponentDiscovery[]> {
-  const result: ComponentDiscovery[] = [];
-  for (const entry of await readdir(COMPONENTS_ROOT, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('_')) continue;
-    if (entry.name === 'icons') continue;
-
-    if (entry.name === 'experimental') {
-      const experimentalRoot = join(COMPONENTS_ROOT, 'experimental');
-      for (const subEntry of await readdir(experimentalRoot, { withFileTypes: true })) {
-        if (!subEntry.isDirectory()) continue;
-        if (subEntry.name.startsWith('_')) continue;
-        const dir = join(experimentalRoot, subEntry.name);
-        if (!existsSync(join(dir, `${subEntry.name}.svelte`))) continue;
-        if (!existsSync(join(dir, `${subEntry.name}.types.ts`))) continue;
-        result.push({ name: subEntry.name, isExperimental: true });
-      }
-      continue;
-    }
-
-    const dir = join(COMPONENTS_ROOT, entry.name);
-    if (!existsSync(join(dir, `${entry.name}.svelte`))) continue;
-    if (!existsSync(join(dir, `${entry.name}.types.ts`))) continue;
-    result.push({ name: entry.name, isExperimental: false });
-  }
-  return result.toSorted((a, b) => {
-    if (a.isExperimental !== b.isExperimental) return a.isExperimental ? 1 : -1;
-    return a.name.localeCompare(b.name);
-  });
-}
 
 export function computeExports(components: ComponentDiscovery[]): Record<string, ExportEntry> {
   const out: Record<string, ExportEntry> = {};
@@ -122,7 +84,7 @@ async function main(): Promise<void> {
   const packageJsonPath = join(import.meta.dir, '..', 'package.json');
   const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
 
-  const components = await discoverDirectoryComponents();
+  const components = await discoverComponents();
   const computed = computeExports(components);
 
   // Collision check: any computed subpath that collides with a non-component

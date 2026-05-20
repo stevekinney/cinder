@@ -65,7 +65,7 @@
 /* ── Disabled group ─────────────────────────────────────────────────────── */
 
 .cinder-segmented-control[aria-disabled='true'] {
-  opacity: 0.6;
+  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
   pointer-events: none;
 }
 
@@ -184,7 +184,7 @@
 
 .cinder-segmented-control-option:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
 }
 
 /* ── Selected (single mode) ─────────────────────────────────────────────── */

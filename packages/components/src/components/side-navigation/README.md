@@ -19,6 +19,7 @@ A SideNavigation component. Replace this sentence with a one-line purpose statem
 | Prop        | Type       | Required | Default | Description                                                                                        |
 | ----------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------- |
 | `ariaLabel` | `string`   | yes      | —       | Accessible name for the <nav> landmark. Required, non-empty, distinct from other navs on the page. |
+| `children`  | `(opaque)` | —        | —       | function-or-snippet                                                                                |
 | `class`     | `(opaque)` | —        | —       | unknown-shape                                                                                      |
 
 <!-- generated:props:end -->

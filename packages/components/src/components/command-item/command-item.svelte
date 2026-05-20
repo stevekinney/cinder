@@ -87,11 +87,11 @@
   {/if}
 
   <span class="cinder-command-item__content">
-    <span class="cinder-command-item__label">
+    <span class="cinder-command-item__label cinder-_truncate">
       {@render children()}
     </span>
     {#if description}
-      <span class="cinder-command-item__description">{description}</span>
+      <span class="cinder-command-item__description cinder-_truncate">{description}</span>
     {/if}
   </span>
 
