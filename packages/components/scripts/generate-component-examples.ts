@@ -70,7 +70,10 @@ export type ExampleSet = {
   $schema: string;
   /** Kebab-case component id. */
   component: string;
-  /** `"cinder/<id>"` import path for the component. */
+  /**
+   * Import path for the component. `cinder/<id>` for stable, or
+   * `cinder/experimental/<id>` for experimental.
+   */
   import: string;
   examples: Example[];
 };
@@ -228,7 +231,9 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
 
   // Validate the override against the closed set of public component ids.
   // Without this check, a bad `export const component = '../../bad/path'`
-  // could write artifacts outside the canonical component directory.
+  // could write artifacts outside the canonical component directory. We accept
+  // either the bare kebab id (stable) or the path used in `validCinderSubpaths`
+  // for experimental components (which is prefixed with `experimental/`).
   if (componentOverride !== undefined) {
     if (!/^[a-z][a-z0-9-]*$/.test(componentOverride)) {
       return {
@@ -236,7 +241,9 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
         reason: `"export const component = '${componentOverride}'" in ${filePath} is not a kebab-case id`,
       };
     }
-    if (!validCinderSubpaths.has(componentOverride)) {
+    const matchesBare = validCinderSubpaths.has(componentOverride);
+    const matchesExperimental = validCinderSubpaths.has(`experimental/${componentOverride}`);
+    if (!matchesBare && !matchesExperimental) {
       return {
         kind: 'error',
         reason: `"export const component = '${componentOverride}'" in ${filePath} does not match any public component`,
@@ -450,13 +457,23 @@ function buildCodeField(
  */
 export async function generateAllExamples(): Promise<GenerateExamplesResult> {
   const components = await discoverDirectoryComponents();
-  const validCinderSubpaths = new Set(components.map((c) => c.name));
+  // Valid `cinder/<...>` subpaths include both flat component names and the
+  // `experimental/<name>` namespace so examples for experimental components
+  // can import their siblings via the same `cinder/<subpath>` contract.
+  const validCinderSubpaths = new Set<string>();
+  for (const component of components) {
+    if (component.isExperimental) {
+      validCinderSubpaths.add(`experimental/${component.name}`);
+    } else {
+      validCinderSubpaths.add(component.name);
+    }
+  }
 
   const exampleSets: ExampleSet[] = [];
   const exclusions: ExampleExclusion[] = [];
   const errors: ExtractExampleError[] = [];
 
-  for (const { name: componentId } of components) {
+  for (const { name: componentId, isExperimental } of components) {
     const examplesDir = join(PLAYGROUND_EXAMPLES_ROOT, componentId);
     if (!existsSync(examplesDir)) continue;
 
@@ -528,10 +545,18 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
     if (publishedExamples.length === 0) continue;
 
     const effectiveComponentId = componentImportOverride ?? componentId;
+    const importPath = isExperimental
+      ? `cinder/experimental/${effectiveComponentId}`
+      : `cinder/${effectiveComponentId}`;
+    // Experimental example artifacts live one directory deeper so the
+    // `src/components/experimental/<id>/` layout matches the source tree.
+    const $schema = isExperimental
+      ? '../../../schemas/examples.schema.json'
+      : '../../schemas/examples.schema.json';
     exampleSets.push({
-      $schema: '../../schemas/examples.schema.json',
+      $schema,
       component: effectiveComponentId,
-      import: `cinder/${effectiveComponentId}`,
+      import: importPath,
       examples: publishedExamples,
     });
   }
@@ -559,12 +584,23 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
  *
  * Exported for use by the orchestrator (`generate-component-artifacts.ts`).
  */
+/**
+ * Resolve the on-disk path for an example set's JSON artifact. Experimental
+ * components live one directory deeper, mirroring the source tree.
+ */
+function exampleSetOutputPath(exampleSet: ExampleSet): string {
+  const isExperimental = exampleSet.import.startsWith('cinder/experimental/');
+  const componentDir = isExperimental
+    ? join(COMPONENTS_SRC_ROOT, 'experimental', exampleSet.component)
+    : join(COMPONENTS_SRC_ROOT, exampleSet.component);
+  return join(componentDir, `${exampleSet.component}.examples.json`);
+}
+
 export async function writeExampleArtifacts(result: GenerateExamplesResult): Promise<void> {
   const { exampleSets, exclusions } = result;
 
   for (const exampleSet of exampleSets) {
-    const componentDir = join(COMPONENTS_SRC_ROOT, exampleSet.component);
-    const outputPath = join(componentDir, `${exampleSet.component}.examples.json`);
+    const outputPath = exampleSetOutputPath(exampleSet);
     await Bun.write(outputPath, JSON.stringify(exampleSet, null, 2) + '\n');
   }
 
@@ -596,11 +632,7 @@ export async function checkExamplesDrift(result: GenerateExamplesResult): Promis
 
   // Check each example set against the committed JSON.
   for (const exampleSet of result.exampleSets) {
-    const outputPath = join(
-      COMPONENTS_SRC_ROOT,
-      exampleSet.component,
-      `${exampleSet.component}.examples.json`,
-    );
+    const outputPath = exampleSetOutputPath(exampleSet);
     const generated = JSON.stringify(exampleSet, null, 2) + '\n';
 
     if (!existsSync(outputPath)) {

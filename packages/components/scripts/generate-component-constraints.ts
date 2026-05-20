@@ -129,49 +129,92 @@ function validateDocument(document: ConstraintsDocument, expectedId: string): Va
 /**
  * Recursively validate the shape of a predicate. Returns the first error found
  * or `null` if the predicate is well-formed.
+ *
+ * Each predicate is exactly one of:
+ *   { allOf: Predicate[] }
+ *   { anyOf: Predicate[] }
+ *   { snippet: string }
+ *   { prop: string, equals: string | number | boolean }
+ *   { prop: string, exists: true }
+ *   { prop: string, nonEmpty: true }
+ *
+ * Any extra keys, missing keys, or mixed-shape combinations are rejected so
+ * the evaluator never has to guess which discriminator wins.
  */
 function validatePredicate(predicate: unknown, context: string): string | null {
   if (predicate === null || typeof predicate !== 'object') {
     return `${context}: predicate must be an object`;
   }
   const p = predicate as Record<string, unknown>;
+  const keys = Object.keys(p);
 
-  if ('allOf' in p) {
-    if (!Array.isArray(p['allOf']) || p['allOf'].length === 0) {
-      return `${context}: "allOf" must be a non-empty array`;
-    }
-    for (const [i, child] of p['allOf'].entries()) {
-      const err = validatePredicate(child, `${context} allOf[${i}]`);
-      if (err) return err;
-    }
-    return null;
+  // Group-1 operators (each one is its own shape — no other discriminators allowed).
+  const groupOperators = ['allOf', 'anyOf', 'snippet'] as const;
+  const operatorsPresent = groupOperators.filter((k) => k in p);
+
+  if (operatorsPresent.length > 1) {
+    return `${context}: predicate has multiple top-level operators (${operatorsPresent.join(', ')}); each predicate must be exactly one shape`;
   }
-  if ('anyOf' in p) {
-    if (!Array.isArray(p['anyOf']) || p['anyOf'].length === 0) {
-      return `${context}: "anyOf" must be a non-empty array`;
+
+  if (operatorsPresent.length === 1) {
+    const op = operatorsPresent[0]!;
+    // Operator-shape predicates do not share keys with prop-shape predicates.
+    const otherKeys = keys.filter((k) => k !== op);
+    if (otherKeys.length > 0) {
+      return `${context}: "${op}" predicate has unexpected extra key(s): ${otherKeys.join(', ')}`;
     }
-    for (const [i, child] of p['anyOf'].entries()) {
-      const err = validatePredicate(child, `${context} anyOf[${i}]`);
-      if (err) return err;
+    if (op === 'allOf' || op === 'anyOf') {
+      const children = p[op];
+      if (!Array.isArray(children) || children.length === 0) {
+        return `${context}: "${op}" must be a non-empty array`;
+      }
+      for (const [i, child] of children.entries()) {
+        const err = validatePredicate(child, `${context} ${op}[${i}]`);
+        if (err) return err;
+      }
+      return null;
     }
-    return null;
-  }
-  if ('snippet' in p) {
+    // snippet
     return typeof p['snippet'] === 'string' && p['snippet'].length > 0
       ? null
       : `${context}: "snippet" must be a non-empty string`;
   }
+
+  // Prop-shape predicates require exactly one of equals/exists/nonEmpty plus a "prop" string.
   if (!('prop' in p) || typeof p['prop'] !== 'string' || p['prop'].length === 0) {
     return `${context}: predicate must include a non-empty "prop" string or one of allOf/anyOf/snippet`;
   }
-  if ('equals' in p) return null;
-  if ('exists' in p) {
+
+  const propDiscriminators = ['equals', 'exists', 'nonEmpty'] as const;
+  const presentDiscriminators = propDiscriminators.filter((k) => k in p);
+  if (presentDiscriminators.length === 0) {
+    return `${context}: predicate must include one of equals/exists/nonEmpty when "prop" is set`;
+  }
+  if (presentDiscriminators.length > 1) {
+    return `${context}: predicate has multiple discriminators (${presentDiscriminators.join(', ')}); each predicate must use exactly one`;
+  }
+
+  // Reject any unexpected keys alongside `prop` + the chosen discriminator.
+  const expectedKeys = new Set(['prop', presentDiscriminators[0]!]);
+  const unexpected = keys.filter((k) => !expectedKeys.has(k));
+  if (unexpected.length > 0) {
+    return `${context}: predicate has unexpected extra key(s): ${unexpected.join(', ')}`;
+  }
+
+  // Per-discriminator value type checks.
+  const disc = presentDiscriminators[0]!;
+  if (disc === 'equals') {
+    const v = p['equals'];
+    if (typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') {
+      return `${context}: "equals" must be a string, number, or boolean`;
+    }
+    return null;
+  }
+  if (disc === 'exists') {
     return p['exists'] === true ? null : `${context}: "exists" must be \`true\``;
   }
-  if ('nonEmpty' in p) {
-    return p['nonEmpty'] === true ? null : `${context}: "nonEmpty" must be \`true\``;
-  }
-  return `${context}: predicate must include one of equals/exists/nonEmpty when "prop" is set`;
+  // nonEmpty
+  return p['nonEmpty'] === true ? null : `${context}: "nonEmpty" must be \`true\``;
 }
 
 // ---------------------------------------------------------------------------

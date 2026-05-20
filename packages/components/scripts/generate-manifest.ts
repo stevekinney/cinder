@@ -8,6 +8,13 @@
  *
  * The generator fails loudly when `extractAllComponentMetadata()` returns any
  * errors — a partial manifest is never written to disk.
+ *
+ * `hasExamples` and `hasConstraints` are derived from the GENERATED JSON
+ * artifacts on disk, not from the source. Run `bun run examples:generate`
+ * and `bun run constraints:generate` first, or use the orchestrator
+ * (`bun run components:generate`) which sequences them correctly. Without
+ * the artifacts, the manifest will report `hasExamples: false` /
+ * `hasConstraints: false` for components that have source-only data.
  */
 
 import { existsSync } from 'node:fs';
@@ -97,7 +104,6 @@ export type Manifest = {
 // ---------------------------------------------------------------------------
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
-const PLAYGROUND_EXAMPLES_ROOT = join(import.meta.dir, '..', '..', 'playground', 'src', 'examples');
 const COMPONENTS_ROOT = join(PACKAGE_ROOT, 'src', 'components');
 const MANIFEST_PATH = join(PACKAGE_ROOT, 'components.json');
 const SCHEMA_PATH = join(PACKAGE_ROOT, 'src', 'schemas', 'manifest.schema.json');
@@ -127,26 +133,28 @@ function importSpecifier(id: string, isExperimental: boolean): string {
 }
 
 /**
- * Check whether a playground examples directory exists and contains at least
- * one `.example.svelte` file (non-excluded).
+ * Check whether the generated examples artifact exists on disk for a
+ * component. We base the manifest flag on the artifact's presence — not the
+ * playground source — so the manifest cannot advertise a subpath that won't
+ * resolve. Run `bun run examples:generate` before `manifest:generate`.
  */
-async function hasPlaygroundExamples(id: string): Promise<boolean> {
-  const examplesDir = join(PLAYGROUND_EXAMPLES_ROOT, id);
-  if (!existsSync(examplesDir)) return false;
-  const { readdir } = await import('node:fs/promises');
-  const entries = await readdir(examplesDir);
-  return entries.some((file) => file.endsWith('.example.svelte'));
-}
-
-/**
- * Check whether a component directory ships a constraints sidecar
- * (`{id}.constraints.ts`).
- */
-function hasConstraintsSidecar(id: string, isExperimental: boolean): boolean {
+function hasExamplesArtifact(id: string, isExperimental: boolean): boolean {
   const componentDir = isExperimental
     ? join(COMPONENTS_ROOT, 'experimental', id)
     : join(COMPONENTS_ROOT, id);
-  return existsSync(join(componentDir, `${id}.constraints.ts`));
+  return existsSync(join(componentDir, `${id}.examples.json`));
+}
+
+/**
+ * Check whether the generated constraints artifact exists on disk. We base
+ * the manifest flag on the artifact, not the source sidecar, for the same
+ * reason as `hasExamplesArtifact`.
+ */
+function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
+  const componentDir = isExperimental
+    ? join(COMPONENTS_ROOT, 'experimental', id)
+    : join(COMPONENTS_ROOT, id);
+  return existsSync(join(componentDir, `${id}.constraints.json`));
 }
 
 /**
@@ -221,8 +229,8 @@ export async function buildManifest(): Promise<Manifest> {
     metadata.map(async (meta: ComponentMetadata): Promise<ManifestComponent> => {
       const exportName = kebabToPascal(meta.id);
       const importPath = importSpecifier(meta.id, meta.isExperimental);
-      const hasExamplesFlag = await hasPlaygroundExamples(meta.id);
-      const hasConstraintsFlag = hasConstraintsSidecar(meta.id, meta.isExperimental);
+      const hasExamplesFlag = hasExamplesArtifact(meta.id, meta.isExperimental);
+      const hasConstraintsFlag = hasConstraintsArtifact(meta.id, meta.isExperimental);
 
       const artifacts: ManifestComponent['artifacts'] = {
         schema: artifactSubpath(meta.id, meta.isExperimental, 'schema'),

@@ -87,12 +87,19 @@ are all there.
 import buttonConstraints from 'cinder/button/constraints' with { type: 'json' };
 ```
 
-`cinder/<name>/constraints` is a JSON file (use the `with { type: 'json' }`
-import attribute, or `import.meta.resolve` + `fetch` if your runtime
-predates the proposal). JSON Schema cannot cleanly express rules like
-_"exactly one of `label`, `children`, or `iconOnly`"_ or _"`iconOnly` requires
-an accessible name source"_ — those rules live in the constraints sidecar as
-a small DSL.
+`cinder/<name>/constraints` is a JSON file. Use the `with { type: 'json' }`
+import attribute on a modern runtime. For Node consumers without import-
+attribute support, read the file off disk:
+
+```ts
+import { readFile } from 'node:fs/promises';
+const url = new URL(import.meta.resolve('cinder/button/constraints'));
+const buttonConstraints = JSON.parse(await readFile(url, 'utf-8'));
+```
+
+JSON Schema cannot cleanly express rules like _"exactly one of `label`,
+`children`, or `iconOnly`"_ or _"`iconOnly` requires an accessible name
+source"_ — those rules live in the constraints sidecar as a small DSL.
 
 **4. Fetch canonical examples — when `hasExamples` is true.**
 

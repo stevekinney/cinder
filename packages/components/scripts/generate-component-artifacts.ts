@@ -212,6 +212,7 @@ async function main(): Promise<void> {
 
     // Stage 2: constraints drift check.
     let constraintIssues: DriftIssue[] = [];
+    let constraintsStageFailed = false;
     try {
       const issues = await checkConstraintsDrift();
       constraintIssues = issues.map((issue) => ({
@@ -222,6 +223,7 @@ async function main(): Promise<void> {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`components:check — constraints stage failed: ${message}\n`);
+      constraintsStageFailed = true;
     }
 
     // Stage 3: examples drift check.
@@ -285,6 +287,7 @@ async function main(): Promise<void> {
       ...constraintIssues.map(
         (issue) => `constraints: ${issue.component}/${issue.file} (${issue.reason})`,
       ),
+      ...(constraintsStageFailed ? ['constraints: stage threw — see error above'] : []),
       ...exampleIssues.map((issue) => `examples: ${issue}`),
       ...(exampleExtractionErrors > 0
         ? [`examples: ${exampleExtractionErrors} example(s) have extraction errors`]
