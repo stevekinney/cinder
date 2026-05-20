@@ -1,7 +1,24 @@
 {
   "name": "cinder",
   "version": "0.0.1",
-  "description": "",
+  "description": "A Svelte 5 component library and design system focused on accessibility, theming, and per-component tree-shaking.",
+  "keywords": [
+    "svelte",
+    "svelte-5",
+    "components",
+    "design-system",
+    "ui",
+    "accessibility"
+  ],
+  "homepage": "https://github.com/stevekinney/cinder#readme",
+  "bugs": {
+    "url": "https://github.com/stevekinney/cinder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevekinney/cinder.git",
+    "directory": "packages/components"
+  },
   "license": "MIT",
   "author": "Steve Kinney <hello@stevekinney.net>",
   "sideEffects": [
