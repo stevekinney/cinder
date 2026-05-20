@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier — required for label association and ARIA wiring."
+    },
+    "value": {
+      "type": "string",
+      "description": "Currently selected value. Bindable."
+    },
+    "inputValue": {
+      "type": "string",
+      "description": "Free-text input value (the text the user has typed). Bindable."
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Full set of options to filter."
+    },
+    "label": {
+      "type": "string",
+      "description": "Visible label rendered in a `<label>` associated via `for`."
+    },
+    "placeholder": {
+      "type": "string",
+      "description": "Placeholder when no value is selected."
+    },
+    "description": {
+      "type": "string",
+      "description": "Helper text displayed below the input; wired via aria-describedby."
+    },
+    "error": {
+      "type": "string",
+      "description": "Validation error message; sets aria-invalid=\"true\"."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disables the combobox."
+    },
+    "maxVisibleOptions": {
+      "type": "number",
+      "description": "Hard cap on visible filtered options. Default 200."
+    },
+    "aria-describedby": {
+      "type": "string",
+      "description": "External element id(s) to compose into `aria-describedby`. Composed\nafter the component-generated description and error ids, matching the\nfield-control contract in Select. Useful for tooltip ids, counter ids,\nor any external hint."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-combobox`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "options"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "filter",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

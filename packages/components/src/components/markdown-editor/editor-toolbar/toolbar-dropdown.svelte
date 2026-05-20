@@ -28,10 +28,10 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { Check } from '../../icons/index.ts';
-  import Dropdown from '../../dropdown.svelte';
-  import DropdownTrigger from '../../dropdown-trigger.svelte';
-  import DropdownMenu from '../../dropdown-menu.svelte';
-  import DropdownItem from '../../dropdown-item.svelte';
+  import Dropdown from '../../dropdown/dropdown.svelte';
+  import DropdownTrigger from '../../dropdown-trigger/dropdown-trigger.svelte';
+  import DropdownMenu from '../../dropdown-menu/dropdown-menu.svelte';
+  import DropdownItem from '../../dropdown-item/dropdown-item.svelte';
 
   let {
     id,

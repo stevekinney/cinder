@@ -7,7 +7,10 @@
   import { getContext } from 'svelte';
 
   import { ariaInvalid, composeDescribedBy, describeId } from '../../_internal/field-control.ts';
-  import { RADIO_GROUP_CONTEXT_KEY, type RadioGroupContext } from '../radio-group.svelte';
+  import {
+    RADIO_GROUP_CONTEXT_KEY,
+    type RadioGroupContext,
+  } from '../radio-group/radio-group.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
   let {

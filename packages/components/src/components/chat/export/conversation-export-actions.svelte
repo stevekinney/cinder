@@ -21,10 +21,10 @@
   import { classNames } from '../../../utilities/class-names.ts';
   import { copyToClipboard } from '../../../utilities/clipboard.ts';
   import { stringifyOrNull } from '../../../utilities/stringify.ts';
-  import Dropdown from '../../dropdown.svelte';
-  import DropdownItem from '../../dropdown-item.svelte';
-  import DropdownMenu from '../../dropdown-menu.svelte';
-  import DropdownTrigger from '../../dropdown-trigger.svelte';
+  import Dropdown from '../../dropdown/dropdown.svelte';
+  import DropdownItem from '../../dropdown-item/dropdown-item.svelte';
+  import DropdownMenu from '../../dropdown-menu/dropdown-menu.svelte';
+  import DropdownTrigger from '../../dropdown-trigger/dropdown-trigger.svelte';
   import { Check, Copy, FileCode, FileText } from '../../icons/index.ts';
   import { getMessages } from 'conversationalist';
   import { messagesToMarkdown } from '../utilities';

@@ -21,49 +21,9 @@
       "svelte": "./src/components/chat.svelte",
       "types": "./dist/components/chat.svelte.d.ts"
     },
-    "./color-picker": {
-      "svelte": "./src/components/color-picker.svelte",
-      "types": "./dist/components/color-picker.svelte.d.ts"
-    },
-    "./color-swatch-picker": {
-      "svelte": "./src/components/color-swatch-picker.svelte",
-      "types": "./dist/components/color-swatch-picker.svelte.d.ts"
-    },
-    "./combobox": {
-      "svelte": "./src/components/combobox.svelte",
-      "types": "./dist/components/combobox.svelte.d.ts"
-    },
-    "./command-palette": {
-      "svelte": "./src/components/command-palette.svelte",
-      "types": "./dist/components/command-palette.svelte.d.ts"
-    },
     "./diff-viewer": {
       "svelte": "./src/components/diff-viewer.svelte",
       "types": "./dist/components/diff-viewer.svelte.d.ts"
-    },
-    "./dropdown-item": {
-      "svelte": "./src/components/dropdown-item.svelte",
-      "types": "./dist/components/dropdown-item.svelte.d.ts"
-    },
-    "./dropdown-label": {
-      "svelte": "./src/components/dropdown-label.svelte",
-      "types": "./dist/components/dropdown-label.svelte.d.ts"
-    },
-    "./dropdown-menu": {
-      "svelte": "./src/components/dropdown-menu.svelte",
-      "types": "./dist/components/dropdown-menu.svelte.d.ts"
-    },
-    "./dropdown-separator": {
-      "svelte": "./src/components/dropdown-separator.svelte",
-      "types": "./dist/components/dropdown-separator.svelte.d.ts"
-    },
-    "./dropdown-trigger": {
-      "svelte": "./src/components/dropdown-trigger.svelte",
-      "types": "./dist/components/dropdown-trigger.svelte.d.ts"
-    },
-    "./dropdown": {
-      "svelte": "./src/components/dropdown.svelte",
-      "types": "./dist/components/dropdown.svelte.d.ts"
     },
     "./experimental/connection-indicator": {
       "svelte": "./src/components/experimental/connection-indicator.svelte",
@@ -84,26 +44,6 @@
     "./markdown-editor": {
       "svelte": "./src/components/markdown-editor.svelte",
       "types": "./dist/components/markdown-editor.svelte.d.ts"
-    },
-    "./navigation-bar": {
-      "svelte": "./src/components/navigation-bar.svelte",
-      "types": "./dist/components/navigation-bar.svelte.d.ts"
-    },
-    "./navigation-item": {
-      "svelte": "./src/components/navigation-item.svelte",
-      "types": "./dist/components/navigation-item.svelte.d.ts"
-    },
-    "./number-input": {
-      "svelte": "./src/components/number-input.svelte",
-      "types": "./dist/components/number-input.svelte.d.ts"
-    },
-    "./pagination": {
-      "svelte": "./src/components/pagination.svelte",
-      "types": "./dist/components/pagination.svelte.d.ts"
-    },
-    "./radio-group": {
-      "svelte": "./src/components/radio-group.svelte",
-      "types": "./dist/components/radio-group.svelte.d.ts"
     },
     "./review-editor": {
       "svelte": "./src/components/review-editor.svelte",
@@ -373,6 +313,42 @@
       "svelte": "./src/components/code-block/code-block.variables.ts",
       "types": "./dist/components/code-block/code-block.variables.d.ts"
     },
+    "./color-picker": {
+      "svelte": "./src/components/color-picker/index.ts",
+      "types": "./dist/components/color-picker/index.d.ts"
+    },
+    "./color-picker/schema": {
+      "svelte": "./src/components/color-picker/color-picker.schema.ts",
+      "types": "./dist/components/color-picker/color-picker.schema.d.ts"
+    },
+    "./color-picker/variables": {
+      "svelte": "./src/components/color-picker/color-picker.variables.ts",
+      "types": "./dist/components/color-picker/color-picker.variables.d.ts"
+    },
+    "./color-swatch-picker": {
+      "svelte": "./src/components/color-swatch-picker/index.ts",
+      "types": "./dist/components/color-swatch-picker/index.d.ts"
+    },
+    "./color-swatch-picker/schema": {
+      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.schema.ts",
+      "types": "./dist/components/color-swatch-picker/color-swatch-picker.schema.d.ts"
+    },
+    "./color-swatch-picker/variables": {
+      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.variables.ts",
+      "types": "./dist/components/color-swatch-picker/color-swatch-picker.variables.d.ts"
+    },
+    "./combobox": {
+      "svelte": "./src/components/combobox/index.ts",
+      "types": "./dist/components/combobox/index.d.ts"
+    },
+    "./combobox/schema": {
+      "svelte": "./src/components/combobox/combobox.schema.ts",
+      "types": "./dist/components/combobox/combobox.schema.d.ts"
+    },
+    "./combobox/variables": {
+      "svelte": "./src/components/combobox/combobox.variables.ts",
+      "types": "./dist/components/combobox/combobox.variables.d.ts"
+    },
     "./command-item": {
       "svelte": "./src/components/command-item/index.ts",
       "types": "./dist/components/command-item/index.d.ts"
@@ -384,6 +360,18 @@
     "./command-item/variables": {
       "svelte": "./src/components/command-item/command-item.variables.ts",
       "types": "./dist/components/command-item/command-item.variables.d.ts"
+    },
+    "./command-palette": {
+      "svelte": "./src/components/command-palette/index.ts",
+      "types": "./dist/components/command-palette/index.d.ts"
+    },
+    "./command-palette/schema": {
+      "svelte": "./src/components/command-palette/command-palette.schema.ts",
+      "types": "./dist/components/command-palette/command-palette.schema.d.ts"
+    },
+    "./command-palette/variables": {
+      "svelte": "./src/components/command-palette/command-palette.variables.ts",
+      "types": "./dist/components/command-palette/command-palette.variables.d.ts"
     },
     "./confirm-dialog": {
       "svelte": "./src/components/confirm-dialog/index.ts",
@@ -456,6 +444,78 @@
     "./drawer/variables": {
       "svelte": "./src/components/drawer/drawer.variables.ts",
       "types": "./dist/components/drawer/drawer.variables.d.ts"
+    },
+    "./dropdown": {
+      "svelte": "./src/components/dropdown/index.ts",
+      "types": "./dist/components/dropdown/index.d.ts"
+    },
+    "./dropdown/schema": {
+      "svelte": "./src/components/dropdown/dropdown.schema.ts",
+      "types": "./dist/components/dropdown/dropdown.schema.d.ts"
+    },
+    "./dropdown/variables": {
+      "svelte": "./src/components/dropdown/dropdown.variables.ts",
+      "types": "./dist/components/dropdown/dropdown.variables.d.ts"
+    },
+    "./dropdown-item": {
+      "svelte": "./src/components/dropdown-item/index.ts",
+      "types": "./dist/components/dropdown-item/index.d.ts"
+    },
+    "./dropdown-item/schema": {
+      "svelte": "./src/components/dropdown-item/dropdown-item.schema.ts",
+      "types": "./dist/components/dropdown-item/dropdown-item.schema.d.ts"
+    },
+    "./dropdown-item/variables": {
+      "svelte": "./src/components/dropdown-item/dropdown-item.variables.ts",
+      "types": "./dist/components/dropdown-item/dropdown-item.variables.d.ts"
+    },
+    "./dropdown-label": {
+      "svelte": "./src/components/dropdown-label/index.ts",
+      "types": "./dist/components/dropdown-label/index.d.ts"
+    },
+    "./dropdown-label/schema": {
+      "svelte": "./src/components/dropdown-label/dropdown-label.schema.ts",
+      "types": "./dist/components/dropdown-label/dropdown-label.schema.d.ts"
+    },
+    "./dropdown-label/variables": {
+      "svelte": "./src/components/dropdown-label/dropdown-label.variables.ts",
+      "types": "./dist/components/dropdown-label/dropdown-label.variables.d.ts"
+    },
+    "./dropdown-menu": {
+      "svelte": "./src/components/dropdown-menu/index.ts",
+      "types": "./dist/components/dropdown-menu/index.d.ts"
+    },
+    "./dropdown-menu/schema": {
+      "svelte": "./src/components/dropdown-menu/dropdown-menu.schema.ts",
+      "types": "./dist/components/dropdown-menu/dropdown-menu.schema.d.ts"
+    },
+    "./dropdown-menu/variables": {
+      "svelte": "./src/components/dropdown-menu/dropdown-menu.variables.ts",
+      "types": "./dist/components/dropdown-menu/dropdown-menu.variables.d.ts"
+    },
+    "./dropdown-separator": {
+      "svelte": "./src/components/dropdown-separator/index.ts",
+      "types": "./dist/components/dropdown-separator/index.d.ts"
+    },
+    "./dropdown-separator/schema": {
+      "svelte": "./src/components/dropdown-separator/dropdown-separator.schema.ts",
+      "types": "./dist/components/dropdown-separator/dropdown-separator.schema.d.ts"
+    },
+    "./dropdown-separator/variables": {
+      "svelte": "./src/components/dropdown-separator/dropdown-separator.variables.ts",
+      "types": "./dist/components/dropdown-separator/dropdown-separator.variables.d.ts"
+    },
+    "./dropdown-trigger": {
+      "svelte": "./src/components/dropdown-trigger/index.ts",
+      "types": "./dist/components/dropdown-trigger/index.d.ts"
+    },
+    "./dropdown-trigger/schema": {
+      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.schema.ts",
+      "types": "./dist/components/dropdown-trigger/dropdown-trigger.schema.d.ts"
+    },
+    "./dropdown-trigger/variables": {
+      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.variables.ts",
+      "types": "./dist/components/dropdown-trigger/dropdown-trigger.variables.d.ts"
     },
     "./empty-state": {
       "svelte": "./src/components/empty-state/index.ts",
@@ -601,6 +661,42 @@
       "svelte": "./src/components/modal/modal.variables.ts",
       "types": "./dist/components/modal/modal.variables.d.ts"
     },
+    "./navigation-bar": {
+      "svelte": "./src/components/navigation-bar/index.ts",
+      "types": "./dist/components/navigation-bar/index.d.ts"
+    },
+    "./navigation-bar/schema": {
+      "svelte": "./src/components/navigation-bar/navigation-bar.schema.ts",
+      "types": "./dist/components/navigation-bar/navigation-bar.schema.d.ts"
+    },
+    "./navigation-bar/variables": {
+      "svelte": "./src/components/navigation-bar/navigation-bar.variables.ts",
+      "types": "./dist/components/navigation-bar/navigation-bar.variables.d.ts"
+    },
+    "./navigation-item": {
+      "svelte": "./src/components/navigation-item/index.ts",
+      "types": "./dist/components/navigation-item/index.d.ts"
+    },
+    "./navigation-item/schema": {
+      "svelte": "./src/components/navigation-item/navigation-item.schema.ts",
+      "types": "./dist/components/navigation-item/navigation-item.schema.d.ts"
+    },
+    "./navigation-item/variables": {
+      "svelte": "./src/components/navigation-item/navigation-item.variables.ts",
+      "types": "./dist/components/navigation-item/navigation-item.variables.d.ts"
+    },
+    "./number-input": {
+      "svelte": "./src/components/number-input/index.ts",
+      "types": "./dist/components/number-input/index.d.ts"
+    },
+    "./number-input/schema": {
+      "svelte": "./src/components/number-input/number-input.schema.ts",
+      "types": "./dist/components/number-input/number-input.schema.d.ts"
+    },
+    "./number-input/variables": {
+      "svelte": "./src/components/number-input/number-input.variables.ts",
+      "types": "./dist/components/number-input/number-input.variables.d.ts"
+    },
     "./page-layout": {
       "svelte": "./src/components/page-layout/index.ts",
       "types": "./dist/components/page-layout/index.d.ts"
@@ -612,6 +708,18 @@
     "./page-layout/variables": {
       "svelte": "./src/components/page-layout/page-layout.variables.ts",
       "types": "./dist/components/page-layout/page-layout.variables.d.ts"
+    },
+    "./pagination": {
+      "svelte": "./src/components/pagination/index.ts",
+      "types": "./dist/components/pagination/index.d.ts"
+    },
+    "./pagination/schema": {
+      "svelte": "./src/components/pagination/pagination.schema.ts",
+      "types": "./dist/components/pagination/pagination.schema.d.ts"
+    },
+    "./pagination/variables": {
+      "svelte": "./src/components/pagination/pagination.variables.ts",
+      "types": "./dist/components/pagination/pagination.variables.d.ts"
     },
     "./popover": {
       "svelte": "./src/components/popover/index.ts",
@@ -648,6 +756,18 @@
     "./radio/variables": {
       "svelte": "./src/components/radio/radio.variables.ts",
       "types": "./dist/components/radio/radio.variables.d.ts"
+    },
+    "./radio-group": {
+      "svelte": "./src/components/radio-group/index.ts",
+      "types": "./dist/components/radio-group/index.d.ts"
+    },
+    "./radio-group/schema": {
+      "svelte": "./src/components/radio-group/radio-group.schema.ts",
+      "types": "./dist/components/radio-group/radio-group.schema.d.ts"
+    },
+    "./radio-group/variables": {
+      "svelte": "./src/components/radio-group/radio-group.variables.ts",
+      "types": "./dist/components/radio-group/radio-group.variables.d.ts"
     },
     "./scroll-area": {
       "svelte": "./src/components/scroll-area/index.ts",

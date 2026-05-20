@@ -19,10 +19,10 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
-  import Dropdown from '../dropdown.svelte';
-  import DropdownItem from '../dropdown-item.svelte';
-  import DropdownMenu from '../dropdown-menu.svelte';
-  import DropdownTrigger from '../dropdown-trigger.svelte';
+  import Dropdown from '../dropdown/dropdown.svelte';
+  import DropdownItem from '../dropdown-item/dropdown-item.svelte';
+  import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
+  import DropdownTrigger from '../dropdown-trigger/dropdown-trigger.svelte';
   import { Copy, FileText, FileCode, GitBranch, MessageSquare, Check } from '../icons/index.ts';
 
   let {

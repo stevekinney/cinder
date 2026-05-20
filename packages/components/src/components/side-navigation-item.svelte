@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { NavigationItemProps } from './navigation-item.svelte';
+  import type { NavigationItemProps } from './navigation-item/navigation-item.types.ts';
 
   /** Props for the SideNavigationItem component. Forwards all NavigationItem props to the inner item. */
   export type SideNavigationItemProps = NavigationItemProps & {
@@ -10,7 +10,7 @@
 
 <script lang="ts">
   import { classNames } from '../utilities/class-names.ts';
-  import NavigationItem from './navigation-item.svelte';
+  import NavigationItem from './navigation-item/navigation-item.svelte';
 
   let { listItemClass, ...navigationItemProps }: SideNavigationItemProps = $props();
 </script>

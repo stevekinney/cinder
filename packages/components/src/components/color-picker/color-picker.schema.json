@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "string",
+      "description": "Bindable value. Reading the value yields a hex string (`#rrggbb`, or\n`#rrggbbaa` when `alpha` is true). Setting the value accepts hex, `rgb()`,\n`rgba()`, `hsl()`, or `hsla()` input; invalid input is normalized to `''`."
+    },
+    "defaultValue": {
+      "type": "string",
+      "description": "Initial color when `value` is not bound. Same input formats as `value`."
+    },
+    "alpha": {
+      "type": "boolean",
+      "description": "Enable the alpha slider and emit `#rrggbbaa`. Default `false`."
+    },
+    "name": {
+      "type": "string",
+      "description": "Form field name. When set, a hidden input mirrors the current value for form submission."
+    },
+    "swatches": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional palette of preset colors rendered below the picker."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disable interaction across the picker."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional classes merged onto the root element."
+    },
+    "label": {
+      "type": "string",
+      "description": "Accessible label for the picker. Default `'Color picker'`."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "oninput",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

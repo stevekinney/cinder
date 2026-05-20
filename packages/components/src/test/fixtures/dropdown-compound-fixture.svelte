@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Dropdown from '../../components/dropdown.svelte';
-  import DropdownItem from '../../components/dropdown-item.svelte';
-  import DropdownLabel from '../../components/dropdown-label.svelte';
-  import DropdownMenu from '../../components/dropdown-menu.svelte';
-  import DropdownSeparator from '../../components/dropdown-separator.svelte';
-  import DropdownTrigger from '../../components/dropdown-trigger.svelte';
+  import Dropdown from '../../components/dropdown/dropdown.svelte';
+  import DropdownItem from '../../components/dropdown-item/dropdown-item.svelte';
+  import DropdownLabel from '../../components/dropdown-label/dropdown-label.svelte';
+  import DropdownMenu from '../../components/dropdown-menu/dropdown-menu.svelte';
+  import DropdownSeparator from '../../components/dropdown-separator/dropdown-separator.svelte';
+  import DropdownTrigger from '../../components/dropdown-trigger/dropdown-trigger.svelte';
 
   let selected = $state('');
 </script>

@@ -55,20 +55,23 @@ export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
 
-export { default as ColorPicker } from './components/color-picker.svelte';
-export type { ColorPickerProps } from './components/color-picker.svelte';
+export { default as ColorPicker } from './components/color-picker/index.ts';
+export type { ColorPickerProps } from './components/color-picker/index.ts';
 
-export { default as ColorSwatchPicker } from './components/color-swatch-picker.svelte';
-export type { ColorSwatch, ColorSwatchPickerProps } from './components/color-swatch-picker.svelte';
+export { default as ColorSwatchPicker } from './components/color-swatch-picker/index.ts';
+export type {
+  ColorSwatch,
+  ColorSwatchPickerProps,
+} from './components/color-swatch-picker/index.ts';
 
-export { default as Combobox } from './components/combobox.svelte';
-export type { ComboboxOption, ComboboxProps } from './components/combobox.svelte';
+export { default as Combobox } from './components/combobox/index.ts';
+export type { ComboboxOption, ComboboxProps } from './components/combobox/index.ts';
 
 export { default as CommandItem } from './components/command-item/index.ts';
 export type { CommandItemProps } from './components/command-item/index.ts';
 
-export { default as CommandPalette } from './components/command-palette.svelte';
-export type { CommandPaletteProps } from './components/command-palette.svelte';
+export { default as CommandPalette } from './components/command-palette/index.ts';
+export type { CommandPaletteProps } from './components/command-palette/index.ts';
 
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
@@ -105,27 +108,27 @@ export type {
 export { default as Drawer } from './components/drawer/index.ts';
 export type { DrawerProps, DrawerSide, DrawerSize } from './components/drawer/index.ts';
 
-export { default as Dropdown } from './components/dropdown.svelte';
+export { default as Dropdown } from './components/dropdown/index.ts';
 export type {
   DropdownContext,
   DropdownPlacement,
   DropdownProps,
-} from './components/dropdown.svelte';
+} from './components/dropdown/index.ts';
 
-export { default as DropdownItem } from './components/dropdown-item.svelte';
-export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item.svelte';
+export { default as DropdownItem } from './components/dropdown-item/index.ts';
+export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
 
-export { default as DropdownLabel } from './components/dropdown-label.svelte';
-export type { DropdownLabelProps } from './components/dropdown-label.svelte';
+export { default as DropdownLabel } from './components/dropdown-label/index.ts';
+export type { DropdownLabelProps } from './components/dropdown-label/index.ts';
 
-export { default as DropdownMenu } from './components/dropdown-menu.svelte';
-export type { DropdownMenuProps } from './components/dropdown-menu.svelte';
+export { default as DropdownMenu } from './components/dropdown-menu/index.ts';
+export type { DropdownMenuProps } from './components/dropdown-menu/index.ts';
 
-export { default as DropdownSeparator } from './components/dropdown-separator.svelte';
-export type { DropdownSeparatorProps } from './components/dropdown-separator.svelte';
+export { default as DropdownSeparator } from './components/dropdown-separator/index.ts';
+export type { DropdownSeparatorProps } from './components/dropdown-separator/index.ts';
 
-export { default as DropdownTrigger } from './components/dropdown-trigger.svelte';
-export type { DropdownTriggerProps } from './components/dropdown-trigger.svelte';
+export { default as DropdownTrigger } from './components/dropdown-trigger/index.ts';
+export type { DropdownTriggerProps } from './components/dropdown-trigger/index.ts';
 
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
@@ -189,25 +192,25 @@ export type {
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
-export { default as NavigationBar } from './components/navigation-bar.svelte';
+export { default as NavigationBar } from './components/navigation-bar/index.ts';
 export type {
   NavigationBarItemsContext,
   NavigationBarProps,
   NavigationBarToggleAttributes,
   NavigationVariant,
-} from './components/navigation-bar.svelte';
+} from './components/navigation-bar/index.ts';
 
-export { default as NavigationItem } from './components/navigation-item.svelte';
-export type { NavigationItemProps } from './components/navigation-item.svelte';
+export { default as NavigationItem } from './components/navigation-item/index.ts';
+export type { NavigationItemProps } from './components/navigation-item/index.ts';
 
-export { default as NumberInput } from './components/number-input.svelte';
-export type { NumberInputProps } from './components/number-input.svelte';
+export { default as NumberInput } from './components/number-input/index.ts';
+export type { NumberInputProps } from './components/number-input/index.ts';
 
 export { default as PageLayout } from './components/page-layout/index.ts';
 export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/index.ts';
 
-export { default as Pagination } from './components/pagination.svelte';
-export type { PaginationProps } from './components/pagination.svelte';
+export { default as Pagination } from './components/pagination/index.ts';
+export type { PaginationProps } from './components/pagination/index.ts';
 
 export { default as Popover } from './components/popover/index.ts';
 export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
@@ -218,8 +221,8 @@ export type { ProgressProps, ProgressSize, ProgressVariant } from './components/
 export { default as Radio } from './components/radio/index.ts';
 export type { RadioProps } from './components/radio/index.ts';
 
-export { default as RadioGroup } from './components/radio-group.svelte';
-export type { RadioGroupContext, RadioGroupProps } from './components/radio-group.svelte';
+export { default as RadioGroup } from './components/radio-group/index.ts';
+export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
 
 export { default as ReviewEditor } from './components/review-editor.svelte';
 export type { ReviewEditorProps } from './components/review-editor.svelte';
