@@ -67,6 +67,22 @@ export type ReviewEditorProps = {
   oncommentupdate?: (event: CommentUpdateEvent) => void;
   /** Called when a comment is deleted. */
   oncommentdelete?: (event: CommentDeleteEvent) => void;
+
+  /**
+   * Snapshot mode for visual regression testing.
+   *
+   * When `true`:
+   * - Applies `caret-color: transparent` and `user-select: none` to the editor
+   *   root via a `data-snapshot-mode` attribute, producing a stable visual
+   *   state (no blinking cursor, no selection highlights).
+   * - Blurs any focused element inside the component on mount so the initial
+   *   screenshot does not capture a focused ring or active caret.
+   * - The inner MarkdownEditor instance also receives `snapshotMode={true}`.
+   *
+   * This is a purely visual / CSS concern. It does NOT affect editability,
+   * ProseMirror state, or any prop controlled by `readonly` / `mode`.
+   */
+  snapshotMode?: boolean;
 };
 
 /** Position for fixed-position popovers (viewport-relative coordinates) */

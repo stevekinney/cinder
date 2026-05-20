@@ -84,11 +84,15 @@
   import { onDestroy } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
+  import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
   import { ArrowUp, Paperclip, Square, X } from '../../icons/index.ts';
   import Button from '../../button/button.svelte';
   import MarkdownEditor from '../../markdown-editor/markdown-editor.svelte';
   import { deriveAttachmentKind } from './attachment-kind.js';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';
+
+  // Per-instance fallback factory for attachments whose file metadata is unavailable.
+  const attachmentIdFactory = createIdFactory('attachment');
 
   let {
     id,
@@ -196,8 +200,17 @@
 
     const kind = deriveAttachmentKind(file.type);
 
+    // Derive a stable ID from the file's identity metadata so repeated snapshot
+    // renders of the same attachment produce the same DOM ID. Fall back to the
+    // per-instance counter when lastModified is absent (e.g. synthetic File objects
+    // constructed in tests with lastModified = 0).
+    const attachmentId =
+      file.lastModified !== 0
+        ? useStableId(`${file.name}${file.size}${file.lastModified}`)
+        : attachmentIdFactory.next();
+
     const attachment: ChatAttachment = {
-      id: crypto.randomUUID(),
+      id: attachmentId,
       file,
       previewUrl: URL.createObjectURL(file),
       kind,

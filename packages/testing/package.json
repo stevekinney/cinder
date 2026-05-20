@@ -2,6 +2,9 @@
   "name": "@cinder/testing",
   "private": true,
   "type": "module",
+  "exports": {
+    "./fixture-schema": "./src/helpers/fixture-schema.ts"
+  },
   "scripts": {
     "install-browsers": "playwright install chromium",
     "install-browsers:ci": "playwright install --with-deps chromium",
