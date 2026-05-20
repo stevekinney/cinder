@@ -4,8 +4,10 @@
 
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
-  import { captureFocus, restoreFocusTo } from '../../_internal/overlay.ts';
+  import { onDestroy } from 'svelte';
+  import { captureFocus, lockBodyScroll } from '../../_internal/overlay.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
 
   let {
@@ -30,6 +32,20 @@
   // transitions from closed → open so focus can be restored to wherever the user
   // came from, even if the consumer didn't supply an explicit `triggerRef`.
   let capturedFocus: HTMLElement | null = null;
+  // Refcounted body scroll lock. Acquired when `open` transitions to true and
+  // released on close OR on destroy (defensive — both fire on close-then-unmount,
+  // and idempotence is guaranteed by checking `releaseBodyScrollLock !== null`).
+  let releaseBodyScrollLock: (() => void) | null = null;
+
+  function acquireLock() {
+    if (releaseBodyScrollLock !== null) return;
+    releaseBodyScrollLock = lockBodyScroll();
+  }
+
+  function releaseLock() {
+    releaseBodyScrollLock?.();
+    releaseBodyScrollLock = null;
+  }
 
   const titleId = useId('cinder-modal-title');
 
@@ -42,6 +58,7 @@
     if (open && !dialogElement.open) {
       capturedFocus = captureFocus();
       dialogElement.showModal();
+      acquireLock();
       // Initial focus strategy:
       //   1. If a child carries `autofocus`, the native dialog already focused it.
       //   2. Otherwise, focus the body container (tabindex=-1) so initial focus
@@ -66,12 +83,12 @@
   });
 
   function returnFocus() {
-    // Explicit triggerRef wins over auto-capture; otherwise restore to wherever
-    // focus lived before the dialog opened.
-    if (triggerRef) {
-      restoreFocusTo(triggerRef);
-    } else {
-      restoreFocusTo(capturedFocus);
+    // Iterate the local candidate list; the first that passes the connection
+    // /ownership check wins. No fallback to document.body — if both candidates
+    // are gone, leave focus where the browser put it.
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
     }
     capturedFocus = null;
   }
@@ -89,8 +106,15 @@
     // or by parent-driven open = false. Only restores focus; does NOT call ondismiss here
     // so parent-driven closes do not fire the callback.
     open = false;
+    releaseLock();
     returnFocus();
   }
+
+  onDestroy(() => {
+    // Defensive — close-then-unmount and unmount-while-open both land here.
+    // `releaseLock` is idempotent so a double-release is impossible.
+    releaseLock();
+  });
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {

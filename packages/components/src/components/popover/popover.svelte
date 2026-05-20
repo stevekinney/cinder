@@ -7,8 +7,9 @@
   import type { Attachment } from 'svelte/attachments';
   import { onDestroy, untrack } from 'svelte';
   import { DEV } from 'esm-env';
-  import { captureFocus, restoreFocusTo, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
     computePosition,
@@ -149,12 +150,17 @@
         resolvedAnchorAtOpen = null;
         return;
       }
-      const target =
-        (triggerRef && triggerRef.isConnected && triggerRef) ||
-        (resolvedAnchorAtOpen && resolvedAnchorAtOpen.isConnected && resolvedAnchorAtOpen) ||
-        (capturedFocus && capturedFocus.isConnected && capturedFocus) ||
-        null;
-      restoreFocusTo(target);
+      // Preserve the 3-candidate priority order; the shared helper enforces
+      // the per-candidate connection/ownership check so we no longer need
+      // the inline `.isConnected` guards.
+      const candidates: Array<HTMLElement | null> = [
+        triggerRef,
+        resolvedAnchorAtOpen,
+        capturedFocus,
+      ];
+      for (const candidate of candidates) {
+        if (restoreFocusTo(candidate)) break;
+      }
       capturedFocus = null;
       resolvedAnchorAtOpen = null;
       positionReady = false;
