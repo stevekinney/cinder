@@ -52,11 +52,21 @@ const PACKAGE_JSON_KEY = './package.json';
 const RESERVED_KEYS = new Set([ROOT_KEY, STYLES_KEY, PACKAGE_JSON_KEY]);
 
 /**
- * The exports map must never contain entries whose key matches this pattern.
- * CI enforces this as a hard guard against accidentally shipping debug,
- * scratch, or test-only subpaths. See {@link assertNoForbiddenExportKeys}.
+ * The exports map must never contain entries whose key contains a forbidden
+ * path segment. CI enforces this as a hard guard against accidentally
+ * shipping debug, scratch, or test-only subpaths.
+ *
+ * Anchored on `/` boundaries so legitimate component names that merely
+ * contain a forbidden substring (e.g. `./template`, `./temporal`,
+ * `./testament`) are NOT rejected. Matches a segment that:
+ *   - starts with `__` followed by any word/hyphen characters, OR
+ *   - is exactly `test`, `temp`, or `scratch`, with an optional
+ *     kebab-case suffix (e.g. `test-helpers`).
+ *
+ * See {@link assertNoForbiddenExportKeys}.
  */
-export const FORBIDDEN_EXPORT_KEY_PATTERN = /__|test|temp|scratch/i;
+export const FORBIDDEN_EXPORT_KEY_PATTERN =
+  /(?:^|\/)(?:__[\w-]*|(?:test|temp|scratch)(?:-[\w-]*)?)(?:\/|$)/i;
 
 /**
  * Reorders an export entry into the strict order required by TypeScript

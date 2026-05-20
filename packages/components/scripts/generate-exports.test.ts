@@ -134,8 +134,15 @@ describe('assertNoForbiddenExportKeys', () => {
   });
 
   it('exports a single source-of-truth pattern matching the documented case-insensitive set', () => {
+    // Forbidden: path-segment anchored matches.
     expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./__x')).toBe(true);
-    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./TeStThing')).toBe(true);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./test')).toBe(true);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./Temp')).toBe(true);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./test-helpers')).toBe(true);
+    // Permitted: legitimate component names that merely contain the substring.
     expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./button')).toBe(false);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./template')).toBe(false);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./temporal')).toBe(false);
+    expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./testament')).toBe(false);
   });
 });
