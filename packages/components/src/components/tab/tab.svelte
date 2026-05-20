@@ -10,7 +10,14 @@
   import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
-  let { value, id, disabled = false, class: className, children }: TabProps = $props();
+  let {
+    value,
+    id,
+    disabled = false,
+    class: className,
+    children,
+    trailing,
+  }: TabProps = $props();
 
   const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
   if (!rawTabs) {
@@ -66,4 +73,9 @@
   onkeydown={tabs.handleKeydown}
 >
   {@render children()}
+  {#if trailing}
+    <span class="cinder-tab__trailing" aria-hidden="true">
+      {@render trailing()}
+    </span>
+  {/if}
 </button>

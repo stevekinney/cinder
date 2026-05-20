@@ -23,6 +23,7 @@ A Tab component. Replace this sentence with a one-line purpose statement once th
 | `id`       | `string`   | no       | —       | Optional explicit id override; auto-generated otherwise for ARIA wiring. |
 | `value`    | `string`   | yes      | —       | Identifier — matches the value of the corresponding TabPanel.            |
 | `children` | `(opaque)` | —        | —       | function-or-snippet                                                      |
+| `trailing` | `(opaque)` | —        | —       | function-or-snippet                                                      |
 
 <!-- generated:props:end -->
 

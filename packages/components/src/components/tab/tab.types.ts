@@ -10,4 +10,11 @@ export type TabProps = {
   class?: string;
   /** Tab label content. */
   children: Snippet;
+  /**
+   * Decorative content rendered inside an `aria-hidden` span (badges, kbd hints,
+   * counters). Do NOT use for interactive controls like close buttons — those
+   * would be inaccessible inside `aria-hidden`. For close buttons, render them
+   * outside the tab.
+   */
+  trailing?: Snippet;
 };
