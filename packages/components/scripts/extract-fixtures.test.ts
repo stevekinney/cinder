@@ -82,6 +82,30 @@ export default [
     expect(result.entries[0]?.fixtures[0]?.name).toBe('open');
   });
 
+  it('silently skips files with no default export (legacy test-factory fixtures)', async () => {
+    // Pre-existing files like chat/message/chat-message-fixtures.ts share the
+    // suffix but export factory functions, not a default array. These must be
+    // skipped — neither counted as an entry nor flagged as a violation.
+    const root = makeRoot([
+      {
+        component: 'message',
+        filename: 'message-fixtures.ts',
+        content: `
+export function createMessage(overrides) {
+  return { id: 'msg-1', ...overrides };
+}
+
+export const ASSISTANT_PROMPT = 'Hello';
+`,
+      },
+    ]);
+
+    const result = await extractFixtures(root);
+
+    expect(result.entries).toHaveLength(0);
+    expect(result.violations).toHaveLength(0);
+  });
+
   it('parses a fixture file with indirect (identifier) default export', async () => {
     const root = makeRoot([
       {

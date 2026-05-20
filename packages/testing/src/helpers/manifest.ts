@@ -5,7 +5,21 @@ import { fileURLToPath } from 'node:url';
 export type Theme = 'light' | 'dark';
 export type ViewportName = 'mobile' | 'tablet' | 'desktop';
 export type Viewport = { name: ViewportName; width: number; height: number };
-export type ComponentEntry = { name: string; slug: string; route: string };
+/**
+ * A single component entry from the manifest. The `fixtures` field is optional:
+ * when omitted, the test loop synthesises a single `{ name: 'default' }` fixture
+ * so that every component is exercised at least once.
+ *
+ * When `fixtures` is present and non-empty, the loop iterates over the explicit
+ * list instead of the synthesised default.
+ */
+export type ComponentEntry = {
+  name: string;
+  slug: string;
+  route: string;
+  /** Explicit fixture list for components with multiple visual states. When absent, a single `'default'` fixture is used. */
+  fixtures?: Array<{ name: string }>;
+};
 
 export const THEMES: readonly Theme[] = ['light', 'dark'] as const;
 export const VIEWPORTS: readonly Viewport[] = [

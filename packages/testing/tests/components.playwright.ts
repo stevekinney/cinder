@@ -52,26 +52,41 @@ const knownSlugs = new Set(allEntries.map((entry) => entry.slug));
 const filterSlugs = parseComponentFilter(process.env['CINDER_TEST_COMPONENTS'], knownSlugs);
 const entries = applyComponentFilter(allEntries, filterSlugs);
 
+/** The synthesised default fixture used when a component has no explicit fixture list. */
+const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
+
 for (const entry of entries) {
   test.describe(entry.name, () => {
+    // Use the entry's explicit fixture list when provided; otherwise synthesise a
+    // single 'default' fixture so every component is exercised at least once.
+    const fixtures =
+      entry.fixtures !== undefined && entry.fixtures.length > 0 ? entry.fixtures : DEFAULT_FIXTURE;
+
     for (const theme of THEMES) {
       for (const viewport of VIEWPORTS) {
-        test(`${theme}-${viewport.name}`, async ({ componentPage }) => {
-          const page = await componentPage.open({ entry, theme, viewport });
+        for (const fixture of fixtures) {
+          test(`${theme}-${viewport.name}-${fixture.name}`, async ({ componentPage }) => {
+            const page = await componentPage.open({ entry, theme, viewport });
 
-          const key = { slug: entry.slug, theme, viewport: viewport.name };
+            const key = {
+              slug: entry.slug,
+              theme,
+              viewport: viewport.name,
+              fixture: fixture.name,
+            };
 
-          const buckets = await runAxe(page, key);
+            const buckets = await runAxe(page, key);
 
-          test.info().annotations.push({
-            type: 'axe',
-            description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
+            test.info().annotations.push({
+              type: 'axe',
+              description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
+            });
+
+            await captureScreenshot(page, key);
+
+            // v1: no assertions on axe buckets — record only.
           });
-
-          await captureScreenshot(page, key);
-
-          // v1: no assertions on axe buckets — record only.
-        });
+        }
       }
     }
   });

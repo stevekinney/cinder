@@ -194,7 +194,8 @@ function extractLiteralValue(
 
 type FileParseResult =
   | { kind: 'entry'; entry: FixtureFileEntry }
-  | { kind: 'violations'; violations: string[] };
+  | { kind: 'violations'; violations: string[] }
+  | { kind: 'skipped' };
 
 /**
  * Parses a single `*-fixtures.ts` file without executing it. Returns either a
@@ -218,6 +219,18 @@ function parseFixtureFile_static(sourcePath: string, contents: string): FilePars
     ts.ScriptTarget.Latest,
     /* setParentNodes */ true,
   );
+
+  // Files that share the `-fixtures.ts` suffix but predate the visual-regression
+  // convention (e.g. chat test-factory fixtures) have no default export.
+  // Skip them silently — they aren't visual-regression fixtures. The schema
+  // contract is: a visual-regression fixture file has `export default [...]`
+  // at the top level.
+  const hasDefaultExport = sourceFile.statements.some(
+    (statement) => ts.isExportAssignment(statement) && !statement.isExportEquals,
+  );
+  if (!hasDefaultExport) {
+    return { kind: 'skipped' };
+  }
 
   const violations: string[] = [];
 
@@ -481,9 +494,11 @@ export async function extractFixtures(componentsRoot: string): Promise<FixtureEx
 
     if (result.kind === 'entry') {
       entries.push(result.entry);
-    } else {
+    } else if (result.kind === 'violations') {
       violations.push(...result.violations);
     }
+    // 'skipped' files are intentionally ignored — they share the
+    // `-fixtures.ts` suffix but are not visual-regression fixtures.
   }
 
   return { entries, violations };

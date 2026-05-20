@@ -1,0 +1,9 @@
+# Visual-regression review routing.
+#
+# Snapshot PNGs and the browser-tests workflow are the gates for visual
+# behavior. PRs that touch them should be reviewed by the engineering owner
+# and (where possible) the design lead. Update the owner once team teams
+# are configured — the @stevekinney placeholder is the repo owner today.
+
+packages/testing/snapshots/** @stevekinney
+.github/workflows/browser-tests.yaml @stevekinney
