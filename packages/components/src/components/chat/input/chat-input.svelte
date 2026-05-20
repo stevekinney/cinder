@@ -84,11 +84,19 @@
   import { onDestroy } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
+  import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
   import { ArrowUp, Paperclip, Square, X } from '../../icons/index.ts';
   import Button from '../../button/button.svelte';
   import MarkdownEditor from '../../markdown-editor/markdown-editor.svelte';
   import { deriveAttachmentKind } from './attachment-kind.js';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';
+
+  // Per-instance fallback factory for attachments whose file metadata is unavailable
+  // AND as a collision-disambiguation counter when two files share identical metadata.
+  const attachmentIdFactory = createIdFactory('attachment');
+  // Tracks hash-derived IDs used in this instance so collisions (same name/size/mtime)
+  // get a unique suffix rather than a duplicate DOM ID.
+  const usedAttachmentIds = new Set<string>();
 
   let {
     id,
@@ -196,8 +204,23 @@
 
     const kind = deriveAttachmentKind(file.type);
 
+    // Derive a stable ID from the file's identity metadata so repeated snapshot
+    // renders of the same attachment produce the same DOM ID. Fall back to the
+    // per-instance counter when lastModified is absent (e.g. synthetic File objects
+    // constructed in tests with lastModified = 0).
+    // If two different files hash to the same ID (identical name/size/mtime),
+    // append the counter-factory suffix to guarantee document-level uniqueness.
+    let attachmentId =
+      file.lastModified !== 0
+        ? useStableId(`${file.name}\0${file.size}\0${file.lastModified}`)
+        : attachmentIdFactory.next();
+    if (usedAttachmentIds.has(attachmentId)) {
+      attachmentId = `${attachmentId}-${attachmentIdFactory.next()}`;
+    }
+    usedAttachmentIds.add(attachmentId);
+
     const attachment: ChatAttachment = {
-      id: crypto.randomUUID(),
+      id: attachmentId,
       file,
       previewUrl: URL.createObjectURL(file),
       kind,

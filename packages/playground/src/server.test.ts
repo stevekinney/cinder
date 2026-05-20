@@ -454,6 +454,75 @@ describe('isSafeSegment (via route behavior)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// /page/:name — component page (iframe content) + snapshot mode
+// ---------------------------------------------------------------------------
+
+describe('/page/:name', () => {
+  it('returns 200 HTML for a known component', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/html');
+    const html = await response.text();
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('id="app"');
+  });
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/page/does-not-exist'));
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for a segment that fails isSafeSegment', async () => {
+    const response = await handleRequest(req('/page/Button'));
+    expect(response.status).toBe(404);
+  });
+
+  it('does NOT include data-snapshot-mode on <html> without ?snapshot=1', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    expect(html).not.toContain('data-snapshot-mode');
+  });
+
+  it('includes data-snapshot-mode on <html> with ?snapshot=1', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}?snapshot=1`));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('data-snapshot-mode');
+    // The attribute must appear on the opening <html> tag, before first paint.
+    const htmlTagMatch = html.match(/<html[^>]*>/);
+    expect(htmlTagMatch).not.toBeNull();
+    expect(htmlTagMatch![0]).toContain('data-snapshot-mode');
+  });
+
+  it('injects the snapshot-mode <style> tag with ?snapshot=1', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}?snapshot=1`));
+    const html = await response.text();
+    expect(html).toContain('id="cinder-snapshot-mode"');
+    expect(html).toContain('animation-duration: 0s');
+    expect(html).toContain('caret-color: transparent');
+  });
+
+  it('does NOT inject the snapshot-mode <style> tag without ?snapshot=1', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    expect(html).not.toContain('id="cinder-snapshot-mode"');
+    expect(html).not.toContain('caret-color: transparent');
+  });
+
+  it('does not activate snapshot mode for snapshot=true (strict equality)', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}?snapshot=true`));
+    const html = await response.text();
+    expect(html).not.toContain('data-snapshot-mode');
+  });
+
+  it('does not activate snapshot mode for snapshot=yes', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}?snapshot=yes`));
+    const html = await response.text();
+    expect(html).not.toContain('data-snapshot-mode');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Wave 2: manifest and controls-bundle routes
 // ---------------------------------------------------------------------------
 
