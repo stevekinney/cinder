@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { EmptyState } from '../../../components/src/index.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';
 
@@ -80,9 +81,10 @@
       ></iframe>
     </div>
   {:else}
-    <div class="placeholder">
-      <p>Select a component from the sidebar to preview it.</p>
-    </div>
+    <EmptyState
+      title="No component selected"
+      description="Select a component from the sidebar to preview it."
+    />
   {/if}
 </div>
 
@@ -119,18 +121,5 @@
     background: var(--cinder-surface);
     display: block;
     min-height: 0;
-  }
-
-  .placeholder {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--cinder-text-subtle);
-  }
-
-  .placeholder p {
-    font-size: 16px;
-    margin: 0;
   }
 </style>

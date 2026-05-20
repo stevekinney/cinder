@@ -1,6 +1,10 @@
 <!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
 <script lang="ts">
   import { mount, unmount } from 'svelte';
+  import Accordion from '../../components/src/components/accordion/index.ts';
+  import AccordionItem from '../../components/src/components/accordion-item/index.ts';
+  import Card from '../../components/src/components/card/index.ts';
+  import CodeBlock from '../../components/src/components/code-block/index.ts';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -20,20 +24,28 @@
   const componentName: string =
     window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
 
-  // Track which <details> elements have had their source fetched so we only
+  // Track which scenarios have had their source fetched so we only
   // hit /example-src once per scenario regardless of how many times the user
-  // opens and closes the disclosure.
+  // opens and closes the accordion.
   const fetchedSource: Record<string, string | null> = $state({});
   const loadingSource: Record<string, boolean> = $state({});
 
-  async function handleDetailsToggle(event: Event, scenario: string): Promise<void> {
-    const details = event.currentTarget as HTMLDetailsElement;
+  // Per-scenario accordion expansion state — each entry is a reactive object
+  // with a typed `ids` field so property access never returns undefined
+  // (noUncheckedIndexedAccess widens plain index signatures, but a typed tuple
+  // of objects with known property names is unambiguous).
+  const accordionState = $state(
+    examples.map(({ scenario }) => ({ scenario, expandedIds: [] as string[] })),
+  );
 
-    if (!details.open) return;
-    if (fetchedSource[scenario] !== undefined) return;
+  function getAccordionEntry(
+    scenario: string,
+  ): { scenario: string; expandedIds: string[] } | undefined {
+    return accordionState.find((entry) => entry.scenario === scenario);
+  }
 
+  async function fetchSource(scenario: string): Promise<void> {
     loadingSource[scenario] = true;
-
     try {
       const response = await fetch(`/example-src/${componentName}/${scenario}`);
       fetchedSource[scenario] = response.ok ? await response.text() : null;
@@ -43,6 +55,19 @@
       loadingSource[scenario] = false;
     }
   }
+
+  // Fire the lazy fetch exactly once per scenario on first accordion expansion.
+  $effect(() => {
+    for (const entry of accordionState) {
+      if (
+        entry.expandedIds.includes('source') &&
+        fetchedSource[entry.scenario] === undefined &&
+        !loadingSource[entry.scenario]
+      ) {
+        void fetchSource(entry.scenario);
+      }
+    }
+  });
 
   // Mount each example into its target. The page-bundle server route bundles
   // every scenario for this component together with this page, sharing one
@@ -102,30 +127,40 @@
   {/if}
 
   {#each examples as { scenario, title, description } (scenario)}
-    <section class="example-card">
-      <header class="example-card-header">
-        <h2 class="example-title">{title}</h2>
-        {#if description}
-          <p class="example-description">{description}</p>
-        {/if}
-      </header>
-
-      <div class="example-preview" id="example-mount-{scenario}"></div>
-
-      <details class="example-source" ontoggle={(event) => handleDetailsToggle(event, scenario)}>
-        <summary class="example-source-toggle">View source</summary>
-
-        <div class="example-source-body">
-          {#if loadingSource[scenario]}
-            <p class="source-loading">Loading…</p>
-          {:else if fetchedSource[scenario] === null}
-            <p class="source-error">Could not load source.</p>
-          {:else if fetchedSource[scenario] !== undefined}
-            <pre class="source-code"><code>{fetchedSource[scenario]}</code></pre>
-          {/if}
-        </div>
-      </details>
-    </section>
+    {@const accordionEntry = getAccordionEntry(scenario)}
+    {#if accordionEntry}
+      {#if description}
+        <Card {title} {description}>
+          <div class="example-preview" id="example-mount-{scenario}"></div>
+          <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+            <AccordionItem id="source" title="View source">
+              {#if loadingSource[scenario]}
+                <p class="source-loading">Loading…</p>
+              {:else if fetchedSource[scenario] === null}
+                <p class="source-error">Could not load source.</p>
+              {:else if fetchedSource[scenario] !== undefined}
+                <CodeBlock code={fetchedSource[scenario] as string} language="svelte" copyable />
+              {/if}
+            </AccordionItem>
+          </Accordion>
+        </Card>
+      {:else}
+        <Card {title}>
+          <div class="example-preview" id="example-mount-{scenario}"></div>
+          <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+            <AccordionItem id="source" title="View source">
+              {#if loadingSource[scenario]}
+                <p class="source-loading">Loading…</p>
+              {:else if fetchedSource[scenario] === null}
+                <p class="source-error">Could not load source.</p>
+              {:else if fetchedSource[scenario] !== undefined}
+                <CodeBlock code={fetchedSource[scenario] as string} language="svelte" copyable />
+              {/if}
+            </AccordionItem>
+          </Accordion>
+        </Card>
+      {/if}
+    {/if}
   {/each}
 </div>
 
@@ -140,32 +175,6 @@
     color: var(--cinder-text-muted);
     font-style: italic;
     margin: 0;
-  }
-
-  .example-card {
-    background-color: var(--cinder-surface);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-lg);
-  }
-
-  .example-card-header {
-    padding: var(--cinder-space-4) var(--cinder-space-6);
-    border-bottom: 1px solid var(--cinder-border-muted);
-  }
-
-  .example-title {
-    margin: 0 0 var(--cinder-space-1) 0;
-    font-size: var(--cinder-text-lg);
-    font-weight: var(--cinder-font-semibold);
-    line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
-  }
-
-  .example-description {
-    margin: 0;
-    font-size: var(--cinder-text-sm);
-    color: var(--cinder-text-muted);
-    line-height: var(--cinder-leading-normal);
   }
 
   .example-preview {
@@ -184,51 +193,11 @@
     gap: var(--cinder-space-4);
   }
 
-  .example-source {
-    border-top: 1px solid var(--cinder-border-muted);
-  }
-
-  .example-source-toggle {
-    display: flex;
-    align-items: center;
-    min-height: var(--cinder-touch-target-min);
-    padding: var(--cinder-space-2) var(--cinder-space-6);
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text-subtle);
-    cursor: pointer;
-    user-select: none;
-    transition: color var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
-  .example-source-toggle:hover {
-    color: var(--cinder-text);
-  }
-
-  .example-source-body {
-    padding: 0 var(--cinder-space-6) var(--cinder-space-4);
-  }
-
   .source-loading,
   .source-error {
     margin: 0;
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text-subtle);
     font-style: italic;
-  }
-
-  .source-code {
-    margin: 0;
-    padding: var(--cinder-space-4);
-    background-color: var(--cinder-surface-inset);
-    border: 1px solid var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-md);
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-xs);
-    line-height: var(--cinder-leading-relaxed);
-    color: var(--cinder-text);
-    overflow-x: auto;
-    white-space: pre;
-    tab-size: 2;
   }
 </style>

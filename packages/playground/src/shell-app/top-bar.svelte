@@ -1,97 +1,82 @@
 <script lang="ts">
   import type { BackgroundChoice, ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
+  import {
+    Button,
+    Divider,
+    NavigationBar,
+    NumberInput,
+    SegmentedControl,
+  } from '../../../components/src/index.ts';
 
   const store = getPreviewStore();
 
-  const VIEWPORT_PRESETS: ReadonlyArray<{ label: string; abbrev: string; value: number | null }> = [
-    { label: 'Mobile', abbrev: '375', value: 375 },
-    { label: 'Tablet', abbrev: '768', value: 768 },
-    { label: 'Desktop', abbrev: '1280', value: 1280 },
-    { label: 'Full', abbrev: 'Full', value: null },
-  ];
+  // ── Viewport presets ──────────────────────────────────────────────────────
+  // SegmentedControl requires string values. Numeric preset widths are keyed
+  // as their string form ('375', '768', '1280'); null maps to 'full'.
 
-  const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; glyph: string }> = [
-    { value: 'light', label: 'Light theme', glyph: '☀' },
-    { value: 'system', label: 'System theme', glyph: '◐' },
-    { value: 'dark', label: 'Dark theme', glyph: '☾' },
-  ];
+  const VIEWPORT_PRESETS = [
+    { label: 'Mobile', value: 375, key: '375' },
+    { label: 'Tablet', value: 768, key: '768' },
+    { label: 'Desktop', value: 1280, key: '1280' },
+    { label: 'Full', value: null, key: 'full' },
+  ] as const;
 
-  // Background is a binary toggle: themed surface (default) ↔ transparency
-  // grid. Light vs dark is handled by the theme switcher next to this control.
+  const VIEWPORT_SEGMENTED_OPTIONS = VIEWPORT_PRESETS.map((preset) => ({
+    value: preset.key,
+    label: preset.value !== null ? `${preset.label} (${preset.value} pixels)` : preset.label,
+  }));
 
-  // Local input state for the custom width box so a partial value (e.g. user
-  // mid-typing "12") doesn't blow away the iframe size on every keystroke.
-  let customWidthDraft = $state<string>('');
+  // Derive the SegmentedControl value from store.previewWidth. When no preset
+  // matches exactly (custom width), the derived key won't match any option so
+  // no preset segment appears selected — correct behavior.
+  let viewportPresetKey = $derived<string>(
+    store.previewWidth === null
+      ? 'full'
+      : (VIEWPORT_PRESETS.find((p) => p.value === store.previewWidth)?.key ??
+          String(store.previewWidth)),
+  );
 
-  $effect(() => {
-    customWidthDraft = store.previewWidth === null ? '' : String(store.previewWidth);
-  });
-
-  function commitCustomWidth(): void {
-    const raw = customWidthDraft.trim();
-    if (raw === '') {
-      store.previewWidth = null;
-      return;
-    }
-    const parsed = Number.parseInt(raw, 10);
-    if (Number.isNaN(parsed) || parsed < 200 || parsed > 3840) {
-      // Snap back to the current value.
-      customWidthDraft = store.previewWidth === null ? '' : String(store.previewWidth);
-      return;
-    }
-    store.previewWidth = parsed;
-  }
-
-  function handleCustomKeydown(event: KeyboardEvent): void {
-    const input = event.currentTarget;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      commitCustomWidth();
-      if (input instanceof HTMLInputElement) input.blur();
-    } else if (event.key === 'Escape') {
-      customWidthDraft = store.previewWidth === null ? '' : String(store.previewWidth);
-      if (input instanceof HTMLInputElement) input.blur();
-    }
-  }
-
-  // The "Full" preset is active when previewWidth is null; numeric presets
-  // are active when previewWidth matches exactly.
-  function presetIsActive(presetValue: number | null): boolean {
-    return store.previewWidth === presetValue;
-  }
-
-  // Show the custom width input only when the viewport is constrained to a
-  // numeric value. When "Full" is active there is no pixel count to display.
+  // The custom width NumberInput is only visible when the viewport is
+  // constrained to a numeric value (i.e., previewWidth is not null).
   let isCustomWidthVisible = $derived(store.previewWidth !== null);
 
-  let announcement = $state<string>('');
-  let announceTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  function announce(text: string): void {
-    // Clear first, then set on the next tick. Assigning the same string twice
-    // in a row to a Svelte reactive value is a no-op and the aria-live region
-    // never updates the DOM, so an AT user clicking the same control twice
-    // would not hear the second announcement. Empty-then-set forces a DOM
-    // change every time. clearTimeout ensures back-to-back announce() calls
-    // resolve deterministically — the latest call wins, in order.
-    if (announceTimeout !== null) clearTimeout(announceTimeout);
-    announcement = '';
-    announceTimeout = setTimeout(() => {
-      announcement = text;
-      announceTimeout = null;
-    }, 50);
-  }
-
-  function selectViewport(preset: (typeof VIEWPORT_PRESETS)[number]): void {
+  function handleViewportChange(key: string): void {
+    const preset = VIEWPORT_PRESETS.find((p) => p.key === key);
+    if (preset === undefined) return;
     store.previewWidth = preset.value;
     announce(`Viewport: ${preset.label}${preset.value !== null ? `, ${preset.value} pixels` : ''}`);
   }
 
-  function selectTheme(option: (typeof THEME_OPTIONS)[number]): void {
-    store.setTheme(option.value);
-    announce(`Color scheme: ${option.label}`);
+  function handleCustomWidthChange(newValue: number | null): void {
+    if (newValue === null) {
+      store.previewWidth = null;
+      return;
+    }
+    store.previewWidth = newValue;
+    announce(`Viewport: custom, ${newValue} pixels`);
   }
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  // setTheme is the only legitimate write path — it also persists to
+  // localStorage and updates the document's color-scheme. Never assign
+  // store.theme directly.
+
+  const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string }> = [
+    { value: 'light', label: 'Light theme' },
+    { value: 'system', label: 'System theme' },
+    { value: 'dark', label: 'Dark theme' },
+  ];
+
+  function selectTheme(value: ThemeChoice): void {
+    store.setTheme(value);
+    const option = THEME_OPTIONS.find((o) => o.value === value);
+    announce(`Color scheme: ${option?.label ?? value}`);
+  }
+
+  // ── Background ────────────────────────────────────────────────────────────
+
+  let isCheckerActive = $derived(store.background === 'checker');
 
   function toggleCheckerboard(): void {
     const next: BackgroundChoice = store.background === 'checker' ? 'surface' : 'checker';
@@ -99,128 +84,110 @@
     announce(next === 'checker' ? 'Checkerboard background on' : 'Checkerboard background off');
   }
 
-  let isCheckerActive = $derived(store.background === 'checker');
+  // ── Focus mode ────────────────────────────────────────────────────────────
 
   function toggleFocusMode(): void {
     store.isFocusMode = !store.isFocusMode;
     announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
+
+  // ── Announcements ─────────────────────────────────────────────────────────
+  // Empty-then-set with a 50 ms gap forces the aria-live region to emit a DOM
+  // mutation even when the same string is announced twice in a row. Without
+  // the gap the Svelte runtime coalesces identical consecutive assignments into
+  // a no-op and assistive technology never reads the second announcement.
+
+  let announcement = $state<string>('');
+  let announceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function announce(text: string): void {
+    if (announceTimeout !== null) clearTimeout(announceTimeout);
+    announcement = '';
+    announceTimeout = setTimeout(() => {
+      announcement = text;
+      announceTimeout = null;
+    }, 50);
+  }
 </script>
 
 <header class="top-bar" role="banner">
-  <!-- Wordmark — spans the sidebar column width so it aligns with the nav list -->
-  <div class="wordmark" aria-label="Cinder design system">cinder</div>
+  <NavigationBar navAriaLabel="Preview controls">
+    {#snippet brand()}
+      <span class="wordmark" aria-label="Cinder design system">cinder</span>
+    {/snippet}
 
-  <div class="toolbar" role="group" aria-label="Preview controls">
-    <!-- Component breadcrumb -->
-    <span class="component-name" title={store.currentComponent} aria-label="Current component">
-      {store.currentComponent || ' '}
-    </span>
+    {#snippet items({ variant: _variant })}
+      <!-- Component breadcrumb -->
+      <span class="component-name" title={store.currentComponent} aria-label="Current component">
+        {store.currentComponent || ' '}
+      </span>
 
-    <div class="divider" aria-hidden="true"></div>
+      <Divider orientation="vertical" />
 
-    <!-- Viewport width presets -->
-    <div role="group" aria-label="Viewport width" class="control-group">
-      {#each VIEWPORT_PRESETS as preset (preset.abbrev)}
-        {@const active = presetIsActive(preset.value)}
-        <button
-          type="button"
-          class="segment"
-          class:active
-          aria-pressed={active}
-          aria-label={`${preset.label}${preset.value !== null ? ` (${preset.value} pixels)` : ''}`}
-          title={preset.value !== null ? `${preset.label} — ${preset.value}px` : preset.label}
-          onclick={() => selectViewport(preset)}
-        >
-          <!--
-            Numeric presets: show the number always; show the friendly label
-            alongside when there is room (see .segment-label media query).
-            Full preset: abbrev and label are identical — render just one span
-            to avoid "Full Full" at wide viewports.
-          -->
-          {#if preset.value !== null}
-            <span class="segment-abbrev" aria-hidden="true">{preset.abbrev}</span>
-            <span class="segment-label" aria-hidden="true">{preset.label}</span>
-          {:else}
-            <span aria-hidden="true">{preset.abbrev}</span>
-          {/if}
-        </button>
-      {/each}
+      <!-- Viewport width presets -->
+      <SegmentedControl
+        id="viewport-preset"
+        label="Viewport width"
+        hideLabel
+        density="toolbar"
+        options={VIEWPORT_SEGMENTED_OPTIONS}
+        value={viewportPresetKey}
+        onchange={handleViewportChange}
+      />
 
       {#if isCustomWidthVisible}
-        <label for="viewport-width-input" class="sr-only">Custom viewport width in pixels</label>
-        <input
+        <NumberInput
           id="viewport-width-input"
-          class="width-input"
-          type="text"
-          inputmode="numeric"
-          pattern="[0-9]*"
-          autocomplete="off"
-          spellcheck="false"
-          maxlength="4"
+          value={store.previewWidth}
+          min={200}
+          max={3840}
+          step={1}
           aria-label="Custom viewport width in pixels (200 to 3840)"
-          bind:value={customWidthDraft}
-          onkeydown={handleCustomKeydown}
-          onblur={commitCustomWidth}
+          onchange={handleCustomWidthChange}
         />
         <span class="unit" aria-hidden="true">px</span>
       {/if}
-    </div>
 
-    <div class="divider" aria-hidden="true"></div>
+      <Divider orientation="vertical" />
 
-    <!-- Color scheme -->
-    <div role="group" aria-label="Color scheme" class="control-group">
-      {#each THEME_OPTIONS as option (option.value)}
-        {@const active = store.theme === option.value}
-        <button
-          type="button"
-          class="segment icon-segment"
-          class:active
-          aria-pressed={active}
-          aria-label={option.label}
-          title={option.label}
-          onclick={() => selectTheme(option)}
-        >
-          <span aria-hidden="true">{option.glyph}</span>
-        </button>
-      {/each}
-    </div>
+      <!-- Color scheme -->
+      <SegmentedControl
+        id="theme-preset"
+        label="Color scheme"
+        hideLabel
+        density="toolbar"
+        options={THEME_OPTIONS}
+        value={store.theme}
+        onchange={selectTheme}
+      />
 
-    <div class="divider" aria-hidden="true"></div>
+      <Divider orientation="vertical" />
 
-    <!-- Preview background — transparency grid toggle -->
-    <div class="control-group">
-      <button
-        type="button"
-        class="segment icon-segment"
-        class:active={isCheckerActive}
+      <!-- Preview background: binary surface ↔ checker toggle -->
+      <Button
+        variant="ghost"
+        size="sm"
         aria-pressed={isCheckerActive}
         aria-label="Show transparency grid"
-        title="Transparency grid"
         onclick={toggleCheckerboard}
       >
         <span aria-hidden="true">▦</span>
-      </button>
-    </div>
+      </Button>
+    {/snippet}
 
-    <div class="divider" aria-hidden="true"></div>
-
-    <!-- Actions -->
-    <div role="group" aria-label="Actions" class="control-group">
-      <button
-        type="button"
-        class="segment icon-segment"
-        class:active={store.isFocusMode}
+    {#snippet actions()}
+      <!-- Focus mode: hides sidebar and toolbar -->
+      <Button
+        variant="ghost"
+        size="sm"
         aria-pressed={store.isFocusMode}
         aria-label="Focus mode — hide sidebar and toolbar (press Escape to exit)"
-        title="Focus mode — hide sidebar and toolbar"
         onclick={toggleFocusMode}
       >
         <span aria-hidden="true">⛶</span>
-      </button>
-    </div>
-  </div>
+      </Button>
+    {/snippet}
+  </NavigationBar>
 
   <span class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
 </header>
@@ -258,6 +225,17 @@
     z-index: 10;
   }
 
+  /* Make the NavigationBar fill the top bar and take on its layout */
+  .top-bar :global(.cinder-navigation-bar) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+
   /* ── Wordmark ── */
   .wordmark {
     /* Match the sidebar width exactly so the bar's left block aligns with
@@ -282,8 +260,16 @@
     box-sizing: border-box;
   }
 
-  /* ── Toolbar ── */
-  .toolbar {
+  /* Brand slot container */
+  .top-bar :global(.cinder-navigation-bar__brand) {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Items region: the toolbar area with all controls */
+  .top-bar :global(.cinder-navigation-bar__items) {
     display: flex;
     align-items: center;
     gap: 0;
@@ -292,6 +278,14 @@
     padding: 0 12px;
     overflow-x: auto;
     height: 100%;
+  }
+
+  /* Actions region: right-aligned action buttons */
+  .top-bar :global(.cinder-navigation-bar__actions) {
+    display: flex;
+    align-items: center;
+    padding-inline-end: 12px;
+    flex-shrink: 0;
   }
 
   .component-name {
@@ -303,111 +297,6 @@
     text-overflow: ellipsis;
     flex: 0 1 200px;
     min-width: 0;
-  }
-
-  /* Vertical rule between toolbar sections */
-  .divider {
-    width: 1px;
-    height: 20px;
-    background: var(--cinder-border);
-    margin: 0 10px;
-    flex-shrink: 0;
-  }
-
-  /* ── Control group ── */
-  .control-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  /* ── Segment button ── */
-  .segment {
-    appearance: none;
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--cinder-text-muted);
-    padding: 0 10px;
-    font: inherit;
-    font-size: 12px;
-    line-height: 1;
-    border-radius: var(--cinder-radius-sm);
-    cursor: pointer;
-    transition:
-      background var(--cinder-duration-fast) var(--cinder-ease-standard),
-      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      color var(--cinder-duration-fast) var(--cinder-ease-standard);
-    /* Toolbar-density height — aligns with --cinder-control-height-sm (32px) */
-    height: var(--cinder-control-height-sm);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: nowrap;
-  }
-
-  .segment:hover {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
-  }
-
-  .segment.active {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
-    color: var(--cinder-accent);
-    border-color: color-mix(in oklch, var(--cinder-accent), transparent 78%);
-    font-weight: 600;
-  }
-
-  .segment:focus-visible {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: 1px;
-  }
-
-  /* Icon-only segments are square */
-  .icon-segment {
-    padding: 0 8px;
-    min-width: var(--cinder-control-height-sm);
-    font-size: 14px;
-  }
-
-  /* ── Viewport abbrev / label ── */
-  /* The abbrev (number) is always shown. The friendly label appears
-     alongside it when there is horizontal room. */
-  .segment-abbrev {
-    display: inline-block;
-  }
-
-  .segment-label {
-    display: inline-block;
-  }
-
-  @media (max-width: 1279px) {
-    .segment-label {
-      display: none;
-    }
-  }
-
-  /* ── Custom width input ── */
-  .width-input {
-    width: 52px;
-    height: var(--cinder-control-height-sm);
-    margin-inline-start: 4px;
-    border: 1px solid var(--cinder-border-strong);
-    border-radius: var(--cinder-radius-sm);
-    padding: 0 6px;
-    font: inherit;
-    font-size: 12px;
-    text-align: right;
-    background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
-    box-sizing: border-box;
-  }
-
-  .width-input:focus-visible {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: 1px;
-    border-color: transparent;
   }
 
   .unit {

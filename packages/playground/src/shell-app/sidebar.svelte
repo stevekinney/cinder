@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SideNavigation } from '../../../components/src/index.ts';
   import { buildShellHref } from './routing.ts';
 
   type Props = {
@@ -27,11 +28,11 @@
   toolbar controls. The height and top values reference the same
   --cinder-top-bar-height token that the top bar declares.
 -->
-<nav aria-label="Components">
-  <ul>
+<div class="sidebar-chrome">
+  <SideNavigation ariaLabel="Components">
     {#each components as name (name)}
       {@const isActive = name === currentComponent}
-      <li>
+      <li class="cinder-side-navigation__item">
         <a
           href={buildShellHref(name)}
           aria-current={isActive ? 'page' : undefined}
@@ -41,11 +42,11 @@
         </a>
       </li>
     {/each}
-  </ul>
-</nav>
+  </SideNavigation>
+</div>
 
 <style>
-  nav {
+  .sidebar-chrome {
     --cinder-top-bar-height: 52px;
 
     /* stylelint-disable-next-line csstools/use-logical */
@@ -64,17 +65,11 @@
     overflow-y: auto;
   }
 
-  ul {
-    list-style: none;
+  .sidebar-chrome :global(ul) {
     padding: 8px 0;
-    margin: 0;
   }
 
-  li {
-    margin: 0;
-  }
-
-  ul li a {
+  .sidebar-chrome :global(li a) {
     display: block;
     padding: 6px 16px;
     text-decoration: none;
@@ -84,11 +79,11 @@
     transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  ul li a:hover {
+  .sidebar-chrome :global(li a:hover) {
     background: var(--cinder-surface-hover);
   }
 
-  ul li a[aria-current='page'] {
+  .sidebar-chrome :global(li a[aria-current='page']) {
     background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
     color: var(--cinder-accent);
     font-weight: 600;
