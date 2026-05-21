@@ -6,6 +6,7 @@
     Divider,
     NavigationBar,
     NumberInput,
+    Segment,
     SegmentedControl,
   } from '../../../components/src/index.ts';
 
@@ -132,11 +133,14 @@
         label="Viewport width"
         hideLabel
         density="toolbar"
-        options={VIEWPORT_SEGMENTED_OPTIONS}
         {...viewportPresetKey !== undefined ? { value: viewportPresetKey } : {}}
         disallowEmptySelection={false}
         onchange={handleViewportChange}
-      />
+      >
+        {#each VIEWPORT_SEGMENTED_OPTIONS as option (option.value)}
+          <Segment value={option.value}>{option.label}</Segment>
+        {/each}
+      </SegmentedControl>
 
       {#if isCustomWidthVisible}
         <NumberInput
@@ -159,10 +163,13 @@
         label="Color scheme"
         hideLabel
         density="toolbar"
-        options={THEME_OPTIONS}
         value={store.theme}
         onchange={selectTheme}
-      />
+      >
+        {#each THEME_OPTIONS as option (option.value)}
+          <Segment value={option.value}>{option.label}</Segment>
+        {/each}
+      </SegmentedControl>
 
       <Divider orientation="vertical" />
 

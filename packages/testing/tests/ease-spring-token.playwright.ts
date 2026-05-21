@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /**
  * Regression test for `--cinder-ease-spring`.
  *

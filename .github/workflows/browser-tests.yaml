@@ -106,6 +106,43 @@ jobs:
           # stdout needed. A non-zero exit fails the job loudly.
           printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
 
+  typecheck:
+    # Runs the workspace typecheck against a fresh checkout — explicitly does
+    # NOT pre-build cinder. Catches the regression class where `cinder/<name>`
+    # imports stop resolving via the package's exports map (svelte/types
+    # condition mismatch, missing customConditions, dropped source-export, etc).
+    # See packages/playground/tsconfig.json for context.
+    #
+    # Intentionally does NOT depend on `scope`: typecheck runs the same command
+    # regardless of which components changed, so it has no need for scope's
+    # outputs. Gating on `scope` would silently skip this job whenever scope
+    # fails for unrelated reasons (e.g. `changed-components.ts` errors, shallow
+    # clone `git diff` issues) — defeating the regression-catching purpose.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck workspace
+        run: bun run typecheck
+
   playwright:
     needs: scope
     runs-on: ubuntu-latest

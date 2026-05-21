@@ -1,7 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
+    // Resolve `cinder/<name>` to source via the `svelte` export condition
+    // instead of falling back to `types` (which points at dist). Lets typecheck
+    // succeed on a fresh checkout without a prior cinder build.
+    "customConditions": ["svelte"]
   },
   "include": ["src/**/*"]
 }
