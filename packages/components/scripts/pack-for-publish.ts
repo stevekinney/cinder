@@ -104,26 +104,6 @@ function stripCinderWorkspaceDeps(
 }
 
 /**
- * Strip the `svelte` condition from every exports entry. The source manifest
- * uses `svelte` → `./src/...` for in-repo HMR and TypeScript source
- * resolution; the published tarball intentionally does not ship `src/**`, so
- * any `svelte` condition would point at a non-existent path and trap
- * Svelte-aware bundlers (SvelteKit, Vite + the Svelte plugin) into a broken
- * resolve. Strip the condition uniformly — `default` and `node` continue to
- * route consumers at `dist/`.
- */
-function stripSvelteCondition(entry: ExportConditional | string): ExportConditional | string {
-  if (typeof entry === 'string') return entry;
-  if (entry.svelte === undefined) return entry;
-  const result: ExportConditional = {};
-  if (entry.types !== undefined) result.types = entry.types;
-  if (entry.node !== undefined) result.node = entry.node;
-  if (entry.import !== undefined) result.import = entry.import;
-  if (entry.default !== undefined) result.default = entry.default;
-  return result;
-}
-
-/**
  * Rewrite the exports entry for an upstream re-export sub-path so the
  * published tarball points its `types` and `default` at `dist/` and drops
  * the `svelte` condition. The source manifest's `svelte` condition is used
@@ -166,10 +146,16 @@ function buildPublishedManifest(
       transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
       continue;
     }
-    // Strip `svelte` conditions from every other entry. The source manifest
-    // uses `svelte` → `./src/...` for in-repo HMR and TS source resolution,
-    // but the published tarball intentionally does not ship `src/**`.
-    transformedExports[key] = stripSvelteCondition(entry);
+    // Component sub-paths (and other non-upstream exports) keep their
+    // `svelte` → `./src/components/<id>/index.ts` condition. The published
+    // tarball ships `src/components/**` so Svelte-aware consumers can
+    // resolve the source — the pre-bundled root barrel at `dist/index.js`
+    // is currently a pass-through that lists re-exports without emitting
+    // import statements for them (a known Bun.build limitation tracked
+    // separately), so consumers MUST use the `svelte` source path for
+    // the barrel + per-component sub-paths to work. Only the upstream
+    // re-export sub-paths (handled above) ship dist-only.
+    transformedExports[key] = entry;
   }
 
   // Shallow clone, then strip `@cinder/*` from every dep field and replace
@@ -206,11 +192,43 @@ function buildPublishedManifest(
   //
   // Everything else under `src/**` (TS source, Svelte source, tests) stays
   // out so `@cinder/*` import-statement noise never reaches the tarball.
+  // The published tarball ships:
+  //   - `dist/` — built artifacts (per-component JS + types, the vendored
+  //     `_upstream/` declarations, server bundles).
+  //   - `src/components/**` — Svelte/TS source for component sub-paths
+  //     because the published `svelte` condition points at the source path
+  //     (the pre-bundled `dist/index.js` is currently a re-export
+  //     pass-through that doesn't emit import statements; until that's
+  //     fixed, Svelte-aware bundlers must resolve via source).
+  //   - `src/index.ts` and `src/schema-types.ts` — root barrel source for
+  //     the `svelte` condition on `cinder` itself.
+  //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime
+  //     helpers and the constraints DSL the components import.
+  //   - `src/styles/**/*.css` and `src/components/**/*.css` — hand-authored
+  //     CSS targets for `cinder/styles*` and `cinder/<id>/styles`.
+  //   - `src/components/**/*.{examples,constraints}.json` — JSON sidecars
+  //     surfaced via `cinder/<id>/{examples,constraints}`.
+  //   - `components.json` — `cinder/manifest`.
+  //
+  // Test files are excluded via `!**/*.{test,spec}.ts` so the tarball never
+  // ships test infra.
   published.files = [
     'dist',
+    'src/index.ts',
+    'src/schema-types.ts',
+    'src/components/**/*.ts',
+    '!src/components/**/*.test.ts',
+    '!src/components/**/*.spec.ts',
+    'src/components/**/*.svelte',
+    'src/components/**/*.json',
+    'src/components/**/*.css',
+    'src/components/**/*.md',
+    '!src/components/**/*.a11y.md',
+    'src/_internal/**/*.ts',
+    '!src/_internal/**/*.test.ts',
+    'src/utilities/**/*.ts',
+    '!src/utilities/**/*.test.ts',
     'src/styles/**/*.css',
-    'src/components/**/*.examples.json',
-    'src/components/**/*.constraints.json',
     'components.json',
     'README.md',
     'LICENSE',

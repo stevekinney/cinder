@@ -196,11 +196,16 @@ if (!serverBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
-const browserEntrypoints = [
-  `${sourceRoot}/index.ts`,
-  ...perComponentEntrypoints,
-  ...upstreamReexportEntrypoints,
-];
+const browserEntrypoints = [`${sourceRoot}/index.ts`, ...perComponentEntrypoints];
+// `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
+// the upstream packages have already produced fully-baked `dist/` trees
+// (workers, source maps, declarations) through their own builds. Re-bundling
+// them here drops Vite-specific patterns like
+// `new Worker(new URL('./worker.js', import.meta.url))` because esbuild
+// treats `import.meta.url` as opaque. Instead, step 5c below copies each
+// upstream's `dist/**` verbatim into `packages/components/dist/<pkg>/` and
+// rewrites cross-package `@cinder/*` specifiers to relative paths.
+void upstreamReexportEntrypoints;
 
 // `splitting: false` is a deliberate trade-off mandated by the Track 4 plan:
 // it gives each entrypoint a predictable, single-file output so the eventual
@@ -244,7 +249,7 @@ if (!browserBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentServerBuildResult = await Bun.build({
-  entrypoints: [...perComponentEntrypoints, ...upstreamReexportEntrypoints],
+  entrypoints: perComponentEntrypoints,
   outdir: `${distributionDirectory}/server`,
   root: sourceRoot,
   target: 'node',
@@ -299,25 +304,36 @@ await emitDts({
 });
 
 // -----------------------------------------------------------------------------
-// 5b. Vendor upstream `@cinder/*` declarations into `cinder/dist/_upstream/`
-//     and rewrite the generated re-export `.d.ts` files so the published
-//     tarball does not contain unresolvable `@cinder/*` type references.
+// 5b. Vendor upstream `@cinder/*` build output verbatim into cinder's dist.
 //
-//     The four upstream workspace packages emit their own `dist/**/*.d.ts`
-//     via their per-package build. cinder's build:
-//       1. Builds each upstream first so its `dist/` is populated.
-//       2. Copies each upstream's declarations into
-//          `dist/_upstream/<pkg>/**` mirroring the upstream layout.
-//       3. Rewrites every `@cinder/<pkg>[/...]` specifier in cinder's own
-//          `dist/**/*.d.ts` to a relative path into `dist/_upstream/<pkg>/`.
-//       4. Rewrites cross-package `@cinder/*` specifiers inside the vendored
-//          declarations to local relative paths so the `_upstream/` tree is
-//          self-contained.
+//     The four upstream workspace packages emit their own `dist/` trees via
+//     their per-package build. Those trees include patterns esbuild can't
+//     safely re-bundle — notably
+//     `new Worker(new URL('./render-worker.js', import.meta.url))` and the
+//     companion worker source file. Re-bundling drops the worker entirely
+//     and breaks consumers under Vite + the Svelte plugin.
+//
+//     Instead, we:
+//       1. Build each upstream first so its `dist/` is fresh.
+//       2. Copy each upstream's entire `dist/**` into
+//          `packages/components/dist/<pkg>/` (browser) and
+//          `packages/components/dist/server/<pkg>/` (server), mirroring the
+//          upstream's internal layout. Workers, assets, and source maps come
+//          along untouched.
+//       3. Rewrite every `@cinder/<pkg>[/subpath]` import specifier in the
+//          copied JS/`.d.ts` to a relative path within the vendored tree, so
+//          `dist/markdown/diff/line-diff.js` referencing `@cinder/diff/line-diff`
+//          becomes `../../diff/line-diff` (no unresolvable `@cinder/*` after
+//          install).
+//
+//     The cinder exports map points `./<pkg>[/subpath]` directly at the
+//     vendored files via `cinderExportEntry` in
+//     `scripts/lib/derive-upstream-reexports.ts`.
 // -----------------------------------------------------------------------------
 
 const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as const;
 
-// Build each upstream package so its `dist/**/*.d.ts` is fresh.
+// Build each upstream package so its `dist/` is fresh.
 for (const upstreamName of upstreamPackageNames) {
   const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
   const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
@@ -330,42 +346,17 @@ for (const upstreamName of upstreamPackageNames) {
   }
 }
 
-const upstreamVendorRoot = `${distributionDirectory}/_upstream`;
-await $`rm -rf ${upstreamVendorRoot}`;
-
-// Copy each upstream's `dist/**/*.d.ts` (and any source maps that accompany
-// them) into `dist/_upstream/<pkg>/`.
-async function copyUpstreamDeclarations(upstreamName: string): Promise<void> {
-  const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
-  const destinationDist = `${upstreamVendorRoot}/${upstreamName}`;
-  if (!existsSync(sourceDist)) {
-    process.stderr.write(
-      `Build aborted: expected upstream dist ${sourceDist} to exist after upstream build.\n`,
-    );
-    process.exit(1);
-  }
-  const glob = new Glob('**/*.d.{ts,mts,cts}');
-  for await (const relative of glob.scan({ cwd: sourceDist })) {
-    const sourcePath = `${sourceDist}/${relative}`;
-    const destinationPath = `${destinationDist}/${relative}`;
-    await mkdir(dirname(destinationPath), { recursive: true });
-    await Bun.write(destinationPath, await Bun.file(sourcePath).text());
-  }
-}
-
-for (const upstreamName of upstreamPackageNames) {
-  await copyUpstreamDeclarations(upstreamName);
-}
-
 /**
- * Rewrite every `@cinder/<pkg>[/subpath]` import specifier in a `.d.ts` file
- * to a relative path pointing into `dist/_upstream/<pkg>/`. The rewrite is
- * file-position-aware: the relative segment depends on how deep the source
- * `.d.ts` lives under `dist/`.
+ * Rewrite every `@cinder/<pkg>[/subpath]` import specifier in a file's
+ * content to a relative path pointing at the sibling vendored upstream tree.
+ *
+ * Called for each file under `dist/<pkg>/**` after a verbatim copy. The
+ * relative target depends on how deep the file lives under
+ * `dist/<originPkg>/`.
  */
-function rewriteUpstreamSpecifiers(content: string, fileDistRelative: string): string {
-  // Use the directory portion of the file's path within `dist/` to compute
-  // the relative path back up to `dist/_upstream/`.
+function rewriteCrossUpstreamSpecifiers(content: string, fileDistRelative: string): string {
+  // `fileDistRelative` is e.g. `markdown/diff/line-diff.js`. `dirname` gives
+  // `markdown/diff`; the relative walk back to `dist/` is `../..`.
   const fileDirectory = dirname(fileDistRelative);
   const upwards =
     fileDirectory === '.'
@@ -374,54 +365,91 @@ function rewriteUpstreamSpecifiers(content: string, fileDistRelative: string): s
           .split('/')
           .map(() => '..')
           .join('/');
-  const upstreamRelativeBase = `${upwards}/_upstream`;
-
+  // Node ESM under `module: nodenext` rejects extensionless relative
+  // imports, so we materialize the target file path explicitly:
+  //   - `@cinder/markdown`           → `<up>/markdown/index.js`
+  //   - `@cinder/markdown/pipeline`  → `<up>/markdown/pipeline.js` if there
+  //     is a `pipeline.js` file at that path, otherwise `<up>/markdown/pipeline/index.js`.
+  //   - `@cinder/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
+  // The disambiguation depends on whether the target subpath is a directory
+  // entry or a leaf file; we resolve that lazily by checking the vendored
+  // dist for an `<subpath>/index.js`. This match table is built once per
+  // call and cached.
   return content.replace(
     /(['"])@cinder\/(markdown|editor|commentary|diff)(\/[^'"]*)?\1/g,
     (_match, quote: string, pkg: string, rest: string | undefined) => {
       const subpath = rest ?? '';
-      // Upstream emits flattened `.d.ts` files mirroring `src/`, but the
-      // emitted JS specifiers carry no extension. The relative TypeScript
-      // import resolves against the same path with `.d.ts` appended at
-      // resolution time, so we keep the specifier extensionless.
-      return `${quote}${upstreamRelativeBase}/${pkg}${subpath}${quote}`;
+      if (subpath === '') {
+        return `${quote}${upwards}/${pkg}/index.js${quote}`;
+      }
+      // Check whether the subpath resolves to a directory entry by looking
+      // at the vendored upstream dist on disk. If `dist/<pkg><subpath>/index.js`
+      // exists, the import target is the index file; otherwise it's a leaf
+      // `dist/<pkg><subpath>.js`.
+      const directoryCandidate = `${distributionDirectory}/${pkg}${subpath}/index.js`;
+      const leafCandidate = `${distributionDirectory}/${pkg}${subpath}.js`;
+      const targetTail = existsSync(directoryCandidate)
+        ? `${pkg}${subpath}/index.js`
+        : existsSync(leafCandidate)
+          ? `${pkg}${subpath}.js`
+          : `${pkg}${subpath}`;
+      return `${quote}${upwards}/${targetTail}${quote}`;
     },
   );
 }
 
-const dtsGlob = new Glob('**/*.d.{ts,mts,cts}');
-let rewrittenDtsCount = 0;
-for await (const relative of dtsGlob.scan({ cwd: distributionDirectory })) {
-  // Don't rewrite anything inside `_upstream/` until we've handled non-vendored
-  // declarations first — the loop below covers vendored files in a second pass.
-  if (relative.startsWith('_upstream/')) continue;
-  const filePath = `${distributionDirectory}/${relative}`;
-  const original = await Bun.file(filePath).text();
-  if (!original.includes('@cinder/')) continue;
-  const rewritten = rewriteUpstreamSpecifiers(original, relative);
-  if (rewritten !== original) {
-    await Bun.write(filePath, rewritten);
-    rewrittenDtsCount += 1;
+async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
+  const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
+  const destinationDist = `${destinationRoot}/${upstreamName}`;
+  if (!existsSync(sourceDist)) {
+    process.stderr.write(
+      `Build aborted: expected upstream dist ${sourceDist} to exist after upstream build.\n`,
+    );
+    process.exit(1);
+  }
+  const glob = new Glob('**/*');
+  for await (const relative of glob.scan({ cwd: sourceDist })) {
+    const sourcePath = `${sourceDist}/${relative}`;
+    const destinationPath = `${destinationDist}/${relative}`;
+    await mkdir(dirname(destinationPath), { recursive: true });
+    const bytes = await Bun.file(sourcePath).bytes();
+    await Bun.write(destinationPath, bytes);
   }
 }
 
-// Second pass: rewrite cross-upstream `@cinder/*` specifiers inside the
-// vendored declarations themselves so the `_upstream/` tree is self-contained.
-// e.g. `@cinder/markdown/src/diff/line-diff.d.ts` referencing `@cinder/diff`
-// becomes a relative hop into `_upstream/diff/`.
-for await (const relative of dtsGlob.scan({ cwd: upstreamVendorRoot })) {
-  const filePath = `${upstreamVendorRoot}/${relative}`;
-  const original = await Bun.file(filePath).text();
-  if (!original.includes('@cinder/')) continue;
-  // Relative path here is anchored at `dist/_upstream`, but
-  // `rewriteUpstreamSpecifiers` expects a path anchored at `dist/`. Prepend
-  // `_upstream/` so the upwards-walk math points back at the same root.
-  const rewritten = rewriteUpstreamSpecifiers(original, `_upstream/${relative}`);
-  if (rewritten !== original) {
-    await Bun.write(filePath, rewritten);
-    rewrittenDtsCount += 1;
+// First pass: copy every upstream dist verbatim into both `dist/<pkg>/` and
+// `dist/server/<pkg>/`. Specifier rewrites happen in the second pass so
+// `rewriteCrossUpstreamSpecifiers` can probe sibling vendored trees on
+// disk to disambiguate directory-style vs leaf-style imports.
+for (const upstreamName of upstreamPackageNames) {
+  await copyUpstreamDistInto(upstreamName, distributionDirectory);
+  await copyUpstreamDistInto(upstreamName, `${distributionDirectory}/server`);
+}
+
+// Second pass: rewrite `@cinder/*` import specifiers across every text
+// artifact. Files under `dist/server/**` are walked with `dist/server/` as
+// their root so the relative `../..` hops point at sibling server files,
+// not back into the browser tree. Files outside `dist/server/**` are walked
+// with `dist/` as root.
+async function rewriteSpecifiersUnder(
+  root: string,
+  options: { skipPrefix?: string } = {},
+): Promise<void> {
+  const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts,map}');
+  for await (const relative of textGlob.scan({ cwd: root })) {
+    if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
+    const filePath = `${root}/${relative}`;
+    const original = await Bun.file(filePath).text();
+    if (!original.includes('@cinder/')) continue;
+    const rewritten = rewriteCrossUpstreamSpecifiers(original, relative);
+    if (rewritten !== original) {
+      await Bun.write(filePath, rewritten);
+    }
   }
 }
+
+await rewriteSpecifiersUnder(`${distributionDirectory}/server`);
+await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
 
 // -----------------------------------------------------------------------------
 // 6. Hard acceptance checks. Verify the output shape matches the contract

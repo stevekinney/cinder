@@ -252,71 +252,82 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   }
 
   const exportsMap = packedManifest.exports ?? {};
+  const upstreamReexports = await deriveUpstreamReexports();
+  const upstreamKeys = new Set(upstreamReexports.map((r) => r.cinderKey));
   for (const [key, value] of Object.entries(exportsMap)) {
     if (typeof value !== 'object' || value === null) continue;
     const conditions = value as Record<string, unknown>;
-    if ('svelte' in conditions) {
-      fail(
-        `packed exports["${key}"] retains a \`svelte\` condition — the published map must resolve to \`dist/\` only`,
-      );
-    }
-    // Verify that no condition target inside the entry points at `./src/`,
-    // with three intentional exceptions:
-    //   1. `./styles*` entries target hand-authored CSS in `src/styles/`.
-    //   2. `<id>/examples` entries target `*.examples.json` sidecars
-    //      under `src/components/<id>/`.
-    //   3. `<id>/constraints` entries target `*.constraints.json` sidecars
-    //      under `src/components/<id>/`.
-    // The pack-for-publish flow ships exactly those files (plus the rest of
-    // `dist/`) — nothing else from `src/**` lands in the tarball.
-    const isStylesEntry =
-      key === './styles' || key.startsWith('./styles/') || key.endsWith('/styles');
-    const isExamplesEntry = key.endsWith('/examples');
-    const isConstraintsEntry = key.endsWith('/constraints');
-    for (const [condition, target] of Object.entries(conditions)) {
-      if (typeof target !== 'string') continue;
-      if (target.startsWith('./src/')) {
-        if (isStylesEntry && target.startsWith('./src/styles/') && target.endsWith('.css')) {
-          continue;
-        }
-        if (isExamplesEntry && /^\.\/src\/components\/[^/]+\/[^/]+\.examples\.json$/.test(target)) {
-          continue;
-        }
-        if (
-          isConstraintsEntry &&
-          /^\.\/src\/components\/[^/]+\/[^/]+\.constraints\.json$/.test(target)
-        ) {
-          continue;
-        }
+    // PR 1 contract: every upstream re-export sub-path MUST resolve to
+    // `dist/` only — no `svelte` condition, no `./src/` target. They are
+    // the surface PR 1 introduces and they ship without Svelte source.
+    //
+    // Component sub-paths (and other non-upstream exports) keep their
+    // `svelte` → `./src/components/<id>/index.ts` condition because the
+    // pre-bundled root barrel at `dist/index.js` is currently a re-export
+    // pass-through that does not emit `import` statements for the symbols
+    // it re-exports (a Bun.build artifact). Until that's fixed, Svelte-
+    // aware consumers must resolve component sub-paths through the source
+    // path. The published tarball ships `src/components/**`, `src/utilities/**`,
+    // `src/_internal/**`, and `src/index.ts` to make that resolvable.
+    if (upstreamKeys.has(key)) {
+      if ('svelte' in conditions) {
         fail(
-          `packed exports["${key}"]["${condition}"] points at "${target}" — only \`./styles*\`, \`*/examples\`, and \`*/constraints\` exports may resolve to \`./src/\``,
+          `packed exports["${key}"] retains a \`svelte\` condition — upstream re-export sub-paths must resolve to \`dist/\` only`,
         );
+      }
+      for (const [condition, target] of Object.entries(conditions)) {
+        if (typeof target === 'string' && target.startsWith('./src/')) {
+          fail(
+            `packed exports["${key}"]["${condition}"] points at "${target}" — upstream re-exports must resolve to \`./dist/\``,
+          );
+        }
       }
     }
   }
 }
 
 /**
- * Run a global grep over the extracted tarball for `@cinder/*` references.
- * Only quoted-string occurrences fail the gate — these are import
- * specifiers that would break at consumer install time. Doc-comment prose
- * and source-map embedded source are tolerated because they cannot break
- * runtime resolution.
+ * Run a global grep over the extracted tarball for `@cinder/*` references
+ * that look like real import specifiers. Doc-comment prose and source-map
+ * embedded source are tolerated because they cannot break runtime
+ * resolution.
+ *
+ * "Looks like a real import specifier" means: the `@cinder/...` token sits
+ * inside a single-quote or double-quote string on a non-comment line.
+ * Backtick-quoted occurrences are not flagged — JavaScript never accepts a
+ * backtick-quoted static `import` source, and the common in-the-wild
+ * backtick usage is `` `@cinder/markdown` `` inside JSDoc/prose comments.
  */
 async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
-  // Match `'@cinder/...'`, `"@cinder/..."`, or a backtick-quoted dynamic
-  // import specifier. Excludes doc-comment prose like
-  // ` * @cinder/markdown ...` and excludes the `_upstream/` source-map
-  // shipped alongside vendored .d.ts files.
-  const pattern = /(['"`])@cinder\/[^'"`]+\1/;
+  const pattern = /(['"])@cinder\/[^'"]+\1/;
   for await (const relative of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, relative);
     const content = await Bun.file(filePath).text();
-    if (pattern.test(content)) {
-      offenders.push(relative);
+    if (!content.includes('@cinder/')) continue;
+    let inBlockComment = false;
+    let offenderLine: string | undefined;
+    for (const rawLine of content.split('\n')) {
+      if (inBlockComment) {
+        if (rawLine.includes('*/')) inBlockComment = false;
+        continue;
+      }
+      const trimmed = rawLine.trim();
+      if (trimmed.startsWith('//')) continue;
+      if (trimmed.startsWith('*')) continue;
+      if (trimmed.startsWith('/*')) {
+        if (!trimmed.includes('*/')) inBlockComment = true;
+        continue;
+      }
+      if (pattern.test(rawLine)) {
+        offenderLine = trimmed;
+        break;
+      }
+    }
+    if (offenderLine !== undefined) {
+      offenders.push(`${relative}  ←  ${offenderLine.slice(0, 120)}`);
     }
   }
   if (offenders.length > 0) {
@@ -391,14 +402,18 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
   for (const { name, isExperimental } of components) {
+    const sourceDirectory = isExperimental
+      ? `package/src/components/experimental/${name}`
+      : `package/src/components/${name}`;
     const distributionDirectory = isExperimental
       ? `package/dist/components/experimental/${name}`
       : `package/dist/components/${name}`;
-    // PR 1 publishing model: the tarball ships `dist/` only (plus
-    // `src/styles/**/*.css`). Every component sub-path resolves via the
-    // `default` or `node` condition, so we assert the built JS + types are
-    // present rather than the Svelte source.
+    // Each component sub-path ships both the Svelte source (resolved via
+    // the `svelte` condition) and the built JS + types (resolved via
+    // `default`/`types`/`node`). See `assertPackedManifestInvariants` for
+    // the reason both are required today.
     componentRequiredEntries.push(
+      `${sourceDirectory}/${name}.svelte`,
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
@@ -406,6 +421,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   return {
     required: [
       'package/package.json',
+      'package/src/index.ts',
       'package/src/styles/index.css',
       'package/src/styles/tokens.css',
       'package/src/styles/tokens-base.css',
@@ -417,23 +433,26 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/server/index.js',
       ...componentRequiredEntries,
     ],
-    // PR 1: src/** stays out of the tarball except for hand-authored CSS
-    // files in `src/styles/` and per-component `*.examples.json` /
-    // `*.constraints.json` sidecars. The exports map's `default` and `node`
-    // conditions point at `dist/`, so any leaked `src/components/**.svelte`,
-    // `*.ts`, `src/utilities/**` etc. entry signals a broken
-    // pack-for-publish.
-    forbiddenPatterns: [
-      /\.(test|spec)\.ts$/,
-      /\.a11y\.md$/,
-      /^package\/src\/(?!styles\/)(?!components\/[^/]+\/[^/]+\.(examples|constraints)\.json$).*$/,
-    ],
+    // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
+    // `src/diff/**` (the generated re-export shells) stay out of the
+    // tarball — upstream sub-paths resolve through `dist/` only. The rest
+    // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
+    // styles, JSON sidecars) ships because the published `svelte`
+    // condition on component sub-paths targets it.
+    forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
     forbiddenPrefixes: [
       'package/fixtures/',
       'package/tmp/',
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
+      // Upstream re-export shells (`src/markdown/`, `src/editor/`,
+      // `src/commentary/`, `src/diff/`) resolve via `dist/_upstream/`; the
+      // shell sources are build-only inputs.
+      'package/src/markdown/',
+      'package/src/editor/',
+      'package/src/commentary/',
+      'package/src/diff/',
     ],
   };
 }
