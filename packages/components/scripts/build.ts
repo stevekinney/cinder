@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
+import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { createServerEntrySource } from './server-entry.ts';
@@ -481,38 +482,21 @@ await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
 // build` (~ms) so a missed rewrite surfaces immediately instead of waiting
 // for the slow consumer-validation pass.
 {
-  // Two patterns:
-  //   - Static specifiers: `'@cinder/x'`, `"@cinder/x"`, `\`@cinder/x\``.
-  //   - Template-literal specifiers whose first quasi starts with
-  //     `@cinder/` and then interpolates (e.g.
-  //     `` `@cinder/${pkg}` ``). The `rewriteCrossUpstreamSpecifiers`
-  //     pass cannot safely rewrite a computed specifier, so we must fail
-  //     loudly if one appears rather than silently shipping it.
-  const staticResiduePattern = /(['"`])@cinder\/[^'"`${}]+\1/;
-  const dynamicResiduePattern = /`@cinder\/[^`]*\$\{/;
+  // Comment-stripping + pattern logic lives in
+  // `lib/cinder-specifier-residue.ts` so this gate and the slower tarball
+  // gate in `validate-consumers.ts` share one implementation — previously
+  // each maintained its own line-skip ladder, and a single-line
+  // `/* x */ import from '@cinder/...'` could bypass both.
   const residueGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const residueOffenders: string[] = [];
   for await (const relative of residueGlob.scan({ cwd: distributionDirectory })) {
     const filePath = `${distributionDirectory}/${relative}`;
     const content = await Bun.file(filePath).text();
     if (!content.includes('@cinder/')) continue;
-    // Skip the same comment-prefixed lines validate-consumers skips so
-    // JSDoc references like ` * @cinder/markdown` don't false-positive.
-    let inBlockComment = false;
+    const scanState: CommentScanState = { inBlockComment: false };
     let hit = false;
     for (const rawLine of content.split('\n')) {
-      if (inBlockComment) {
-        if (rawLine.includes('*/')) inBlockComment = false;
-        continue;
-      }
-      const trimmed = rawLine.trim();
-      if (trimmed.startsWith('//')) continue;
-      if (trimmed.startsWith('*')) continue;
-      if (trimmed.startsWith('/*')) {
-        if (!trimmed.includes('*/')) inBlockComment = true;
-        continue;
-      }
-      if (staticResiduePattern.test(rawLine) || dynamicResiduePattern.test(rawLine)) {
+      if (lineHasCinderResidue(rawLine, scanState)) {
         hit = true;
         break;
       }

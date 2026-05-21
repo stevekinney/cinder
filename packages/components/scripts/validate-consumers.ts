@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import postcss from 'postcss';
 
+import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { packForPublish } from './pack-for-publish.ts';
@@ -306,36 +307,20 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
-  // Two patterns:
-  //   - Static specifiers: single-quote, double-quote, backtick. The
-  //     backreference enforces matching pair so mismatched quotes don't
-  //     false-positive.
-  //   - Template-literal specifiers whose first quasi starts with
-  //     `@cinder/` and then interpolates: `\`@cinder/${pkg}\``. These
-  //     cannot be safely rewritten and must be caught here so the publish
-  //     path doesn't ship an unresolvable private-workspace reference.
-  const staticPattern = /(['"`])@cinder\/[^'"`${}]+\1/;
-  const dynamicPattern = /`@cinder\/[^`]*\$\{/;
+  // Patterns + comment-stripping live in `lib/cinder-specifier-residue.ts`
+  // so this gate and the fast post-build gate in `build.ts` share one
+  // implementation. The previous inline ladder skipped any line starting
+  // with `/*` even when `*/` closed on the same line, letting
+  // `/* x */ import from '@cinder/markdown'` slip through.
   for await (const relative of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, relative);
     const content = await Bun.file(filePath).text();
     if (!content.includes('@cinder/')) continue;
-    let inBlockComment = false;
+    const scanState: CommentScanState = { inBlockComment: false };
     let offenderLine: string | undefined;
     for (const rawLine of content.split('\n')) {
-      if (inBlockComment) {
-        if (rawLine.includes('*/')) inBlockComment = false;
-        continue;
-      }
-      const trimmed = rawLine.trim();
-      if (trimmed.startsWith('//')) continue;
-      if (trimmed.startsWith('*')) continue;
-      if (trimmed.startsWith('/*')) {
-        if (!trimmed.includes('*/')) inBlockComment = true;
-        continue;
-      }
-      if (staticPattern.test(rawLine) || dynamicPattern.test(rawLine)) {
-        offenderLine = trimmed;
+      if (lineHasCinderResidue(rawLine, scanState)) {
+        offenderLine = rawLine.trim();
         break;
       }
     }

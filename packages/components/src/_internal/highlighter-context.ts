@@ -63,19 +63,3 @@ export type HighlighterContext = {
 export function getHighlighterContext(): HighlighterContext | undefined {
   return getContext<HighlighterContext | undefined>(HIGHLIGHTER_CONTEXT_KEY);
 }
-
-/**
- * Convenience: returns the nearest enclosing `<CinderProvider>`'s
- * highlighter, or `undefined` when no provider is mounted.
- *
- * **Call only during component initialization** for the same reason as
- * {@link getHighlighterContext}. Consumers that need to track the
- * highlighter reactively (most do — components that re-render on
- * provider-prop changes) should call {@link getHighlighterContext} at init
- * time and read `.highlighter` from the returned context inside a `$effect`.
- *
- * Unlike `useToast()`, this MUST NOT throw on a missing provider.
- */
-export function getHighlighter(): Highlighter | undefined {
-  return getHighlighterContext()?.highlighter;
-}

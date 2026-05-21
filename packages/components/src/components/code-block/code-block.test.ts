@@ -24,7 +24,7 @@ async function renderHighlightedCode(code: string, _lang: string): Promise<strin
 
 /**
  * Render a CodeBlock inside a CinderProvider so the highlighter context is
- * established before CodeBlock calls `getHighlighter()`. Mirrors the
+ * established before CodeBlock calls `getHighlighterContext()`. Mirrors the
  * accordion-item test helper pattern: `createRawSnippet` returns a wrapper
  * `<div>`, then we mount the CodeBlock into it via Svelte's `mount`.
  *
