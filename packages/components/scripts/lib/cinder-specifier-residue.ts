@@ -9,9 +9,10 @@
  *     publish-path validation if any reference survived into the staged pack.
  *
  * Centralizing the patterns + comment handling here means a regex update
- * applies in both places; this also avoids the single-line-block-comment
- * bypass that was previously present when each call site implemented its own
- * line-by-line skip ladder.
+ * applies in both places. The string-aware tokenizer below treats `/*` and
+ * `//` sequences inside string or template literals as data, not comments,
+ * so a line like `const x = '/* @cinder/foo *\/'; import y from "@cinder/z"`
+ * still surfaces the real specifier in the trailing import.
  */
 
 /**
@@ -32,100 +33,215 @@ export const STATIC_CINDER_SPECIFIER_PATTERN = /(['"`])@cinder\/[^'"`${}]+\1/;
  */
 export const DYNAMIC_CINDER_SPECIFIER_PATTERN = /`@cinder\/[^`]*\$\{/;
 
-/**
- * Remove every JavaScript-style comment span from a single source line
- * before pattern-testing for `@cinder/*` specifiers.
- *
- * Strips:
- *   - `//` line comments (everything from `//` to end of line).
- *   - `/* ... *\/` block comments that open and close on the same line.
- *
- * Returns the residual non-comment text. Callers still need to track
- * multi-line block-comment state via {@link CommentScanState} because
- * a `/*` without a matching `*\/` on the same line continues into
- * subsequent lines.
- *
- * The previous implementation skipped any line whose trimmed form began
- * with `/*`, even when `*\/` closed on the same line — that allowed
- * `/* ignore *\/ import x from '@cinder/markdown'` to bypass the gate.
- * This helper strips the comment span instead so the post-strip residue
- * is still pattern-tested.
- */
-export function stripInlineComments(line: string): string {
-  let result = '';
-  let index = 0;
-  while (index < line.length) {
-    // `//` — strip to end of line.
-    if (line[index] === '/' && line[index + 1] === '/') {
-      break;
-    }
-    // `/* ... */` — find the close and skip the entire span. If there's
-    // no close on this line, the rest of the line is part of a multi-line
-    // block comment; return what we have so far.
-    if (line[index] === '/' && line[index + 1] === '*') {
-      const close = line.indexOf('*/', index + 2);
-      if (close === -1) break;
-      index = close + 2;
-      continue;
-    }
-    result += line[index];
-    index += 1;
-  }
-  return result;
-}
-
 /** State carried across lines while walking a file for residue. */
 export type CommentScanState = {
   inBlockComment: boolean;
 };
 
 /**
- * Decide whether a single line, after comment-stripping, carries a real
- * `@cinder/*` specifier. Updates `state.inBlockComment` to track multi-line
- * block comments across calls.
+ * Strip JavaScript comments from `line` while preserving string and
+ * template-literal content. Returns the line with comment spans replaced
+ * by spaces (so column positions don't shift in a way that surprises
+ * downstream pattern matching). Updates `state.inBlockComment` when a
+ * `/* ` opens without a matching `*\/` on the same line.
+ *
+ * The tokenizer tracks five states:
+ *   - normal code
+ *   - inside a `'...'` single-quoted string
+ *   - inside a `"..."` double-quoted string
+ *   - inside a `` `...` `` template literal (including `${...}` interpolations)
+ *   - inside a `/* ... *\/` block comment
+ *
+ * Within string and template-literal states, `/` characters are data, not
+ * comment introducers — which is the bug the previous trimmed-prefix
+ * approach had. Template-literal `${...}` is treated as a return to normal
+ * code so quoted specifiers inside the interpolation are still scanned.
+ *
+ * The result substitutes a single space for each comment character so
+ * pattern matching that depends on whitespace boundaries (none today, but
+ * worth keeping the contract simple) behaves consistently.
+ */
+export function stripCommentsRespectingStrings(line: string, state: CommentScanState): string {
+  let result = '';
+  let index = 0;
+
+  // Resume a block comment opened on a previous line.
+  if (state.inBlockComment) {
+    const close = line.indexOf('*/');
+    if (close === -1) {
+      // Entire line is still inside the comment.
+      return ' '.repeat(line.length);
+    }
+    // Replace the inside-comment prefix with spaces, advance past `*/`.
+    result += ' '.repeat(close + 2);
+    state.inBlockComment = false;
+    index = close + 2;
+  }
+
+  // Stack of template-literal contexts. Each entry tracks the nesting of
+  // `${...}` braces inside that template — when the brace count returns
+  // to zero, we resume the parent template literal. A simple counter
+  // suffices because we don't actually parse expression content; we just
+  // need to know when we re-enter the template's text portion so the next
+  // `\`` closes it.
+  const templateStack: number[] = [];
+
+  while (index < line.length) {
+    const ch = line[index];
+    const next = line[index + 1];
+
+    // Inside a template literal interpolation expression? Track braces so
+    // we know when to return to the template's text portion, and treat
+    // comment introducers as real comments (since `${...}` is code).
+    if (templateStack.length > 0 && templateStack[templateStack.length - 1]! > 0) {
+      if (ch === '{') {
+        templateStack[templateStack.length - 1]! += 1;
+        result += ch;
+        index += 1;
+        continue;
+      }
+      if (ch === '}') {
+        templateStack[templateStack.length - 1]! -= 1;
+        result += ch;
+        index += 1;
+        continue;
+      }
+      if (ch === "'" || ch === '"') {
+        // Quoted string inside interpolation — consume to its close.
+        result += ch;
+        index += 1;
+        while (index < line.length) {
+          const innerCh = line[index];
+          result += innerCh;
+          if (innerCh === '\\' && index + 1 < line.length) {
+            result += line[index + 1];
+            index += 2;
+            continue;
+          }
+          index += 1;
+          if (innerCh === ch) break;
+        }
+        continue;
+      }
+      if (ch === '`') {
+        // A nested template literal inside the interpolation expression.
+        templateStack.push(0);
+        result += ch;
+        index += 1;
+        continue;
+      }
+      if (ch === '/' && next === '/') {
+        result += ' '.repeat(line.length - index);
+        break;
+      }
+      if (ch === '/' && next === '*') {
+        const close = line.indexOf('*/', index + 2);
+        if (close === -1) {
+          state.inBlockComment = true;
+          result += ' '.repeat(line.length - index);
+          break;
+        }
+        result += ' '.repeat(close + 2 - index);
+        index = close + 2;
+        continue;
+      }
+      result += ch;
+      index += 1;
+      continue;
+    }
+
+    // Inside a template literal text portion?
+    if (templateStack.length > 0) {
+      if (ch === '\\' && next !== undefined) {
+        result += ch + next;
+        index += 2;
+        continue;
+      }
+      if (ch === '`') {
+        templateStack.pop();
+        result += ch;
+        index += 1;
+        continue;
+      }
+      if (ch === '$' && next === '{') {
+        // Enter interpolation; reset the brace counter for this level.
+        templateStack[templateStack.length - 1] = 1;
+        result += '${';
+        index += 2;
+        continue;
+      }
+      result += ch;
+      index += 1;
+      continue;
+    }
+
+    // Normal code. Check for the start of a string, template, or comment.
+    if (ch === "'" || ch === '"') {
+      // Single- or double-quoted string. Consume until the unescaped
+      // matching quote (or end of line — TypeScript/JS reject unterminated
+      // strings, but we keep going to avoid hanging on malformed input).
+      result += ch;
+      index += 1;
+      while (index < line.length) {
+        const innerCh = line[index];
+        result += innerCh;
+        if (innerCh === '\\' && index + 1 < line.length) {
+          result += line[index + 1];
+          index += 2;
+          continue;
+        }
+        index += 1;
+        if (innerCh === ch) break;
+      }
+      continue;
+    }
+
+    if (ch === '`') {
+      // Open a template literal.
+      templateStack.push(0);
+      result += ch;
+      index += 1;
+      continue;
+    }
+
+    if (ch === '/' && next === '/') {
+      // Line comment — replace the rest of the line with spaces.
+      result += ' '.repeat(line.length - index);
+      break;
+    }
+
+    if (ch === '/' && next === '*') {
+      const close = line.indexOf('*/', index + 2);
+      if (close === -1) {
+        // Block comment continues past end of line.
+        state.inBlockComment = true;
+        result += ' '.repeat(line.length - index);
+        break;
+      }
+      // Block comment closes on the same line — replace span with spaces.
+      result += ' '.repeat(close + 2 - index);
+      index = close + 2;
+      continue;
+    }
+
+    result += ch;
+    index += 1;
+  }
+
+  return result;
+}
+
+/**
+ * Decide whether a single line, after string-aware comment stripping,
+ * carries a real `@cinder/*` specifier. Updates `state.inBlockComment` to
+ * track multi-line block comments across calls.
  *
  * The caller short-circuits via `content.includes('@cinder/')` before
  * iterating the file, so the per-line cost here is only paid on files that
  * already mention the substring somewhere.
  */
 export function lineHasCinderResidue(rawLine: string, state: CommentScanState): boolean {
-  // Already inside a multi-line block comment: scan for the closing `*/`,
-  // then continue with whatever follows on the same line.
-  let workingLine = rawLine;
-  if (state.inBlockComment) {
-    const close = workingLine.indexOf('*/');
-    if (close === -1) return false;
-    workingLine = workingLine.slice(close + 2);
-    state.inBlockComment = false;
-  }
-
-  // Skip JSDoc-style ` * ...` continuation lines outright — they always
-  // sit inside a `/* ... */` span we entered on a previous line, but
-  // some toolchains emit them with the leading `*` even when the parent
-  // span is already closed; treating them as comment lines is the safe
-  // default and matches what the previous implementation did.
-  const trimmed = workingLine.trim();
-  if (trimmed.startsWith('*') && !trimmed.startsWith('*/')) return false;
-
-  // Detect an unclosed `/*` that continues onto subsequent lines. We do
-  // this AFTER stripping so a same-line `/* x */ import` is still tested.
-  let scanForOpener = workingLine;
-  while (true) {
-    const open = scanForOpener.indexOf('/*');
-    if (open === -1) break;
-    const close = scanForOpener.indexOf('*/', open + 2);
-    if (close === -1) {
-      // Unclosed on this line — set the flag and ignore the rest.
-      state.inBlockComment = true;
-      scanForOpener = scanForOpener.slice(0, open);
-      break;
-    }
-    // Closed on the same line — splice the span out and keep scanning.
-    scanForOpener = scanForOpener.slice(0, open) + scanForOpener.slice(close + 2);
-  }
-
-  // Strip line comments and any remaining inline `//`.
-  const stripped = stripInlineComments(scanForOpener);
+  const stripped = stripCommentsRespectingStrings(rawLine, state);
   if (!stripped.includes('@cinder/')) return false;
 
   return (

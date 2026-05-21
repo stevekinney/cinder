@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 
-import type { Highlighter } from '../../_internal/highlighter-context.ts';
+import type { Highlighter } from '../../utilities/highlighter.ts';
 
 /**
  * Props for {@link CinderProvider}. Wraps a subtree and makes a

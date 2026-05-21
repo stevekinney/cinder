@@ -1,13 +1,12 @@
 <!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
 <script lang="ts">
-  import { codeToHtml } from 'shiki';
   import { mount, unmount } from 'svelte';
   import Accordion from '../../components/src/components/accordion/index.ts';
   import AccordionItem from '../../components/src/components/accordion-item/index.ts';
   import Card from '../../components/src/components/card/index.ts';
   import CinderProvider from '../../components/src/components/cinder-provider/index.ts';
   import CodeBlock from '../../components/src/components/code-block/index.ts';
-  import type { Highlighter } from '../../components/src/utilities/highlighter.ts';
+  import { shikiHighlighter } from '../../components/src/highlighters/shiki/index.ts';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -28,8 +27,12 @@
   // independent Svelte trees (see the mount() call further down) so they do
   // NOT inherit this provider — the dedicated cinder-provider examples
   // demonstrate how a real app wires highlighting at its root.
-  const highlighter: Highlighter = async (source, lang) =>
-    codeToHtml(source, { lang, theme: 'github-light' });
+  //
+  // Use the bundled `shikiHighlighter` adapter so this file matches the
+  // documented consumer pattern (lazy `import('shiki')` on first highlight,
+  // shared fallback contract, warn-once behavior) instead of pulling Shiki
+  // into the playground entry chunk via a top-level `codeToHtml` import.
+  const highlighter = shikiHighlighter({ theme: 'github-light' });
 
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
