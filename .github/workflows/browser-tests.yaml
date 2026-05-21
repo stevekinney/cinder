@@ -112,7 +112,12 @@ jobs:
     # imports stop resolving via the package's exports map (svelte/types
     # condition mismatch, missing customConditions, dropped source-export, etc).
     # See packages/playground/tsconfig.json for context.
-    needs: scope
+    #
+    # Intentionally does NOT depend on `scope`: typecheck runs the same command
+    # regardless of which components changed, so it has no need for scope's
+    # outputs. Gating on `scope` would silently skip this job whenever scope
+    # fails for unrelated reasons (e.g. `changed-components.ts` errors, shallow
+    # clone `git diff` issues) — defeating the regression-catching purpose.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
