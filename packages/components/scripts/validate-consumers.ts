@@ -306,10 +306,16 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
-  // Single-quote, double-quote, and backtick (no interpolation) all
-  // accepted as quote characters. Backreference enforces matching pair so
-  // mismatched quotes don't false-positive.
-  const pattern = /(['"`])@cinder\/[^'"`${}]+\1/;
+  // Two patterns:
+  //   - Static specifiers: single-quote, double-quote, backtick. The
+  //     backreference enforces matching pair so mismatched quotes don't
+  //     false-positive.
+  //   - Template-literal specifiers whose first quasi starts with
+  //     `@cinder/` and then interpolates: `\`@cinder/${pkg}\``. These
+  //     cannot be safely rewritten and must be caught here so the publish
+  //     path doesn't ship an unresolvable private-workspace reference.
+  const staticPattern = /(['"`])@cinder\/[^'"`${}]+\1/;
+  const dynamicPattern = /`@cinder\/[^`]*\$\{/;
   for await (const relative of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, relative);
     const content = await Bun.file(filePath).text();
@@ -328,7 +334,7 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
         if (!trimmed.includes('*/')) inBlockComment = true;
         continue;
       }
-      if (pattern.test(rawLine)) {
+      if (staticPattern.test(rawLine) || dynamicPattern.test(rawLine)) {
         offenderLine = trimmed;
         break;
       }

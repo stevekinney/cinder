@@ -136,11 +136,15 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
   }
 
   return async function highlight(code: string, lang: string): Promise<string> {
-    // Normalize: markdown fences in the wild ship things like `'ts '` (with
-    // trailing whitespace) or `'typescript title="foo"'` (with metadata
-    // attributes after the language token). Trim whitespace and take only
-    // the first whitespace-delimited token so the Shiki lookup matches.
-    const normalizedLang = lang.trim().split(/\s+/, 1)[0] ?? '';
+    // Normalize defensively: the documented contract is "empty or missing
+    // lang → escaped plaintext, never throws," but a JavaScript caller can
+    // pass `null`/`undefined`/non-string values past the type system. Guard
+    // before calling string methods so the contract holds for vanilla-JS
+    // consumers too. Markdown fences in the wild also ship things like
+    // `'ts '` (trailing whitespace) or `'typescript title="foo"'` (metadata
+    // attributes); trim and take the first whitespace-delimited token so
+    // the Shiki lookup matches.
+    const normalizedLang = typeof lang === 'string' ? (lang.trim().split(/\s+/, 1)[0] ?? '') : '';
     if (normalizedLang === '') {
       return plaintextBlock(code);
     }

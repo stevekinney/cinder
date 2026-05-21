@@ -139,6 +139,25 @@ describe('shikiHighlighter — fallback contract', () => {
     expect(threw).toBe(false);
   });
 
+  test('does not throw when a JS caller passes a non-string lang', async () => {
+    // Defensive contract: the `Highlighter` type signature is `lang: string`,
+    // but a vanilla-JS caller can bypass it. Calling `.trim()` on
+    // `null`/`undefined`/a number would crash before reaching the
+    // documented "never throws" fallback. The adapter guards `typeof lang
+    // === 'string'` so all three render as the escaped-plaintext block.
+    const highlight = shikiHighlighter();
+    // Cast through `unknown` for the test only — production type-checking
+    // would forbid these calls, but the runtime guard still has to hold.
+    const callPlaintext = highlight as (code: string, lang: unknown) => Promise<string>;
+    const nullResult = await callPlaintext('plain', null);
+    expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
+    expect(nullResult).toContain('<code>plain</code>');
+    const undefinedResult = await callPlaintext('plain', undefined);
+    expect(undefinedResult).toContain('<pre class="shiki shiki-plaintext">');
+    const numericResult = await callPlaintext('plain', 42);
+    expect(numericResult).toContain('<pre class="shiki shiki-plaintext">');
+  });
+
   test('HTML-escapes <script>alert(1)</script> in the plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('<script>alert(1)</script>', '');

@@ -481,7 +481,15 @@ await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
 // build` (~ms) so a missed rewrite surfaces immediately instead of waiting
 // for the slow consumer-validation pass.
 {
-  const residuePattern = /(['"`])@cinder\/[^'"`${}]+\1/;
+  // Two patterns:
+  //   - Static specifiers: `'@cinder/x'`, `"@cinder/x"`, `\`@cinder/x\``.
+  //   - Template-literal specifiers whose first quasi starts with
+  //     `@cinder/` and then interpolates (e.g.
+  //     `` `@cinder/${pkg}` ``). The `rewriteCrossUpstreamSpecifiers`
+  //     pass cannot safely rewrite a computed specifier, so we must fail
+  //     loudly if one appears rather than silently shipping it.
+  const staticResiduePattern = /(['"`])@cinder\/[^'"`${}]+\1/;
+  const dynamicResiduePattern = /`@cinder\/[^`]*\$\{/;
   const residueGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const residueOffenders: string[] = [];
   for await (const relative of residueGlob.scan({ cwd: distributionDirectory })) {
@@ -504,7 +512,7 @@ await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
         if (!trimmed.includes('*/')) inBlockComment = true;
         continue;
       }
-      if (residuePattern.test(rawLine)) {
+      if (staticResiduePattern.test(rawLine) || dynamicResiduePattern.test(rawLine)) {
         hit = true;
         break;
       }
@@ -515,7 +523,10 @@ await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
     process.stderr.write(
       'Build aborted: unresolved @cinder/* specifiers remain after rewrite:\n' +
         residueOffenders.map((file) => `  ${file}`).join('\n') +
-        '\n',
+        '\n' +
+        'If the offender is a computed `import(`@cinder/${...}`)`, the rewrite\n' +
+        'pass cannot safely transform it — change the upstream source to use a\n' +
+        'static specifier instead.\n',
     );
     process.exit(1);
   }
