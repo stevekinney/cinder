@@ -25,6 +25,7 @@
 </script>
 
 <script lang="ts">
+  import CinderProvider from '../../cinder-provider/cinder-provider.svelte';
   import CodeBlock from '../../code-block/code-block.svelte';
   import { classNames } from '../../../utilities/class-names.ts';
 
@@ -39,7 +40,12 @@
 </script>
 
 <div class={classNames('tool-payload-code', className)}>
-  <CodeBlock {code} language="json" highlighter={highlightJson} />
+  <!-- Scoped highlighter: wrap a local CinderProvider so this tool-payload
+       always gets the JSON/depict highlighter regardless of what the app
+       root provider supplies. The nearest provider wins. -->
+  <CinderProvider highlighter={highlightJson}>
+    <CodeBlock {code} language="json" />
+  </CinderProvider>
 </div>
 
 <style>

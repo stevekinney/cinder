@@ -346,6 +346,24 @@
       "import": "./src/components/chip/chip.examples.json",
       "default": "./src/components/chip/chip.examples.json"
     },
+    "./cinder-provider": {
+      "types": "./dist/components/cinder-provider/index.d.ts",
+      "svelte": "./src/components/cinder-provider/index.ts",
+      "node": "./dist/server/components/cinder-provider/index.js",
+      "default": "./dist/components/cinder-provider/index.js"
+    },
+    "./cinder-provider/schema": {
+      "types": "./dist/components/cinder-provider/cinder-provider.schema.d.ts",
+      "svelte": "./src/components/cinder-provider/cinder-provider.schema.ts"
+    },
+    "./cinder-provider/variables": {
+      "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
+      "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
+    },
+    "./cinder-provider/examples": {
+      "import": "./src/components/cinder-provider/cinder-provider.examples.json",
+      "default": "./src/components/cinder-provider/cinder-provider.examples.json"
+    },
     "./code-block": {
       "types": "./dist/components/code-block/index.d.ts",
       "svelte": "./src/components/code-block/index.ts",

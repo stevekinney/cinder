@@ -23,14 +23,6 @@ const schema = {
   },
   additionalProperties: false,
   required: ['code'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'highlighter',
-        reason: 'function-or-snippet',
-      },
-    ],
-  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

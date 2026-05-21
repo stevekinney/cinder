@@ -12,8 +12,8 @@
     {
       "id": "with-language",
       "title": "With language label and copy",
-      "description": "Header shows the language and a copy-to-clipboard button.",
-      "code": "<script lang=\"ts\">\n  import { codeToHtml } from 'shiki';\n  import { CodeBlock } from 'cinder/code-block';\n  const code = `SELECT id, name, created_at\nFROM users\nWHERE active = true\nORDER BY created_at DESC\nLIMIT 10;`;\n\n  async function highlighter(source: string, lang: string): Promise<string> {\n    return codeToHtml(source, { lang, theme: 'github-light' });\n  }\n</script>\n\n<CodeBlock {code} language=\"sql\" copyable {highlighter} />\n"
+      "description": "Header shows the language and a copy-to-clipboard button. Syntax highlighting comes from a CinderProvider at the page root — examples never wire a per-instance highlighter.",
+      "code": "<script lang=\"ts\">\n  import { codeToHtml } from 'shiki';\n  import { CinderProvider, CodeBlock } from 'cinder';\n  import type { Highlighter } from 'cinder';\n\n  const code = `SELECT id, name, created_at\nFROM users\nWHERE active = true\nORDER BY created_at DESC\nLIMIT 10;`;\n\n  // Realistic app shape: mount one provider near the root and let every\n  // descendant CodeBlock pick the highlighter up via context. Production\n  // apps would do this once at the layout level — this example inlines it\n  // only because each .example.svelte renders in isolation.\n  const highlighter: Highlighter = async (source, lang) =>\n    codeToHtml(source, { lang, theme: 'github-light' });\n</script>\n\n<CinderProvider {highlighter}>\n  <CodeBlock {code} language=\"sql\" copyable />\n</CinderProvider>\n"
     }
   ]
 }

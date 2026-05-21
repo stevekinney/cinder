@@ -52,6 +52,15 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
 ]);
 
 /**
+ * Components that intentionally render no class-bearing root element and
+ * therefore do not need `cn()` / `classNames()`. Today this is the
+ * pass-through `<CinderProvider>` whose entire job is to publish Svelte
+ * context for descendants — it renders only `{@render children()}` and
+ * carries no DOM of its own to merge classes onto.
+ */
+const NO_CLASS_MERGING_ALLOW_LIST = new Set(['cinder-provider']);
+
+/**
  * Discover the public-component .svelte files. After the per-directory migration
  * each public component lives at `<name>/<name>.svelte`; this helper returns
  * paths in that nested form (e.g. `button/button.svelte`) so the readFile
@@ -263,7 +272,14 @@ describe('component conventions', () => {
       }
 
       // 5. Source contains cn( or classNames( for class merging.
-      if (!source.includes('cn(') && !source.includes('classNames(')) {
+      //    Pass-through components (e.g. CinderProvider) that render no
+      //    class-bearing root element are exempt — they have no element to
+      //    merge classes onto.
+      if (
+        !NO_CLASS_MERGING_ALLOW_LIST.has(name) &&
+        !source.includes('cn(') &&
+        !source.includes('classNames(')
+      ) {
         errors.push(`${file}: must use cn() or classNames() for class merging`);
       }
 

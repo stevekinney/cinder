@@ -52,6 +52,9 @@ export type { CheckboxProps } from './components/checkbox/index.ts';
 export { default as CheckboxGroup } from './components/checkbox-group/index.ts';
 export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 
+export { default as CinderProvider } from './components/cinder-provider/index.ts';
+export type { CinderProviderProps } from './components/cinder-provider/index.ts';
+
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
 
@@ -411,6 +414,8 @@ export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
+
+export type { Highlighter } from './utilities/highlighter.ts';
 
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
