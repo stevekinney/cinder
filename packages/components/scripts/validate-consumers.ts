@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 import postcss from 'postcss';
 
+import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
+import { packForPublish } from './pack-for-publish.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -177,13 +179,194 @@ async function packWorkspaceDependencyTarballs(): Promise<void> {
 }
 
 async function packTarball(): Promise<void> {
-  process.stdout.write(`[validate-consumers] step 2: packing ${tarballFileName}…\n`);
-  if (existsSync(tarballFilePath)) {
-    await Bun.file(tarballFilePath).delete();
+  process.stdout.write(
+    `[validate-consumers] step 2: staged pack-for-publish → ${tarballFileName}…\n`,
+  );
+  // `packForPublish` runs the non-mutating staged pack and asserts the source
+  // manifest is byte-identical pre- and post-pack. The resulting tarball is
+  // dist-only and has zero `@cinder/*` references in any dep field or
+  // exports condition (verified below by `assertPackedManifestInvariants`).
+  try {
+    await packForPublish();
+  } catch (error) {
+    fail(`pack-for-publish failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const result = await $`bun pm pack`.cwd(repositoryRoot).nothrow();
-  if (result.exitCode !== 0) fail(`bun pm pack failed: ${result.stderr.toString()}`);
   if (!existsSync(tarballFilePath)) fail(`Tarball not at ${tarballFilePath} after pack.`);
+}
+
+/**
+ * Extract the packed `package.json` from the published tarball into the
+ * given destination and return the parsed manifest. Used by
+ * `assertPackedManifestInvariants` and the tarball grep gate.
+ */
+async function extractTarballForInspection(destinationDirectory: string): Promise<void> {
+  if (existsSync(destinationDirectory)) {
+    await $`rm -rf ${destinationDirectory}`;
+  }
+  await $`mkdir -p ${destinationDirectory}`;
+  if (tarBinaryPath === null) fail(`tar binary not on PATH`);
+  const result =
+    await $`${tarBinaryPath} -xzf ${tarballFilePath} -C ${destinationDirectory}`.nothrow();
+  if (result.exitCode !== 0) {
+    fail(`tar extract failed: ${result.stderr.toString()}`);
+  }
+}
+
+/**
+ * Assert structural invariants on the packed manifest:
+ *   - No `workspace:` substrings anywhere (the dep flip would otherwise
+ *     leak through `bun pm pack`).
+ *   - No `@cinder/*` in any dep field or exports condition.
+ *   - No exports entry retains a `svelte` condition (every published
+ *     condition must resolve to `dist/`, since `src/**` is not packed).
+ */
+async function assertPackedManifestInvariants(extractedRoot: string): Promise<void> {
+  const packedManifestPath = join(extractedRoot, 'package', 'package.json');
+  const rawPackedManifest = await Bun.file(packedManifestPath).text();
+  if (rawPackedManifest.includes('workspace:')) {
+    fail(`packed manifest contains \`workspace:\` protocol`);
+  }
+
+  const packedManifest = JSON.parse(rawPackedManifest) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+    exports?: Record<string, unknown>;
+  };
+
+  const depFields: Array<keyof typeof packedManifest> = [
+    'dependencies',
+    'devDependencies',
+    'peerDependencies',
+    'optionalDependencies',
+  ];
+  for (const field of depFields) {
+    const record = packedManifest[field];
+    if (!record || typeof record !== 'object') continue;
+    for (const key of Object.keys(record)) {
+      if (key.startsWith('@cinder/')) {
+        fail(`packed manifest ${String(field)}["${key}"] references a private workspace package`);
+      }
+    }
+  }
+
+  const exportsMap = packedManifest.exports ?? {};
+  for (const [key, value] of Object.entries(exportsMap)) {
+    if (typeof value !== 'object' || value === null) continue;
+    const conditions = value as Record<string, unknown>;
+    if ('svelte' in conditions) {
+      fail(
+        `packed exports["${key}"] retains a \`svelte\` condition — the published map must resolve to \`dist/\` only`,
+      );
+    }
+    // Verify that no condition target inside the entry points at `./src/`,
+    // with three intentional exceptions:
+    //   1. `./styles*` entries target hand-authored CSS in `src/styles/`.
+    //   2. `<id>/examples` entries target `*.examples.json` sidecars
+    //      under `src/components/<id>/`.
+    //   3. `<id>/constraints` entries target `*.constraints.json` sidecars
+    //      under `src/components/<id>/`.
+    // The pack-for-publish flow ships exactly those files (plus the rest of
+    // `dist/`) — nothing else from `src/**` lands in the tarball.
+    const isStylesEntry =
+      key === './styles' || key.startsWith('./styles/') || key.endsWith('/styles');
+    const isExamplesEntry = key.endsWith('/examples');
+    const isConstraintsEntry = key.endsWith('/constraints');
+    for (const [condition, target] of Object.entries(conditions)) {
+      if (typeof target !== 'string') continue;
+      if (target.startsWith('./src/')) {
+        if (isStylesEntry && target.startsWith('./src/styles/') && target.endsWith('.css')) {
+          continue;
+        }
+        if (isExamplesEntry && /^\.\/src\/components\/[^/]+\/[^/]+\.examples\.json$/.test(target)) {
+          continue;
+        }
+        if (
+          isConstraintsEntry &&
+          /^\.\/src\/components\/[^/]+\/[^/]+\.constraints\.json$/.test(target)
+        ) {
+          continue;
+        }
+        fail(
+          `packed exports["${key}"]["${condition}"] points at "${target}" — only \`./styles*\`, \`*/examples\`, and \`*/constraints\` exports may resolve to \`./src/\``,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Run a global grep over the extracted tarball for `@cinder/*` references.
+ * Only quoted-string occurrences fail the gate — these are import
+ * specifiers that would break at consumer install time. Doc-comment prose
+ * and source-map embedded source are tolerated because they cannot break
+ * runtime resolution.
+ */
+async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<void> {
+  const packageRoot = join(extractedRoot, 'package');
+  const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
+  const offenders: string[] = [];
+  // Match `'@cinder/...'`, `"@cinder/..."`, or a backtick-quoted dynamic
+  // import specifier. Excludes doc-comment prose like
+  // ` * @cinder/markdown ...` and excludes the `_upstream/` source-map
+  // shipped alongside vendored .d.ts files.
+  const pattern = /(['"`])@cinder\/[^'"`]+\1/;
+  for await (const relative of glob.scan({ cwd: packageRoot })) {
+    const filePath = join(packageRoot, relative);
+    const content = await Bun.file(filePath).text();
+    if (pattern.test(content)) {
+      offenders.push(relative);
+    }
+  }
+  if (offenders.length > 0) {
+    fail(`tarball contains quoted \`@cinder/*\` references in:\n  ${offenders.join('\n  ')}`);
+  }
+}
+
+/**
+ * Assert that the source `packages/components/package.json` is byte-identical
+ * pre- and post-pack. The staged pack-for-publish flow must NEVER mutate the
+ * source manifest; `packForPublish` already enforces this via SHA-256, but
+ * we re-check via `git diff --exit-code` so the gate catches editor-driven
+ * mutations between the script's read and the consumer's pack invocation.
+ */
+async function assertSourceManifestUnchanged(): Promise<void> {
+  const result = await $`git diff --exit-code -- packages/components/package.json`
+    .cwd(workspaceRoot)
+    .nothrow();
+  if (result.exitCode !== 0) {
+    fail(
+      `pack-for-publish mutated packages/components/package.json (git diff --exit-code returned ${result.exitCode}).\n` +
+        result.stdout.toString(),
+    );
+  }
+}
+
+/**
+ * Assert that every cinder/<pkg>/<subpath> sub-path emitted by the upstream
+ * re-export generator resolves to a real file inside the packed tarball.
+ * Mirrors the post-build resolution gate in `build.ts` but operates against
+ * the tarball-shaped layout (`package/dist/...`).
+ */
+async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): Promise<void> {
+  const reexports = await deriveUpstreamReexports();
+  const packageRoot = join(extractedRoot, 'package');
+  const missing: string[] = [];
+  for (const reexport of reexports) {
+    const candidates = [
+      join(packageRoot, 'dist', reexport.distRelativePath),
+      join(packageRoot, 'dist', reexport.distRelativePath.replace(/\.js$/, '.d.ts')),
+    ];
+    for (const candidate of candidates) {
+      if (!existsSync(candidate)) {
+        missing.push(candidate.replace(packageRoot + '/', ''));
+      }
+    }
+  }
+  if (missing.length > 0) {
+    fail(`tarball missing upstream re-export artifacts:\n  ${missing.join('\n  ')}`);
+  }
 }
 
 type TarballExpectations = {
@@ -208,23 +391,21 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
   for (const { name, isExperimental } of components) {
-    const sourceDirectory = isExperimental
-      ? `package/src/components/experimental/${name}`
-      : `package/src/components/${name}`;
     const distributionDirectory = isExperimental
       ? `package/dist/components/experimental/${name}`
       : `package/dist/components/${name}`;
+    // PR 1 publishing model: the tarball ships `dist/` only (plus
+    // `src/styles/**/*.css`). Every component sub-path resolves via the
+    // `default` or `node` condition, so we assert the built JS + types are
+    // present rather than the Svelte source.
     componentRequiredEntries.push(
-      `${sourceDirectory}/${name}.svelte`,
-      `${distributionDirectory}/${name}.svelte.d.ts`,
+      `${distributionDirectory}/index.js`,
+      `${distributionDirectory}/index.d.ts`,
     );
   }
   return {
     required: [
       'package/package.json',
-      'package/src/index.ts',
-      'package/src/utilities/class-names.ts',
-      'package/src/utilities/use-history.svelte.ts',
       'package/src/styles/index.css',
       'package/src/styles/tokens.css',
       'package/src/styles/tokens-base.css',
@@ -232,10 +413,21 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/src/styles/components.css',
       'package/src/styles/utilities.css',
       'package/dist/index.d.ts',
+      'package/dist/index.js',
       'package/dist/server/index.js',
       ...componentRequiredEntries,
     ],
-    forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
+    // PR 1: src/** stays out of the tarball except for hand-authored CSS
+    // files in `src/styles/` and per-component `*.examples.json` /
+    // `*.constraints.json` sidecars. The exports map's `default` and `node`
+    // conditions point at `dist/`, so any leaked `src/components/**.svelte`,
+    // `*.ts`, `src/utilities/**` etc. entry signals a broken
+    // pack-for-publish.
+    forbiddenPatterns: [
+      /\.(test|spec)\.ts$/,
+      /\.a11y\.md$/,
+      /^package\/src\/(?!styles\/)(?!components\/[^/]+\/[^/]+\.(examples|constraints)\.json$).*$/,
+    ],
     forbiddenPrefixes: [
       'package/fixtures/',
       'package/tmp/',
@@ -806,6 +998,19 @@ async function runNodeFixture(): Promise<void> {
     if (!renderedOutput.includes('useHistory imported OK')) {
       fail(`node render output missing "useHistory imported OK" — barrel utility import failed`);
     }
+    // PR 1 upstream re-export sub-paths must resolve in the published tarball.
+    const upstreamProbeMarkers = [
+      'cinder/markdown/diff/line-diff#computeLineDiff imported OK',
+      'cinder/markdown/rendering#renderMarkdown imported OK',
+      'cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
+      'cinder/markdown/utilities/sort-keys#sortKeys imported OK',
+      'cinder/diff/line-diff#computeLineDiff imported OK',
+    ];
+    for (const marker of upstreamProbeMarkers) {
+      if (!renderedOutput.includes(marker)) {
+        fail(`node render output missing "${marker}" — upstream re-export resolution failed`);
+      }
+    }
   } finally {
     restoreManifest();
   }
@@ -818,6 +1023,18 @@ try {
   await packWorkspaceDependencyTarballs();
   await packTarball();
   await inspectTarball();
+
+  // PR 1 publish-path gates: assert the staged pack produced a self-contained
+  // tarball with no `workspace:`, `@cinder/*`, or stale `svelte` conditions.
+  const tarballInspectionDirectory = join(repositoryRoot, 'tmp', 'pack-inspection');
+  await extractTarballForInspection(tarballInspectionDirectory);
+  process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
+  await assertPackedManifestInvariants(tarballInspectionDirectory);
+  await assertNoQuotedCinderReferences(tarballInspectionDirectory);
+  await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
+  await assertSourceManifestUnchanged();
+  process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
+
   await runSveltekitFixture();
   await runNodeFixture();
   process.stdout.write('[validate-consumers] all checks passed.\n');

@@ -1964,6 +1964,186 @@
     },
     "./experimental/timeline-item/styles": {
       "default": "./dist/components/experimental/timeline-item/timeline-item.css"
+    },
+    "./markdown": {
+      "types": "./dist/markdown/index.d.ts",
+      "svelte": "./src/markdown/index.ts",
+      "node": "./dist/server/markdown/index.js",
+      "default": "./dist/markdown/index.js"
+    },
+    "./markdown/diff": {
+      "types": "./dist/markdown/diff/index.d.ts",
+      "svelte": "./src/markdown/diff/index.ts",
+      "node": "./dist/server/markdown/diff/index.js",
+      "default": "./dist/markdown/diff/index.js"
+    },
+    "./markdown/diff/line-diff": {
+      "types": "./dist/markdown/diff/line-diff.d.ts",
+      "svelte": "./src/markdown/diff/line-diff.ts",
+      "node": "./dist/server/markdown/diff/line-diff.js",
+      "default": "./dist/markdown/diff/line-diff.js"
+    },
+    "./markdown/diff/types": {
+      "types": "./dist/markdown/diff/types.d.ts",
+      "svelte": "./src/markdown/diff/types.ts",
+      "node": "./dist/server/markdown/diff/types.js",
+      "default": "./dist/markdown/diff/types.js"
+    },
+    "./markdown/pipeline": {
+      "types": "./dist/markdown/pipeline/index.d.ts",
+      "svelte": "./src/markdown/pipeline/index.ts",
+      "node": "./dist/server/markdown/pipeline/index.js",
+      "default": "./dist/markdown/pipeline/index.js"
+    },
+    "./markdown/rendering": {
+      "types": "./dist/markdown/rendering/index.d.ts",
+      "svelte": "./src/markdown/rendering/index.ts",
+      "node": "./dist/server/markdown/rendering/index.js",
+      "default": "./dist/markdown/rendering/index.js"
+    },
+    "./markdown/rendering/highlighter": {
+      "types": "./dist/markdown/rendering/highlighter.d.ts",
+      "svelte": "./src/markdown/rendering/highlighter.ts",
+      "node": "./dist/server/markdown/rendering/highlighter.js",
+      "default": "./dist/markdown/rendering/highlighter.js"
+    },
+    "./markdown/rendering/mermaid-cache": {
+      "types": "./dist/markdown/rendering/mermaid-cache.d.ts",
+      "svelte": "./src/markdown/rendering/mermaid-cache.ts",
+      "node": "./dist/server/markdown/rendering/mermaid-cache.js",
+      "default": "./dist/markdown/rendering/mermaid-cache.js"
+    },
+    "./markdown/rendering/types": {
+      "types": "./dist/markdown/rendering/types.d.ts",
+      "svelte": "./src/markdown/rendering/types.ts",
+      "node": "./dist/server/markdown/rendering/types.js",
+      "default": "./dist/markdown/rendering/types.js"
+    },
+    "./markdown/utilities/safe-url": {
+      "types": "./dist/markdown/utilities/safe-url.d.ts",
+      "svelte": "./src/markdown/utilities/safe-url.ts",
+      "node": "./dist/server/markdown/utilities/safe-url.js",
+      "default": "./dist/markdown/utilities/safe-url.js"
+    },
+    "./markdown/utilities/sort-keys": {
+      "types": "./dist/markdown/utilities/sort-keys.d.ts",
+      "svelte": "./src/markdown/utilities/sort-keys.ts",
+      "node": "./dist/server/markdown/utilities/sort-keys.js",
+      "default": "./dist/markdown/utilities/sort-keys.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "svelte": "./src/editor/index.ts",
+      "node": "./dist/server/editor/index.js",
+      "default": "./dist/editor/index.js"
+    },
+    "./editor/component-runtime": {
+      "types": "./dist/editor/component-runtime.d.ts",
+      "svelte": "./src/editor/component-runtime.ts",
+      "node": "./dist/server/editor/component-runtime.js",
+      "default": "./dist/editor/component-runtime.js"
+    },
+    "./editor/sanitize-html": {
+      "types": "./dist/editor/sanitize-html.d.ts",
+      "svelte": "./src/editor/sanitize-html.ts",
+      "node": "./dist/server/editor/sanitize-html.js",
+      "default": "./dist/editor/sanitize-html.js"
+    },
+    "./editor/template-placeholders": {
+      "types": "./dist/editor/template-placeholders.d.ts",
+      "svelte": "./src/editor/template-placeholders.ts",
+      "node": "./dist/server/editor/template-placeholders.js",
+      "default": "./dist/editor/template-placeholders.js"
+    },
+    "./editor/template-render": {
+      "types": "./dist/editor/template-render.d.ts",
+      "svelte": "./src/editor/template-render.ts",
+      "node": "./dist/server/editor/template-render.js",
+      "default": "./dist/editor/template-render.js"
+    },
+    "./editor/test-utilities": {
+      "types": "./dist/editor/test-utilities.d.ts",
+      "svelte": "./src/editor/test-utilities.ts",
+      "node": "./dist/server/editor/test-utilities.js",
+      "default": "./dist/editor/test-utilities.js"
+    },
+    "./commentary": {
+      "types": "./dist/commentary/index.d.ts",
+      "svelte": "./src/commentary/index.ts",
+      "node": "./dist/server/commentary/index.js",
+      "default": "./dist/commentary/index.js"
+    },
+    "./commentary/anchor-decorations": {
+      "types": "./dist/commentary/anchor-decorations.d.ts",
+      "svelte": "./src/commentary/anchor-decorations.ts",
+      "node": "./dist/server/commentary/anchor-decorations.js",
+      "default": "./dist/commentary/anchor-decorations.js"
+    },
+    "./commentary/anchoring": {
+      "types": "./dist/commentary/anchoring.d.ts",
+      "svelte": "./src/commentary/anchoring.ts",
+      "node": "./dist/server/commentary/anchoring.js",
+      "default": "./dist/commentary/anchoring.js"
+    },
+    "./commentary/comments": {
+      "types": "./dist/commentary/comments/index.d.ts",
+      "svelte": "./src/commentary/comments/index.ts",
+      "node": "./dist/server/commentary/comments/index.js",
+      "default": "./dist/commentary/comments/index.js"
+    },
+    "./commentary/comments/types": {
+      "types": "./dist/commentary/comments/types.d.ts",
+      "svelte": "./src/commentary/comments/types.ts",
+      "node": "./dist/server/commentary/comments/types.js",
+      "default": "./dist/commentary/comments/types.js"
+    },
+    "./commentary/export": {
+      "types": "./dist/commentary/export/index.d.ts",
+      "svelte": "./src/commentary/export/index.ts",
+      "node": "./dist/server/commentary/export/index.js",
+      "default": "./dist/commentary/export/index.js"
+    },
+    "./commentary/export/types": {
+      "types": "./dist/commentary/export/types.d.ts",
+      "svelte": "./src/commentary/export/types.ts",
+      "node": "./dist/server/commentary/export/types.js",
+      "default": "./dist/commentary/export/types.js"
+    },
+    "./commentary/session": {
+      "types": "./dist/commentary/session/index.d.ts",
+      "svelte": "./src/commentary/session/index.ts",
+      "node": "./dist/server/commentary/session/index.js",
+      "default": "./dist/commentary/session/index.js"
+    },
+    "./commentary/session/types": {
+      "types": "./dist/commentary/session/types.d.ts",
+      "svelte": "./src/commentary/session/types.ts",
+      "node": "./dist/server/commentary/session/types.js",
+      "default": "./dist/commentary/session/types.js"
+    },
+    "./commentary/shared/anchor-types": {
+      "types": "./dist/commentary/shared/anchor-types.d.ts",
+      "svelte": "./src/commentary/shared/anchor-types.ts",
+      "node": "./dist/server/commentary/shared/anchor-types.js",
+      "default": "./dist/commentary/shared/anchor-types.js"
+    },
+    "./diff": {
+      "types": "./dist/diff/index.d.ts",
+      "svelte": "./src/diff/index.ts",
+      "node": "./dist/server/diff/index.js",
+      "default": "./dist/diff/index.js"
+    },
+    "./diff/line-diff": {
+      "types": "./dist/diff/line-diff.d.ts",
+      "svelte": "./src/diff/line-diff.ts",
+      "node": "./dist/server/diff/line-diff.js",
+      "default": "./dist/diff/line-diff.js"
+    },
+    "./diff/types": {
+      "types": "./dist/diff/types.d.ts",
+      "svelte": "./src/diff/types.ts",
+      "node": "./dist/server/diff/types.js",
+      "default": "./dist/diff/types.js"
     }
   },
   "main": "./dist/server/index.js",
@@ -1991,13 +2171,14 @@
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",
+    "check:no-cycle-imports": "bun run scripts/check-no-cycle-imports.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build",
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
     "components:fixture": "bun run scripts/run-consumer-fixture.ts",
     "components:generate": "bun run scripts/generate-component-artifacts.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
-    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json && bun run check:no-cycle-imports",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "prepack": "bun run build",
     "prepare": "cd ../.. && husky",
@@ -2011,20 +2192,43 @@
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },
   "dependencies": {
-    "@cinder/commentary": "workspace:*",
-    "@cinder/diff": "workspace:*",
-    "@cinder/editor": "workspace:*",
-    "@cinder/markdown": "workspace:*",
     "@floating-ui/dom": "1.7.6",
     "@lasercat/homogenaize": "^1.2.41",
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
+    "@milkdown/prose": "^7.17.3",
+    "@shikijs/rehype": "^3.21.0",
     "ajv": "^8",
+    "comlink": "^4.4.2",
     "conversationalist": "0.0.9",
+    "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
-    "lucide-svelte": "^0.503.0"
+    "hast-util-sanitize": "^5.0.0",
+    "js-yaml": "^4.1.0",
+    "lucide-svelte": "^0.503.0",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3",
+    "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-html": "^16.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "remark-stringify": "^11.0.0",
+    "shiki": "^3.21.0",
+    "unified": "^11.0.5",
+    "unist-util-remove": "^4.0.0",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
+    "@cinder/commentary": "workspace:*",
+    "@cinder/diff": "workspace:*",
+    "@cinder/editor": "workspace:*",
+    "@cinder/markdown": "workspace:*",
     "@cinder/testing": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
