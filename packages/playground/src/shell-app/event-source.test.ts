@@ -167,7 +167,7 @@ describe('createEventSource reactivity', () => {
     expect(FakeEventSource.openCount).toBe(1);
     expect(FakeEventSource.lastUrl).toBe('/events/a');
 
-    component.setUrl('/events/b');
+    component['setUrl']('/events/b');
     await tick();
 
     expect(FakeEventSource.openCount).toBe(2);
@@ -187,7 +187,7 @@ describe('createEventSource reactivity', () => {
     await tick();
     expect(FakeEventSource.openCount).toBe(0);
 
-    component.setUrl('/events');
+    component['setUrl']('/events');
     await tick();
 
     expect(FakeEventSource.openCount).toBe(1);
@@ -200,7 +200,7 @@ describe('createEventSource reactivity', () => {
     await tick();
     expect(FakeEventSource.openCount).toBe(1);
 
-    component.setUrl(null);
+    component['setUrl'](null);
     await tick();
 
     expect(FakeEventSource.closeCount).toBe(1);
