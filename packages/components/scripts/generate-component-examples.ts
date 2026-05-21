@@ -460,7 +460,9 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
   // Valid `cinder/<...>` subpaths include both flat component names and the
   // `experimental/<name>` namespace so examples for experimental components
   // can import their siblings via the same `cinder/<subpath>` contract.
-  const validCinderSubpaths = new Set<string>();
+  // Static non-component sub-paths (the first-party Shiki adapter, etc.)
+  // are listed alongside.
+  const validCinderSubpaths = new Set<string>(['highlighters/shiki']);
   for (const component of components) {
     if (component.isExperimental) {
       validCinderSubpaths.add(`experimental/${component.name}`);

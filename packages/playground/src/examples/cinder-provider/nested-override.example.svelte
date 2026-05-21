@@ -5,15 +5,11 @@
 </script>
 
 <script lang="ts">
-  import { codeToHtml } from 'shiki';
   import { CinderProvider, CodeBlock } from 'cinder';
-  import type { Highlighter } from 'cinder';
+  import { shikiHighlighter } from 'cinder/highlighters/shiki';
 
-  const lightHighlighter: Highlighter = async (source, lang) =>
-    codeToHtml(source, { lang, theme: 'github-light' });
-
-  const darkHighlighter: Highlighter = async (source, lang) =>
-    codeToHtml(source, { lang, theme: 'github-dark' });
+  const lightHighlighter = shikiHighlighter({ theme: 'github-light' });
+  const darkHighlighter = shikiHighlighter({ theme: 'github-dark' });
 
   const code = `function greet(name: string): string {
   return \`Hello, \${name}!\`;

@@ -49,16 +49,15 @@ component's CSS. There is no per-component CSS to import.
 
 `<CodeBlock>` resolves its syntax highlighter through Svelte context. Mount
 **one** `<CinderProvider>` near your app root and every descendant
-`<CodeBlock>` shares the highlighter:
+`<CodeBlock>` shares the highlighter. The recommended default is the
+bundled `cinder/highlighters/shiki` adapter:
 
 ```svelte
 <script lang="ts">
-  import { codeToHtml } from 'shiki';
   import { CinderProvider } from 'cinder';
-  import type { Highlighter } from 'cinder';
+  import { shikiHighlighter } from 'cinder/highlighters/shiki';
 
-  const highlighter: Highlighter = (code, lang) =>
-    codeToHtml(code, { lang, theme: 'github-light' });
+  const highlighter = shikiHighlighter();
 </script>
 
 <CinderProvider {highlighter}>
@@ -66,16 +65,25 @@ component's CSS. There is no per-component CSS to import.
 </CinderProvider>
 ```
 
+`shikiHighlighter()` accepts a `theme` (single string or
+`{ light, dark }` for CSS-variable-driven dual-theme mode) and an
+optional `langs` array to preload specific grammars. Shiki itself is
+lazy-imported on the first highlight call, so consumers that never
+mount this adapter ship zero Shiki bytes in their entry chunk.
+
 `<CodeBlock>` rendered without an ancestor provider (or with a provider
 that supplies no `highlighter`) falls back to escaped plaintext — the
-"no syntax highlighting" state is a first-class supported render.
+"no syntax highlighting" state is a first-class supported render. The
+adapter follows the same fallback contract: empty/missing/unknown
+languages render as escaped plaintext rather than throwing.
 
 The provider is reactive: assigning a new `highlighter` re-renders every
 descendant `<CodeBlock>`. Nest a second `<CinderProvider>` to scope a
-different highlighter to a subtree (the nearest provider wins). A
-first-party Shiki adapter ships at `cinder/highlighters/shiki` (PR 3) so
-apps that want syntax highlighting out of the box won't need to wire
-`shiki` themselves.
+different highlighter to a subtree (the nearest provider wins). For a
+custom highlighter, implement the `Highlighter` type from `cinder` and
+pass it to `<CinderProvider highlighter={...}>` — the function receives
+`(code, lang)` and must return safe HTML (Shiki's `codeToHtml` escapes
+input by default; if you build your own, escape the code yourself).
 
 ### Discovery recipe (the agent contract)
 

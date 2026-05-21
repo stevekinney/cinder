@@ -99,6 +99,7 @@ describe('exports drift', () => {
       './styles',
       './styles/tokens',
       './styles/foundation',
+      './highlighters/shiki',
     ]);
     for (const key of Object.keys(existing)) {
       if (RESERVED.has(key)) continue;

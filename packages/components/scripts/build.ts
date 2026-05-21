@@ -196,7 +196,23 @@ if (!serverBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
-const browserEntrypoints = [`${sourceRoot}/index.ts`, ...perComponentEntrypoints];
+
+/**
+ * Static sub-paths cinder exposes outside the `components/` tree. Today this
+ * is the first-party Shiki adapter at `cinder/highlighters/shiki`; new
+ * non-component static sub-paths get listed here so the build emits a
+ * predictable `dist/<rel>.js` for each one. `shiki` itself stays external
+ * (declared in cinder's `dependencies` + the `upstreamTransitiveExternals`
+ * list) — the adapter dynamic-imports it lazily so consumers who never use
+ * `cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
+ */
+const staticSubpathEntrypoints = [`${sourceRoot}/highlighters/shiki/index.ts`];
+
+const browserEntrypoints = [
+  `${sourceRoot}/index.ts`,
+  ...perComponentEntrypoints,
+  ...staticSubpathEntrypoints,
+];
 // `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
 // the upstream packages have already produced fully-baked `dist/` trees
 // (workers, source maps, declarations) through their own builds. Re-bundling
@@ -249,7 +265,7 @@ if (!browserBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentServerBuildResult = await Bun.build({
-  entrypoints: perComponentEntrypoints,
+  entrypoints: [...perComponentEntrypoints, ...staticSubpathEntrypoints],
   outdir: `${distributionDirectory}/server`,
   root: sourceRoot,
   target: 'node',
@@ -462,6 +478,10 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/index.d.ts`,
   `${distributionDirectory}/server/index.js`,
   `${distributionDirectory}/components/button/button.svelte.d.ts`,
+  // Static sub-paths emitted alongside the components tree.
+  `${distributionDirectory}/highlighters/shiki/index.js`,
+  `${distributionDirectory}/highlighters/shiki/index.d.ts`,
+  `${distributionDirectory}/server/highlighters/shiki/index.js`,
 ];
 
 for (const component of components) {

@@ -1,16 +1,14 @@
 <script lang="ts" module>
   export const title = 'Mount one provider at the root';
   export const description =
-    'Wrap your app root with <CinderProvider highlighter={...}> once. Every descendant <CodeBlock> picks the highlighter up via context — no per-instance prop wiring.';
+    'Wrap your app root with <CinderProvider highlighter={shikiHighlighter()}> once. The bundled cinder/highlighters/shiki adapter is the recommended default — every descendant <CodeBlock> picks it up via context.';
 </script>
 
 <script lang="ts">
-  import { codeToHtml } from 'shiki';
   import { CinderProvider, CodeBlock } from 'cinder';
-  import type { Highlighter } from 'cinder';
+  import { shikiHighlighter } from 'cinder/highlighters/shiki';
 
-  const highlighter: Highlighter = async (source, lang) =>
-    codeToHtml(source, { lang, theme: 'github-light' });
+  const highlighter = shikiHighlighter();
 
   const tsCode = `function greet(name: string): string {
   return \`Hello, \${name}!\`;

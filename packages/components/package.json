@@ -42,6 +42,12 @@
     "./styles/foundation": {
       "default": "./src/styles/foundation.css"
     },
+    "./highlighters/shiki": {
+      "types": "./dist/highlighters/shiki/index.d.ts",
+      "svelte": "./src/highlighters/shiki/index.ts",
+      "node": "./dist/server/highlighters/shiki/index.js",
+      "default": "./dist/highlighters/shiki/index.js"
+    },
     "./manifest": {
       "import": "./components.json",
       "default": "./components.json"

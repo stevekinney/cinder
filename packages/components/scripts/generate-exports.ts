@@ -82,6 +82,7 @@ const STYLES_TOKENS_KEY = './styles/tokens';
 const STYLES_FOUNDATION_KEY = './styles/foundation';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
+const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 
 /**
  * Keys that the generator owns at the top level but never emits via
@@ -95,7 +96,23 @@ const RESERVED_KEYS = new Set([
   STYLES_TOKENS_KEY,
   STYLES_FOUNDATION_KEY,
   PACKAGE_JSON_KEY,
+  HIGHLIGHTERS_SHIKI_KEY,
 ]);
+
+/**
+ * Canonical four-condition entry for `cinder/highlighters/shiki`. Hand-shaped
+ * because the adapter is a single static sub-path (not a discovered component
+ * and not an upstream re-export); the generator stitches this in alongside
+ * the styles entries.
+ */
+function highlightersShikiExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/highlighters/shiki/index.d.ts',
+    svelte: './src/highlighters/shiki/index.ts',
+    node: './dist/server/highlighters/shiki/index.js',
+    default: './dist/highlighters/shiki/index.js',
+  });
+}
 
 /**
  * The exports map must never contain entries whose key contains a forbidden
@@ -374,6 +391,14 @@ async function main(): Promise<void> {
       issues.push(`Reserved export "${STYLES_FOUNDATION_KEY}" is missing`);
     }
 
+    const expectedShikiEntry = highlightersShikiExport();
+    const currentShikiEntry = existing[HIGHLIGHTERS_SHIKI_KEY];
+    if (!currentShikiEntry) {
+      issues.push(`Reserved export "${HIGHLIGHTERS_SHIKI_KEY}" is missing`);
+    } else if (JSON.stringify(currentShikiEntry) !== JSON.stringify(expectedShikiEntry)) {
+      issues.push(`Stale reserved export "${HIGHLIGHTERS_SHIKI_KEY}"`);
+    }
+
     if (existing[PACKAGE_JSON_KEY] !== './package.json') {
       issues.push(`Missing or stale self-export "${PACKAGE_JSON_KEY}"`);
     }
@@ -429,6 +454,7 @@ async function main(): Promise<void> {
   if (packageJson.exports[STYLES_FOUNDATION_KEY]) {
     next[STYLES_FOUNDATION_KEY] = packageJson.exports[STYLES_FOUNDATION_KEY];
   }
+  next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 
   // Preserve legacy flat component subpaths whose component still exists as
   // a flat .svelte file (not yet migrated to a directory).
