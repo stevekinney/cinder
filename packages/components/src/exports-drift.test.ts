@@ -21,8 +21,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   assertNoForbiddenExportKeys,
   computeExports,
+  computeUpstreamReexports,
+  FORBIDDEN_EXPORT_KEY_PATTERN,
   type ExportEntry,
 } from '../scripts/generate-exports.ts';
+import { deriveUpstreamReexports } from '../scripts/lib/derive-upstream-reexports.ts';
 import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
@@ -71,7 +74,12 @@ describe('exports drift', () => {
       };
     }
 
-    const expected = { ...flatExpected, ...directoryExports };
+    // 3. Upstream re-exports: every public sub-path of the four @cinder/*
+    //    workspace packages flows through cinder/<pkg>/* (PR 1).
+    const upstreamReexports = await deriveUpstreamReexports();
+    const upstreamExports = computeUpstreamReexports(upstreamReexports);
+
+    const expected = { ...flatExpected, ...directoryExports, ...upstreamExports };
 
     const issues: string[] = [];
     for (const [key, entry] of Object.entries(expected)) {
@@ -115,7 +123,15 @@ describe('exports drift', () => {
   test('checked-in exports contain no forbidden keys', async () => {
     const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf-8'));
     const exports = packageJson.exports as Record<string, unknown>;
-    expect(() => assertNoForbiddenExportKeys(exports)).not.toThrow();
+    // Upstream re-export keys like `./editor/test-utilities` are legitimate
+    // public sub-paths inherited from `@cinder/editor`'s exports map; they
+    // bypass the forbidden-key pattern via an allow-list. The script does
+    // the same in production.
+    const upstreamReexports = await deriveUpstreamReexports();
+    const allowList = new Set(upstreamReexports.map((r) => r.cinderKey));
+    expect(() =>
+      assertNoForbiddenExportKeys(exports, FORBIDDEN_EXPORT_KEY_PATTERN, allowList),
+    ).not.toThrow();
   });
 
   test('no _internal components appear as export keys', async () => {
