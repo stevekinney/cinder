@@ -16,10 +16,8 @@
 </script>
 
 <script lang="ts">
-  import { setContext } from 'svelte';
-
   import {
-    SURFACE_CONTEXT_KEY,
+    setSurfaceContext,
     type SurfaceContextValue,
   } from '../../_internal/surface-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -32,7 +30,7 @@
       return tone;
     },
   };
-  setContext(SURFACE_CONTEXT_KEY, context);
+  setSurfaceContext(context);
 </script>
 
 <div class={classNames('cinder-surface', className)} data-cinder-tone={tone} {...rest}>

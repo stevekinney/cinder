@@ -32,7 +32,7 @@
     },
     "detached": {
       "type": "boolean",
-      "description": "Show options as detached individual buttons instead of a unified strip."
+      "description": "Render segments as detached individual buttons instead of a unified strip."
     },
     "fullWidth": {
       "type": "boolean",
@@ -41,13 +41,6 @@
     "variant": {
       "enum": ["radiogroup", "tablist"],
       "description": "ARIA interaction pattern. Use `tablist` when options switch visible panels."
-    },
-    "options": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      },
-      "description": "Available options."
     },
     "class": {
       "type": "string",
@@ -62,9 +55,13 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "label", "options"],
+  "required": ["id", "label"],
   "metadata": {
     "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      },
       {
         "name": "onchange",
         "reason": "function-or-snippet"

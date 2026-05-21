@@ -116,6 +116,7 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 | `--cinder-ease-standard`     | `cubic-bezier(0.2, 0, 0, 1)`   |
 | `--cinder-ease-decelerate`   | `cubic-bezier(0, 0, 0, 1)`     |
 | `--cinder-ease-accelerate`   | `cubic-bezier(0.3, 0, 1, 1)`   |
+| `--cinder-ease-spring`       | `cubic-bezier(0.34, 1.56, 0.64, 1)` |
 | `--cinder-ease-in-out`       | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
 ## Surfaces

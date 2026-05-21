@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-
+  import { createEventSource } from './event-source.svelte.ts';
   import PreviewFrame from './preview-frame.svelte';
   import {
     applyThemeToDocument,
@@ -49,37 +48,34 @@
     history.pushState({}, '', `${buildShellHref(name)}${search}${hash}`);
   }
 
-  onMount(() => {
-    function handlePopState(): void {
-      const parsed = parseComponentFromPath(window.location.pathname);
-      if (parsed !== null) store.currentComponent = parsed;
-      store.syncFromUrl();
+  function handlePopState(): void {
+    const parsed = parseComponentFromPath(window.location.pathname);
+    if (parsed !== null) store.currentComponent = parsed;
+    store.syncFromUrl();
+  }
+
+  function handleKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && store.isFocusMode) {
+      store.isFocusMode = false;
     }
-    window.addEventListener('popstate', handlePopState);
+  }
 
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === 'Escape' && store.isFocusMode) {
-        store.isFocusMode = false;
-      }
-    }
-    window.addEventListener('keydown', handleEscape);
+  // The dev server exposes a server-sent-events stream at `/events` for live
+  // reload. In SSR (no window), keep the URL null so the EventSource is never
+  // constructed.
+  const streamUrl = typeof window === 'undefined' ? null : '/events';
 
-    const events = new EventSource('/events');
-    events.addEventListener('reload', () => {
-      const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-cinder-preview]');
-      iframe?.contentWindow?.location.reload();
-    });
-    events.addEventListener('shell-reload', () => {
-      window.location.reload();
-    });
+  function handleReloadEvent(): void {
+    const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-cinder-preview]');
+    iframe?.contentWindow?.location.reload();
+  }
 
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('keydown', handleEscape);
-      events.close();
-    };
-  });
+  function handleShellReloadEvent(): void {
+    window.location.reload();
+  }
 </script>
+
+<svelte:window onpopstate={handlePopState} onkeydown={handleKeydown} />
 
 <!--
   Layout overview
@@ -92,7 +88,13 @@
   Focus mode hides both the top bar and the sidebar so the preview fills
   the entire viewport (Escape restores the layout).
 -->
-<div class="shell" class:focus-mode={store.isFocusMode}>
+<div
+  class="shell"
+  class:focus-mode={store.isFocusMode}
+  {@attach createEventSource(() => streamUrl, {
+    events: { reload: handleReloadEvent, 'shell-reload': handleShellReloadEvent },
+  })}
+>
   <TopBar />
   <Sidebar {components} currentComponent={store.currentComponent} onSelect={selectComponent} />
   <main>

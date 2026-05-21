@@ -16,7 +16,8 @@
 
 <script lang="ts">
   import type { TreeItemProps } from './tree-item.types.ts';
-  import { getContext, onMount, setContext } from 'svelte';
+  import { getContext, setContext, untrack } from 'svelte';
+  import type { Attachment } from 'svelte/attachments';
 
   import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
   import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from '../tree/tree.svelte';
@@ -82,29 +83,37 @@
   // Registration
   // ---------------------------------------------------------------------------
 
-  onMount(() => {
-    const unregister = context.register({
-      id,
-      parentId,
-      level,
-      // disabled is a getter so runtime prop changes stay in sync with the registry
-      get disabled() {
-        return disabled;
-      },
-      isBranch: () => isBranch,
-      label: () => label,
-      focus: () => outerElement?.focus(),
-    });
+  // Register with the parent tree at attach time so the registry has the DOM
+  // node available for document-order sorting. Cleanup runs on detach.
+  const registerWithTree: Attachment<HTMLElement> = (node) => {
+    // Attachments run inside a tracked $effect. Wrap registration in untrack so
+    // the side-effectful mutation of the parent's registry doesn't create a
+    // reactive dependency loop through derived visible-id lists.
+    return untrack(() => {
+      const unregister = context.register({
+        id,
+        parentId,
+        level,
+        node,
+        // disabled is a getter so runtime prop changes stay in sync with the registry
+        get disabled() {
+          return disabled;
+        },
+        isBranch: () => isBranch,
+        label: () => label,
+        focus: () => outerElement?.focus(),
+      });
 
-    return () => {
-      // Abort any in-flight async load when the item unmounts
-      if (activeController) {
-        activeController.abort();
-        activeController = null;
-      }
-      unregister();
-    };
-  });
+      return () => {
+        // Abort any in-flight async load when the item unmounts
+        if (activeController) {
+          activeController.abort();
+          activeController = null;
+        }
+        unregister();
+      };
+    });
+  };
 
   // ---------------------------------------------------------------------------
   // Async loading
@@ -307,6 +316,7 @@
 
 <div
   bind:this={outerElement}
+  {@attach registerWithTree}
   role="treeitem"
   id={treeItemElementId}
   class={classNames('cinder-tree-item', className)}

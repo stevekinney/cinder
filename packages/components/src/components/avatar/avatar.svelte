@@ -29,16 +29,11 @@
     ...rest
   }: AvatarProps = $props();
 
-  // Track image load failure so we can fall back to initials without the
-  // consumer having to handle `onerror` themselves.
-  let imageFailed = $state(false);
-  $effect(() => {
-    // Reset on src change so a new image gets a chance to load.
-    void src;
-    imageFailed = false;
-  });
+  // Track the specific URL that failed to load so a new src automatically
+  // gets a fresh chance, while a repeated failed src stays hidden.
+  let failedSource = $state<string | null>(null);
 
-  const showImage = $derived(!!src && !imageFailed);
+  const showImage = $derived(!!src && failedSource !== src);
   const accessibleAlt = $derived(alt ?? name ?? '');
 
   const initials = $derived(computeInitials(name));
@@ -62,7 +57,7 @@
       {src}
       alt={accessibleAlt}
       onerror={() => {
-        imageFailed = true;
+        failedSource = src ?? null;
       }}
     />
   {:else if initials}

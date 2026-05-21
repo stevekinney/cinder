@@ -17,15 +17,16 @@
 
 <script lang="ts">
   import type { CommandItemProps } from './command-item.types.ts';
-  import { getContext, hasContext, onMount } from 'svelte';
+  import { untrack } from 'svelte';
+  import type { Attachment } from 'svelte/attachments';
 
   import { cn } from '../../utilities/class-names.ts';
   import {
-    COMMAND_PALETTE_CONTEXT,
-    type CommandPaletteContext,
+    getCommandPaletteContext,
+    hasCommandPaletteContext,
   } from '../_internal/command-palette-context.ts';
 
-  if (!hasContext(COMMAND_PALETTE_CONTEXT)) {
+  if (!hasCommandPaletteContext()) {
     throw new Error('CommandItem must be used within a CommandPalette.');
   }
 
@@ -40,25 +41,35 @@
     class: className,
   }: CommandItemProps = $props();
 
-  const palette = getContext<CommandPaletteContext>(COMMAND_PALETTE_CONTEXT);
+  const palette = getCommandPaletteContext();
 
   // Stable id assigned by the palette on registration.
   let itemId = $state<string | null>(null);
 
-  // Register once on mount using live getters so prop changes are reflected
-  // without re-registration churn.
-  onMount(() => {
-    const { id, unregister } = palette.register({
-      getValue: () => value,
-      getOnselect: () => onselect,
-      getDisabled: () => disabled,
+  // Register with the palette at attach time, unregister on detach. Using an
+  // attachment (rather than onMount) means the DOM node is available at
+  // registration, so the palette can sort items by document order for
+  // keyboard navigation even when middle items remount via {#if}.
+  const registerWithPalette: Attachment<HTMLElement> = (node) => {
+    // Attachments run inside a tracked $effect. Without untrack, the register
+    // call mutates the palette's $state registrations list, which feeds derived
+    // values the attachment indirectly depends on — producing an update cycle.
+    return untrack(() => {
+      const { id, unregister } = palette.register(
+        {
+          getValue: () => value,
+          getOnselect: () => onselect,
+          getDisabled: () => disabled,
+        },
+        node,
+      );
+      itemId = id;
+      return () => {
+        unregister();
+        itemId = null;
+      };
     });
-    itemId = id;
-    return () => {
-      unregister();
-      itemId = null;
-    };
-  });
+  };
 
   const isActive = $derived(itemId !== null && palette.activeItemId === itemId);
 
@@ -82,6 +93,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <li
+  {@attach registerWithPalette}
   id={itemId ?? undefined}
   role="option"
   class={cn('cinder-command-item', className)}

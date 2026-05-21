@@ -212,6 +212,67 @@ describe('Sheet', () => {
     document.body.removeChild(button);
   });
 
+  test('focus restores to capturedFocus when triggerRef is unmounted before close', async () => {
+    const previouslyFocused = document.createElement('button');
+    previouslyFocused.id = 'sheet-prev-focus';
+    document.body.appendChild(previouslyFocused);
+    previouslyFocused.focus();
+
+    const triggerEl = document.createElement('button');
+    triggerEl.id = 'sheet-transient-trigger';
+    document.body.appendChild(triggerEl);
+
+    let openValue = true;
+    const { container } = render(Sheet, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        triggerRef: triggerEl,
+        children: emptySnippet,
+      },
+    });
+
+    // Remove the trigger while the sheet is open.
+    document.body.removeChild(triggerEl);
+
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    expect(document.activeElement).toBe(previouslyFocused);
+
+    document.body.removeChild(previouslyFocused);
+  });
+
+  test('no focus is forced when both triggerRef and capturedFocus are gone', async () => {
+    const triggerEl = document.createElement('button');
+    document.body.appendChild(triggerEl);
+
+    let openValue = true;
+    const { container } = render(Sheet, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        triggerRef: triggerEl,
+        children: emptySnippet,
+      },
+    });
+
+    document.body.removeChild(triggerEl);
+
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    expect(document.activeElement).not.toBe(triggerEl);
+  });
+
   test('focus restores to previously-focused element when triggerRef omitted', async () => {
     const button = document.createElement('button');
     button.id = 'previously-focused';

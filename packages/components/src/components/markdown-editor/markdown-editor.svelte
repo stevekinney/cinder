@@ -52,6 +52,7 @@
     redo as redoCommand,
     DEFAULT_DEBOUNCE_MS,
   } from '@cinder/editor/component-runtime';
+  import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import EditorSkeleton from './editor-skeleton.svelte';
   import { EditorToolbar, LinkPopover } from './editor-toolbar/index.ts';
@@ -584,13 +585,12 @@
               selectionMode="single"
               size="sm"
               bind:value={mode}
-              options={[
-                { value: 'wysiwyg', label: 'Rich' },
-                { value: 'source', label: 'Raw' },
-              ]}
               label={modeLabel}
               hideLabel
-            />
+            >
+              <Segment value="wysiwyg">Rich</Segment>
+              <Segment value="source">Raw</Segment>
+            </SegmentedControl>
           </div>
         {/if}
       </div>

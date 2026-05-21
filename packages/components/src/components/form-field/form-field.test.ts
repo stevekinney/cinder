@@ -9,6 +9,9 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: FormField } = await import('./form-field.svelte');
 const { default: FormFieldProbe } = await import('../../test/fixtures/form-field-probe.svelte');
+const { default: FormFieldContextProbe } = await import(
+  '../../test/fixtures/form-field-context-probe.svelte'
+);
 
 const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
@@ -226,5 +229,17 @@ describe('FormField context via probe', () => {
 
     expect(probe?.getAttribute('data-described-by')).toBe('reactive-field-error');
     expect(probe?.getAttribute('data-invalid')).toBe('true');
+  });
+
+  test('getFormFieldContext returns undefined and does not throw outside a FormField', () => {
+    expect(() => render(FormFieldContextProbe, {})).not.toThrow();
+    const { container } = render(FormFieldContextProbe, {});
+    const probe = container.querySelector('[data-probe]');
+    expect(probe).not.toBeNull();
+    // All context-derived attributes should be absent when no provider exists.
+    expect(probe?.getAttribute('data-control-id')).toBeNull();
+    expect(probe?.getAttribute('data-label-id')).toBeNull();
+    expect(probe?.getAttribute('data-described-by')).toBeNull();
+    expect(probe?.getAttribute('data-invalid')).toBeNull();
   });
 });

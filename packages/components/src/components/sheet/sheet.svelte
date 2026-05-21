@@ -23,9 +23,9 @@
     captureFocus,
     lockBodyScroll,
     pushEscapeHandler,
-    restoreFocusTo,
   } from '../../_internal/overlay.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
 
   let {
@@ -83,9 +83,11 @@
       releaseEscape = null;
     }
     open = false;
-    const target = triggerRef ?? capturedFocus;
+    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
     capturedFocus = null;
-    restoreFocusTo(target);
+    for (const candidate of candidates) {
+      if (restoreFocusTo(candidate)) break;
+    }
   }
 
   function handleBackdropClick(event: MouseEvent) {
@@ -105,9 +107,11 @@
       releaseEscape = null;
     }
     if (wasOpen) {
-      const target = triggerRef ?? capturedFocus;
+      const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
       capturedFocus = null;
-      if (target) restoreFocusTo(target);
+      for (const candidate of candidates) {
+        if (restoreFocusTo(candidate)) break;
+      }
     }
   });
 </script>

@@ -6,15 +6,10 @@
 
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity';
+  import { Segment } from 'cinder/segment';
   import { SegmentedControl } from 'cinder/segmented-control';
-  let formats = new SvelteSet<string>();
 
-  const options = [
-    { value: 'bold', label: 'Bold' },
-    { value: 'italic', label: 'Italic' },
-    { value: 'underline', label: 'Underline' },
-    { value: 'strikethrough', label: 'Strike' },
-  ];
+  let formats = new SvelteSet<string>();
 
   const selected = $derived([...formats].join(', ') || 'none');
 </script>
@@ -25,7 +20,11 @@
     selectionMode="multiple"
     bind:value={formats}
     label="Text formatting"
-    {options}
-  />
+  >
+    <Segment value="bold">Bold</Segment>
+    <Segment value="italic">Italic</Segment>
+    <Segment value="underline">Underline</Segment>
+    <Segment value="strikethrough">Strike</Segment>
+  </SegmentedControl>
   <p style="margin: 0; color: var(--cinder-text-muted);">Active formats: {selected}</p>
 </div>
