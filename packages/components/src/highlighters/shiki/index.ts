@@ -136,7 +136,12 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
   }
 
   return async function highlight(code: string, lang: string): Promise<string> {
-    if (lang === undefined || lang === null || lang === '') {
+    // Normalize: markdown fences in the wild ship things like `'ts '` (with
+    // trailing whitespace) or `'typescript title="foo"'` (with metadata
+    // attributes after the language token). Trim whitespace and take only
+    // the first whitespace-delimited token so the Shiki lookup matches.
+    const normalizedLang = lang.trim().split(/\s+/, 1)[0] ?? '';
+    if (normalizedLang === '') {
       return plaintextBlock(code);
     }
 
@@ -152,11 +157,11 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
     // and aliases as top-level keys (`typescript` AND `ts`, `javascript` AND
     // `js`, etc.), so a single hasOwn check accepts whatever Shiki accepts
     // natively without us inventing additional aliases.
-    if (!Object.hasOwn(shiki.bundledLanguages, lang)) {
-      if (!warnedLanguages.has(lang)) {
-        warnedLanguages.add(lang);
+    if (!Object.hasOwn(shiki.bundledLanguages, normalizedLang)) {
+      if (!warnedLanguages.has(normalizedLang)) {
+        warnedLanguages.add(normalizedLang);
         console.warn(
-          `[cinder/highlighters/shiki] language "${lang}" is not in Shiki's bundle; rendering as plaintext.`,
+          `[cinder/highlighters/shiki] language "${normalizedLang}" is not in Shiki's bundle; rendering as plaintext.`,
         );
       }
       return plaintextBlock(code);
@@ -164,15 +169,15 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
 
     try {
       return await shiki.codeToHtml(code, {
-        lang,
+        lang: normalizedLang,
         ...buildThemeOption(theme),
       });
     } catch (error) {
       // Grammar load failure, theme miss, etc. — log once per language and
       // fall back to plaintext.
-      if (!warnedLanguages.has(lang)) {
-        warnedLanguages.add(lang);
-        console.warn(`[cinder/highlighters/shiki] failed to highlight "${lang}":`, error);
+      if (!warnedLanguages.has(normalizedLang)) {
+        warnedLanguages.add(normalizedLang);
+        console.warn(`[cinder/highlighters/shiki] failed to highlight "${normalizedLang}":`, error);
       }
       return plaintextBlock(code);
     }

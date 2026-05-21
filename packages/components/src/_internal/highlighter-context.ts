@@ -48,17 +48,34 @@ export type HighlighterContext = {
 };
 
 /**
- * Returns the nearest enclosing `<CinderProvider>`'s highlighter, or
- * `undefined` when no provider is mounted (or when the provider is mounted
- * with no highlighter prop). The "no provider" case is the unhighlighted
- * fallback — `<CodeBlock>` renders escaped plaintext.
+ * Returns the nearest enclosing `<CinderProvider>`'s context object — or
+ * `undefined` when no provider is mounted. The "no provider" case is the
+ * unhighlighted fallback; cinder supports the "no syntax highlighting"
+ * path as a first-class state.
  *
- * Unlike `useToast()`, this MUST NOT throw on a missing provider: cinder
- * supports the "no syntax highlighting" path as a first-class state, and a
- * `<CodeBlock>` rendered outside a provider just falls back to plain
- * `<pre><code>{code}</code></pre>`.
+ * **Call only during component initialization.** Svelte's `getContext` is
+ * documented as init-only, so this must run synchronously in a `<script>`
+ * block before the component tree is committed. Once the context object is
+ * captured, descendants can read its `highlighter` getter inside a `$effect`
+ * — the getter bridges the prop's reactivity across the `setContext`
+ * boundary.
+ */
+export function getHighlighterContext(): HighlighterContext | undefined {
+  return getContext<HighlighterContext | undefined>(HIGHLIGHTER_CONTEXT_KEY);
+}
+
+/**
+ * Convenience: returns the nearest enclosing `<CinderProvider>`'s
+ * highlighter, or `undefined` when no provider is mounted.
+ *
+ * **Call only during component initialization** for the same reason as
+ * {@link getHighlighterContext}. Consumers that need to track the
+ * highlighter reactively (most do — components that re-render on
+ * provider-prop changes) should call {@link getHighlighterContext} at init
+ * time and read `.highlighter` from the returned context inside a `$effect`.
+ *
+ * Unlike `useToast()`, this MUST NOT throw on a missing provider.
  */
 export function getHighlighter(): Highlighter | undefined {
-  const context = getContext<HighlighterContext | undefined>(HIGHLIGHTER_CONTEXT_KEY);
-  return context?.highlighter;
+  return getHighlighterContext()?.highlighter;
 }

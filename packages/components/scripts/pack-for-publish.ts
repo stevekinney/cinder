@@ -45,7 +45,6 @@ type ExportConditional = {
   svelte?: string;
   node?: string;
   default?: string;
-  import?: string;
 };
 
 type ExportsMap = Record<string, ExportConditional | string>;
@@ -59,8 +58,9 @@ type SourceManifest = {
   peerDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
+  husky?: unknown;
+  'lint-staged'?: unknown;
   exports: ExportsMap;
-  [key: string]: unknown;
 };
 
 /**
@@ -177,10 +177,10 @@ function buildPublishedManifest(
   // `scripts` are not consumer-facing; drop everything except `prepack` and
   // any other hooks that would re-run inside the staging dir (none today).
   // Removing scripts entirely keeps the published manifest minimal.
-  delete (published as { scripts?: unknown }).scripts;
+  delete published.scripts;
   // Husky / dev-only fields.
-  delete (published as { husky?: unknown }).husky;
-  delete (published as { 'lint-staged'?: unknown })['lint-staged'];
+  delete published.husky;
+  delete published['lint-staged'];
   // The published tarball ships:
   //   - `dist/` — every component / upstream / server build target.
   //   - `src/styles/**/*.css` — `cinder/styles*` exports target these CSS
@@ -228,6 +228,16 @@ function buildPublishedManifest(
     '!src/_internal/**/*.test.ts',
     'src/utilities/**/*.ts',
     '!src/utilities/**/*.test.ts',
+    // Non-component static sub-paths whose exports map carries a `svelte`
+    // condition pointing at `./src/highlighters/<name>/index.ts` (the
+    // first-party Shiki adapter today; future siblings live here too).
+    // Without this glob, a Svelte-aware consumer resolving the source
+    // condition for `cinder/highlighters/shiki` would hit a dangling path
+    // because the build only emits `dist/highlighters/**` — the source
+    // remains in `src/`.
+    'src/highlighters/**/*.ts',
+    '!src/highlighters/**/*.test.ts',
+    '!src/highlighters/**/*.spec.ts',
     'src/styles/**/*.css',
     'components.json',
     'README.md',

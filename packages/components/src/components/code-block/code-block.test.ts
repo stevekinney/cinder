@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
 
@@ -16,8 +17,6 @@ type CodeBlockTestProps = {
   copyable?: boolean;
   class?: string;
 };
-
-type Highlighter = (code: string, lang: string) => string | Promise<string>;
 
 async function renderHighlightedCode(code: string, _lang: string): Promise<string> {
   return `<pre class="shiki"><code><span class="highlighted-token">${code}</span></code></pre>`;

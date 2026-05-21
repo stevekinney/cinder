@@ -10,10 +10,10 @@
  * the provider supplies no highlighter), CodeBlock renders the un-highlighted
  * `<pre><code>{code}</code></pre>` fallback with escaped text.
  *
- * **PR 2 breaking change.** The per-instance `highlighter` prop was removed.
- * Old call sites are TypeScript errors — wrap the relevant subtree (typically
- * your root layout) in `<CinderProvider highlighter={...}>` instead. The
- * bundled `cinder/highlighters/shiki` adapter (PR 3) is the recommended
+ * **Breaking change in this release.** The per-instance `highlighter` prop
+ * was removed. Old call sites are TypeScript errors — wrap the relevant
+ * subtree (typically your root layout) in `<CinderProvider highlighter={...}>`
+ * instead. The bundled `cinder/highlighters/shiki` adapter is the recommended
  * default.
  */
 export type CodeBlockProps = {

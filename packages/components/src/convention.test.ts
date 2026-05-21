@@ -57,6 +57,12 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
  * pass-through `<CinderProvider>` whose entire job is to publish Svelte
  * context for descendants — it renders only `{@render children()}` and
  * carries no DOM of its own to merge classes onto.
+ *
+ * **When to add a component here:** the component's entire template is
+ * `{@render children()}` (or another snippet/slot pass-through) with no
+ * root element of its own. Components that render any element — even a
+ * `<div>` they don't expose a class prop for — should accept and merge a
+ * `class` prop via `classNames()` rather than land on this list.
  */
 const NO_CLASS_MERGING_ALLOW_LIST = new Set(['cinder-provider']);
 

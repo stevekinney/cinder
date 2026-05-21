@@ -1,5 +1,6 @@
 import { $, Glob } from 'bun';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -293,16 +294,22 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
  * resolution.
  *
  * "Looks like a real import specifier" means: the `@cinder/...` token sits
- * inside a single-quote or double-quote string on a non-comment line.
- * Backtick-quoted occurrences are not flagged — JavaScript never accepts a
- * backtick-quoted static `import` source, and the common in-the-wild
- * backtick usage is `` `@cinder/markdown` `` inside JSDoc/prose comments.
+ * inside a single-quote, double-quote, OR backtick-quoted *static* string on
+ * a non-comment line. Backticks are flagged in code positions because
+ * `await import(\`@cinder/markdown/rendering\`)` is a valid runtime import
+ * — JavaScript accepts a template literal with no interpolation as a
+ * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
+ * sits on lines that start with `*` or `//` and is filtered by the comment
+ * skip below.
  */
 async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
-  const pattern = /(['"])@cinder\/[^'"]+\1/;
+  // Single-quote, double-quote, and backtick (no interpolation) all
+  // accepted as quote characters. Backreference enforces matching pair so
+  // mismatched quotes don't false-positive.
+  const pattern = /(['"`])@cinder\/[^'"`${}]+\1/;
   for await (const relative of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, relative);
     const content = await Bun.file(filePath).text();
@@ -431,6 +438,11 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
+      // First-party Shiki adapter: ship both source (for the `svelte`
+      // condition) and built JS + types (for `default`/`node`).
+      'package/src/highlighters/shiki/index.ts',
+      'package/dist/highlighters/shiki/index.js',
+      'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
     // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
@@ -1046,13 +1058,23 @@ try {
   // PR 1 publish-path gates: assert the staged pack produced a self-contained
   // tarball with no `workspace:`, `@cinder/*`, or stale `svelte` conditions.
   const tarballInspectionDirectory = join(repositoryRoot, 'tmp', 'pack-inspection');
+  const publishStagingDirectory = join(repositoryRoot, 'node_modules', '.cache', 'publish-staging');
   await extractTarballForInspection(tarballInspectionDirectory);
-  process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
-  await assertPackedManifestInvariants(tarballInspectionDirectory);
-  await assertNoQuotedCinderReferences(tarballInspectionDirectory);
-  await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
-  await assertSourceManifestUnchanged();
-  process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
+  try {
+    process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
+    await assertPackedManifestInvariants(tarballInspectionDirectory);
+    await assertNoQuotedCinderReferences(tarballInspectionDirectory);
+    await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
+    await assertSourceManifestUnchanged();
+    process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
+  } finally {
+    // Both directories carry hundreds of MB of extracted/staged artifacts;
+    // leave them behind across runs and the working tree balloons.
+    // Removal is best-effort — a failed cleanup must not mask an assertion
+    // failure above.
+    await rm(tarballInspectionDirectory, { recursive: true, force: true }).catch(() => {});
+    await rm(publishStagingDirectory, { recursive: true, force: true }).catch(() => {});
+  }
 
   await runSveltekitFixture();
   await runNodeFixture();

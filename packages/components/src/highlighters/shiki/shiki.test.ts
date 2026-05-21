@@ -55,6 +55,40 @@ describe('shikiHighlighter — happy path', () => {
     expect(html).toMatch(/<pre[^>]*style=/);
   });
 
+  test('preloads specified languages without throwing and returns highlighted output', async () => {
+    // The `langs` preload option calls `codeToHtml` once per language at
+    // first highlight, so Shiki resolves and caches the grammar before the
+    // first real call. We assert that a preloaded language still produces
+    // a highlighted result (i.e. the preload completed successfully).
+    const highlight = shikiHighlighter({ langs: ['typescript', 'javascript'] });
+    const html = await highlight('const x = 1;', 'typescript');
+    expect(html.startsWith('<pre')).toBe(true);
+    expect(html).toMatch(/<span[^>]*style=/);
+  });
+
+  test('preload tolerates an unknown language and keeps subsequent highlights working', async () => {
+    // The preload loop swallows failures so a bad entry in `langs` cannot
+    // block initialization. Once the highlighter is built, a valid lang
+    // still highlights correctly.
+    const highlight = shikiHighlighter({
+      langs: ['definitely-not-a-language', 'typescript'],
+    });
+    const html = await highlight('const x = 1;', 'typescript');
+    expect(html.startsWith('<pre')).toBe(true);
+    expect(html).toMatch(/<span[^>]*style=/);
+  });
+
+  test('normalizes language tokens with trailing whitespace and metadata', async () => {
+    // Markdown fences commonly carry trailing whitespace or attribute-like
+    // suffixes; the adapter must trim and take the first whitespace-delimited
+    // token so these still hit the real Shiki grammar.
+    const highlight = shikiHighlighter();
+    const trimmed = await highlight('const x = 1;', 'ts ');
+    expect(trimmed).toMatch(/<span[^>]*style=/);
+    const withMetadata = await highlight('const x = 1;', 'typescript title="example.ts"');
+    expect(withMetadata).toMatch(/<span[^>]*style=/);
+  });
+
   test('honors the dual-theme `{ light, dark }` form', async () => {
     const highlight = shikiHighlighter({
       theme: { light: 'github-light', dark: 'github-dark' },

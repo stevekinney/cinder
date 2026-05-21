@@ -91,3 +91,12 @@
   outline: 2px solid var(--cinder-ring-color);
   outline-offset: 2px;
 }
+
+/* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
+   Svelte appends new nodes alongside the old when an `{@html}` value changes
+   between two non-null strings unless it sits inside a stable parent element.
+   Purely structural: `display: contents` so it never affects layout. Target
+   the inner `<pre>` (Shiki-emitted) for styling, not this wrapper. */
+.cinder-code-block__highlighted {
+  display: contents;
+}

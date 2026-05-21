@@ -16,20 +16,27 @@
 </script>
 
 <script lang="ts">
-  import { getHighlighter } from '../../_internal/highlighter-context.ts';
+  import { getHighlighterContext } from '../../_internal/highlighter-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import type { CodeBlockProps } from './code-block.types.ts';
 
   let { code, language, copyable = false, class: className }: CodeBlockProps = $props();
 
+  // Capture the highlighter context at component init — Svelte's
+  // `getContext` is documented as init-only, so any call from inside a
+  // `$effect` is outside the supported lifecycle phase. Reading the
+  // getter property from the captured context object inside the effect
+  // below preserves the prop-reactivity the provider bridges.
+  const highlighterContext = getHighlighterContext();
+
   let highlighted = $state<string | null>(null);
 
   $effect(() => {
-    // Read the highlighter from the nearest `<CinderProvider>` on every
-    // run. The provider stores it behind a getter so swapping the prop on
-    // a live provider re-runs this effect with the new function.
-    const highlighter = getHighlighter();
+    // Read the highlighter from the captured context on every run. The
+    // provider stores it behind a getter property so swapping the prop
+    // on a live provider re-runs this effect with the new function.
+    const highlighter = highlighterContext?.highlighter;
     if (!language || !highlighter) {
       highlighted = null;
       return;

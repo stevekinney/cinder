@@ -3,14 +3,13 @@ import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
 
 const { render, waitFor } = await import('@testing-library/svelte');
 const { default: CinderProvider } = await import('./cinder-provider.svelte');
 const { default: CodeBlock } = await import('../code-block/code-block.svelte');
-
-type Highlighter = (code: string, lang: string) => string | Promise<string>;
 
 function highlighterReturning(marker: string): Highlighter {
   return async (code) =>
@@ -61,90 +60,46 @@ describe('CinderProvider', () => {
     // automatically reactive across `setContext` boundaries. The provider
     // bridges that with a getter property; swapping the prop after mount
     // must invalidate the descendant CodeBlock's `$effect` and re-render
-    // with the new function's output.
-    //
-    // We mount a CodeBlock once into a stable target node and update the
-    // provider's `highlighter` prop. The CodeBlock stays mounted across
-    // rerenders so we can observe the highlighter swap in place.
-    const target = document.createElement('div');
-    document.body.appendChild(target);
+    // with the new function's output without `code` or `language` changing.
+    const children = createRawSnippet(() => ({
+      render: () => `<div class="reactivity-mount"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(CodeBlock, {
+          target: node,
+          props: { code: 'const y = 2;', language: 'js' },
+        });
+        return () => {
+          unmount(instance);
+        };
+      },
+    }));
 
-    const codeBlockInstance = mount(CodeBlock, {
-      target,
-      props: { code: 'const x = 1;', language: 'js' },
-      // The CinderProvider rendered below will publish to the same global
-      // Svelte context tree because we mount everything into document.body.
-      // (In real apps the provider wraps the subtree directly; the test
-      // harness uses a flatter shape to keep the reactivity assertion
-      // honest.)
+    const { container, rerender } = render(CinderProvider, {
+      props: {
+        highlighter: highlighterReturning('first-token'),
+        children,
+      },
     });
 
-    try {
-      const stableChildren = createRawSnippet(() => ({
-        render: () => `<span class="provider-children-marker"></span>`,
-        setup: () => {},
-      }));
+    await waitFor(() => {
+      expect(container.querySelector('.first-token')).not.toBeNull();
+    });
 
-      const { rerender } = render(CinderProvider, {
-        props: {
-          highlighter: highlighterReturning('first-token'),
-          children: stableChildren,
-        },
-      });
+    await rerender({
+      highlighter: highlighterReturning('second-token'),
+      children,
+    });
 
-      // The CodeBlock was mounted OUTSIDE the provider's subtree, so the
-      // assertion is structural: the reactivity test below covers the
-      // in-tree case via the rerender API + a stable snippet reference.
-      void rerender;
+    await waitFor(() => {
+      expect(container.querySelectorAll('.second-token').length).toBeGreaterThan(0);
+    });
 
-      // In-tree reactivity assertion: mount a fresh CodeBlock INSIDE a
-      // CinderProvider whose `highlighter` we then swap.
-      const inTreeTarget = document.createElement('div');
-      document.body.appendChild(inTreeTarget);
-      const inTreeChildren = createRawSnippet(() => ({
-        render: () => `<div class="in-tree-mount"></div>`,
-        setup: (node: Element) => {
-          const instance = mount(CodeBlock, {
-            target: node,
-            props: { code: 'const y = 2;', language: 'js' },
-          });
-          return () => {
-            unmount(instance);
-          };
-        },
-      }));
-
-      const inTree = render(CinderProvider, {
-        props: {
-          highlighter: highlighterReturning('first-token'),
-          children: inTreeChildren,
-        },
-      });
-
-      await waitFor(() => {
-        expect(inTree.container.querySelector('.first-token')).not.toBeNull();
-      });
-
-      await inTree.rerender({
-        highlighter: highlighterReturning('second-token'),
-        children: inTreeChildren,
-      });
-
-      await waitFor(() => {
-        const allTokens = inTree.container.querySelectorAll('.second-token');
-        expect(allTokens.length).toBeGreaterThan(0);
-      });
-
-      // The in-place swap must replace, not duplicate. Exactly one rendered
-      // token tree should remain inside the provider container.
-      const firstAfter = inTree.container.querySelectorAll('.first-token');
-      const secondAfter = inTree.container.querySelectorAll('.second-token');
-      expect(firstAfter.length + secondAfter.length).toBe(1);
-      expect(secondAfter.length).toBe(1);
-    } finally {
-      unmount(codeBlockInstance);
-      target.remove();
-    }
+    // The in-place swap must replace, not duplicate. Exactly one rendered
+    // token tree should remain inside the provider container.
+    const firstAfter = container.querySelectorAll('.first-token');
+    const secondAfter = container.querySelectorAll('.second-token');
+    expect(firstAfter.length + secondAfter.length).toBe(1);
+    expect(secondAfter.length).toBe(1);
   });
 
   test('clearing the highlighter prop reverts descendants to the unhighlighted fallback', async () => {
