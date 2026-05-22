@@ -17,20 +17,13 @@
 
 <script lang="ts">
   import type { TabProps } from './tab.types.ts';
-  import { getContext } from 'svelte';
+  import { getContext, untrack } from 'svelte';
 
   import { rovingTabIndex } from '../../_internal/collection.ts';
   import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let {
-    value,
-    id,
-    disabled = false,
-    class: className,
-    children,
-    trailing,
-  }: TabProps = $props();
+  let { value, id, disabled = false, class: className, children, trailing }: TabProps = $props();
 
   const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
   if (!rawTabs) {
@@ -49,16 +42,28 @@
   let buttonElement: HTMLButtonElement | undefined = $state();
 
   // Register on mount and re-register if the button element changes; unregister
-  // on unmount so the parent's navigation order stays accurate. The effect's
-  // cleanup function already handles unmount unregistration — no separate
-  // onDestroy is needed.
+  // on unmount so the parent's navigation order stays accurate. This effect
+  // intentionally does NOT read `disabled` — toggling the disabled flag must
+  // not cleanup+re-register, because that would move the tab to the end of the
+  // parent's Map insertion order (which is the navigation order). The
+  // separate effect below syncs disabled state through `setDisabled`.
   $effect(() => {
-    if (buttonElement) {
-      tabs.register(value, buttonElement);
-    }
+    // Track only `buttonElement` becoming defined; read `value` without
+    // tracking so toggling sibling props that share a render pass cannot
+    // trigger a cleanup+re-register cycle (which would re-insert this
+    // tab's key at the end of the parent's Map and corrupt nav order).
+    if (!buttonElement) return;
+    const currentValue = untrack(() => value);
+    tabs.register(currentValue, buttonElement);
     return () => {
-      tabs.unregister(value);
+      tabs.unregister(currentValue);
     };
+  });
+
+  // Sync disabled state without touching the registry, so flipping `disabled`
+  // at runtime preserves navigation order.
+  $effect(() => {
+    tabs.setDisabled(value, disabled);
   });
 
   function handleClick(): void {

@@ -7,9 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
-const { default: TrailingWrapper } = await import(
-  '../../test/fixtures/tabs-trailing-fixture.svelte'
-);
+const { default: TrailingWrapper } =
+  await import('../../test/fixtures/tabs-trailing-fixture.svelte');
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
@@ -96,7 +95,7 @@ describe('Tab trailing snippet', () => {
     expect(trailing?.textContent).toContain('3');
   });
 
-  test("accessible name excludes trailing content (aria-hidden subtree is omitted)", () => {
+  test('accessible name excludes trailing content (aria-hidden subtree is omitted)', () => {
     const { container } = render(TrailingWrapper, { value: 'inbox', trailingText: '3' });
     const tab = container.querySelector('[role="tab"][aria-selected="true"]') as HTMLElement;
     expect(tab).not.toBeNull();
@@ -184,5 +183,150 @@ describe('Tabs keyboard navigation', () => {
     await fireEvent.keyDown(bTab, { key: 'Enter' });
     panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('B body');
+  });
+});
+
+describe('Tabs keyboard navigation skips disabled tabs', () => {
+  test('ArrowRight skips a disabled tab in the middle', async () => {
+    const itemsWithDisabledMiddle = [
+      { value: 'a', title: 'A tab', body: 'A body' },
+      { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, { value: 'a', items: itemsWithDisabledMiddle });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const cTab = tabs[2]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(cTab);
+    expect(cTab.getAttribute('aria-selected')).toBe('true');
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('C body');
+  });
+
+  test('ArrowLeft skips a disabled tab and wraps', async () => {
+    const itemsWithLeadingDisabled = [
+      { value: 'a', title: 'A tab', body: 'A body', disabled: true },
+      { value: 'b', title: 'B tab', body: 'B body' },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, { value: 'b', items: itemsWithLeadingDisabled });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const bTab = tabs[1]!;
+    const cTab = tabs[2]!;
+    bTab.focus();
+    await fireEvent.keyDown(bTab, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(cTab);
+    expect(cTab.getAttribute('aria-selected')).toBe('true');
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('C body');
+  });
+
+  test('Home skips a leading disabled tab and lands on the first enabled', async () => {
+    const itemsWithLeadingDisabled = [
+      { value: 'a', title: 'A tab', body: 'A body', disabled: true },
+      { value: 'b', title: 'B tab', body: 'B body' },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, { value: 'c', items: itemsWithLeadingDisabled });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const bTab = tabs[1]!;
+    const cTab = tabs[2]!;
+    cTab.focus();
+    await fireEvent.keyDown(cTab, { key: 'Home' });
+    expect(document.activeElement).toBe(bTab);
+    expect(bTab.getAttribute('aria-selected')).toBe('true');
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('B body');
+  });
+
+  test('End skips a trailing disabled tab and lands on the last enabled', async () => {
+    const itemsWithTrailingDisabled = [
+      { value: 'a', title: 'A tab', body: 'A body' },
+      { value: 'b', title: 'B tab', body: 'B body' },
+      { value: 'c', title: 'C tab', body: 'C body', disabled: true },
+    ];
+    const { container } = render(Wrapper, { value: 'a', items: itemsWithTrailingDisabled });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const bTab = tabs[1]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'End' });
+    expect(document.activeElement).toBe(bTab);
+    expect(bTab.getAttribute('aria-selected')).toBe('true');
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('B body');
+  });
+
+  test('controlled value pointing at a disabled tab — navigation anchors from focused tab', async () => {
+    // Controlled value=b is disabled. Focus is on the enabled `a`. ArrowRight
+    // must move from focused `a` to `c`, never anchoring on disabled `b`.
+    const itemsWithDisabledMiddle = [
+      { value: 'a', title: 'A tab', body: 'A body' },
+      { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, { value: 'b', items: itemsWithDisabledMiddle });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const cTab = tabs[2]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(cTab);
+    expect(cTab.getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('Home with a controlled disabled value lands on the first enabled tab', async () => {
+    const itemsWithLeadingDisabled = [
+      { value: 'a', title: 'A tab', body: 'A body', disabled: true },
+      { value: 'b', title: 'B tab', body: 'B body' },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, { value: 'a', items: itemsWithLeadingDisabled });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const bTab = tabs[1]!;
+    bTab.focus();
+    await fireEvent.keyDown(bTab, { key: 'Home' });
+    expect(document.activeElement).toBe(bTab);
+    expect(bTab.getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('all-disabled tablist is a no-op on arrow keys', async () => {
+    const allDisabled = [
+      { value: 'a', title: 'A tab', body: 'A body', disabled: true },
+      { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+    ];
+    const { container } = render(Wrapper, { value: 'a', items: allDisabled });
+    const tablist = container.querySelector('[role="tablist"]') as HTMLElement;
+    // No enabled tab can receive focus, so dispatch the event on the tablist
+    // container; the handler walks `event.target` and the empty-enabled guard
+    // returns early without touching value or focus.
+    await fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    const selected = container.querySelector('[role="tab"][aria-selected="true"]');
+    expect(selected?.getAttribute('data-cinder-value')).toBe('a');
+    // No panel rendered (controlled value points at a disabled tab, which is
+    // an a11y violation by the consumer, but the component must not throw).
+    // We simply assert no crash and that the selection did not silently move.
+  });
+
+  test('runtime disable toggle preserves navigation order (regression)', async () => {
+    // Render [a, b, c] enabled; toggle b.disabled true → false; ArrowRight
+    // from a must still land on b, not c. This guards against the bug where
+    // re-running the registration effect on a disabled change would delete
+    // and re-insert b in the parent Map, moving it to the end of the order.
+    const allEnabled = items;
+    const withBDisabled = [items[0]!, { ...items[1]!, disabled: true }, items[2]!];
+    const { container, rerender } = render(Wrapper, { value: 'a', items: allEnabled });
+    await rerender({ value: 'a', items: withBDisabled });
+    await rerender({ value: 'a', items: allEnabled });
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const bTab = tabs[1]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(bTab);
+    expect(bTab.getAttribute('aria-selected')).toBe('true');
   });
 });

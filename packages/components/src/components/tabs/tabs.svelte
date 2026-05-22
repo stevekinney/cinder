@@ -44,11 +44,17 @@
    * mount and unmount. The order of registration determines the navigation
    * order — children are registered in mount order, which is the same as
    * source order in the template.
+   *
+   * `disabledValues` is intentionally separate from `buttons`: deleting and
+   * re-inserting a Map key moves it to the end of iteration order, which
+   * would silently corrupt navigation order whenever a Tab's `disabled`
+   * prop toggled. `setDisabled` only mutates this set.
    */
   const buttons: Map<string, HTMLButtonElement> = new Map();
+  const disabledValues: Set<string> = new Set();
 
-  function valuesInOrder(): string[] {
-    return [...buttons.keys()];
+  function enabledValuesInOrder(): string[] {
+    return [...buttons.keys()].filter((candidate) => !disabledValues.has(candidate));
   }
 
   function focusValue(target: string): void {
@@ -59,11 +65,14 @@
   function handleKeydown(event: KeyboardEvent): void {
     const intent = navigationIntent(event.key, orientation as Orientation);
     if (!intent) {
-      // Manual activation: Enter/Space activates the focused tab.
+      // Manual activation: Enter/Space activates the focused tab, but only
+      // if its value is registered and not disabled. Native `disabled`
+      // <button> elements cannot receive focus, so this guard is
+      // defense-in-depth against future internal regressions.
       if (event.key === 'Enter' || event.key === ' ') {
         const target = event.target as HTMLElement | null;
         const focusedValue = target?.dataset['cinderValue'];
-        if (focusedValue && buttons.has(focusedValue)) {
+        if (focusedValue && buttons.has(focusedValue) && !disabledValues.has(focusedValue)) {
           event.preventDefault();
           value = focusedValue;
         }
@@ -72,15 +81,37 @@
     }
 
     event.preventDefault();
-    const order = valuesInOrder();
+    const order = enabledValuesInOrder();
     if (order.length === 0) return;
-    const currentIndex = order.indexOf(value);
-    const nextIdx = nextIndex(currentIndex === -1 ? 0 : currentIndex, order.length, intent);
-    const nextValue = order[nextIdx];
+
+    // Home/End bypass adjacency and pick the first/last enabled tab
+    // directly. Arrow keys step from the user's focused tab when it is
+    // enabled, falling back to the controlled `value` when the keydown
+    // came from somewhere other than a registered enabled tab. Disabled
+    // values never seed navigation — disabled buttons are not focusable.
+    let nextValue: string | undefined;
+    if (intent === 'first') {
+      nextValue = order[0];
+    } else if (intent === 'last') {
+      nextValue = order[order.length - 1];
+    } else {
+      const target = event.target as HTMLElement | null;
+      const focusedValue = target?.dataset['cinderValue'];
+      const anchor =
+        focusedValue && order.includes(focusedValue)
+          ? focusedValue
+          : order.includes(value)
+            ? value
+            : undefined;
+      const anchorIndex = anchor === undefined ? 0 : order.indexOf(anchor);
+      const nextIdx = nextIndex(anchorIndex, order.length, intent);
+      nextValue = order[nextIdx];
+    }
+
     if (nextValue === undefined) return;
 
     focusValue(nextValue);
-    if (effectiveActivateOnFocus) {
+    if (effectiveActivateOnFocus && !disabledValues.has(nextValue)) {
       value = nextValue;
     }
   }
@@ -106,6 +137,11 @@
     },
     unregister(target) {
       buttons.delete(target);
+      disabledValues.delete(target);
+    },
+    setDisabled(target, isDisabled) {
+      if (isDisabled) disabledValues.add(target);
+      else disabledValues.delete(target);
     },
     handleKeydown,
   });

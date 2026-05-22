@@ -7,7 +7,10 @@ export type TabsOrientation = 'horizontal' | 'vertical';
  * `register` lets each Tab announce itself to the parent during mount so
  * the parent can drive arrow-key navigation (focus management requires the
  * parent to know each tab's element). `unregister` removes the entry on
- * unmount.
+ * unmount. `setDisabled` is kept independent of registration so toggling
+ * the disabled flag at runtime does not perturb the registration order
+ * (which is the navigation order — re-inserting a Map key moves it to the
+ * end).
  */
 export type TabsContext = {
   readonly value: string;
@@ -17,6 +20,7 @@ export type TabsContext = {
   isActive: (candidate: string) => boolean;
   register: (value: string, button: HTMLButtonElement) => void;
   unregister: (value: string) => void;
+  setDisabled: (value: string, disabled: boolean) => void;
   handleKeydown: (event: KeyboardEvent) => void;
 };
 export type TabsProps = {

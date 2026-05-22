@@ -25,11 +25,7 @@
 <Tabs bind:value {orientation} {...activateOnFocus !== undefined ? { activateOnFocus } : {}}>
   <TabList label="Test tabs">
     {#each items as item (item.value)}
-      {#if item.disabled !== undefined}
-        <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
-      {:else}
-        <Tab value={item.value}>{item.title}</Tab>
-      {/if}
+      <Tab value={item.value} disabled={item.disabled ?? false}>{item.title}</Tab>
     {/each}
   </TabList>
   {#each items as item (item.value)}
