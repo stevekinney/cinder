@@ -108,11 +108,6 @@ type ShikiModule = {
 };
 
 /**
- * Create a Shiki-backed {@link Highlighter} suitable for
- * `<CinderProvider highlighter={...}>`. See module-level JSDoc for the
- * full behavior contract.
- */
-/**
  * Wrap a one-shot async loader in a promise cache that:
  *
  *   1. De-duplicates concurrent callers — multiple `await` callers during
@@ -147,6 +142,11 @@ export function createRetryingLoaderCache<T>(loader: () => Promise<T>): () => Pr
   };
 }
 
+/**
+ * Create a Shiki-backed {@link Highlighter} suitable for
+ * `<CinderProvider highlighter={...}>`. See module-level JSDoc for the
+ * full behavior contract.
+ */
 export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlighter {
   const { theme = DEFAULT_THEME, langs } = options;
   const warnedLanguages = new Set<string>();
