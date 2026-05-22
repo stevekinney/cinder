@@ -493,7 +493,22 @@ const ARM_BASE: Record<ArmKey, string> = {
 //   `aria-hidden="true"` (same pass-through, different element shape).
 type ArmShape = 'base' | 'label-child' | 'descendant-svg-or-img' | 'descendant-aria-hidden';
 
-const LABEL_CHILD_SUFFIX = "> :not([aria-hidden='true']):not(svg):not(img)";
+// Matches the label-child suffix structurally — a `>` combinator followed
+// by three `:not()` exclusions covering svg, img, and `aria-hidden="true"`
+// children, in any order, with either quote style. This avoids both the
+// over-broad `> ` match (which would accept `> svg`) and the over-narrow
+// fixed-string match (which would break on harmless reformatting like
+// reordered exclusions or swapped quote style).
+function matchesLabelChildSuffix(suffix: string): boolean {
+  const normalized = suffix.replace(/\s+/g, ' ').trim();
+  if (!normalized.startsWith('>')) return false;
+  // Must exclude all three icon paths so the rule only targets label-bearing
+  // children — never icon descendants.
+  const excludesAriaHidden = /:not\(\[aria-hidden=(["'])true\1\]\)/.test(normalized);
+  const excludesSvg = /:not\(svg\)/.test(normalized);
+  const excludesImg = /:not\(img\)/.test(normalized);
+  return excludesAriaHidden && excludesSvg && excludesImg;
+}
 
 function selectorMatchesArm(selector: string, arm: ArmKey, shape: ArmShape): boolean {
   if (!selector.startsWith(COLLAPSED_SCOPE)) return false;
@@ -505,11 +520,16 @@ function selectorMatchesArm(selector: string, arm: ArmKey, shape: ArmShape): boo
       // chain past it. Trim and ensure the normalized selector ends with
       // the base selector with no trailing combinator.
       return selector.replace(/\s+/g, ' ').trim().endsWith(base);
-    case 'label-child':
+    case 'label-child': {
       // The visually-hidden rule must target non-icon children. Accepting a
       // bare `> ` combinator would let `> svg` count as label-hiding
-      // coverage, masking a real regression.
-      return selector.includes(`${base} ${LABEL_CHILD_SUFFIX}`);
+      // coverage, masking a real regression. We require all three icon-path
+      // exclusions but tolerate reordering and quote-style changes so a
+      // CSS formatter rewrite doesn't break the test.
+      const baseIndex = selector.indexOf(base);
+      const suffix = selector.slice(baseIndex + base.length);
+      return matchesLabelChildSuffix(suffix);
+    }
     case 'descendant-svg-or-img':
       return selector.includes(`${base} > svg`) || selector.includes(`${base} > img`);
     case 'descendant-aria-hidden':
@@ -592,6 +612,7 @@ describe('Sidebar collapsed CSS contract', () => {
     const svgImg = collectArms(
       rules,
       (rule) =>
+        isCollapsedScopedRule(rule) &&
         rule.declarations.includes('flex-shrink: 0') &&
         rule.selectors.some((selector) => selector.includes('> svg') || selector.includes('> img')),
       'descendant-svg-or-img',
@@ -600,10 +621,11 @@ describe('Sidebar collapsed CSS contract', () => {
 
     // Anchor the aria-hidden predicate on `flex-shrink: 0` (the same icon
     // pass-through declaration the svg/img group uses) rather than the
-    // overly broad `font-size:` prefix.
+    // overly broad `font-size:` prefix, and scope to collapsed-state rules.
     const ariaHidden = collectArms(
       rules,
       (rule) =>
+        isCollapsedScopedRule(rule) &&
         rule.declarations.includes('flex-shrink: 0') &&
         rule.selectors.some(
           (selector) =>
@@ -620,12 +642,15 @@ describe('Sidebar collapsed CSS contract', () => {
     const matches = rules.filter((rule) => rule.declarations.includes('clip-path: inset(50%)'));
     expect(matches.length, 'expected at least one visually-hidden rule').toBeGreaterThan(0);
 
+    // `clip: rect(` not `clip:` — a bare `clip:` prefix would be satisfied
+    // by `clip-path:` since the latter starts with the same five characters,
+    // letting a missing legacy `clip` declaration slip past.
     const required = [
       'position: absolute',
       'width: 1px',
       'height: 1px',
       'overflow: hidden',
-      'clip:',
+      'clip: rect(',
       'clip-path:',
     ];
     // Banned declarations are checked against the parsed property/value map
