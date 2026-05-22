@@ -56,7 +56,7 @@
    * to lift the surface without producing a glow halo. Each shadow color
    * is wrapped individually — the offsets, blur radii, spread radii, and
    * layer counts are unchanged. */
-  --cinder-shadow-sm: 0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.04));
+  --cinder-shadow-sm: 0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.06));
   --cinder-shadow-md:
     0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)),
     0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05));

@@ -10,22 +10,25 @@
  * so the dark-mode variant uses a light-neutral OKLCH alpha that is
  * actually visible against the dark surface tokens.
  *
- * This test opens the basic card example in the playground and asserts
- * that `.cinder-card`:
- *   1. Has a non-`none` resolved `box-shadow` in light mode.
- *   2. Has a non-`none` resolved `box-shadow` in dark mode.
- *   3. Resolves to different `box-shadow` strings between light and dark.
- *   4. The dark-mode resolved color does not match the legacy black-only
- *      pattern (`rgba(0, 0, 0, *)` / `rgb(0, 0, 0)`).
+ * The test opens the basic card example, confirms the document advertises
+ * the correct `color-scheme` (the prerequisite for `light-dark()` to
+ * branch at all), and asserts that `.cinder-card`:
+ *   1. Has a non-`none` resolved `box-shadow` in both themes.
+ *   2. Resolves to different `box-shadow` strings between light and dark.
+ *
+ * The "different strings" assertion is the load-bearing one: if
+ * `light-dark()` did not branch (because `color-scheme` is misconfigured
+ * or the wrapping is wrong) the two computed values would match and the
+ * regression is back.
  */
 
 import { expect, test } from '@playwright/test';
 
-async function readCardBoxShadow(themedPage: import('@playwright/test').Page) {
+async function loadCard(themedPage: import('@playwright/test').Page) {
   await themedPage.goto('/page/card', { waitUntil: 'load' });
   const card = themedPage.locator('.cinder-card').first();
   await expect(card).toBeVisible();
-  return card.evaluate((element) => getComputedStyle(element).boxShadow);
+  return card;
 }
 
 test.describe('--cinder-shadow-* tokens', () => {
@@ -43,25 +46,37 @@ test.describe('--cinder-shadow-* tokens', () => {
       const lightPage = await lightContext.newPage();
       const darkPage = await darkContext.newPage();
 
-      const lightShadow = await readCardBoxShadow(lightPage);
-      const darkShadow = await readCardBoxShadow(darkPage);
+      const [lightCard, darkCard] = await Promise.all([loadCard(lightPage), loadCard(darkPage)]);
+
+      // `light-dark()` only branches when the document advertises a usable
+      // `color-scheme`. If this prerequisite is missing the rest of the
+      // test would pass vacuously, so check it explicitly.
+      const lightScheme = await lightPage.evaluate(
+        () => getComputedStyle(document.documentElement).colorScheme,
+      );
+      const darkScheme = await darkPage.evaluate(
+        () => getComputedStyle(document.documentElement).colorScheme,
+      );
+      expect(lightScheme).toMatch(/light/);
+      expect(darkScheme).toMatch(/dark/);
+
+      const [lightShadow, darkShadow] = await Promise.all([
+        lightCard.evaluate((element) => getComputedStyle(element).boxShadow),
+        darkCard.evaluate((element) => getComputedStyle(element).boxShadow),
+      ]);
 
       // Both themes must paint a real shadow.
       expect(lightShadow).not.toBe('none');
       expect(darkShadow).not.toBe('none');
 
       // Light and dark must resolve to different values; otherwise the
-      // `light-dark()` wrapping did not take effect.
+      // `light-dark()` wrapping did not take effect and the regression is
+      // back. This is the definitive assertion — string-matching on the
+      // resolved color is unreliable across browser versions (Chromium
+      // 111+ may serialize `oklch()` natively rather than normalizing to
+      // `rgb()`), so we trust the inequality and the explicit
+      // `color-scheme` check above.
       expect(lightShadow).not.toBe(darkShadow);
-
-      // Browsers normalize OKLCH to either `rgb()` or `rgba()`. The legacy
-      // bug was a black-only alpha — `rgba(0, 0, 0, α)` (or `rgb(0, 0, 0)`).
-      // Dark mode must not match that pattern.
-      const blackOnlyPattern = /rgba?\(\s*0\s*,\s*0\s*,\s*0\s*[,)]/i;
-      expect(darkShadow).not.toMatch(blackOnlyPattern);
-
-      // Light mode should preserve the original black-family color values.
-      expect(lightShadow).toMatch(blackOnlyPattern);
     } finally {
       await lightContext.close();
       await darkContext.close();

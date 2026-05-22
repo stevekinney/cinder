@@ -47,7 +47,7 @@ Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a l
 | `--cinder-radius-md`   | `0.5rem`                                                                                                                                             |
 | `--cinder-radius-lg`   | `0.75rem`                                                                                                                                            |
 | `--cinder-radius-full` | `9999px`                                                                                                                                             |
-| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.04))`                                                                                 |
+| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.06))`                                                                                 |
 | `--cinder-shadow-md`   | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05))`    |
 | `--cinder-shadow-lg`   | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.08)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06))` |
 
