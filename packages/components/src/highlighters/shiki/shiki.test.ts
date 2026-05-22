@@ -158,6 +158,28 @@ describe('shikiHighlighter — fallback contract', () => {
     expect(numericResult).toContain('<pre class="shiki shiki-plaintext">');
   });
 
+  test('does not throw when a JS caller passes a non-string code', async () => {
+    // Same defensive contract as the `lang` guard above: every fallback
+    // path runs `escapeHtml(code)` which previously called `.replaceAll`
+    // on `code` directly. `null`/`undefined`/non-strings would throw
+    // before reaching the documented "never throws" fallback. The guard
+    // coerces non-strings to `''` so the plaintext fallback still renders.
+    const highlight = shikiHighlighter();
+    const callPlaintext = highlight as (code: unknown, lang: string) => Promise<string>;
+    const nullResult = await callPlaintext(null, '');
+    expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
+    expect(nullResult).toContain('<code></code>');
+    const undefinedResult = await callPlaintext(undefined, '');
+    expect(undefinedResult).toContain('<code></code>');
+    const numericResult = await callPlaintext(42, '');
+    expect(numericResult).toContain('<code></code>');
+    // Also exercise the unknown-language fallback path (which also runs
+    // `plaintextBlock(code)` through `escapeHtml`) to confirm the guard
+    // holds when Shiki has been loaded.
+    const unknownLangResult = await callPlaintext(null, 'definitely-not-a-language');
+    expect(unknownLangResult).toContain('<pre class="shiki shiki-plaintext">');
+  });
+
   test('HTML-escapes <script>alert(1)</script> in the plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('<script>alert(1)</script>', '');

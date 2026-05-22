@@ -353,18 +353,32 @@ export function reexportFileBody(upstreamSpecifier: string, reexport?: UpstreamR
     lines.push(`export * from '${upstreamSpecifier}';`);
   } else {
     if (values.length > 0) {
-      lines.push(
-        `export {\n${values.map((name) => `  ${name},`).join('\n')}\n} from '${upstreamSpecifier}';`,
-      );
+      lines.push(formatNamedExport('export', values, upstreamSpecifier));
     }
     if (types.length > 0) {
-      lines.push(
-        `export type {\n${types.map((name) => `  ${name},`).join('\n')}\n} from '${upstreamSpecifier}';`,
-      );
+      lines.push(formatNamedExport('export type', types, upstreamSpecifier));
     }
   }
   lines.push('');
   return lines.join('\n');
+}
+
+/**
+ * Format a named-re-export clause the way Prettier (printWidth 100, trailing
+ * comma "all") would write it. Emits single-line when the clause fits within
+ * 100 columns, multi-line otherwise. Keeping the generator's output Prettier-
+ * idempotent avoids drift between `bun run exports:generate` and the
+ * post-write `prettier --write` lint-staged step.
+ */
+function formatNamedExport(
+  prefix: 'export' | 'export type',
+  names: string[],
+  specifier: string,
+): string {
+  const PRINT_WIDTH = 100;
+  const inline = `${prefix} { ${names.join(', ')} } from '${specifier}';`;
+  if (inline.length <= PRINT_WIDTH) return inline;
+  return `${prefix} {\n${names.map((name) => `  ${name},`).join('\n')}\n} from '${specifier}';`;
 }
 
 /**

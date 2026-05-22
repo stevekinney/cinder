@@ -74,9 +74,19 @@ const DEFAULT_THEME: { light: string; dark: string } = {
   dark: 'github-dark',
 };
 
-/** HTML-escape a string for safe injection into a `<pre><code>` block. */
+/**
+ * HTML-escape a value for safe injection into a `<pre><code>` block.
+ *
+ * Coerces non-string input to an empty string rather than throwing —
+ * the documented contract is "never throws," and untyped JS callers can
+ * bypass the `code: string` parameter type the same way they bypass
+ * `lang: string`. Coercing to `''` keeps the plaintext fallback rendering
+ * (an empty `<pre><code></code></pre>`) without surprising a consumer that
+ * passes `null` or `undefined` while building up state.
+ */
 function escapeHtml(value: string): string {
-  return value
+  const safe = typeof value === 'string' ? value : '';
+  return safe
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')

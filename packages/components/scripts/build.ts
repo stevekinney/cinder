@@ -480,7 +480,12 @@ async function rewriteSpecifiersUnder(
   options: { skipPrefix?: string } = {},
 ): Promise<RewriteMiss[]> {
   const misses: RewriteMiss[] = [];
-  const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts,map}');
+  // Only JS and `.d.ts` artifacts carry import specifiers the rewrite needs
+  // to touch. `*.map` files are vendored upstream source maps (including
+  // any `sourcesContent`) — rewriting them mutates debugging metadata that
+  // should stay verbatim, and the post-build residue gate only scans
+  // JS/`.d.ts` anyway. Keep maps out of the rewrite pass.
+  const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   for await (const relative of textGlob.scan({ cwd: root })) {
     if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
     const filePath = `${root}/${relative}`;
