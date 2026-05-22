@@ -18,7 +18,9 @@ There are two kinds of errors a color field can have. The first is a **parse err
 
 Parse errors are owned by `ColorField` itself. The component passes `error={parseError}` down into `Input`, which wires `aria-invalid="true"` on the native `<input>` and renders the message in a `<p aria-live="polite">` referenced by `aria-describedby`. Consumers never need to know about parse failures — the field surfaces them automatically.
 
-Semantic errors are owned by the wrapping `FormField`. When a consumer passes `error="..."` to `FormField`, that error renders in the form-field error region and feeds the form-field context. `Input` is smart enough to allocate a distinct id for its own (parse) error when the two would collide, so both messages render and `aria-describedby` references both — assistive technology announces both errors in sequence rather than dropping one.
+Semantic errors are owned by the wrapping `FormField`. When a consumer passes `error="..."` to `FormField`, that error renders in the form-field error region and feeds the form-field context. `Input` is smart enough to allocate a distinct id for its own (parse) error when the two would collide, so both messages render. The "both ids in `aria-describedby`" guarantee depends on the wrapping `FormField` carrying the same `id` as the `ColorField` — that's how the form-field context plumbs through.
+
+Beyond ARIA, parse errors also participate in HTML constraint validation. The component calls `setCustomValidity` on the visible `<input>` whenever the parse state changes, so a form with an invalid color value won't submit on a button click any more than a malformed email address would.
 
 ## The trailing swatch is decorative
 

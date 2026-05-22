@@ -36,7 +36,9 @@ Switching between controlled and uncontrolled at runtime is unsupported. The com
 
 ## Form participation
 
-When `name` is set, the component renders a sibling `<input type="hidden">` that mirrors the current committed hex. The component also renders an unnamed anchor input used to attach a `reset` listener to the surrounding form — uncontrolled fields revert to `defaultValue` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
+The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `defaultValue` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
+
+Parse errors propagate to the visible `<input>` via `setCustomValidity`, so invalid text blocks form submission regardless of whether the user pressed Enter or clicked a submit button — HTML constraint validation participates the same way it does for `<input type="email">`.
 
 Moving the component across forms at runtime is not supported in v1.
 

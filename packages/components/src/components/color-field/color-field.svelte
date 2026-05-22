@@ -53,6 +53,10 @@
   let committedRgba = $state<RgbaParts | null>(null);
   let parseError = $state<string | null>(null);
   let anchorInput: HTMLInputElement | null = $state(null);
+  // Plain (non-reactive) skip guard for the controlled-sync effect — matches
+  // color-picker's `lastEmittedHex`. Used to short-circuit reconciliation when
+  // the observed value equals the last value we already reconciled.
+  let lastReconciledValue = '';
 
   function toHex2(n: number): string {
     return Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
@@ -100,10 +104,22 @@
 
   if (isControlled) {
     if (value !== undefined && value !== '') {
-      const parsed = parseColor(value);
-      if (parsed !== null) {
-        seedFromParts(parsed);
+      const trimmedInitial = value.trim();
+      if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
+        const parsed = parseColor(trimmedInitial);
+        if (parsed !== null) {
+          seedFromParts(parsed);
+          lastReconciledValue = value;
+        } else {
+          visibleText = value;
+          committedHex = '';
+          committedRgba = null;
+          parseError = defaultErrorMessage();
+        }
       } else {
+        // Externally-supplied value violates the `formats` gate — preserve the
+        // visible text verbatim and surface a parse error, matching the
+        // documented contract.
         visibleText = value;
         committedHex = '';
         committedRgba = null;
@@ -111,21 +127,32 @@
       }
     }
   } else if (defaultValue !== undefined && defaultValue !== '') {
-    const parsed = parseColor(defaultValue);
-    if (parsed !== null) {
-      seedFromParts(parsed);
+    const trimmedDefault = defaultValue.trim();
+    if (trimmedDefault !== '' && passesFormatGate(trimmedDefault)) {
+      const parsed = parseColor(trimmedDefault);
+      if (parsed !== null) {
+        seedFromParts(parsed);
+      }
     }
   }
 
   // ── Controlled sync ─────────────────────────────────────────────────────
 
   function reconcileFromValue(next: string): void {
-    if (next === '') {
+    const trimmed = next.trim();
+    if (trimmed === '') {
       clearAll();
       parseError = null;
       return;
     }
-    const parsed = parseColor(next);
+    if (!passesFormatGate(trimmed)) {
+      visibleText = next;
+      committedHex = '';
+      committedRgba = null;
+      parseError = defaultErrorMessage();
+      return;
+    }
+    const parsed = parseColor(trimmed);
     if (parsed === null) {
       visibleText = next;
       committedHex = '';
@@ -147,6 +174,8 @@
       }
       return;
     }
+    if (value === lastReconciledValue) return;
+    lastReconciledValue = value;
     reconcileFromValue(value);
   });
 
@@ -158,15 +187,9 @@
   $effect(() => {
     void alpha;
     if (isControlled) {
-      // Controlled mode: re-run reconcile against the current controlled value.
-      if (value !== undefined && value !== '') {
-        const parsed = parseColor(value);
-        if (parsed !== null) {
-          committedRgba = parsed;
-          committedHex = emitFor(parsed);
-          visibleText = committedHex;
-        }
-      }
+      // Controlled mode: re-run reconcile against the current controlled value
+      // so the `formats` gate and parse-error surfacing stay in effect.
+      if (value !== undefined) reconcileFromValue(value);
       return;
     }
     // Uncontrolled mode: re-derive from preserved committedRgba.
@@ -175,6 +198,14 @@
     if (nextHex === committedHex) return;
     committedHex = nextHex;
     visibleText = nextHex;
+  });
+
+  // Keep customValidity synchronized with parseError so that any state change
+  // — controlled sync, formats toggle, alpha toggle, blur, Enter — leaves the
+  // native input in a state that matches what the user sees.
+  $effect(() => {
+    void parseError;
+    syncCustomValidity();
   });
 
   // ── formats runtime changes — display-only validation ───────────────────
@@ -260,23 +291,41 @@
     return { committed: false, emittedHex: null };
   }
 
+  // Sync the parse-error state into the native input's customValidity so
+  // mouse/touch/programmatic submit paths participate in HTML form validation
+  // — the Enter handler's manual guard alone is not enough.
+  function syncCustomValidity(): void {
+    if (anchorInput === null) return;
+    // Walk to the wrapper and find the visible input by class. Avoids
+    // getElementById, which is unreliable when tests reuse ids across mounts.
+    const wrapper = anchorInput.closest('.cinder-color-field');
+    if (wrapper === null) return;
+    const nativeInput = wrapper.querySelector<HTMLInputElement>('input.cinder-input');
+    if (nativeInput === null) return;
+    nativeInput.setCustomValidity(parseError ?? '');
+  }
+
   function handleBlur(): void {
     runCommit();
+    syncCustomValidity();
   }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
     event.preventDefault();
-    const result = runCommit();
+    runCommit();
+    syncCustomValidity();
 
-    if (result.emittedHex !== null && anchorInput !== null) {
+    if (anchorInput !== null && committedHex !== '') {
       // Imperatively sync the hidden mirror's DOM value so a synchronous
       // requestSubmit sees the canonical hex even before Svelte's effect
       // queue flushes.
-      anchorInput.value = result.emittedHex;
+      anchorInput.value = committedHex;
     }
 
-    if (!result.committed) return;
+    // Submit when validation succeeded (no parse error), regardless of whether
+    // the canonical hex actually changed. A controlled field that receives the
+    // same normalized value should still let Enter submit the form.
     if (parseError !== null) return;
     if (enterBehavior !== 'commit-then-submit') return;
 

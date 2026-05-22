@@ -490,3 +490,127 @@ describe('ColorField — composition + DOM contract', () => {
     expect(input.value).toBe('#123456');
   });
 });
+
+describe('ColorField — constraint validation (submit-button click)', () => {
+  test('invalid text marks the input invalid via setCustomValidity', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.validity.valid).toBe(false);
+    expect(input.validationMessage).toBeTruthy();
+  });
+
+  test('valid commit clears customValidity', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.validity.valid).toBe(false);
+    await typeAndBlur(input, '#ff0000');
+    expect(input.validity.valid).toBe(true);
+  });
+});
+
+describe('ColorField — 4-char hex (#rgba)', () => {
+  test('alpha=false strips alpha from #abcd', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#abcd');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
+  });
+
+  test('alpha=true preserves alpha from #abcd', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', alpha: true, onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#abcd');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbccdd');
+  });
+});
+
+describe('ColorField — controlled init honors formats gate', () => {
+  test('formats=[hex] + value="rgb(0,0,0)" surfaces parse error at mount', async () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['hex'],
+      value: 'rgb(0,0,0)',
+    });
+    await tick();
+    const input = getInput(container);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.value).toBe('rgb(0,0,0)');
+  });
+
+  test('formats=[hex] + defaultValue="rgb(0,0,0)" leaves field empty (silent reject)', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['hex'],
+      defaultValue: 'rgb(0,0,0)',
+    });
+    const input = getInput(container);
+    expect(input.value).toBe('');
+  });
+});
+
+describe('ColorField — controlled reconcile trims whitespace', () => {
+  test('value with surrounding whitespace is accepted', async () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      value: '  #ff0000  ',
+    });
+    await tick();
+    const input = getInput(container);
+    expect(input.value).toBe('#ff0000');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+  });
+});
+
+describe('ColorField — Enter in controlled mode with equivalent syntax', () => {
+  test('controlled value + user typing equivalent syntax + Enter still submits', async () => {
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      value: '#ff0000',
+      enterBehavior: 'commit-then-submit',
+      onsubmit,
+    });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'rgb(255,0,0)' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ColorField — forwarded form attributes', () => {
+  test('required forwards to native input', () => {
+    const { container } = render(ColorField, { id: 'color', required: true });
+    const input = getInput(container);
+    expect(input.required).toBe(true);
+  });
+
+  test('readonly forwards to native input', () => {
+    const { container } = render(ColorField, { id: 'color', readonly: true });
+    const input = getInput(container);
+    expect(input.readOnly).toBe(true);
+  });
+
+  test('placeholder forwards to native input', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      placeholder: 'Pick a color',
+    });
+    const input = getInput(container);
+    expect(input.placeholder).toBe('Pick a color');
+  });
+
+  test('ariaLabel forwards as aria-label', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      ariaLabel: 'Accent color',
+    });
+    const input = getInput(container);
+    expect(input.getAttribute('aria-label')).toBe('Accent color');
+  });
+});
