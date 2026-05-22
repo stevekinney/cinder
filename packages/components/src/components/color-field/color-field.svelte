@@ -268,6 +268,15 @@
   let visibleInput: HTMLInputElement | undefined = $state();
   let hiddenMirror: HTMLInputElement | undefined = $state();
 
+  // Sync native constraint-validation state to our parse-error state so the
+  // surrounding form blocks submission via the platform's built-in
+  // mechanisms — Enter pressed on a stale-committed-value-with-bad-typed-text
+  // can't smuggle the prior hidden-mirror value through native submit.
+  $effect(() => {
+    if (!visibleInput) return;
+    visibleInput.setCustomValidity(parseError ?? '');
+  });
+
   function onFormReset(): void {
     if (initiallyControlled) return;
     if (defaultValue !== undefined && defaultValue !== '') {
@@ -396,8 +405,15 @@
   </div>
 
   <!-- Live region is rendered unconditionally so AT reliably announces text
-       inserted into it. Empty state is visually hidden via :empty styling. -->
-  <p id={ownErrorId} class="cinder-color-field__error" aria-live="polite" aria-atomic="true">
+       inserted into it. `data-empty` collapses layout without removing the
+       element from the accessibility tree. -->
+  <p
+    id={ownErrorId}
+    class="cinder-color-field__error"
+    data-empty={hasError ? undefined : ''}
+    aria-live="polite"
+    aria-atomic="true"
+  >
     {parseError ?? ''}
   </p>
 

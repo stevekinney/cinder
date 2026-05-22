@@ -506,6 +506,24 @@ describe('ColorField composition with FormField', () => {
   });
 });
 
+describe('ColorField native form validation', () => {
+  test('parse error sets a custom validity message so native submit is blocked', async () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', name: 'c' },
+    });
+    const field = findInput(container, 'cf');
+    await typeAndBlur(field, 'bogus');
+    expect(field.validity.customError).toBe(true);
+    expect(field.validationMessage).toContain('Enter a valid');
+
+    // Clearing the field via a successful commit clears the custom validity.
+    await typeAndBlur(field, '#ff0000');
+    await tick();
+    expect(field.validity.customError).toBe(false);
+    expect(field.validationMessage).toBe('');
+  });
+});
+
 describe('ColorField reset listener lifecycle', () => {
   test('reset listener is removed on unmount', async () => {
     const form = document.createElement('form');

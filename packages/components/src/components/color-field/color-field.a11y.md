@@ -18,9 +18,11 @@ Mid-typing values like `#a` or `rgb(255, 0,` aren't errors — they're intermedi
 
 ## Enter-key behavior
 
-Pressing Enter always `preventDefault()`s the browser's submit and runs the commit pipeline synchronously. When `enterBehavior='commit-then-submit'` (the default), a successful commit then re-issues `form.requestSubmit()` so the surrounding form submits with the canonical committed value. This avoids the race where the browser submits before the field has had a chance to write its parsed value.
+Pressing Enter runs the commit pipeline synchronously. On a successful commit with `enterBehavior='commit-then-submit'` (the default), the handler `preventDefault()`s the native submit and re-issues `form.requestSubmit()` so the surrounding form submits with the canonical committed value — avoiding the race where the browser submits before the field has had a chance to write its parsed value.
 
-When `enterBehavior='commit-only'`, the field commits but never submits — useful in dialogs or multi-field flows where Enter has a different meaning.
+On an empty or invalid value, the handler does not suppress the keypress; the browser's default behavior proceeds. To stop a stale-but-committed hidden mirror from being submitted under those conditions, the component calls `setCustomValidity()` with the current parse error, so the surrounding form's native constraint validation blocks the submit at the platform level.
+
+When `enterBehavior='commit-only'`, the field commits but never re-issues `requestSubmit` — useful in dialogs or multi-field flows where Enter has a different meaning.
 
 The hidden form-mirror input's `.value` is updated synchronously before `requestSubmit`, so the form's submit handler reads the canonical hex even before Svelte's reactive effects flush.
 
@@ -28,7 +30,7 @@ The hidden form-mirror input's `.value` is updated synchronously before `request
 
 When `name` is set, a sibling `<input type="hidden">` mirrors the committed hex value, so the field shows up in `FormData` and participates in native submission. When `name` is omitted, the field still works but does not contribute a payload — exactly like a native `<input>` without `name`.
 
-A separate, always-rendered, nameless hidden anchor input handles `form` association for the reset listener — it has no submission side effect and exists only so the field knows which form to listen on.
+The reset listener is attached directly to the visible `<input>` via a Svelte attachment. There is no separate anchor input — the form association comes from the visible input's own `.form` property.
 
 ## Limitations to document
 

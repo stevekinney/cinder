@@ -26,11 +26,12 @@
   font-size: var(--cinder-text-sm, 0.875rem);
 }
 
-/* Persistent live region — when empty we leave the element in the DOM and
-   accessibility tree (so AT reliably announces text inserted later) but
-   collapse it visually without `display: none` (which would remove it
-   from the a11y tree). */
-.cinder-color-field__error:empty {
+/* Persistent live region — we leave the element in the DOM and accessibility
+   tree (so AT reliably announces text inserted later) but collapse it
+   visually without `display: none` (which would remove it from the a11y
+   tree). Using a data attribute rather than `:empty` because Svelte may
+   render `{value ?? ''}` as an empty text node, which `:empty` won't match. */
+.cinder-color-field__error[data-empty] {
   margin: 0;
   height: 0;
   overflow: hidden;
