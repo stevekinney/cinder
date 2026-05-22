@@ -445,6 +445,31 @@
       }
     },
     {
+      "name": "CinderProvider",
+      "id": "cinder-provider",
+      "import": "cinder/cinder-provider",
+      "exportName": "CinderProvider",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Root-mounted context provider that shares a syntax highlighter with every descendant `<CodeBlock>`.",
+      "tags": ["context", "provider"],
+      "useWhen": [
+        "Mounting cinder in an app root and wanting every `<CodeBlock>` to share one highlighter (the canonical setup).",
+        "Scoping a different highlighter to a subtree by nesting a second `<CinderProvider>`."
+      ],
+      "avoidWhen": [
+        "Configuring highlighters per `<CodeBlock>` — the prop was removed in PR 2; the provider IS the API now."
+      ],
+      "related": ["code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/cinder-provider/schema",
+        "variables": "cinder/cinder-provider/variables",
+        "examples": "cinder/cinder-provider/examples"
+      }
+    },
+    {
       "name": "CodeBlock",
       "id": "code-block",
       "import": "cinder/code-block",
@@ -461,7 +486,7 @@
         "Annotating a single inline keystroke or shortcut — use kbd instead.",
         "Rendering rich prose that happens to include code — embed it in markdown instead."
       ],
-      "related": ["kbd", "copy-button"],
+      "related": ["kbd", "copy-button", "cinder-provider"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

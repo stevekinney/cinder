@@ -20,13 +20,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["code"],
-  "metadata": {
-    "unsupportedProps": [
-      {
-        "name": "highlighter",
-        "reason": "function-or-snippet"
-      }
-    ]
-  }
+  "required": ["code"]
 }

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Thread } from '@cinder/commentary/comments';
+  import type { Thread } from 'cinder/commentary/comments';
   import type { ReviewMode } from './review-editor-types.ts';
 
   export type ThreadPopoverProps = {
@@ -37,7 +37,7 @@
     createClickOutside,
   } from '../../utilities/attachments.ts';
   import Button from '../button/button.svelte';
-  import { isDocumentAnchor } from '@cinder/commentary/comments';
+  import { isDocumentAnchor } from 'cinder/commentary/comments';
   import CommentList from './comment-list.svelte';
   import CommentComposer from './comment-composer.svelte';
   import { X, Trash2, FileText } from '../icons/index.ts';

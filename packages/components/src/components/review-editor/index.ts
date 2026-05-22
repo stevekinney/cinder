@@ -6,7 +6,7 @@ export type {
   PersistedThread,
   ReviewState,
   Thread,
-} from '@cinder/commentary/comments';
+} from 'cinder/commentary/comments';
 export { ReviewEditor };
 
 // DEP-422: Shared types

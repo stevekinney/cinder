@@ -29,7 +29,7 @@
     ActiveBlockType,
     ActiveMarks,
     EditorSelection,
-  } from '@cinder/editor/component-runtime';
+  } from 'cinder/editor/component-runtime';
 
   import './prosemirror.css';
   import { classNames } from '../../utilities/class-names.ts';
@@ -51,7 +51,7 @@
     undo as undoCommand,
     redo as redoCommand,
     DEFAULT_DEBOUNCE_MS,
-  } from '@cinder/editor/component-runtime';
+  } from 'cinder/editor/component-runtime';
   import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import EditorSkeleton from './editor-skeleton.svelte';
@@ -65,7 +65,7 @@
   >;
 
   type MarkdownPipelineUtilities = Pick<
-    typeof import('@cinder/markdown/pipeline'),
+    typeof import('cinder/markdown/pipeline'),
     'normalize' | 'parseOrThrow'
   >;
 
@@ -176,7 +176,7 @@
     if (!browser) return;
 
     let cancelled = false;
-    void import('@cinder/markdown/pipeline').then((module) => {
+    void import('cinder/markdown/pipeline').then((module) => {
       if (!cancelled) {
         pipelineUtilities = {
           normalize: module.normalize,

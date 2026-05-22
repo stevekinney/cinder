@@ -1,3 +1,5 @@
+import type { MilkdownPlugin } from '@milkdown/ctx';
+import type { Ctx } from '@milkdown/kit/ctx';
 import type {
   ActiveBlockType,
   ActiveMarks,
@@ -5,9 +7,7 @@ import type {
   EditorSelection,
   PlaceholderCompletionConfiguration,
   PlaceholderDecorationConfiguration,
-} from '@cinder/editor/component-runtime';
-import type { MilkdownPlugin } from '@milkdown/ctx';
-import type { Ctx } from '@milkdown/kit/ctx';
+} from 'cinder/editor/component-runtime';
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 

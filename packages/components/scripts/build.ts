@@ -1,15 +1,18 @@
-import { $ } from 'bun';
+import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
+import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
+import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { createServerEntrySource } from './server-entry.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
 
 const repositoryRoot = process.cwd();
+const workspaceRoot = `${repositoryRoot}/../..`;
 const sourceRoot = `${repositoryRoot}/src`;
 const distributionDirectory = `${repositoryRoot}/dist`;
 const svelteShimsPath = Bun.resolveSync('svelte2tsx/svelte-shims-v4.d.ts', repositoryRoot);
@@ -87,6 +90,54 @@ await $`rm -rf dist`;
 process.env['NODE_ENV'] = 'production';
 
 const components = await discoverComponents();
+const upstreamReexports = await deriveUpstreamReexports();
+
+/**
+ * Entrypoints for the bundled `@cinder/*` workspace re-exports. PR 1 bundles
+ * the upstream sources into `cinder`'s `dist/` so the published package has
+ * zero runtime dependency on the four private workspace packages.
+ */
+const upstreamReexportEntrypoints = upstreamReexports.map(
+  (reexport) => `${sourceRoot}/${reexport.sourceRelativePath}`,
+);
+
+/**
+ * Transitive third-party runtime dependencies inherited from the four
+ * `@cinder/*` workspace packages. Bundling the upstream Svelte/TS source
+ * into `cinder/dist` pulls these into esbuild's resolution graph; they must
+ * stay external so they are installed from the npm registry at the consumer
+ * site (declared in `cinder`'s own `dependencies`) rather than vendored into
+ * the published bundle. Sourced from each upstream `package.json#dependencies`
+ * minus `@cinder/*` workspace entries.
+ */
+const upstreamTransitiveExternals = [
+  '@shikijs/rehype',
+  '@milkdown/kit',
+  '@milkdown/prose',
+  '@milkdown/kit/*',
+  '@milkdown/prose/*',
+  'comlink',
+  'diff-match-patch',
+  'hast-util-sanitize',
+  'js-yaml',
+  'prosemirror-inputrules',
+  'prosemirror-model',
+  'prosemirror-state',
+  'prosemirror-view',
+  'rehype-katex',
+  'rehype-sanitize',
+  'rehype-stringify',
+  'remark-gfm',
+  'remark-html',
+  'remark-math',
+  'remark-parse',
+  'remark-rehype',
+  'remark-stringify',
+  'shiki',
+  'unified',
+  'unist-util-remove',
+  'unist-util-visit',
+];
 
 // Pre-emit sidecar lint: every component CSS that exists must conform to the
 // "scoped + custom properties only" contract before any output lands in
@@ -126,7 +177,7 @@ const serverBuildResult = await Bun.build({
   },
   sourcemap: 'external',
   minify: false,
-  external: ['@cinder/*', 'svelte'],
+  external: ['svelte', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   plugins: [sveltePlugin({ generate: 'server' })],
 });
 
@@ -146,7 +197,32 @@ if (!serverBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
-const browserEntrypoints = [`${sourceRoot}/index.ts`, ...perComponentEntrypoints];
+
+/**
+ * Static sub-paths cinder exposes outside the `components/` tree. Today this
+ * is the first-party Shiki adapter at `cinder/highlighters/shiki`; new
+ * non-component static sub-paths get listed here so the build emits a
+ * predictable `dist/<rel>.js` for each one. `shiki` itself stays external
+ * (declared in cinder's `dependencies` + the `upstreamTransitiveExternals`
+ * list) — the adapter dynamic-imports it lazily so consumers who never use
+ * `cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
+ */
+const staticSubpathEntrypoints = [`${sourceRoot}/highlighters/shiki/index.ts`];
+
+const browserEntrypoints = [
+  `${sourceRoot}/index.ts`,
+  ...perComponentEntrypoints,
+  ...staticSubpathEntrypoints,
+];
+// `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
+// the upstream packages have already produced fully-baked `dist/` trees
+// (workers, source maps, declarations) through their own builds. Re-bundling
+// them here drops Vite-specific patterns like
+// `new Worker(new URL('./worker.js', import.meta.url))` because esbuild
+// treats `import.meta.url` as opaque. Instead, step 5c below copies each
+// upstream's `dist/**` verbatim into `packages/components/dist/<pkg>/` and
+// rewrites cross-package `@cinder/*` specifiers to relative paths.
+void upstreamReexportEntrypoints;
 
 // `splitting: false` is a deliberate trade-off mandated by the Track 4 plan:
 // it gives each entrypoint a predictable, single-file output so the eventual
@@ -164,7 +240,7 @@ const browserBuildResult = await Bun.build({
   target: 'browser',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', '@cinder/*'],
+  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -190,13 +266,13 @@ if (!browserBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentServerBuildResult = await Bun.build({
-  entrypoints: perComponentEntrypoints,
+  entrypoints: [...perComponentEntrypoints, ...staticSubpathEntrypoints],
   outdir: `${distributionDirectory}/server`,
   root: sourceRoot,
   target: 'node',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', '@cinder/*'],
+  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -245,6 +321,246 @@ await emitDts({
 });
 
 // -----------------------------------------------------------------------------
+// 5b. Vendor upstream `@cinder/*` build output verbatim into cinder's dist.
+//
+//     The four upstream workspace packages emit their own `dist/` trees via
+//     their per-package build. Those trees include patterns esbuild can't
+//     safely re-bundle — notably
+//     `new Worker(new URL('./render-worker.js', import.meta.url))` and the
+//     companion worker source file. Re-bundling drops the worker entirely
+//     and breaks consumers under Vite + the Svelte plugin.
+//
+//     Instead, we:
+//       1. Build each upstream first so its `dist/` is fresh.
+//       2. Copy each upstream's entire `dist/**` into
+//          `packages/components/dist/<pkg>/` (browser) and
+//          `packages/components/dist/server/<pkg>/` (server), mirroring the
+//          upstream's internal layout. Workers, assets, and source maps come
+//          along untouched.
+//       3. Rewrite every `@cinder/<pkg>[/subpath]` import specifier in the
+//          copied JS/`.d.ts` to a relative path within the vendored tree, so
+//          `dist/markdown/diff/line-diff.js` referencing `@cinder/diff/line-diff`
+//          becomes `../../diff/line-diff` (no unresolvable `@cinder/*` after
+//          install).
+//
+//     The cinder exports map points `./<pkg>[/subpath]` directly at the
+//     vendored files via `cinderExportEntry` in
+//     `scripts/lib/derive-upstream-reexports.ts`.
+// -----------------------------------------------------------------------------
+
+const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as const;
+
+// Build each upstream package so its `dist/` is fresh. The four packages
+// are independent (no upstream depends on another), so the builds run in
+// parallel — this cuts ~30s off every `bun run build` on warm caches.
+await Promise.all(
+  upstreamPackageNames.map(async (upstreamName) => {
+    const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
+    const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
+    if (buildResult.exitCode !== 0) {
+      process.stderr.write(
+        `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
+          `${buildResult.stderr.toString()}\n`,
+      );
+      process.exit(1);
+    }
+  }),
+);
+
+/**
+ * Rewrite every `@cinder/<pkg>[/subpath]` import specifier in a file's
+ * content to a relative path pointing at the sibling vendored upstream tree.
+ *
+ * Called for each file under `dist/<pkg>/**` after a verbatim copy. The
+ * relative target depends on how deep the file lives under
+ * `dist/<originPkg>/`.
+ */
+/** Sites where the rewrite couldn't resolve the target file. */
+type RewriteMiss = {
+  file: string;
+  specifier: string;
+};
+
+function rewriteCrossUpstreamSpecifiers(
+  content: string,
+  fileDistRelative: string,
+  misses: RewriteMiss[],
+): string {
+  // `fileDistRelative` is e.g. `markdown/diff/line-diff.js`. `dirname` gives
+  // `markdown/diff`; the relative walk back to `dist/` is `../..`.
+  const fileDirectory = dirname(fileDistRelative);
+  const upwards =
+    fileDirectory === '.'
+      ? '.'
+      : fileDirectory
+          .split('/')
+          .map(() => '..')
+          .join('/');
+  // Node ESM under `module: nodenext` rejects extensionless relative
+  // imports, so we materialize the target file path explicitly:
+  //   - `@cinder/markdown`           → `<up>/markdown/index.js`
+  //   - `@cinder/markdown/pipeline`  → `<up>/markdown/pipeline.js` if there
+  //     is a `pipeline.js` file at that path, otherwise `<up>/markdown/pipeline/index.js`.
+  //   - `@cinder/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
+  // The disambiguation depends on whether the target subpath is a directory
+  // entry or a leaf file; we resolve that lazily by checking the vendored
+  // dist for an `<subpath>/index.js`. If neither candidate exists the
+  // rewrite cannot produce a valid Node ESM specifier — the caller fails
+  // the build via the `misses` array instead of silently emitting an
+  // extensionless path that would yield a broken module (and pass the
+  // `@cinder/` residue gate because the prefix is gone).
+  return content.replace(
+    /(['"])@cinder\/(markdown|editor|commentary|diff)(\/[^'"]*)?\1/g,
+    (_match, quote: string, pkg: string, rest: string | undefined) => {
+      const subpath = rest ?? '';
+      if (subpath === '') {
+        return `${quote}${upwards}/${pkg}/index.js${quote}`;
+      }
+      // Check whether the subpath resolves to a directory entry by looking
+      // at the vendored upstream dist on disk. If `dist/<pkg><subpath>/index.js`
+      // exists, the import target is the index file; otherwise it's a leaf
+      // `dist/<pkg><subpath>.js`.
+      const directoryCandidate = `${distributionDirectory}/${pkg}${subpath}/index.js`;
+      const leafCandidate = `${distributionDirectory}/${pkg}${subpath}.js`;
+      if (existsSync(directoryCandidate)) {
+        return `${quote}${upwards}/${pkg}${subpath}/index.js${quote}`;
+      }
+      if (existsSync(leafCandidate)) {
+        return `${quote}${upwards}/${pkg}${subpath}.js${quote}`;
+      }
+      // Record the miss; the caller will abort the build after the pass.
+      // We return the original specifier shape so the post-pass residue
+      // gate also sees it (defense in depth — if for some reason the
+      // miss collection isn't checked, the `@cinder/` token remains and
+      // the residue gate trips).
+      misses.push({ file: fileDistRelative, specifier: `@cinder/${pkg}${subpath}` });
+      return `${quote}@cinder/${pkg}${subpath}${quote}`;
+    },
+  );
+}
+
+async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
+  const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
+  const destinationDist = `${destinationRoot}/${upstreamName}`;
+  if (!existsSync(sourceDist)) {
+    process.stderr.write(
+      `Build aborted: expected upstream dist ${sourceDist} to exist after upstream build.\n`,
+    );
+    process.exit(1);
+  }
+  const glob = new Glob('**/*');
+  for await (const relative of glob.scan({ cwd: sourceDist })) {
+    const sourcePath = `${sourceDist}/${relative}`;
+    const destinationPath = `${destinationDist}/${relative}`;
+    await mkdir(dirname(destinationPath), { recursive: true });
+    const bytes = await Bun.file(sourcePath).bytes();
+    await Bun.write(destinationPath, bytes);
+  }
+}
+
+// First pass: copy every upstream dist verbatim into both `dist/<pkg>/` and
+// `dist/server/<pkg>/`. Specifier rewrites happen in the second pass so
+// `rewriteCrossUpstreamSpecifiers` can probe sibling vendored trees on
+// disk to disambiguate directory-style vs leaf-style imports. Each copy
+// writes to a disjoint destination directory, so they run in parallel.
+await Promise.all(
+  upstreamPackageNames.flatMap((upstreamName) => [
+    copyUpstreamDistInto(upstreamName, distributionDirectory),
+    copyUpstreamDistInto(upstreamName, `${distributionDirectory}/server`),
+  ]),
+);
+
+// Second pass: rewrite `@cinder/*` import specifiers across every text
+// artifact. Files under `dist/server/**` are walked with `dist/server/` as
+// their root so the relative `../..` hops point at sibling server files,
+// not back into the browser tree. Files outside `dist/server/**` are walked
+// with `dist/` as root.
+async function rewriteSpecifiersUnder(
+  root: string,
+  options: { skipPrefix?: string } = {},
+): Promise<RewriteMiss[]> {
+  const misses: RewriteMiss[] = [];
+  // Only JS and `.d.ts` artifacts carry import specifiers the rewrite needs
+  // to touch. `*.map` files are vendored upstream source maps (including
+  // any `sourcesContent`) — rewriting them mutates debugging metadata that
+  // should stay verbatim, and the post-build residue gate only scans
+  // JS/`.d.ts` anyway. Keep maps out of the rewrite pass.
+  const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
+  for await (const relative of textGlob.scan({ cwd: root })) {
+    if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
+    const filePath = `${root}/${relative}`;
+    const original = await Bun.file(filePath).text();
+    if (!original.includes('@cinder/')) continue;
+    const rewritten = rewriteCrossUpstreamSpecifiers(original, relative, misses);
+    if (rewritten !== original) {
+      await Bun.write(filePath, rewritten);
+    }
+  }
+  return misses;
+}
+
+const rewriteMisses: RewriteMiss[] = [
+  ...(await rewriteSpecifiersUnder(`${distributionDirectory}/server`)),
+  ...(await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' })),
+];
+
+if (rewriteMisses.length > 0) {
+  process.stderr.write(
+    'Build aborted: rewriteCrossUpstreamSpecifiers could not resolve target files for the\n' +
+      'following specifiers — neither a directory `index.js` nor a leaf `.js` exists in the\n' +
+      'vendored upstream tree. An extensionless relative path here would yield a module\n' +
+      'Node ESM rejects under `module: nodenext`. Check that the upstream `dist/` actually\n' +
+      'emits the file these specifiers reference; if it does, the verbatim-copy step in\n' +
+      'build.ts likely missed it (a new file extension or directory layout the copy glob\n' +
+      "doesn't match):\n" +
+      rewriteMisses.map((m) => `  ${m.file}  →  ${m.specifier}`).join('\n') +
+      '\n',
+  );
+  process.exit(1);
+}
+
+// Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
+// file for surviving quoted `@cinder/*` import specifiers. `validate-consumers`
+// runs the same check against the published tarball, but that flow takes
+// minutes; this one catches the same class of bug at the end of `bun run
+// build` (~ms) so a missed rewrite surfaces immediately instead of waiting
+// for the slow consumer-validation pass.
+{
+  // Comment-stripping + pattern logic lives in
+  // `lib/cinder-specifier-residue.ts` so this gate and the slower tarball
+  // gate in `validate-consumers.ts` share one implementation — previously
+  // each maintained its own line-skip ladder, and a single-line
+  // `/* x */ import from '@cinder/...'` could bypass both.
+  const residueGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
+  const residueOffenders: string[] = [];
+  for await (const relative of residueGlob.scan({ cwd: distributionDirectory })) {
+    const filePath = `${distributionDirectory}/${relative}`;
+    const content = await Bun.file(filePath).text();
+    if (!content.includes('@cinder/')) continue;
+    const scanState: CommentScanState = { inBlockComment: false };
+    let hit = false;
+    for (const rawLine of content.split('\n')) {
+      if (lineHasCinderResidue(rawLine, scanState)) {
+        hit = true;
+        break;
+      }
+    }
+    if (hit) residueOffenders.push(relative);
+  }
+  if (residueOffenders.length > 0) {
+    process.stderr.write(
+      'Build aborted: unresolved @cinder/* specifiers remain after rewrite:\n' +
+        residueOffenders.map((file) => `  ${file}`).join('\n') +
+        '\n' +
+        'If the offender is a computed `import(`@cinder/${...}`)`, the rewrite\n' +
+        'pass cannot safely transform it — change the upstream source to use a\n' +
+        'static specifier instead.\n',
+    );
+    process.exit(1);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // 6. Hard acceptance checks. Verify the output shape matches the contract
 //    rather than trust the build's success flag. Fails loudly so a future
 //    `Bun.build()` change that quietly drops outputs surfaces immediately.
@@ -255,6 +571,10 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/index.d.ts`,
   `${distributionDirectory}/server/index.js`,
   `${distributionDirectory}/components/button/button.svelte.d.ts`,
+  // Static sub-paths emitted alongside the components tree.
+  `${distributionDirectory}/highlighters/shiki/index.js`,
+  `${distributionDirectory}/highlighters/shiki/index.d.ts`,
+  `${distributionDirectory}/server/highlighters/shiki/index.js`,
 ];
 
 for (const component of components) {
@@ -273,6 +593,18 @@ for (const component of components) {
   if (existsSync(componentCssSource(component))) {
     expectedPaths.push(componentCssDestination(component));
   }
+}
+
+// Post-build resolution gate for the bundled `@cinder/*` re-exports. Each
+// sub-path in `package.json#exports` for the four upstream packages must
+// resolve to a real file in `dist/` (and a matching `.d.ts` for the `types`
+// condition) so consumers cannot import a dead sub-path.
+for (const reexport of upstreamReexports) {
+  expectedPaths.push(`${distributionDirectory}/${reexport.distRelativePath}`);
+  expectedPaths.push(
+    `${distributionDirectory}/${reexport.distRelativePath.replace(/\.js$/, '.d.ts')}`,
+  );
+  expectedPaths.push(`${distributionDirectory}/server/${reexport.distRelativePath}`);
 }
 
 const missingPaths = expectedPaths.filter((path) => !existsSync(path));

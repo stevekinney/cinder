@@ -1,18 +1,64 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
 
 const { render, waitFor } = await import('@testing-library/svelte');
+const { default: CinderProvider } = await import('../cinder-provider/cinder-provider.svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
+
+type CodeBlockTestProps = {
+  code: string;
+  language?: string;
+  copyable?: boolean;
+  class?: string;
+};
 
 async function renderHighlightedCode(code: string, _lang: string): Promise<string> {
   return `<pre class="shiki"><code><span class="highlighted-token">${code}</span></code></pre>`;
 }
 
-describe('CodeBlock', () => {
+/**
+ * Render a CodeBlock inside a CinderProvider so the highlighter context is
+ * established before CodeBlock calls `getHighlighterContext()`. Mirrors the
+ * accordion-item test helper pattern: `createRawSnippet` returns a wrapper
+ * `<div>`, then we mount the CodeBlock into it via Svelte's `mount`.
+ *
+ * Returns the @testing-library/svelte container (the provider root), which
+ * includes the rendered CodeBlock in its subtree.
+ */
+function renderWithProvider(
+  props: CodeBlockTestProps,
+  options: { highlighter?: Highlighter } = {},
+) {
+  return render(CinderProvider, {
+    props: {
+      ...(options.highlighter !== undefined ? { highlighter: options.highlighter } : {}),
+      children: createRawSnippet(() => ({
+        render: () => `<div class="code-block-mount"></div>`,
+        setup: (node: Element) => {
+          const instance = mount(CodeBlock, {
+            target: node,
+            props,
+          });
+          return () => {
+            unmount(instance);
+          };
+        },
+      })),
+    },
+  });
+}
+
+describe('CodeBlock (no provider in scope)', () => {
+  // The "no provider" path is a first-class state: CodeBlock renders the
+  // unhighlighted fallback. `render()` calls without a wrapping provider
+  // exercise that branch.
+
   test('renders code in a <pre><code> pair', () => {
     const { container } = render(CodeBlock, { code: 'const x = 1;' });
     const pre = container.querySelector('pre');
@@ -20,7 +66,7 @@ describe('CodeBlock', () => {
     expect(pre?.querySelector('code')?.textContent).toBe('const x = 1;');
   });
 
-  test('language prop renders an uppercase language label', () => {
+  test('language prop renders a language label in the header', () => {
     const { container } = render(CodeBlock, { code: 'const x', language: 'ts' });
     const label = container.querySelector('.cinder-code-block__language');
     expect(label?.textContent?.trim()).toBe('ts');
@@ -38,9 +84,6 @@ describe('CodeBlock', () => {
   });
 
   test('copyable=true renders the copy button in iconOnly mode (no text label)', () => {
-    // The component hardcodes iconOnly={true} on its embedded CopyButton because
-    // headers are space-constrained. This test guards against an accidental
-    // change to that contract.
     const { container } = render(CodeBlock, { code: 'x', copyable: true });
     const button = container.querySelector('.cinder-copy-button');
     expect(button).not.toBeNull();
@@ -48,28 +91,32 @@ describe('CodeBlock', () => {
     expect(button?.textContent?.trim()).toBe('');
   });
 
-  test('no highlighter prop renders plain unhighlighted code', () => {
-    const { container } = render(CodeBlock, { code: 'const x = 1;' });
-    expect(container.querySelector('pre code')?.textContent).toBe('const x = 1;');
+  test('renders the unhighlighted fallback even when language is set', () => {
+    // No provider in scope → no highlighter → plain `<pre><code>{code}</code></pre>`
+    // regardless of whether `language` is provided.
+    const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+    expect(container.querySelector('pre.cinder-code-block__pre')).not.toBeNull();
+    expect(container.querySelector('.highlighted-token')).toBeNull();
   });
 
-  test('plain code path escapes HTML special characters', () => {
-    // Svelte text interpolation `{code}` escapes by default. This regression test
-    // catches a future refactor that accidentally moves the no-highlighter path
-    // into an `{@html}` render and exposes XSS.
+  test('plain code path escapes HTML special characters (XSS fallback)', () => {
+    // Svelte text interpolation `{code}` escapes by default. This regression
+    // test catches a future refactor that accidentally moves the
+    // no-highlighter path into an `{@html}` render and exposes XSS.
     const { container } = render(CodeBlock, { code: '<script>alert(1)</script>' });
     const code = container.querySelector('.cinder-code-block__code');
     expect(code?.textContent).toBe('<script>alert(1)</script>');
     // No actual <script> element should be present in the rendered DOM.
     expect(container.querySelector('script')).toBeNull();
   });
+});
 
+describe('CodeBlock (CinderProvider in scope)', () => {
   test('highlighter output replaces the plain pre/code and renders verbatim', async () => {
-    const { container } = render(CodeBlock, {
-      code: 'const x = 1;',
-      language: 'js',
-      highlighter: renderHighlightedCode,
-    });
+    const { container } = renderWithProvider(
+      { code: 'const x = 1;', language: 'js' },
+      { highlighter: renderHighlightedCode },
+    );
     await waitFor(() => {
       const token = container.querySelector('.highlighted-token');
       expect(token).not.toBeNull();
@@ -80,57 +127,45 @@ describe('CodeBlock', () => {
   });
 
   test('synchronous highlighter exception falls back to plain code', async () => {
-    const { container } = render(CodeBlock, {
-      code: 'const x = 1;',
-      language: 'js',
-      highlighter: () => {
-        throw new Error('boom');
+    const { container } = renderWithProvider(
+      { code: 'const x = 1;', language: 'js' },
+      {
+        highlighter: () => {
+          throw new Error('boom');
+        },
       },
-    });
-    // The async wrapper inside the effect catches sync throws and flips back to plain.
+    );
     await waitFor(() => {
       expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('const x = 1;');
     });
   });
 
   test('async highlighter rejection falls back to plain code', async () => {
-    // Companion to the sync-throw test above. Verifies the async branch of the
-    // catch handler — a highlighter that returns a rejected Promise must also
-    // produce the graceful plain-code fallback.
-    const { container } = render(CodeBlock, {
-      code: 'const y = 2;',
-      language: 'js',
-      highlighter: async () => {
-        throw new Error('async boom');
+    const { container } = renderWithProvider(
+      { code: 'const y = 2;', language: 'js' },
+      {
+        highlighter: async () => {
+          throw new Error('async boom');
+        },
       },
-    });
+    );
     await waitFor(() => {
       expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('const y = 2;');
     });
   });
 
-  test('header is structurally present on the code-block when copyable', () => {
-    // Padding parity (Issue 6): with a header, the __pre still renders inside the
-    // same .cinder-code-block container as the headerless variant, so they share
-    // the same padding rules from code-block.css. Assert the relationship rather
-    // than computed styles since happy-dom doesn't apply external stylesheets.
-    const { container } = render(CodeBlock, { code: 'x', copyable: true, language: 'sql' });
-    const block = container.querySelector('.cinder-code-block');
-    expect(block?.querySelector('.cinder-code-block__header')).not.toBeNull();
-    expect(block?.querySelector('.cinder-code-block__pre')).not.toBeNull();
-  });
-
   test('empty highlighter output falls back to plain code', async () => {
     let resolveHighlightedCode: ((html: string) => void) | undefined;
-    const { container } = render(CodeBlock, {
-      code: 'const visible = true;',
-      language: 'js',
-      highlighter: async () => {
-        return await new Promise<string>((resolve) => {
-          resolveHighlightedCode = resolve;
-        });
+    const { container } = renderWithProvider(
+      { code: 'const visible = true;', language: 'js' },
+      {
+        highlighter: async () => {
+          return await new Promise<string>((resolve) => {
+            resolveHighlightedCode = resolve;
+          });
+        },
       },
-    });
+    );
 
     await waitFor(() => {
       expect(resolveHighlightedCode).toBeDefined();
@@ -142,5 +177,20 @@ describe('CodeBlock', () => {
         'const visible = true;',
       );
     });
+  });
+
+  test('provider with no highlighter prop renders the unhighlighted fallback', () => {
+    // Mounting `<CinderProvider>` without a highlighter is equivalent to no
+    // provider at all — every descendant CodeBlock falls back to plain text.
+    const { container } = renderWithProvider({ code: 'const a = 1;', language: 'js' });
+    expect(container.querySelector('.cinder-code-block__pre')).not.toBeNull();
+    expect(container.querySelector('.highlighted-token')).toBeNull();
+  });
+
+  test('header is structurally present on the code-block when copyable', () => {
+    const { container } = renderWithProvider({ code: 'x', copyable: true, language: 'sql' });
+    const block = container.querySelector('.cinder-code-block');
+    expect(block?.querySelector('.cinder-code-block__header')).not.toBeNull();
+    expect(block?.querySelector('.cinder-code-block__pre')).not.toBeNull();
   });
 });

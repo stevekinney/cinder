@@ -1,5 +1,11 @@
 <script lang="ts" module>
-  type RenderingModule = typeof import('@cinder/markdown/rendering');
+  // Resolve the markdown rendering module through `cinder/markdown/rendering`
+  // — the published `cinder` package re-exports it as a sub-path, while
+  // `@cinder/markdown` itself is not in the published runtime deps. Using
+  // the cinder sub-path keeps this component shippable through the
+  // `svelte` export condition without requiring consumers to install
+  // private workspace packages.
+  type RenderingModule = typeof import('cinder/markdown/rendering');
   type Highlighter = Awaited<ReturnType<RenderingModule['getHighlighter']>>;
 
   export type ToolPayloadCodeProps = {
@@ -13,7 +19,7 @@
   let highlighterPromise: Promise<Highlighter> | undefined;
 
   async function getRenderingModule(): Promise<RenderingModule> {
-    renderingModulePromise ??= import('@cinder/markdown/rendering');
+    renderingModulePromise ??= import('cinder/markdown/rendering');
     return renderingModulePromise;
   }
 
@@ -25,6 +31,7 @@
 </script>
 
 <script lang="ts">
+  import CinderProvider from '../../cinder-provider/cinder-provider.svelte';
   import CodeBlock from '../../code-block/code-block.svelte';
   import { classNames } from '../../../utilities/class-names.ts';
 
@@ -39,7 +46,12 @@
 </script>
 
 <div class={classNames('tool-payload-code', className)}>
-  <CodeBlock {code} language="json" highlighter={highlightJson} />
+  <!-- Scoped highlighter: wrap a local CinderProvider so this tool-payload
+       always gets the JSON/depict highlighter regardless of what the app
+       root provider supplies. The nearest provider wins. -->
+  <CinderProvider highlighter={highlightJson}>
+    <CodeBlock {code} language="json" />
+  </CinderProvider>
 </div>
 
 <style>

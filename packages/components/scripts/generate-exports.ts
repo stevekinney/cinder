@@ -42,8 +42,16 @@
  */
 
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdir, readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
+import {
+  cinderExportEntry,
+  deriveUpstreamReexports,
+  reexportFileBody,
+  reexportSourceAbsolutePath,
+  type UpstreamReexport,
+} from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 
 export type { ComponentDiscovery } from './lib/discover-components.ts';
@@ -74,6 +82,7 @@ const STYLES_TOKENS_KEY = './styles/tokens';
 const STYLES_FOUNDATION_KEY = './styles/foundation';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
+const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 
 /**
  * Keys that the generator owns at the top level but never emits via
@@ -87,7 +96,23 @@ const RESERVED_KEYS = new Set([
   STYLES_TOKENS_KEY,
   STYLES_FOUNDATION_KEY,
   PACKAGE_JSON_KEY,
+  HIGHLIGHTERS_SHIKI_KEY,
 ]);
+
+/**
+ * Canonical four-condition entry for `cinder/highlighters/shiki`. Hand-shaped
+ * because the adapter is a single static sub-path (not a discovered component
+ * and not an upstream re-export); the generator stitches this in alongside
+ * the styles entries.
+ */
+function highlightersShikiExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/highlighters/shiki/index.d.ts',
+    svelte: './src/highlighters/shiki/index.ts',
+    node: './dist/server/highlighters/shiki/index.js',
+    default: './dist/highlighters/shiki/index.js',
+  });
+}
 
 /**
  * The exports map must never contain entries whose key contains a forbidden
@@ -152,6 +177,22 @@ function manifestExport(): JsonExportEntry {
 /** Build a JSON-only export entry for a per-component sidecar file. */
 function jsonSidecarExport(filePath: string): JsonExportEntry {
   return { import: filePath, default: filePath };
+}
+
+/**
+ * Compute the cinder-side exports entries for every public sub-path of the
+ * four `@cinder/*` workspace packages. Each entry mirrors the four-condition
+ * shape used by component sub-paths so in-repo Svelte tooling resolves the
+ * generated `.ts` source while published consumers resolve `dist/`.
+ */
+export function computeUpstreamReexports(
+  reexports: UpstreamReexport[],
+): Record<string, ExportEntry> {
+  const out: Record<string, ExportEntry> = {};
+  for (const reexport of reexports) {
+    out[reexport.cinderKey] = orderedExportEntry(cinderExportEntry(reexport));
+  }
+  return out;
 }
 
 export function computeExports(
@@ -250,8 +291,10 @@ export function computeExports(
 export function assertNoForbiddenExportKeys(
   exportsMap: Record<string, unknown>,
   pattern: RegExp = FORBIDDEN_EXPORT_KEY_PATTERN,
+  allowList: ReadonlySet<string> = new Set(),
 ): void {
   for (const key of Object.keys(exportsMap)) {
+    if (allowList.has(key)) continue;
     if (pattern.test(key)) {
       throw new Error(
         `Forbidden exports key "${key}" matches /${pattern.source}/${pattern.flags} — refusing to publish`,
@@ -270,14 +313,26 @@ async function main(): Promise<void> {
   const packageJsonPath = join(import.meta.dir, '..', 'package.json');
   const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
 
+  // Derive upstream re-exports first so the forbidden-key guard knows which
+  // keys are legitimate even when they contain segments like `test-utilities`
+  // (a public `@cinder/editor` sub-path) that would otherwise trip the
+  // pattern.
+  const upstreamReexports = await deriveUpstreamReexports();
+  const upstreamAllowList = new Set(upstreamReexports.map((r) => r.cinderKey));
+
   // First gate: surface any forbidden keys already on disk BEFORE we filter
   // or rewrite anything. Otherwise generate mode would silently drop a key
   // like `./__debug` during regeneration and never raise it as a violation.
   // Track 3 requires the guard to fire in both check and generate modes.
-  assertNoForbiddenExportKeys(packageJson.exports);
+  assertNoForbiddenExportKeys(packageJson.exports, FORBIDDEN_EXPORT_KEY_PATTERN, upstreamAllowList);
 
   const components = await discoverComponents();
-  const computed = computeExports(components);
+  const componentComputed = computeExports(components);
+  const upstreamComputed = computeUpstreamReexports(upstreamReexports);
+  const computed: Record<string, ExportEntry | JsonExportEntry> = {
+    ...componentComputed,
+    ...upstreamComputed,
+  };
   const rootExport = computeRootExport();
 
   // Collision check: any computed subpath that collides with a reserved
@@ -289,9 +344,37 @@ async function main(): Promise<void> {
     }
   }
 
+  // Component sub-paths and upstream re-export sub-paths must not collide
+  // (e.g. a component named `markdown` would clash with the `./markdown`
+  // upstream entry). Surface as a hard error rather than silently
+  // overwriting one with the other.
+  for (const key of Object.keys(upstreamComputed)) {
+    if (key in componentComputed) {
+      process.stderr.write(
+        `exports collision: upstream re-export "${key}" overlaps a component sub-path\n`,
+      );
+      process.exit(1);
+    }
+  }
+
   if (checkMode) {
     const existing = packageJson.exports;
     const issues: string[] = [];
+
+    // Drift check: every generated re-export source file must exist on disk
+    // and match the canonical body.
+    for (const reexport of upstreamReexports) {
+      const filePath = reexportSourceAbsolutePath(reexport);
+      if (!existsSync(filePath)) {
+        issues.push(`Missing upstream re-export source: ${filePath}`);
+        continue;
+      }
+      const expectedBody = reexportFileBody(reexport.upstreamSpecifier, reexport);
+      const actualBody = await readFile(filePath, 'utf8');
+      if (actualBody !== expectedBody) {
+        issues.push(`Stale upstream re-export source: ${filePath}`);
+      }
+    }
 
     // Root entry: must match the four-condition ordered shape exactly.
     if (!existing[ROOT_KEY]) {
@@ -306,6 +389,14 @@ async function main(): Promise<void> {
     }
     if (!existing[STYLES_FOUNDATION_KEY]) {
       issues.push(`Reserved export "${STYLES_FOUNDATION_KEY}" is missing`);
+    }
+
+    const expectedShikiEntry = highlightersShikiExport();
+    const currentShikiEntry = existing[HIGHLIGHTERS_SHIKI_KEY];
+    if (!currentShikiEntry) {
+      issues.push(`Reserved export "${HIGHLIGHTERS_SHIKI_KEY}" is missing`);
+    } else if (JSON.stringify(currentShikiEntry) !== JSON.stringify(expectedShikiEntry)) {
+      issues.push(`Stale reserved export "${HIGHLIGHTERS_SHIKI_KEY}"`);
     }
 
     if (existing[PACKAGE_JSON_KEY] !== './package.json') {
@@ -363,6 +454,7 @@ async function main(): Promise<void> {
   if (packageJson.exports[STYLES_FOUNDATION_KEY]) {
     next[STYLES_FOUNDATION_KEY] = packageJson.exports[STYLES_FOUNDATION_KEY];
   }
+  next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 
   // Preserve legacy flat component subpaths whose component still exists as
   // a flat .svelte file (not yet migrated to a directory).
@@ -393,13 +485,22 @@ async function main(): Promise<void> {
     next[key] = entry;
   }
 
-  assertNoForbiddenExportKeys(next);
+  assertNoForbiddenExportKeys(next, FORBIDDEN_EXPORT_KEY_PATTERN, upstreamAllowList);
 
   packageJson.exports = next;
   await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 
+  // Emit (or refresh) the generated re-export source files. They are part of
+  // the exports contract — drift detection lives in --check mode above.
+  for (const reexport of upstreamReexports) {
+    const filePath = reexportSourceAbsolutePath(reexport);
+    await mkdir(dirname(filePath), { recursive: true });
+    await Bun.write(filePath, reexportFileBody(reexport.upstreamSpecifier, reexport));
+  }
+
   process.stdout.write(
-    `exports:generate — wrote ${Object.keys(computed).length} computed subpaths (${components.length} components)\n`,
+    `exports:generate — wrote ${Object.keys(computed).length} computed subpaths ` +
+      `(${components.length} components, ${upstreamReexports.length} upstream re-exports)\n`,
   );
 }
 

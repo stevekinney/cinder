@@ -45,6 +45,46 @@ import 'cinder/styles';
 That single import wires up the design tokens, base resets, and every
 component's CSS. There is no per-component CSS to import.
 
+### Provider setup (highlighter context)
+
+`<CodeBlock>` resolves its syntax highlighter through Svelte context. Mount
+**one** `<CinderProvider>` near your app root and every descendant
+`<CodeBlock>` shares the highlighter. The recommended default is the
+bundled `cinder/highlighters/shiki` adapter:
+
+```svelte
+<script lang="ts">
+  import { CinderProvider } from 'cinder';
+  import { shikiHighlighter } from 'cinder/highlighters/shiki';
+
+  const highlighter = shikiHighlighter();
+</script>
+
+<CinderProvider {highlighter}>
+  <!-- the rest of your app -->
+</CinderProvider>
+```
+
+`shikiHighlighter()` accepts a `theme` (single string or
+`{ light, dark }` for CSS-variable-driven dual-theme mode) and an
+optional `langs` array to preload specific grammars. Shiki itself is
+lazy-imported on the first highlight call, so consumers that never
+mount this adapter ship zero Shiki bytes in their entry chunk.
+
+`<CodeBlock>` rendered without an ancestor provider (or with a provider
+that supplies no `highlighter`) falls back to escaped plaintext — the
+"no syntax highlighting" state is a first-class supported render. The
+adapter follows the same fallback contract: empty/missing/unknown
+languages render as escaped plaintext rather than throwing.
+
+The provider is reactive: assigning a new `highlighter` re-renders every
+descendant `<CodeBlock>`. Nest a second `<CinderProvider>` to scope a
+different highlighter to a subtree (the nearest provider wins). For a
+custom highlighter, implement the `Highlighter` type from `cinder` and
+pass it to `<CinderProvider highlighter={...}>` — the function receives
+`(code, lang)` and must return safe HTML (Shiki's `codeToHtml` escapes
+input by default; if you build your own, escape the code yourself).
+
 ### Discovery recipe (the agent contract)
 
 This is the part that matters. Every component ships machine-readable
@@ -210,8 +250,12 @@ scope and you should wire them up yourself:
   take them as snippets or slots — pass an `<svg>`, a Lucide component,
   whatever you ship.
 - **No data fetching.** Components render the data you hand them.
-- **No global state.** There is no `cinder` store, context provider, or
-  initialization step beyond the styles import.
+- **No global state.** There is no `cinder` store or initialization step
+  beyond the styles import. The one optional context provider is
+  `<CinderProvider>` — it scopes a syntax highlighter to its subtree for
+  `<CodeBlock>` to read; see "Provider setup" above. Mount it only if you
+  want syntax highlighting; the unhighlighted code-block render is the
+  no-provider state.
 
 ---
 

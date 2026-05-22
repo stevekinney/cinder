@@ -4,7 +4,9 @@
   import Accordion from '../../components/src/components/accordion/index.ts';
   import AccordionItem from '../../components/src/components/accordion-item/index.ts';
   import Card from '../../components/src/components/card/index.ts';
+  import CinderProvider from '../../components/src/components/cinder-provider/index.ts';
   import CodeBlock from '../../components/src/components/code-block/index.ts';
+  import { shikiHighlighter } from '../../components/src/highlighters/shiki/index.ts';
 
   type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
   type CinderWindow = Window &
@@ -19,6 +21,18 @@
   }
 
   const examples: CinderExampleDescriptor[] = readExamples();
+
+  // One CinderProvider for the entire page so the "View source" CodeBlocks
+  // below render their Svelte source highlighted. Examples mount in
+  // independent Svelte trees (see the mount() call further down) so they do
+  // NOT inherit this provider — the dedicated cinder-provider examples
+  // demonstrate how a real app wires highlighting at its root.
+  //
+  // Use the bundled `shikiHighlighter` adapter so this file matches the
+  // documented consumer pattern (lazy `import('shiki')` on first highlight,
+  // shared fallback contract, warn-once behavior) instead of pulling Shiki
+  // into the playground entry chunk via a top-level `codeToHtml` import.
+  const highlighter = shikiHighlighter({ theme: 'github-light' });
 
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
@@ -121,32 +135,34 @@
   });
 </script>
 
-<div class="example-list">
-  {#if examples.length === 0}
-    <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
-  {/if}
-
-  {#each examples as { scenario, title, description } (scenario)}
-    {@const accordionEntry = getAccordionEntry(scenario)}
-    {@const source = fetchedSource[scenario]}
-    {#if accordionEntry}
-      <Card {title} {...description !== undefined ? { description } : {}}>
-        <div class="example-preview" id="example-mount-{scenario}"></div>
-        <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-          <AccordionItem id="source" title="View source">
-            {#if loadingSource[scenario]}
-              <p class="source-loading">Loading…</p>
-            {:else if source === null}
-              <p class="source-error">Could not load source.</p>
-            {:else if source !== undefined}
-              <CodeBlock code={source} language="svelte" copyable />
-            {/if}
-          </AccordionItem>
-        </Accordion>
-      </Card>
+<CinderProvider {highlighter}>
+  <div class="example-list">
+    {#if examples.length === 0}
+      <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
     {/if}
-  {/each}
-</div>
+
+    {#each examples as { scenario, title, description } (scenario)}
+      {@const accordionEntry = getAccordionEntry(scenario)}
+      {@const source = fetchedSource[scenario]}
+      {#if accordionEntry}
+        <Card {title} {...description !== undefined ? { description } : {}}>
+          <div class="example-preview" id="example-mount-{scenario}"></div>
+          <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+            <AccordionItem id="source" title="View source">
+              {#if loadingSource[scenario]}
+                <p class="source-loading">Loading…</p>
+              {:else if source === null}
+                <p class="source-error">Could not load source.</p>
+              {:else if source !== undefined}
+                <CodeBlock code={source} language="svelte" copyable />
+              {/if}
+            </AccordionItem>
+          </Accordion>
+        </Card>
+      {/if}
+    {/each}
+  </div>
+</CinderProvider>
 
 <style>
   .example-list {

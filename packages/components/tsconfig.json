@@ -1,3 +1,15 @@
+// `customConditions: ['svelte']` is set on this package's tsconfig so that
+// the cinder package's own source resolves `cinder/<pkg>/<subpath>` imports
+// (added in PR 1 — see scripts/lib/derive-upstream-reexports.ts) through
+// the `svelte` export condition (`./src/<pkg>/<subpath>.ts` — the
+// generated re-export shells) rather than the `types` condition
+// (`./dist/...d.ts` — only exists after a build).
+//
+// Without this, CI's typecheck-against-a-fresh-checkout (intentionally NOT
+// pre-building cinder per .github/workflows/browser-tests.yaml) hits
+// TS2307 "Cannot find module 'cinder/<pkg>'" errors because the dist
+// hasn't been emitted yet. The same trick is in packages/playground's
+// tsconfig.json for the same reason.
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
@@ -5,7 +17,8 @@
     "rootDir": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "customConditions": ["svelte"]
   },
   "include": ["src", "scripts"],
   "exclude": ["node_modules", "coverage", "fixtures", "**/dist/**", "**/build/**"]

@@ -9,7 +9,7 @@
  * This avoids per-keystroke normalize() calls which are expensive for large documents.
  */
 
-import { contentEquals, contentEqualsWithFrontMatter } from '@cinder/markdown/pipeline';
+import { contentEquals, contentEqualsWithFrontMatter } from 'cinder/markdown/pipeline';
 
 export interface ChangeTrackerOptions {
   /** Debounce delay for semantic comparison (ms). Default: 300 */

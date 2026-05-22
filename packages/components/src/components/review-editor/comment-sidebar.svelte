@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Thread } from '@cinder/commentary/comments';
+  import type { Thread } from 'cinder/commentary/comments';
 
   export type CommentSidebarProps = {
     /** Unique ID for accessibility */
@@ -25,7 +25,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { truncate } from '../../utilities/truncate.ts';
   import { MessageSquare, MoreHorizontal, Trash2, Plus, FileText, X } from '../icons/index.ts';
-  import { getVisibleComments, isDocumentAnchor } from '@cinder/commentary/comments';
+  import { getVisibleComments, isDocumentAnchor } from 'cinder/commentary/comments';
   import Button from '../button/button.svelte';
   import Dropdown from '../dropdown/dropdown.svelte';
   import DropdownTrigger from '../dropdown-trigger/dropdown-trigger.svelte';
