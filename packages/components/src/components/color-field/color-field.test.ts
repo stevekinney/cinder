@@ -506,6 +506,71 @@ describe('ColorField composition with FormField', () => {
   });
 });
 
+describe('ColorField Enter stale-mirror safety', () => {
+  test('typing invalid text after a prior commit and pressing Enter does not submit stale hidden mirror', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    let submitted = false;
+    let submittedHidden: string | null = null;
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitted = true;
+      const hidden = form.querySelector<HTMLInputElement>('input[name="c"]');
+      submittedHidden = hidden ? hidden.value : null;
+    });
+
+    const { container } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', name: 'c' },
+    });
+    const field = findInput(container, 'cf');
+    await typeAndBlur(field, '#ff0000');
+    // Now type invalid text without blurring, press Enter.
+    await fireEvent.input(field, { target: { value: 'bogus' } });
+    await fireEvent.keyDown(field, { key: 'Enter' });
+    await tick();
+
+    expect(submitted).toBe(false);
+    expect(submittedHidden).toBeNull();
+    // Even when something else tries to submit synchronously, customValidity blocks it.
+    expect(field.validity.customError).toBe(true);
+
+    document.body.removeChild(form);
+  });
+
+  test('clearing the field then pressing Enter writes the hidden mirror to empty before any submit', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const submits: string[] = [];
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const hidden = form.querySelector<HTMLInputElement>('input[name="c"]');
+      submits.push(hidden ? hidden.value : '');
+    });
+
+    const { container } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', name: 'c' },
+    });
+    const field = findInput(container, 'cf');
+    await typeAndBlur(field, '#ff0000');
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff0000');
+
+    // Clear without blurring, press Enter. With enterBehavior='commit-then-submit',
+    // the cleared commit fires onchange('') but no requestSubmit (committed = false).
+    // The hidden mirror must already be '' before any outer submit handler runs.
+    await fireEvent.input(field, { target: { value: '' } });
+    await fireEvent.keyDown(field, { key: 'Enter' });
+    await tick();
+
+    // No submit fired (committed false after clear).
+    expect(submits).toEqual([]);
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('');
+
+    document.body.removeChild(form);
+  });
+});
+
 describe('ColorField native form validation', () => {
   test('parse error sets a custom validity message so native submit is blocked', async () => {
     const { container } = render(ColorField, {

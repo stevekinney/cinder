@@ -18,9 +18,9 @@ Mid-typing values like `#a` or `rgb(255, 0,` aren't errors — they're intermedi
 
 ## Enter-key behavior
 
-Pressing Enter runs the commit pipeline synchronously. On a successful commit with `enterBehavior='commit-then-submit'` (the default), the handler `preventDefault()`s the native submit and re-issues `form.requestSubmit()` so the surrounding form submits with the canonical committed value — avoiding the race where the browser submits before the field has had a chance to write its parsed value.
+Pressing Enter is always intercepted: the handler `preventDefault()`s the browser's native submit, runs the commit pipeline synchronously, and immediately mirrors the resulting state onto the DOM — `setCustomValidity()` for parse errors and `hiddenMirror.value` for the canonical committed hex. On a successful commit with `enterBehavior='commit-then-submit'` (the default), the handler then re-issues `form.requestSubmit()` so the surrounding form submits with the up-to-date hidden mirror — without the race where the browser submits before Svelte has flushed bindings.
 
-On an empty or invalid value, the handler does not suppress the keypress; the browser's default behavior proceeds. To stop a stale-but-committed hidden mirror from being submitted under those conditions, the component calls `setCustomValidity()` with the current parse error, so the surrounding form's native constraint validation blocks the submit at the platform level.
+Invalid or cleared input is intercepted in the same way (preventDefault first, sync DOM second), so the form never submits with a stale mirror value. The native `customValidity` message also blocks any stray submit attempt from elsewhere in the form (e.g. JavaScript calling `submit()` directly).
 
 When `enterBehavior='commit-only'`, the field commits but never re-issues `requestSubmit` — useful in dialogs or multi-field flows where Enter has a different meaning.
 

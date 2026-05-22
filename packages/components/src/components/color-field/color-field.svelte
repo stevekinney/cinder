@@ -219,6 +219,20 @@
     }
   });
 
+  let visibleInput: HTMLInputElement | undefined = $state();
+  let hiddenMirror: HTMLInputElement | undefined = $state();
+
+  /**
+   * Synchronously mirror state onto the DOM so that native form behavior
+   * (Enter-key submit, form.requestSubmit, FormData read) sees the canonical
+   * values without waiting for Svelte's reactive flush. Called from every
+   * `commit()` branch and from the controlled-sync effect.
+   */
+  function syncDomFromState(): void {
+    if (visibleInput) visibleInput.setCustomValidity(parseError ?? '');
+    if (hiddenMirror) hiddenMirror.value = committedHex;
+  }
+
   function commit(): void {
     const trimmed = visibleText.trim();
 
@@ -229,9 +243,11 @@
         committedHex = '';
         committedRgba = null;
         parseError = null;
+        syncDomFromState();
         if (prev !== '') onchange?.('');
       } else {
         parseError = null;
+        syncDomFromState();
       }
       return;
     }
@@ -239,12 +255,14 @@
     if (trimmed === committedHex) {
       visibleText = committedHex;
       parseError = null;
+      syncDomFromState();
       return;
     }
 
     const result = tryParse(trimmed, alpha, acceptedFormats);
     if (!result.ok) {
       parseError = resolvedErrorMessage;
+      syncDomFromState();
       return;
     }
 
@@ -256,25 +274,31 @@
       if (result.hex !== prev) {
         committedHex = result.hex;
         committedRgba = result.rgba;
+        syncDomFromState();
         onchange?.(result.hex);
+      } else {
+        syncDomFromState();
       }
     } else {
       committedHex = result.hex;
       committedRgba = result.rgba;
+      syncDomFromState();
       if (result.hex !== prev) onchange?.(result.hex);
     }
   }
 
-  let visibleInput: HTMLInputElement | undefined = $state();
-  let hiddenMirror: HTMLInputElement | undefined = $state();
-
-  // Sync native constraint-validation state to our parse-error state so the
-  // surrounding form blocks submission via the platform's built-in
-  // mechanisms — Enter pressed on a stale-committed-value-with-bad-typed-text
-  // can't smuggle the prior hidden-mirror value through native submit.
+  // Belt-and-suspenders: a reactive effect keeps the native validity message
+  // in sync with `parseError` for state changes that don't flow through
+  // `commit()` (controlled-sync reconcile, alpha toggle, form reset).
   $effect(() => {
     if (!visibleInput) return;
     visibleInput.setCustomValidity(parseError ?? '');
+  });
+
+  // Mirror committed hex onto the hidden mirror for the same reason.
+  $effect(() => {
+    if (!hiddenMirror) return;
+    hiddenMirror.value = committedHex;
   });
 
   function onFormReset(): void {
@@ -306,16 +330,18 @@
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
+    // Always intercept Enter so that any pending state change (commit,
+    // clear, or parse failure) is flushed to the DOM via syncDomFromState
+    // BEFORE the browser's default submit fires. `setCustomValidity` and
+    // `hiddenMirror.value` are now correct against the typed text, so:
+    //   - invalid input: native form validation blocks submit
+    //   - cleared field: hidden mirror is '' (not stale)
+    //   - successful commit: we re-issue requestSubmit ourselves below
+    event.preventDefault();
     commit();
     const committed = parseError === null && committedHex !== '';
     if (!committed) return;
-    // Only suppress the native submit once we know we have a committed value
-    // to submit. Empty/invalid input lets the browser handle Enter normally.
-    event.preventDefault();
     if (enterBehavior !== 'commit-then-submit') return;
-    // Write synchronously so requestSubmit's FormData sees the canonical
-    // value before Svelte's reactive flush updates the binding.
-    if (hiddenMirror) hiddenMirror.value = committedHex;
     const form = visibleInput?.form ?? null;
     if (!form) return;
     const submitter = form.querySelector<HTMLButtonElement | HTMLInputElement>(
