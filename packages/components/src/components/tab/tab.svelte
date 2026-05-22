@@ -12,12 +12,16 @@
    * @avoidWhen Rendering a generic action button — use button instead.
    * @related tabs, tab-list, tab-panel
    */
+  // `Tab.value` is treated as immutable after mount. The component reads
+  // `value` via `untrack` inside both registration effects so that changing
+  // `value` at runtime does not re-key the parent registry. Mutating `value`
+  // after mount is unsupported and will leave the registry in a stale state.
   export type { TabProps } from './tab.types.ts';
 </script>
 
 <script lang="ts">
   import type { TabProps } from './tab.types.ts';
-  import { getContext } from 'svelte';
+  import { getContext, untrack } from 'svelte';
 
   import { rovingTabIndex } from '../../_internal/collection.ts';
   import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
@@ -45,20 +49,36 @@
   const panelId = `cinder-tab-panel-${value}`;
 
   const isActive = $derived(tabs.isActive(value));
+  const isFocusable = $derived(tabs.isFocusable(value));
 
   let buttonElement: HTMLButtonElement | undefined = $state();
 
-  // Register on mount and re-register if the button element changes; unregister
-  // on unmount so the parent's navigation order stays accurate. The effect's
-  // cleanup function already handles unmount unregistration — no separate
-  // onDestroy is needed.
+  // Effect A — mount/unmount registration. Depends only on `buttonElement`.
+  // Everything else is read via `untrack`, including the registry mutation
+  // call: `tabs.register` writes to a reactive `version` counter, and reading
+  // that inside an effect would subscribe this effect to it and create a
+  // self-triggering loop.
   $effect(() => {
-    if (buttonElement) {
-      tabs.register(value, buttonElement);
-    }
+    if (!buttonElement) return;
+    const button = buttonElement;
+    untrack(() => {
+      tabs.register(value, button, disabled);
+    });
     return () => {
-      tabs.unregister(value);
+      untrack(() => {
+        tabs.unregister(value);
+      });
     };
+  });
+
+  // Effect B — sync `disabled` to the registry without re-registering.
+  // Subscribes only to `disabled`; the mutation call is wrapped in `untrack`
+  // for the same reason as Effect A.
+  $effect(() => {
+    const next = disabled;
+    untrack(() => {
+      tabs.setDisabled(value, next);
+    });
   });
 
   function handleClick(): void {
@@ -78,7 +98,7 @@
   data-cinder-disabled={disabled || undefined}
   aria-selected={isActive}
   aria-controls={panelId}
-  tabindex={rovingTabIndex(isActive)}
+  tabindex={rovingTabIndex(isFocusable)}
   {disabled}
   onclick={handleClick}
   onkeydown={tabs.handleKeydown}

@@ -7,7 +7,12 @@ export type TabsOrientation = 'horizontal' | 'vertical';
  * `register` lets each Tab announce itself to the parent during mount so
  * the parent can drive arrow-key navigation (focus management requires the
  * parent to know each tab's element). `unregister` removes the entry on
- * unmount.
+ * unmount. `setDisabled` lets a Tab sync its `disabled` prop to the parent
+ * registry without re-registering, preserving insertion order across
+ * disabled-state changes. `isFocusable` answers whether a given tab value
+ * should currently sit at `tabindex="0"` — selection and the tab stop are
+ * decoupled so that a selected-but-disabled tab does not strand the
+ * tablist with an unfocusable tab stop.
  */
 export type TabsContext = {
   readonly value: string;
@@ -15,8 +20,10 @@ export type TabsContext = {
   readonly activateOnFocus: boolean;
   select: (next: string) => void;
   isActive: (candidate: string) => boolean;
-  register: (value: string, button: HTMLButtonElement) => void;
+  register: (value: string, button: HTMLButtonElement, disabled?: boolean) => void;
   unregister: (value: string) => void;
+  setDisabled: (value: string, disabled: boolean) => void;
+  isFocusable: (candidate: string) => boolean;
   handleKeydown: (event: KeyboardEvent) => void;
 };
 export type TabsProps = {

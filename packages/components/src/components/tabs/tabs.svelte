@@ -22,7 +22,7 @@
   import type { TabsContext, TabsProps } from './tabs.types.ts';
   import { setContext } from 'svelte';
 
-  import { type Orientation, navigationIntent, nextIndex } from '../../_internal/collection.ts';
+  import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let {
@@ -39,46 +39,97 @@
   // panel content too).
   const effectiveActivateOnFocus = $derived(activateOnFocus ?? orientation === 'horizontal');
 
-  /**
-   * Registry of tab buttons keyed by their `value`. Updated as Tab children
-   * mount and unmount. The order of registration determines the navigation
-   * order — children are registered in mount order, which is the same as
-   * source order in the template.
-   */
-  const buttons: Map<string, HTMLButtonElement> = new Map();
+  type RegistryEntry = { button: HTMLButtonElement; disabled: boolean };
 
-  function valuesInOrder(): string[] {
-    return [...buttons.keys()];
-  }
+  /**
+   * Registry of tab buttons keyed by their `value`. Order of registration
+   * determines navigation order — children register in mount order.
+   *
+   * In-place mutation of an entry's `disabled` field does not trigger Svelte
+   * reactivity on its own, so every mutation path also bumps `version`. Any
+   * `$derived` that reads from the registry must also read `version` to
+   * re-run when entries change.
+   */
+  const buttons: Map<string, RegistryEntry> = new Map();
+  let version = $state(0);
+
+  const focusableValue = $derived.by(() => {
+    void version;
+    for (const [registeredValue, entry] of buttons) {
+      if (!entry.disabled) return registeredValue;
+    }
+    return undefined;
+  });
 
   function focusValue(target: string): void {
-    const btn = buttons.get(target);
-    if (btn) btn.focus();
+    const entry = buttons.get(target);
+    if (entry) entry.button.focus();
   }
 
+  function resolveFocusedIndex(active: Element | null): number {
+    const entries = [...buttons.values()];
+    return entries.findIndex(({ button }) => button === active);
+  }
+
+  function resolveStartingIndex(event: KeyboardEvent): number {
+    const entries = [...buttons.values()];
+    if (entries.length === 0) return -1;
+    const target = event.currentTarget as HTMLElement | null;
+    const active = target?.ownerDocument.activeElement ?? null;
+    const focused = resolveFocusedIndex(active);
+    if (focused !== -1) return focused;
+    // Fallback: active tab if enabled, else first enabled.
+    const order = [...buttons.keys()];
+    const activeIdx = order.indexOf(value);
+    if (activeIdx !== -1 && !entries[activeIdx]!.disabled) return activeIdx;
+    return entries.findIndex((e) => !e.disabled);
+  }
+
+  const ROVING_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
+
   function handleKeydown(event: KeyboardEvent): void {
-    const intent = navigationIntent(event.key, orientation as Orientation);
-    if (!intent) {
-      // Manual activation: Enter/Space activates the focused tab.
-      if (event.key === 'Enter' || event.key === ' ') {
-        const target = event.target as HTMLElement | null;
-        const focusedValue = target?.dataset['cinderValue'];
-        if (focusedValue && buttons.has(focusedValue)) {
-          event.preventDefault();
-          value = focusedValue;
-        }
-      }
+    void version;
+    const entries = [...buttons.values()];
+    const order = [...buttons.keys()];
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      // Manual activation: activate the focused tab if it is enabled.
+      const target = event.currentTarget as HTMLElement | null;
+      const active = target?.ownerDocument.activeElement ?? null;
+      const focused = resolveFocusedIndex(active);
+      if (focused === -1) return;
+      if (entries[focused]!.disabled) return;
+      const focusedValue = order[focused];
+      if (focusedValue === undefined) return;
+      event.preventDefault();
+      value = focusedValue;
       return;
     }
 
+    if (!ROVING_KEYS.has(event.key)) return;
+    if (entries.length === 0) return;
+
+    const currentIndex = resolveStartingIndex(event);
+    if (currentIndex === -1) {
+      // All entries disabled — prevent default so arrow/Home/End do not leak
+      // page scroll, but otherwise no-op.
+      event.preventDefault();
+      return;
+    }
+
+    const isHorizontal = orientation === 'horizontal';
+    const nextIdx = handleRovingKeydown(event, currentIndex, entries.length, {
+      isDisabled: (i) => entries[i]!.disabled,
+      horizontal: isHorizontal,
+      vertical: !isHorizontal,
+    });
+
+    if (nextIdx === null) return;
     event.preventDefault();
-    const order = valuesInOrder();
-    if (order.length === 0) return;
-    const currentIndex = order.indexOf(value);
-    const nextIdx = nextIndex(currentIndex === -1 ? 0 : currentIndex, order.length, intent);
+    if (nextIdx === currentIndex) return;
+
     const nextValue = order[nextIdx];
     if (nextValue === undefined) return;
-
     focusValue(nextValue);
     if (effectiveActivateOnFocus) {
       value = nextValue;
@@ -101,11 +152,41 @@
     isActive(candidate) {
       return value === candidate;
     },
-    register(target, button) {
-      buttons.set(target, button);
+    register(target, button, disabled = false) {
+      const existing = buttons.get(target);
+      if (existing) {
+        existing.button = button;
+        existing.disabled = disabled;
+      } else {
+        buttons.set(target, { button, disabled });
+      }
+      version += 1;
     },
     unregister(target) {
-      buttons.delete(target);
+      if (buttons.delete(target)) {
+        version += 1;
+      }
+    },
+    setDisabled(target, disabled) {
+      const existing = buttons.get(target);
+      if (!existing) return;
+      if (existing.disabled === disabled) return;
+      existing.disabled = disabled;
+      version += 1;
+    },
+    isFocusable(candidate) {
+      void version;
+      const entry = buttons.get(candidate);
+      if (!entry || entry.disabled) return false;
+      // The selected tab takes the tab stop when it is enabled.
+      if (value === candidate) return true;
+      // Otherwise, fall back to the first enabled tab — but only when the
+      // selected tab is disabled or unknown, so the tablist always has a
+      // reachable tab stop.
+      const selectedEntry = buttons.get(value);
+      const selectedFocusable = selectedEntry !== undefined && !selectedEntry.disabled;
+      if (selectedFocusable) return false;
+      return focusableValue === candidate;
     },
     handleKeydown,
   });
