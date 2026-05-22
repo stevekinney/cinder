@@ -369,7 +369,7 @@ async function main(): Promise<void> {
         issues.push(`Missing upstream re-export source: ${filePath}`);
         continue;
       }
-      const expectedBody = reexportFileBody(reexport.upstreamSpecifier);
+      const expectedBody = reexportFileBody(reexport.upstreamSpecifier, reexport);
       const actualBody = await readFile(filePath, 'utf8');
       if (actualBody !== expectedBody) {
         issues.push(`Stale upstream re-export source: ${filePath}`);
@@ -495,7 +495,7 @@ async function main(): Promise<void> {
   for (const reexport of upstreamReexports) {
     const filePath = reexportSourceAbsolutePath(reexport);
     await mkdir(dirname(filePath), { recursive: true });
-    await Bun.write(filePath, reexportFileBody(reexport.upstreamSpecifier));
+    await Bun.write(filePath, reexportFileBody(reexport.upstreamSpecifier, reexport));
   }
 
   process.stdout.write(
