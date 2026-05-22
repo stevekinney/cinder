@@ -112,38 +112,70 @@ type ShikiModule = {
  * `<CinderProvider highlighter={...}>`. See module-level JSDoc for the
  * full behavior contract.
  */
+/**
+ * Wrap a one-shot async loader in a promise cache that:
+ *
+ *   1. De-duplicates concurrent callers — multiple `await` callers during
+ *      the same in-flight load share one promise.
+ *   2. Evicts the cached promise on rejection so the next call retries.
+ *      Without eviction, a single transient failure (network error,
+ *      chunk-load failure, etc.) would lock the cached rejection in
+ *      forever and every subsequent call would replay the failure.
+ *
+ * Exported so the eviction-on-rejection behavior is testable in isolation
+ * (Bun's `mock.module` caches dynamic-import results across calls, which
+ * makes the equivalent black-box test against `shikiHighlighter` hard to
+ * write reliably).
+ */
+export function createRetryingLoaderCache<T>(loader: () => Promise<T>): () => Promise<T> {
+  let cached: Promise<T> | undefined;
+  return () => {
+    if (cached === undefined) {
+      const pending = loader();
+      // Attach a rejection handler that evicts the cached promise so the
+      // next call retries. `.catch` returns a new promise; we don't await
+      // it — the original `pending` is what concurrent callers share, and
+      // they'll observe its rejection through their own awaits.
+      pending.catch(() => {
+        if (cached === pending) {
+          cached = undefined;
+        }
+      });
+      cached = pending;
+    }
+    return cached;
+  };
+}
+
 export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlighter {
   const { theme = DEFAULT_THEME, langs } = options;
   const warnedLanguages = new Set<string>();
-  let shikiModulePromise: Promise<ShikiModule> | undefined;
 
-  // Resolve Shiki lazily on the first highlight call. We cache the import
-  // promise so concurrent calls during the same microtask share one module
-  // load and don't race against each other.
-  async function loadShiki(): Promise<ShikiModule> {
-    shikiModulePromise ??= (async (): Promise<ShikiModule> => {
-      const module_ = await import('shiki');
-      // Optional preload — if the consumer named specific languages, force
-      // them through `codeToHtml` once so Shiki resolves and caches them
-      // before the first real call. Failures here are non-fatal; per-call
-      // language lookup will still try (and fall back to plaintext on its
-      // own miss).
-      if (langs !== undefined) {
-        for (const lang of langs) {
-          try {
-            await module_.codeToHtml('', { lang, ...buildThemeOption(theme) });
-          } catch {
-            // Swallow — the per-call path below logs and falls back.
-          }
+  // Resolve Shiki lazily on the first highlight call. The cache wrapper
+  // de-duplicates concurrent loads and evicts rejected promises so a
+  // transient import failure does not lock the adapter into the plaintext
+  // fallback for the lifetime of this `shikiHighlighter()` instance.
+  const loadShiki = createRetryingLoaderCache(async (): Promise<ShikiModule> => {
+    const module_ = await import('shiki');
+    // Optional preload — if the consumer named specific languages,
+    // force them through `codeToHtml` once so Shiki resolves and
+    // caches them before the first real call. Failures here are
+    // non-fatal; per-call language lookup will still try (and fall
+    // back to plaintext on its own miss).
+    if (langs !== undefined) {
+      for (const lang of langs) {
+        try {
+          await module_.codeToHtml('', { lang, ...buildThemeOption(theme) });
+        } catch {
+          // Swallow — the per-call path below logs and falls back.
         }
       }
-      return {
-        codeToHtml: module_.codeToHtml,
-        bundledLanguages: module_.bundledLanguages,
-      };
-    })();
-    return shikiModulePromise;
-  }
+    }
+    return {
+      codeToHtml: module_.codeToHtml,
+      bundledLanguages: module_.bundledLanguages,
+    };
+  });
 
   return async function highlight(code: string, lang: string): Promise<string> {
     // Normalize defensively: the documented contract is "empty or missing
