@@ -49,9 +49,20 @@
   --cinder-radius-lg: 0.75rem;
   --cinder-radius-full: 9999px;
 
-  --cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.08);
-  --cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
-  --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
+  /* Shadows wrap each color argument in `light-dark()` so dark mode paints
+   * a light-neutral elevation instead of invisible black-on-dark. The light
+   * arguments preserve the original `oklch(0% 0 0 / α)` values exactly;
+   * the dark arguments use `oklch(100% 0 0 / α)` with subtle alphas tuned
+   * to lift the surface without producing a glow halo. Each shadow color
+   * is wrapped individually — the offsets, blur radii, spread radii, and
+   * layer counts are unchanged. */
+  --cinder-shadow-sm: 0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.04));
+  --cinder-shadow-md:
+    0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)),
+    0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05));
+  --cinder-shadow-lg:
+    0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.08)),
+    0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06));
 
   /* ========================================
    * CONTROL HEIGHTS

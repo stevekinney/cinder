@@ -39,15 +39,17 @@ Rem-based spacing scale. Use these for padding, gap, margin — anywhere you'd o
 
 Corner radii and elevation shadows. `--cinder-radius-full` produces a pill or circle depending on the element's aspect ratio.
 
-| Token                  | Default                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| `--cinder-radius-sm`   | `0.375rem`                                                                   |
-| `--cinder-radius-md`   | `0.5rem`                                                                     |
-| `--cinder-radius-lg`   | `0.75rem`                                                                    |
-| `--cinder-radius-full` | `9999px`                                                                     |
-| `--cinder-shadow-sm`   | `0 1px 2px oklch(0% 0 0 / 0.08)`                                             |
-| `--cinder-shadow-md`   | `0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1)`    |
-| `--cinder-shadow-lg`   | `0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12)` |
+Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a light-neutral elevation instead of invisible black-on-dark. The offsets, blur radii, spread radii, and layer counts are identical across themes; only the color values branch.
+
+| Token                  | Default                                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-radius-sm`   | `0.375rem`                                                                                                                                           |
+| `--cinder-radius-md`   | `0.5rem`                                                                                                                                             |
+| `--cinder-radius-lg`   | `0.75rem`                                                                                                                                            |
+| `--cinder-radius-full` | `9999px`                                                                                                                                             |
+| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.04))`                                                                                 |
+| `--cinder-shadow-md`   | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05))`    |
+| `--cinder-shadow-lg`   | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.08)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06))` |
 
 ## Control heights
 
@@ -105,19 +107,19 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 
 Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinder-duration` — both resolve to the same value. The `prefers-reduced-motion: reduce` media query collapses all durations to `0ms` automatically; you do not need to handle that case yourself.
 
-| Token                        | Default                        |
-| ---------------------------- | ------------------------------ |
-| `--cinder-duration-instant`  | `0ms`                          |
-| `--cinder-duration-fast`     | `120ms`                        |
-| `--cinder-duration`          | `200ms`                        |
-| `--cinder-duration-normal`   | `var(--cinder-duration)`       |
-| `--cinder-duration-moderate` | `280ms`                        |
-| `--cinder-duration-slow`     | `400ms`                        |
-| `--cinder-ease-standard`     | `cubic-bezier(0.2, 0, 0, 1)`   |
-| `--cinder-ease-decelerate`   | `cubic-bezier(0, 0, 0, 1)`     |
-| `--cinder-ease-accelerate`   | `cubic-bezier(0.3, 0, 1, 1)`   |
+| Token                        | Default                             |
+| ---------------------------- | ----------------------------------- |
+| `--cinder-duration-instant`  | `0ms`                               |
+| `--cinder-duration-fast`     | `120ms`                             |
+| `--cinder-duration`          | `200ms`                             |
+| `--cinder-duration-normal`   | `var(--cinder-duration)`            |
+| `--cinder-duration-moderate` | `280ms`                             |
+| `--cinder-duration-slow`     | `400ms`                             |
+| `--cinder-ease-standard`     | `cubic-bezier(0.2, 0, 0, 1)`        |
+| `--cinder-ease-decelerate`   | `cubic-bezier(0, 0, 0, 1)`          |
+| `--cinder-ease-accelerate`   | `cubic-bezier(0.3, 0, 1, 1)`        |
 | `--cinder-ease-spring`       | `cubic-bezier(0.34, 1.56, 0.64, 1)` |
-| `--cinder-ease-in-out`       | `cubic-bezier(0.4, 0, 0.2, 1)` |
+| `--cinder-ease-in-out`       | `cubic-bezier(0.4, 0, 0.2, 1)`      |
 
 ## Surfaces
 
