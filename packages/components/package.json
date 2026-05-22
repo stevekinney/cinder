@@ -1210,6 +1210,10 @@
     "./scroll-area/styles": {
       "default": "./dist/components/scroll-area/scroll-area.css"
     },
+    "./scroll-area/examples": {
+      "import": "./src/components/scroll-area/scroll-area.examples.json",
+      "default": "./src/components/scroll-area/scroll-area.examples.json"
+    },
     "./search-field": {
       "types": "./dist/components/search-field/index.d.ts",
       "svelte": "./src/components/search-field/index.ts",
