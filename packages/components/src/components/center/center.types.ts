@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the Center layout primitive. */
-export type CenterProps = HTMLAttributes<HTMLElement> & {
+export type CenterProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   maxWidth?: string;
   minHeight?: string;
   intrinsic?: boolean;

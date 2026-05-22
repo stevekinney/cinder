@@ -10,6 +10,7 @@
    * @useWhen Composing a column where each child should occupy the full available width.
    * @avoidWhen Items need to flow horizontally — use inline or cluster instead.
    * @avoidWhen Items need precise grid placement — use a CSS grid directly.
+   * @avoidWhen Using `direction="column-reverse"` for visual reordering — it breaks DOM/focus order (WCAG 1.3.2, 2.4.3). Reorder the DOM instead.
    * @related inline, cluster, center, spacer
    */
   export type { StackProps, StackDirection } from './stack.types.ts';

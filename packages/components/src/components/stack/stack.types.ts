@@ -5,7 +5,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type StackDirection = 'column' | 'column-reverse';
 
 /** Props for the Stack layout primitive. */
-export type StackProps = HTMLAttributes<HTMLElement> & {
+export type StackProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   gap?: string;
   direction?: StackDirection;
   as?: string;

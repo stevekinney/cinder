@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the Cluster layout primitive. */
-export type ClusterProps = HTMLAttributes<HTMLElement> & {
+export type ClusterProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   gap?: string;
   align?: string;
   justify?: string;

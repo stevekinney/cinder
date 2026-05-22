@@ -5,7 +5,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type InlineWrap = 'wrap' | 'nowrap' | 'wrap-reverse';
 
 /** Props for the Inline layout primitive. */
-export type InlineProps = HTMLAttributes<HTMLElement> & {
+export type InlineProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   gap?: string;
   wrap?: InlineWrap;
   align?: string;

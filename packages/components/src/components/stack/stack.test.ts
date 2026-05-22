@@ -74,4 +74,9 @@ describe('Stack', () => {
     const root = container.querySelector('.cinder-stack') as HTMLElement;
     expect(root.style.getPropertyValue('--stack-direction')).toBe('column-reverse');
   });
+
+  test('renders children content', () => {
+    const { container } = render(Stack, { children: textSnippet('hello stack') });
+    expect(container.querySelector('.cinder-stack')?.textContent).toContain('hello stack');
+  });
 });

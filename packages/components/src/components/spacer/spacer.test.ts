@@ -46,10 +46,4 @@ describe('Spacer', () => {
     expect(root.children.length).toBe(0);
     expect(root.textContent).toBe('');
   });
-
-  test('aria-hidden cannot be overridden by a consumer prop', () => {
-    const { container } = render(Spacer, { 'aria-hidden': 'false' });
-    const root = container.querySelector('.cinder-spacer') as HTMLElement;
-    expect(root.getAttribute('aria-hidden')).toBe('true');
-  });
 });

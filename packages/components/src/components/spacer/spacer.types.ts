@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the Spacer layout primitive. */
-export type SpacerProps = HTMLAttributes<HTMLElement> & {
+export type SpacerProps = Omit<HTMLAttributes<HTMLElement>, 'aria-hidden' | 'class'> & {
   as?: string;
   class?: string;
 };

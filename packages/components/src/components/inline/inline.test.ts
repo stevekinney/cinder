@@ -58,16 +58,35 @@ describe('Inline', () => {
     expect(root.style.getPropertyValue('--inline-align')).toBe('');
   });
 
-  test('threads gap, wrap, and align into custom properties when provided', () => {
+  test('threads gap into --inline-gap when provided', () => {
     const { container } = render(Inline, {
       children: textSnippet('item'),
       gap: '1.5rem',
-      wrap: 'nowrap',
-      align: 'flex-end',
     });
     const root = container.querySelector('.cinder-inline') as HTMLElement;
     expect(root.style.getPropertyValue('--inline-gap')).toBe('1.5rem');
+  });
+
+  test('threads wrap into --inline-wrap when provided', () => {
+    const { container } = render(Inline, {
+      children: textSnippet('item'),
+      wrap: 'nowrap',
+    });
+    const root = container.querySelector('.cinder-inline') as HTMLElement;
     expect(root.style.getPropertyValue('--inline-wrap')).toBe('nowrap');
+  });
+
+  test('threads align into --inline-align when provided', () => {
+    const { container } = render(Inline, {
+      children: textSnippet('item'),
+      align: 'flex-end',
+    });
+    const root = container.querySelector('.cinder-inline') as HTMLElement;
     expect(root.style.getPropertyValue('--inline-align')).toBe('flex-end');
+  });
+
+  test('renders children content', () => {
+    const { container } = render(Inline, { children: textSnippet('hello inline') });
+    expect(container.querySelector('.cinder-inline')?.textContent).toContain('hello inline');
   });
 });

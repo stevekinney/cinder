@@ -89,4 +89,18 @@ describe('Center', () => {
     const root = container.querySelector('.cinder-center') as HTMLElement;
     expect(root.getAttribute('data-cinder-intrinsic')).toBe('true');
   });
+
+  test('does not set data-cinder-intrinsic when intrinsic is explicitly false', () => {
+    const { container } = render(Center, {
+      children: textSnippet('item'),
+      intrinsic: false,
+    });
+    const root = container.querySelector('.cinder-center') as HTMLElement;
+    expect(root.getAttribute('data-cinder-intrinsic')).toBeNull();
+  });
+
+  test('renders children content', () => {
+    const { container } = render(Center, { children: textSnippet('hello center') });
+    expect(container.querySelector('.cinder-center')?.textContent).toContain('hello center');
+  });
 });

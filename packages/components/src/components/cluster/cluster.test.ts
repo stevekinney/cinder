@@ -58,16 +58,35 @@ describe('Cluster', () => {
     expect(root.style.getPropertyValue('--cluster-justify')).toBe('');
   });
 
-  test('threads gap, align, and justify into custom properties when provided', () => {
+  test('threads gap into --cluster-gap when provided', () => {
     const { container } = render(Cluster, {
       children: textSnippet('item'),
       gap: '0.75rem',
-      align: 'baseline',
-      justify: 'space-between',
     });
     const root = container.querySelector('.cinder-cluster') as HTMLElement;
     expect(root.style.getPropertyValue('--cluster-gap')).toBe('0.75rem');
+  });
+
+  test('threads align into --cluster-align when provided', () => {
+    const { container } = render(Cluster, {
+      children: textSnippet('item'),
+      align: 'baseline',
+    });
+    const root = container.querySelector('.cinder-cluster') as HTMLElement;
     expect(root.style.getPropertyValue('--cluster-align')).toBe('baseline');
+  });
+
+  test('threads justify into --cluster-justify when provided', () => {
+    const { container } = render(Cluster, {
+      children: textSnippet('item'),
+      justify: 'space-between',
+    });
+    const root = container.querySelector('.cinder-cluster') as HTMLElement;
     expect(root.style.getPropertyValue('--cluster-justify')).toBe('space-between');
+  });
+
+  test('renders children content', () => {
+    const { container } = render(Cluster, { children: textSnippet('hello cluster') });
+    expect(container.querySelector('.cinder-cluster')?.textContent).toContain('hello cluster');
   });
 });
