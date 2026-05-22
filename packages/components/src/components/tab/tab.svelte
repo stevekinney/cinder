@@ -54,26 +54,32 @@
   let buttonElement: HTMLButtonElement | undefined = $state();
 
   // Effect A — mount/unmount registration. Depends only on `buttonElement`.
-  // Everything else is read via `untrack`, including the registry mutation
-  // call: `tabs.register` writes to a reactive `version` counter, and reading
-  // that inside an effect would subscribe this effect to it and create a
-  // self-triggering loop.
+  // The `value` read is captured once (via `untrack`) and reused in cleanup
+  // so unregister always targets the same key the registration used. The
+  // initial `disabled` is also seeded into the registry on mount so first
+  // paint computes the right tab stop without waiting for Effect B. The
+  // mutation calls themselves are wrapped in `untrack` because `register`
+  // and `unregister` write to a reactive `version` counter; reading that
+  // inside an effect would self-trigger.
   $effect(() => {
     if (!buttonElement) return;
     const button = buttonElement;
+    const registeredValue = untrack(() => value);
+    const initialDisabled = untrack(() => disabled);
     untrack(() => {
-      tabs.register(value, button, disabled);
+      tabs.register(registeredValue, button, initialDisabled);
     });
     return () => {
       untrack(() => {
-        tabs.unregister(value);
+        tabs.unregister(registeredValue);
       });
     };
   });
 
-  // Effect B — sync `disabled` to the registry without re-registering.
-  // Subscribes only to `disabled`; the mutation call is wrapped in `untrack`
-  // for the same reason as Effect A.
+  // Effect B — sync subsequent `disabled` prop changes to the registry
+  // without re-registering. Subscribes only to `disabled`; the mutation
+  // call is wrapped in `untrack` for the same reason as Effect A.
+  // `setDisabled` is a safe no-op when called before `register` has run.
   $effect(() => {
     const next = disabled;
     untrack(() => {

@@ -202,6 +202,10 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs[2]?.getAttribute('aria-selected')).toBe('true');
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('false');
+    // Roving tabindex tracks the new selection.
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[2]?.getAttribute('tabindex')).toBe('0');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('C body');
   });
@@ -213,6 +217,9 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     await fireEvent.keyDown(cTab, { key: 'ArrowLeft' });
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('0');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[2]?.getAttribute('tabindex')).toBe('-1');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('A body');
   });
@@ -287,6 +294,25 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
   });
 
+  test('vertical: ArrowDown wraps past a disabled boundary tab', async () => {
+    const items = [
+      { value: 'a', title: 'A tab', body: 'A body' },
+      { value: 'b', title: 'B tab', body: 'B body' },
+      { value: 'c', title: 'C tab', body: 'C body', disabled: true },
+    ];
+    const { container } = render(Wrapper, {
+      value: 'b',
+      orientation: 'vertical',
+      activateOnFocus: true,
+      items,
+    });
+    const bTab = Array.from(container.querySelectorAll('[role="tab"]'))[1] as HTMLElement;
+    bTab.focus();
+    await fireEvent.keyDown(bTab, { key: 'ArrowDown' });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+  });
+
   test('all-disabled-except-one: arrow keys stay on the only enabled tab', async () => {
     const items = [
       { value: 'a', title: 'A tab', body: 'A body', disabled: true },
@@ -303,26 +329,34 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
   });
 
-  test('all-disabled: arrow keys are a no-op without exception', async () => {
+  test('all-disabled: arrow keys are a no-op and call preventDefault', async () => {
     const items = [
       { value: 'a', title: 'A tab', body: 'A body', disabled: true },
       { value: 'b', title: 'B tab', body: 'B body', disabled: true },
     ];
     const { container } = render(Wrapper, { value: 'a', items });
     const aTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
-    // Focus does not move to a native-disabled button, but the keydown
-    // handler still runs when synthesized.
-    await fireEvent.keyDown(aTab, { key: 'ArrowRight' });
-    await fireEvent.keyDown(aTab, { key: 'Home' });
-    await fireEvent.keyDown(aTab, { key: 'End' });
+    // Construct cancelable KeyboardEvents so we can assert `defaultPrevented`
+    // after dispatch. happy-dom respects preventDefault on these.
+    for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      aTab.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
-    // aria-selected remains on `a` (still the bound value).
+    // aria-selected remains on `a` (still the bound value); no tab gets tabindex=0.
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('false');
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
   });
 
-  test('activateOnFocus: arrowing past a disabled tab activates the next enabled tab', async () => {
-    const { container } = render(Wrapper, { value: 'a', items: withDisabledMiddle });
+  test('activateOnFocus=true: arrowing past a disabled tab activates the next enabled tab', async () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      activateOnFocus: true,
+      items: withDisabledMiddle,
+    });
     const aTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
     aTab.focus();
     await fireEvent.keyDown(aTab, { key: 'ArrowRight' });
@@ -331,6 +365,29 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(tabs[2]?.getAttribute('aria-selected')).toBe('true');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('C body');
+  });
+
+  test('activateOnFocus=false: arrowing past a disabled tab moves focus but not selection', async () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      orientation: 'vertical',
+      activateOnFocus: false,
+      items: withDisabledMiddle,
+    });
+    const aTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowDown' });
+    // Focus moved past the disabled middle tab to C, but selection stays on A.
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(tabs[2]?.getAttribute('aria-selected')).toBe('false');
+    const cTab = tabs[2] as HTMLElement;
+    expect(cTab.ownerDocument.activeElement).toBe(cTab);
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('A body');
+    // Enter on the focused enabled tab activates it.
+    await fireEvent.keyDown(cTab, { key: 'Enter' });
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain('C body');
   });
 
   test('dynamic disable: toggling a tab to disabled makes arrows skip it', async () => {
@@ -379,16 +436,17 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
   });
 
-  test('Enter on a disabled tab does not change value (defensive unit test)', async () => {
-    // Real browsers do not focus native-disabled buttons; this is a defensive
-    // assertion that the activation guard runs if an Enter keydown is
-    // synthesized at a disabled tab.
+  test('Enter targeting a disabled tab does not change selection', async () => {
+    // Real browsers will not focus a native-disabled button, so this is an
+    // observable-output check, not a focus-handling drill. We dispatch Enter
+    // synthetically against the disabled tab's element to verify that under
+    // any synthetic path (manual dispatch, test harness, etc.), selection
+    // never lands on a disabled tab.
     const { container } = render(Wrapper, { value: 'a', items: withDisabledMiddle });
     const bTab = Array.from(container.querySelectorAll('[role="tab"]'))[1] as HTMLElement;
-    // happy-dom permits .focus() on disabled buttons; that is fine for this
-    // unit-level check.
     bTab.focus();
     await fireEvent.keyDown(bTab, { key: 'Enter' });
+    await fireEvent.keyDown(bTab, { key: ' ' });
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('false');

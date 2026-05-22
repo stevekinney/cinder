@@ -23,7 +23,7 @@
   import { setContext } from 'svelte';
 
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     value = $bindable(''),
@@ -71,34 +71,45 @@
     return entries.findIndex(({ button }) => button === active);
   }
 
+  function readActiveElement(event: KeyboardEvent): Element | null {
+    // Prefer the event target if it is itself a registered tab button —
+    // that is the most local, most reliable signal. Fall back to
+    // ownerDocument.activeElement when the target is not a tab (e.g., when
+    // the handler is attached at a higher level).
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target) {
+      for (const { button } of buttons.values()) {
+        if (button === target) return target;
+      }
+    }
+    const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    return currentTarget?.ownerDocument.activeElement ?? null;
+  }
+
   function resolveStartingIndex(event: KeyboardEvent): number {
     const entries = [...buttons.values()];
     if (entries.length === 0) return -1;
-    const target = event.currentTarget as HTMLElement | null;
-    const active = target?.ownerDocument.activeElement ?? null;
-    const focused = resolveFocusedIndex(active);
+    const focused = resolveFocusedIndex(readActiveElement(event));
     if (focused !== -1) return focused;
-    // Fallback: active tab if enabled, else first enabled.
+    // Fallback: active tab if enabled, else first enabled. Returns -1 only
+    // when every entry is disabled — the caller's guard handles that case.
     const order = [...buttons.keys()];
     const activeIdx = order.indexOf(value);
-    if (activeIdx !== -1 && !entries[activeIdx]!.disabled) return activeIdx;
-    return entries.findIndex((e) => !e.disabled);
+    if (activeIdx !== -1 && entries[activeIdx]?.disabled === false) return activeIdx;
+    return entries.findIndex((entry) => !entry.disabled);
   }
 
   const ROVING_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
 
   function handleKeydown(event: KeyboardEvent): void {
-    void version;
     const entries = [...buttons.values()];
     const order = [...buttons.keys()];
 
     if (event.key === 'Enter' || event.key === ' ') {
       // Manual activation: activate the focused tab if it is enabled.
-      const target = event.currentTarget as HTMLElement | null;
-      const active = target?.ownerDocument.activeElement ?? null;
-      const focused = resolveFocusedIndex(active);
+      const focused = resolveFocusedIndex(readActiveElement(event));
       if (focused === -1) return;
-      if (entries[focused]!.disabled) return;
+      if (entries[focused]?.disabled !== false) return;
       const focusedValue = order[focused];
       if (focusedValue === undefined) return;
       event.preventDefault();
@@ -119,7 +130,7 @@
 
     const isHorizontal = orientation === 'horizontal';
     const nextIdx = handleRovingKeydown(event, currentIndex, entries.length, {
-      isDisabled: (i) => entries[i]!.disabled,
+      isDisabled: (i) => entries[i]?.disabled ?? false,
       horizontal: isHorizontal,
       vertical: !isHorizontal,
     });
@@ -175,23 +186,25 @@
       version += 1;
     },
     isFocusable(candidate) {
+      // Force reads of every reactive input up front, regardless of which
+      // branch the predicate ultimately takes. The calling $derived in
+      // tab.svelte needs to subscribe to `value` AND `version` for any
+      // possible code path — early-returning before reading one of them
+      // would leave the derived under-subscribed and stale when only the
+      // unread input changes. Must be called inside a $derived/$effect.
+      void value;
       void version;
+      const selectedEntry = buttons.get(value);
+      const selectedIsEnabled = selectedEntry !== undefined && !selectedEntry.disabled;
       const entry = buttons.get(candidate);
       if (!entry || entry.disabled) return false;
-      // The selected tab takes the tab stop when it is enabled.
-      if (value === candidate) return true;
-      // Otherwise, fall back to the first enabled tab — but only when the
-      // selected tab is disabled or unknown, so the tablist always has a
-      // reachable tab stop.
-      const selectedEntry = buttons.get(value);
-      const selectedFocusable = selectedEntry !== undefined && !selectedEntry.disabled;
-      if (selectedFocusable) return false;
+      if (selectedIsEnabled) return value === candidate;
       return focusableValue === candidate;
     },
     handleKeydown,
   });
 </script>
 
-<div class={cn('cinder-tabs', className)} data-cinder-orientation={orientation}>
+<div class={classNames('cinder-tabs', className)} data-cinder-orientation={orientation}>
   {@render children()}
 </div>
