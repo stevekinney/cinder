@@ -496,6 +496,31 @@
       }
     },
     {
+      "name": "ColorField",
+      "id": "color-field",
+      "import": "cinder/color-field",
+      "exportName": "ColorField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Text input that validates and normalizes hex, rgb(), and hsl() color strings, emitting a canonical hex value on blur.",
+      "tags": ["form", "color"],
+      "useWhen": [
+        "Accepting a precise color value typed or pasted by the user.",
+        "Composing alongside color-picker or color-swatch-picker for combined visual and text-based color entry."
+      ],
+      "avoidWhen": [
+        "Letting users graze through a color space — use color-picker instead.",
+        "Constraining selection to a fixed palette — use color-swatch-picker instead."
+      ],
+      "related": ["color-picker", "color-swatch-picker", "input", "form-field"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/color-field/schema",
+        "variables": "cinder/color-field/variables"
+      }
+    },
+    {
       "name": "ColorPicker",
       "id": "color-picker",
       "import": "cinder/color-picker",

@@ -391,6 +391,23 @@
       "import": "./src/components/code-block/code-block.examples.json",
       "default": "./src/components/code-block/code-block.examples.json"
     },
+    "./color-field": {
+      "types": "./dist/components/color-field/index.d.ts",
+      "svelte": "./src/components/color-field/index.ts",
+      "node": "./dist/server/components/color-field/index.js",
+      "default": "./dist/components/color-field/index.js"
+    },
+    "./color-field/schema": {
+      "types": "./dist/components/color-field/color-field.schema.d.ts",
+      "svelte": "./src/components/color-field/color-field.schema.ts"
+    },
+    "./color-field/variables": {
+      "types": "./dist/components/color-field/color-field.variables.d.ts",
+      "svelte": "./src/components/color-field/color-field.variables.ts"
+    },
+    "./color-field/styles": {
+      "default": "./dist/components/color-field/color-field.css"
+    },
     "./color-picker": {
       "types": "./dist/components/color-picker/index.d.ts",
       "svelte": "./src/components/color-picker/index.ts",
