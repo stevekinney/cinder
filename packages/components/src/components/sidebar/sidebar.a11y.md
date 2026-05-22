@@ -96,9 +96,18 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
 ```
 
 This wires the open/close affordance into the page chrome and keeps the
-trigger discoverable on mobile. On desktop, `id` lands on the `<aside>`; on
-mobile, the same `id` lands on the persistent drawer `<dialog>` so
-`aria-controls` still resolves while the drawer panel content is closed.
+trigger discoverable on mobile. On desktop the `id` lands on the `<aside>`.
+On mobile, once the drawer has hydrated, the same `id` lands on the
+persistent drawer `<dialog>` and resolves whether the drawer is open or
+closed. Before hydration the drawer `<dialog>` is not in the DOM at all
+(drawer markup is gated on hydration), and the server renders the desktop
+branch by default — so on a mobile-width SSR response, `aria-controls`
+points at the desktop `<aside>` for one frame before the client swaps to
+the drawer `<dialog>`. The relationship resolves throughout, but the
+controlled element changes once on hydration — see
+[SSR behavior](#ssr-behavior) below. If you need `aria-controls` to point
+at the drawer from the very first paint, render the trigger conditionally
+on hydration; setting `collapsed` does not change when the drawer mounts.
 
 ## SSR behavior
 
