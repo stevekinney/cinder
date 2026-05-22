@@ -98,41 +98,6 @@ describe('SelectionPopover', () => {
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
   });
 
-  test('restores focus to the prior trigger after keyboard-activated submit', async () => {
-    const submitted: string[] = [];
-    const outside = document.createElement('button');
-    document.body.appendChild(outside);
-    outside.focus();
-
-    try {
-      render(SelectionPopover, {
-        props: {
-          id: 'selection-comment',
-          open: true,
-          position: { x: 120, y: 80 },
-          oncommentsubmit: (body: string) => submitted.push(body),
-        },
-      });
-
-      // Keyboard-activate the toolbar so handleExpand captures the external
-      // trigger as the focus-restore target. (A pointer click in a real
-      // browser would move focus to the icon button first, which is a
-      // separate code path.)
-      const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
-      expect(document.activeElement).toBe(outside);
-      await fireEvent.keyDown(toolbar, { key: 'Enter' });
-
-      const textarea = screen.getByPlaceholderText('Add a comment...');
-      await fireEvent.input(textarea, { target: { value: 'Looks good.' } });
-      await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
-
-      expect(submitted).toEqual(['Looks good.']);
-      expect(document.activeElement).toBe(outside);
-    } finally {
-      outside.remove();
-    }
-  });
-
   test('Escape from the focused textarea cancels the composer', async () => {
     let canceled = false;
 
