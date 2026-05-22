@@ -13,7 +13,9 @@
 
 ## Roving tabindex
 
-Per the WAI-ARIA pattern, only the currently-active tab sits in the tab order (`tabindex=0`); inactive tabs are reachable via arrow keys (`tabindex=-1`). The `rovingTabIndex` helper from `_internal/collection.ts` handles this.
+Per the WAI-ARIA pattern, only one tab sits in the tab order (`tabindex=0`); the rest are reachable via arrow keys (`tabindex=-1`). The selected tab takes that tab stop _when it is enabled_. If the selected tab is disabled — at mount, or because `disabled` toggled true after mount — the tab stop falls back to the first enabled tab in source order, so keyboard users always have a reachable entry point into the tablist. Selection (`aria-selected`) is preserved on the disabled tab; only the tab stop moves.
+
+When every tab is disabled, no tab carries `tabindex="0"`. The tablist is unreachable by keyboard in that state, which is the correct outcome: there is nothing actionable to focus.
 
 ## Keyboard
 
@@ -31,3 +33,11 @@ The horizontal default activates tabs as focus moves. Vertical orientation defau
 ## Orientation
 
 `Tabs` exposes orientation via context to `TabList` (which sets `aria-orientation`) and to its own keydown handler (which translates arrow keys to navigation intents per the orientation).
+
+## Disabled tabs
+
+Disabled tabs use the native HTML `disabled` attribute on the underlying `<button>`. That alone makes them non-focusable by Tab key and non-clickable. On top of that, the keyboard handler skips disabled tabs entirely during arrow-key, Home, and End navigation: pressing ArrowRight on a tab whose next sibling is disabled lands focus on the following enabled tab, wrapping past disabled tabs at the ends of the tablist. Enter and Space refuse to activate a focused disabled tab (a defensive guard — real browsers will not focus the button in the first place).
+
+If every tab in the tablist is disabled, the handler still calls `event.preventDefault()` on Arrow, Home, and End so the keypress does not leak into page scrolling. No focus changes occur.
+
+Consumers should avoid disabling the currently selected tab. If it happens, selection is preserved on the disabled tab (so the bound `value` does not change unexpectedly), but the tab stop moves to the first enabled tab so the tablist remains keyboard-reachable.
