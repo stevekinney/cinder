@@ -23,14 +23,7 @@
   import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let {
-    value,
-    id,
-    disabled = false,
-    class: className,
-    children,
-    trailing,
-  }: TabProps = $props();
+  let { value, id, disabled = false, class: className, children, trailing }: TabProps = $props();
 
   const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
   if (!rawTabs) {
@@ -41,24 +34,34 @@
   // Derive both ids from `value` so TabPanel can independently compute the
   // same id without coordinating through context. Consumers can still override
   // the tab id via the `id` prop; the panel id stays deterministic.
-  const tabId = id ?? `cinder-tab-${value}`;
-  const panelId = `cinder-tab-panel-${value}`;
+  const tabId = $derived(id ?? `cinder-tab-${value}`);
+  const panelId = $derived(`cinder-tab-panel-${value}`);
 
   const isActive = $derived(tabs.isActive(value));
 
   let buttonElement: HTMLButtonElement | undefined = $state();
 
-  // Register on mount and re-register if the button element changes; unregister
-  // on unmount so the parent's navigation order stays accurate. The effect's
-  // cleanup function already handles unmount unregistration — no separate
-  // onDestroy is needed.
+  // Register on mount and re-register if the button element or tab value
+  // changes; unregister on unmount so the parent's navigation order stays
+  // accurate.
   $effect(() => {
-    if (buttonElement) {
-      tabs.register(value, buttonElement);
-    }
+    const registeredValue = value;
+    const registeredButton = buttonElement;
+    if (!registeredButton) return;
+
+    tabs.register(registeredValue, registeredButton);
     return () => {
-      tabs.unregister(value);
+      tabs.unregister(registeredValue);
     };
+  });
+
+  $effect(() => {
+    const registeredValue = value;
+    const registeredButton = buttonElement;
+    const registeredDisabled = disabled;
+    if (!registeredButton) return;
+
+    tabs.updateDisabledState(registeredValue, registeredDisabled);
   });
 
   function handleClick(): void {

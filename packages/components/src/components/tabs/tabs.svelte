@@ -39,21 +39,41 @@
   // panel content too).
   const effectiveActivateOnFocus = $derived(activateOnFocus ?? orientation === 'horizontal');
 
+  type RegisteredTab = {
+    button: HTMLButtonElement;
+    disabled: boolean;
+  };
+
   /**
    * Registry of tab buttons keyed by their `value`. Updated as Tab children
-   * mount and unmount. The order of registration determines the navigation
-   * order — children are registered in mount order, which is the same as
-   * source order in the template.
+   * mount, unmount, and toggle disabled state. The order of registration
+   * determines the navigation order.
    */
-  const buttons: Map<string, HTMLButtonElement> = new Map();
+  const registeredTabs = new Map<string, RegisteredTab>();
 
-  function valuesInOrder(): string[] {
-    return [...buttons.keys()];
+  function enabledValuesInOrder(): string[] {
+    return [...registeredTabs.entries()]
+      .filter(([, registration]) => !registration.disabled)
+      .map(([registeredValue]) => registeredValue);
+  }
+
+  function isEnabledValue(candidate: string): boolean {
+    const registration = registeredTabs.get(candidate);
+    return registration !== undefined && !registration.disabled;
+  }
+
+  function isRegisteredValue(candidate: string): boolean {
+    return registeredTabs.has(candidate);
+  }
+
+  function focusedRegisteredValue(event: KeyboardEvent): string | null {
+    const target = event.target as HTMLElement | null;
+    const focusedValue = target?.dataset['cinderValue'];
+    return focusedValue && isRegisteredValue(focusedValue) ? focusedValue : null;
   }
 
   function focusValue(target: string): void {
-    const btn = buttons.get(target);
-    if (btn) btn.focus();
+    registeredTabs.get(target)?.button.focus();
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -61,26 +81,31 @@
     if (!intent) {
       // Manual activation: Enter/Space activates the focused tab.
       if (event.key === 'Enter' || event.key === ' ') {
-        const target = event.target as HTMLElement | null;
-        const focusedValue = target?.dataset['cinderValue'];
-        if (focusedValue && buttons.has(focusedValue)) {
+        const activeFocusedValue = focusedRegisteredValue(event);
+        if (activeFocusedValue && isEnabledValue(activeFocusedValue)) {
           event.preventDefault();
-          value = focusedValue;
+          value = activeFocusedValue;
         }
       }
       return;
     }
 
     event.preventDefault();
-    const order = valuesInOrder();
-    if (order.length === 0) return;
-    const currentIndex = order.indexOf(value);
-    const nextIdx = nextIndex(currentIndex === -1 ? 0 : currentIndex, order.length, intent);
-    const nextValue = order[nextIdx];
+    const enabledValues = enabledValuesInOrder();
+    if (enabledValues.length === 0) return;
+
+    const keyboardAnchor = focusedRegisteredValue(event) ?? value;
+    const currentIndex = enabledValues.indexOf(keyboardAnchor);
+    const nextValue =
+      currentIndex === -1
+        ? intent === 'next' || intent === 'first'
+          ? enabledValues[0]
+          : enabledValues.at(-1)
+        : enabledValues[nextIndex(currentIndex, enabledValues.length, intent)];
     if (nextValue === undefined) return;
 
     focusValue(nextValue);
-    if (effectiveActivateOnFocus) {
+    if (effectiveActivateOnFocus && isEnabledValue(nextValue)) {
       value = nextValue;
     }
   }
@@ -102,10 +127,23 @@
       return value === candidate;
     },
     register(target, button) {
-      buttons.set(target, button);
+      const existingRegistration = registeredTabs.get(target);
+      registeredTabs.set(target, {
+        button,
+        disabled: existingRegistration?.disabled ?? false,
+      });
+    },
+    updateDisabledState(target, disabled) {
+      const existingRegistration = registeredTabs.get(target);
+      if (!existingRegistration) return;
+
+      registeredTabs.set(target, {
+        ...existingRegistration,
+        disabled,
+      });
     },
     unregister(target) {
-      buttons.delete(target);
+      registeredTabs.delete(target);
     },
     handleKeydown,
   });
