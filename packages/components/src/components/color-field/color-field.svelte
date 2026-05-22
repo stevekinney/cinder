@@ -38,7 +38,7 @@
     defaultValue,
     alpha = false,
     formats,
-    disabled = false,
+    disabled,
     name,
     placeholder,
     errorMessage,
@@ -47,10 +47,17 @@
     ...forwarded
   }: ColorFieldProps = $props();
 
-  const isControlled = value !== undefined;
+  // Controlled vs uncontrolled is captured once at mount. Runtime flips are
+  // ignored — see the DEV warning in the controlled-sync effect below.
+  const initiallyControlled = value !== undefined;
 
   const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl'] as const satisfies readonly ColorFieldFormat[];
-  const DEFAULT_ERROR = 'Enter a valid hex, rgb(), or hsl() color.';
+
+  const FORMAT_LABELS: Record<ColorFieldFormat, string> = {
+    hex: 'hex',
+    rgb: 'rgb()',
+    hsl: 'hsl()',
+  };
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^rgba?\s*\([^)]*\)\s*$/i;
@@ -110,9 +117,17 @@
   let parseError = $state<string | null>(null);
 
   const acceptedFormats = $derived<readonly ColorFieldFormat[]>(formats ?? DEFAULT_FORMATS);
-  const resolvedErrorMessage = $derived(errorMessage ?? DEFAULT_ERROR);
 
-  if (isControlled) {
+  const defaultErrorMessage = $derived.by(() => {
+    const labels = acceptedFormats.map((f) => FORMAT_LABELS[f]);
+    if (labels.length === 1) return `Enter a valid ${labels[0]} color.`;
+    const head = labels.slice(0, -1).join(', ');
+    const tail = labels[labels.length - 1];
+    return `Enter a valid ${head}, or ${tail} color.`;
+  });
+  const resolvedErrorMessage = $derived(errorMessage ?? defaultErrorMessage);
+
+  if (initiallyControlled) {
     if (value !== undefined && value !== '') {
       const result = tryParse(value, alpha, acceptedFormats);
       if (result.ok) {
@@ -159,7 +174,7 @@
 
   let didMount = false;
   $effect(() => {
-    if (!isControlled) {
+    if (!initiallyControlled) {
       didMount = true;
       return;
     }
@@ -182,7 +197,7 @@
     const currentAlpha = alpha;
     if (currentAlpha === lastAlpha) return;
     lastAlpha = currentAlpha;
-    if (isControlled) {
+    if (initiallyControlled) {
       if (value !== undefined) reconcileFromValue(value);
       return;
     }
@@ -237,7 +252,7 @@
     const prev = committedHex;
     visibleText = result.hex;
 
-    if (isControlled) {
+    if (initiallyControlled) {
       if (result.hex !== prev) {
         committedHex = result.hex;
         committedRgba = result.rgba;
@@ -250,11 +265,11 @@
     }
   }
 
-  let anchorInput: HTMLInputElement | undefined = $state();
+  let visibleInput: HTMLInputElement | undefined = $state();
   let hiddenMirror: HTMLInputElement | undefined = $state();
 
   function onFormReset(): void {
-    if (isControlled) return;
+    if (initiallyControlled) return;
     if (defaultValue !== undefined && defaultValue !== '') {
       const result = tryParse(defaultValue, alpha, acceptedFormats);
       if (result.ok) {
@@ -271,53 +286,33 @@
     parseError = null;
   }
 
-  const resetAttachment: Attachment = (element) => {
-    const input = element as HTMLInputElement;
-    let currentForm: HTMLFormElement | null = null;
-
-    const sync = (): void => {
-      const nextForm = input.form;
-      if (nextForm === currentForm) return;
-      if (currentForm) currentForm.removeEventListener('reset', onFormReset);
-      currentForm = nextForm;
-      if (currentForm) currentForm.addEventListener('reset', onFormReset);
-    };
-
-    sync();
-    queueMicrotask(sync);
-
-    return () => {
-      if (currentForm) currentForm.removeEventListener('reset', onFormReset);
-      currentForm = null;
-    };
+  const resetAttachment: Attachment<HTMLInputElement> = (input) => {
+    // v1 does not support moving the component across forms at runtime —
+    // see color-field.a11y.md. The form association is captured at mount.
+    const form = input.form;
+    if (!form) return;
+    form.addEventListener('reset', onFormReset);
+    return () => form.removeEventListener('reset', onFormReset);
   };
-
-  function handleInput(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    visibleText = target.value;
-  }
-
-  function handleBlur(): void {
-    commit();
-  }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
-    event.preventDefault();
-    const prevCommitted = committedHex;
     commit();
     const committed = parseError === null && committedHex !== '';
     if (!committed) return;
+    // Only suppress the native submit once we know we have a committed value
+    // to submit. Empty/invalid input lets the browser handle Enter normally.
+    event.preventDefault();
     if (enterBehavior !== 'commit-then-submit') return;
+    // Write synchronously so requestSubmit's FormData sees the canonical
+    // value before Svelte's reactive flush updates the binding.
     if (hiddenMirror) hiddenMirror.value = committedHex;
-    const form = anchorInput?.form ?? null;
+    const form = visibleInput?.form ?? null;
     if (!form) return;
-    if (committedHex !== prevCommitted || prevCommitted !== '') {
-      const submitter = form.querySelector<HTMLButtonElement | HTMLInputElement>(
-        'button:not([type]):not([disabled]), button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])',
-      );
-      form.requestSubmit(submitter ?? undefined);
-    }
+    const submitter = form.querySelector<HTMLButtonElement | HTMLInputElement>(
+      'button:not([type]):not([disabled]), button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])',
+    );
+    form.requestSubmit(submitter ?? undefined);
   }
 
   // Field-control wiring (mirrors what Input does, since we render the native input ourselves).
@@ -331,8 +326,19 @@
       : defaultErrorIdForField,
   );
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+  // When both the field has a parse error AND the context owns a separate
+  // application-level error, contribute both ids so aria-describedby points
+  // at both messages. When the field has no error, only the context id flows
+  // through — referencing a non-existent id violates WCAG 1.3.1.
+  const contextErrorId = $derived(context?.errorId);
+  const fieldErrorId = $derived(hasError ? ownErrorId : undefined);
+  const describedBy = $derived(
+    composeDescribedBy(
+      resolvedDescriptionId,
+      contextErrorId,
+      fieldErrorId === contextErrorId ? undefined : fieldErrorId,
+    ),
+  );
   const resolvedAriaInvalid = $derived(
     hasError ? ariaInvalid(true) : (context?.invalid ?? ariaInvalid(false)),
   );
@@ -340,6 +346,7 @@
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   const swatchEmpty = $derived(committedHex === '');
+  const swatchShowsAlpha = $derived(alpha && committedHex.length === 9);
 </script>
 
 <div
@@ -353,44 +360,48 @@
     data-invalid={hasError ? '' : undefined}
   >
     <input
+      bind:this={visibleInput}
       {id}
       type="text"
       class="cinder-input"
       value={visibleText}
+      {@attach resetAttachment}
       disabled={resolvedDisabled}
       required={resolvedRequired}
-      placeholder={placeholder ?? null}
+      {placeholder}
       autocomplete={forwarded.autocomplete ?? 'off'}
-      autofocus={forwarded.autofocus ?? null}
-      inputmode={forwarded.inputmode ?? null}
-      readonly={forwarded.readonly ?? null}
-      aria-label={forwarded['aria-label'] ?? null}
-      aria-labelledby={forwarded['aria-labelledby'] ?? null}
+      autofocus={forwarded.autofocus}
+      inputmode={forwarded.inputmode}
+      readonly={forwarded.readonly}
+      aria-label={forwarded['aria-label']}
+      aria-labelledby={forwarded['aria-labelledby']}
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
       spellcheck={false}
-      oninput={handleInput}
-      onblur={handleBlur}
+      oninput={(event) => {
+        visibleText = (event.currentTarget as HTMLInputElement).value;
+      }}
+      onblur={commit}
       onkeydown={handleKeydown}
     />
     <span class="cinder-input-group__trailing cinder-_truncate" aria-hidden="true">
       <span
         class="cinder-color-field__swatch"
         data-empty={swatchEmpty ? '' : undefined}
-        data-alpha={alpha ? '' : undefined}
+        data-alpha={swatchShowsAlpha ? '' : undefined}
         aria-hidden="true"
         style="--cinder-color-field-swatch: {committedHex || 'transparent'};"
       ></span>
     </span>
   </div>
 
-  {#if parseError}
-    <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{parseError}</p>
-  {/if}
+  <!-- Live region is rendered unconditionally so AT reliably announces text
+       inserted into it. Empty state is visually hidden via :empty styling. -->
+  <p id={ownErrorId} class="cinder-color-field__error" aria-live="polite" aria-atomic="true">
+    {parseError ?? ''}
+  </p>
 
   {#if name}
     <input bind:this={hiddenMirror} type="hidden" {name} value={committedHex} />
   {/if}
-
-  <input bind:this={anchorInput} type="hidden" aria-hidden="true" {@attach resetAttachment} />
 </div>

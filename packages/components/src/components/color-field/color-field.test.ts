@@ -322,6 +322,102 @@ describe('ColorField controlled mode', () => {
     const swatch = q(container, '.cinder-color-field__swatch');
     expect(swatch.getAttribute('style') ?? '').not.toContain('bad');
     expect(swatch.hasAttribute('data-empty')).toBe(true);
+    expect(container.textContent).toContain('Enter a valid');
+  });
+
+  test('parent update to a new valid value reconciles visible input and hidden mirror', async () => {
+    const { container, rerender } = render(ColorField, {
+      props: { id: 'cf', name: 'c', value: '#ff0000' },
+    });
+    expect(findInput(container, 'cf').value).toBe('#ff0000');
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff0000');
+
+    await rerender({ id: 'cf', name: 'c', value: '#0000ff' });
+    await tick();
+    expect(findInput(container, 'cf').value).toBe('#0000ff');
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#0000ff');
+  });
+
+  test('controlled authority: alpha toggle on a value the parent never gave alpha for stays at echo', async () => {
+    const seen: string[] = [];
+    const { container, rerender } = render(ColorField, {
+      props: {
+        id: 'cf',
+        name: 'c',
+        value: '#ff0000',
+        alpha: false,
+        onchange: (v: string) => seen.push(v),
+      },
+    });
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff0000');
+    seen.length = 0;
+    // Flip alpha on without changing value. Because we're controlled, the
+    // alpha effect reconciles from `value` — there is no alpha to restore.
+    await rerender({
+      id: 'cf',
+      name: 'c',
+      value: '#ff0000',
+      alpha: true,
+      onchange: (v: string) => seen.push(v),
+    });
+    await tick();
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff0000');
+    expect(seen).toEqual([]); // No onchange from prop-only toggle.
+  });
+
+  test('controlled: form reset is ignored, value remains from prop', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const seen: string[] = [];
+    const { container } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', name: 'c', value: '#abcdef', onchange: (v: string) => seen.push(v) },
+    });
+    await tick();
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(findInput(container, 'cf').value).toBe('#abcdef');
+    expect(seen).toEqual([]);
+    document.body.removeChild(form);
+  });
+});
+
+describe('ColorField uncontrolled alpha toggle', () => {
+  test('toggling alpha false→true on a committed partial-alpha value re-derives hex', async () => {
+    const { container, rerender } = render(ColorField, {
+      props: { id: 'cf', name: 'c', alpha: false },
+    });
+    await typeAndBlur(findInput(container, 'cf'), '#ff000080');
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff0000');
+
+    await rerender({ id: 'cf', name: 'c', alpha: true });
+    await tick();
+    expect(q<HTMLInputElement>(container, 'input[name="c"]').value).toBe('#ff000080');
+    expect(findInput(container, 'cf').value).toBe('#ff000080');
+  });
+
+  test('reset preserves alpha reconstruction across alpha toggle', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+
+    const { container, rerender } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', name: 'c', defaultValue: '#ff000080', alpha: false },
+    });
+    await tick();
+    const field = findInput(container, 'cf');
+    expect(field.value).toBe('#ff0000');
+
+    await typeAndBlur(field, '#0000ff');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(field.value).toBe('#ff0000');
+
+    await rerender({ id: 'cf', name: 'c', defaultValue: '#ff000080', alpha: true });
+    await tick();
+    expect(field.value).toBe('#ff000080');
+
+    document.body.removeChild(form);
   });
 });
 
@@ -371,7 +467,71 @@ describe('ColorField mode switch warning', () => {
 
     expect(field.value).toBe('#abcdef');
     expect(warn).toHaveBeenCalled();
+    const firstCall = warn.mock.calls[0] as unknown as string[];
+    expect(firstCall[0]).toContain('ColorField');
+    expect(firstCall[0]).toContain('controlled');
 
     warn.mockRestore();
+  });
+});
+
+describe('ColorField composition with FormField', () => {
+  test('FormField error and field parse error coexist with distinct ids in aria-describedby', async () => {
+    const { default: Fixture } =
+      await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+
+    const { container } = render(Fixture, {
+      props: {
+        fieldId: 'wrapped',
+        fieldLabel: 'Brand color',
+        fieldError: 'Must match brand palette',
+        typedValue: 'not-a-color',
+      },
+    });
+
+    const field = findInput(container, 'wrapped');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = field.getAttribute('aria-describedby') ?? '';
+    const ids = describedBy.split(/\s+/).filter(Boolean);
+    // Both the FormField's error id and the ColorField's own error id should
+    // appear, without collision.
+    expect(ids.length).toBeGreaterThanOrEqual(2);
+    for (const idRef of ids) {
+      expect(container.querySelector(`#${idRef}`)).not.toBeNull();
+    }
+
+    const text = container.textContent ?? '';
+    expect(text).toContain('Must match brand palette');
+    expect(text).toContain('Enter a valid');
+  });
+});
+
+describe('ColorField reset listener lifecycle', () => {
+  test('reset listener is removed on unmount', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const seen: string[] = [];
+
+    const { container, unmount } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', defaultValue: '#abcdef', onchange: (v: string) => seen.push(v) },
+    });
+    await tick();
+    const field = findInput(container, 'cf');
+    await typeAndBlur(field, '#000000');
+    expect(seen).toEqual(['#000000']);
+
+    // First reset while mounted — reverts and clears.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    unmount();
+    // After unmount, dispatching reset must not throw or invoke any state on
+    // the destroyed component.
+    expect(() => {
+      form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    }).not.toThrow();
+
+    document.body.removeChild(form);
   });
 });

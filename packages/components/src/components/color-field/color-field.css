@@ -20,6 +20,35 @@
   border-style: dashed;
 }
 
+.cinder-color-field__error {
+  margin: var(--cinder-space-1, 4px) 0 0;
+  color: var(--cinder-text-danger, currentColor);
+  font-size: var(--cinder-text-sm, 0.875rem);
+}
+
+/* Persistent live region — when empty we leave the element in the DOM and
+   accessibility tree (so AT reliably announces text inserted later) but
+   collapse it visually without `display: none` (which would remove it
+   from the a11y tree). */
+.cinder-color-field__error:empty {
+  margin: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+@media (forced-colors: active) {
+  .cinder-color-field__swatch {
+    background-color: Canvas;
+    background-image: none;
+    border: 2px solid ButtonText;
+  }
+
+  .cinder-color-field__swatch[data-empty] {
+    border-style: dashed;
+    border-color: GrayText;
+  }
+}
+
 .cinder-color-field__swatch[data-alpha] {
   /* Checker-pattern backing so partial-alpha swatches stay visible. */
   background-color: #fff;

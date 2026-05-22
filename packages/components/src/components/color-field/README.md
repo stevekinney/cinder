@@ -67,7 +67,8 @@ This component does not declare any local CSS variables.
 ## Limitations
 
 - **No modern slash-alpha syntax.** `rgb(255 0 0 / 50%)` and `hsl(0 100% 50% / 0.5)` are rejected. Use legacy comma syntax (`rgba(255, 0, 0, 0.5)`) or hex with alpha (`#ff000080`).
-- **No `oninput` callback.** The field intentionally exposes only `onchange`. Use `bind:value` on a wrapping form if you need keystroke-level reactivity (or compose with `Input` directly).
+- **No `oninput` callback.** The field intentionally exposes only `onchange`. If you need keystroke-level reactivity, compose `Input` directly with your own parsing.
+- **Enter on an already-committed value re-submits.** Pressing Enter on a field whose visible value matches the committed hex still calls `form.requestSubmit()` in `commit-then-submit` mode — Enter is "submit the form with the current value," not "submit only when the value changed." Use `enterBehavior='commit-only'` if you need to suppress this.
 - **No popover / picker.** That belongs on `ColorPicker` and `ColorSwatchPicker`.
 - **No cross-form remounting at runtime.** Move the component by remounting it.
 - **Mode is captured at mount.** Switching between controlled (`value` set) and uncontrolled (`value` undefined) after mount is unsupported — the field logs a DEV warning and preserves prior state.
