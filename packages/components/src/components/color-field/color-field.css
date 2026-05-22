@@ -1,0 +1,47 @@
+/* ========================================
+ * COLOR FIELD
+ * ======================================== */
+
+.cinder-color-field {
+  display: contents;
+}
+
+.cinder-color-field__swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--cinder-radius-sm, 4px);
+  border: 1px solid var(--cinder-border, rgba(0, 0, 0, 0.12));
+  background-color: var(--cinder-color-field-swatch, transparent);
+}
+
+.cinder-color-field__swatch[data-empty] {
+  background-color: transparent;
+  border-style: dashed;
+}
+
+.cinder-color-field__swatch[data-alpha] {
+  /* Checker-pattern backing so partial-alpha swatches stay visible. */
+  background-color: #fff;
+  background-image:
+    linear-gradient(
+      var(--cinder-color-field-swatch, transparent),
+      var(--cinder-color-field-swatch, transparent)
+    ),
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size:
+    auto,
+    8px 8px,
+    8px 8px,
+    8px 8px,
+    8px 8px;
+  background-position:
+    0 0,
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0;
+}

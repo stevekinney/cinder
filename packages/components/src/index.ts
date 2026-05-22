@@ -58,6 +58,9 @@ export type { CinderProviderProps } from './components/cinder-provider/index.ts'
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
 
+export { default as ColorField } from './components/color-field/index.ts';
+export type { ColorFieldFormat, ColorFieldProps } from './components/color-field/index.ts';
+
 export { default as ColorPicker } from './components/color-picker/index.ts';
 export type { ColorPickerProps } from './components/color-picker/index.ts';
 
