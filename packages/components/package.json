@@ -2191,6 +2191,9 @@
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
     "!src/utilities/**/*.test.ts",
+    "src/highlighters/**/*.ts",
+    "!src/highlighters/**/*.test.ts",
+    "!src/highlighters/**/*.spec.ts",
     "README.md"
   ],
   "scripts": {
