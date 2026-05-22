@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "gap": {
+      "type": "string",
+      "description": "Gap between children. Threads to `--cluster-gap`. When omitted, the CSS\nfallback is `var(--cinder-space-2)`."
+    },
+    "align": {
+      "type": "string",
+      "description": "`align-items` value. Threads to `--cluster-align`. When omitted, the CSS\nfallback is `center`."
+    },
+    "justify": {
+      "type": "string",
+      "description": "`justify-content` value. Threads to `--cluster-justify`. When omitted, the\nCSS fallback is `flex-start`."
+    },
+    "as": {
+      "type": "string",
+      "description": "Rendered HTML tag.",
+      "default": "div"
+    },
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-cluster`."
+    }
+  },
+  "additionalProperties": false
+}
