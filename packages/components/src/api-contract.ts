@@ -257,6 +257,28 @@ export const CONTRACT: Record<string, ComponentContract> = {
     },
   },
 
+  'file-upload': {
+    kind: 'intersection',
+    html_attrs: 'HTMLLabelAttributes',
+    props: {
+      id: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      accept: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      multiple: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      maxSize: { optional: true, type_kind: 'TSNumberKeyword', default: NO_DEFAULT },
+      disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      name: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      files: { optional: true, type_kind: 'TSArrayType', default: NO_DEFAULT },
+      onchange: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+      onreject: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+    },
+    snippets: {
+      idle: s0(true),
+      dragActive: s0(true),
+      fileList: sp(1, true),
+    },
+  },
+
   input: {
     kind: 'intersection',
     html_attrs: 'HTMLInputAttributes',

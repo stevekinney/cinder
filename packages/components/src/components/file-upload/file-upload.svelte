@@ -1,0 +1,381 @@
+<script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status stable
+   * @purpose File picker and drag-and-drop surface that validates files locally and can render upload progress rows.
+   * @tag form
+   * @tag upload
+   * @useWhen Collecting one or more files while keeping the native picker available for keyboard and assistive-technology users.
+   * @useWhen Showing per-file upload progress or rejection errors below a prominent dropzone surface.
+   * @avoidWhen You only need a hidden native file input with no custom UI.
+   * @related form-field, progress, input
+   */
+  export type {
+    FileUploadEntry,
+    FileUploadProps,
+    FileUploadRejectionReason,
+    FileUploadStatus,
+    RejectedFile,
+  } from './file-upload.types.ts';
+</script>
+
+<script lang="ts">
+  import { DEV } from 'esm-env';
+
+  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { classNames } from '../../utilities/class-names.ts';
+  import { formatBytes } from '../../utilities/format-bytes.ts';
+  import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
+  import { useId } from '../../utilities/use-id.ts';
+  import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
+
+  let {
+    id,
+    accept,
+    multiple = false,
+    maxSize,
+    disabled,
+    name,
+    class: className,
+    files,
+    idle,
+    dragActive,
+    fileList,
+    onchange,
+    onreject,
+    ...rest
+  }: FileUploadProps = $props();
+
+  const context = getFormFieldContext();
+  const announcer = useAnnouncer({ clearDelay: 5000 });
+
+  const generatedId = useId('cinder-file-upload');
+  const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
+  const describedBy = $derived(context?.describedBy ?? rest['aria-describedby']);
+  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+
+  let inputElement = $state<HTMLInputElement | null>(null);
+  let dragDepth = $state(0);
+  let internalEntries = $state<FileUploadEntry[]>([]);
+
+  const isDragActive = $derived(dragDepth > 0);
+  const renderedEntries = $derived(files ?? internalEntries);
+
+  $effect(() => {
+    if (!DEV) return;
+    if (context && id && context.controlId !== id) {
+      console.warn(
+        `[cinder/FileUpload] id mismatch: FileUpload id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
+      );
+    }
+  });
+
+  function buildEntryId(file: File, index: number): string {
+    return `${file.name}-${file.size}-${index}`;
+  }
+
+  function matchesAcceptToken(file: File, token: string): boolean {
+    const normalizedToken = token.trim().toLowerCase();
+    if (!normalizedToken) return true;
+
+    if (normalizedToken.startsWith('.')) {
+      return file.name.toLowerCase().endsWith(normalizedToken);
+    }
+
+    const fileType = file.type.toLowerCase();
+    if (normalizedToken.endsWith('/*')) {
+      const prefix = normalizedToken.slice(0, -1);
+      return fileType.startsWith(prefix);
+    }
+
+    return fileType === normalizedToken;
+  }
+
+  function acceptsFile(file: File): boolean {
+    if (!accept?.trim()) return true;
+    const tokens = accept
+      .split(',')
+      .map((token) => token.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) return true;
+    return tokens.some((token) => matchesAcceptToken(file, token));
+  }
+
+  function validateFiles(sourceFiles: File[]): { accepted: File[]; rejected: RejectedFile[] } {
+    const accepted: File[] = [];
+    const rejected: RejectedFile[] = [];
+
+    for (const file of sourceFiles) {
+      if (maxSize !== undefined && file.size > maxSize) {
+        rejected.push({
+          file,
+          reason: 'too-large',
+          message: `${file.name} is ${formatBytes(file.size)}; maximum is ${formatBytes(maxSize)}`,
+        });
+        continue;
+      }
+
+      if (!acceptsFile(file)) {
+        rejected.push({
+          file,
+          reason: 'wrong-type',
+          message: `${file.name} is not an accepted file type`,
+        });
+        continue;
+      }
+
+      accepted.push(file);
+    }
+
+    if (!multiple && accepted.length > 1) {
+      const extras = accepted.splice(1);
+      for (const file of extras) {
+        rejected.push({
+          file,
+          reason: 'too-many',
+          message: `Only one file is allowed; ${file.name} was ignored`,
+        });
+      }
+    }
+
+    return { accepted, rejected };
+  }
+
+  function updateInternalEntries(accepted: File[], rejected: RejectedFile[]) {
+    internalEntries = [
+      ...accepted.map((file, index) => ({
+        id: buildEntryId(file, index),
+        file,
+        status: 'success' as const,
+      })),
+      ...rejected.map((entry, index) => ({
+        id: `${buildEntryId(entry.file, index)}-rejected`,
+        file: entry.file,
+        status: 'error' as const,
+        error: entry.message,
+      })),
+    ];
+  }
+
+  function announceResult(accepted: File[], rejected: RejectedFile[]) {
+    if (accepted.length === 0 && rejected.length === 0) return;
+    if (accepted.length > 0 && rejected.length === 0) {
+      announcer.announce(`${accepted.length} file${accepted.length === 1 ? '' : 's'} accepted`);
+      return;
+    }
+    if (accepted.length === 0 && rejected.length === 1) {
+      announcer.announce(rejected[0]!.message);
+      return;
+    }
+    announcer.announce(
+      `${accepted.length} file${accepted.length === 1 ? '' : 's'} accepted, ${rejected.length} rejected`,
+    );
+  }
+
+  function processFiles(sourceFiles: File[]) {
+    const { accepted, rejected } = validateFiles(sourceFiles);
+    updateInternalEntries(accepted, rejected);
+    if (accepted.length > 0) onchange?.(accepted);
+    if (rejected.length > 0) onreject?.(rejected);
+    announceResult(accepted, rejected);
+    if (inputElement) {
+      inputElement.value = '';
+    }
+  }
+
+  function handleInputChange() {
+    if (resolvedDisabled || !inputElement?.files) return;
+    processFiles(Array.from(inputElement.files));
+  }
+
+  function handleDragEnter(event: DragEvent) {
+    if (resolvedDisabled || !event.dataTransfer?.types.includes('Files')) return;
+    dragDepth += 1;
+  }
+
+  function handleDragLeave(event: DragEvent) {
+    if (resolvedDisabled || !event.dataTransfer?.types.includes('Files')) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+  }
+
+  function handleDragOver(event: DragEvent) {
+    if (resolvedDisabled) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (resolvedDisabled) return;
+    event.preventDefault();
+    dragDepth = 0;
+    const droppedFiles = Array.from(event.dataTransfer?.files ?? []);
+    processFiles(droppedFiles);
+  }
+
+  function progressValue(progress: number | undefined): number {
+    if (progress === undefined) return 0;
+    return Math.max(0, Math.min(100, progress));
+  }
+</script>
+
+{#snippet defaultIdle()}
+  <div class="cinder-file-upload__body">
+    <span class="cinder-file-upload__eyebrow">
+      <svg
+        class="cinder-file-upload__eyebrow-icon"
+        aria-hidden="true"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M8 10.75V3.75M8 3.75L5.25 6.5M8 3.75L10.75 6.5M3 10.5V11.75C3 12.4404 3.55964 13 4.25 13H11.75C12.4404 13 13 12.4404 13 11.75V10.5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      Drag files here or choose files
+    </span>
+    <span class="cinder-file-upload__button">Choose files</span>
+    <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
+  </div>
+{/snippet}
+
+{#snippet defaultDragActive()}
+  <div class="cinder-file-upload__body">
+    <span class="cinder-file-upload__eyebrow">Drop files to add them</span>
+    <p class="cinder-file-upload__hint">Release now to validate and queue the selected files.</p>
+  </div>
+{/snippet}
+
+<div class={classNames('cinder-file-upload', className)}>
+  <label
+    class="cinder-file-upload__dropzone"
+    data-drag-active={isDragActive || undefined}
+    data-disabled={resolvedDisabled || undefined}
+    ondragenter={handleDragEnter}
+    ondragleave={handleDragLeave}
+    ondragover={handleDragOver}
+    ondrop={handleDrop}
+    {...rest}
+  >
+    <input
+      bind:this={inputElement}
+      id={resolvedId}
+      class="cinder-file-upload__input"
+      type="file"
+      {accept}
+      {multiple}
+      {name}
+      disabled={resolvedDisabled}
+      aria-describedby={describedBy}
+      aria-invalid={context?.invalid}
+      onchange={handleInputChange}
+    />
+
+    {#if isDragActive}
+      {#if dragActive}
+        {@render dragActive()}
+      {:else}
+        {@render defaultDragActive()}
+      {/if}
+    {:else if idle}
+      {@render idle()}
+    {:else}
+      {@render defaultIdle()}
+    {/if}
+  </label>
+
+  {#if renderedEntries.length > 0}
+    {#if fileList}
+      {@render fileList(renderedEntries)}
+    {:else}
+      <ul class="cinder-file-upload__list">
+        {#each renderedEntries as entry (entry.id)}
+          {@const errorId = entry.error ? `${resolvedId}-${entry.id}-error` : undefined}
+          <li class="cinder-file-upload__row" aria-describedby={errorId}>
+            <div class="cinder-file-upload__row-main">
+              <div class="cinder-file-upload__file-meta">
+                <span class="cinder-file-upload__file-name cinder-_truncate">{entry.file.name}</span
+                >
+                <span class="cinder-file-upload__file-size">{formatBytes(entry.file.size)}</span>
+              </div>
+
+              {#if entry.status === 'uploading'}
+                <span class="cinder-file-upload__status" data-status="uploading">Uploading</span>
+              {:else if entry.status === 'success'}
+                <span class="cinder-file-upload__status" data-status="success">
+                  <svg
+                    class="cinder-file-upload__status-icon"
+                    aria-hidden="true"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M3.5 8.5L6.25 11.25L12.5 5"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Complete
+                </span>
+              {:else if entry.status === 'error'}
+                <span class="cinder-file-upload__status" data-status="error">
+                  <svg
+                    class="cinder-file-upload__status-icon"
+                    aria-hidden="true"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M8 4.5V8.25M8 11H8.00667M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8Z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Failed
+                </span>
+              {:else}
+                <span class="cinder-file-upload__status" data-status="pending">Pending</span>
+              {/if}
+            </div>
+
+            {#if entry.status === 'uploading'}
+              {@const value = progressValue(entry.progress)}
+              <div
+                class="cinder-file-upload__progress"
+                role="progressbar"
+                aria-label={`Uploading ${entry.file.name}`}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow={value}
+              >
+                <div
+                  class="cinder-file-upload__progress-fill"
+                  style={`--cinder-file-upload-progress: ${value}`}
+                ></div>
+              </div>
+            {/if}
+
+            {#if entry.error}
+              <p id={errorId} class="cinder-file-upload__error">{entry.error}</p>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
+
+  <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">{announcer.message}</div>
+</div>

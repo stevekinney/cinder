@@ -33,6 +33,7 @@
 @import '../components/empty-state/empty-state.css';
 @import '../components/feed/feed.css';
 @import './components/experimental.css';
+@import '../components/file-upload/file-upload.css';
 @import '../components/form-field/form-field.css';
 @import '../components/form-section/form-section.css';
 @import '../components/grid-list/grid-list.css';
