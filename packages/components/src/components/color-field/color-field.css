@@ -39,3 +39,27 @@
 .cinder-color-field[data-cinder-disabled] .cinder-color-field__swatch {
   opacity: 0.6;
 }
+
+/*
+ * Forced-colors mode flattens custom colors to system tokens, which erases
+ * the alpha checker pattern and makes empty / partial-alpha swatches
+ * indistinguishable from opaque ones. Fall back to a dashed border so the
+ * state remains visible.
+ */
+@media (forced-colors: active) {
+  .cinder-color-field__swatch {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background-color: ButtonFace;
+  }
+
+  .cinder-color-field__swatch[data-empty] {
+    background-image: none;
+    border-style: dashed;
+  }
+
+  .cinder-color-field__swatch[data-alpha]:not([data-empty]) {
+    background-image: none;
+    border-style: dotted;
+  }
+}

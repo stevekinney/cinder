@@ -49,7 +49,19 @@
   type Rgba = { r: number; g: number; b: number; a: number };
 
   const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl'] as const satisfies readonly ColorFieldFormat[];
-  const DEFAULT_PARSE_ERROR = 'Enter a valid hex, rgb(), or hsl() color.';
+
+  function defaultParseError(allowed: readonly ColorFieldFormat[]): string {
+    // Build a message that lists only the formats the field currently accepts,
+    // so consumers using `formats={['hex']}` don't see "rgb() or hsl()" in
+    // their error text. English-only; consumers needing localization should
+    // pass `errorMessage`.
+    const labels = allowed.map((format) => (format === 'hex' ? 'hex' : `${format}()`));
+    const joined =
+      labels.length <= 2
+        ? labels.join(' or ')
+        : `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`;
+    return `Enter a valid ${joined} color.`;
+  }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^rgba?\s*\([^)]*\)\s*$/i;
@@ -145,7 +157,7 @@
     visibleText = raw;
     committedHex = '';
     committedRgba = null;
-    parseError = errorMessage ?? DEFAULT_PARSE_ERROR;
+    parseError = errorMessage ?? defaultParseError(formatsList);
   }
 
   // ── Initialization ──────────────────────────────────────────────────────
@@ -230,7 +242,7 @@
 
     const rgba = tryParse(trimmed, formatsList);
     if (!rgba) {
-      parseError = errorMessage ?? DEFAULT_PARSE_ERROR;
+      parseError = errorMessage ?? defaultParseError(formatsList);
       return 'failure';
     }
 
@@ -266,12 +278,20 @@
   }
 
   function handleInput(event: Event): void {
-    const target = event.currentTarget as HTMLInputElement;
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLInputElement)) return;
     visibleText = target.value;
+    // Mirror the parse-error state onto native constraint validity. Without
+    // this, a sibling submit button could submit the form with the named
+    // hidden mirror set to '' (parseError branch of mirrorValue) while the
+    // visible input passes native required validation because its raw text is
+    // non-empty. Clearing then re-running constraint state during typing
+    // would be hostile; we re-evaluate on commit (handleBlur/handleKeydown).
   }
 
   function handleBlur(): void {
     const out = commit();
+    syncValidity();
     void out;
   }
 
@@ -279,6 +299,7 @@
     if (event.key !== 'Enter') return;
     event.preventDefault();
     const outcome = commit();
+    syncValidity();
     if (anchorInput) {
       anchorInput.value = outcome === 'failure' ? '' : committedHex;
     }
@@ -286,11 +307,33 @@
     if (outcome === 'failure') return;
     const form = anchorInput?.form;
     if (!form) return;
-    const submitter = form.querySelector<HTMLButtonElement | HTMLInputElement>(
+    const candidate = form.querySelector<HTMLButtonElement | HTMLInputElement>(
       'button:not([type]):not([disabled]), button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])',
     );
+    // `requestSubmit` throws if the submitter belongs to a different form
+    // (a button can opt into another form via `form="<id>"`). Filter to
+    // submitters owned by this form; fall back to `undefined` (default submit).
+    const submitter = candidate && candidate.form === form ? candidate : undefined;
     form.requestSubmit(submitter ?? undefined);
   }
+
+  // Synchronize HTML5 constraint validity with our parse-error state. A parse
+  // error makes the field "invalid" for native form-submission purposes so a
+  // sibling submit button can't bypass our hidden-mirror-clears-on-error
+  // safeguard and post stale data. Called from every commit path.
+  function syncValidity(): void {
+    if (!visibleInput) return;
+    visibleInput.setCustomValidity(parseError ?? '');
+  }
+
+  let visibleInput: HTMLInputElement | null = null;
+  const visibleInputAttachment: Attachment<HTMLDivElement> = (root) => {
+    visibleInput = root.querySelector<HTMLInputElement>('input:not([type="hidden"])');
+    syncValidity();
+    return () => {
+      visibleInput = null;
+    };
+  };
 
   // ── Form reset listener ─────────────────────────────────────────────────
 
@@ -354,6 +397,7 @@
 <div
   class={classNames('cinder-color-field', className)}
   data-cinder-disabled={disabled ? '' : undefined}
+  {@attach visibleInputAttachment}
 >
   <Input
     {id}
@@ -363,8 +407,8 @@
     placeholder={placeholder ?? ''}
     error={parseError ?? ''}
     autocomplete={autocomplete ?? 'off'}
-    aria-label={ariaLabel ?? undefined}
-    aria-labelledby={ariaLabelledBy ?? undefined}
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledBy}
     autofocus={autofocus ?? false}
     inputmode={inputmode ?? 'text'}
     readonly={readonly ?? false}

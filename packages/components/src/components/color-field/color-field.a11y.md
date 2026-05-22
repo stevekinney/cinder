@@ -10,7 +10,9 @@ The trailing color swatch is a `<span aria-hidden="true">` with the parsed color
 
 ## Error wiring through the shared field-control contract
 
-The component delegates all label, description, and `aria-describedby` wiring to the composed `<Input>`, which itself uses the shared field-control utilities and the `<FormField>` context. When a parse error is active, ColorField sets the inner input's `error` prop, which produces `aria-invalid="true"` and a referenced error-message id. When ColorField sits inside a `<FormField>` that also raises an error (e.g., a semantic "color must match brand palette" rule), both ids appear in `aria-describedby` without collision — `<Input>` allocates a distinct id whenever its own error id would clash with the context.
+The component delegates all label, description, and `aria-describedby` wiring to the composed `<Input>`, which itself uses the shared field-control utilities and the `<FormField>` context. When a parse error is active, ColorField sets the inner input's `error` prop, which produces `aria-invalid="true"` and a referenced error-message id.
+
+**Dual-error composition is partial in v1.** When ColorField sits inside a `<FormField>` that also raises a semantic error (e.g., "color must match brand palette"), `<Input>` allocates its own error id to avoid collision — but only the field's own parse error id appears in `aria-describedby`. The FormField error `<p>` still renders so sighted users see both messages, but assistive tech reading the input's described-by hears only the parse error. Fixing this requires teaching `<Input>` to include both ids in `composeDescribedBy`, which is out of scope for this component. Consumers needing strict dual-error announcement should render only one error at a time (either field-level or wrapper-level, not both) until that upstream change lands.
 
 ColorField does **not** raise semantic validation errors. The only error it owns is the parse-failure error. Anything else — required, brand-palette restrictions, contrast thresholds — lives on the wrapping `<FormField>` and stays the parent's responsibility.
 

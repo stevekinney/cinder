@@ -456,7 +456,11 @@ describe('ColorField — formats change does not clear error', () => {
 });
 
 describe('ColorField — controlled parent ignores onchange', () => {
-  test('optimistic state persists until parent issues a real value change', async () => {
+  test('optimistic state persists across a same-value rerender', async () => {
+    // Tests the exact scenario the lastReconciledValue guard is for: the
+    // parent receives onchange but does not update value, then Svelte
+    // re-renders for some other prop. The controlled-sync effect must not
+    // overwrite the optimistic local state with the unchanged parent value.
     const emitted: string[] = [];
     const onchange = (v: string) => emitted.push(v);
     const { rerender, container } = render(ColorField, {
@@ -467,9 +471,110 @@ describe('ColorField — controlled parent ignores onchange', () => {
     await tick();
     expect(emitted).toEqual(['#ff0000']);
     expect(getVisibleInput(container).value).toBe('#ff0000');
-    // A real prop change to a different value takes precedence.
+    // Same value re-rendered — must not revert.
+    await rerender({ id: 'cf', value: '#000000', onchange });
+    await tick();
+    expect(getVisibleInput(container).value).toBe('#ff0000');
+  });
+
+  test('parent prop change to a different value takes precedence', async () => {
+    const emitted: string[] = [];
+    const onchange = (v: string) => emitted.push(v);
+    const { rerender, container } = render(ColorField, {
+      props: { id: 'cf', value: '#000000', onchange },
+    });
+    await tick();
+    await typeAndBlur(container, '#ff0000');
+    await tick();
     await rerender({ id: 'cf', value: '#0000ff', onchange });
     await tick();
     expect(getVisibleInput(container).value).toBe('#0000ff');
+  });
+});
+
+describe('ColorField — controlled form reset is a no-op locally', () => {
+  test('controlled field leaves visible and mirror unchanged on reset', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const onchange = () => {};
+    const { container } = render(ColorField, {
+      target: form,
+      props: { id: 'cf', value: '#abcdef', name: 'c', onchange },
+    });
+    await tick();
+    expect(getVisibleInput(container).value).toBe('#abcdef');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    // Controlled mode: handleReset returns early; visible + mirror unchanged.
+    expect(getVisibleInput(container).value).toBe('#abcdef');
+    expect(getNamedHidden(container, 'c')!.value).toBe('#abcdef');
+    document.body.removeChild(form);
+  });
+});
+
+describe('ColorField — parse error sets custom validity', () => {
+  test('visible input becomes constraint-invalid on parse error and clears on fix', async () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', name: 'c' },
+    });
+    const input = getVisibleInput(container);
+    await typeAndBlur(container, 'not-a-color');
+    expect(input.validity.customError).toBe(true);
+    expect(input.checkValidity()).toBe(false);
+    await typeAndBlur(container, '#ff0000');
+    expect(input.validity.customError).toBe(false);
+    expect(input.checkValidity()).toBe(true);
+  });
+});
+
+describe('ColorField — composition with FormField (T-WrapperError)', () => {
+  test('ColorField parse error wins aria-describedby; FormField error renders but is unlinked', async () => {
+    // Documents the inner <Input>'s id-collision behavior: when both
+    // FormField's context error and the wrapped Input's own error share
+    // the base id pattern, Input allocates `{id}-input-error` for its own
+    // and resolvedErrorId points at that. FormField's error <p> still
+    // renders so sighted users see both messages, but it is not in the
+    // input's aria-describedby. Documented in color-field.a11y.md as a
+    // known limitation.
+    const { default: Fixture } =
+      await import('../../test/fixtures/form-field-color-field-fixture.svelte');
+    const { container } = render(Fixture, {
+      props: {
+        fieldId: 'wrap',
+        fieldLabel: 'Color',
+        fieldError: 'Color must match brand palette.',
+        initialValue: 'bad',
+      },
+    });
+    await tick();
+    const input = getVisibleInput(container);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    const ids = describedBy.split(/\s+/).filter(Boolean);
+    expect(ids.length).toBe(1);
+    // The id present is the Input's own error, not FormField's
+    expect(ids[0]).toBe('wrap-input-error');
+    // Both message strings still render somewhere in the DOM
+    expect(container.textContent).toContain('Color must match brand palette.');
+    expect(container.textContent).toMatch(/Enter a valid .* color\./);
+  });
+});
+
+describe('ColorField — error message reflects accepted formats', () => {
+  test('formats=hex produces a hex-only error message', async () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', formats: ['hex'] },
+    });
+    await typeAndBlur(container, 'rgb(0,0,0)');
+    expect(container.textContent).toContain('Enter a valid hex color.');
+    expect(container.textContent).not.toContain('rgb()');
+  });
+
+  test('formats=hex,rgb produces a two-format error message', async () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', formats: ['hex', 'rgb'] },
+    });
+    await typeAndBlur(container, 'hsl(0,0%,0%)');
+    expect(container.textContent).toContain('Enter a valid hex or rgb() color.');
   });
 });
