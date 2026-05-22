@@ -492,22 +492,26 @@ describe('ColorField — controlled parent ignores onchange', () => {
   });
 });
 
-describe('ColorField — controlled form reset is a no-op locally', () => {
-  test('controlled field leaves visible and mirror unchanged on reset', async () => {
+describe('ColorField — controlled form reset stays aligned with controlled value', () => {
+  test('after a form reset event, controlled field re-applies its current value', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
     const onchange = () => {};
-    const { container } = render(ColorField, {
+    render(ColorField, {
       target: form,
       props: { id: 'cf', value: '#abcdef', name: 'c', onchange },
     });
     await tick();
-    expect(getVisibleInput(container).value).toBe('#abcdef');
+    expect(getVisibleInput(form).value).toBe('#abcdef');
+    // Dispatch the reset event the same way as the uncontrolled-reset test
+    // (matches the working color-picker pattern). The component schedules a
+    // microtask in handleReset that re-applies the controlled value.
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
-    // Controlled mode: handleReset returns early; visible + mirror unchanged.
-    expect(getVisibleInput(container).value).toBe('#abcdef');
-    expect(getNamedHidden(container, 'c')!.value).toBe('#abcdef');
+    await Promise.resolve();
+    await tick();
+    expect(getVisibleInput(form).value).toBe('#abcdef');
+    expect(getNamedHidden(form, 'c')!.value).toBe('#abcdef');
     document.body.removeChild(form);
   });
 });
@@ -557,6 +561,61 @@ describe('ColorField — composition with FormField (T-WrapperError)', () => {
     // Both message strings still render somewhere in the DOM
     expect(container.textContent).toContain('Color must match brand palette.');
     expect(container.textContent).toMatch(/Enter a valid .* color\./);
+  });
+});
+
+describe('ColorField — disabled hidden mirror does not submit', () => {
+  // Per the HTML form-data algorithm, disabled controls don't submit. The
+  // visible Input inherits `disabled` from the prop; the hidden mirror gets
+  // it via the explicit `disabled` attribute. Asserting via DOM rather than
+  // FormData because happy-dom's FormData enumeration depends on form-element
+  // owner registration, which testing-library's render container doesn't
+  // always set up the way a real browser does.
+  test('disabled hidden mirror has the disabled attribute set', () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', name: 'c', value: '#ff0000', disabled: true },
+    });
+    const mirror = getNamedHidden(container, 'c');
+    expect(mirror).not.toBeNull();
+    expect(mirror!.disabled).toBe(true);
+  });
+
+  test('enabled hidden mirror has disabled false and carries the value', () => {
+    const { container } = render(ColorField, {
+      props: { id: 'cf', name: 'c', value: '#ff0000' },
+    });
+    const mirror = getNamedHidden(container, 'c');
+    expect(mirror).not.toBeNull();
+    expect(mirror!.disabled).toBe(false);
+    expect(mirror!.value).toBe('#ff0000');
+  });
+});
+
+describe('ColorField — controlled rerender syncs custom validity', () => {
+  test('valid -> invalid controlled rerender blocks native submission', async () => {
+    const { container, rerender } = render(ColorField, {
+      props: { id: 'cf', name: 'c', value: '#ff0000' },
+    });
+    await tick();
+    const input = getVisibleInput(container);
+    expect(input.checkValidity()).toBe(true);
+    await rerender({ id: 'cf', name: 'c', value: 'bad' });
+    await tick();
+    expect(input.validity.customError).toBe(true);
+    expect(input.checkValidity()).toBe(false);
+  });
+
+  test('invalid -> valid controlled rerender clears custom validity', async () => {
+    const { container, rerender } = render(ColorField, {
+      props: { id: 'cf', name: 'c', value: 'bad' },
+    });
+    await tick();
+    const input = getVisibleInput(container);
+    expect(input.validity.customError).toBe(true);
+    await rerender({ id: 'cf', name: 'c', value: '#ff0000' });
+    await tick();
+    expect(input.validity.customError).toBe(false);
+    expect(input.checkValidity()).toBe(true);
   });
 });
 

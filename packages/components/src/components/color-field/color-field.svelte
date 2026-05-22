@@ -290,16 +290,15 @@
   }
 
   function handleBlur(): void {
-    const out = commit();
-    syncValidity();
-    void out;
+    // The `$effect` watching `parseError` syncs setCustomValidity reactively;
+    // no manual sync call is needed here.
+    commit();
   }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
     event.preventDefault();
     const outcome = commit();
-    syncValidity();
     if (anchorInput) {
       anchorInput.value = outcome === 'failure' ? '' : committedHex;
     }
@@ -317,30 +316,48 @@
     form.requestSubmit(submitter ?? undefined);
   }
 
-  // Synchronize HTML5 constraint validity with our parse-error state. A parse
-  // error makes the field "invalid" for native form-submission purposes so a
-  // sibling submit button can't bypass our hidden-mirror-clears-on-error
-  // safeguard and post stale data. Called from every commit path.
-  function syncValidity(): void {
-    if (!visibleInput) return;
-    visibleInput.setCustomValidity(parseError ?? '');
-  }
-
-  let visibleInput: HTMLInputElement | null = null;
+  // Reactive validity sync: a parse error makes the field "invalid" for
+  // native form-submission so a sibling submit button can't bypass our
+  // hidden-mirror-clears-on-error safeguard and post stale data. The effect
+  // re-runs on every `parseError` and `visibleInput` change — covering user
+  // blur, Enter commits, AND controlled-prop updates that hit the invalid
+  // branch of reconcileFromValue. The attachment below resolves `visibleInput`
+  // once the wrapper div mounts.
+  let visibleInput: HTMLInputElement | null = $state(null);
   const visibleInputAttachment: Attachment<HTMLDivElement> = (root) => {
     visibleInput = root.querySelector<HTMLInputElement>('input:not([type="hidden"])');
-    syncValidity();
     return () => {
       visibleInput = null;
     };
   };
+  $effect(() => {
+    if (!visibleInput) return;
+    visibleInput.setCustomValidity(parseError ?? '');
+  });
 
   // ── Form reset listener ─────────────────────────────────────────────────
 
   let anchorInput: HTMLInputElement | null = null;
 
   function handleReset(): void {
-    if (isControlled) return;
+    if (isControlled) {
+      // Controlled mode defers to the parent for state, but the browser's
+      // native reset default action (which runs after this handler) will
+      // still mutate the visible input's `.value` and the hidden mirror to
+      // their DOM-default attribute values. Re-apply the current controlled
+      // value in a microtask so the inputs stay aligned with the parent's
+      // state through the reset cycle.
+      const current = value;
+      queueMicrotask(() => {
+        if (current === undefined) return;
+        // Force `reconcileFromValue` to re-run by clearing the guard. The
+        // value identity is unchanged, so the $effect path is blocked by the
+        // sentinel; re-applying directly is the deliberate exception.
+        lastReconciledValue = undefined;
+        reconcileFromValue(current);
+      });
+      return;
+    }
     if (defaultValue === undefined || defaultValue === '') {
       clearAll();
       return;
@@ -419,7 +436,12 @@
   />
 
   {#if name}
-    <input type="hidden" {name} value={mirrorValue} />
+    <!--
+      Disabled controls don't submit per the HTML spec. The visible Input
+      already inherits `disabled`, but the named hidden mirror needs it too,
+      or a disabled ColorField would still contribute a value to FormData.
+    -->
+    <input type="hidden" {name} value={mirrorValue} disabled={disabled ?? false} />
   {/if}
 
   <input type="hidden" aria-hidden="true" {@attach resetAttachment} />
