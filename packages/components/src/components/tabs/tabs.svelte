@@ -22,7 +22,7 @@
   import type { TabsContext, TabsProps } from './tabs.types.ts';
   import { setContext } from 'svelte';
 
-  import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
+  import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
@@ -95,11 +95,23 @@
     // when every entry is disabled — the caller's guard handles that case.
     const order = [...buttons.keys()];
     const activeIdx = order.indexOf(value);
-    if (activeIdx !== -1 && entries[activeIdx]?.disabled === false) return activeIdx;
+    if (activeIdx !== -1 && !entries[activeIdx]?.disabled) return activeIdx;
     return entries.findIndex((entry) => !entry.disabled);
   }
 
-  const ROVING_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
+  /**
+   * Whether the given key is one this orientation handles. Home/End are
+   * always relevant; Arrow keys are orientation-specific. Mirrors the
+   * `horizontal`/`vertical` filtering inside `handleRovingKeydown` so the
+   * all-disabled no-op path does not preventDefault on keys we would
+   * otherwise have let bubble (e.g., ArrowUp on a horizontal tablist).
+   */
+  function isOrientedKey(key: string, isHorizontal: boolean): boolean {
+    if (!isRovingKey(key)) return false;
+    if (key === 'Home' || key === 'End') return true;
+    if (isHorizontal) return key === 'ArrowLeft' || key === 'ArrowRight';
+    return key === 'ArrowUp' || key === 'ArrowDown';
+  }
 
   function handleKeydown(event: KeyboardEvent): void {
     const entries = [...buttons.values()];
@@ -117,7 +129,8 @@
       return;
     }
 
-    if (!ROVING_KEYS.has(event.key)) return;
+    const isHorizontal = orientation === 'horizontal';
+    if (!isOrientedKey(event.key, isHorizontal)) return;
     if (entries.length === 0) return;
 
     const currentIndex = resolveStartingIndex(event);
@@ -128,7 +141,6 @@
       return;
     }
 
-    const isHorizontal = orientation === 'horizontal';
     const nextIdx = handleRovingKeydown(event, currentIndex, entries.length, {
       isDisabled: (i) => entries[i]?.disabled ?? false,
       horizontal: isHorizontal,

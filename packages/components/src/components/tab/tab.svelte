@@ -53,10 +53,15 @@
 
   let buttonElement: HTMLButtonElement | undefined = $state();
 
+  // Capture the registry key once. `Tab.value` is treated as immutable after
+  // mount (see module-level note above); reading it via `untrack` here makes
+  // the immutability mechanical — even if a consumer mutates the prop, the
+  // registry keeps using the original key for register, setDisabled, and
+  // unregister, so the registry never drifts into an inconsistent state.
+  const registeredValue = untrack(() => value);
+
   // Effect A — mount/unmount registration. Depends only on `buttonElement`.
-  // The `value` read is captured once (via `untrack`) and reused in cleanup
-  // so unregister always targets the same key the registration used. The
-  // initial `disabled` is also seeded into the registry on mount so first
+  // The initial `disabled` is seeded into the registry on mount so first
   // paint computes the right tab stop without waiting for Effect B. The
   // mutation calls themselves are wrapped in `untrack` because `register`
   // and `unregister` write to a reactive `version` counter; reading that
@@ -64,7 +69,6 @@
   $effect(() => {
     if (!buttonElement) return;
     const button = buttonElement;
-    const registeredValue = untrack(() => value);
     const initialDisabled = untrack(() => disabled);
     untrack(() => {
       tabs.register(registeredValue, button, initialDisabled);
@@ -83,7 +87,7 @@
   $effect(() => {
     const next = disabled;
     untrack(() => {
-      tabs.setDisabled(value, next);
+      tabs.setDisabled(registeredValue, next);
     });
   });
 

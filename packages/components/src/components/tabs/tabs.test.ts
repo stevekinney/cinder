@@ -329,6 +329,17 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
   });
 
+  test('horizontal: orientation-irrelevant ArrowUp/Down do not preventDefault', async () => {
+    const { container } = render(Wrapper, { value: 'a', items });
+    const aTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
+    aTab.focus();
+    for (const key of ['ArrowUp', 'ArrowDown']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      aTab.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+  });
+
   test('all-disabled: arrow keys are a no-op and call preventDefault', async () => {
     const items = [
       { value: 'a', title: 'A tab', body: 'A body', disabled: true },
