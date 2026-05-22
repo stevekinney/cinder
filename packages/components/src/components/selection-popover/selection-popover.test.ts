@@ -81,49 +81,66 @@ describe('SelectionPopover', () => {
     document.body.appendChild(outside);
     outside.focus();
 
-    render(SelectionPopover, {
-      props: {
-        id: 'selection-comment',
-        open: true,
-        position: { x: 120, y: 80 },
-        oncommentsubmit: (body: string) => submitted.push(body),
-      },
-    });
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          oncommentsubmit: (body: string) => submitted.push(body),
+        },
+      });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    const textarea = screen.getByPlaceholderText('Add a comment...');
-    await fireEvent.input(textarea, { target: { value: '  Looks good.  ' } });
-    await fireEvent.keyDown(textarea, { key: 'Enter', ...modifier });
+      // Sanity check: `outside` must still own focus at the moment of the
+      // click handler running, since handleExpand reads document.activeElement
+      // to remember where to restore focus after submit.
+      expect(document.activeElement).toBe(outside);
 
-    expect(submitted).toEqual(['Looks good.']);
-    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
-    expect(document.activeElement).toBe(outside);
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByPlaceholderText('Add a comment...');
+      await fireEvent.input(textarea, { target: { value: '  Looks good.  ' } });
+      await fireEvent.keyDown(textarea, { key: 'Enter', ...modifier });
 
-    outside.remove();
+      expect(submitted).toEqual(['Looks good.']);
+      expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
   });
 
-  test('Escape from the focused textarea cancels the composer', async () => {
+  test('Escape from the focused textarea cancels the composer and restores focus', async () => {
     let canceled = false;
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    outside.focus();
 
-    render(SelectionPopover, {
-      props: {
-        id: 'selection-comment',
-        open: true,
-        position: { x: 120, y: 80 },
-        oncancel: () => {
-          canceled = true;
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          oncancel: () => {
+            canceled = true;
+          },
         },
-      },
-    });
+      });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    const textarea = screen.getByPlaceholderText('Add a comment...');
-    textarea.focus();
-    await fireEvent.keyDown(textarea, { key: 'Escape' });
+      expect(document.activeElement).toBe(outside);
 
-    expect(canceled).toBe(true);
-    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByPlaceholderText('Add a comment...');
+      textarea.focus();
+      await fireEvent.keyDown(textarea, { key: 'Escape' });
+
+      expect(canceled).toBe(true);
+      expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
   });
 });

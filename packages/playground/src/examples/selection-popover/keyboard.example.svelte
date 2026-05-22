@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Keyboard submit';
   export const description =
-    'Press Cmd+Enter (or Ctrl+Enter) inside the composer to submit. The composer should collapse back to the icon after each submission.';
+    'Press Cmd+Enter (or Ctrl+Enter) inside the composer to submit. The composer collapses back to the icon after submission — the popover does not re-expand.';
 </script>
 
 <script lang="ts">
@@ -17,8 +17,8 @@
 <div style="position: relative; min-height: 9rem;">
   <p style="max-width: 36rem; margin: 0;">
     Open the composer, type a comment, and press <kbd>Cmd</kbd>+<kbd>Enter</kbd> (or
-    <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to submit. The popover should collapse back to the icon — if
-    it stays expanded, the keyboard-submit regression has returned.
+    <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to submit. The popover collapses back to the icon — it does
+    not stay expanded.
   </p>
 
   <SelectionPopover
