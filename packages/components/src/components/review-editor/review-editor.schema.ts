@@ -16,6 +16,13 @@ const schema = {
       type: 'string',
       description: 'Current markdown content (two-way bindable).',
     },
+    threads: {
+      type: 'array',
+      items: {
+        type: 'object',
+      },
+      description: 'Comment threads (two-way bindable).',
+    },
     mode: {
       enum: ['edit', 'readonly'],
       description: 'Editor mode.',
@@ -69,10 +76,6 @@ const schema = {
       {
         name: 'onthreaddelete',
         reason: 'function-or-snippet',
-      },
-      {
-        name: 'threads',
-        reason: 'unknown-shape',
       },
     ],
   },
