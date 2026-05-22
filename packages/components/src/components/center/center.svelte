@@ -33,11 +33,11 @@
 
 <svelte:element
   this={as ?? 'div'}
+  {...rest}
   class={classNames('cinder-center', customClassName)}
   data-cinder-intrinsic={intrinsic ? 'true' : undefined}
   style:--center-max-width={maxWidth}
   style:--center-min-height={minHeight}
-  {...rest}
 >
   {@render children()}
 </svelte:element>

@@ -25,11 +25,11 @@
 
 <svelte:element
   this={as ?? 'div'}
+  {...rest}
   class={classNames('cinder-inline', customClassName)}
   style:--inline-gap={gap}
   style:--inline-wrap={wrap}
   style:--inline-align={align}
-  {...rest}
 >
   {@render children()}
 </svelte:element>

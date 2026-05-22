@@ -25,7 +25,7 @@
 
 <svelte:element
   this={as ?? 'span'}
-  class={classNames('cinder-spacer', customClassName)}
   {...rest}
+  class={classNames('cinder-spacer', customClassName)}
   aria-hidden="true"
 ></svelte:element>

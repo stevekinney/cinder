@@ -33,11 +33,11 @@
 
 <svelte:element
   this={as ?? 'div'}
+  {...rest}
   class={classNames('cinder-cluster', customClassName)}
   style:--cluster-gap={gap}
   style:--cluster-align={align}
   style:--cluster-justify={justify}
-  {...rest}
 >
   {@render children()}
 </svelte:element>

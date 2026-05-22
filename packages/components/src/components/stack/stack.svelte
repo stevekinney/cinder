@@ -26,10 +26,10 @@
 
 <svelte:element
   this={as ?? 'div'}
+  {...rest}
   class={classNames('cinder-stack', customClassName)}
   style:--stack-gap={gap}
   style:--stack-direction={direction}
-  {...rest}
 >
   {@render children()}
 </svelte:element>

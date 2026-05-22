@@ -70,9 +70,9 @@
 @import '../components/slider/slider.css';
 @import '../components/sortable-list/sortable-list.css';
 @import '../components/spacer/spacer.css';
+@import '../components/spinner/spinner.css';
 @import '../components/stack/stack.css';
 @import '../components/stacked-list-item/stacked-list-item.css';
-@import '../components/spinner/spinner.css';
 @import '../components/stat/stat.css';
 @import '../components/stat-group/stat-group.css';
 @import '../components/status-dot/status-dot.css';

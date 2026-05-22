@@ -79,4 +79,14 @@ describe('Stack', () => {
     const { container } = render(Stack, { children: textSnippet('hello stack') });
     expect(container.querySelector('.cinder-stack')?.textContent).toContain('hello stack');
   });
+
+  test('component gap directive wins over a consumer style attribute', () => {
+    const { container } = render(Stack, {
+      children: textSnippet('item'),
+      gap: '2rem',
+      style: '--stack-gap: 99rem',
+    });
+    const root = container.querySelector('.cinder-stack') as HTMLElement;
+    expect(root.style.getPropertyValue('--stack-gap')).toBe('2rem');
+  });
 });
