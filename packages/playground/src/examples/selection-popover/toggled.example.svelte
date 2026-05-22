@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Toggled by an external trigger';
   export const description =
-    'A button outside the popover toggles open. Closing fires onclose; focus restores to the trigger button.';
+    'A button outside the popover drives `open`. When the consumer clicks outside the popover, the component invokes `onclose` and the consumer flips `open` back to `false`.';
 </script>
 
 <script lang="ts">
@@ -38,8 +38,8 @@
 
   <p style="max-width: 36rem; margin: 0.75rem 0 0;">
     Click the button to open the popover at a fixed position. Click anywhere outside the popover and
-    it closes (the consumer flips <code>open</code> to <code>false</code> from
-    <code>onclose</code>). Focus returns to the toggle button.
+    it closes — the component fires <code>onclose</code> and the consumer flips <code>open</code>
+    back to <code>false</code>.
   </p>
 
   <SelectionPopover
