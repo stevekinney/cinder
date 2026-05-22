@@ -423,26 +423,187 @@ describe('Sidebar (mobile / drawer)', () => {
   });
 });
 
+/**
+ * Collapsed-state CSS contract.
+ *
+ * Happy-dom (the test runtime here) does not implement layout, so
+ * stylesheet-driven `getComputedStyle` and `getBoundingClientRect` cannot
+ * verify visual hiding. The contract is instead locked at the CSS source
+ * layer by parsing the file and checking that every required (arm × rule
+ * group) pair is present, with the required declaration set on the
+ * visually-hidden rule and an explicit ban on declarations that would remove
+ * the label from the accessibility tree. A future Playwright story should
+ * verify the rendered visual result; this lock catches selector regressions
+ * that would silently break the icon-rail in collapsed mode.
+ *
+ * The parser splits on `}` because `sidebar.css` has no nested at-rules. If
+ * a `@media` (or other nesting) is added later, the parser must be updated.
+ */
+
+type CssRule = { selectors: string[]; declarations: string };
+
+function parseCssRules(css: string): CssRule[] {
+  // Strip `/* ... */` comments first — they would otherwise glue onto the
+  // following selector list when we split on `}`.
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripped
+    .split('}')
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.includes('{'))
+    .map((chunk) => {
+      const braceIndex = chunk.indexOf('{');
+      const selectorList = chunk.slice(0, braceIndex);
+      const declarations = chunk.slice(braceIndex + 1).trim();
+      const selectors = selectorList
+        .split(',')
+        .map((selector) => selector.replace(/\s+/g, ' ').trim())
+        .filter((selector) => selector.length > 0);
+      return { selectors, declarations };
+    });
+}
+
+const COLLAPSED_SCOPE = '.cinder-sidebar[data-cinder-collapsed] ';
+
+// Each arm key maps to the selector substring that proves the rule covers
+// that arm. Substrings are anchored on the unique class+element pairing so
+// they cannot match unrelated selectors like `.cinder-side-navigation`
+// (group container) by accident.
+const ARM_KEYS = ['side-nav-a', 'side-nav-button', 'footer-a', 'footer-button'] as const;
+type ArmKey = (typeof ARM_KEYS)[number];
+
+const ARM_BASE: Record<ArmKey, string> = {
+  'side-nav-a': '.cinder-side-navigation a.cinder-navigation-item',
+  'side-nav-button': '.cinder-side-navigation button.cinder-navigation-item',
+  'footer-a': '.cinder-sidebar__footer a.cinder-navigation-item',
+  'footer-button': '.cinder-sidebar__footer button.cinder-navigation-item',
+};
+
+function selectorMatchesArm(
+  selector: string,
+  arm: ArmKey,
+  shape: 'base' | 'child-of' | 'descendant-svg-or-img' | 'descendant-aria-hidden',
+): boolean {
+  if (!selector.startsWith(COLLAPSED_SCOPE)) return false;
+  const base = ARM_BASE[arm];
+  if (!selector.includes(base)) return false;
+  switch (shape) {
+    case 'base':
+      // Selector targets the interactive element itself, not a descendant
+      // chain past it. Trim the collapsed scope, ensure the remainder ends
+      // at the base selector with no trailing combinator.
+      return selector.replace(/\s+/g, ' ').trim().endsWith(base);
+    case 'child-of':
+      return selector.includes(`${base} >`);
+    case 'descendant-svg-or-img':
+      return selector.includes(`${base} > svg`) || selector.includes(`${base} > img`);
+    case 'descendant-aria-hidden':
+      return (
+        selector.includes(`${base} > [aria-hidden='true']`) ||
+        selector.includes(`${base} > [aria-hidden="true"]`)
+      );
+  }
+}
+
+function collectArms(
+  rules: CssRule[],
+  groupPredicate: (rule: CssRule) => boolean,
+  armShape: Parameters<typeof selectorMatchesArm>[2],
+): { arms: Set<ArmKey>; matchingRules: CssRule[] } {
+  const arms = new Set<ArmKey>();
+  const matchingRules: CssRule[] = [];
+  for (const rule of rules) {
+    if (!groupPredicate(rule)) continue;
+    matchingRules.push(rule);
+    for (const selector of rule.selectors) {
+      for (const arm of ARM_KEYS) {
+        if (selectorMatchesArm(selector, arm, armShape)) arms.add(arm);
+      }
+    }
+  }
+  return { arms, matchingRules };
+}
+
 describe('Sidebar collapsed CSS contract', () => {
-  test('collapsed leaf rules cover side-navigation and footer navigation items', async () => {
+  test('all four arms × four rule groups are present', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
-    expect(css).toContain('.cinder-side-navigation a.cinder-navigation-item');
-    expect(css).toContain('.cinder-side-navigation button.cinder-navigation-item');
-    expect(css).toContain('.cinder-sidebar__footer a.cinder-navigation-item');
-    expect(css).toContain('.cinder-sidebar__footer button.cinder-navigation-item');
+    const rules = parseCssRules(css);
+    const allArms = new Set<ArmKey>(ARM_KEYS);
+
+    const visuallyHidden = collectArms(
+      rules,
+      (rule) => rule.declarations.includes('clip-path: inset(50%)'),
+      'child-of',
+    );
+    expect(visuallyHidden.arms, 'visually-hidden block must cover all four arms').toEqual(allArms);
+
+    const iconWidth = collectArms(
+      rules,
+      (rule) =>
+        rule.declarations.includes('font-size: 0') &&
+        rule.declarations.includes('justify-content: center'),
+      'base',
+    );
+    expect(iconWidth.arms, 'icon-only width block must cover all four arms').toEqual(allArms);
+
+    const svgImg = collectArms(
+      rules,
+      (rule) =>
+        rule.declarations.includes('flex-shrink: 0') &&
+        rule.selectors.some((selector) => selector.includes('> svg') || selector.includes('> img')),
+      'descendant-svg-or-img',
+    );
+    expect(svgImg.arms, 'svg/img pass-through must cover all four arms').toEqual(allArms);
+
+    const ariaHidden = collectArms(
+      rules,
+      (rule) =>
+        rule.declarations.includes('font-size:') &&
+        rule.selectors.some(
+          (selector) =>
+            selector.includes("[aria-hidden='true']") || selector.includes('[aria-hidden="true"]'),
+        ),
+      'descendant-aria-hidden',
+    );
+    expect(ariaHidden.arms, 'aria-hidden pass-through must cover all four arms').toEqual(allArms);
   });
 
-  test('collapsed leaf rules hide bare text without removing DOM text', async () => {
+  test('visually-hidden rule preserves accessibility tree (required + banned declarations)', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
-    expect(css).toContain('font-size: 0;');
-    expect(css).toContain('The DOM text remains');
+    const rules = parseCssRules(css);
+    const matches = rules.filter((rule) => rule.declarations.includes('clip-path: inset(50%)'));
+    expect(matches.length, 'expected at least one visually-hidden rule').toBeGreaterThan(0);
+
+    const required = [
+      'position: absolute',
+      'width: 1px',
+      'height: 1px',
+      'overflow: hidden',
+      'clip:',
+      'clip-path:',
+    ];
+    const banned = ['display: none', 'visibility: hidden'];
+
+    for (const rule of matches) {
+      for (const declaration of required) {
+        expect(
+          rule.declarations.includes(declaration),
+          `visually-hidden rule must contain "${declaration}"`,
+        ).toBe(true);
+      }
+      for (const declaration of banned) {
+        expect(
+          rule.declarations.includes(declaration),
+          `visually-hidden rule must NOT contain "${declaration}" — it would remove the label from the accessibility tree`,
+        ).toBe(false);
+      }
+    }
   });
 
   test('visually-hidden block pairs `clip` with `clip-path` for modern browsers', async () => {
-    const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     // `clip` is deprecated and unimplemented in some modern browsers;
     // `clip-path: inset(50%)` is the modern equivalent. Both must be present
     // so the visually-hidden technique works across the supported matrix.
+    const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     expect(css).toContain('clip: rect(0, 0, 0, 0);');
     expect(css).toContain('clip-path: inset(50%);');
   });
