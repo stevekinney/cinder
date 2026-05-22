@@ -4,9 +4,10 @@ export type TabsOrientation = 'horizontal' | 'vertical';
 /**
  * Shape of the context object provided to Tab and TabPanel children.
  *
- * `register` lets each Tab announce its button element during mount so the
- * parent can drive arrow-key navigation. `updateDisabledState` keeps the
- * parent-side keyboard registry aligned with disabled prop changes without
+ * `register` lets each Tab announce its button element and initial disabled
+ * state during mount so the parent can drive arrow-key navigation without
+ * depending on effect ordering. `updateDisabledState` keeps the parent-side
+ * keyboard registry aligned with later disabled prop changes without
  * disturbing registration order. `unregister` removes the entry on unmount.
  */
 export type TabsContext = {
@@ -15,7 +16,7 @@ export type TabsContext = {
   readonly activateOnFocus: boolean;
   select: (next: string) => void;
   isActive: (candidate: string) => boolean;
-  register: (value: string, button: HTMLButtonElement) => void;
+  register: (value: string, button: HTMLButtonElement, disabled: boolean) => void;
   updateDisabledState: (value: string, disabled: boolean) => void;
   unregister: (value: string) => void;
   handleKeydown: (event: KeyboardEvent) => void;

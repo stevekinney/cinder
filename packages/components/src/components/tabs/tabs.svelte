@@ -126,11 +126,10 @@
     isActive(candidate) {
       return value === candidate;
     },
-    register(target, button) {
-      const existingRegistration = registeredTabs.get(target);
+    register(target, button, disabled) {
       registeredTabs.set(target, {
         button,
-        disabled: existingRegistration?.disabled ?? false,
+        disabled,
       });
     },
     updateDisabledState(target, disabled) {

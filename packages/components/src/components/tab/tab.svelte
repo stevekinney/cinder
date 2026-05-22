@@ -49,7 +49,7 @@
     const registeredButton = buttonElement;
     if (!registeredButton) return;
 
-    tabs.register(registeredValue, registeredButton);
+    tabs.register(registeredValue, registeredButton, disabled);
     return () => {
       tabs.unregister(registeredValue);
     };
