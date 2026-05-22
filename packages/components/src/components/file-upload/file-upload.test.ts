@@ -52,16 +52,30 @@ function createDropEvent(type: string, files: File[]): DragEvent {
   return event;
 }
 
+function createNonFileDropEvent(type: string): DragEvent {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
+  Object.defineProperty(event, 'dataTransfer', {
+    configurable: true,
+    value: {
+      files: createFileList([]),
+      types: ['text/plain'],
+      dropEffect: 'none',
+    },
+  });
+  return event;
+}
+
 beforeEach(() => {
   document.body.innerHTML = '';
 });
 
 describe('FileUpload rendering', () => {
-  test('renders a label wrapping a native file input', () => {
+  test('renders a native file input and visible picker button', () => {
     const { container } = render(FileUpload, { props: { id: 'resume-upload' } });
-    const input = container.querySelector('label input[type="file"]');
+    const input = container.querySelector('input[type="file"]');
     expect(input).not.toBeNull();
     expect(input?.classList.contains('cinder-file-upload__input')).toBe(true);
+    expect(container.querySelector('button')?.textContent).toBe('Choose files');
   });
 
   test('forwards accept, multiple, name, and disabled to the input', () => {
@@ -81,16 +95,17 @@ describe('FileUpload rendering', () => {
     expect(input.disabled).toBe(true);
   });
 
-  test('inherits aria-describedby from FormField context', () => {
+  test('merges aria-describedby from FormField context and the consumer', () => {
     const { container } = render(FormFieldFileUploadFixture, {
       props: {
         fieldId: 'resume',
         fieldLabel: 'Resume',
         fieldDescription: 'PDF only',
+        describedBy: 'resume-help',
       },
     });
     const input = container.querySelector('#resume') as HTMLInputElement;
-    expect(input.getAttribute('aria-describedby')).toBe('resume-description');
+    expect(input.getAttribute('aria-describedby')).toBe('resume-description resume-help');
   });
 });
 
@@ -114,8 +129,8 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', maxSize: 1024 * 1024, onreject },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', [file]));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onreject).toHaveBeenCalledTimes(1);
     expect(onreject.mock.calls[0]?.[0]?.[0]?.reason).toBe('too-large');
     expect(onreject.mock.calls[0]?.[0]?.[0]?.message).toContain('2.0 MB');
@@ -127,8 +142,8 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/png', onreject },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', [file]));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onreject).toHaveBeenCalledTimes(1);
     expect(onreject.mock.calls[0]?.[0]?.[0]?.reason).toBe('wrong-type');
   });
@@ -139,8 +154,8 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', onchange },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', [file]));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onchange).toHaveBeenCalledTimes(1);
     expect(onchange.mock.calls[0]?.[0]).toEqual([file]);
   });
@@ -151,8 +166,8 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: '.pdf,.docx', onchange },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', [file]));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onchange).toHaveBeenCalledTimes(1);
   });
 
@@ -167,8 +182,8 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', onchange, onreject },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', files));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', files));
     expect(onchange.mock.calls[0]?.[0]).toEqual([files[0]!]);
     expect(onreject.mock.calls[0]?.[0]).toHaveLength(2);
     expect(onreject.mock.calls[0]?.[0]?.[0]?.reason).toBe('too-many');
@@ -178,18 +193,18 @@ describe('FileUpload validation and events', () => {
 describe('FileUpload drag state and accessibility', () => {
   test('drag state toggles data-drag-active', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('dragenter', []));
-    expect(label.hasAttribute('data-drag-active')).toBe(true);
-    await fireEvent(label, createDropEvent('dragleave', []));
-    expect(label.hasAttribute('data-drag-active')).toBe(false);
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('dragenter', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
+    await fireEvent(dropzone, createDropEvent('dragleave', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
   });
 
   test('dragover prevents default', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const label = container.querySelector('label') as HTMLLabelElement;
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     const event = createDropEvent('dragover', []);
-    await fireEvent(label, event);
+    await fireEvent(dropzone, event);
     expect(event.defaultPrevented).toBe(true);
   });
 
@@ -200,10 +215,24 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', disabled: true, onchange, onreject },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', [file]));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const event = createDropEvent('drop', [file]);
+    await fireEvent(dropzone, event);
     expect(onchange).not.toHaveBeenCalled();
     expect(onreject).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  test('non-file drops do not clear existing rendered entries', async () => {
+    const file = createFile('resume.pdf', 'application/pdf', 1200);
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', onchange: mock((_files: File[]) => {}) },
+    });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', [file]));
+    expect(container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(1);
+    await fireEvent(dropzone, createNonFileDropEvent('drop'));
+    expect(container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(1);
   });
 
   test('live region announces mixed accepted and rejected counts', async () => {
@@ -214,8 +243,8 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', maxSize: 1024, multiple: true },
     });
-    const label = container.querySelector('label') as HTMLLabelElement;
-    await fireEvent(label, createDropEvent('drop', files));
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('drop', files));
     await new Promise((resolve) => setTimeout(resolve, 0));
     const liveRegion = container.querySelector('.cinder-sr-only[aria-live="polite"]');
     expect(liveRegion?.textContent).toContain('1 file accepted, 1 rejected');
@@ -226,6 +255,17 @@ describe('FileUpload drag state and accessibility', () => {
     const input = container.querySelector('#upload') as HTMLInputElement;
     input.focus();
     expect(document.activeElement).toBe(input);
+  });
+
+  test('visible button trigger opens the native picker path', async () => {
+    const { container } = render(FileUpload, { props: { id: 'upload' } });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    const button = container.querySelector('button') as HTMLButtonElement;
+    const click = mock(() => {});
+    input.click = click as unknown as typeof input.click;
+    await fireEvent.click(button);
+    expect(button.textContent).toBe('Choose files');
+    expect(click).toHaveBeenCalledTimes(1);
   });
 });
 

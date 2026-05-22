@@ -23,6 +23,7 @@
 <script lang="ts">
   import { DEV } from 'esm-env';
 
+  import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatBytes } from '../../utilities/format-bytes.ts';
@@ -52,12 +53,18 @@
 
   const generatedId = useId('cinder-file-upload');
   const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
-  const describedBy = $derived(context?.describedBy ?? rest['aria-describedby']);
+  const consumerDescribedBy = $derived(rest['aria-describedby']);
+  const describedBy = $derived(composeDescribedBy(context?.describedBy, consumerDescribedBy));
+  const consumerAriaInvalid = $derived(rest['aria-invalid']);
+  const resolvedAriaInvalid = $derived(
+    context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
+  );
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   let inputElement = $state<HTMLInputElement | null>(null);
   let dragDepth = $state(0);
   let internalEntries = $state<FileUploadEntry[]>([]);
+  let internalEntryCounter = $state(0);
 
   const isDragActive = $derived(dragDepth > 0);
   const renderedEntries = $derived(files ?? internalEntries);
@@ -71,8 +78,15 @@
     }
   });
 
-  function buildEntryId(file: File, index: number): string {
-    return `${file.name}-${file.size}-${index}`;
+  function nextEntryId(status: FileUploadEntry['status']): string {
+    internalEntryCounter += 1;
+    return `${resolvedId}-entry-${internalEntryCounter}-${status}`;
+  }
+
+  function hasFilesPayload(dataTransfer: DataTransfer | null | undefined): boolean {
+    const fileTypes = dataTransfer?.types;
+    if (!fileTypes) return false;
+    return Array.from(fileTypes as ArrayLike<string>).includes('Files');
   }
 
   function matchesAcceptToken(file: File, token: string): boolean {
@@ -144,13 +158,13 @@
 
   function updateInternalEntries(accepted: File[], rejected: RejectedFile[]) {
     internalEntries = [
-      ...accepted.map((file, index) => ({
-        id: buildEntryId(file, index),
+      ...accepted.map((file) => ({
+        id: nextEntryId('success'),
         file,
         status: 'success' as const,
       })),
-      ...rejected.map((entry, index) => ({
-        id: `${buildEntryId(entry.file, index)}-rejected`,
+      ...rejected.map((entry) => ({
+        id: nextEntryId('error'),
         file: entry.file,
         status: 'error' as const,
         error: entry.message,
@@ -179,9 +193,6 @@
     if (accepted.length > 0) onchange?.(accepted);
     if (rejected.length > 0) onreject?.(rejected);
     announceResult(accepted, rejected);
-    if (inputElement) {
-      inputElement.value = '';
-    }
   }
 
   function handleInputChange() {
@@ -190,29 +201,37 @@
   }
 
   function handleDragEnter(event: DragEvent) {
-    if (resolvedDisabled || !event.dataTransfer?.types.includes('Files')) return;
+    if (resolvedDisabled || !hasFilesPayload(event.dataTransfer)) return;
     dragDepth += 1;
   }
 
   function handleDragLeave(event: DragEvent) {
-    if (resolvedDisabled || !event.dataTransfer?.types.includes('Files')) return;
+    if (resolvedDisabled || !hasFilesPayload(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }
 
   function handleDragOver(event: DragEvent) {
-    if (resolvedDisabled) return;
+    if (!hasFilesPayload(event.dataTransfer)) return;
     event.preventDefault();
+    if (resolvedDisabled) return;
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'copy';
     }
   }
 
   function handleDrop(event: DragEvent) {
-    if (resolvedDisabled) return;
+    if (!hasFilesPayload(event.dataTransfer)) return;
     event.preventDefault();
     dragDepth = 0;
+    if (resolvedDisabled) return;
     const droppedFiles = Array.from(event.dataTransfer?.files ?? []);
+    if (droppedFiles.length === 0) return;
     processFiles(droppedFiles);
+  }
+
+  function openPicker() {
+    if (resolvedDisabled) return;
+    inputElement?.click();
   }
 
   function progressValue(progress: number | undefined): number {
@@ -241,7 +260,6 @@
       </svg>
       Drag files here or choose files
     </span>
-    <span class="cinder-file-upload__button">Choose files</span>
     <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
   </div>
 {/snippet}
@@ -254,15 +272,15 @@
 {/snippet}
 
 <div class={classNames('cinder-file-upload', className)}>
-  <label
+  <div
     class="cinder-file-upload__dropzone"
+    role="group"
     data-drag-active={isDragActive || undefined}
     data-disabled={resolvedDisabled || undefined}
     ondragenter={handleDragEnter}
     ondragleave={handleDragLeave}
     ondragover={handleDragOver}
     ondrop={handleDrop}
-    {...rest}
   >
     <input
       bind:this={inputElement}
@@ -273,8 +291,9 @@
       {multiple}
       {name}
       disabled={resolvedDisabled}
+      {...rest}
       aria-describedby={describedBy}
-      aria-invalid={context?.invalid}
+      aria-invalid={resolvedAriaInvalid}
       onchange={handleInputChange}
     />
 
@@ -289,7 +308,16 @@
     {:else}
       {@render defaultIdle()}
     {/if}
-  </label>
+
+    <button
+      type="button"
+      class="cinder-file-upload__button"
+      disabled={resolvedDisabled}
+      onclick={openPicker}
+    >
+      Choose files
+    </button>
+  </div>
 
   {#if renderedEntries.length > 0}
     {#if fileList}

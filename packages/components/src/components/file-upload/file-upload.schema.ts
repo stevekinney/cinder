@@ -4,29 +4,29 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    id: {
-      type: 'string',
-      description: 'Stable id for the native file input. Required when composing with `FormField`.',
-    },
     accept: {
       type: 'string',
       description: 'Native file accept filter.',
-    },
-    multiple: {
-      type: 'boolean',
-      description: 'Allow more than one file. Default `false`.',
-    },
-    maxSize: {
-      type: 'number',
-      description: 'Maximum allowed file size in bytes.',
     },
     disabled: {
       type: 'boolean',
       description: 'Disables the file picker and drag-and-drop surface.',
     },
+    multiple: {
+      type: 'boolean',
+      description: 'Allow more than one file. Default `false`.',
+    },
     name: {
       type: 'string',
       description: 'Native input name used for form submission.',
+    },
+    id: {
+      type: 'string',
+      description: 'Stable id for the native file input. Required when composing with `FormField`.',
+    },
+    maxSize: {
+      type: 'number',
+      description: 'Maximum allowed file size in bytes.',
     },
     files: {
       type: 'array',

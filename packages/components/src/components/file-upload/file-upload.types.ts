@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { HTMLLabelAttributes } from 'svelte/elements';
+import type { HTMLInputAttributes } from 'svelte/elements';
 
 export type FileUploadRejectionReason = 'too-large' | 'wrong-type' | 'too-many';
 
@@ -28,8 +28,8 @@ export type FileUploadEntry = {
 };
 
 export type FileUploadProps = Omit<
-  HTMLLabelAttributes,
-  'for' | 'children' | 'onchange' | 'oninput'
+  HTMLInputAttributes,
+  'type' | 'children' | 'onchange' | 'oninput' | 'value' | 'files'
 > & {
   /** Stable id for the native file input. Required when composing with `FormField`. */
   id?: string;
