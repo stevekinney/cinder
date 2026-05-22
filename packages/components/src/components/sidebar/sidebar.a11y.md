@@ -99,11 +99,15 @@ This wires the open/close affordance into the page chrome and keeps the
 trigger discoverable on mobile. On desktop the `id` lands on the `<aside>`.
 On mobile, once the drawer has hydrated, the same `id` lands on the
 persistent drawer `<dialog>` and resolves whether the drawer is open or
-closed. The drawer is gated on hydration, so the `id` is absent during SSR
-and the pre-hydration window — see [SSR behavior](#ssr-behavior) below. If
-you need the `aria-controls` relationship to exist from the very first
-paint, render the trigger conditionally on hydration; setting `collapsed`
-does not change when the drawer mounts.
+closed. Before hydration the drawer `<dialog>` is not in the DOM at all
+(drawer markup is gated on hydration), and the server renders the desktop
+branch by default — so on a mobile-width SSR response, `aria-controls`
+points at the desktop `<aside>` for one frame before the client swaps to
+the drawer `<dialog>`. The relationship resolves throughout, but the
+controlled element changes once on hydration — see
+[SSR behavior](#ssr-behavior) below. If you need `aria-controls` to point
+at the drawer from the very first paint, render the trigger conditionally
+on hydration; setting `collapsed` does not change when the drawer mounts.
 
 ## SSR behavior
 
