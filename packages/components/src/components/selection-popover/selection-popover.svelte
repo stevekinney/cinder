@@ -124,7 +124,7 @@
       return;
     }
 
-    if ((event.key === 'Enter' || event.key === ' ') && !expanded) {
+    if ((event.key === 'Enter' || event.key === ' ') && !expanded && !event.defaultPrevented) {
       event.preventDefault();
       handleExpand();
     }
