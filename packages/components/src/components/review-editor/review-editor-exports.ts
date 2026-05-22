@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { ReviewState, Thread } from '@cinder/commentary/comments';
+import type { ReviewState, Thread } from 'cinder/commentary/comments';
 import {
   generateCommentsExport,
   generateMarkdownSummary,
@@ -16,7 +16,7 @@ import {
   type MarkdownSummaryResult,
   type UnifiedDiffOptions,
   type UnifiedDiffResult,
-} from '@cinder/commentary/export';
+} from 'cinder/commentary/export';
 
 /**
  * FormData structure returned by buildFormData().

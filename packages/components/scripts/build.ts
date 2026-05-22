@@ -177,7 +177,7 @@ const serverBuildResult = await Bun.build({
   },
   sourcemap: 'external',
   minify: false,
-  external: ['svelte', ...upstreamTransitiveExternals],
+  external: ['svelte', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   plugins: [sveltePlugin({ generate: 'server' })],
 });
 
@@ -240,7 +240,7 @@ const browserBuildResult = await Bun.build({
   target: 'browser',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', ...upstreamTransitiveExternals],
+  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -272,7 +272,7 @@ const perComponentServerBuildResult = await Bun.build({
   target: 'node',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', ...upstreamTransitiveExternals],
+  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -375,7 +375,17 @@ await Promise.all(
  * relative target depends on how deep the file lives under
  * `dist/<originPkg>/`.
  */
-function rewriteCrossUpstreamSpecifiers(content: string, fileDistRelative: string): string {
+/** Sites where the rewrite couldn't resolve the target file. */
+type RewriteMiss = {
+  file: string;
+  specifier: string;
+};
+
+function rewriteCrossUpstreamSpecifiers(
+  content: string,
+  fileDistRelative: string,
+  misses: RewriteMiss[],
+): string {
   // `fileDistRelative` is e.g. `markdown/diff/line-diff.js`. `dirname` gives
   // `markdown/diff`; the relative walk back to `dist/` is `../..`.
   const fileDirectory = dirname(fileDistRelative);
@@ -394,8 +404,11 @@ function rewriteCrossUpstreamSpecifiers(content: string, fileDistRelative: strin
   //   - `@cinder/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
   // The disambiguation depends on whether the target subpath is a directory
   // entry or a leaf file; we resolve that lazily by checking the vendored
-  // dist for an `<subpath>/index.js`. This match table is built once per
-  // call and cached.
+  // dist for an `<subpath>/index.js`. If neither candidate exists the
+  // rewrite cannot produce a valid Node ESM specifier — the caller fails
+  // the build via the `misses` array instead of silently emitting an
+  // extensionless path that would yield a broken module (and pass the
+  // `@cinder/` residue gate because the prefix is gone).
   return content.replace(
     /(['"])@cinder\/(markdown|editor|commentary|diff)(\/[^'"]*)?\1/g,
     (_match, quote: string, pkg: string, rest: string | undefined) => {
@@ -409,12 +422,19 @@ function rewriteCrossUpstreamSpecifiers(content: string, fileDistRelative: strin
       // `dist/<pkg><subpath>.js`.
       const directoryCandidate = `${distributionDirectory}/${pkg}${subpath}/index.js`;
       const leafCandidate = `${distributionDirectory}/${pkg}${subpath}.js`;
-      const targetTail = existsSync(directoryCandidate)
-        ? `${pkg}${subpath}/index.js`
-        : existsSync(leafCandidate)
-          ? `${pkg}${subpath}.js`
-          : `${pkg}${subpath}`;
-      return `${quote}${upwards}/${targetTail}${quote}`;
+      if (existsSync(directoryCandidate)) {
+        return `${quote}${upwards}/${pkg}${subpath}/index.js${quote}`;
+      }
+      if (existsSync(leafCandidate)) {
+        return `${quote}${upwards}/${pkg}${subpath}.js${quote}`;
+      }
+      // Record the miss; the caller will abort the build after the pass.
+      // We return the original specifier shape so the post-pass residue
+      // gate also sees it (defense in depth — if for some reason the
+      // miss collection isn't checked, the `@cinder/` token remains and
+      // the residue gate trips).
+      misses.push({ file: fileDistRelative, specifier: `@cinder/${pkg}${subpath}` });
+      return `${quote}@cinder/${pkg}${subpath}${quote}`;
     },
   );
 }
@@ -458,22 +478,41 @@ await Promise.all(
 async function rewriteSpecifiersUnder(
   root: string,
   options: { skipPrefix?: string } = {},
-): Promise<void> {
+): Promise<RewriteMiss[]> {
+  const misses: RewriteMiss[] = [];
   const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts,map}');
   for await (const relative of textGlob.scan({ cwd: root })) {
     if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
     const filePath = `${root}/${relative}`;
     const original = await Bun.file(filePath).text();
     if (!original.includes('@cinder/')) continue;
-    const rewritten = rewriteCrossUpstreamSpecifiers(original, relative);
+    const rewritten = rewriteCrossUpstreamSpecifiers(original, relative, misses);
     if (rewritten !== original) {
       await Bun.write(filePath, rewritten);
     }
   }
+  return misses;
 }
 
-await rewriteSpecifiersUnder(`${distributionDirectory}/server`);
-await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' });
+const rewriteMisses: RewriteMiss[] = [
+  ...(await rewriteSpecifiersUnder(`${distributionDirectory}/server`)),
+  ...(await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' })),
+];
+
+if (rewriteMisses.length > 0) {
+  process.stderr.write(
+    'Build aborted: rewriteCrossUpstreamSpecifiers could not resolve target files for the\n' +
+      'following specifiers — neither a directory `index.js` nor a leaf `.js` exists in the\n' +
+      'vendored upstream tree. An extensionless relative path here would yield a module\n' +
+      'Node ESM rejects under `module: nodenext`. Check that the upstream `dist/` actually\n' +
+      'emits the file these specifiers reference; if it does, the verbatim-copy step in\n' +
+      'build.ts likely missed it (a new file extension or directory layout the copy glob\n' +
+      "doesn't match):\n" +
+      rewriteMisses.map((m) => `  ${m.file}  →  ${m.specifier}`).join('\n') +
+      '\n',
+  );
+  process.exit(1);
+}
 
 // Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
 // file for surviving quoted `@cinder/*` import specifiers. `validate-consumers`

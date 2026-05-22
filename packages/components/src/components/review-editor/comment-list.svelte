@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Comment } from '@cinder/commentary/comments';
+  import type { Comment } from 'cinder/commentary/comments';
   import type { ReviewMode } from './review-editor-types.ts';
 
   export type CommentListProps = {

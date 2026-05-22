@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { LineDiffStats } from '@cinder/markdown/diff/line-diff';
+  import type { LineDiffStats } from 'cinder/markdown/diff/line-diff';
 
   export type DiffSummaryBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** Diff statistics from getDiffStats() */

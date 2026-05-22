@@ -3,13 +3,13 @@ import type {
   CommentAnchor,
   PersistedAnchor,
   ReviewState,
-} from '@cinder/commentary/comments';
+} from 'cinder/commentary/comments';
 import {
   parseFrontMatter,
   serializeYaml,
   stringifyFrontMatter,
   validateFrontMatter,
-} from '@cinder/markdown/pipeline';
+} from 'cinder/markdown/pipeline';
 
 export type ReviewEditorFrontMatterState = {
   hasFrontMatter: boolean;

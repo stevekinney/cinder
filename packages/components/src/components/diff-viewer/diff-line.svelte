@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
-  import type { LineDiff, WordChange } from '@cinder/markdown/diff/line-diff';
+  import type { LineDiff, WordChange } from 'cinder/markdown/diff/line-diff';
 
   export type ViewMode = 'unified' | 'final' | 'original';
 

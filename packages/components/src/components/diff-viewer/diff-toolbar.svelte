@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Snippet } from 'svelte';
-  import type { LineDiffStats } from '@cinder/markdown/diff/line-diff';
+  import type { LineDiffStats } from 'cinder/markdown/diff/line-diff';
   import type { DiffState, DiffTier } from './diff-controller.svelte';
 
   export type ViewMode = 'unified' | 'final' | 'original';
@@ -67,7 +67,6 @@
   const tier = $derived<DiffTier>(diffState?.tier ?? 'realtime');
   const isStale = $derived(diffState?.isStale ?? false);
   const isComputing = $derived(diffState?.isComputing ?? false);
-
 </script>
 
 <div class={classNames('diff-toolbar', className)} {...rest}>
