@@ -478,22 +478,38 @@ const ARM_BASE: Record<ArmKey, string> = {
   'footer-button': '.cinder-sidebar__footer button.cinder-navigation-item',
 };
 
-function selectorMatchesArm(
-  selector: string,
-  arm: ArmKey,
-  shape: 'base' | 'child-of' | 'descendant-svg-or-img' | 'descendant-aria-hidden',
-): boolean {
+// Selector shape variants distinguish which part of the arm-base selector
+// the rule targets:
+// - `base`: the interactive element itself, with no trailing combinator
+//   (the icon-only width rule).
+// - `label-child`: a non-icon child of the interactive element — matched
+//   via the literal `:not([aria-hidden='true']):not(svg):not(img)` filter
+//   used by the visually-hidden rule, which is the only child target that
+//   should be visually hidden. Plain `> ` would also accept `> svg` and
+//   misreport the icon-only descendants as label-hiding coverage.
+// - `descendant-svg-or-img`: SVG/IMG icon children of the interactive
+//   element (the pass-through that restores icon sizing).
+// - `descendant-aria-hidden`: wrapped icon containers marked with
+//   `aria-hidden="true"` (same pass-through, different element shape).
+type ArmShape = 'base' | 'label-child' | 'descendant-svg-or-img' | 'descendant-aria-hidden';
+
+const LABEL_CHILD_SUFFIX = "> :not([aria-hidden='true']):not(svg):not(img)";
+
+function selectorMatchesArm(selector: string, arm: ArmKey, shape: ArmShape): boolean {
   if (!selector.startsWith(COLLAPSED_SCOPE)) return false;
   const base = ARM_BASE[arm];
   if (!selector.includes(base)) return false;
   switch (shape) {
     case 'base':
       // Selector targets the interactive element itself, not a descendant
-      // chain past it. Trim the collapsed scope, ensure the remainder ends
-      // at the base selector with no trailing combinator.
+      // chain past it. Trim and ensure the normalized selector ends with
+      // the base selector with no trailing combinator.
       return selector.replace(/\s+/g, ' ').trim().endsWith(base);
-    case 'child-of':
-      return selector.includes(`${base} >`);
+    case 'label-child':
+      // The visually-hidden rule must target non-icon children. Accepting a
+      // bare `> ` combinator would let `> svg` count as label-hiding
+      // coverage, masking a real regression.
+      return selector.includes(`${base} ${LABEL_CHILD_SUFFIX}`);
     case 'descendant-svg-or-img':
       return selector.includes(`${base} > svg`) || selector.includes(`${base} > img`);
     case 'descendant-aria-hidden':
@@ -507,20 +523,44 @@ function selectorMatchesArm(
 function collectArms(
   rules: CssRule[],
   groupPredicate: (rule: CssRule) => boolean,
-  armShape: Parameters<typeof selectorMatchesArm>[2],
-): { arms: Set<ArmKey>; matchingRules: CssRule[] } {
+  armShape: ArmShape,
+): Set<ArmKey> {
   const arms = new Set<ArmKey>();
-  const matchingRules: CssRule[] = [];
   for (const rule of rules) {
     if (!groupPredicate(rule)) continue;
-    matchingRules.push(rule);
     for (const selector of rule.selectors) {
       for (const arm of ARM_KEYS) {
         if (selectorMatchesArm(selector, arm, armShape)) arms.add(arm);
       }
     }
   }
-  return { arms, matchingRules };
+  return arms;
+}
+
+function isCollapsedScopedRule(rule: CssRule): boolean {
+  return rule.selectors.some((selector) => selector.startsWith(COLLAPSED_SCOPE));
+}
+
+// Parse a declaration block into a normalized [property, value] list:
+// lowercase property names, trimmed values, no semicolons or stray
+// whitespace. Used by the banned-declaration check so that variants like
+// `DISPLAY: none` or `display:none` cannot bypass the visually-hidden
+// accessibility contract.
+function parseDeclarations(declarationBlock: string): Array<[string, string]> {
+  return declarationBlock
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry): [string, string] => {
+      const colonIndex = entry.indexOf(':');
+      if (colonIndex === -1) return [entry.toLowerCase(), ''];
+      const property = entry.slice(0, colonIndex).trim().toLowerCase();
+      const value = entry
+        .slice(colonIndex + 1)
+        .trim()
+        .toLowerCase();
+      return [property, value];
+    });
 }
 
 describe('Sidebar collapsed CSS contract', () => {
@@ -532,18 +572,22 @@ describe('Sidebar collapsed CSS contract', () => {
     const visuallyHidden = collectArms(
       rules,
       (rule) => rule.declarations.includes('clip-path: inset(50%)'),
-      'child-of',
+      'label-child',
     );
-    expect(visuallyHidden.arms, 'visually-hidden block must cover all four arms').toEqual(allArms);
+    expect(visuallyHidden, 'visually-hidden block must cover all four arms').toEqual(allArms);
 
+    // Anchor the icon-width predicate on the collapsed scope so an unrelated
+    // future rule that happens to combine `font-size: 0` and
+    // `justify-content: center` cannot match (producing a false failure).
     const iconWidth = collectArms(
       rules,
       (rule) =>
+        isCollapsedScopedRule(rule) &&
         rule.declarations.includes('font-size: 0') &&
         rule.declarations.includes('justify-content: center'),
       'base',
     );
-    expect(iconWidth.arms, 'icon-only width block must cover all four arms').toEqual(allArms);
+    expect(iconWidth, 'icon-only width block must cover all four arms').toEqual(allArms);
 
     const svgImg = collectArms(
       rules,
@@ -552,19 +596,22 @@ describe('Sidebar collapsed CSS contract', () => {
         rule.selectors.some((selector) => selector.includes('> svg') || selector.includes('> img')),
       'descendant-svg-or-img',
     );
-    expect(svgImg.arms, 'svg/img pass-through must cover all four arms').toEqual(allArms);
+    expect(svgImg, 'svg/img pass-through must cover all four arms').toEqual(allArms);
 
+    // Anchor the aria-hidden predicate on `flex-shrink: 0` (the same icon
+    // pass-through declaration the svg/img group uses) rather than the
+    // overly broad `font-size:` prefix.
     const ariaHidden = collectArms(
       rules,
       (rule) =>
-        rule.declarations.includes('font-size:') &&
+        rule.declarations.includes('flex-shrink: 0') &&
         rule.selectors.some(
           (selector) =>
             selector.includes("[aria-hidden='true']") || selector.includes('[aria-hidden="true"]'),
         ),
       'descendant-aria-hidden',
     );
-    expect(ariaHidden.arms, 'aria-hidden pass-through must cover all four arms').toEqual(allArms);
+    expect(ariaHidden, 'aria-hidden pass-through must cover all four arms').toEqual(allArms);
   });
 
   test('visually-hidden rule preserves accessibility tree (required + banned declarations)', async () => {
@@ -581,7 +628,14 @@ describe('Sidebar collapsed CSS contract', () => {
       'clip:',
       'clip-path:',
     ];
-    const banned = ['display: none', 'visibility: hidden'];
+    // Banned declarations are checked against the parsed property/value map
+    // so that whitespace or case variants (e.g. `display:none`,
+    // `DISPLAY: none`) cannot bypass the contract. Either would remove the
+    // label from the accessibility tree.
+    const bannedPairs: Array<[string, string]> = [
+      ['display', 'none'],
+      ['visibility', 'hidden'],
+    ];
 
     for (const rule of matches) {
       for (const declaration of required) {
@@ -590,11 +644,13 @@ describe('Sidebar collapsed CSS contract', () => {
           `visually-hidden rule must contain "${declaration}"`,
         ).toBe(true);
       }
-      for (const declaration of banned) {
+      const parsed = parseDeclarations(rule.declarations);
+      for (const [property, value] of bannedPairs) {
+        const found = parsed.find(([key, val]) => key === property && val === value);
         expect(
-          rule.declarations.includes(declaration),
-          `visually-hidden rule must NOT contain "${declaration}" — it would remove the label from the accessibility tree`,
-        ).toBe(false);
+          found,
+          `visually-hidden rule must NOT set "${property}: ${value}" — it would remove the label from the accessibility tree`,
+        ).toBeUndefined();
       }
     }
   });
