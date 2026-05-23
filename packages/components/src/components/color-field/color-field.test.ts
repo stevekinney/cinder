@@ -6,13 +6,15 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+const { default: ColorFieldFormFixture } =
+  await import('../../test/fixtures/color-field-form-fixture.svelte');
 
-afterEach(() => cleanup());
+afterEach(() => document.body.replaceChildren());
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
   const element = root.querySelector(selector);
