@@ -83,6 +83,7 @@
 
 .cinder-rating[aria-disabled='true'] {
   opacity: 0.55;
+  pointer-events: none;
 }
 
 .cinder-rating[aria-disabled='true'] .cinder-rating__option {

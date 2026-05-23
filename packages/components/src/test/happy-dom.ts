@@ -13,42 +13,52 @@ import { Window } from 'happy-dom';
 type Global = typeof globalThis & Record<string, unknown>;
 
 let installed = false;
-let errorFilterInstalled = false;
 
 /**
- * happy-dom occasionally throws `Failed to execute 'removeChild' on 'Node':
- * The node to be removed is not a child of this node.` while Svelte's
- * flushSync tears down effects after a fixture unmount. The throw bubbles
- * through a Promise inside flushSync and surfaces as an unhandled rejection
- * (or uncaught exception) before Bun's test runner can attribute it to a
- * specific test. The error is a known happy-dom + Svelte unmount race, not a
- * production-relevant bug — filter it from the unhandled channels so the
- * suite reports the real test outcome.
+ * Align happy-dom's `Element.prototype.remove()` with the DOM spec, which
+ * makes `ChildNode.remove()` a no-op when the node has already been removed
+ * from its parent. happy-dom currently routes the call through
+ * `parentNode.removeChild(this)` using a stale `parentNode` pointer, which
+ * throws when the parent's child-array no longer contains the node — Svelte
+ * 5's `flushSync` effect-teardown trips this during fixture unmount and the
+ * throw escapes through a Promise executor, surfacing as an "unhandled
+ * error between tests" in Bun. The patch ONLY narrows the spec divergence
+ * for `Element.prototype.remove`; it does NOT touch the explicit
+ * `Node.prototype.removeChild` API, so misuse of that API still throws.
+ *
+ * Reference: WHATWG DOM § ChildNode.remove() — "remove this from its parent
+ * (if any)".
  */
-function isHappyDomDetachedChildError(reason: unknown): boolean {
-  const message =
-    reason instanceof Error ? reason.message : typeof reason === 'string' ? reason : '';
-  return (
-    message.includes("Failed to execute 'removeChild' on 'Node'") ||
-    message.includes('not a child of this node')
-  );
-}
-
-function installUnhandledErrorFilter(): void {
-  if (errorFilterInstalled) return;
-  errorFilterInstalled = true;
-  process.on('unhandledRejection', (reason) => {
-    if (isHappyDomDetachedChildError(reason)) return;
-    throw reason;
-  });
-  process.on('uncaughtException', (error) => {
-    if (isHappyDomDetachedChildError(error)) return;
-    throw error;
-  });
+function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
+  const elementCtor = Reflect.get(happyWindow, 'Element') as unknown;
+  if (typeof elementCtor !== 'function') return;
+  const proto = Reflect.get(elementCtor, 'prototype') as Record<string, unknown> | undefined;
+  if (!proto) return;
+  const original = proto['remove'];
+  if (typeof original !== 'function') return;
+  type ElementRemove = (this: Element) => void;
+  const originalFn = original as ElementRemove;
+  proto['remove'] = function patchedRemove(this: Element): void {
+    const parent = this.parentNode;
+    if (parent === null) return;
+    // Spec: "remove this from its parent (if any)". If the parent has
+    // already forgotten this node, treat the call as a no-op rather than
+    // throwing — that's the spec-aligned outcome for `ChildNode.remove()`.
+    if (typeof parent.contains === 'function' && !parent.contains(this)) {
+      return;
+    }
+    try {
+      originalFn.call(this);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not a child of this node')) {
+        return;
+      }
+      throw error;
+    }
+  };
 }
 
 export function setupHappyDom(): void {
-  installUnhandledErrorFilter();
   if (installed) return;
   const happyWindow = new Window();
   const target = globalThis as Global;
@@ -67,38 +77,7 @@ export function setupHappyDom(): void {
   // Using defineProperty sidesteps the lib.dom.d.ts `window` type on globalThis.
   Object.defineProperty(target, 'window', { value: happyWindow, configurable: true });
 
-  patchRemoveChildToToleratePriorDetach(happyWindow);
+  alignElementRemoveWithChildNodeSpec(happyWindow);
 
   installed = true;
-}
-
-/**
- * happy-dom's `removeChild` throws when the node is already detached from the
- * parent. Svelte's flushSync hits this race during unmount when a fixture
- * removes a wrapper before Testing Library's cleanup unmounts the Svelte tree
- * inside it — the throw escapes through a Promise executor and surfaces as an
- * "unhandled error between tests" in Bun's runner. Make `removeChild` a no-op
- * when the child has already been removed; that's also the spec-compliant
- * behaviour for `ChildNode.remove()` which Svelte ultimately calls.
- */
-type NodeRemoveChild = (this: Node, node: Node) => Node;
-
-function patchRemoveChildToToleratePriorDetach(happyWindow: Window): void {
-  const nodeCtor = (happyWindow as unknown as { Node?: { prototype: Record<string, unknown> } })
-    .Node;
-  if (!nodeCtor) return;
-  const proto = nodeCtor.prototype;
-  const original = proto['removeChild'];
-  if (typeof original !== 'function') return;
-  const originalFn = original as NodeRemoveChild;
-  proto['removeChild'] = function patchedRemoveChild(this: Node, node: Node): Node {
-    try {
-      return originalFn.call(this, node);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('not a child of this node')) {
-        return node;
-      }
-      throw error;
-    }
-  };
 }

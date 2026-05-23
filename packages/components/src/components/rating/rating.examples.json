@@ -19,7 +19,7 @@
       "id": "readonly",
       "title": "Readonly display",
       "description": "Non-interactive readonly rating shown alongside a review count.",
-      "code": "<script lang=\"ts\">\n  import { Rating } from 'cinder/rating';\n</script>\n\n<div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n  <Rating id=\"readonly-rating\" value={4.5} precision=\"half\" readonly label=\"Average customer rating\" hideLabel />\n  <span style=\"color: var(--cinder-text-muted);\">4.5 (1,238 reviews)</span>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Rating } from 'cinder/rating';\n</script>\n\n<div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n  <Rating\n    id=\"readonly-rating\"\n    value={4.5}\n    precision=\"half\"\n    readonly\n    label=\"Average customer rating\"\n    hideLabel\n  />\n  <span style=\"color: var(--cinder-text-muted);\">4.5 (1,238 reviews)</span>\n</div>\n"
     }
   ]
 }

@@ -159,6 +159,7 @@
   }
 
   function focusOption(option: number): void {
+    if (typeof document === 'undefined') return;
     const element = document.getElementById(optionId(option));
     if (element instanceof HTMLElement) element.focus();
   }
@@ -282,8 +283,9 @@
   {#if readonly}
     <div
       class="cinder-rating cinder-rating--readonly"
+      role="img"
       aria-labelledby={resolvedGroupLabelledBy}
-      aria-label={groupAriaLabel}
+      aria-label={groupAriaLabel ?? readableValueText()}
       aria-describedby={describedBy}
     >
       {#each Array.from({ length: normalizedCount }, (_, i) => i + 1) as slot (slot)}
@@ -332,7 +334,6 @@
             onclick={() => handleClick(option)}
             onkeydown={(event) => handleKeyDown(event, option)}
             onpointerenter={() => handlePointerEnter(option)}
-            onfocus={() => handlePointerEnter(option)}
             onblur={handlePointerLeave}
           ></button>
         {/each}
@@ -341,7 +342,13 @@
   {/if}
 
   {#if name}
-    <input type="hidden" {name} value={resolvedValue} {required} {disabled} />
+    <input
+      type="hidden"
+      {name}
+      value={resolvedValue}
+      required={resolvedRequired}
+      disabled={resolvedDisabled}
+    />
   {/if}
 
   {#if description}
@@ -349,6 +356,8 @@
   {/if}
 
   {#if error}
-    <p id={ownErrorId} class="cinder-rating-field__error" aria-live="polite">{error}</p>
+    <p id={ownErrorId} class="cinder-rating-field__error" aria-live="polite" aria-atomic="true">
+      {error}
+    </p>
   {/if}
 </div>

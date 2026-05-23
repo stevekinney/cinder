@@ -243,6 +243,7 @@ export type {
   PhoneInputCountryCode,
   PhoneInputCountryOption,
   PhoneInputProps,
+  PhoneInputReason,
 } from './components/phone-input/index.ts';
 
 export { default as PinInput } from './components/pin-input/index.ts';

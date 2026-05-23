@@ -227,6 +227,19 @@ describe('PinInput onchange', () => {
     expect(onchange).toHaveBeenCalledWith('5');
   });
 
+  test('fires for paste', async () => {
+    const onchange = mock((_value: string) => {});
+    const { container } = render(PinInput, {
+      props: { id: 'otp', value: '', length: 4, onchange },
+    });
+    const all = segments(container);
+    all[0]!.focus();
+    const data = new DataTransfer();
+    data.setData('text', '1234');
+    await fireEvent.paste(all[0]!, { clipboardData: data });
+    expect(onchange).toHaveBeenCalledWith('1234');
+  });
+
   test('does not fire on external value prop synchronization', async () => {
     const onchange = mock((_value: string) => {});
     const { rerender } = render(PinInput, {
@@ -234,5 +247,52 @@ describe('PinInput onchange', () => {
     });
     await rerender({ id: 'otp', value: '12', length: 4, onchange });
     expect(onchange).not.toHaveBeenCalled();
+  });
+});
+
+describe('PinInput accessibility wiring', () => {
+  test('Backspace on the first segment does not move focus away', async () => {
+    const { container } = render(PinInput, { props: { id: 'otp', value: '1', length: 4 } });
+    const all = segments(container);
+    all[0]!.focus();
+    await fireEvent.keyDown(all[0]!, { key: 'Backspace' });
+    expect(document.activeElement).toBe(all[0] ?? null);
+  });
+
+  test('description + error compose into a single aria-describedby on every segment', () => {
+    const { container } = render(PinInput, {
+      props: {
+        id: 'otp',
+        value: '',
+        description: 'Enter the 6-digit code.',
+        error: 'Code expired.',
+      },
+    });
+    const all = segments(container);
+    for (const segment of all) {
+      const describedBy = segment.getAttribute('aria-describedby') ?? '';
+      expect(describedBy).toContain('otp-description');
+      expect(describedBy).toContain('otp-error');
+    }
+  });
+
+  test('aria-required is announced on every segment, not on the group', () => {
+    const { container } = render(PinInput, {
+      props: { id: 'otp', value: '', required: true },
+    });
+    const all = segments(container);
+    expect(all.every((segment) => segment.getAttribute('aria-required') === 'true')).toBe(true);
+    const group = container.querySelector('[role="group"]')!;
+    expect(group.getAttribute('aria-required')).toBeNull();
+  });
+
+  test('aria-label-only group falls back to per-segment aria-label (no aria-labelledby)', () => {
+    const { container } = render(PinInput, {
+      props: { id: 'otp', value: '', 'aria-label': 'Security code' },
+    });
+    const all = segments(container);
+    expect(all[0]?.getAttribute('aria-labelledby')).toBeNull();
+    expect(all[0]?.getAttribute('aria-label')).toContain('Security code');
+    expect(all[0]?.getAttribute('aria-label')).toContain('character 1 of');
   });
 });

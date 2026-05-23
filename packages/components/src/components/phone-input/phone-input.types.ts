@@ -1,5 +1,7 @@
 import type { CountryCode } from 'libphonenumber-js/min';
 
+import type { PhoneInputReason } from './phone-input-formatting.ts';
+
 /**
  * ISO 3166-1 alpha-2 country code accepted by `<PhoneInput>`. Re-exported from
  * `libphonenumber-js/min` so consumers do not need to depend on it directly.
@@ -36,7 +38,7 @@ export type PhoneInputChange = {
   /** Whether libphonenumber considers the number a possible national number. */
   isPossible: boolean;
   /** Bucket describing the outcome of this user edit. */
-  reason: 'valid' | 'empty' | 'incomplete' | 'invalid' | 'country-not-allowed';
+  reason: PhoneInputReason;
 };
 
 /**

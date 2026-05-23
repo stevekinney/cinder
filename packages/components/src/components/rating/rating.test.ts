@@ -140,6 +140,35 @@ describe('Rating interaction', () => {
     expect(onchange).toHaveBeenCalledWith(5);
   });
 
+  test('ArrowRight from the last option wraps to the first', async () => {
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 5, count: 5, onchange },
+    });
+    const all = options(container);
+    all[4]!.focus();
+    await fireEvent.keyDown(all[4]!, { key: 'ArrowRight' });
+    expect(onchange).toHaveBeenCalledWith(1);
+  });
+
+  test('ArrowUp from a committed value moves checked forward', async () => {
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 2, onchange } });
+    const all = options(container);
+    all[1]!.focus();
+    await fireEvent.keyDown(all[1]!, { key: 'ArrowUp' });
+    expect(onchange).toHaveBeenCalledWith(3);
+  });
+
+  test('ArrowDown from a committed value moves checked backward', async () => {
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 3, onchange } });
+    const all = options(container);
+    all[2]!.focus();
+    await fireEvent.keyDown(all[2]!, { key: 'ArrowDown' });
+    expect(onchange).toHaveBeenCalledWith(2);
+  });
+
   test('unrated + ArrowLeft wraps to the last option', async () => {
     const onchange = mock((_value: number) => {});
     const { container } = render(Rating, {

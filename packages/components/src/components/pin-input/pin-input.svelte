@@ -73,13 +73,10 @@
     return out;
   }
 
-  // Internal segment state. Sync once at mount and whenever length/mode/value
-  // change externally — never fires `onchange` because it represents prop
-  // synchronization, not user input.
+  // Internal segment state. Synced whenever the joined view drifts from the
+  // current normalized value; never fires `onchange` because that represents
+  // prop synchronization, not user input.
   let segments = $state<string[]>(Array.from({ length: normalizedLength }, () => ''));
-  let lastSyncedValue = '';
-  let lastSyncedLength = normalizedLength;
-  let lastSyncedMode = mode;
 
   function writeSegmentsFromValue(next: string): void {
     const filtered = filterValue(next);
@@ -91,17 +88,13 @@
   }
 
   $effect(() => {
-    // Re-normalize the bound value whenever length, mode, or external value
-    // changes. We compare against the last synced inputs so a value update
-    // we just emitted does not trigger a redundant re-sync.
-    const shouldResync =
-      value !== lastSyncedValue || normalizedLength !== lastSyncedLength || mode !== lastSyncedMode;
-    if (!shouldResync) return;
+    // Re-normalize the bound value when length, mode, or external value drifts
+    // from what the segments currently render. Comparing against the current
+    // segments themselves is enough — no separate "last synced" bookkeeping.
     const filtered = filterValue(value ?? '');
+    const currentJoined = segments.join('').slice(0, normalizedLength);
+    if (filtered === currentJoined && segments.length === normalizedLength) return;
     writeSegmentsFromValue(filtered);
-    lastSyncedValue = filtered;
-    lastSyncedLength = normalizedLength;
-    lastSyncedMode = mode;
     if (filtered !== value) value = filtered;
   });
 
@@ -157,15 +150,21 @@
     return `${id}-segment-${index}-label`;
   }
 
-  function segmentLabelledBy(index: number): string {
-    const base: string[] = [];
+  /**
+   * When a DOM-backed group label exists, segments use `aria-labelledby` that
+   * references both the group label and a visually-hidden positional span.
+   * When the group's only name source is the consumer's `aria-label`, segments
+   * fall back to a computed `aria-label` instead — `aria-labelledby` would
+   * override `aria-label`, dropping the consumer's group name.
+   */
+  function segmentLabelledBy(index: number): string | undefined {
     if (resolvedGroupLabelledBy) {
-      base.push(resolvedGroupLabelledBy);
-    } else if (ariaLabelledBy) {
-      base.push(ariaLabelledBy);
+      return `${resolvedGroupLabelledBy} ${segmentLabelId(index)}`;
     }
-    base.push(segmentLabelId(index));
-    return base.join(' ');
+    if (ariaLabelledBy) {
+      return `${ariaLabelledBy} ${segmentLabelId(index)}`;
+    }
+    return undefined;
   }
 
   function segmentAriaLabel(index: number): string | undefined {
@@ -180,13 +179,11 @@
     if (joined !== value) {
       value = joined;
     }
-    lastSyncedValue = joined;
-    lastSyncedLength = normalizedLength;
-    lastSyncedMode = mode;
     onchange?.(joined);
   }
 
   function focusSegment(index: number): void {
+    if (typeof document === 'undefined') return;
     const clamped = Math.max(0, Math.min(normalizedLength - 1, index));
     const element = document.getElementById(segmentId(clamped));
     if (element instanceof HTMLInputElement) {
@@ -298,7 +295,6 @@
     aria-label={groupAriaLabel}
     aria-describedby={describedBy}
     aria-invalid={resolvedAriaInvalid}
-    aria-required={resolvedRequired || undefined}
     aria-disabled={resolvedDisabled || undefined}
   >
     {#each Array.from({ length: normalizedLength }, (_, i) => i) as index (index)}
@@ -321,6 +317,7 @@
         aria-label={segmentAriaLabel(index)}
         aria-describedby={describedBy}
         aria-invalid={resolvedAriaInvalid}
+        aria-required={resolvedRequired || undefined}
         data-cinder-pin-segment={index}
         oninput={(event) => handleInput(event, index)}
         onkeydown={(event) => handleKeyDown(event, index)}
@@ -330,14 +327,18 @@
   </div>
 
   {#if name}
-    <input type="hidden" {name} {value} {required} {disabled} />
+    <input type="hidden" {name} {value} required={resolvedRequired} disabled={resolvedDisabled} />
   {/if}
 
   {#if description}
-    <p id={ownDescriptionId} class="cinder-pin-input-field__description">{description}</p>
+    <p id={ownDescriptionId} class="cinder-pin-input-field__description">
+      {description}
+    </p>
   {/if}
 
   {#if error}
-    <p id={ownErrorId} class="cinder-pin-input-field__error" aria-live="polite">{error}</p>
+    <p id={ownErrorId} class="cinder-pin-input-field__error" aria-live="polite" aria-atomic="true">
+      {error}
+    </p>
   {/if}
 </div>

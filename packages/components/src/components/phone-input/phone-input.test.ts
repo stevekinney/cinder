@@ -29,12 +29,12 @@ describe('PhoneInput rendering', () => {
     expect(group.getAttribute('aria-labelledby')).toBe('p-label');
   });
 
-  test('country select and national input have separate accessible names', () => {
+  test('country select and national input compose the group label with their per-control label', () => {
     const { container } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
     const select = countrySelect(container);
     const input = nationalInput(container);
-    expect(select.getAttribute('aria-labelledby')).toBe('p-country-label');
-    expect(input.getAttribute('aria-labelledby')).toBe('p-national-label');
+    expect(select.getAttribute('aria-labelledby')).toBe('p-label p-country-label');
+    expect(input.getAttribute('aria-labelledby')).toBe('p-label p-national-label');
     expect(container.querySelector('#p-country-label')?.textContent).toBe('Country code');
     expect(container.querySelector('#p-national-label')?.textContent).toBe('Phone number');
   });
@@ -92,6 +92,45 @@ describe('PhoneInput country allow-list behavior', () => {
     });
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
     expect(hidden.value).toBe('');
+  });
+
+  test('external E.164 outside allow-list holds the visible text and marks the group invalid via error prop', () => {
+    const { container } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['GB'],
+        value: '+14155550132',
+        error: 'Number must be a UK phone number.',
+      },
+    });
+    expect(nationalInput(container).value).toBe('+14155550132');
+    const group = container.querySelector('[role="group"]')!;
+    expect(group.getAttribute('aria-invalid')).toBe('true');
+    expect(countrySelect(container).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('typing a `+`-prefixed E.164 string re-detects the country', async () => {
+    const onchange = mock((_value: string, _detail: any) => {});
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onchange },
+    });
+    const input = nationalInput(container);
+    await fireEvent.input(input, { target: { value: '+442079460958' } });
+    expect(countrySelect(container).value).toBe('GB');
+    const last = onchange.mock.calls.at(-1)!;
+    const [, detail] = last as [string, any];
+    expect(detail.country).toBe('GB');
+    expect(detail.reason).toBe('valid');
+  });
+
+  test('shrinking the allow-list after mount falls back to the first allowed country', async () => {
+    const { container, rerender } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], country: 'GB' },
+    });
+    expect(countrySelect(container).value).toBe('GB');
+    await rerender({ id: 'p', label: 'Phone', countries: ['US'], country: 'GB' });
+    expect(countrySelect(container).value).toBe('US');
   });
 });
 

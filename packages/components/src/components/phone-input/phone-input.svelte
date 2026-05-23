@@ -102,66 +102,40 @@
     }),
   );
 
-  // Internal visible national-number string. Kept separate so an internally
-  // emitted `''` (incomplete/invalid) does not wipe the user's in-progress
-  // digits from the field.
-  let nationalDisplay = $state('');
-
-  // Track the last external value/country we synced so we don't loop on
-  // self-emitted prop changes.
-  let lastSyncedValue = '';
-  let lastSyncedCountry: PhoneInputCountryCode | null = null;
-  let hasMounted = false;
-
   function isAllowed(code: PhoneInputCountryCode): boolean {
     return allowedCountries.includes(code);
+  }
+
+  /** Type-guard sourced from the live allow-list so we never widen an unknown string. */
+  function isCountryCode(rawCode: string): rawCode is PhoneInputCountryCode {
+    return isAllowed(rawCode as PhoneInputCountryCode);
   }
 
   function fallbackCountry(): PhoneInputCountryCode {
     return allowedCountries[0] ?? 'US';
   }
 
-  // Initial sync: derive nationalDisplay from any provided value or use the
-  // initial `country`. Run inside an effect so it only fires once on mount.
-  $effect(() => {
-    if (hasMounted) return;
-    hasMounted = true;
-    if (value) {
-      const parsed = parseE164Value(value);
-      if (parsed && isAllowed(parsed.country)) {
-        country = parsed.country;
-        nationalDisplay = parsed.formatted;
-        lastSyncedValue = value;
-        lastSyncedCountry = parsed.country;
-        return;
-      }
-      if (parsed && !isAllowed(parsed.country)) {
-        nationalDisplay = value;
-        lastSyncedValue = value;
-        lastSyncedCountry = country;
-        return;
-      }
-    }
-    if (!isAllowed(country)) {
-      if (DEV) {
-        console.warn(
-          `[cinder/PhoneInput] country="${country}" is not in the countries allow-list — falling back to "${fallbackCountry()}".`,
-        );
-      }
-      country = fallbackCountry();
-    }
-    lastSyncedCountry = country;
-  });
+  // Internal visible national-number string. Kept separate so an internally
+  // emitted `''` (incomplete / invalid) does not wipe the user's in-progress
+  // digits from the field.
+  let nationalDisplay = $state('');
 
-  // React to external `value` changes after mount: re-parse and re-sync the
-  // visible field. We compare against the last value we observed so our own
-  // emissions don't trigger a re-parse.
+  // Snapshots of the value/country/allow-list the component is "in sync with"
+  // so we can detect external rewrites without re-acting to our own
+  // emissions. Plain `let` — not reactive.
+  let knownValue: string | null = null;
+  let knownCountry: PhoneInputCountryCode | null = null;
+  let knownAllowList: readonly PhoneInputCountryCode[] = [];
+
+  /**
+   * Synchronise to external `value` changes. Covers initial hydration too
+   * because `knownValue` starts as `null` — the first run sees a difference
+   * and parses whatever the consumer passed in.
+   */
   $effect(() => {
-    if (!hasMounted) return;
-    if (value === lastSyncedValue) return;
-    lastSyncedValue = value;
+    if (value === knownValue) return;
+    knownValue = value;
     if (!value) {
-      // External clear: empty the visible field too.
       nationalDisplay = '';
       return;
     }
@@ -171,23 +145,27 @@
       return;
     }
     if (!isAllowed(parsed.country)) {
-      // Keep the displayed text as the literal E.164 input, force the country
-      // back to the fallback, mark invalid via reason='country-not-allowed'.
+      // External value lands on a disallowed country: switch the dropdown to
+      // the fallback so the field keeps a sensible context, but hold the
+      // visible text as the literal E.164 input so the user can correct it.
       country = fallbackCountry();
+      knownCountry = country;
       nationalDisplay = value;
       return;
     }
     country = parsed.country;
+    knownCountry = parsed.country;
     nationalDisplay = parsed.formatted;
   });
 
-  // React to external `country` changes after mount: when the country flips
-  // without a corresponding value flip, reformat the existing digits for the
-  // new country. Suppress for the synthetic country writes we make above.
+  /**
+   * Synchronise to external `country` changes. Reformat the existing digits
+   * for the new country, but never emit. Initial `country` prop comes
+   * through this path too.
+   */
   $effect(() => {
-    if (!hasMounted) return;
-    if (country === lastSyncedCountry) return;
-    lastSyncedCountry = country;
+    if (country === knownCountry) return;
+    knownCountry = country;
     if (!isAllowed(country)) {
       if (DEV) {
         console.warn(
@@ -200,6 +178,23 @@
     if (nationalDisplay) {
       const digits = digitsOnly(nationalDisplay);
       nationalDisplay = formatNationalAsYouType(country, digits);
+    }
+  });
+
+  /**
+   * React when the allow-list itself changes — re-validate the selected
+   * country and reformat as needed.
+   */
+  $effect(() => {
+    if (allowedCountries === knownAllowList) return;
+    knownAllowList = allowedCountries;
+    if (!isAllowed(country)) {
+      country = fallbackCountry();
+      knownCountry = country;
+      if (nationalDisplay) {
+        const digits = digitsOnly(nationalDisplay);
+        nationalDisplay = formatNationalAsYouType(country, digits);
+      }
     }
   });
 
@@ -220,7 +215,7 @@
   function submitFor(detail: PhoneInputChange): void {
     if (detail.value !== value) {
       value = detail.value;
-      lastSyncedValue = detail.value;
+      knownValue = detail.value;
     }
     onchange?.(detail.value, detail);
   }
@@ -229,6 +224,35 @@
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const rawValue = target.value;
+    const trimmed = rawValue.trim();
+
+    // If the user pasted or typed a `+`-prefixed E.164 string, attempt to
+    // re-detect the country and rehydrate the visible field from the parsed
+    // national format. Documented behaviour in the a11y guidance.
+    if (trimmed.startsWith('+')) {
+      const parsed = parseE164Value(trimmed);
+      if (parsed) {
+        if (!isAllowed(parsed.country)) {
+          nationalDisplay = trimmed;
+          submitFor(detailForCountryNotAllowed(parsed.country, parsed.nationalNumber));
+          return;
+        }
+        country = parsed.country;
+        knownCountry = parsed.country;
+        nationalDisplay = parsed.formatted;
+        const result = computeNationalResult(parsed.country, parsed.nationalNumber);
+        submitFor({
+          value: result.value,
+          country: parsed.country,
+          nationalNumber: result.nationalNumber,
+          isValid: result.isValid,
+          isPossible: result.isPossible,
+          reason: result.reason,
+        });
+        return;
+      }
+    }
+
     const digits = digitsOnly(rawValue);
     const result = computeNationalResult(country, digits);
     nationalDisplay = result.formatted;
@@ -245,14 +269,18 @@
   function handleCountryChange(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
-    const nextCountry = target.value as PhoneInputCountryCode;
-    if (!isAllowed(nextCountry)) {
-      const detail = detailForCountryNotAllowed(nextCountry, digitsOnly(nationalDisplay));
+    const rawCode = target.value;
+    if (!isCountryCode(rawCode)) {
+      const detail = detailForCountryNotAllowed(
+        rawCode as PhoneInputCountryCode,
+        digitsOnly(nationalDisplay),
+      );
       submitFor(detail);
       return;
     }
+    const nextCountry: PhoneInputCountryCode = rawCode;
     country = nextCountry;
-    lastSyncedCountry = nextCountry;
+    knownCountry = nextCountry;
     const digits = digitsOnly(nationalDisplay);
     const result = computeNationalResult(nextCountry, digits);
     nationalDisplay = result.formatted;
@@ -267,10 +295,10 @@
   }
 
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
-  const countrySelectId = `${id}-country`;
-  const countryLabelId = `${id}-country-label`;
-  const nationalInputId = id;
-  const nationalLabelId = `${id}-national-label`;
+  const countrySelectId = $derived(`${id}-country`);
+  const countryLabelId = $derived(`${id}-country-label`);
+  const nationalInputId = $derived(id);
+  const nationalLabelId = $derived(`${id}-national-label`);
 
   const defaultDescriptionId = $derived(describeId(id, !!description));
   const defaultErrorId = $derived(buildErrorId(id, !!error));
@@ -300,6 +328,18 @@
     !resolvedGroupLabelledBy && !ariaLabelledBy ? ariaLabel : undefined,
   );
 
+  /**
+   * Compose the per-control accessible-name reference. Prefix the group label
+   * (when present) so screen readers announce the consumer's "Phone number"
+   * alongside the inner control's role-specific label ("Country code",
+   * "Phone number").
+   */
+  function controlLabelledBy(controlLabelId: string): string {
+    if (resolvedGroupLabelledBy) return `${resolvedGroupLabelledBy} ${controlLabelId}`;
+    if (ariaLabelledBy) return `${ariaLabelledBy} ${controlLabelId}`;
+    return controlLabelId;
+  }
+
   const hasGroupAccessibleName = $derived(
     !!label || !!context?.labelId || !!ariaLabelledBy || !!ariaLabel,
   );
@@ -314,8 +354,9 @@
   });
 
   // The submittable value: only forward the E.164 value when we know it is
-  // valid. Otherwise the hidden input carries an empty string so the form
-  // doesn't accept malformed numbers silently.
+  // valid for the currently allowed country. Otherwise the hidden input
+  // carries an empty string so the form doesn't accept malformed numbers
+  // silently.
   const submittedValue = $derived.by(() => {
     if (!value) return '';
     const parsed = parseE164Value(value);
@@ -353,8 +394,9 @@
     <select
       id={countrySelectId}
       class="cinder-phone-input__country"
-      aria-labelledby={countryLabelId}
+      aria-labelledby={controlLabelledBy(countryLabelId)}
       aria-describedby={describedBy}
+      aria-invalid={resolvedAriaInvalid}
       disabled={resolvedDisabled}
       value={country}
       onchange={handleCountryChange}
@@ -371,7 +413,7 @@
       type="tel"
       inputmode="tel"
       autocomplete="tel-national"
-      aria-labelledby={nationalLabelId}
+      aria-labelledby={controlLabelledBy(nationalLabelId)}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
       aria-required={resolvedRequired || undefined}
@@ -383,7 +425,13 @@
   </div>
 
   {#if name}
-    <input type="hidden" {name} value={submittedValue} {required} {disabled} />
+    <input
+      type="hidden"
+      {name}
+      value={submittedValue}
+      required={resolvedRequired}
+      disabled={resolvedDisabled}
+    />
   {/if}
 
   {#if description}
@@ -391,6 +439,13 @@
   {/if}
 
   {#if error}
-    <p id={ownErrorId} class="cinder-phone-input-field__error" aria-live="polite">{error}</p>
+    <p
+      id={ownErrorId}
+      class="cinder-phone-input-field__error"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {error}
+    </p>
   {/if}
 </div>
