@@ -43,17 +43,35 @@ const schema = {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
     },
+    placeholder: {
+      type: 'string',
+      description: 'Placeholder text shown while the pending tag input is empty.',
+    },
     disabled: {
       type: 'boolean',
       description: 'Disable the input and chip removal affordances.',
     },
     name: {
       type: 'string',
-      description: 'Hidden input name used for native form submission.',
+      description:
+        'Hidden input name used for native form submission; one hidden field is rendered per tag.',
     },
     class: {
       type: 'string',
       description: 'Additional class merged onto the root element.',
+    },
+    'aria-label': {
+      type: 'string',
+      description: 'Accessible label applied when no labelled-by chain is present.',
+    },
+    'aria-labelledby': {
+      type: 'string',
+      description: 'Element ids that label both the text input and the committed-tag listbox.',
+    },
+    'aria-describedby': {
+      type: 'string',
+      description:
+        'Additional description ids composed into the visible input aria-describedby chain.',
     },
   },
   additionalProperties: false,

@@ -155,7 +155,7 @@
       return `You can add up to ${resolvedMax} tag${resolvedMax === 1 ? '' : 's'}.`;
     }
 
-    if (!allowDuplicates && currentTags.includes(candidate)) {
+    if (!allowDuplicates && currentTags.some((tag) => tag.trim() === candidate)) {
       return `"${candidate}" is already added.`;
     }
 
@@ -168,8 +168,8 @@
 
   function matchesDelimiter(key: string): boolean {
     if (typeof delimiter === 'string') return key === delimiter;
-    delimiter.lastIndex = 0;
-    return delimiter.test(key);
+    const expression = new RegExp(delimiter.source, delimiter.flags.replaceAll('g', ''));
+    return expression.test(key);
   }
 
   function commitDraft(): boolean {
@@ -194,6 +194,16 @@
     inlineError = null;
     const nextTags = currentTags.filter((_, candidateIndex) => candidateIndex !== index);
     setTags(nextTags);
+  }
+
+  function focusAfterRemove(index: number): void {
+    if (index > 0) {
+      void focusChip(index - 1);
+      return;
+    }
+
+    focusedChipIndex = -1;
+    void focusInput();
   }
 
   function handleInput(event: Event): void {
@@ -257,20 +267,12 @@
   }
 
   function handleChipKeydown(index: number, event: KeyboardEvent): void {
-    if (resolvedDisabled) {
-      consumerKeyDown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement });
-      return;
-    }
+    if (resolvedDisabled) return;
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
       removeTag(index);
-      if (index > 0) {
-        void focusChip(index - 1);
-      } else {
-        focusedChipIndex = -1;
-        void focusInput();
-      }
+      focusAfterRemove(index);
     } else if (isRovingKey(event.key)) {
       const nextIndex = handleRovingKeydown(event, index, currentTags.length, {
         horizontal: true,
@@ -287,8 +289,6 @@
         }
       }
     }
-
-    consumerKeyDown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement });
   }
 </script>
 
@@ -333,12 +333,7 @@
             onclick={(event) => {
               event.stopPropagation();
               removeTag(index);
-              if (index > 0) {
-                void focusChip(index - 1);
-              } else {
-                focusedChipIndex = -1;
-                void focusInput();
-              }
+              focusAfterRemove(index);
             }}
           >
             <span aria-hidden="true">×</span>
@@ -372,6 +367,8 @@
   {/if}
 
   {#if name}
-    <input type="hidden" {name} value={currentTags.join(',')} />
+    {#each currentTags as tag, index (`hidden:${index}:${tag}`)}
+      <input type="hidden" {name} value={tag} />
+    {/each}
   {/if}
 </div>

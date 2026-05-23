@@ -42,8 +42,9 @@ them alongside `FormField` description and error text.
 
 ## Form submission and reset
 
-- When `name` is provided, a hidden input mirrors `tags.join(',')` for native
-  form submission.
+- When `name` is provided, the component renders one hidden input per tag using
+  the same field name so native form submission preserves free-form values
+  without lossy delimiter encoding.
 - In uncontrolled mode, native form reset restores `defaultValue`, clears the
   pending input buffer, and clears inline validation errors.
 - Controlled mode does not mutate itself on reset; the parent remains the source

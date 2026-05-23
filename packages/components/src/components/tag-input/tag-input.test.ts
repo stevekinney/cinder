@@ -6,6 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: TagInput } = await import('./tag-input.svelte');
 const { default: FormFieldTagInputFixture } =
   await import('../../test/fixtures/form-field-tag-input-fixture.svelte');
@@ -22,6 +23,20 @@ function getListbox(container: HTMLElement): HTMLElement {
 
 function getOptions(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll('[role="option"]'));
+}
+
+function renderTagInputInForm(props: Record<string, unknown>) {
+  const form = document.createElement('form');
+  document.body.appendChild(form);
+  const result = render(TagInput, { target: form, props });
+
+  return {
+    ...result,
+    form,
+    cleanup() {
+      if (form.isConnected) document.body.removeChild(form);
+    },
+  };
 }
 
 describe('TagInput rendering', () => {
@@ -48,8 +63,10 @@ describe('TagInput rendering', () => {
       props: { name: 'tags', defaultValue: ['Svelte', 'Bun'] },
     });
 
-    const hiddenInput = container.querySelector('input[type="hidden"][name="tags"]');
-    expect(hiddenInput?.getAttribute('value')).toBe('Svelte,Bun');
+    const hiddenInputs = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+    );
+    expect(hiddenInputs.map((input) => input.value)).toEqual(['Svelte', 'Bun']);
   });
 
   test('remove buttons expose the required aria-label', () => {
@@ -119,6 +136,19 @@ describe('TagInput commits tags', () => {
     expect(container.textContent).toContain('"Svelte" is already added.');
   });
 
+  test('duplicate prevention compares trimmed values, not raw source strings', async () => {
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte '] },
+    });
+    const input = getInput(container);
+
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(getOptions(container)).toHaveLength(1);
+    expect(container.textContent).toContain('"Svelte" is already added.');
+  });
+
   test('max cap blocks extra tags', async () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte', 'Bun'], max: 2 },
@@ -159,6 +189,20 @@ describe('TagInput commits tags', () => {
 
     expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
     expect(getOptions(container)).toHaveLength(1);
+  });
+
+  test('consumer onkeydown only runs for the input, not chip keyboard interaction', async () => {
+    const onkeydown = mock((_event: KeyboardEvent) => {});
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte'], onkeydown },
+    });
+    const input = getInput(container);
+
+    await fireEvent.keyDown(input, { key: 'Backspace' });
+    const option = getOptions(container)[0]!;
+    await fireEvent.keyDown(option, { key: 'Delete' });
+
+    expect(onkeydown).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -206,6 +250,137 @@ describe('TagInput keyboard removal and navigation', () => {
     await fireEvent.keyDown(input, { key: 'ArrowLeft' });
     const lastOption = getOptions(container)[1]!;
     expect(document.activeElement).toBe(lastOption);
+  });
+
+  test('Home, End, and ArrowRight follow the roving focus contract', async () => {
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte', 'Bun', 'TypeScript'] },
+    });
+    const input = getInput(container);
+    input.focus();
+    input.setSelectionRange(0, 0);
+
+    await fireEvent.keyDown(input, { key: 'ArrowLeft' });
+    let options = getOptions(container);
+    expect(document.activeElement).toBe(options[2]!);
+
+    await fireEvent.keyDown(options[2]!, { key: 'Home' });
+    options = getOptions(container);
+    expect(document.activeElement).toBe(options[0]!);
+
+    await fireEvent.keyDown(options[0]!, { key: 'End' });
+    options = getOptions(container);
+    expect(document.activeElement).toBe(options[2]!);
+
+    await fireEvent.keyDown(options[2]!, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(input);
+  });
+
+  test('clicking the remove button removes the chip and focuses the previous chip', async () => {
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte', 'Bun'] },
+    });
+
+    const removeButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-tag-input__remove'),
+    );
+    await fireEvent.click(removeButtons[1]!);
+
+    const options = getOptions(container);
+    expect(options).toHaveLength(1);
+    expect(document.activeElement).toBe(options[0]!);
+  });
+});
+
+describe('TagInput form participation', () => {
+  test('hidden input updates after commits and removals', async () => {
+    const { container } = render(TagInput, {
+      props: { name: 'tags', defaultValue: ['Svelte'] },
+    });
+    const input = getInput(container);
+
+    await fireEvent.input(input, { target: { value: 'Bun' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    let hiddenInputs = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+    );
+    expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte', 'Bun']);
+
+    await fireEvent.keyDown(input, { key: 'Backspace' });
+    const lastOption = getOptions(container)[1]!;
+    await fireEvent.keyDown(lastOption, { key: 'Delete' });
+
+    hiddenInputs = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+    );
+    expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
+  });
+
+  test('uncontrolled reset restores defaultValue, clears draft text, clears inline error, and does not fire onchange', async () => {
+    const onchange = mock((_tags: string[]) => {});
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      max: 1,
+      onchange,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+      await fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(mount.container.textContent).toContain('You can add up to 1 tag.');
+      expect(onchange).not.toHaveBeenCalled();
+
+      await fireEvent.input(input, { target: { value: 'Draft tag' } });
+      mount.form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+      await tick();
+
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+      expect(input.value).toBe('');
+      expect(mount.container.textContent).not.toContain('You can add up to 1 tag.');
+      const hiddenInputs = Array.from(
+        mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+      );
+      expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
+      expect(onchange).not.toHaveBeenCalled();
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('controlled reset does not mutate the rendered tags without a parent rerender', async () => {
+    const onchange = mock((_tags: string[]) => {});
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      value: ['Svelte'],
+      onchange,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+      await fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+
+      mount.form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+      await tick();
+
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+      const hiddenInputs = Array.from(
+        mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+      );
+      expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
+    } finally {
+      mount.cleanup();
+    }
   });
 });
 
