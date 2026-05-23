@@ -616,10 +616,11 @@
       ],
       "related": ["color-swatch-picker", "input"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/color-picker/schema",
-        "variables": "cinder/color-picker/variables"
+        "variables": "cinder/color-picker/variables",
+        "examples": "cinder/color-picker/examples"
       }
     },
     {
@@ -986,6 +987,37 @@
       }
     },
     {
+      "name": "DropdownGroup",
+      "id": "dropdown-group",
+      "import": "cinder/dropdown-group",
+      "exportName": "DropdownGroup",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Accessible group boundary that clusters related dropdown-item rows inside a dropdown-menu.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Grouping related dropdown actions under one accessible heading.",
+        "Pairing dropdown-label with a role='group' container inside dropdown-menu."
+      ],
+      "avoidWhen": [
+        "Rendering a clickable row — use dropdown-item.",
+        "Separating sections without a group label — use dropdown-separator."
+      ],
+      "related": [
+        "dropdown",
+        "dropdown-menu",
+        "dropdown-item",
+        "dropdown-label",
+        "dropdown-separator"
+      ],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-group/schema",
+        "variables": "cinder/dropdown-group/variables"
+      }
+    },
+    {
       "name": "DropdownItem",
       "id": "dropdown-item",
       "import": "cinder/dropdown-item",
@@ -1183,6 +1215,28 @@
       "artifacts": {
         "schema": "cinder/feed-event/schema",
         "variables": "cinder/feed-event/variables"
+      }
+    },
+    {
+      "name": "FileUpload",
+      "id": "file-upload",
+      "import": "cinder/file-upload",
+      "exportName": "FileUpload",
+      "category": "form",
+      "status": "stable",
+      "purpose": "File picker and drag-and-drop surface that validates files locally and can render upload progress rows.",
+      "tags": ["form", "upload"],
+      "useWhen": [
+        "Collecting one or more files while keeping the native picker available for keyboard and assistive-technology users.",
+        "Showing per-file upload progress or rejection errors below a prominent dropzone surface."
+      ],
+      "avoidWhen": ["You only need a hidden native file input with no custom UI."],
+      "related": ["form-field", "progress", "input"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/file-upload/schema",
+        "variables": "cinder/file-upload/variables"
       }
     },
     {
@@ -1960,10 +2014,11 @@
       ],
       "related": ["page-layout", "card", "tab-list"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/section-heading/schema",
-        "variables": "cinder/section-heading/variables"
+        "variables": "cinder/section-heading/variables",
+        "examples": "cinder/section-heading/examples"
       }
     },
     {

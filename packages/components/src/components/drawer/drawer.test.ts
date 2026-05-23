@@ -12,6 +12,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.showModal) {
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
         this.setAttribute('open', '');
       },
       configurable: true,
@@ -21,6 +26,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.close) {
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
         this.removeAttribute('open');
         this.dispatchEvent(new Event('close'));
       },
@@ -32,6 +42,19 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Drawer } = await import('./drawer.svelte');
+const originalGetComputedStyle = window.getComputedStyle.bind(window);
+
+window.getComputedStyle = ((target: Element) => {
+  if (target instanceof HTMLElement && target.classList.contains('cinder-drawer__panel')) {
+    return {
+      transitionProperty: 'translate, opacity',
+      transitionDuration: '150ms, 150ms',
+      transitionDelay: '0ms, 0ms',
+    } as CSSStyleDeclaration;
+  }
+
+  return originalGetComputedStyle(target);
+}) as typeof window.getComputedStyle;
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -44,6 +67,20 @@ const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
   setup: () => {},
 }));
+
+function createTransitionEndEvent(propertyName: string): Event {
+  const event = new Event('transitionend');
+  Object.defineProperty(event, 'propertyName', { value: propertyName });
+  return event;
+}
+
+async function finishCloseTransition(container: HTMLElement): Promise<void> {
+  const panel = container.querySelector('.cinder-drawer__panel');
+  if (!panel) return;
+  panel.dispatchEvent(createTransitionEndEvent('translate'));
+  panel.dispatchEvent(createTransitionEndEvent('opacity'));
+  await Promise.resolve();
+}
 
 afterEach(() => {
   _resetScrollLock();
@@ -263,6 +300,7 @@ describe('Drawer', () => {
 
     const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -291,6 +329,7 @@ describe('Drawer', () => {
 
     const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -316,15 +355,12 @@ describe('Drawer', () => {
 
     const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
   });
 
-  // ---- 14. ESC key on dialog fires close event and sets open to false ----
-  test('Escape key on dialog fires close event and sets open to false', async () => {
-    // The native <dialog> handles ESC → cancel → close automatically with showModal().
-    // happy-dom does not fully emulate this native behaviour, so we fire the close
-    // event after dispatching Escape to replicate the browser sequence — same pattern
-    // as modal.test.ts. This tests the onclose → handleClose → open=false chain.
+  // ---- 14. ESC cancel path goes through animated close lifecycle ----
+  test('Escape cancel keeps the drawer mounted until the close transition completes', async () => {
     let openValue = true;
     const { container } = render(Drawer, {
       props: {
@@ -340,21 +376,51 @@ describe('Drawer', () => {
     });
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
     expect(dialog).not.toBeNull();
-    // Simulate browser ESC sequence: Escape keydown on dialog → close event fires.
-    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
-    await fireEvent(dialog, new Event('close'));
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
     expect(openValue).toBe(false);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+    await finishCloseTransition(container);
+    expect(dialog.hasAttribute('open')).toBe(false);
   });
 
-  // ---- 15. Stylesheet regression: reduced-motion fade block exists ----
-  test('drawer.css contains prefers-reduced-motion: reduce with cinder-drawer-fade', async () => {
-    // This is a stylesheet regression test, NOT behavior coverage.
-    // Real reduced-motion behavior is browser-only.
-    const cssFile = Bun.file(new URL('./drawer.css', import.meta.url));
-    const cssText = await cssFile.text();
+  // ---- 15. Stylesheet regression: reduced-motion disables panel and backdrop transitions ----
+  test('drawer.css disables panel and backdrop transitions under prefers-reduced-motion: reduce', async () => {
+    const cssText = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
     expect(cssText).toContain('prefers-reduced-motion: reduce');
-    expect(cssText).toContain('cinder-drawer-fade');
+    expect(cssText).toContain('.cinder-drawer__panel');
+    expect(cssText).toContain('.cinder-drawer::backdrop');
+    expect(cssText).toContain('transition: none');
+  });
+
+  test('close applies inert closing state until the delayed close finishes', async () => {
+    let openValue = true;
+    const { container } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(openValue).toBe(false);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.getAttribute('data-cinder-closing')).toBe('');
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+    expect(panel.hasAttribute('inert')).toBe(true);
+    await finishCloseTransition(container);
+    expect(dialog.hasAttribute('open')).toBe(false);
   });
 
   // ---- 16. Bindable open: consumer state updates on internal close ----
@@ -377,6 +443,7 @@ describe('Drawer', () => {
     const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
     expect(openValue).toBe(false);
+    await finishCloseTransition(container);
   });
 
   // ---- 17. Unmount-while-open: cleanup ----
@@ -442,6 +509,8 @@ describe('Drawer', () => {
 
     const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    expect(closeCount).toBe(0);
+    await finishCloseTransition(container);
     expect(closeCount).toBe(1);
   });
 
@@ -503,10 +572,19 @@ describe('Drawer', () => {
     });
     expect(document.body.style.overflow).toBe('hidden');
 
-    // Close via button
-    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
-    await fireEvent.click(closeButton);
-    expect(openValue).toBe(false);
+    // Close via parent-driven state change
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'State Machine',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
   });
 

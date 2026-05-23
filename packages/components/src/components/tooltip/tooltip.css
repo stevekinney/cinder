@@ -3,7 +3,6 @@
  * ======================================== */
 
 .cinder-tooltip-wrapper {
-  position: relative;
   display: inline-flex;
   align-items: center;
 }
@@ -13,13 +12,9 @@
  * ---------------------------------------- */
 
 .cinder-tooltip {
-  /* Positioning — CSS anchor API (where supported) */
-  @supports (anchor-name: --x) {
-    position: absolute;
-  }
-
-  /* Fallback: absolute positioned relative to the wrapper */
-  position: absolute;
+  position: fixed;
+  left: 0;
+  top: 0;
   z-index: var(--cinder-z-tooltip, 50);
 
   max-width: 16rem;
@@ -38,55 +33,22 @@
   transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
+.cinder-tooltip[data-cinder-position-ready='false'] {
+  visibility: hidden;
+  opacity: 0;
+}
+
 /* Visible state */
 .cinder-tooltip[aria-hidden='false'] {
+  visibility: visible;
   opacity: 1;
 }
 
 /* Hidden state */
 .cinder-tooltip[aria-hidden='true'] {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
-}
-
-/* ----------------------------------------
- * Placement: top (default)
- * ---------------------------------------- */
-
-.cinder-tooltip[data-cinder-placement='top'] {
-  bottom: calc(100% + var(--cinder-space-2));
-  left: 50%;
-  translate: -50% 0;
-}
-
-/* ----------------------------------------
- * Placement: bottom
- * ---------------------------------------- */
-
-.cinder-tooltip[data-cinder-placement='bottom'] {
-  top: calc(100% + var(--cinder-space-2));
-  left: 50%;
-  translate: -50% 0;
-}
-
-/* ----------------------------------------
- * Placement: left
- * ---------------------------------------- */
-
-.cinder-tooltip[data-cinder-placement='left'] {
-  right: calc(100% + var(--cinder-space-2));
-  top: 50%;
-  translate: 0 -50%;
-}
-
-/* ----------------------------------------
- * Placement: right
- * ---------------------------------------- */
-
-.cinder-tooltip[data-cinder-placement='right'] {
-  left: calc(100% + var(--cinder-space-2));
-  top: 50%;
-  translate: 0 -50%;
 }
 
 /* ----------------------------------------

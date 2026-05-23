@@ -8,10 +8,14 @@ import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playgroun
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(here, '../../..');
-const readinessPath = '/api/manifest';
+// Probe the cheap liveness endpoint first. `/api/manifest` does real work and
+// can lag behind initial server readiness, which makes local startup look hung
+// even though the playground is already accepting requests.
+const readinessPath = '/ping';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
+const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
 
 async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
   try {
@@ -24,12 +28,12 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
   }
 }
 
-function localPlaygroundUrlForPort(port: number): string {
-  return `http://localhost:${port}`;
-}
-
 export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
   return port === null ? null : localPlaygroundUrlForPort(port);
+}
+
+function localPlaygroundUrlForPort(port: number): string {
+  return `http://localhost:${port}`;
 }
 
 async function readPlaygroundPortFile(path: string): Promise<number | null> {
@@ -98,6 +102,7 @@ async function main(): Promise<void> {
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
+
     let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
@@ -111,7 +116,7 @@ async function main(): Promise<void> {
     });
 
     const startedAt = Date.now();
-    const deadline = startedAt + 120_000;
+    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
     let lastLog = startedAt;
     while (Date.now() < deadline) {
       const selectedPort =
@@ -136,7 +141,9 @@ async function main(): Promise<void> {
         console.error('Failed to kill unready server process:', error);
       }
       console.error(
-        `Playground server did not become ready within 120s at ${targetPlaygroundUrl}.`,
+        `Playground server did not become ready within ${Math.round(
+          PLAYGROUND_READY_TIMEOUT_MS / 1000,
+        )}s at ${targetPlaygroundUrl}.`,
       );
       if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
       process.exit(1);
