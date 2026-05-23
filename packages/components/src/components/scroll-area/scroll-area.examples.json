@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "scroll-area",
+  "import": "cinder/scroll-area",
+  "examples": [
+    {
+      "id": "bidirectional",
+      "title": "Bidirectional scroll",
+      "description": "A bounded viewport that scrolls both axes when the inner content exceeds both dimensions. Useful for wide tables or grids embedded in a fixed-size surface.",
+      "code": "<script lang=\"ts\">\n  import { ScrollArea } from 'cinder/scroll-area';\n</script>\n\n<ScrollArea direction=\"both\" maxHeight=\"12rem\" maxWidth=\"24rem\">\n  <table>\n    <thead>\n      <tr>\n        <th>Run</th>\n        <th>Status</th>\n        <th>Duration</th>\n        <th>Triggered by</th>\n        <th>Commit</th>\n        <th>Branch</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr\n        ><td>#4821</td><td>passed</td><td>4m 12s</td><td>avery</td><td>9c1f8a2</td><td>main</td></tr\n      >\n      <tr\n        ><td>#4820</td><td>failed</td><td>3m 47s</td><td>jordan</td><td>2b4d701</td><td\n          >feat/scroll-area</td\n        ></tr\n      >\n      <tr\n        ><td>#4819</td><td>passed</td><td>4m 03s</td><td>avery</td><td>7e9a318</td><td>main</td></tr\n      >\n      <tr\n        ><td>#4818</td><td>passed</td><td>3m 58s</td><td>renovate</td><td>1a02fce</td><td\n          >chore/deps</td\n        ></tr\n      >\n      <tr\n        ><td>#4817</td><td>cancelled</td><td>0m 41s</td><td>jordan</td><td>54bb6ad</td><td\n          >feat/grid-list</td\n        ></tr\n      >\n    </tbody>\n  </table>\n</ScrollArea>\n"
+    },
+    {
+      "id": "horizontal-code-snippet",
+      "title": "Horizontal code snippet",
+      "description": "Horizontal scrolling for a long single-line code sample, rendered as a <pre> via the `as` prop so the region role is preserved alongside the semantic tag.",
+      "code": "<script lang=\"ts\">\n  import { ScrollArea } from 'cinder/scroll-area';\n\n  const command =\n    '$ bun run --filter @cinder/components build && bun run --filter @cinder/components test --coverage --reporter=verbose --bail';\n</script>\n\n<ScrollArea as=\"pre\" direction=\"horizontal\" maxWidth=\"32rem\" ariaLabel=\"Example command\"\n  ><code>{command}</code></ScrollArea\n>\n"
+    },
+    {
+      "id": "themed-scrollbar",
+      "title": "Themed scrollbar tokens",
+      "description": "Overrides --cinder-scrollbar-thumb and --cinder-scrollbar-thumb-hover on a wrapping surface so the native scrollbar picks up brand colors without replacing it.",
+      "code": "<script lang=\"ts\">\n  import { ScrollArea } from 'cinder/scroll-area';\n</script>\n\n<div\n  style=\"--cinder-scrollbar-thumb: oklch(62% 0.18 264 / 0.7); --cinder-scrollbar-thumb-hover: oklch(62% 0.18 264 / 0.95);\"\n>\n  <ScrollArea ariaLabel=\"Release notes\" maxHeight=\"14rem\">\n    <h3>0.42.0</h3>\n    <p>Adds scroll-area, themed via design tokens.</p>\n    <h3>0.41.0</h3>\n    <p>Combobox gains rich option rows with description and avatar.</p>\n    <h3>0.40.0</h3>\n    <p>Form-field contract lands on input, textarea, and select.</p>\n    <h3>0.39.0</h3>\n    <p>Changesets adopted; provenance-enabled publishing wired up.</p>\n    <h3>0.38.0</h3>\n    <p>Package exports unified under cinder/* with Shiki adapter.</p>\n  </ScrollArea>\n</div>\n"
+    },
+    {
+      "id": "vertical-chat-list",
+      "title": "Vertical chat transcript",
+      "description": "A vertical scroll region with a meaningful accessible name, so assistive technology treats it as a landmark via the derived role=\"region\".",
+      "code": "<script lang=\"ts\">\n  import { ScrollArea } from 'cinder/scroll-area';\n</script>\n\n<ScrollArea ariaLabel=\"Chat transcript\" maxHeight=\"16rem\">\n  <p>Avery: morning! ready to pair on the migration?</p>\n  <p>Jordan: yep — pulling the branch now.</p>\n  <p>Avery: heads up, the seed script changed.</p>\n  <p>Jordan: noticed. running it locally first.</p>\n  <p>Avery: thanks. ping me when you hit the auth step.</p>\n  <p>Jordan: will do. tests are green on my end.</p>\n  <p>Avery: nice. I'll start drafting the changelog.</p>\n  <p>Jordan: cool — should I cherry-pick the hotfix in?</p>\n  <p>Avery: yes please, then squash before review.</p>\n  <p>Jordan: pushed. take a look when you can.</p>\n</ScrollArea>\n"
+    }
+  ]
+}

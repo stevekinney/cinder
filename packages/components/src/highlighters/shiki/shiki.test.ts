@@ -70,12 +70,17 @@ describe('shikiHighlighter — happy path', () => {
     // The preload loop swallows failures so a bad entry in `langs` cannot
     // block initialization. Once the highlighter is built, a valid lang
     // still highlights correctly.
-    const highlight = shikiHighlighter({
-      langs: ['definitely-not-a-language', 'typescript'],
-    });
-    const html = await highlight('const x = 1;', 'typescript');
-    expect(html.startsWith('<pre')).toBe(true);
-    expect(html).toMatch(/<span[^>]*style=/);
+    const { restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter({
+        langs: ['definitely-not-a-language', 'typescript'],
+      });
+      const html = await highlight('const x = 1;', 'typescript');
+      expect(html.startsWith('<pre')).toBe(true);
+      expect(html).toMatch(/<span[^>]*style=/);
+    } finally {
+      restore();
+    }
   });
 
   test('normalizes language tokens with trailing whitespace and metadata', async () => {
@@ -129,14 +134,19 @@ describe('shikiHighlighter — fallback contract', () => {
   });
 
   test('does not throw on unknown language', async () => {
-    const highlight = shikiHighlighter();
-    let threw = false;
+    const { restore } = captureWarnings();
     try {
-      await highlight('hello', 'definitely-not-a-language');
-    } catch {
-      threw = true;
+      const highlight = shikiHighlighter();
+      let threw = false;
+      try {
+        await highlight('hello', 'definitely-not-a-language');
+      } catch {
+        threw = true;
+      }
+      expect(threw).toBe(false);
+    } finally {
+      restore();
     }
-    expect(threw).toBe(false);
   });
 
   test('does not throw when a JS caller passes a non-string lang', async () => {
@@ -145,17 +155,22 @@ describe('shikiHighlighter — fallback contract', () => {
     // `null`/`undefined`/a number would crash before reaching the
     // documented "never throws" fallback. The adapter guards `typeof lang
     // === 'string'` so all three render as the escaped-plaintext block.
-    const highlight = shikiHighlighter();
-    // Cast through `unknown` for the test only — production type-checking
-    // would forbid these calls, but the runtime guard still has to hold.
-    const callPlaintext = highlight as (code: string, lang: unknown) => Promise<string>;
-    const nullResult = await callPlaintext('plain', null);
-    expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
-    expect(nullResult).toContain('<code>plain</code>');
-    const undefinedResult = await callPlaintext('plain', undefined);
-    expect(undefinedResult).toContain('<pre class="shiki shiki-plaintext">');
-    const numericResult = await callPlaintext('plain', 42);
-    expect(numericResult).toContain('<pre class="shiki shiki-plaintext">');
+    const { restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter();
+      // Cast through `unknown` for the test only — production type-checking
+      // would forbid these calls, but the runtime guard still has to hold.
+      const callPlaintext = highlight as (code: string, lang: unknown) => Promise<string>;
+      const nullResult = await callPlaintext('plain', null);
+      expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
+      expect(nullResult).toContain('<code>plain</code>');
+      const undefinedResult = await callPlaintext('plain', undefined);
+      expect(undefinedResult).toContain('<pre class="shiki shiki-plaintext">');
+      const numericResult = await callPlaintext('plain', 42);
+      expect(numericResult).toContain('<pre class="shiki shiki-plaintext">');
+    } finally {
+      restore();
+    }
   });
 
   test('does not throw when a JS caller passes a non-string code', async () => {
@@ -164,20 +179,25 @@ describe('shikiHighlighter — fallback contract', () => {
     // on `code` directly. `null`/`undefined`/non-strings would throw
     // before reaching the documented "never throws" fallback. The guard
     // coerces non-strings to `''` so the plaintext fallback still renders.
-    const highlight = shikiHighlighter();
-    const callPlaintext = highlight as (code: unknown, lang: string) => Promise<string>;
-    const nullResult = await callPlaintext(null, '');
-    expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
-    expect(nullResult).toContain('<code></code>');
-    const undefinedResult = await callPlaintext(undefined, '');
-    expect(undefinedResult).toContain('<code></code>');
-    const numericResult = await callPlaintext(42, '');
-    expect(numericResult).toContain('<code></code>');
-    // Also exercise the unknown-language fallback path (which also runs
-    // `plaintextBlock(code)` through `escapeHtml`) to confirm the guard
-    // holds when Shiki has been loaded.
-    const unknownLangResult = await callPlaintext(null, 'definitely-not-a-language');
-    expect(unknownLangResult).toContain('<pre class="shiki shiki-plaintext">');
+    const { restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter();
+      const callPlaintext = highlight as (code: unknown, lang: string) => Promise<string>;
+      const nullResult = await callPlaintext(null, '');
+      expect(nullResult).toContain('<pre class="shiki shiki-plaintext">');
+      expect(nullResult).toContain('<code></code>');
+      const undefinedResult = await callPlaintext(undefined, '');
+      expect(undefinedResult).toContain('<code></code>');
+      const numericResult = await callPlaintext(42, '');
+      expect(numericResult).toContain('<code></code>');
+      // Also exercise the unknown-language fallback path (which also runs
+      // `plaintextBlock(code)` through `escapeHtml`) to confirm the guard
+      // holds when Shiki has been loaded.
+      const unknownLangResult = await callPlaintext(null, 'definitely-not-a-language');
+      expect(unknownLangResult).toContain('<pre class="shiki shiki-plaintext">');
+    } finally {
+      restore();
+    }
   });
 
   test('HTML-escapes <script>alert(1)</script> in the plaintext fallback', async () => {

@@ -1,39 +1,55 @@
 # Color Field — Accessibility Rationale
 
-## What this component is
+## What this component is — and what it isn't
 
-`color-field.svelte` is a **text-entry** color control. It accepts hex, `rgb()`, or `hsl()` strings, parses them on blur, and emits a canonical hex value via `onchange`. It pairs with `color-picker.svelte` (the visual surface) and `color-swatch-picker.svelte` (the fixed-palette surface). The field is the precision surface — when a user needs an exact `#3366FF`, the field is the right control.
+`color-field.svelte` is the **precision** counterpart to `color-picker.svelte`. The picker exists to let users graze visually across a color space; the field exists to accept an exact color value via keyboard entry. Neither replaces the other, and most production forms benefit from offering both side-by-side.
 
-## Swatch is decorative
+The field itself is a thin composition: an inner `<input>` (delivered by `Input`) plus a parser/normalizer that runs on blur. Everything that makes the inner input accessible — `aria-invalid`, `aria-describedby`, label association, native `disabled` and `required` behavior — flows through `Input` and the `FormField` context. ColorField does not duplicate that wiring.
 
-The trailing color preview is a `<span aria-hidden="true">`. It reflects the most recently committed value but is not interactive and is not announced. Screen reader users do not lose anything by ignoring it — the canonical value lives in the `<input>` itself, which announces as a normal text field.
+## Why validation happens on blur, not on every keystroke
 
-## Error wiring lives on the inner `<input>`
+A user typing `#ff8800` will pass through `#`, `#f`, `#ff`, `#ff8` — every intermediate state is unparseable. Surfacing an "invalid color" error after each keystroke would mean the form screams at the user for the entire duration of their intent. Blur-time validation lets the user finish typing before we decide whether to flag the value, which matches how `<input type="email">` and most real-world form controls behave.
 
-Parse failures are local to the field's input syntax: the user typed something that isn't a color, not that the application disagrees with their choice. The component sets `Input`'s own `error` prop, which wires `aria-invalid="true"` and `aria-describedby` to a visible error node. Semantic validation ("color must match brand palette") is the parent application's responsibility and belongs on a surrounding `<FormField error="...">` — `Input` allocates a distinct id when both errors are present so `aria-describedby` references both without collision.
+The trade-off is that an invalid committed value is not surfaced until focus moves elsewhere. That trade is the right one for a free-form text field — keyboard users typically tab away from the input to confirm their choice, and assistive technology announces the error at the moment they leave the field.
 
-## Why we validate on blur, not on every keystroke
+## Error ownership
 
-Mid-typing values like `#a` or `rgb(255, 0,` aren't errors — they're intermediate states. Flashing `aria-invalid` while the user types creates a noisy experience for screen readers (every keystroke triggering an announcement) and a stressful one for sighted users (red error styling appearing and disappearing). Blur-time validation matches the cadence of human review and aligns with the native browser pattern for `<input type="email">`.
+There are two kinds of errors a color field can have. The first is a **parse error** — the text doesn't form a valid hex, rgb(), or hsl() string. The second is a **semantic validation error** — the value parses, but the consumer rejects it ("must match brand palette"). These have different owners.
 
-## Enter-key behavior
+Parse errors are owned by `ColorField` itself. The component passes `error={parseError}` down into `Input`, which wires `aria-invalid="true"` on the native `<input>` and renders the message in a `<p aria-live="polite">` referenced by `aria-describedby`. Consumers never need to know about parse failures — the field surfaces them automatically.
 
-Pressing Enter is always intercepted: the handler `preventDefault()`s the browser's native submit, runs the commit pipeline synchronously, and immediately mirrors the resulting state onto the DOM — `setCustomValidity()` for parse errors and `hiddenMirror.value` for the canonical committed hex. On a successful commit with `enterBehavior='commit-then-submit'` (the default), the handler then re-issues `form.requestSubmit()` so the surrounding form submits with the up-to-date hidden mirror — without the race where the browser submits before Svelte has flushed bindings.
+Semantic errors are owned by the wrapping `FormField`. When a consumer passes `error="..."` to `FormField`, that error renders in the form-field error region and feeds the form-field context. `Input` is smart enough to allocate a distinct id for its own (parse) error when the two would collide, so both messages render. The "both ids in `aria-describedby`" guarantee depends on the wrapping `FormField` carrying the same `id` as the `ColorField` — that's how the form-field context plumbs through.
 
-Invalid or cleared input is intercepted in the same way (preventDefault first, sync DOM second), so the form never submits with a stale mirror value. The native `customValidity` message also blocks any stray submit attempt from elsewhere in the form (e.g. JavaScript calling `submit()` directly).
+Beyond ARIA, parse errors also participate in HTML constraint validation. The component calls `setCustomValidity` on the visible `<input>` whenever the parse state changes, so a form with an invalid color value won't submit on a button click any more than a malformed email address would.
 
-When `enterBehavior='commit-only'`, the field commits but never re-issues `requestSubmit` — useful in dialogs or multi-field flows where Enter has a different meaning.
+## The trailing swatch is decorative
 
-The hidden form-mirror input's `.value` is updated synchronously before `requestSubmit`, so the form's submit handler reads the canonical hex even before Svelte's reactive effects flush.
+The trailing color swatch is rendered into Input's `trailing` snippet slot as a `<span aria-hidden="true">`. It exists to give sighted users a quick visual confirmation that their input parsed to roughly the color they expected. It is not a button, not a focusable element, and not interactive — clicking it does nothing. Assistive technology ignores it entirely.
 
-## Form participation
+Two consequences. First, the swatch's color comes from `committedHex`, not from the visible text. A user can type `not-a-color`, and the swatch stays the previous committed color (or empty) — at no point does the component paint arbitrary user input into a CSS variable. Second, the field's only interactive surface is the inner `<input>`. Screen readers describing the control announce the input's label, the value, and any error — there is nothing extra to interpret.
 
-When `name` is set, a sibling `<input type="hidden">` mirrors the committed hex value, so the field shows up in `FormData` and participates in native submission. When `name` is omitted, the field still works but does not contribute a payload — exactly like a native `<input>` without `name`.
+## Enter key behavior — and why it's explicit
 
-The reset listener is attached directly to the visible `<input>` via a Svelte attachment. There is no separate anchor input — the form association comes from the visible input's own `.form` property.
+Pressing Enter inside a text input has a default behavior: submit the surrounding form. That's fine when the input's value is what the form needs, and not fine when the input has unprocessed state. ColorField has unprocessed state during typing: `visibleText` is what the user has typed, but `committedHex` (the value the form should submit) only updates on blur or Enter.
 
-## Limitations to document
+To avoid the race where the form submits with a stale hidden mirror, ColorField intercepts Enter, calls `preventDefault` first, runs the commit pipeline synchronously, writes the canonical hex to the hidden mirror's DOM value directly (not through Svelte's effect queue), and then — if `enterBehavior` is `'commit-then-submit'` — calls `form.requestSubmit()`. The submitter selection picks the first non-disabled `[type=submit]` (or unmarked `<button>`) in document order, which matches native default-submitter behavior for the common case.
 
-- **No modern slash-alpha syntax.** The underlying parser does not accept `rgb(255 0 0 / 50%)` or `hsl(0 100% 50% / 0.5)`. Inputs in that form are rejected at the format gate. Use legacy comma syntax (`rgba(255, 0, 0, 0.5)`) or hex with alpha (`#ff000080`).
-- **Cross-form remounting is unsupported.** The reset listener is wired at mount via a Svelte attachment. Moving the component to a different form at runtime requires unmounting and remounting.
-- **Single-submitter heuristic.** The Enter handler picks the first non-disabled `[type=submit]` or unmarked `<button>` in document order. Edge cases like multiple eligible submitters with `formaction` priorities or `[type=image]` submitters are not fully replicated — consumers that need that fidelity should use `enterBehavior='commit-only'` and orchestrate submission themselves.
+In dialogs and multi-field flows where Enter should commit but not submit, consumers pass `enterBehavior='commit-only'`. The pipeline still runs synchronously; the form just doesn't dispatch a submit event. Consumers can read the canonical hex from the hidden mirror in their own submit handler if they want full control.
+
+## Form participation and form reset
+
+The component always renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor for form association — it gives us a `.form` reference without contributing to `FormData`. This matches native `<input>` behavior: a control without a `name` is invisible to form serialization, even if the element exists in the DOM.
+
+Reset listening is wired through a `$effect` driven by `bind:this` on that same hidden input. The effect runs once on mount, attaches the `reset` listener to the input's associated form, and cleans up on unmount. Moving the component across forms at runtime is not supported in v1 — there is no `MutationObserver` watching the input's `form` property — but the listener cleanup guarantees no zombie reset handlers fire after unmount.
+
+On reset, uncontrolled fields revert to `defaultValue` (parsed and seeded into all three internal slots, with the original alpha preserved so a later `alpha={true}` toggle reconstructs `#rrggbbaa`). Reset never fires `onchange` — the parent observes resets through the native form `reset` event, not through ColorField's value callback. Controlled fields do nothing internally on reset; the parent's reset handler updates `value` and the effect reconciles.
+
+## Reduced motion and forced colors
+
+The component has no animated transitions in v1, so `prefers-reduced-motion` is a no-op. If we later animate the swatch (for example, a brief flash on commit), the animation must be gated on `@media (prefers-reduced-motion: no-preference)`.
+
+In Windows High Contrast / forced-colors mode the swatch still renders as a small colored square, but the inner input's focus and error styling falls back to the system palette via the underlying `Input` and `FormField` rules — none of those rules are overridden here.
+
+## Pairing recommendation
+
+For production forms where users need to choose a color, pair the field with `color-picker.svelte`. The picker is the discovery surface; the field is the precision surface. Wire them to the same controlled `value` and they stay in sync.

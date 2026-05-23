@@ -1,16 +1,13 @@
 <script lang="ts" module>
   /**
-   * Test fixture: ColorField composed inside a FormField wrapper. Used to
-   * verify that field-level errors raised inside ColorField coexist with
-   * application-level errors raised by the wrapping FormField — both error
-   * texts render, aria-invalid is set, and aria-describedby contains both
-   * error ids without collision.
+   * Wraps a ColorField inside a FormField. Used to test that a parse error
+   * raised by the field coexists with a semantic error raised by the form-
+   * field wrapper — both messages render and both ids appear in the inner
+   * input's `aria-describedby`.
    */
   export type ColorFieldFormFieldFixtureProps = {
-    fieldId: string;
-    fieldLabel: string;
+    id: string;
     fieldError?: string;
-    typedValue?: string;
   };
 </script>
 
@@ -18,12 +15,11 @@
   import ColorField from '../../components/color-field/color-field.svelte';
   import FormField from '../../components/form-field/form-field.svelte';
 
-  let { fieldId, fieldLabel, fieldError, typedValue }: ColorFieldFormFieldFixtureProps = $props();
+  let { id, fieldError }: ColorFieldFormFieldFixtureProps = $props();
 
-  const fieldErrorProp = $derived(fieldError !== undefined ? { error: fieldError } : {});
-  const colorFieldValueProp = $derived(typedValue !== undefined ? { value: typedValue } : {});
+  const fieldOptional = $derived(fieldError !== undefined ? { error: fieldError } : {});
 </script>
 
-<FormField id={fieldId} label={fieldLabel} {...fieldErrorProp}>
-  <ColorField id={fieldId} {...colorFieldValueProp} />
+<FormField {id} label="Accent color" {...fieldOptional}>
+  <ColorField {id} name="c" />
 </FormField>
