@@ -17,9 +17,9 @@ export function selectableIds(
 export function selectionStateFor(
   selectedIds: readonly string[],
   targetIds: readonly string[],
-  _disabledIds: ReadonlySet<string> = new Set(),
+  disabledIds: ReadonlySet<string> = new Set(),
 ): TreeSelectionState {
-  const targets = uniqueIds(targetIds);
+  const targets = selectableIds(targetIds, disabledIds);
   if (targets.length === 0) return { checked: false, indeterminate: false };
 
   const selected = new Set(selectedIds);

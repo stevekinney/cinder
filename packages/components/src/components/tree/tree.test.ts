@@ -1136,6 +1136,73 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['parent']);
   });
 
+  test('cascade aggregate ignores disabled descendants for rendered checked state', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        selectedIds: ['parent'],
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child', disabled: true }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await waitFor(() =>
+      expect(parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')?.checked).toBe(
+        true,
+      ),
+    );
+    expect(parent.getAttribute('aria-checked')).toBe('true');
+  });
+
+  test('disabled selected items render checked without changing cascade aggregates', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        selectedIds: ['parent', 'child'],
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child', disabled: true }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    const child = treeItem(container, 'Child') as HTMLElement;
+    await waitFor(() =>
+      expect(parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')?.checked).toBe(
+        true,
+      ),
+    );
+    await waitFor(() =>
+      expect(child.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')?.checked).toBe(
+        true,
+      ),
+    );
+    expect(parent.getAttribute('aria-checked')).toBe('true');
+    expect(child.getAttribute('aria-checked')).toBe('true');
+  });
+
   test('disabled ids stay selected when cascade scope is cleared', async () => {
     let selectedIds: string[] = ['parent', 'child'];
     const { container } = render(Tree, {

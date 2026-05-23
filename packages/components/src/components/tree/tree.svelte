@@ -189,7 +189,8 @@
 
   function selectionStateForId(id: string) {
     const targets = selectionBehavior === 'cascade' ? selectionTargetsFor(id) : [id];
-    return selectionStateFor(selectedIds, targets, disabledIdsFor(targets));
+    const aggregateDisabledIds = disabledIdsFor(targets.filter((targetId) => targetId !== id));
+    return selectionStateFor(selectedIds, targets, aggregateDisabledIds);
   }
 
   function applySelectionScope(
