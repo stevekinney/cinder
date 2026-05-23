@@ -206,7 +206,8 @@
   }
 
   function handleDragLeave(event: DragEvent) {
-    if (resolvedDisabled || !hasFilesPayload(event.dataTransfer)) return;
+    if (resolvedDisabled) return;
+    if (event.dataTransfer && !hasFilesPayload(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }
 

@@ -65,6 +65,15 @@ function createNonFileDropEvent(type: string): DragEvent {
   return event;
 }
 
+function createDragLeaveWithoutDataTransfer(): DragEvent {
+  const event = new Event('dragleave', { bubbles: true, cancelable: true }) as DragEvent;
+  Object.defineProperty(event, 'dataTransfer', {
+    configurable: true,
+    value: null,
+  });
+  return event;
+}
+
 beforeEach(() => {
   document.body.innerHTML = '';
 });
@@ -197,6 +206,15 @@ describe('FileUpload drag state and accessibility', () => {
     await fireEvent(dropzone, createDropEvent('dragenter', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
     await fireEvent(dropzone, createDropEvent('dragleave', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
+  });
+
+  test('dragleave without dataTransfer clears an active file drag state', async () => {
+    const { container } = render(FileUpload, { props: { id: 'upload' } });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('dragenter', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
+    await fireEvent(dropzone, createDragLeaveWithoutDataTransfer());
     expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
   });
 
