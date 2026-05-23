@@ -1,6 +1,6 @@
 # ScrollArea
 
-A ScrollArea component. Replace this sentence with a one-line purpose statement once the migration settles.
+Bounded scrolling container that constrains overflowing content within a max height or width while remaining keyboard-focusable.
 
 ## Usage
 
