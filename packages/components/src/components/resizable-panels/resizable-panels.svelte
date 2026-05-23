@@ -121,18 +121,28 @@
   }
 
   function syncMeasuredLayout(nextAvailablePanePixels = availablePanePixels): void {
-    if (nextAvailablePanePixels <= 0 || panes.length === 0) return;
+    if (panes.length === 0) {
+      layoutState = null;
+      previousPaneLayoutSignature = '';
+      return;
+    }
+    const normalizedAvailablePanePixels = Math.max(0, nextAvailablePanePixels);
     const nextPaneLayoutSignature = getPaneLayoutSignature(panes);
     if (!layoutState) {
-      layoutState = createInitialLayoutState(panes, nextAvailablePanePixels, orientation);
+      layoutState = createInitialLayoutState(panes, normalizedAvailablePanePixels, orientation);
       previousPaneLayoutSignature = nextPaneLayoutSignature;
       return;
     }
     if (
-      layoutState.availablePanePixels !== nextAvailablePanePixels ||
+      layoutState.availablePanePixels !== normalizedAvailablePanePixels ||
       layoutState.orientation !== orientation
     ) {
-      layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
+      layoutState = rebaseLayoutState(
+        layoutState,
+        panes,
+        normalizedAvailablePanePixels,
+        orientation,
+      );
       previousPaneLayoutSignature = nextPaneLayoutSignature;
       emit('rebase', true);
       return;
@@ -142,7 +152,12 @@
       layoutState.panels.some((panel, index) => panel.id !== panes[index]?.id) ||
       previousPaneLayoutSignature !== nextPaneLayoutSignature
     ) {
-      layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
+      layoutState = rebaseLayoutState(
+        layoutState,
+        panes,
+        normalizedAvailablePanePixels,
+        orientation,
+      );
       previousPaneLayoutSignature = nextPaneLayoutSignature;
       emit('rebase', true);
     }
@@ -324,6 +339,24 @@
   function handleAriaOrientation(): 'horizontal' | 'vertical' {
     return orientation === 'horizontal' ? 'vertical' : 'horizontal';
   }
+
+  function getUnmeasuredHandleAriaState(handleIndex: number): {
+    valueNow: number;
+    valueMin: number;
+    valueMax: number;
+    valueText: string;
+  } {
+    const leadingPercentage = unmeasuredSizes[handleIndex]?.percentage ?? 0;
+    const trailingPercentage = unmeasuredSizes[handleIndex + 1]?.percentage ?? 0;
+    const pairTotal = leadingPercentage + trailingPercentage;
+    const valueNow = pairTotal > 0 ? Math.round((leadingPercentage / pairTotal) * 100) : 0;
+    return {
+      valueNow,
+      valueMin: 0,
+      valueMax: 100,
+      valueText: `${valueNow}% (0px)`,
+    };
+  }
 </script>
 
 <svelte:document
@@ -339,25 +372,23 @@
   data-cinder-orientation={orientation}
 >
   {#each panes as pane, index (pane.id)}
+    {@const context = paneContext(index)}
     <section
       id={`${componentId}-${pane.id}`}
       class="cinder-resizable-panels__pane"
-      data-cinder-collapsed={paneContext(index).collapsed || undefined}
+      data-cinder-collapsed={context.collapsed || undefined}
+      aria-hidden={context.collapsed ? 'true' : undefined}
+      inert={context.collapsed || undefined}
       style={panelStyle(index)}
     >
-      {@render children(pane, paneContext(index))}
+      {@render children(pane, context)}
     </section>
 
     {#if index < panes.length - 1}
       {@const ariaState =
         layoutState && availablePanePixels > 0
           ? getHandleAriaState(layoutState, panes, index)
-          : {
-              valueNow: Math.round(unmeasuredSizes[index]!.percentage),
-              valueMin: 0,
-              valueMax: 100,
-              valueText: `${Math.round(unmeasuredSizes[index]!.percentage)}% (0px)`,
-            }}
+          : getUnmeasuredHandleAriaState(index)}
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <span

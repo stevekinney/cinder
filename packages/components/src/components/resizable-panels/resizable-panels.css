@@ -22,6 +22,10 @@
   flex: 0 0 var(--_cinder-resizable-panel-size);
 }
 
+.cinder-resizable-panels__pane[data-cinder-collapsed] {
+  overflow: hidden;
+}
+
 .cinder-resizable-panels__handle {
   flex: 0 0 auto;
   display: inline-flex;

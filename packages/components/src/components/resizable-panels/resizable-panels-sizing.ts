@@ -308,7 +308,7 @@ export function rebaseLayoutState(
     const previous = previousById.get(pane.id);
     if (!previous) return fallback.panels[index]!.sizePixels;
     if (previous.collapsed) return 0;
-    if (state.availablePanePixels <= 0) return previous.sizePixels;
+    if (state.availablePanePixels <= 0) return fallback.panels[index]!.sizePixels;
     return (previous.sizePixels / state.availablePanePixels) * availablePanePixels;
   });
 
@@ -324,7 +324,10 @@ export function rebaseLayoutState(
     orientation,
     panels: panes.map((pane, index) => {
       const previous = previousById.get(pane.id);
-      const previousRestore = previous?.restorePixels ?? fallback.panels[index]!.restorePixels;
+      const previousRestore =
+        state.availablePanePixels > 0
+          ? (previous?.restorePixels ?? fallback.panels[index]!.restorePixels)
+          : fallback.panels[index]!.restorePixels;
       const collapsed = collapsedFlags[index]!;
       return {
         id: pane.id,

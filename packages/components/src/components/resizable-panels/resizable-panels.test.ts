@@ -161,10 +161,31 @@ describe('ResizablePanels', () => {
     expect(handle.getAttribute('aria-controls')).toContain('editor');
   });
 
+  test('fallback separator aria uses the adjacent pane pair before measurement', () => {
+    const { container } = render(ResizablePanels, { panes, children: textSnippet });
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+
+    expect(handle.getAttribute('aria-valuenow')).toBe('50');
+    expect(handle.getAttribute('aria-valuetext')).toBe('50% (0px)');
+  });
+
+  test('collapsed panes clip and hide their children from focus navigation', async () => {
+    const componentSource = await Bun.file(
+      new URL('./resizable-panels.svelte', import.meta.url),
+    ).text();
+    const styleSheet = await Bun.file(new URL('./resizable-panels.css', import.meta.url)).text();
+
+    expect(componentSource).toContain("aria-hidden={context.collapsed ? 'true' : undefined}");
+    expect(componentSource).toContain('inert={context.collapsed || undefined}');
+    expect(styleSheet).toContain('.cinder-resizable-panels__pane[data-cinder-collapsed]');
+    expect(styleSheet).toContain('overflow: hidden');
+  });
+
   test('pointer release does not commit without a size change', async () => {
     const onlayoutcommit = mock(() => {});
     const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
     mockMeasurements(container);
+    onlayoutcommit.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.pointerDown(handle, { pointerId: 1, clientX: 200 });

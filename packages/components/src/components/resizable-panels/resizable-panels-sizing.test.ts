@@ -65,6 +65,18 @@ describe('resizable-panels sizing', () => {
     expect(rebased.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(1200, 3);
   });
 
+  test('rebases through a zero-pixel budget without preserving stale sizes', () => {
+    const state = createInitialLayoutState(panes, 1000, 'horizontal');
+    const zeroBudget = rebaseLayoutState(state, panes, 0, 'horizontal');
+    const restored = rebaseLayoutState(zeroBudget, panes, 1000, 'horizontal');
+
+    expect(zeroBudget.availablePanePixels).toBe(0);
+    expect(zeroBudget.panels.map((panel) => panel.sizePixels)).toEqual([0, 0, 0]);
+    expect(restored.panels[0]!.sizePixels).toBeCloseTo(250, 1);
+    expect(restored.panels[1]!.sizePixels).toBeCloseTo(500, 1);
+    expect(restored.panels[2]!.sizePixels).toBeCloseTo(250, 1);
+  });
+
   test('resizes only the active adjacent pair', () => {
     const state = createInitialLayoutState(panes, 1000, 'horizontal');
     const next = applyPairDelta(state, panes, 0, 100);
