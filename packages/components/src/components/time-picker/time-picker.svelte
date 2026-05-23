@@ -110,8 +110,7 @@
           : Array.from({ length: 12 }, (_, index) => index + 1),
   );
   const selectedPeriod = $derived.by<'AM' | 'PM'>(() => {
-    const parsedValue = parseTimeString(editorValue) ?? { hours: 0, minutes: 0, seconds: 0 };
-    return parsedValue.hours < 12 ? 'AM' : 'PM';
+    return currentParts().hours < 12 ? 'AM' : 'PM';
   });
   const periodValues = ['AM', 'PM'] as const;
 

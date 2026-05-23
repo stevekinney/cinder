@@ -194,6 +194,41 @@ describe('TimePicker', () => {
     await Promise.resolve();
   });
 
+  test('preserves committed PM period when the typed editor value is invalid', async () => {
+    let changedValue = '';
+    const { container, getByLabelText } = render(TimePicker, {
+      id: 'appointment-time',
+      label: 'Appointment time',
+      value: '13:30',
+      hourCycle: 'h12',
+      locale: 'en-US',
+      onchange: (value: string) => {
+        changedValue = value;
+      },
+    });
+
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'not-a-time' } });
+    await fireEvent.click(getByLabelText('Choose time'));
+
+    const pmOption = document.body.querySelector('[role="radio"][aria-checked="true"]');
+    expect(pmOption?.textContent).toBe('PM');
+
+    const hourListbox = document.body.querySelector('[aria-label="Hours"]') as HTMLElement;
+    const twoOption = Array.from(hourListbox.querySelectorAll('[role="option"]')).find(
+      (option) => option.textContent === '02',
+    ) as HTMLElement | undefined;
+
+    expect(twoOption).not.toBeUndefined();
+    await fireEvent.click(twoOption as HTMLElement);
+
+    expect(changedValue).toBe('14:30');
+    expect(input.value).toBe('14:30');
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Promise.resolve();
+  });
+
   test('supports seconds and commits popover selections', async () => {
     let changedValue = '';
     const { container, getByLabelText } = render(TimePicker, {
