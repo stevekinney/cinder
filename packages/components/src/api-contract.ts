@@ -426,6 +426,31 @@ export const CONTRACT: Record<string, ComponentContract> = {
     snippets: {},
   },
 
+  'time-picker': {
+    kind: 'intersection',
+    html_attrs: 'HTMLInputAttributes',
+    props: {
+      id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+      value: { optional: true, type_kind: 'TSStringKeyword', default: B('') },
+      defaultValue: { optional: true, type_kind: 'TSStringKeyword', default: L('') },
+      hourCycle: { optional: true, type_kind: 'TSTypeReference', default: NO_DEFAULT },
+      locale: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      seconds: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      min: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      max: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      step: { optional: true, type_kind: 'TSNumberKeyword', default: L(60) },
+      disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      required: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      name: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      error: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      onchange: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+    },
+    snippets: {},
+  },
+
   toggle: {
     kind: 'literal',
     props: {

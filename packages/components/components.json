@@ -2811,6 +2811,29 @@
       }
     },
     {
+      "name": "TimePicker",
+      "id": "time-picker",
+      "import": "cinder/time-picker",
+      "exportName": "TimePicker",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Time input with optional scroll-list popover for choosing hours, minutes, seconds, and meridiem.",
+      "tags": ["form", "time"],
+      "useWhen": [
+        "Collecting a time-of-day string while keeping native form participation.",
+        "Offering a keyboard-navigable chooser alongside direct typed entry."
+      ],
+      "avoidWhen": ["Collecting a date or date range — use a date-specific control instead."],
+      "related": ["input", "number-input", "form-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/time-picker/schema",
+        "variables": "cinder/time-picker/variables",
+        "examples": "cinder/time-picker/examples"
+      }
+    },
+    {
       "name": "Timeline",
       "id": "timeline",
       "import": "cinder/experimental/timeline",
