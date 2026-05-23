@@ -6,26 +6,17 @@ import type { ColorFieldProps } from './color-field.types.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+const { default: ColorFieldFormFixture } =
+  await import('../../test/fixtures/color-field-form-fixture.svelte');
 
 type ColorFieldComponentProps = ColorFieldProps;
 
-afterEach(() => {
-  // Remove standalone forms before Svelte unmount cleanup so happy-dom does
-  // not try to detach children from an already-removed parent.
-  document.querySelectorAll('body > form').forEach((form) => {
-    try {
-      form.remove();
-    } catch {
-      // Ignore detached-node errors during teardown.
-    }
-  });
-  cleanup();
-});
+afterEach(() => document.body.replaceChildren());
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
   const element = root.querySelector(selector);
