@@ -52,6 +52,16 @@ export function parsePlaygroundListeningPort(output: string): number | null {
   return Number.isInteger(port) && port > 0 ? port : null;
 }
 
+export function appendServerOutputBuffer(
+  currentBuffer: string,
+  output: string,
+  portHasBeenReported: boolean,
+): string {
+  const nextBuffer = `${currentBuffer}${output}`;
+  if (!portHasBeenReported) return nextBuffer;
+  return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
+}
+
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   return new Promise((resolve) => {
     // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
@@ -108,12 +118,14 @@ async function main(): Promise<void> {
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
-      serverOutputBuffer = `${serverOutputBuffer}${output}`;
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        output,
+        reportedPlaygroundPort !== null,
+      );
       reportedPlaygroundPort =
         parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
-      if (serverOutputBuffer.length > 4096 || reportedPlaygroundPort !== null) {
-        serverOutputBuffer = serverOutputBuffer.slice(-4096);
-      }
+      serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
     });
 
     const startedAt = Date.now();

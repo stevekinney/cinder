@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { localPlaygroundUrlForReportedPort, parsePlaygroundListeningPort } from './start-server.ts';
+import {
+  appendServerOutputBuffer,
+  localPlaygroundUrlForReportedPort,
+  parsePlaygroundListeningPort,
+} from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
   test('reads the playground port from direct server output', () => {
@@ -41,5 +45,24 @@ describe('localPlaygroundUrlForReportedPort', () => {
 
   test('returns the local playground URL for a reported port', () => {
     expect(localPlaygroundUrlForReportedPort(5556)).toBe('http://localhost:5556');
+  });
+});
+
+describe('appendServerOutputBuffer', () => {
+  test('keeps the full startup buffer until a listening port has been reported', () => {
+    const linePrefix = '[playground] Listening at http://localhost:';
+    const oversizedOutput = 'x'.repeat(5000);
+
+    const buffer = appendServerOutputBuffer(linePrefix, oversizedOutput, false);
+
+    expect(buffer.startsWith(linePrefix)).toBe(true);
+    expect(buffer.length).toBeGreaterThan(4096);
+  });
+
+  test('trims accumulated output after a listening port has been reported', () => {
+    const buffer = appendServerOutputBuffer('x'.repeat(5000), 'done', true);
+
+    expect(buffer.length).toBe(4096);
+    expect(buffer.endsWith('done')).toBe(true);
   });
 });

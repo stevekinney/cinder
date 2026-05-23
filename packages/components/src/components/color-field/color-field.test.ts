@@ -7,7 +7,6 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte/pure');
-const { cleanup } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
@@ -16,19 +15,10 @@ const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
-  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
-  // the still-attached DOM it expects. Removing wrapper forms before
-  // cleanup() detaches the parent under the unmount, and happy-dom throws
-  // a detached-child DOMException through flushSync's Promise wrapper
-  // (which surfaces as an "unhandled error between tests" in Bun).
-  cleanup();
-  document.querySelectorAll('body > form').forEach((form) => {
-    try {
-      form.remove();
-    } catch {
-      // ignore detached-node errors
-    }
-  });
+  // Rendering the fixture into the default container avoids the happy-dom
+  // detached-child teardown failure that showed up when these tests mounted
+  // standalone forms under document.body.
+  document.body.replaceChildren();
 });
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
@@ -42,8 +32,8 @@ function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
 }
 
 function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
-  const result = render(ColorFieldFormFixture, { target: document.body, props });
-  const form = document.body.querySelector('form:last-of-type');
+  const result = render(ColorFieldFormFixture, { props });
+  const form = result.container.querySelector('form');
   if (!(form instanceof HTMLElement)) {
     throw new Error('ColorField form fixture did not render a <form> element.');
   }
@@ -309,7 +299,7 @@ describe('ColorField — form reset', () => {
     await typeAndBlur(input, '#ff0000');
     expect(input.value).toBe('#ff0000');
     expect(onchange).toHaveBeenCalledTimes(1);
-    const form = container as HTMLFormElement;
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#abcdef');
@@ -326,7 +316,7 @@ describe('ColorField — form reset', () => {
     const input = getInput(container);
     expect(input.value).toBe('#ff0000');
     await typeAndBlur(input, '#00ff00');
-    const form = container as HTMLFormElement;
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#ff0000');
@@ -487,7 +477,7 @@ describe('ColorField — composition + DOM contract', () => {
       defaultValue: '#abcdef',
       onchange,
     });
-    const form = container as HTMLFormElement;
+    const form = container;
     const input = getInput(container);
     await typeAndBlur(input, '#000000');
     expect(input.value).toBe('#000000');

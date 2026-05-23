@@ -311,6 +311,19 @@ export const CONTRACT: Record<string, ComponentContract> = {
     },
   },
 
+  'menu-bar': {
+    kind: 'intersection',
+    html_attrs: 'HTMLAttributes',
+    props: {
+      id: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+      menus: { optional: false, type_kind: 'TSTypeOperator', default: REQUIRED },
+      label: { optional: true, type_kind: 'TSStringKeyword', default: L('Application menu') },
+      labelledBy: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+    },
+    snippets: {},
+  },
+
   'navigation-bar': {
     kind: 'intersection',
     html_attrs: 'HTMLAttributes',

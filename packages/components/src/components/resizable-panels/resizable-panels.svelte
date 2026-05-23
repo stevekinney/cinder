@@ -371,6 +371,10 @@
     return `--_cinder-resizable-panel-size:${layoutState.panels[index]!.sizePixels}px;`;
   }
 
+  function isPaneHiddenFromInteraction(context: ResizablePanelRenderContext): boolean {
+    return layoutState !== null && (context.collapsed || context.pixelSize <= 0);
+  }
+
   function handleAriaLabel(handleIndex: number): string {
     return `Resize ${panes[handleIndex]!.label} and ${panes[handleIndex + 1]!.label}`;
   }
@@ -412,12 +416,13 @@
 >
   {#each panes as pane, index (pane.id)}
     {@const context = paneContext(index)}
+    {@const hiddenFromInteraction = isPaneHiddenFromInteraction(context)}
     <section
       id={`${componentId}-${pane.id}`}
       class="cinder-resizable-panels__pane"
       data-cinder-collapsed={context.collapsed || undefined}
-      aria-hidden={context.collapsed ? 'true' : undefined}
-      inert={context.collapsed || undefined}
+      aria-hidden={hiddenFromInteraction ? 'true' : undefined}
+      inert={hiddenFromInteraction || undefined}
       style={panelStyle(index)}
     >
       {@render children(pane, context)}

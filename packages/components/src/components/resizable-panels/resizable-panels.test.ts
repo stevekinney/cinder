@@ -175,8 +175,11 @@ describe('ResizablePanels', () => {
     ).text();
     const styleSheet = await Bun.file(new URL('./resizable-panels.css', import.meta.url)).text();
 
-    expect(componentSource).toContain("aria-hidden={context.collapsed ? 'true' : undefined}");
-    expect(componentSource).toContain('inert={context.collapsed || undefined}');
+    expect(componentSource).toContain(
+      'return layoutState !== null && (context.collapsed || context.pixelSize <= 0);',
+    );
+    expect(componentSource).toContain("aria-hidden={hiddenFromInteraction ? 'true' : undefined}");
+    expect(componentSource).toContain('inert={hiddenFromInteraction || undefined}');
     expect(styleSheet).toContain('.cinder-resizable-panels__pane[data-cinder-collapsed]');
     expect(styleSheet).toContain('overflow: hidden');
   });
