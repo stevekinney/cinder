@@ -308,4 +308,34 @@ describe('LoadMore', () => {
     const button = getByRole('button', { name: 'Load more' }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
+
+  test('shows a busy state while awaiting onLoadMore before the parent flips loading', async () => {
+    let resolveRequest: (() => void) | undefined;
+
+    const { container, getByRole } = render(LoadMore, {
+      props: {
+        onLoadMore: () =>
+          new Promise<void>((resolve) => {
+            resolveRequest = resolve;
+          }),
+      },
+    });
+
+    const button = getByRole('button', { name: 'Load more' }) as HTMLButtonElement;
+
+    await fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(button.disabled).toBe(true);
+      expect(container.firstElementChild?.getAttribute('aria-busy')).toBe('true');
+      expect(container.querySelector('.cinder-load-more__spinner')).toBeDefined();
+    });
+
+    resolveRequest?.();
+
+    await waitFor(() => {
+      expect(button.disabled).toBe(false);
+      expect(container.firstElementChild?.getAttribute('aria-busy')).toBe('false');
+    });
+  });
 });

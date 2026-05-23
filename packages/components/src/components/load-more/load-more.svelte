@@ -39,11 +39,12 @@
   let statusText = $state('');
 
   const mergedClassName = $derived(classNames('cinder-load-more', customClassName));
+  const busy = $derived(loading || requestInFlight);
   const sentinelEnabled = $derived(
     hasMore && !loading && !errorState && !requestInFlight && retryCount < maxRetries,
   );
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
-  const buttonDisabled = $derived(loading && !errorState);
+  const buttonDisabled = $derived(busy && !errorState);
 
   $effect(() => {
     if (previousHasMore && !hasMore) {
@@ -100,7 +101,7 @@
   });
 </script>
 
-<div class={mergedClassName} aria-busy={loading}>
+<div class={mergedClassName} aria-busy={busy}>
   {#if hasMore && !errorState}
     <div
       aria-hidden="true"
@@ -120,7 +121,7 @@
       onclick={() => void requestNextPage('button')}
     >
       <span>{buttonText}</span>
-      {#if loading}
+      {#if busy}
         <span class="cinder-load-more__spinner" aria-hidden="true"></span>
       {/if}
     </button>
