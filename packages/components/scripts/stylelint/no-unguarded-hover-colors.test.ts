@@ -144,6 +144,13 @@ describe('cinder/no-unguarded-hover-colors', () => {
     expect(warningsOf(result)).toHaveLength(1);
   });
 
+  it('flags non-scrollbar :hover in a mixed selector list (per-branch evaluation)', async () => {
+    const result = await lint({
+      code: `.foo:hover, .area::-webkit-scrollbar-thumb:hover { background: red; }`,
+    });
+    expect(warningsOf(result)).toHaveLength(1);
+  });
+
   it('skips ::-webkit-scrollbar pseudo-elements (real cursor hover, not touch-synthesized)', async () => {
     const result = await lint({
       code: `.area::-webkit-scrollbar-thumb:hover { background: red; }`,

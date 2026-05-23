@@ -58,31 +58,43 @@ const TARGET_PROPERTIES = new Set([
  * Walk a selector AST and return true if any selector branch contains a :hover
  * pseudo node — including pseudos nested inside :is(), :where(), :not(), etc.
  *
- * Scrollbar pseudo-elements (::-webkit-scrollbar-*) are excluded because they
- * only render with a real pointer; touch devices never paint a custom scrollbar
- * thumb, so :hover on them cannot synthesize a sticky-tap state. Guarding them
- * would suppress the legitimate cursor-hover tint on hybrid touch/trackpad
- * laptops for no benefit.
+ * Each branch of a comma-separated selector list is evaluated independently:
+ * a branch whose compound contains `::-webkit-scrollbar*` is excluded because
+ * scrollbar pseudo-elements only render with a real pointer (touch devices
+ * never paint custom scrollbar thumbs, so :hover there cannot synthesize a
+ * sticky-tap state). A mixed selector list like
+ *   `.foo:hover, .bar::-webkit-scrollbar-thumb:hover`
+ * still triggers a warning for `.foo:hover` — only the scrollbar branch is
+ * skipped.
  */
 function selectorHasHover(selectorString) {
   let found = false;
-  let isScrollbarPseudo = false;
   try {
     selectorParser((root) => {
-      root.walkPseudos((node) => {
-        if (node.value === ':hover') {
+      root.each((branch) => {
+        let branchHasHover = false;
+        let branchIsScrollbar = false;
+        branch.walkPseudos((node) => {
+          if (node.value === ':hover') {
+            branchHasHover = true;
+          }
+          if (typeof node.value === 'string' && node.value.startsWith('::-webkit-scrollbar')) {
+            branchIsScrollbar = true;
+          }
+        });
+        if (branchHasHover && !branchIsScrollbar) {
           found = true;
-        }
-        if (typeof node.value === 'string' && node.value.startsWith('::-webkit-scrollbar')) {
-          isScrollbarPseudo = true;
         }
       });
     }).processSync(selectorString);
   } catch {
-    // If the selector won't parse, fall back to a coarse text check.
-    return /:hover\b/.test(selectorString) && !/::-webkit-scrollbar/.test(selectorString);
+    // If the selector won't parse, fall back to a coarse text check that
+    // applies the same per-branch exclusion.
+    return selectorString
+      .split(',')
+      .some((branch) => /:hover\b/.test(branch) && !/::-webkit-scrollbar/.test(branch));
   }
-  return found && !isScrollbarPseudo;
+  return found;
 }
 
 /**
