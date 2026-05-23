@@ -53,10 +53,13 @@
 @import '../components/number-input/number-input.css';
 @import '../components/page-layout/page-layout.css';
 @import '../components/pagination/pagination.css';
+@import '../components/phone-input/phone-input.css';
+@import '../components/pin-input/pin-input.css';
 @import '../components/popover/popover.css';
 @import '../components/progress/progress.css';
 @import '../components/radio/radio.css';
 @import '../components/radio-group/radio-group.css';
+@import '../components/rating/rating.css';
 @import '../components/review-editor/review-editor.css';
 @import '../components/scroll-area/scroll-area.css';
 @import '../components/search-field/search-field.css';

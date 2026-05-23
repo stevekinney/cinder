@@ -1689,6 +1689,58 @@
       }
     },
     {
+      "name": "PhoneInput",
+      "id": "phone-input",
+      "import": "cinder/phone-input",
+      "exportName": "PhoneInput",
+      "category": "form",
+      "status": "stable",
+      "purpose": "International phone-number input pairing a country-code dropdown with an as-you-type national number input and emitting E.164 values.",
+      "tags": ["form", "phone"],
+      "useWhen": [
+        "Collecting an international phone number that must be stored in a canonical E.164 form.",
+        "Letting the user pick a calling country and a national number side-by-side."
+      ],
+      "avoidWhen": [
+        "Collecting a free-form local number with no country context — use input type=\"tel\" instead.",
+        "Collecting an SMS verification code — use pin-input instead."
+      ],
+      "related": ["input", "pin-input", "form-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/phone-input/schema",
+        "variables": "cinder/phone-input/variables",
+        "examples": "cinder/phone-input/examples"
+      }
+    },
+    {
+      "name": "PinInput",
+      "id": "pin-input",
+      "import": "cinder/pin-input",
+      "exportName": "PinInput",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Segmented one-time-code input with auto-advance, paste distribution, and masking support for entering short security codes.",
+      "tags": ["form", "otp"],
+      "useWhen": [
+        "Collecting a short security code such as a one-time password or SMS verification code.",
+        "Letting the browser autofill a one-time-code into a visually segmented control."
+      ],
+      "avoidWhen": [
+        "Collecting a free-form string of any length — use input instead.",
+        "Collecting a numeric value that participates in arithmetic — use number-input instead."
+      ],
+      "related": ["input", "number-input", "form-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/pin-input/schema",
+        "variables": "cinder/pin-input/variables",
+        "examples": "cinder/pin-input/examples"
+      }
+    },
+    {
       "name": "Popover",
       "id": "popover",
       "import": "cinder/popover",
@@ -1786,6 +1838,32 @@
         "schema": "cinder/radio-group/schema",
         "variables": "cinder/radio-group/variables",
         "examples": "cinder/radio-group/examples"
+      }
+    },
+    {
+      "name": "Rating",
+      "id": "rating",
+      "import": "cinder/rating",
+      "exportName": "Rating",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Star rating control with bindable numeric value, optional half-star precision, and a non-interactive readonly display mode.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Letting the user score something on a small ordinal scale such as 1-5 stars.",
+        "Displaying an existing rating in readonly mode alongside a count or average."
+      ],
+      "avoidWhen": [
+        "Picking a value from a numeric continuum — use slider instead.",
+        "Capturing a binary preference — use toggle or checkbox."
+      ],
+      "related": ["slider", "segmented-control", "radio-group", "form-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/rating/schema",
+        "variables": "cinder/rating/variables",
+        "examples": "cinder/rating/examples"
       }
     },
     {

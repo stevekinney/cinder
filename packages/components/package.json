@@ -1214,6 +1214,48 @@
       "import": "./src/components/pagination/pagination.examples.json",
       "default": "./src/components/pagination/pagination.examples.json"
     },
+    "./phone-input": {
+      "types": "./dist/components/phone-input/index.d.ts",
+      "svelte": "./src/components/phone-input/index.ts",
+      "node": "./dist/server/components/phone-input/index.js",
+      "default": "./dist/components/phone-input/index.js"
+    },
+    "./phone-input/schema": {
+      "types": "./dist/components/phone-input/phone-input.schema.d.ts",
+      "svelte": "./src/components/phone-input/phone-input.schema.ts"
+    },
+    "./phone-input/variables": {
+      "types": "./dist/components/phone-input/phone-input.variables.d.ts",
+      "svelte": "./src/components/phone-input/phone-input.variables.ts"
+    },
+    "./phone-input/styles": {
+      "default": "./dist/components/phone-input/phone-input.css"
+    },
+    "./phone-input/examples": {
+      "import": "./src/components/phone-input/phone-input.examples.json",
+      "default": "./src/components/phone-input/phone-input.examples.json"
+    },
+    "./pin-input": {
+      "types": "./dist/components/pin-input/index.d.ts",
+      "svelte": "./src/components/pin-input/index.ts",
+      "node": "./dist/server/components/pin-input/index.js",
+      "default": "./dist/components/pin-input/index.js"
+    },
+    "./pin-input/schema": {
+      "types": "./dist/components/pin-input/pin-input.schema.d.ts",
+      "svelte": "./src/components/pin-input/pin-input.schema.ts"
+    },
+    "./pin-input/variables": {
+      "types": "./dist/components/pin-input/pin-input.variables.d.ts",
+      "svelte": "./src/components/pin-input/pin-input.variables.ts"
+    },
+    "./pin-input/styles": {
+      "default": "./dist/components/pin-input/pin-input.css"
+    },
+    "./pin-input/examples": {
+      "import": "./src/components/pin-input/pin-input.examples.json",
+      "default": "./src/components/pin-input/pin-input.examples.json"
+    },
     "./popover": {
       "types": "./dist/components/popover/index.d.ts",
       "svelte": "./src/components/popover/index.ts",
@@ -1293,6 +1335,27 @@
     "./radio-group/examples": {
       "import": "./src/components/radio-group/radio-group.examples.json",
       "default": "./src/components/radio-group/radio-group.examples.json"
+    },
+    "./rating": {
+      "types": "./dist/components/rating/index.d.ts",
+      "svelte": "./src/components/rating/index.ts",
+      "node": "./dist/server/components/rating/index.js",
+      "default": "./dist/components/rating/index.js"
+    },
+    "./rating/schema": {
+      "types": "./dist/components/rating/rating.schema.d.ts",
+      "svelte": "./src/components/rating/rating.schema.ts"
+    },
+    "./rating/variables": {
+      "types": "./dist/components/rating/rating.variables.d.ts",
+      "svelte": "./src/components/rating/rating.variables.ts"
+    },
+    "./rating/styles": {
+      "default": "./dist/components/rating/rating.css"
+    },
+    "./rating/examples": {
+      "import": "./src/components/rating/rating.examples.json",
+      "default": "./src/components/rating/rating.examples.json"
     },
     "./review-editor": {
       "types": "./dist/components/review-editor/index.d.ts",
@@ -2400,6 +2463,7 @@
     "esm-env": "^1.2.0",
     "hast-util-sanitize": "^5.0.0",
     "js-yaml": "^4.1.0",
+    "libphonenumber-js": "^1.13.3",
     "lucide-svelte": "^0.503.0",
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-model": "^1.25.4",
