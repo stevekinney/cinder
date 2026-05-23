@@ -83,6 +83,22 @@ export function resolveHourCycle(
   return 'h12';
 }
 
+export function normalizeTimeStep(step: number, includeSeconds: boolean): number {
+  const fallbackStep = includeSeconds ? 1 : 60;
+  if (!Number.isFinite(step) || step <= 0) return fallbackStep;
+
+  const integerStep = Math.trunc(step);
+  if (!includeSeconds) {
+    return integerStep >= 60 && integerStep % 60 === 0 ? integerStep : 60;
+  }
+
+  if (integerStep < 60) {
+    return 60 % integerStep === 0 ? integerStep : 1;
+  }
+
+  return integerStep % 60 === 0 ? integerStep : 60;
+}
+
 export function minuteStepFromSeconds(step: number): number {
   if (!Number.isFinite(step) || step <= 0) return 1;
   if (step < 60 || step % 60 !== 0) return 1;
@@ -104,10 +120,6 @@ export function rangeValues(step: number, maximum: number): number[] {
     values.push(value);
   }
 
-  if (values.at(-1) !== maximum && maximum === 59) {
-    return values;
-  }
-
   return values;
 }
 
@@ -115,8 +127,17 @@ export function displayHourFromTwentyFourHour(
   hours: number,
   hourCycle: HourCycle,
 ): { hour: number; period: 'AM' | 'PM' | null } {
-  if (hourCycle === 'h23' || hourCycle === 'h24') {
+  if (hourCycle === 'h23') {
     return { hour: hours, period: null };
+  }
+
+  if (hourCycle === 'h24') {
+    return { hour: hours === 0 ? 24 : hours, period: null };
+  }
+
+  if (hourCycle === 'h11') {
+    if (hours < 12) return { hour: hours, period: 'AM' };
+    return { hour: hours - 12, period: 'PM' };
   }
 
   if (hours === 0) return { hour: 12, period: 'AM' };
@@ -125,7 +146,15 @@ export function displayHourFromTwentyFourHour(
   return { hour: hours - 12, period: 'PM' };
 }
 
-export function twentyFourHourFromDisplayHour(hour: number, period: 'AM' | 'PM'): number {
+export function twentyFourHourFromDisplayHour(
+  hour: number,
+  period: 'AM' | 'PM',
+  hourCycle: HourCycle = 'h12',
+): number {
+  if (hourCycle === 'h11') {
+    return period === 'AM' ? hour : hour + 12;
+  }
+
   if (period === 'AM') {
     return hour === 12 ? 0 : hour;
   }

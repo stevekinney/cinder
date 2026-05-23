@@ -4,8 +4,10 @@ import {
   compareTimeParts,
   displayHourFromTwentyFourHour,
   isTimePartsInRange,
+  normalizeTimeStep,
   normalizeTimeString,
   parseTimeString,
+  rangeValues,
   resolveHourCycle,
   serializeTimeParts,
   twentyFourHourFromDisplayHour,
@@ -53,7 +55,28 @@ describe('time parts helpers', () => {
     expect(twentyFourHourFromDisplayHour(1, 'PM')).toBe(13);
   });
 
+  test('maps h11 and h24 display semantics distinctly', () => {
+    expect(displayHourFromTwentyFourHour(0, 'h11')).toEqual({ hour: 0, period: 'AM' });
+    expect(displayHourFromTwentyFourHour(12, 'h11')).toEqual({ hour: 0, period: 'PM' });
+    expect(displayHourFromTwentyFourHour(0, 'h24')).toEqual({ hour: 24, period: null });
+    expect(twentyFourHourFromDisplayHour(0, 'PM', 'h11')).toBe(12);
+  });
+
   test('resolves explicit hour cycle first', () => {
     expect(resolveHourCycle('h23', 'en-US')).toBe('h23');
+  });
+
+  test('normalizes steps to values the picker columns can represent', () => {
+    expect(normalizeTimeStep(90, false)).toBe(60);
+    expect(normalizeTimeStep(300, false)).toBe(300);
+    expect(normalizeTimeStep(0, true)).toBe(1);
+    expect(normalizeTimeStep(15, true)).toBe(15);
+    expect(normalizeTimeStep(90, true)).toBe(60);
+    expect(normalizeTimeStep(Number.NaN, false)).toBe(60);
+  });
+
+  test('generates inclusive stepped ranges without special-case branches', () => {
+    expect(rangeValues(15, 59)).toEqual([0, 15, 30, 45]);
+    expect(rangeValues(60, 59)).toEqual([0]);
   });
 });

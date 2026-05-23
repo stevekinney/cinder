@@ -43,6 +43,11 @@ afterEach(() => {
   _resetEscapeStack();
 });
 
+async function waitForPopoverFocus(): Promise<void> {
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('TimePicker', () => {
   test('renders a time input and toggle button', () => {
     const { container, getByLabelText } = render(TimePicker, {
@@ -90,12 +95,100 @@ describe('TimePicker', () => {
       (option) => option.getAttribute('tabindex') === '0',
     );
     expect(initiallyFocusedOption).not.toBeUndefined();
+    await waitForPopoverFocus();
+    expect(document.activeElement).toBe(initiallyFocusedOption ?? null);
 
     await fireEvent.keyDown(hourListbox, { key: 'ArrowDown' });
 
     const nextFocusedOption = options.find((option) => option.getAttribute('tabindex') === '0');
     expect(nextFocusedOption).not.toBeUndefined();
     expect(document.activeElement).toBe(nextFocusedOption ?? null);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Promise.resolve();
+  });
+
+  test('keeps a valid roving option when the value is between step options', async () => {
+    const { getByLabelText } = render(TimePicker, {
+      id: 'appointment-time',
+      label: 'Appointment time',
+      value: '09:07',
+      step: 900,
+    });
+
+    await fireEvent.click(getByLabelText('Choose time'));
+    await waitForPopoverFocus();
+
+    const minuteListbox = document.body.querySelector('[aria-label="Minutes"]') as HTMLElement;
+    const tabbableMinuteOptions = Array.from(
+      minuteListbox.querySelectorAll('[role="option"][tabindex="0"]'),
+    );
+
+    expect(tabbableMinuteOptions).toHaveLength(1);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Promise.resolve();
+  });
+
+  test('normalizes popover steps to match the native input step', async () => {
+    const { container, getByLabelText } = render(TimePicker, {
+      id: 'appointment-time',
+      label: 'Appointment time',
+      value: '09:30',
+      step: 90,
+    });
+
+    const input = container.querySelector('input') as HTMLInputElement;
+    expect(input.getAttribute('step')).toBe('60');
+
+    await fireEvent.click(getByLabelText('Choose time'));
+
+    const minuteListbox = document.body.querySelector('[aria-label="Minutes"]') as HTMLElement;
+    const minuteOptions = Array.from(minuteListbox.querySelectorAll('[role="option"]'));
+    expect(minuteOptions.slice(0, 3).map((option) => option.textContent)).toEqual([
+      '00',
+      '01',
+      '02',
+    ]);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Promise.resolve();
+  });
+
+  test('renders h11 and h24 hour-cycle options accurately', async () => {
+    const h11 = render(TimePicker, {
+      id: 'h11-time',
+      label: 'H11 time',
+      value: '00:30',
+      hourCycle: 'h11',
+    });
+
+    await fireEvent.click(h11.getByLabelText('Choose time'));
+    let hourListbox = document.body.querySelector('[aria-label="Hours"]') as HTMLElement;
+    expect(
+      Array.from(hourListbox.querySelectorAll('[role="option"]'))
+        .slice(0, 3)
+        .map((option) => option.textContent),
+    ).toEqual(['00', '01', '02']);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await Promise.resolve();
+    h11.unmount();
+
+    const h24 = render(TimePicker, {
+      id: 'h24-time',
+      label: 'H24 time',
+      value: '00:30',
+      hourCycle: 'h24',
+    });
+
+    await fireEvent.click(h24.getByLabelText('Choose time'));
+    hourListbox = document.body.querySelector('[aria-label="Hours"]') as HTMLElement;
+    expect(
+      Array.from(hourListbox.querySelectorAll('[role="option"]'))
+        .slice(-3)
+        .map((option) => option.textContent),
+    ).toEqual(['22', '23', '24']);
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await Promise.resolve();

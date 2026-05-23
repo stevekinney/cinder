@@ -17,13 +17,14 @@
 <script lang="ts">
   import type { TimePickerProps } from './time-picker.types.ts';
   import type { TimeParts } from '../../_internal/time-parts.ts';
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { DEV } from 'esm-env';
 
   import {
     displayHourFromTwentyFourHour,
     isTimePartsInRange,
     minuteStepFromSeconds,
+    normalizeTimeStep,
     normalizeTimeString,
     parseTimeString,
     rangeValues,
@@ -66,6 +67,7 @@
 
   const context = getFormFieldContext();
   let hasInitializedDefaultValue = false;
+  let hasMounted = $state(false);
 
   let inputElement: HTMLInputElement | undefined = $state();
   let toggleButton: HTMLButtonElement | undefined = $state();
@@ -85,18 +87,27 @@
   let secondOptionElements: Array<HTMLElement | null> = $state([]);
   let periodOptionElements: Array<HTMLElement | null> = $state([]);
 
-  const resolvedLocale = $derived(locale ?? 'en-US');
+  onMount(() => {
+    hasMounted = true;
+  });
+
+  const resolvedLocale = $derived(locale ?? (hasMounted ? navigator.language : 'en-US'));
   const resolvedHourCycle = $derived(resolveHourCycle(hourCycle, resolvedLocale));
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
   const resolvedRequired = $derived(required ?? context?.required ?? false);
-  const minuteStep = $derived(minuteStepFromSeconds(step));
-  const secondStep = $derived(secondStepFromSeconds(step));
+  const resolvedStep = $derived(normalizeTimeStep(step, seconds));
+  const minuteStep = $derived(minuteStepFromSeconds(resolvedStep));
+  const secondStep = $derived(secondStepFromSeconds(resolvedStep));
   const minuteValues = $derived(rangeValues(minuteStep, 59));
   const secondValues = $derived(seconds ? rangeValues(secondStep, 59) : []);
   const hourValues = $derived(
-    resolvedHourCycle === 'h23' || resolvedHourCycle === 'h24'
+    resolvedHourCycle === 'h23'
       ? Array.from({ length: 24 }, (_, index) => index)
-      : Array.from({ length: 12 }, (_, index) => index + 1),
+      : resolvedHourCycle === 'h24'
+        ? Array.from({ length: 24 }, (_, index) => index + 1)
+        : resolvedHourCycle === 'h11'
+          ? Array.from({ length: 12 }, (_, index) => index)
+          : Array.from({ length: 12 }, (_, index) => index + 1),
   );
   const selectedPeriod = $derived.by<'AM' | 'PM'>(() => {
     const parsedValue = parseTimeString(editorValue) ?? { hours: 0, minutes: 0, seconds: 0 };
@@ -233,14 +244,43 @@
     isFocused = true;
   }
 
+  function closestValueIndex(values: readonly number[], target: number): number {
+    if (values.length === 0) return 0;
+
+    const exactIndex = values.findIndex((value) => value === target);
+    if (exactIndex >= 0) return exactIndex;
+
+    let closestIndex = 0;
+    let closestDistance = Math.abs((values[0] ?? target) - target);
+
+    for (let index = 1; index < values.length; index += 1) {
+      const value = values[index];
+      if (value === undefined) continue;
+
+      const distance = Math.abs(value - target);
+      if (distance < closestDistance) {
+        closestIndex = index;
+        closestDistance = distance;
+      }
+    }
+
+    return closestIndex;
+  }
+
   function syncFocusIndicesFromValue(source: TimeParts | null): void {
     const nextValue = source ?? { hours: 0, minutes: 0, seconds: 0 };
     const displayHour = displayHourFromTwentyFourHour(nextValue.hours, resolvedHourCycle);
 
-    hourFocusIndex = hourValues.findIndex((value) => value === displayHour.hour);
-    minuteFocusIndex = minuteValues.findIndex((value) => value === nextValue.minutes);
-    secondFocusIndex = secondValues.findIndex((value) => value === nextValue.seconds);
+    hourFocusIndex = closestValueIndex(hourValues, displayHour.hour);
+    minuteFocusIndex = closestValueIndex(minuteValues, nextValue.minutes);
+    secondFocusIndex = closestValueIndex(secondValues, nextValue.seconds);
     periodFocusIndex = displayHour.period === 'PM' ? 1 : 0;
+  }
+
+  async function focusSelectedHourAfterOpen(): Promise<void> {
+    await tick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    hourOptionElements[hourFocusIndex]?.focus();
   }
 
   function handleToggleClick(): void {
@@ -248,9 +288,12 @@
 
     if (!isOpen) {
       syncFocusIndicesFromValue(parseCommittedValue(editorValue) ?? parseCommittedValue(value));
+      isOpen = true;
+      void focusSelectedHourAfterOpen();
+      return;
     }
 
-    isOpen = !isOpen;
+    isOpen = false;
   }
 
   async function focusHourOption(index: number): Promise<void> {
@@ -289,9 +332,13 @@
     const period = selectedPeriod;
 
     nextParts.hours =
-      resolvedHourCycle === 'h23' || resolvedHourCycle === 'h24'
+      resolvedHourCycle === 'h23'
         ? nextDisplayHour
-        : twentyFourHourFromDisplayHour(nextDisplayHour, period);
+        : resolvedHourCycle === 'h24'
+          ? nextDisplayHour === 24
+            ? 0
+            : nextDisplayHour
+          : twentyFourHourFromDisplayHour(nextDisplayHour, period, resolvedHourCycle);
 
     void commitValue(serializeTimeParts(nextParts, seconds), true);
   }
@@ -311,7 +358,11 @@
   function selectPeriod(nextPeriod: 'AM' | 'PM'): void {
     const nextParts = currentParts();
     const displayHour = displayHourFromTwentyFourHour(nextParts.hours, resolvedHourCycle);
-    nextParts.hours = twentyFourHourFromDisplayHour(displayHour.hour, nextPeriod);
+    nextParts.hours = twentyFourHourFromDisplayHour(
+      displayHour.hour,
+      nextPeriod,
+      resolvedHourCycle,
+    );
     void commitValue(serializeTimeParts(nextParts, seconds), true);
   }
 
@@ -394,6 +445,7 @@
         syncFocusIndicesFromValue(parseCommittedValue(editorValue) ?? parseCommittedValue(value));
       }
       isOpen = true;
+      void focusSelectedHourAfterOpen();
     }
   }
 
@@ -477,7 +529,7 @@
       {name}
       {min}
       {max}
-      step={seconds ? step : Math.max(step, 60)}
+      step={resolvedStep}
       class={cn('cinder-input cinder-time-picker__input', className)}
       disabled={resolvedDisabled}
       required={resolvedRequired}

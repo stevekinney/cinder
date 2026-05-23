@@ -134,6 +134,10 @@
     color: ButtonText;
   }
 
+  .cinder-time-picker__toggle {
+    border: 1px solid ButtonText;
+  }
+
   .cinder-time-picker__option[aria-selected='true'],
   .cinder-time-picker__period[aria-checked='true'] {
     background: Highlight;
