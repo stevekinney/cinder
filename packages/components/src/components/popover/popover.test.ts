@@ -84,6 +84,8 @@ function attachScratch(node: HTMLElement): void {
   document.body.appendChild(node);
 }
 
+const originalConsoleWarn = console.warn;
+
 beforeEach(() => {
   deferComputePosition = false;
   deferredResolvers = [];
@@ -93,6 +95,7 @@ beforeEach(() => {
     placement: 'bottom-start',
     middlewareData: {},
   };
+  console.warn = () => {};
 });
 
 afterEach(() => {
@@ -109,6 +112,7 @@ afterEach(() => {
   shiftSpy.mockClear();
   offsetSpy.mockClear();
   _resetEscapeStack();
+  console.warn = originalConsoleWarn;
 });
 
 // ---------------------------------------------------------------------------
