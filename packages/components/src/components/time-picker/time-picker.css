@@ -35,9 +35,11 @@
   cursor: pointer;
 }
 
-.cinder-time-picker__toggle:hover {
-  background: var(--cinder-surface-raised);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-time-picker__toggle:hover {
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-time-picker[data-invalid] .cinder-time-picker__input {
