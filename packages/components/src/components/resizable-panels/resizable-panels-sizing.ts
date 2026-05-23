@@ -39,6 +39,12 @@ export type CollapseResult = {
   changed: boolean;
 };
 
+export type ApplyPointerDragResult = {
+  axis: number;
+  changed: boolean;
+  state: ResizablePanelsLayoutState;
+};
+
 const DEFAULT_KEYBOARD_STEP: ResizablePanelSize = { value: 10, unit: 'px' };
 const DEFAULT_SNAP_THRESHOLD: ResizablePanelSize = { value: 8, unit: 'px' };
 
@@ -134,18 +140,48 @@ function distributeDelta(
   return nextSizes;
 }
 
+function scaleSizesToTotal(sizes: number[], targetTotal: number): number[] {
+  if (targetTotal <= 0) return sizes.map(() => 0);
+
+  const currentTotal = sizes.reduce((sum, value) => sum + value, 0);
+  if (currentTotal <= 0) {
+    const equalShare = sizes.length > 0 ? targetTotal / sizes.length : 0;
+    return sizes.map(() => equalShare);
+  }
+
+  const scale = targetTotal / currentTotal;
+  return sizes.map((size) => size * scale);
+}
+
+function applyCollapsedConstraints(
+  constraints: PanelConstraints[],
+  collapsedFlags: boolean[],
+): PanelConstraints[] {
+  return constraints.map((constraint, index) =>
+    collapsedFlags[index] ? { minPixels: 0, maxPixels: 0 } : constraint,
+  );
+}
+
 function normalizeToAvailable(
   desiredSizes: number[],
   constraints: PanelConstraints[],
   availablePanePixels: number,
+  collapsedFlags: boolean[] = [],
 ): number[] {
+  const effectiveConstraints = applyCollapsedConstraints(constraints, collapsedFlags);
   const clampedSizes = desiredSizes.map((size, index) =>
-    clamp(size, constraints[index]!.minPixels, constraints[index]!.maxPixels),
+    clamp(size, effectiveConstraints[index]!.minPixels, effectiveConstraints[index]!.maxPixels),
   );
 
-  const minimumTotal = constraints.reduce((sum, constraint) => sum + constraint.minPixels, 0);
+  const minimumTotal = effectiveConstraints.reduce(
+    (sum, constraint) => sum + constraint.minPixels,
+    0,
+  );
   if (minimumTotal > availablePanePixels) {
-    return constraints.map((constraint) => constraint.minPixels);
+    return scaleSizesToTotal(
+      effectiveConstraints.map((constraint) => constraint.minPixels),
+      availablePanePixels,
+    );
   }
 
   const currentTotal = clampedSizes.reduce((sum, value) => sum + value, 0);
@@ -153,7 +189,7 @@ function normalizeToAvailable(
     return distributeDelta(
       clampedSizes,
       availablePanePixels,
-      constraints.map((constraint, index) =>
+      effectiveConstraints.map((constraint, index) =>
         Math.max(0, constraint.maxPixels - clampedSizes[index]!),
       ),
       'grow',
@@ -164,7 +200,7 @@ function normalizeToAvailable(
     return distributeDelta(
       clampedSizes,
       availablePanePixels,
-      constraints.map((constraint, index) =>
+      effectiveConstraints.map((constraint, index) =>
         Math.max(0, clampedSizes[index]! - constraint.minPixels),
       ),
       'shrink',
@@ -217,7 +253,12 @@ export function createInitialLayoutState(
     collapsedSizes[index] = 0;
   }
 
-  const redistributed = normalizeToAvailable(collapsedSizes, constraints, availablePanePixels);
+  const redistributed = normalizeToAvailable(
+    collapsedSizes,
+    constraints,
+    availablePanePixels,
+    panes.map((pane) => Boolean(pane.defaultCollapsed && pane.collapsible)),
+  );
 
   return {
     availablePanePixels,
@@ -241,15 +282,25 @@ export function rebaseLayoutState(
   const previousById = new Map(state.panels.map((panel) => [panel.id, panel] as const));
   const constraints = getPanelConstraints(panes, availablePanePixels);
   const fallback = createInitialLayoutState(panes, availablePanePixels, orientation);
+  const collapsedFlags = panes.map((pane, index) => {
+    const previous = previousById.get(pane.id);
+    return previous?.collapsed ?? fallback.panels[index]!.collapsed;
+  });
 
   const desiredSizes = panes.map((pane, index) => {
     const previous = previousById.get(pane.id);
     if (!previous) return fallback.panels[index]!.sizePixels;
+    if (previous.collapsed) return 0;
     if (state.availablePanePixels <= 0) return previous.sizePixels;
     return (previous.sizePixels / state.availablePanePixels) * availablePanePixels;
   });
 
-  const normalized = normalizeToAvailable(desiredSizes, constraints, availablePanePixels);
+  const normalized = normalizeToAvailable(
+    desiredSizes,
+    constraints,
+    availablePanePixels,
+    collapsedFlags,
+  );
 
   return {
     availablePanePixels,
@@ -257,10 +308,10 @@ export function rebaseLayoutState(
     panels: panes.map((pane, index) => {
       const previous = previousById.get(pane.id);
       const previousRestore = previous?.restorePixels ?? fallback.panels[index]!.restorePixels;
-      const collapsed = previous?.collapsed ?? fallback.panels[index]!.collapsed;
+      const collapsed = collapsedFlags[index]!;
       return {
         id: pane.id,
-        sizePixels: collapsed ? 0 : (normalized[index] ?? 0),
+        sizePixels: normalized[index] ?? 0,
         restorePixels:
           state.availablePanePixels > 0
             ? (previousRestore / state.availablePanePixels) * availablePanePixels
@@ -320,10 +371,12 @@ export function setLeadingPanePixels(
   const nextTrailing = pairTotal - nextLeading;
 
   panels[handleIndex]!.sizePixels = nextLeading;
-  panels[handleIndex]!.collapsed = nextLeading === 0;
+  panels[handleIndex]!.collapsed = panes[handleIndex]!.collapsible ? nextLeading === 0 : false;
   if (nextLeading > 0) panels[handleIndex]!.restorePixels = nextLeading;
   panels[handleIndex + 1]!.sizePixels = nextTrailing;
-  panels[handleIndex + 1]!.collapsed = nextTrailing === 0;
+  panels[handleIndex + 1]!.collapsed = panes[handleIndex + 1]!.collapsible
+    ? nextTrailing === 0
+    : false;
   if (nextTrailing > 0) panels[handleIndex + 1]!.restorePixels = nextTrailing;
 
   return { ...state, panels };
@@ -388,6 +441,27 @@ export function applyPairSnap(
     allowCollapsedLeadingMinimum: state.panels[handleIndex]!.collapsed,
     allowCollapsedTrailingMinimum: state.panels[handleIndex + 1]!.collapsed,
   });
+}
+
+export function applyPointerDragDelta(
+  state: ResizablePanelsLayoutState,
+  panes: ResizablePanelDefinition[],
+  handleIndex: number,
+  previousAxis: number,
+  currentAxis: number,
+  threshold: ResizablePanelSize = DEFAULT_SNAP_THRESHOLD,
+): ApplyPointerDragResult {
+  const delta = currentAxis - previousAxis;
+  if (Math.abs(delta) < 0.001) {
+    return { axis: previousAxis, changed: false, state };
+  }
+
+  const resized = applyPairDelta(state, panes, handleIndex, delta);
+  return {
+    axis: currentAxis,
+    changed: true,
+    state: applyPairSnap(resized, panes, handleIndex, threshold),
+  };
 }
 
 export function resolveKeyboardStep(

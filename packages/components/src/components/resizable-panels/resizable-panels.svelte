@@ -33,6 +33,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import {
+    applyPointerDragDelta,
     applyPairDelta,
     applyPairSnap,
     createInitialLayoutState,
@@ -73,8 +74,7 @@
   let measuredHandlePixels = $state(8);
   let activeHandleIndex = $state<number | null>(null);
   let activePointerId = $state<number | null>(null);
-  let pointerStartAxis = $state(0);
-  let dragState: ResizablePanelsLayoutState | null = $state(null);
+  let previousPointerAxis = $state(0);
   let layoutState: ResizablePanelsLayoutState | null = $state(null);
 
   const issues = $derived(validatePanes(panes));
@@ -186,8 +186,7 @@
     if (!layoutState) return;
     activeHandleIndex = handleIndex;
     activePointerId = event.pointerId;
-    pointerStartAxis = axisValueFromPointerEvent(event);
-    dragState = layoutState;
+    previousPointerAxis = axisValueFromPointerEvent(event);
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.focus();
       if ('setPointerCapture' in event.currentTarget) {
@@ -197,10 +196,18 @@
   }
 
   function handlePointerMove(event: PointerEvent): void {
-    if (activeHandleIndex === null || activePointerId !== event.pointerId || !dragState) return;
-    const delta = axisValueFromPointerEvent(event) - pointerStartAxis;
-    layoutState = applyPairDelta(dragState, panes, activeHandleIndex, delta);
-    layoutState = applyPairSnap(layoutState, panes, activeHandleIndex, snapThreshold);
+    if (activeHandleIndex === null || activePointerId !== event.pointerId || !layoutState) return;
+    const next = applyPointerDragDelta(
+      layoutState,
+      panes,
+      activeHandleIndex,
+      previousPointerAxis,
+      axisValueFromPointerEvent(event),
+      snapThreshold,
+    );
+    if (!next.changed) return;
+    previousPointerAxis = next.axis;
+    layoutState = next.state;
     emit('pointer', false);
   }
 
@@ -218,7 +225,6 @@
     }
     activeHandleIndex = null;
     activePointerId = null;
-    dragState = null;
     emit('pointer', true);
   }
 

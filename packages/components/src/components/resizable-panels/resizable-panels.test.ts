@@ -79,17 +79,30 @@ const textSnippet = createRawSnippet<
   render: () => `<div>${getPane().label}</div>`,
 }));
 
-function mockMeasurements(container: HTMLElement): void {
+function mockMeasurements(
+  container: HTMLElement,
+  {
+    rootWidth = 800,
+    rootHeight = 400,
+    handleOffset = 200,
+    handleThickness = 12,
+  }: {
+    rootWidth?: number;
+    rootHeight?: number;
+    handleOffset?: number;
+    handleThickness?: number;
+  } = {},
+): void {
   const root = container.querySelector<HTMLElement>('.cinder-resizable-panels');
   const handle = container.querySelector<HTMLElement>('.cinder-resizable-panels__handle');
   root!.getBoundingClientRect = () =>
     ({
-      width: 800,
-      height: 400,
+      width: rootWidth,
+      height: rootHeight,
       left: 0,
       top: 0,
-      right: 800,
-      bottom: 400,
+      right: rootWidth,
+      bottom: rootHeight,
       x: 0,
       y: 0,
       toJSON() {
@@ -98,13 +111,13 @@ function mockMeasurements(container: HTMLElement): void {
     }) as DOMRect;
   handle!.getBoundingClientRect = () =>
     ({
-      width: 12,
-      height: 12,
-      left: 200,
+      width: handleThickness,
+      height: handleThickness,
+      left: handleOffset,
       top: 0,
-      right: 212,
-      bottom: 12,
-      x: 200,
+      right: handleOffset + handleThickness,
+      bottom: handleThickness,
+      x: handleOffset,
       y: 0,
       toJSON() {
         return {};

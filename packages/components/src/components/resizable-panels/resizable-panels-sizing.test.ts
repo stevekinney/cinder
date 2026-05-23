@@ -3,11 +3,13 @@ import { describe, expect, test } from 'bun:test';
 import {
   applyPairDelta,
   applyPairSnap,
+  applyPointerDragDelta,
   createInitialLayoutState,
   getHandleAriaState,
   getLayoutSnapshot,
   rebaseLayoutState,
   resolveSizeToPixels,
+  setLeadingPanePixels,
   toggleCollapseForHandle,
   validatePanes,
 } from './resizable-panels-sizing.ts';
@@ -98,5 +100,66 @@ describe('resizable-panels sizing', () => {
     const aria = getHandleAriaState(state, panes, 0);
     expect(aria.valueNow).toBe(25);
     expect(aria.valueText).toContain('250px');
+  });
+
+  test('scales impossible minimum totals back into the available budget', () => {
+    const constrainedPanes: ResizablePanelDefinition[] = [
+      { id: 'left', label: 'Left', minSize: { value: 300, unit: 'px' } },
+      { id: 'right', label: 'Right', minSize: { value: 300, unit: 'px' } },
+    ];
+
+    const state = createInitialLayoutState(constrainedPanes, 400, 'horizontal');
+
+    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(400, 3);
+    expect(state.panels[0]!.sizePixels).toBeCloseTo(200, 3);
+    expect(state.panels[1]!.sizePixels).toBeCloseTo(200, 3);
+  });
+
+  test('keeps collapsed panes at zero while redistributing the remaining space', () => {
+    const collapsiblePanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 25, unit: 'percent' },
+        minSize: { value: 120, unit: 'px' },
+        collapsible: true,
+        defaultCollapsed: true,
+      },
+      { id: 'right', label: 'Right', defaultSize: { value: 75, unit: 'percent' } },
+    ];
+
+    const state = createInitialLayoutState(collapsiblePanes, 800, 'horizontal');
+    const rebased = rebaseLayoutState(state, collapsiblePanes, 500, 'horizontal');
+
+    expect(state.panels[0]!.sizePixels).toBe(0);
+    expect(state.panels[1]!.sizePixels).toBeCloseTo(800, 3);
+    expect(rebased.panels[0]!.sizePixels).toBe(0);
+    expect(rebased.panels[1]!.sizePixels).toBeCloseTo(500, 3);
+  });
+
+  test('does not mark non-collapsible panes as collapsed when they reach zero pixels', () => {
+    const nonCollapsiblePanes: ResizablePanelDefinition[] = [
+      { id: 'left', label: 'Left', minSize: { value: 0, unit: 'px' } },
+      { id: 'right', label: 'Right', minSize: { value: 0, unit: 'px' } },
+    ];
+
+    const state = createInitialLayoutState(nonCollapsiblePanes, 600, 'horizontal');
+    const resized = setLeadingPanePixels(state, nonCollapsiblePanes, 0, 0);
+
+    expect(resized.panels[0]!.sizePixels).toBe(0);
+    expect(resized.panels[0]!.collapsed).toBe(false);
+  });
+
+  test('applies pointer deltas against the rebased live layout state', () => {
+    const initial = createInitialLayoutState(panes, 800, 'horizontal');
+    const rebased = rebaseLayoutState(initial, panes, 400, 'horizontal');
+    const dragged = applyPointerDragDelta(rebased, panes, 0, 200, 250, {
+      value: 0,
+      unit: 'px',
+    });
+
+    expect(dragged.changed).toBe(true);
+    expect(dragged.state.panels[0]!.sizePixels).toBeCloseTo(150, 3);
+    expect(dragged.state.panels[1]!.sizePixels).toBeCloseTo(130, 3);
   });
 });
