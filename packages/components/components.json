@@ -141,6 +141,32 @@
       }
     },
     {
+      "name": "AspectRatio",
+      "id": "aspect-ratio",
+      "import": "cinder/aspect-ratio",
+      "exportName": "AspectRatio",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Generic media box that enforces a fixed aspect ratio for arbitrary embedded content using the native CSS aspect-ratio property.",
+      "tags": ["layout", "media"],
+      "useWhen": [
+        "Reserving stable space for embedded media, previews, or art-directed content before it loads.",
+        "You need a generic ratio wrapper for iframe, video, canvas, or custom content rather than an image-specific primitive."
+      ],
+      "avoidWhen": [
+        "The child already owns its sizing contract and should determine its own height naturally.",
+        "Supporting legacy browsers that lack native aspect-ratio support."
+      ],
+      "related": ["image", "card"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/aspect-ratio/schema",
+        "variables": "cinder/aspect-ratio/variables",
+        "examples": "cinder/aspect-ratio/examples"
+      }
+    },
+    {
       "name": "Avatar",
       "id": "avatar",
       "import": "cinder/avatar",
