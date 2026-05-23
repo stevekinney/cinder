@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "load-more",
+  "import": "cinder/load-more",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic infinite scroll",
+      "description": "The sentinel auto-loads near the end of the list, and the button remains available as the manual fallback.",
+      "code": "<script lang=\"ts\">\n  import { LoadMore } from 'cinder/load-more';\n\n  let items = $state(Array.from({ length: 20 }, (_, index) => `Item ${index + 1}`));\n  let loading = $state(false);\n  let hasMore = $state(true);\n\n  async function fetchNext() {\n    loading = true;\n    await new Promise((resolve) => setTimeout(resolve, 400));\n    const start = items.length;\n    items = [...items, ...Array.from({ length: 20 }, (_, index) => `Item ${start + index + 1}`)];\n    loading = false;\n    if (items.length >= 100) hasMore = false;\n  }\n</script>\n\n<ul aria-busy={loading}>\n  {#each items as item}\n    <li>{item}</li>\n  {/each}\n</ul>\n\n<LoadMore onLoadMore={fetchNext} bind:loading bind:hasMore />\n"
+    },
+    {
+      "id": "retry",
+      "title": "Retry after a failed request",
+      "description": "Rejected requests switch the button into retry mode so the user can recover explicitly.",
+      "code": "<script lang=\"ts\">\n  import { LoadMore } from 'cinder/load-more';\n\n  let items = $state(['Alpha', 'Bravo', 'Charlie']);\n  let loading = $state(false);\n  let hasMore = $state(true);\n  let attempts = $state(0);\n\n  async function fetchNext() {\n    loading = true;\n    await new Promise((resolve) => setTimeout(resolve, 300));\n    attempts += 1;\n    loading = false;\n    if (attempts === 1) {\n      throw new Error('Temporary network failure');\n    }\n    items = [...items, 'Delta', 'Echo'];\n    hasMore = false;\n  }\n</script>\n\n<ul aria-busy={loading}>\n  {#each items as item}\n    <li>{item}</li>\n  {/each}\n</ul>\n\n<LoadMore onLoadMore={fetchNext} bind:loading bind:hasMore retryLabel=\"Try again\" />\n"
+    }
+  ]
+}

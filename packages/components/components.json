@@ -1535,6 +1535,30 @@
       }
     },
     {
+      "name": "LoadMore",
+      "id": "load-more",
+      "import": "cinder/load-more",
+      "exportName": "LoadMore",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.",
+      "tags": ["navigation", "paging"],
+      "useWhen": [
+        "Streaming results into a long list and you want the next page to load as the user approaches the end."
+      ],
+      "avoidWhen": [
+        "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
+      ],
+      "related": ["pagination"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/load-more/schema",
+        "variables": "cinder/load-more/variables",
+        "examples": "cinder/load-more/examples"
+      }
+    },
+    {
       "name": "MarkdownEditor",
       "id": "markdown-editor",
       "import": "cinder/markdown-editor",
