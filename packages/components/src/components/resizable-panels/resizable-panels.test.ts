@@ -176,7 +176,7 @@ describe('ResizablePanels', () => {
     const styleSheet = await Bun.file(new URL('./resizable-panels.css', import.meta.url)).text();
 
     expect(componentSource).toContain(
-      'return layoutState !== null && (context.collapsed || context.pixelSize <= 0);',
+      'context.collapsed || (layoutState.availablePanePixels > 0 && context.pixelSize <= 0)',
     );
     expect(componentSource).toContain("aria-hidden={hiddenFromInteraction ? 'true' : undefined}");
     expect(componentSource).toContain('inert={hiddenFromInteraction || undefined}');
@@ -358,6 +358,26 @@ describe('ResizablePanels', () => {
 
     expect(firstPane.getAttribute('data-cinder-collapsed')).toBe('true');
     expect(firstPane.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('expanded panes remain interactive when measured pane space is zero', async () => {
+    const { container } = render(ResizablePanels, {
+      panes,
+      children: textSnippet,
+    });
+    mockMeasurements(container, { rootWidth: 12, handleThickness: 12 });
+    await tick();
+
+    const renderedPanes = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-resizable-panels__pane'),
+    );
+
+    expect(renderedPanes).toHaveLength(2);
+    for (const renderedPane of renderedPanes) {
+      expect(renderedPane.getAttribute('data-cinder-collapsed')).toBeNull();
+      expect(renderedPane.getAttribute('aria-hidden')).toBeNull();
+      expect(renderedPane.hasAttribute('inert')).toBe(false);
+    }
   });
 
   test('orientation changes remeasure on the new axis immediately', async () => {

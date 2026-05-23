@@ -372,7 +372,10 @@
   }
 
   function isPaneHiddenFromInteraction(context: ResizablePanelRenderContext): boolean {
-    return layoutState !== null && (context.collapsed || context.pixelSize <= 0);
+    return (
+      layoutState !== null &&
+      (context.collapsed || (layoutState.availablePanePixels > 0 && context.pixelSize <= 0))
+    );
   }
 
   function handleAriaLabel(handleIndex: number): string {

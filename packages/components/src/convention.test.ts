@@ -40,6 +40,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'rating',
   'select',
   'table',
+  'tag-input',
   'tabs',
   'textarea',
   'toast-region',

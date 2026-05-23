@@ -3,11 +3,10 @@
   import { getPreviewStore } from './preview-store.svelte.ts';
   import {
     Button,
-    Divider,
-    NavigationBar,
     NumberInput,
     Segment,
     SegmentedControl,
+    Toolbar,
   } from '../../../components/src/index.ts';
 
   const store = getPreviewStore();
@@ -113,21 +112,19 @@
   }
 </script>
 
-<header class="top-bar" role="banner">
-  <NavigationBar navAriaLabel="Preview controls">
-    {#snippet brand()}
-      <span class="wordmark" aria-label="Cinder design system">cinder</span>
-    {/snippet}
+<header class="top-bar">
+  <div class="top-bar__brand">
+    <span class="wordmark" aria-label="Cinder design system">cinder</span>
+  </div>
 
-    {#snippet items({ variant: _variant })}
-      <!-- Component breadcrumb -->
+  <Toolbar class="top-bar__toolbar" aria-label="Preview controls">
+    <Toolbar.Group>
       <span class="component-name" title={store.currentComponent} aria-label="Current component">
         {store.currentComponent || ' '}
       </span>
+    </Toolbar.Group>
 
-      <Divider orientation="vertical" />
-
-      <!-- Viewport width presets -->
+    <Toolbar.Group>
       <SegmentedControl
         id="viewport-preset"
         label="Viewport width"
@@ -154,10 +151,9 @@
         />
         <span class="unit" aria-hidden="true">px</span>
       {/if}
+    </Toolbar.Group>
 
-      <Divider orientation="vertical" />
-
-      <!-- Color scheme -->
+    <Toolbar.Group>
       <SegmentedControl
         id="theme-preset"
         label="Color scheme"
@@ -171,9 +167,6 @@
         {/each}
       </SegmentedControl>
 
-      <Divider orientation="vertical" />
-
-      <!-- Preview background: binary surface ↔ checker toggle -->
       <Button
         variant="ghost"
         size="sm"
@@ -183,10 +176,11 @@
       >
         <span aria-hidden="true">▦</span>
       </Button>
-    {/snippet}
+    </Toolbar.Group>
 
-    {#snippet actions()}
-      <!-- Focus mode: hides sidebar and toolbar -->
+    <Toolbar.Spacer />
+
+    <Toolbar.Group>
       <Button
         variant="ghost"
         size="sm"
@@ -196,8 +190,8 @@
       >
         <span aria-hidden="true">⛶</span>
       </Button>
-    {/snippet}
-  </NavigationBar>
+    </Toolbar.Group>
+  </Toolbar>
 
   <span class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
 </header>
@@ -235,15 +229,20 @@
     z-index: 10;
   }
 
-  /* Make the NavigationBar fill the top bar and take on its layout */
-  .top-bar :global(.cinder-navigation-bar) {
+  .top-bar__brand {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    flex-shrink: 0;
+  }
+
+  .top-bar :global(.cinder-toolbar) {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
-    border: none;
     background: transparent;
-    padding: 0;
+    min-width: 0;
   }
 
   /* ── Wordmark ── */
@@ -270,19 +269,9 @@
     box-sizing: border-box;
   }
 
-  /* Brand slot container */
-  .top-bar :global(.cinder-navigation-bar__brand) {
+  .top-bar :global(.top-bar__toolbar) {
     display: flex;
     align-items: center;
-    height: 100%;
-    flex-shrink: 0;
-  }
-
-  /* Items region: the toolbar area with all controls */
-  .top-bar :global(.cinder-navigation-bar__items) {
-    display: flex;
-    align-items: center;
-    gap: 0;
     flex: 1;
     min-width: 0;
     padding: 0 12px;
@@ -290,12 +279,10 @@
     height: 100%;
   }
 
-  /* Actions region: right-aligned action buttons */
-  .top-bar :global(.cinder-navigation-bar__actions) {
+  .top-bar :global(.cinder-toolbar__group) {
     display: flex;
     align-items: center;
-    padding-inline-end: 12px;
-    flex-shrink: 0;
+    min-width: 0;
   }
 
   .component-name {
@@ -313,6 +300,7 @@
     font-size: 11px;
     color: var(--cinder-text-subtle);
     padding-inline-start: 3px;
+    flex-shrink: 0;
   }
 
   /* ── Accessibility ── */
