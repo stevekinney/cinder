@@ -19,8 +19,9 @@
   import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { parseColor } from '../../utilities/color-luminance.ts';
+  import { parseColor, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { useId } from '../../utilities/use-id.ts';
+  import { Check } from '../icons/index.ts';
 
   let {
     value = $bindable(),
@@ -281,11 +282,10 @@
 
   // ── Slider pointer handling ─────────────────────────────────────────────
 
-  // bind:this refs and the drag-discriminator are coordination state read only
-  // inside event handlers, never inside the template or effects — plain `let`
-  // is sufficient and avoids unnecessary reactive tracking.
-  let hueElement: HTMLDivElement | null = null;
-  let alphaElement: HTMLDivElement | null = null;
+  // bind:this refs use $state so teardown sees the latest element references;
+  // the drag discriminator is read only inside event handlers.
+  let hueElement = $state<HTMLDivElement | null>(null);
+  let alphaElement = $state<HTMLDivElement | null>(null);
   let draggingSlider: 'hue' | 'alpha' | null = null;
 
   function pointerToFraction(event: PointerEvent, element: HTMLElement): number {
@@ -592,6 +592,7 @@
   role="group"
   id={pickerId}
 >
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
   <div
     bind:this={gradientElement}
     id={gradientId}
@@ -687,6 +688,7 @@
         {@const normalized = normalizeSwatch(swatch)}
         {@const isSelected =
           internalValue !== '' && normalized !== null && normalized === currentHex.toLowerCase()}
+        {@const contrastColor = pickContrastColor(swatch)}
         <li
           bind:this={swatchRefs[index]}
           role="option"
@@ -698,7 +700,13 @@
           style="--cinder-color-picker-swatch: {swatch};"
           onclick={() => selectSwatch(index, 'change')}
           onkeydown={(event) => handleSwatchKeydown(event, index)}
-        ></li>
+        >
+          {#if isSelected}
+            <span class="cinder-color-picker__swatch-indicator" style="color: {contrastColor}">
+              <Check aria-hidden="true" />
+            </span>
+          {/if}
+        </li>
       {/each}
     </ul>
   {/if}

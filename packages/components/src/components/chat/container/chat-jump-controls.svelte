@@ -113,9 +113,11 @@
     }
   }
 
-  .chat-jump-button:hover {
-    background: var(--cinder-surface-hover);
-    box-shadow: var(--cinder-shadow-lg);
+  @media (hover: hover) {
+    .chat-jump-button:hover {
+      background: var(--cinder-surface-hover);
+      box-shadow: var(--cinder-shadow-lg);
+    }
   }
 
   .chat-jump-button:focus-visible {

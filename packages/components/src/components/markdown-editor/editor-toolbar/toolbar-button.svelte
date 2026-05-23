@@ -70,9 +70,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .toolbar-button:hover:not(:disabled) {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .toolbar-button:hover:not(:disabled) {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   .toolbar-button:active:not(:disabled) {
@@ -84,9 +86,11 @@
     color: var(--cinder-accent);
   }
 
-  .toolbar-button[data-active]:hover:not(:disabled) {
-    background: var(--cinder-surface-pressed);
-    color: var(--cinder-accent);
+  @media (hover: hover) {
+    .toolbar-button[data-active]:hover:not(:disabled) {
+      background: var(--cinder-surface-pressed);
+      color: var(--cinder-accent);
+    }
   }
 
   .toolbar-button:focus-visible {
