@@ -20,9 +20,9 @@
   color: var(--cinder-success);
 }
 
-/* Darkened warning shade to clear AA against --cinder-surface in light mode. */
+/* Semantic warning foreground is calibrated to remain readable on soft surfaces. */
 .cinder-json-token-number {
-  color: color-mix(in oklch, var(--cinder-warning), oklch(0% 0 0) 15%);
+  color: var(--cinder-color-warning-fg);
 }
 
 .cinder-json-token-boolean,

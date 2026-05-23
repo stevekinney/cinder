@@ -403,7 +403,8 @@
   }
 
   .chat-message-wrapper[data-role='system'] .chat-message {
-    background: color-mix(in oklch, var(--cinder-info), transparent 90%);
+    background: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
     text-align: center;
   }
 
@@ -412,7 +413,8 @@
   }
 
   .chat-message-wrapper[data-role='developer'] .chat-message {
-    background: color-mix(in oklch, var(--cinder-warning), transparent 90%);
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
   }
 
   .chat-message-wrapper[data-role='tool-use'],
@@ -551,9 +553,9 @@
 
   .chat-message-tool-error {
     padding: var(--cinder-space-3);
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
+    background: var(--cinder-color-danger-bg);
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     font-size: var(--cinder-text-sm);
   }
 
@@ -583,8 +585,8 @@
 
   /* Failed message styling */
   .chat-message-wrapper[data-failed] .chat-message {
-    border: 1px solid color-mix(in oklch, var(--cinder-danger), transparent 50%);
-    background: color-mix(in oklch, var(--cinder-danger), transparent 95%);
+    border: 1px solid var(--cinder-color-danger-border);
+    background: var(--cinder-color-danger-bg);
   }
 
   .chat-message-failed-actions {
@@ -610,7 +612,7 @@
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-danger);
     background: transparent;
-    border: 1px solid color-mix(in oklch, var(--cinder-danger), transparent 60%);
+    border: 1px solid var(--cinder-color-danger-border);
     border-radius: var(--cinder-radius-sm);
     cursor: pointer;
     transition:
@@ -619,7 +621,7 @@
   }
 
   .chat-message-retry:hover {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
+    background: var(--cinder-color-danger-bg);
     border-color: var(--cinder-danger);
   }
 
@@ -754,8 +756,8 @@
   }
 
   .chat-message-copy-success:hover {
-    color: var(--cinder-success);
-    background: color-mix(in oklch, var(--cinder-success), transparent 90%);
+    color: var(--cinder-color-success-fg);
+    background: var(--cinder-color-success-bg);
   }
 
   /* Edit button (icon action button, visually identical to copy button) */

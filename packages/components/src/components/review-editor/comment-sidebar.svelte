@@ -298,14 +298,14 @@
     flex-direction: column;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-3);
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
-    border-bottom: 1px solid color-mix(in oklch, var(--cinder-danger), transparent 70%);
+    background: var(--cinder-color-danger-bg);
+    border-bottom: 1px solid var(--cinder-color-danger-border);
   }
 
   .confirm-message {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     margin: 0;
   }
 
