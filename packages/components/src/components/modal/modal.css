@@ -95,9 +95,11 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-modal__close:hover {
-  background: color-mix(in oklch, currentColor, transparent 85%);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-modal__close:hover {
+    background: color-mix(in oklch, currentColor, transparent 85%);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-modal__close:focus-visible {

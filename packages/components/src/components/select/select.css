@@ -55,8 +55,10 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-select:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-select:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-select:focus-visible {
@@ -96,8 +98,10 @@
   border-color: var(--cinder-danger);
 }
 
-.cinder-select[aria-invalid='true']:hover:not(:disabled) {
-  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+@media (hover: hover) {
+  .cinder-select[aria-invalid='true']:hover:not(:disabled) {
+    border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+  }
 }
 
 /* ----------------------------------------

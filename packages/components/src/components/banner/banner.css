@@ -185,9 +185,12 @@
     border-block: 1px solid CanvasText;
   }
 
-  /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace. */
-  .cinder-banner__dismiss:hover {
-    background: ButtonFace;
+  /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace.
+   * Nested under @media (hover: hover) to suppress sticky-hover on touch. */
+  @media (hover: hover) {
+    .cinder-banner__dismiss:hover {
+      background: ButtonFace;
+    }
   }
 
   .cinder-banner__dismiss:focus-visible {

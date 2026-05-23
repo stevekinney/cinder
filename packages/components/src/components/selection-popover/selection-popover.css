@@ -34,8 +34,10 @@
     transform var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-selection-popover__button:hover {
-  background: var(--cinder-accent-hover);
+@media (hover: hover) {
+  .cinder-selection-popover__button:hover {
+    background: var(--cinder-accent-hover);
+  }
 }
 
 .cinder-selection-popover__button:focus-visible {
@@ -106,9 +108,11 @@
   color: var(--cinder-text-muted);
 }
 
-.cinder-selection-popover__cancel:hover {
-  background: var(--cinder-surface-hover);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-selection-popover__cancel:hover {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-selection-popover__submit {
@@ -116,8 +120,10 @@
   color: var(--cinder-accent-contrast);
 }
 
-.cinder-selection-popover__submit:hover:not(:disabled) {
-  background: var(--cinder-accent-hover);
+@media (hover: hover) {
+  .cinder-selection-popover__submit:hover:not(:disabled) {
+    background: var(--cinder-accent-hover);
+  }
 }
 
 .cinder-selection-popover__submit:disabled {
