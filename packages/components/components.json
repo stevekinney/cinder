@@ -345,6 +345,32 @@
       }
     },
     {
+      "name": "Center",
+      "id": "center",
+      "import": "cinder/center",
+      "exportName": "Center",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Horizontally centered block that caps its inline size at a content-width token.",
+      "tags": ["layout", "every-layout"],
+      "useWhen": [
+        "Centering a column of prose, a form, or a card stack inside a wider viewport.",
+        "Constraining a reading width so long lines do not stretch across the screen."
+      ],
+      "avoidWhen": [
+        "The element must fill the viewport edge to edge — render the children directly without center.",
+        "Items need to be distributed horizontally within the centered block — compose center with stack or inline inside."
+      ],
+      "related": ["stack", "inline", "cluster", "spacer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/center/schema",
+        "variables": "cinder/center/variables",
+        "examples": "cinder/center/examples"
+      }
+    },
+    {
       "name": "Chat",
       "id": "chat",
       "import": "cinder/chat",
@@ -470,6 +496,32 @@
       }
     },
     {
+      "name": "Cluster",
+      "id": "cluster",
+      "import": "cinder/cluster",
+      "exportName": "Cluster",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Wrapping flex container tuned for groups of chips, badges, or buttons.",
+      "tags": ["layout", "every-layout"],
+      "useWhen": [
+        "Rendering a freely wrapping list of tags, badges, or short controls.",
+        "Laying out a footer toolbar that should reflow on narrow viewports."
+      ],
+      "avoidWhen": [
+        "Items should never wrap onto multiple lines — use inline with `wrap=\"nowrap\"` instead.",
+        "Items must stack vertically — use stack instead."
+      ],
+      "related": ["stack", "inline", "center", "spacer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/cluster/schema",
+        "variables": "cinder/cluster/variables",
+        "examples": "cinder/cluster/examples"
+      }
+    },
+    {
       "name": "CodeBlock",
       "id": "code-block",
       "import": "cinder/code-block",
@@ -502,15 +554,15 @@
       "exportName": "ColorField",
       "category": "form",
       "status": "stable",
-      "purpose": "Text input that validates and normalizes hex, `rgb()`, and `hsl()` color strings into a canonical hex value.",
+      "purpose": "Text input that validates and normalizes hex, rgb(), and hsl() color strings into a canonical hex value emitted on blur.",
       "tags": ["form", "color"],
       "useWhen": [
-        "Letting users enter or paste a precise color value as text alongside a visual picker.",
-        "Editing brand colors, design-token values, or accessibility-critical hex codes that need exact entry."
+        "Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.",
+        "Pairing with color-picker for combined visual selection and text-based entry."
       ],
       "avoidWhen": [
-        "Letting users graze a color space without typing — use color-picker instead.",
-        "Constraining selection to a fixed palette — use color-swatch-picker instead."
+        "Letting users graze visually across a color space — use color-picker instead.",
+        "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
       ],
       "related": ["color-picker", "color-swatch-picker", "input", "form-field"],
       "hasConstraints": false,
@@ -1228,6 +1280,32 @@
       }
     },
     {
+      "name": "Inline",
+      "id": "inline",
+      "import": "cinder/inline",
+      "exportName": "Inline",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Horizontal flex row with configurable gap, wrap, and alignment.",
+      "tags": ["layout", "every-layout"],
+      "useWhen": [
+        "Laying out a row of controls, labels, or inline elements that should wrap on narrow viewports.",
+        "Aligning a button and its supporting text on a single horizontal axis."
+      ],
+      "avoidWhen": [
+        "Items must be tightly packed for chip or badge groups — use cluster instead.",
+        "Items should always stack vertically — use stack instead."
+      ],
+      "related": ["stack", "cluster", "center", "spacer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/inline/schema",
+        "variables": "cinder/inline/variables",
+        "examples": "cinder/inline/examples"
+      }
+    },
+    {
       "name": "Input",
       "id": "input",
       "import": "cinder/input",
@@ -1704,10 +1782,11 @@
       ],
       "related": ["surface"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/scroll-area/schema",
-        "variables": "cinder/scroll-area/variables"
+        "variables": "cinder/scroll-area/variables",
+        "examples": "cinder/scroll-area/examples"
       }
     },
     {
@@ -2064,6 +2143,32 @@
       }
     },
     {
+      "name": "Spacer",
+      "id": "spacer",
+      "import": "cinder/spacer",
+      "exportName": "Spacer",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Flexible filler that pushes adjacent siblings to opposite ends of an inline or cluster.",
+      "tags": ["layout", "every-layout"],
+      "useWhen": [
+        "Separating a leading and trailing group inside an inline toolbar.",
+        "Placing a button at the far end of a row without manual margin tricks."
+      ],
+      "avoidWhen": [
+        "The container does not use flexbox — spacer relies on `flex: 1`.",
+        "Reserving fixed empty space — set explicit margin or gap on the container instead."
+      ],
+      "related": ["stack", "inline", "cluster", "center"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/spacer/schema",
+        "variables": "cinder/spacer/variables",
+        "examples": "cinder/spacer/examples"
+      }
+    },
+    {
       "name": "Spinner",
       "id": "spinner",
       "import": "cinder/spinner",
@@ -2087,6 +2192,33 @@
         "schema": "cinder/spinner/schema",
         "variables": "cinder/spinner/variables",
         "examples": "cinder/spinner/examples"
+      }
+    },
+    {
+      "name": "Stack",
+      "id": "stack",
+      "import": "cinder/stack",
+      "exportName": "Stack",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Vertical flex column that spaces its children with a configurable gap.",
+      "tags": ["layout", "every-layout"],
+      "useWhen": [
+        "Stacking form fields, page sections, or any vertical sequence with consistent spacing.",
+        "Composing a column where each child should occupy the full available width."
+      ],
+      "avoidWhen": [
+        "Items need to flow horizontally — use inline or cluster instead.",
+        "Items need precise grid placement — use a CSS grid directly.",
+        "Using `direction=\"column-reverse\"` for visual reordering — it breaks DOM/focus order (WCAG 1.3.2, 2.4.3). Reorder the DOM instead."
+      ],
+      "related": ["inline", "cluster", "center", "spacer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/stack/schema",
+        "variables": "cinder/stack/variables",
+        "examples": "cinder/stack/examples"
       }
     },
     {

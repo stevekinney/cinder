@@ -1,0 +1,9 @@
+/* ========================================
+ * STACK
+ * ======================================== */
+
+.cinder-stack {
+  display: flex;
+  flex-direction: var(--stack-direction, column);
+  gap: var(--stack-gap, var(--cinder-space-4));
+}

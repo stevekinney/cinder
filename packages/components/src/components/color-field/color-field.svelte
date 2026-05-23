@@ -3,33 +3,26 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Text input that validates and normalizes hex, `rgb()`, and `hsl()` color strings into a canonical hex value.
+   * @purpose Text input that validates and normalizes hex, rgb(), and hsl() color strings into a canonical hex value emitted on blur.
    * @tag form
    * @tag color
-   * @useWhen Letting users enter or paste a precise color value as text alongside a visual picker.
-   * @useWhen Editing brand colors, design-token values, or accessibility-critical hex codes that need exact entry.
-   * @avoidWhen Letting users graze a color space without typing — use color-picker instead.
-   * @avoidWhen Constraining selection to a fixed palette — use color-swatch-picker instead.
+   * @useWhen Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.
+   * @useWhen Pairing with color-picker for combined visual selection and text-based entry.
+   * @avoidWhen Letting users graze visually across a color space — use color-picker instead.
+   * @avoidWhen Constraining selection to a fixed brand palette — use color-swatch-picker instead.
    * @related color-picker, color-swatch-picker, input, form-field
    */
-  export type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
+  export type { ColorFieldProps, ColorFieldFormat } from './color-field.types.ts';
 </script>
 
 <script lang="ts">
-  import type { Attachment } from 'svelte/attachments';
   import { DEV } from 'esm-env';
+  import { tick } from 'svelte';
 
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
-  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
-
-  import type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
+  import Input from '../input/input.svelte';
+  import type { ColorFieldProps } from './color-field.types.ts';
 
   let {
     id,
@@ -37,413 +30,409 @@
     value,
     defaultValue,
     alpha = false,
-    formats,
-    disabled,
+    formats = ['hex', 'rgb', 'hsl'],
+    disabled = false,
+    required = false,
+    readonly = false,
     name,
     placeholder,
+    ariaLabel,
+    ariaLabelledby,
     errorMessage,
     enterBehavior = 'commit-then-submit',
     onchange,
-    ...forwarded
   }: ColorFieldProps = $props();
 
-  // Controlled vs uncontrolled is captured once at mount. Runtime flips are
-  // ignored — see the DEV warning in the controlled-sync effect below.
-  const initiallyControlled = value !== undefined;
+  // Mode is captured once at mount. Runtime mode switches are unsupported.
+  const isControlled = value !== undefined;
 
-  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl'] as const satisfies readonly ColorFieldFormat[];
+  type RgbaParts = { r: number; g: number; b: number; a: number };
 
-  const FORMAT_LABELS: Record<ColorFieldFormat, string> = {
-    hex: 'hex',
-    rgb: 'rgb()',
-    hsl: 'hsl()',
-  };
+  let visibleText = $state('');
+  let committedHex = $state('');
+  let committedRgba = $state<RgbaParts | null>(null);
+  let parseError = $state<string | null>(null);
+  let anchorInput: HTMLInputElement | null = $state(null);
+  // Plain (non-reactive) skip guard for the controlled-sync effect — matches
+  // color-picker's `lastEmittedHex`. Used to short-circuit reconciliation when
+  // the observed value equals the last value we already reconciled.
+  let lastReconciledValue = '';
+
+  function toHex2(n: number): string {
+    return Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, '0');
+  }
+
+  function normalizeHex(parts: RgbaParts, emitAlpha: boolean): string {
+    const base = `#${toHex2(parts.r)}${toHex2(parts.g)}${toHex2(parts.b)}`;
+    if (emitAlpha) return base + toHex2(parts.a * 255);
+    return base;
+  }
+
+  // Emit rule: emit `#rrggbbaa` only when `alpha === true` AND parsed `a < 1`.
+  function emitFor(parts: RgbaParts): string {
+    return normalizeHex(parts, alpha && parts.a < 1);
+  }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^rgba?\s*\([^)]*\)\s*$/i;
   const HSL_RE = /^hsla?\s*\([^)]*\)\s*$/i;
 
-  type Rgba = { r: number; g: number; b: number; a: number };
-
-  function clamp(n: number, min: number, max: number): number {
-    return Math.max(min, Math.min(max, n));
+  function passesFormatGate(text: string): boolean {
+    if (HEX_RE.test(text)) return formats.includes('hex');
+    if (RGB_RE.test(text)) return formats.includes('rgb');
+    if (HSL_RE.test(text)) return formats.includes('hsl');
+    return false;
   }
 
-  function toHex2(n: number): string {
-    return clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  function defaultErrorMessage(): string {
+    if (errorMessage !== undefined) return errorMessage;
+    const labels: Record<'hex' | 'rgb' | 'hsl', string> = {
+      hex: 'hex',
+      rgb: 'rgb()',
+      hsl: 'hsl()',
+    };
+    const accepted = formats.map((format) => labels[format]);
+    if (accepted.length === 0) return 'No color formats are accepted.';
+    if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
+    if (accepted.length === 2) return `Enter a valid ${accepted[0]} or ${accepted[1]} color.`;
+    return `Enter a valid ${accepted.slice(0, -1).join(', ')}, or ${accepted.at(-1)} color.`;
   }
 
-  function formatHexFromRgba(parsed: Rgba, withAlpha: boolean): string {
-    const base = `#${toHex2(parsed.r)}${toHex2(parsed.g)}${toHex2(parsed.b)}`;
-    if (withAlpha && parsed.a < 1) {
-      return base + toHex2(parsed.a * 255);
-    }
-    return base;
+  function seedFromParts(parts: RgbaParts): void {
+    committedRgba = parts;
+    committedHex = emitFor(parts);
+    visibleText = committedHex;
   }
 
-  function classify(trimmed: string): ColorFieldFormat | null {
-    if (HEX_RE.test(trimmed)) return 'hex';
-    if (RGB_RE.test(trimmed)) return 'rgb';
-    if (HSL_RE.test(trimmed)) return 'hsl';
-    return null;
+  function clearAll(): void {
+    committedRgba = null;
+    committedHex = '';
+    visibleText = '';
   }
 
-  function isFormatAllowed(
-    format: ColorFieldFormat,
-    accepted: readonly ColorFieldFormat[],
-  ): boolean {
-    return accepted.includes(format);
-  }
+  // ── Initialization ──────────────────────────────────────────────────────
 
-  type ParseResult = { ok: true; rgba: Rgba; hex: string } | { ok: false };
-
-  function tryParse(
-    raw: string,
-    currentAlpha: boolean,
-    accepted: readonly ColorFieldFormat[],
-  ): ParseResult {
-    const trimmed = raw.trim();
-    const shape = classify(trimmed);
-    if (shape === null) return { ok: false };
-    if (!isFormatAllowed(shape, accepted)) return { ok: false };
-    const parsed = parseColor(trimmed);
-    if (!parsed) return { ok: false };
-    return { ok: true, rgba: parsed, hex: formatHexFromRgba(parsed, currentAlpha).toLowerCase() };
-  }
-
-  let visibleText = $state('');
-  let committedHex = $state('');
-  let committedRgba = $state<Rgba | null>(null);
-  let parseError = $state<string | null>(null);
-
-  const acceptedFormats = $derived<readonly ColorFieldFormat[]>(formats ?? DEFAULT_FORMATS);
-
-  const defaultErrorMessage = $derived.by(() => {
-    const labels = acceptedFormats.map((f) => FORMAT_LABELS[f]);
-    if (labels.length === 1) return `Enter a valid ${labels[0]} color.`;
-    const head = labels.slice(0, -1).join(', ');
-    const tail = labels[labels.length - 1];
-    return `Enter a valid ${head}, or ${tail} color.`;
-  });
-  const resolvedErrorMessage = $derived(errorMessage ?? defaultErrorMessage);
-
-  if (initiallyControlled) {
+  if (isControlled) {
     if (value !== undefined && value !== '') {
-      const result = tryParse(value, alpha, acceptedFormats);
-      if (result.ok) {
-        visibleText = result.hex;
-        committedHex = result.hex;
-        committedRgba = result.rgba;
+      const trimmedInitial = value.trim();
+      if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
+        const parsed = parseColor(trimmedInitial);
+        if (parsed !== null) {
+          seedFromParts(parsed);
+          lastReconciledValue = value;
+        } else {
+          visibleText = value;
+          committedHex = '';
+          committedRgba = null;
+          parseError = defaultErrorMessage();
+        }
       } else {
+        // Externally-supplied value violates the `formats` gate — preserve the
+        // visible text verbatim and surface a parse error, matching the
+        // documented contract.
         visibleText = value;
         committedHex = '';
         committedRgba = null;
-        parseError = resolvedErrorMessage;
+        parseError = defaultErrorMessage();
       }
     }
   } else if (defaultValue !== undefined && defaultValue !== '') {
-    const result = tryParse(defaultValue, alpha, acceptedFormats);
-    if (result.ok) {
-      visibleText = result.hex;
-      committedHex = result.hex;
-      committedRgba = result.rgba;
+    const trimmedDefault = defaultValue.trim();
+    if (trimmedDefault !== '' && passesFormatGate(trimmedDefault)) {
+      const parsed = parseColor(trimmedDefault);
+      if (parsed !== null) {
+        seedFromParts(parsed);
+      }
     }
   }
 
+  // ── Controlled sync ─────────────────────────────────────────────────────
+
   function reconcileFromValue(next: string): void {
-    if (next === '') {
-      visibleText = '';
-      committedHex = '';
-      committedRgba = null;
+    const trimmed = next.trim();
+    if (trimmed === '') {
+      clearAll();
       parseError = null;
       return;
     }
-    const result = tryParse(next, alpha, acceptedFormats);
-    if (result.ok) {
-      visibleText = result.hex;
-      committedHex = result.hex;
-      committedRgba = result.rgba;
-      parseError = null;
-    } else {
+    if (!passesFormatGate(trimmed)) {
       visibleText = next;
       committedHex = '';
       committedRgba = null;
-      parseError = resolvedErrorMessage;
+      parseError = defaultErrorMessage();
+      return;
     }
+    const parsed = parseColor(trimmed);
+    if (parsed === null) {
+      visibleText = next;
+      committedHex = '';
+      committedRgba = null;
+      parseError = defaultErrorMessage();
+      return;
+    }
+    seedFromParts(parsed);
+    parseError = null;
   }
 
-  let didMount = false;
   $effect(() => {
-    if (!initiallyControlled) {
-      didMount = true;
-      return;
-    }
-    const next = value;
-    if (!didMount) {
-      didMount = true;
-      return;
-    }
-    if (next === undefined) {
+    if (!isControlled) return;
+    if (value === undefined) {
       if (DEV) {
         console.warn('[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)');
       }
       return;
     }
-    reconcileFromValue(next);
+    if (value === lastReconciledValue) return;
+    lastReconciledValue = value;
+    reconcileFromValue(value);
   });
 
-  let lastAlpha = alpha;
+  // ── alpha runtime changes ───────────────────────────────────────────────
+
+  // Re-derive `committedHex` and `visibleText` from `committedRgba` when the
+  // alpha mode toggles after mount. In controlled mode the parent's value is
+  // canonical — derive from there. Never emit `onchange` on a config change.
   $effect(() => {
-    const currentAlpha = alpha;
-    if (currentAlpha === lastAlpha) return;
-    lastAlpha = currentAlpha;
-    if (initiallyControlled) {
+    void alpha;
+    if (isControlled) {
+      // Controlled mode: re-run reconcile against the current controlled value
+      // so the `formats` gate and parse-error surfacing stay in effect.
       if (value !== undefined) reconcileFromValue(value);
       return;
     }
-    if (committedRgba) {
-      const hex = formatHexFromRgba(committedRgba, currentAlpha).toLowerCase();
-      committedHex = hex;
-      visibleText = hex;
-    }
+    // Uncontrolled mode: re-derive from preserved committedRgba.
+    if (committedRgba === null) return;
+    const nextHex = emitFor(committedRgba);
+    if (nextHex === committedHex) return;
+    committedHex = nextHex;
+    visibleText = nextHex;
   });
 
-  let lastFormatsKey = (formats ?? DEFAULT_FORMATS).join(',');
+  // Keep customValidity synchronized with parseError so that any state change
+  // — controlled sync, formats toggle, alpha toggle, blur, Enter — leaves the
+  // native input in a state that matches what the user sees.
   $effect(() => {
-    const key = (formats ?? DEFAULT_FORMATS).join(',');
-    if (key === lastFormatsKey) return;
-    lastFormatsKey = key;
-    if (parseError !== null && visibleText !== '') {
-      const result = tryParse(visibleText, alpha, formats ?? DEFAULT_FORMATS);
-      if (result.ok) parseError = null;
-    }
+    void parseError;
+    syncCustomValidity();
   });
 
-  let visibleInput: HTMLInputElement | undefined = $state();
-  let hiddenMirror: HTMLInputElement | undefined = $state();
+  // ── formats runtime changes — display-only validation ───────────────────
 
-  /**
-   * Synchronously mirror state onto the DOM so that native form behavior
-   * (Enter-key submit, form.requestSubmit, FormData read) sees the canonical
-   * values without waiting for Svelte's reactive flush. Called from every
-   * `commit()` branch and from the controlled-sync effect.
-   */
-  function syncDomFromState(): void {
-    if (visibleInput) visibleInput.setCustomValidity(parseError ?? '');
-    if (hiddenMirror) hiddenMirror.value = committedHex;
-  }
+  // A `formats` change only affects the input-time gate. It must never mutate
+  // committed state. If there's a current parse error, re-run the gate on the
+  // visible text and clear the error when the value now passes.
+  $effect(() => {
+    void formats;
+    if (parseError === null) return;
+    const text = visibleText.trim();
+    if (text === '') {
+      parseError = null;
+      return;
+    }
+    if (!passesFormatGate(text)) {
+      // Refresh the message so its wording reflects the new `formats` set,
+      // not the wording that was current when the error was first raised.
+      parseError = defaultErrorMessage();
+      return;
+    }
+    const parsed = parseColor(text);
+    if (parsed === null) {
+      parseError = defaultErrorMessage();
+      return;
+    }
+    parseError = null;
+  });
 
-  function commit(): void {
+  // ── Commit pipeline (blur + Enter) ──────────────────────────────────────
+
+  function runCommit(): { committed: boolean; emittedHex: string | null } {
     const trimmed = visibleText.trim();
 
     if (trimmed === '') {
-      if (committedHex !== '') {
-        const prev = committedHex;
-        visibleText = '';
-        committedHex = '';
-        committedRgba = null;
-        parseError = null;
-        syncDomFromState();
-        if (prev !== '') onchange?.('');
-      } else {
-        parseError = null;
-        syncDomFromState();
+      const hadCommitted = committedHex !== '';
+      const hadError = parseError !== null;
+      clearAll();
+      parseError = null;
+      if (hadCommitted) {
+        onchange?.('');
+        return { committed: true, emittedHex: '' };
       }
-      return;
+      return { committed: hadError, emittedHex: null };
     }
 
+    // Canonical-display bypass: typing the existing committed hex back in is a no-op.
     if (trimmed === committedHex) {
       visibleText = committedHex;
       parseError = null;
-      syncDomFromState();
-      return;
+      return { committed: false, emittedHex: null };
     }
 
-    const result = tryParse(trimmed, alpha, acceptedFormats);
-    if (!result.ok) {
-      parseError = resolvedErrorMessage;
-      syncDomFromState();
-      return;
+    if (!passesFormatGate(trimmed)) {
+      parseError = defaultErrorMessage();
+      return { committed: false, emittedHex: null };
     }
 
+    const parsed = parseColor(trimmed);
+    if (parsed === null) {
+      parseError = defaultErrorMessage();
+      return { committed: false, emittedHex: null };
+    }
+
+    const normalized = emitFor(parsed);
+    const previousHex = committedHex;
     parseError = null;
-    const prev = committedHex;
-    visibleText = result.hex;
+    visibleText = normalized;
 
-    if (initiallyControlled) {
-      if (result.hex !== prev) {
-        committedHex = result.hex;
-        committedRgba = result.rgba;
-        syncDomFromState();
-        onchange?.(result.hex);
-      } else {
-        syncDomFromState();
+    if (!isControlled) {
+      // Uncontrolled — always update all three slots so a later alpha toggle
+      // can reconstruct `#rrggbbaa` even if the strip-on-emit hid it.
+      committedRgba = parsed;
+      committedHex = normalized;
+      if (normalized !== previousHex) {
+        onchange?.(normalized);
+        return { committed: true, emittedHex: normalized };
       }
-    } else {
-      committedHex = result.hex;
-      committedRgba = result.rgba;
-      syncDomFromState();
-      if (result.hex !== prev) onchange?.(result.hex);
+      return { committed: true, emittedHex: null };
     }
+
+    // Controlled mode — only mutate committedRgba / committedHex when the
+    // emitted value actually changes. Parent authority is strict: alpha not
+    // present in `value` is not retained.
+    if (normalized !== previousHex) {
+      committedRgba = parsed;
+      committedHex = normalized;
+      onchange?.(normalized);
+      return { committed: true, emittedHex: normalized };
+    }
+    return { committed: false, emittedHex: null };
   }
 
-  // Belt-and-suspenders: a reactive effect keeps the native validity message
-  // in sync with `parseError` for state changes that don't flow through
-  // `commit()` (controlled-sync reconcile, alpha toggle, form reset).
-  $effect(() => {
-    if (!visibleInput) return;
-    visibleInput.setCustomValidity(parseError ?? '');
-  });
-
-  // Mirror committed hex onto the hidden mirror for the same reason.
-  $effect(() => {
-    if (!hiddenMirror) return;
-    hiddenMirror.value = committedHex;
-  });
-
-  function onFormReset(): void {
-    if (initiallyControlled) return;
-    if (defaultValue !== undefined && defaultValue !== '') {
-      const result = tryParse(defaultValue, alpha, acceptedFormats);
-      if (result.ok) {
-        visibleText = result.hex;
-        committedHex = result.hex;
-        committedRgba = result.rgba;
-        parseError = null;
-        return;
-      }
-    }
-    visibleText = '';
-    committedHex = '';
-    committedRgba = null;
-    parseError = null;
+  // Sync the parse-error state into the native input's customValidity so
+  // mouse/touch/programmatic submit paths participate in HTML form validation
+  // — the Enter handler's manual guard alone is not enough.
+  function syncCustomValidity(): void {
+    if (anchorInput === null) return;
+    // Walk to the wrapper and find the visible input by class. Avoids
+    // getElementById, which is unreliable when tests reuse ids across mounts.
+    const wrapper = anchorInput.closest('.cinder-color-field');
+    if (wrapper === null) return;
+    const nativeInput = wrapper.querySelector<HTMLInputElement>('input.cinder-input');
+    if (nativeInput === null) return;
+    nativeInput.setCustomValidity(parseError ?? '');
   }
 
-  const resetAttachment: Attachment<HTMLInputElement> = (input) => {
-    // v1 does not support moving the component across forms at runtime —
-    // see color-field.a11y.md. The form association is captured at mount.
-    const form = input.form;
-    if (!form) return;
-    form.addEventListener('reset', onFormReset);
-    return () => form.removeEventListener('reset', onFormReset);
-  };
+  function handleBlur(): void {
+    runCommit();
+    syncCustomValidity();
+  }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
-    // Always intercept Enter so that any pending state change (commit,
-    // clear, or parse failure) is flushed to the DOM via syncDomFromState
-    // BEFORE the browser's default submit fires. `setCustomValidity` and
-    // `hiddenMirror.value` are now correct against the typed text, so:
-    //   - invalid input: native form validation blocks submit
-    //   - cleared field: hidden mirror is '' (not stale)
-    //   - successful commit: we re-issue requestSubmit ourselves below
     event.preventDefault();
-    commit();
-    const committed = parseError === null && committedHex !== '';
-    if (!committed) return;
+    runCommit();
+    syncCustomValidity();
+
+    if (anchorInput !== null) {
+      // Imperatively sync the hidden mirror's DOM value so a synchronous
+      // requestSubmit sees the canonical hex (or the empty string after a
+      // clear) even before Svelte's reactive binding flushes.
+      anchorInput.value = committedHex;
+    }
+
+    // Submit when validation succeeded (no parse error), regardless of whether
+    // the canonical hex actually changed. A controlled field that receives the
+    // same normalized value should still let Enter submit the form.
+    if (parseError !== null) return;
     if (enterBehavior !== 'commit-then-submit') return;
-    const form = visibleInput?.form ?? null;
-    if (!form) return;
+
+    const form = anchorInput?.form ?? null;
+    if (form === null) return;
     const submitter = form.querySelector<HTMLButtonElement | HTMLInputElement>(
       'button:not([type]):not([disabled]), button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])',
     );
     form.requestSubmit(submitter ?? undefined);
   }
 
-  // Field-control wiring (mirrors what Input does, since we render the native input ourselves).
-  const context = getFormFieldContext();
-  const hasError = $derived(parseError !== null);
-  const ownDescriptionId = $derived(describeId(id, false));
-  const defaultErrorIdForField = $derived(buildErrorId(id, hasError));
-  const ownErrorId = $derived(
-    hasError && defaultErrorIdForField === context?.errorId
-      ? `${id}-color-field-error`
-      : defaultErrorIdForField,
-  );
-  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  // When both the field has a parse error AND the context owns a separate
-  // application-level error, contribute both ids so aria-describedby points
-  // at both messages. When the field has no error, only the context id flows
-  // through — referencing a non-existent id violates WCAG 1.3.1.
-  const contextErrorId = $derived(context?.errorId);
-  const fieldErrorId = $derived(hasError ? ownErrorId : undefined);
-  const describedBy = $derived(
-    composeDescribedBy(
-      resolvedDescriptionId,
-      contextErrorId,
-      fieldErrorId === contextErrorId ? undefined : fieldErrorId,
-    ),
-  );
-  const resolvedAriaInvalid = $derived(
-    hasError ? ariaInvalid(true) : (context?.invalid ?? ariaInvalid(false)),
-  );
-  const resolvedRequired = $derived(forwarded.required ?? context?.required ?? false);
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  // ── Form reset wiring ───────────────────────────────────────────────────
+
+  function onFormReset(): void {
+    if (isControlled) return;
+    parseError = null;
+    if (defaultValue === undefined || defaultValue === '') {
+      clearAll();
+      return;
+    }
+    const trimmedDefault = defaultValue.trim();
+    if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
+      clearAll();
+      return;
+    }
+    const parsed = parseColor(trimmedDefault);
+    if (parsed === null) {
+      clearAll();
+      return;
+    }
+    seedFromParts(parsed);
+  }
+
+  $effect(() => {
+    const input = anchorInput;
+    if (input === null) return;
+    const resolvedInput: HTMLInputElement = input;
+    let currentForm: HTMLFormElement | null = null;
+
+    function attach(): void {
+      const nextForm = resolvedInput.form;
+      if (nextForm === currentForm) return;
+      currentForm?.removeEventListener('reset', onFormReset);
+      currentForm = nextForm;
+      currentForm?.addEventListener('reset', onFormReset);
+    }
+
+    attach();
+    void tick().then(attach);
+
+    return () => {
+      currentForm?.removeEventListener('reset', onFormReset);
+    };
+  });
+
+  // ── Derived display state ───────────────────────────────────────────────
 
   const swatchEmpty = $derived(committedHex === '');
-  const swatchShowsAlpha = $derived(alpha && committedHex.length === 9);
+  const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
 </script>
+
+{#snippet swatch()}
+  <span
+    class="cinder-color-field__swatch"
+    data-cinder-empty={swatchEmpty ? '' : undefined}
+    data-cinder-alpha={alpha ? '' : undefined}
+    aria-hidden="true"
+    style="--cinder-color-field-swatch: {swatchColor};"
+  ></span>
+{/snippet}
 
 <div
   class={classNames('cinder-color-field', className)}
-  data-disabled={resolvedDisabled ? '' : undefined}
+  data-cinder-disabled={disabled ? '' : undefined}
 >
-  <div
-    class="cinder-input-group"
-    data-trailing=""
-    data-disabled={resolvedDisabled ? '' : undefined}
-    data-invalid={hasError ? '' : undefined}
-  >
-    <input
-      bind:this={visibleInput}
-      {id}
-      type="text"
-      class="cinder-input"
-      value={visibleText}
-      {@attach resetAttachment}
-      disabled={resolvedDisabled}
-      required={resolvedRequired}
-      {placeholder}
-      autocomplete={forwarded.autocomplete ?? 'off'}
-      autofocus={forwarded.autofocus}
-      inputmode={forwarded.inputmode}
-      readonly={forwarded.readonly}
-      aria-label={forwarded['aria-label']}
-      aria-labelledby={forwarded['aria-labelledby']}
-      aria-invalid={resolvedAriaInvalid}
-      aria-describedby={describedBy}
-      spellcheck={false}
-      oninput={(event) => {
-        visibleText = (event.currentTarget as HTMLInputElement).value;
-      }}
-      onblur={commit}
-      onkeydown={handleKeydown}
-    />
-    <span class="cinder-input-group__trailing cinder-_truncate" aria-hidden="true">
-      <span
-        class="cinder-color-field__swatch"
-        data-empty={swatchEmpty ? '' : undefined}
-        data-alpha={swatchShowsAlpha ? '' : undefined}
-        aria-hidden="true"
-        style="--cinder-color-field-swatch: {committedHex || 'transparent'};"
-      ></span>
-    </span>
-  </div>
+  <Input
+    {id}
+    bind:value={visibleText}
+    {disabled}
+    {required}
+    {readonly}
+    placeholder={placeholder ?? ''}
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledby}
+    error={parseError ?? ''}
+    onblur={handleBlur}
+    onkeydown={handleKeydown}
+    trailing={swatch}
+  />
 
-  <!-- Live region is rendered unconditionally so AT reliably announces text
-       inserted into it. `data-empty` collapses layout without removing the
-       element from the accessibility tree. -->
-  <p
-    id={ownErrorId}
-    class="cinder-color-field__error"
-    data-empty={hasError ? undefined : ''}
-    aria-live="polite"
-    aria-atomic="true"
-  >
-    {parseError ?? ''}
-  </p>
-
-  {#if name}
-    <input bind:this={hiddenMirror} type="hidden" {name} value={committedHex} />
-  {/if}
+  <input type="hidden" {name} value={committedHex} bind:this={anchorInput} aria-hidden="true" />
 </div>

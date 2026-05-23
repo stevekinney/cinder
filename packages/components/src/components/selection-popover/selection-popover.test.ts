@@ -71,4 +71,54 @@ describe('SelectionPopover', () => {
     await fireEvent.keyDown(toolbar, { key: 'Escape' });
     expect(canceled).toBe(true);
   });
+
+  test.each([
+    { label: 'Cmd+Enter', modifier: { metaKey: true } },
+    { label: 'Ctrl+Enter', modifier: { ctrlKey: true } },
+  ])('$label submits the comment and collapses the composer', async ({ modifier }) => {
+    const submitted: string[] = [];
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        oncommentsubmit: (body: string) => submitted.push(body),
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByPlaceholderText('Add a comment...');
+    await fireEvent.input(textarea, { target: { value: '  Looks good.  ' } });
+    await fireEvent.keyDown(textarea, { key: 'Enter', ...modifier });
+
+    expect(submitted).toEqual(['Looks good.']);
+    // The composer must be unmounted, not merely "trigger present alongside form".
+    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+  });
+
+  test('Escape from the focused textarea cancels the composer', async () => {
+    let canceled = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        oncancel: () => {
+          canceled = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByPlaceholderText('Add a comment...');
+    textarea.focus();
+    await fireEvent.keyDown(textarea, { key: 'Escape' });
+
+    expect(canceled).toBe(true);
+    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+  });
 });
