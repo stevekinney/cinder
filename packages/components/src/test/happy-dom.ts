@@ -14,6 +14,50 @@ type Global = typeof globalThis & Record<string, unknown>;
 
 let installed = false;
 
+/**
+ * Align happy-dom's `Element.prototype.remove()` with the DOM spec, which
+ * makes `ChildNode.remove()` a no-op when the node has already been removed
+ * from its parent. happy-dom currently routes the call through
+ * `parentNode.removeChild(this)` using a stale `parentNode` pointer, which
+ * throws when the parent's child-array no longer contains the node — Svelte
+ * 5's `flushSync` effect-teardown trips this during fixture unmount and the
+ * throw escapes through a Promise executor, surfacing as an "unhandled
+ * error between tests" in Bun. The patch ONLY narrows the spec divergence
+ * for `Element.prototype.remove`; it does NOT touch the explicit
+ * `Node.prototype.removeChild` API, so misuse of that API still throws.
+ *
+ * Reference: WHATWG DOM § ChildNode.remove() — "remove this from its parent
+ * (if any)".
+ */
+function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
+  const elementCtor = Reflect.get(happyWindow, 'Element') as unknown;
+  if (typeof elementCtor !== 'function') return;
+  const proto = Reflect.get(elementCtor, 'prototype') as Record<string, unknown> | undefined;
+  if (!proto) return;
+  const original = proto['remove'];
+  if (typeof original !== 'function') return;
+  type ElementRemove = (this: Element) => void;
+  const originalFn = original as ElementRemove;
+  proto['remove'] = function patchedRemove(this: Element): void {
+    const parent = this.parentNode;
+    if (parent === null) return;
+    // Spec: "remove this from its parent (if any)". If the parent has
+    // already forgotten this node, treat the call as a no-op rather than
+    // throwing — that's the spec-aligned outcome for `ChildNode.remove()`.
+    if (typeof parent.contains === 'function' && !parent.contains(this)) {
+      return;
+    }
+    try {
+      originalFn.call(this);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not a child of this node')) {
+        return;
+      }
+      throw error;
+    }
+  };
+}
+
 export function setupHappyDom(): void {
   if (installed) return;
   const happyWindow = new Window();
@@ -32,6 +76,8 @@ export function setupHappyDom(): void {
   // (happy-dom implements a subset). For test-globals purposes the subset is sufficient.
   // Using defineProperty sidesteps the lib.dom.d.ts `window` type on globalThis.
   Object.defineProperty(target, 'window', { value: happyWindow, configurable: true });
+
+  alignElementRemoveWithChildNodeSpec(happyWindow);
 
   installed = true;
 }

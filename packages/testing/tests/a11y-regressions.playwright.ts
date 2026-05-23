@@ -50,7 +50,7 @@ test.describe('a11y regressions', () => {
       },
       { include: rootSelector },
     );
-    expectNoViolations('section-heading', 'default', buckets);
+    expectNoViolations('section-heading', 'basic', buckets);
   });
 
   test('dropdown grouped example exposes labelled groups', async ({ componentPage }) => {
@@ -110,7 +110,7 @@ test.describe('a11y regressions', () => {
       },
       { include: rootSelector },
     );
-    expectNoViolations('color-picker', 'default', buckets);
+    expectNoViolations('color-picker', 'basic', buckets);
   });
 
   test('navigation-bar toggle is named by aria-label and hides its glyph', async ({
@@ -138,6 +138,6 @@ test.describe('a11y regressions', () => {
       },
       { include: rootSelector },
     );
-    expectNoViolations('navigation-bar', 'default', buckets);
+    expectNoViolations('navigation-bar', 'basic', buckets);
   });
 });
