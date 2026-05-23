@@ -1,0 +1,176 @@
+/* ========================================
+ * TAG INPUT
+ * ======================================== */
+
+.cinder-tag-input {
+  display: grid;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-tag-input__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: var(--cinder-space-2);
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  color: var(--cinder-text);
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-tag-input__control:hover:not([data-disabled]) {
+  border-color: var(--cinder-border-strong);
+}
+
+.cinder-tag-input__control:focus-within {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+      var(--_cinder-tag-input-ring, var(--cinder-ring-color));
+}
+
+@media (forced-colors: active) {
+  .cinder-tag-input__control:focus-within {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+.cinder-tag-input[data-invalid] .cinder-tag-input__control {
+  --_cinder-tag-input-ring: var(--cinder-danger);
+  border-color: var(--cinder-danger);
+}
+
+.cinder-tag-input[data-disabled] .cinder-tag-input__control {
+  background: var(--cinder-surface-inset);
+  border-color: var(--cinder-border-muted);
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+.cinder-tag-input__listbox {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cinder-tag-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1-5);
+  min-block-size: 1.75rem;
+  max-inline-size: 100%;
+  padding-inline: var(--cinder-space-2);
+  padding-block: var(--cinder-space-1);
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-full);
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text);
+  cursor: default;
+}
+
+.cinder-tag-input__chip:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+@media (forced-colors: active) {
+  .cinder-tag-input__chip:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
+.cinder-tag-input__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-snug);
+}
+
+.cinder-tag-input__remove {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1rem;
+  block-size: 1rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--cinder-radius-full);
+  background: transparent;
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+}
+
+.cinder-tag-input__remove::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  inline-size: 44px;
+  block-size: 44px;
+  transform: translate(-50%, -50%);
+}
+
+.cinder-tag-input__remove:hover:not(:disabled) {
+  color: var(--cinder-text);
+  background: color-mix(in oklch, var(--cinder-text), transparent 92%);
+}
+
+.cinder-tag-input__remove:focus-visible {
+  outline: none;
+}
+
+.cinder-tag-input__remove:disabled {
+  cursor: not-allowed;
+  color: var(--cinder-text-disabled);
+}
+
+.cinder-tag-input__input {
+  flex: 1 1 10rem;
+  min-inline-size: 8rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  line-height: var(--cinder-leading-normal);
+  color: inherit;
+}
+
+.cinder-tag-input__input::placeholder {
+  color: var(--cinder-text-subtle);
+}
+
+.cinder-tag-input__input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.cinder-tag-input__input:disabled {
+  cursor: not-allowed;
+}
+
+.cinder-tag-input__input:disabled::placeholder {
+  color: var(--cinder-text-disabled);
+}
+
+.cinder-tag-input__error {
+  margin: 0;
+  color: var(--cinder-danger);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-snug);
+}

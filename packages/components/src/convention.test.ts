@@ -37,6 +37,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'radio-group',
   'select',
   'table',
+  'tag-input',
   'tabs',
   'textarea',
   'toast-region',

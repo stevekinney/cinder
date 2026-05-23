@@ -392,6 +392,9 @@ export type { TableBodyProps } from './components/table-body/index.ts';
 export { default as TableCell } from './components/table-cell/index.ts';
 export type { TableCellProps } from './components/table-cell/index.ts';
 
+export { default as TagInput } from './components/tag-input/index.ts';
+export type { TagInputProps } from './components/tag-input/index.ts';
+
 export { default as TableHeader } from './components/table-header/index.ts';
 export type { TableHeaderProps } from './components/table-header/index.ts';
 

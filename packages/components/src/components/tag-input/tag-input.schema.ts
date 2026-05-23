@@ -1,0 +1,74 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    max: {
+      type: 'number',
+      description: 'Maximum number of tags allowed. Non-finite values disable the cap.',
+    },
+    id: {
+      type: 'string',
+      description:
+        'Stable id for the visible text input. Falls back to FormField context or a generated id.',
+    },
+    value: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      description: 'Controlled tags. When provided, the parent owns the tag array.',
+    },
+    defaultValue: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      description: 'Initial tags for uncontrolled usage. Ignored after mount.',
+    },
+    delimiter: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'object',
+        },
+      ],
+      description:
+        'Key that commits the current input into a tag. Enter always commits separately.',
+    },
+    allowDuplicates: {
+      type: 'boolean',
+      description: 'Allow the same trimmed tag value to appear more than once.',
+    },
+    disabled: {
+      type: 'boolean',
+      description: 'Disable the input and chip removal affordances.',
+    },
+    name: {
+      type: 'string',
+      description: 'Hidden input name used for native form submission.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class merged onto the root element.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'validate',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;
