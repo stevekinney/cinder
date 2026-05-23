@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =

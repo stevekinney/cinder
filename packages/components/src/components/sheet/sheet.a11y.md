@@ -58,8 +58,8 @@ Swipe-to-close gesture support is a stretch goal not implemented in the MVP. The
 
 ## Exit animation
 
-The slide-up animation plays on open. On close, the panel is removed from the DOM immediately rather than reversing — there is no exit animation in the MVP. This matches the pattern in `drawer.svelte` and is consistent with modern overlay libraries (Radix, shadcn). A coordinated exit-animation pass across both `drawer.svelte` and `sheet.svelte` is tracked as future work.
+The sheet now animates on both entry and exit. On close, the panel remains mounted with a transient closing state until its exit transition completes, and the native dialog backdrop fades during that same window before `dialog.close()` tears the overlay down.
 
 ## Reduced motion
 
-The slide-up animation is gated behind `@media (prefers-reduced-motion: no-preference)`. Under `prefers-reduced-motion: reduce`, a short opacity fade replaces the spatial slide. There is no looping animation. The panel never moves on the spatial axis under reduced motion.
+Open and close transitions are gated by `@media (prefers-reduced-motion: no-preference)`. Under `prefers-reduced-motion: reduce`, both the panel and native backdrop disable transitions and close immediately after the deterministic cleanup path runs.
