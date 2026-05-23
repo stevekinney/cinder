@@ -26,6 +26,7 @@
     tone = 'info',
     connectorAfter = 'visible',
     groupHeader,
+    groupHeaderLevel = 3,
     class: className,
     children,
     marker,
@@ -40,7 +41,9 @@
   data-cinder-connector-after={connectorAfter}
 >
   {#if groupHeader}
-    <div class="cinder-timeline__group-header">{groupHeader}</div>
+    <div class="cinder-timeline__group-header" role="heading" aria-level={groupHeaderLevel}>
+      {groupHeader}
+    </div>
   {/if}
   <div class="cinder-timeline-item__event">
     <span class="cinder-timeline-item__marker" aria-hidden="true" inert>

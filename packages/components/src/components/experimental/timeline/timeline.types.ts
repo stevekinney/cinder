@@ -5,6 +5,7 @@ export type TimelineOrientation = 'vertical' | 'horizontal';
 export type TimelineGroupBy = 'none' | 'day' | 'week';
 export type TimelineWeekStartsOn = 'sunday' | 'monday';
 export type TimelineTone = 'info' | 'success' | 'warning' | 'error';
+export type TimelineHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type TimelineEntry = {
   /** Stable id used as the keyed list identity. */
@@ -28,15 +29,23 @@ export type TimelineEntry = {
  * timestamp-first sequences. Timeline is not a live region; use Feed for
  * streaming activity that assistive technology should announce.
  */
-export type TimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class' | 'children'> & {
-  /** Timeline entries rendered in source order. */
+export type TimelineProps = Omit<
+  HTMLAttributes<HTMLOListElement>,
+  'class' | 'children' | 'role'
+> & {
+  /**
+   * Timeline entries rendered in source order.
+   * @schemaObject
+   */
   entries: TimelineEntry[];
   /** Layout orientation. @default "vertical" */
   orientation?: TimelineOrientation | undefined;
-  /** Optional adjacent grouping mode. @default "none" */
+  /** Optional adjacent UTC day/week grouping mode. @default "none" */
   groupBy?: TimelineGroupBy | undefined;
-  /** Week start used for week grouping. @default "monday" */
+  /** Week start used for UTC week grouping. @default "monday" */
   weekStartsOn?: TimelineWeekStartsOn | undefined;
+  /** Heading level applied to rendered group headers. @default 3 */
+  groupHeaderLevel?: TimelineHeadingLevel | undefined;
   /** Hide the following connector when adjacent valid timestamps exceed this gap. */
   gapThresholdMinutes?: number | undefined;
   /** Fallback accessible label used only when aria-label and aria-labelledby are absent. */
@@ -51,14 +60,19 @@ export type TimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class' | 'ch
 
 /** Schema generator surface for Timeline — excludes snippet props. */
 export interface TimelineSchemaProps {
-  /** Timeline entries rendered in source order. */
+  /**
+   * Timeline entries rendered in source order.
+   * @schemaObject
+   */
   entries: TimelineEntry[];
   /** Layout orientation. @default "vertical" */
   orientation?: TimelineOrientation | undefined;
-  /** Optional adjacent grouping mode. @default "none" */
+  /** Optional adjacent UTC day/week grouping mode. @default "none" */
   groupBy?: TimelineGroupBy | undefined;
-  /** Week start used for week grouping. @default "monday" */
+  /** Week start used for UTC week grouping. @default "monday" */
   weekStartsOn?: TimelineWeekStartsOn | undefined;
+  /** Heading level applied to rendered group headers. @default 3 */
+  groupHeaderLevel?: TimelineHeadingLevel | undefined;
   /** Hide the following connector when adjacent valid timestamps exceed this gap. */
   gapThresholdMinutes?: number | undefined;
   /** Fallback accessible label used only when aria-label and aria-labelledby are absent. */

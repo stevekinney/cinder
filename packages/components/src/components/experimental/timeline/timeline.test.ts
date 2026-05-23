@@ -58,6 +58,16 @@ describe('Timeline (experimental)', () => {
     ]);
   });
 
+  test('renders per-entry body content through the children snippet', () => {
+    const { container } = render(Wrapper, { items });
+    const bodies = Array.from(container.querySelectorAll('.cinder-timeline-item__body'));
+
+    expect(bodies.map((body) => body.textContent?.trim())).toEqual([
+      'Workflow started',
+      'Step ran',
+    ]);
+  });
+
   test('renders grouped headers inside event list items', () => {
     const { container } = render(Wrapper, {
       items: [items[0], { ...items[1], id: '2', datetime: '2026-05-24T10:05:00Z' }],
@@ -71,9 +81,34 @@ describe('Timeline (experimental)', () => {
     expect(directItems.length).toBe(2);
     expect(container.querySelectorAll('.cinder-timeline__group-header').length).toBe(2);
     expect(
+      Array.from(container.querySelectorAll('.cinder-timeline__group-header')).map((header) =>
+        header.textContent?.trim(),
+      ),
+    ).toEqual(['2026-05-23', '2026-05-24']);
+    expect(
       Array.from(container.querySelectorAll('ol.cinder-timeline > .cinder-timeline__group-header'))
         .length,
     ).toBe(0);
+  });
+
+  test('renders grouped headers as configurable headings inside event list items', () => {
+    const { container } = render(Wrapper, {
+      items: [{ ...items[0], groupLabel: 'Launch day' }, items[1]],
+      groupBy: 'day',
+      groupHeaderLevel: 2,
+    });
+
+    const heading = container.querySelector(
+      'li.cinder-timeline-item > .cinder-timeline__group-header',
+    );
+    expect(heading?.textContent?.trim()).toBe('Launch day');
+    expect(heading?.getAttribute('role')).toBe('heading');
+    expect(heading?.getAttribute('aria-level')).toBe('2');
+  });
+
+  test('filters role props to preserve ordered-list semantics', () => {
+    const { container } = render(Wrapper, { items, role: 'presentation' } as never);
+    expect(container.querySelector('ol.cinder-timeline')?.hasAttribute('role')).toBe(false);
   });
 
   test('sets horizontal orientation attribute', () => {
@@ -98,6 +133,17 @@ describe('Timeline (experimental)', () => {
     expect(lis[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
   });
 
+  test('breaks connectors at group boundaries even without a gap threshold', () => {
+    const { container } = render(Wrapper, {
+      items: [items[0], { ...items[1], datetime: '2026-05-24T10:05:00Z' }],
+      groupBy: 'day',
+    });
+    const lis = Array.from(container.querySelectorAll('li.cinder-timeline-item'));
+
+    expect(lis[0]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+    expect(lis[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
   test('timeline css contains horizontal flow and connector rules', async () => {
     const css = await Bun.file(new URL('./timeline.css', import.meta.url).pathname).text();
     const horizontalBlock = css.match(
@@ -116,9 +162,11 @@ describe('Timeline (experimental)', () => {
 
 describe('timeline grouping helpers', () => {
   test('accepts deterministic ISO inputs and rejects implementation-sensitive inputs', () => {
-    expect(typeof parseTimelineDatetime('2026-05-23')).toBe('number');
-    expect(typeof parseTimelineDatetime('2026-05-23T10:00Z')).toBe('number');
-    expect(typeof parseTimelineDatetime('2026-05-23T10:00:00-06:00')).toBe('number');
+    expect(parseTimelineDatetime('2026-05-23')).toBe(Date.parse('2026-05-23'));
+    expect(parseTimelineDatetime('2026-05-23T10:00Z')).toBe(Date.parse('2026-05-23T10:00Z'));
+    expect(parseTimelineDatetime('2026-05-23T10:00:00-06:00')).toBe(
+      Date.parse('2026-05-23T10:00:00-06:00'),
+    );
     expect(parseTimelineDatetime('2026/05/23')).toBeUndefined();
     expect(parseTimelineDatetime('2026-05-23T10:00')).toBeUndefined();
   });
@@ -153,6 +201,20 @@ describe('timeline grouping helpers', () => {
 
     expect(groups.map((group) => group.label)).toEqual(['2026-12-28']);
     expect(groups.length).toBe(1);
+  });
+
+  test('groups by UTC week with sunday starts across year boundaries', () => {
+    const groups = buildTimelineRenderPlan({
+      entries: [
+        { ...items[0], id: '1', datetime: '2027-01-01T12:00:00Z' },
+        { ...items[1], id: '2', datetime: '2027-01-03T12:00:00Z' },
+      ],
+      groupBy: 'week',
+      weekStartsOn: 'sunday',
+    });
+
+    expect(groups.map((group) => group.label)).toEqual(['2026-12-27', '2027-01-03']);
+    expect(groups.length).toBe(2);
   });
 
   test('uses unique keys for non-contiguous repeated groups and separated invalid groups', () => {

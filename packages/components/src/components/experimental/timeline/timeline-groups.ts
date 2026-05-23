@@ -87,6 +87,7 @@ function getConnectorAfter(
   gapThresholdMinutes: number | undefined,
 ): 'visible' | 'hidden' {
   if (next === undefined) return 'hidden';
+  if (next.groupKey !== current.groupKey) return 'hidden';
   if (gapThresholdMinutes === undefined) return 'visible';
   if (current.parsedTime === undefined || next.parsedTime === undefined) return 'visible';
 

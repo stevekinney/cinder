@@ -14,7 +14,15 @@
    * @avoidWhen Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta.
    * @related timeline-item, feed, steps
    */
-  export type { TimelineProps } from './timeline.types.ts';
+  export type {
+    TimelineEntry,
+    TimelineGroupBy,
+    TimelineHeadingLevel,
+    TimelineOrientation,
+    TimelineProps,
+    TimelineTone,
+    TimelineWeekStartsOn,
+  } from './timeline.types.ts';
 </script>
 
 <script lang="ts">
@@ -23,11 +31,14 @@
   import { buildTimelineRenderPlan } from './timeline-groups.ts';
   import type { TimelineProps } from './timeline.types.ts';
 
+  type TimelineInternalProps = TimelineProps & { role?: unknown };
+
   let {
     entries,
     orientation = 'vertical',
     groupBy = 'none',
     weekStartsOn = 'monday',
+    groupHeaderLevel = 3,
     gapThresholdMinutes,
     label,
     class: className,
@@ -37,7 +48,7 @@
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledby,
     ...rest
-  }: TimelineProps = $props();
+  }: TimelineInternalProps = $props();
 
   const renderGroups = $derived(
     buildTimelineRenderPlan({
@@ -75,6 +86,7 @@
         tone={entry.tone ?? 'info'}
         connectorAfter={renderEntry.connectorAfter}
         groupHeader={renderEntry.index === group.entries[0]?.index ? group.label : undefined}
+        {groupHeaderLevel}
         marker={customMarker ? markerContent : undefined}
       >
         {#if children}

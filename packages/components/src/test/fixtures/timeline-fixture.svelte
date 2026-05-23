@@ -13,6 +13,7 @@
     orientation?: 'vertical' | 'horizontal' | undefined;
     groupBy?: 'none' | 'day' | 'week' | undefined;
     weekStartsOn?: 'sunday' | 'monday' | undefined;
+    groupHeaderLevel?: 1 | 2 | 3 | 4 | 5 | 6 | undefined;
     gapThresholdMinutes?: number | undefined;
   };
 </script>
@@ -25,6 +26,7 @@
     orientation = 'vertical',
     groupBy = 'none',
     weekStartsOn = 'monday',
+    groupHeaderLevel,
     gapThresholdMinutes,
   }: TimelineFixtureProps = $props();
 </script>
@@ -41,10 +43,14 @@
   {orientation}
   {groupBy}
   {weekStartsOn}
+  {groupHeaderLevel}
   {gapThresholdMinutes}
 >
   {#snippet children(item)}
-    {item.title}
+    {@const body = items.find((sourceItem) => sourceItem.id === item.id)?.body}
+    {#if body}
+      {body}
+    {/if}
   {/snippet}
 
   {#snippet marker(item)}

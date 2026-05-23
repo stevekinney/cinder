@@ -29,7 +29,12 @@ const schema = {
     groupHeader: {
       type: 'string',
       description:
-        'Optional adjacent group header rendered inside this list item before the event body.',
+        'Optional adjacent group heading rendered inside this list item before the event body.',
+    },
+    groupHeaderLevel: {
+      enum: [1, 2, 3, 4, 5, 6],
+      description: 'Heading level applied when `groupHeader` is rendered.',
+      default: 3,
     },
     class: {
       type: 'string',

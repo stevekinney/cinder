@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { TimelineTone } from '../timeline/timeline.types.ts';
+import type { TimelineHeadingLevel, TimelineTone } from '../timeline/timeline.types.ts';
 
 /**
  * EXPERIMENTAL — TimelineItem API may change between minor versions.
@@ -20,8 +20,10 @@ export type TimelineItemProps = Omit<HTMLAttributes<HTMLLIElement>, 'class' | 'c
   tone?: TimelineTone | undefined;
   /** Whether to draw the connector to the following event. @default "visible" */
   connectorAfter?: 'visible' | 'hidden' | undefined;
-  /** Optional adjacent group header rendered inside this list item before the event body. */
+  /** Optional adjacent group heading rendered inside this list item before the event body. */
   groupHeader?: string | undefined;
+  /** Heading level applied when `groupHeader` is rendered. @default 3 */
+  groupHeaderLevel?: TimelineHeadingLevel | undefined;
   /** Additional class names merged with `.cinder-timeline-item`. */
   class?: string | undefined;
   /** Item body content. */
@@ -42,8 +44,10 @@ export interface TimelineItemSchemaProps {
   tone?: TimelineTone | undefined;
   /** Whether to draw the connector to the following event. @default "visible" */
   connectorAfter?: 'visible' | 'hidden' | undefined;
-  /** Optional adjacent group header rendered inside this list item before the event body. */
+  /** Optional adjacent group heading rendered inside this list item before the event body. */
   groupHeader?: string | undefined;
+  /** Heading level applied when `groupHeader` is rendered. @default 3 */
+  groupHeaderLevel?: TimelineHeadingLevel | undefined;
   /** Additional class names merged with `.cinder-timeline-item`. */
   class?: string | undefined;
 }

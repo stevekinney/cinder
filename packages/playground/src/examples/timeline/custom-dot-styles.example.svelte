@@ -33,7 +33,7 @@
 
 <Timeline {entries} label="Incident timeline">
   {#snippet marker(entry)}
-    {entry.tone === 'error' ? '!' : ''}
+    {entry.tone === 'success' ? '+' : entry.tone === 'warning' ? '!' : 'x'}
   {/snippet}
 
   {#snippet children(entry)}
