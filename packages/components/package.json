@@ -2044,6 +2044,27 @@
       "import": "./src/components/toggle/toggle.examples.json",
       "default": "./src/components/toggle/toggle.examples.json"
     },
+    "./toolbar": {
+      "types": "./dist/components/toolbar/index.d.ts",
+      "svelte": "./src/components/toolbar/index.ts",
+      "node": "./dist/server/components/toolbar/index.js",
+      "default": "./dist/components/toolbar/index.js"
+    },
+    "./toolbar/schema": {
+      "types": "./dist/components/toolbar/toolbar.schema.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.schema.ts"
+    },
+    "./toolbar/variables": {
+      "types": "./dist/components/toolbar/toolbar.variables.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.variables.ts"
+    },
+    "./toolbar/styles": {
+      "default": "./dist/components/toolbar/toolbar.css"
+    },
+    "./toolbar/examples": {
+      "import": "./src/components/toolbar/toolbar.examples.json",
+      "default": "./src/components/toolbar/toolbar.examples.json"
+    },
     "./tooltip": {
       "types": "./dist/components/tooltip/index.d.ts",
       "svelte": "./src/components/tooltip/index.ts",

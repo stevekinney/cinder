@@ -457,6 +457,14 @@ export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 
+export { default as Toolbar } from './components/toolbar/index.ts';
+export type {
+  ToolbarGroupProps,
+  ToolbarOrientation,
+  ToolbarProps,
+  ToolbarSpacerProps,
+} from './components/toolbar/index.ts';
+
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
 
