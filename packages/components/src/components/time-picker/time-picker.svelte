@@ -158,6 +158,9 @@
   $effect(() => {
     if (isFocused) return;
     editorValue = value;
+    if (internalError) {
+      clearInternalValidity();
+    }
   });
 
   $effect(() => {

@@ -28,6 +28,7 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { render, fireEvent } = await import('@testing-library/svelte/pure');
+const { tick } = await import('svelte');
 const { default: TimePicker } = await import('./time-picker.svelte');
 const { default: TimePickerFormFieldFixture } =
   await import('../../test/fixtures/time-picker-form-field-fixture.svelte');
@@ -75,6 +76,32 @@ describe('TimePicker', () => {
 
     expect(changedValue).toBe('09:30');
     expect(input.value).toBe('09:30');
+  });
+
+  test('invalid blur rollback clears internal validity state', async () => {
+    const { container, rerender } = render(TimePicker, {
+      id: 'appointment-time',
+      label: 'Appointment time',
+      value: '09:30',
+    });
+
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.focus(input);
+    input.value = '10:30';
+    await fireEvent.input(input);
+    await rerender({
+      id: 'appointment-time',
+      label: 'Appointment time',
+      value: '09:30',
+      max: '10:00',
+    });
+    await fireEvent.blur(input);
+    await tick();
+
+    expect(input.value).toBe('09:30');
+    expect(input.getAttribute('aria-invalid')).toBeNull();
+    expect(container.querySelector('.cinder-time-picker-field__error')).toBeNull();
+    expect(input.validationMessage).toBe('');
   });
 
   test('opens the popover from ArrowDown and moves focus through the hour list', async () => {
