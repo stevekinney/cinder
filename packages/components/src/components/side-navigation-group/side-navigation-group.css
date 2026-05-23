@@ -38,9 +38,11 @@
     background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-side-navigation-group__trigger:hover:not(:disabled) {
-  color: var(--cinder-text);
-  background-color: var(--cinder-surface-hover);
+@media (hover: hover) {
+  .cinder-side-navigation-group__trigger:hover:not(:disabled) {
+    color: var(--cinder-text);
+    background-color: var(--cinder-surface-hover);
+  }
 }
 
 .cinder-side-navigation-group__trigger:focus-visible {

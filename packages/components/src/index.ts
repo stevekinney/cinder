@@ -149,6 +149,9 @@ export type {
 export { default as DropdownItem } from './components/dropdown-item/index.ts';
 export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
 
+export { default as DropdownGroup } from './components/dropdown-group/index.ts';
+export type { DropdownGroupProps } from './components/dropdown-group/index.ts';
+
 export { default as DropdownLabel } from './components/dropdown-label/index.ts';
 export type { DropdownLabelProps } from './components/dropdown-label/index.ts';
 
@@ -169,6 +172,15 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event/i
 
 export { default as Feed } from './components/feed/index.ts';
 export type { FeedProps } from './components/feed/index.ts';
+
+export { default as FileUpload } from './components/file-upload/index.ts';
+export type {
+  FileUploadEntry,
+  FileUploadProps,
+  FileUploadRejectionReason,
+  FileUploadStatus,
+  RejectedFile,
+} from './components/file-upload/index.ts';
 
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldProps } from './components/form-field/index.ts';
