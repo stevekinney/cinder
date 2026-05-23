@@ -31,6 +31,22 @@ const schema = {
   },
   additionalProperties: false,
   required: ['panes'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onlayoutchange',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onlayoutcommit',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

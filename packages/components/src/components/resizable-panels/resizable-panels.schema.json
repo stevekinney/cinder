@@ -28,5 +28,21 @@
     }
   },
   "additionalProperties": false,
-  "required": ["panes"]
+  "required": ["panes"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onlayoutchange",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onlayoutcommit",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

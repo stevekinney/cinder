@@ -81,6 +81,14 @@
 }
 
 .cinder-resizable-panels__handle:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--cinder-color-focus-ring);
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-resizable-panels__handle:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
 }

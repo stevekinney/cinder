@@ -30,10 +30,6 @@ type PairAdjustmentOptions = {
   allowCollapsedTrailingMinimum?: boolean;
 };
 
-export type ApplyPairDeltaOptions = {
-  thresholdPixels: number;
-};
-
 export type CollapseResult = {
   state: ResizablePanelsLayoutState;
   changed: boolean;

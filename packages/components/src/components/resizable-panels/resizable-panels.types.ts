@@ -68,5 +68,8 @@ export interface ResizablePanelsSchemaProps {
   snapThreshold?: ResizablePanelSize;
   collapseOnDoubleClick?: boolean;
   collapseTarget?: ResizablePanelsCollapseTarget;
+  onlayoutchange?: (event: ResizablePanelsResizeEvent) => void;
+  onlayoutcommit?: (event: ResizablePanelsResizeEvent) => void;
+  children: Snippet<[pane: ResizablePanelDefinition, context: ResizablePanelRenderContext]>;
   class?: string;
 }
