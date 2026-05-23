@@ -15,7 +15,7 @@
   export const TREE_CONTEXT_KEY = Symbol('cinder-tree');
   export const TREE_ITEM_PARENT_KEY = Symbol('cinder-tree-item-parent');
 
-  export type { TreeProps, TreeSelectionMode } from './tree.types.ts';
+  export type { TreeProps, TreeSelectionBehavior, TreeSelectionMode } from './tree.types.ts';
 </script>
 
 <script lang="ts">
@@ -25,6 +25,13 @@
   import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
   import { TreeRegistry } from '../../_internal/tree-registry.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import {
+    deselectIds,
+    selectIds,
+    selectionStateFor,
+    toggleIndependentId,
+    toggleSelectionScope,
+  } from './tree-selection.ts';
 
   // ---------------------------------------------------------------------------
   // Props
@@ -32,12 +39,15 @@
 
   let {
     selectionMode = 'none',
+    checkboxSelection = false,
+    selectionBehavior = 'independent',
     selectedIds = $bindable([]),
     expandedIds = $bindable([]),
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     disableTypeahead = false,
     class: className,
+    selectionControls,
     children,
   }: TreeProps = $props();
 
@@ -143,6 +153,58 @@
     }
   }
 
+  function disabledIdsFor(ids: readonly string[]): Set<string> {
+    const disabledIds = new Set<string>();
+    for (const id of ids) {
+      if (registry.getNode(id)?.disabled) disabledIds.add(id);
+    }
+    return disabledIds;
+  }
+
+  function checkboxSelectionActive(): boolean {
+    return checkboxSelection && selectionMode === 'multiple';
+  }
+
+  function selectionTargetsFor(id: string): string[] {
+    const node = registry.getNode(id);
+    if (!node) return [];
+    const explicitScopeIds = node.selectionScopeIds?.();
+    if (explicitScopeIds) return [...explicitScopeIds];
+    return [id, ...registry.descendantsOf(id)];
+  }
+
+  function selectionTargetsForChildren(
+    parentId: string | null,
+    includeDescendants: boolean,
+  ): string[] {
+    const childIds = registry.childrenOf(parentId);
+    if (!includeDescendants) return childIds;
+
+    const targets: string[] = [];
+    for (const childId of childIds) {
+      targets.push(childId, ...selectionTargetsFor(childId).filter((id) => id !== childId));
+    }
+    return [...new Set(targets)];
+  }
+
+  function selectionStateForId(id: string) {
+    const targets = selectionTargetsFor(id);
+    return selectionStateFor(selectedIds, targets, disabledIdsFor(targets));
+  }
+
+  function applySelectionScope(
+    targets: readonly string[],
+    next: boolean | undefined = undefined,
+  ): void {
+    const disabledIds = disabledIdsFor(targets);
+    selectedIds =
+      next === true
+        ? selectIds(selectedIds, targets, disabledIds)
+        : next === false
+          ? deselectIds(selectedIds, targets)
+          : toggleSelectionScope(selectedIds, targets, disabledIds);
+  }
+
   function toggleSelectedInternal(id: string, event: KeyboardEvent | MouseEvent | null): void {
     const node = registry.getNode(id);
     if (!node || node.disabled) return;
@@ -175,14 +237,14 @@
       selectedIds = rangeIds;
     } else if (isMeta) {
       // Ctrl/Cmd toggles individual
-      selectedIds = selectedIds.includes(id)
-        ? selectedIds.filter((existing) => existing !== id)
-        : [...selectedIds, id];
+      selectedIds = toggleIndependentId(selectedIds, id);
       selectionAnchorId = id;
     } else {
-      selectedIds = selectedIds.includes(id)
-        ? selectedIds.filter((existing) => existing !== id)
-        : [...selectedIds, id];
+      if (selectionBehavior === 'cascade') {
+        applySelectionScope(selectionTargetsFor(id));
+      } else {
+        selectedIds = toggleIndependentId(selectedIds, id);
+      }
       selectionAnchorId = id;
     }
   }
@@ -205,6 +267,12 @@
   const context: TreeContext = {
     get selectionMode() {
       return selectionMode;
+    },
+    get selectionBehavior() {
+      return selectionBehavior;
+    },
+    get checkboxSelection() {
+      return checkboxSelection;
     },
     get multiselectable() {
       return selectionMode === 'multiple';
@@ -230,6 +298,25 @@
     isFocused(id) {
       return effectiveFocusedId === id;
     },
+    checkboxSelectionActive,
+    selectionStateFor: selectionStateForId,
+    toggleSelectionScope(id) {
+      if (selectionMode !== 'multiple') return;
+      const node = registry.getNode(id);
+      if (!node || node.disabled) return;
+      if (selectionBehavior === 'cascade') {
+        applySelectionScope(selectionTargetsFor(id));
+      } else {
+        selectedIds = toggleIndependentId(selectedIds, id, disabledIdsFor([id]));
+      }
+      selectionAnchorId = id;
+    },
+    selectSelectionScope(parentId, next, includeDescendants) {
+      if (selectionMode !== 'multiple') return;
+      applySelectionScope(selectionTargetsForChildren(parentId, includeDescendants), next);
+    },
+    selectionTargetsFor,
+    selectionTargetsForChildren,
     setExpanded: setExpandedInternal,
     toggleSelected: toggleSelectedInternal,
     register(node) {
@@ -309,13 +396,22 @@
   }
 </script>
 
-<div
-  role="tree"
-  class={classNames('cinder-tree', className)}
-  aria-label={ariaLabel}
-  aria-labelledby={ariaLabelledBy}
-  aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
-  onkeydown={handleKeydown}
->
-  {@render children()}
+<div class="cinder-tree-root">
+  {#if selectionControls}
+    <div class="cinder-tree__selection-controls">
+      {@render selectionControls()}
+    </div>
+  {/if}
+
+  <div
+    role="tree"
+    class={classNames('cinder-tree', className)}
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledBy}
+    aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
+    data-cinder-checkbox-selection={checkboxSelectionActive() ? '' : undefined}
+    onkeydown={handleKeydown}
+  >
+    {@render children()}
+  </div>
 </div>

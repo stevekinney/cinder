@@ -16,6 +16,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 - `aria-level={n}` — 1-based nesting depth. Direct children of the tree root are level 1; each nested group increments by one.
 - `aria-expanded="true|false"` — present **only on branch nodes** (those with `branch={true}` or a `loadChildren` prop). Intentionally omitted on leaf nodes. Setting this attribute on leaves is a known accessibility bug this component avoids.
 - `aria-selected="true|false"` — present on every item when `selectionMode` is `'single'` or `'multiple'`. Omitted entirely in `'none'` mode. Assistive technologies announce "selected" alongside the item name.
+- `aria-checked="true|false|mixed"` — present only when `checkboxSelection={true}` and `selectionMode="multiple"`. The treeitem owns the semantic checked state; the visual checkbox is hidden from assistive technologies.
 - `aria-busy="true"` — set on the `role="treeitem"` element of the actively-loading branch (not on the whole tree). Cleared when the async loader resolves or is cancelled.
 - `aria-disabled="true"` — present when `disabled={true}`. Per the Disabled Items section below, disabled items remain keyboard-reachable.
 - `aria-labelledby` — points at a visually-hidden label span generated from `label`. This keeps the treeitem's accessible name aligned with the typeahead key without requiring custom row snippets to hide their visible text.
@@ -43,6 +44,8 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 | Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `disableTypeahead`. |
 | `Shift+ArrowUp/Down`                    | Multi-select only: select the current anchor-to-current range, then move focus one item.                                                                                    |
 | `Ctrl/Cmd+A`                            | Multi-select only: select all currently visible, non-disabled items.                                                                                                        |
+
+In checkbox-selection mode, keyboard focus remains on the `role="treeitem"` element. The tree-generated checkbox is a visual indicator with `tabindex="-1"` and `aria-hidden="true"`, so it does not add a second tab stop inside the tree.
 
 ## Focus Management
 
@@ -73,6 +76,16 @@ This is a deliberate departure from the flat-widget `roving-tabindex.ts` helper,
 | `'multiple'` | `"true"`               | present; `true`/`false` | Toggles current id. `Shift` extends range. `Ctrl/Cmd` toggles individual. `Ctrl/Cmd+A` selects all visible. |
 
 `selectedIds` is always an array (length 0–1 in single mode, 0–N in multiple). Disabled items are never added.
+
+### Checkbox selection
+
+`checkboxSelection` is opt-in and only active with `selectionMode="multiple"`. In `none` or `single` mode, enabling it renders no tree-generated checkbox inputs and preserves the normal non-checkbox selection behavior.
+
+When active, default `TreeItem` rows render a native checkbox indicator. That input mirrors the resolved checked and indeterminate state, but it is not the accessibility owner. The outer treeitem exposes `aria-checked`, including `mixed` for partial selection. Custom `row` snippets receive `checkboxSelection`, `selectionState`, and `toggleSelection` so consumers can render their own checkbox without getting a duplicate tree-generated control.
+
+`selectionBehavior="independent"` keeps the existing flat toggle behavior: activating a branch toggles only that branch id. `selectionBehavior="cascade"` toggles the branch's selectable scope. By default, that scope is the registered descendant ids plus the current item id. Collapsed and async children are not registered while unmounted, so consumers that need full data-model cascade behavior should pass `selectionScopeIds` on the branch. Disabled registered ids are filtered out of cascade and select-all updates.
+
+`TreeSelectAll` provides explicit select-all and select-none actions for a tree level. It is rendered through `Tree`'s `selectionControls` snippet so the buttons sit outside the `role="tree"` element. `parentId={null}` targets root-level items; a string `parentId` targets direct registered children of that item. `includeDescendants` expands the target set through each child's selectable scope.
 
 ## Async Loading
 

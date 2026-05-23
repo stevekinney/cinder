@@ -11,6 +11,7 @@ export type TreeNodeRegistration = {
   node: HTMLElement;
   /** Getter so runtime prop changes stay in sync without re-registration. */
   readonly disabled: boolean;
+  selectionScopeIds?: () => readonly string[] | undefined;
   isBranch: () => boolean;
   label: () => string;
   /** DOM-focus the outer role="treeitem" element. */
@@ -101,6 +102,24 @@ export class TreeRegistry {
 
   firstChildOf(id: string): string | undefined {
     return this.#orderedChildren(id)[0];
+  }
+
+  childrenOf(parentId: string | null): string[] {
+    return this.#orderedChildren(parentId);
+  }
+
+  descendantsOf(parentId: string): string[] {
+    const result: string[] = [];
+
+    const visit = (id: string): void => {
+      for (const childId of this.#orderedChildren(id)) {
+        result.push(childId);
+        visit(childId);
+      }
+    };
+
+    visit(parentId);
+    return result;
   }
 
   siblingsOf(id: string): string[] {

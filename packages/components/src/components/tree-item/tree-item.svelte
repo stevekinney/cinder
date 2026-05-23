@@ -35,6 +35,7 @@
     branch = false,
     loadChildren,
     onLoadError,
+    selectionScopeIds,
     row,
     children,
     class: className,
@@ -78,6 +79,21 @@
   const isExpanded = $derived(context.expandedIds.includes(id));
   const isSelected = $derived(context.selectedIds.includes(id));
   const isFocused = $derived(context.focusedId === id);
+  const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
+  const selectionState = $derived(context.selectionStateFor(id));
+  const ariaChecked = $derived.by(() => {
+    if (!checkboxSelectionActive) return undefined;
+    if (selectionState.indeterminate) return 'mixed';
+    return selectionState.checked ? 'true' : 'false';
+  });
+
+  let checkboxElement: HTMLInputElement | undefined = $state();
+
+  $effect(() => {
+    if (checkboxElement) {
+      checkboxElement.indeterminate = selectionState.indeterminate && !selectionState.checked;
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Registration
@@ -99,6 +115,7 @@
         get disabled() {
           return disabled;
         },
+        selectionScopeIds: () => selectionScopeIds,
         isBranch: () => isBranch,
         label: () => label,
         focus: () => outerElement?.focus(),
@@ -312,6 +329,17 @@
       context.setExpanded(id, !isExpanded);
     }
   }
+
+  function handleCheckboxActivation(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    outerElement?.focus();
+    if (!disabled) context.toggleSelectionScope(id);
+  }
+
+  function toggleSelectionFromRow(): void {
+    if (!disabled) context.toggleSelectionScope(id);
+  }
 </script>
 
 <div
@@ -324,6 +352,7 @@
   aria-level={level}
   aria-expanded={isBranch ? isExpanded : undefined}
   aria-selected={context.selectionMode === 'none' ? undefined : isSelected}
+  aria-checked={ariaChecked}
   aria-busy={busy || undefined}
   aria-disabled={disabled || undefined}
   tabindex={isFocused ? 0 : -1}
@@ -338,7 +367,33 @@
   <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
     {#if row}
-      {@render row({ expanded: isExpanded, selected: isSelected, busy, level })}
+      {@render row({
+        expanded: isExpanded,
+        selected: isSelected,
+        busy,
+        level,
+        checkboxSelection: checkboxSelectionActive,
+        selectionState,
+        toggleSelection: toggleSelectionFromRow,
+      })}
+    {:else if checkboxSelectionActive}
+      <input
+        bind:this={checkboxElement}
+        type="checkbox"
+        class="cinder-tree-item__checkbox"
+        checked={selectionState.checked}
+        {disabled}
+        tabindex="-1"
+        aria-hidden="true"
+        onclick={handleCheckboxActivation}
+        onchange={handleCheckboxActivation}
+      />
+      <!--
+        aria-hidden prevents the visible default text from being announced
+        separately since the parent treeitem is labelled by the visually-hidden
+        label span above.
+      -->
+      <span aria-hidden="true">{label}</span>
     {:else}
       <!--
         aria-hidden prevents the visible default text from being announced

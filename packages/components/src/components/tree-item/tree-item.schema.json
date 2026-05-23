@@ -18,6 +18,13 @@
       "type": "boolean",
       "description": "Required to make a node behave as a branch. Without `branch` or `loadChildren`,\nthe node is a leaf regardless of any `children` snippet. The children snippet's\npresence is NOT sufficient — see tree.svelte plan for rationale."
     },
+    "selectionScopeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit selectable ids controlled by this item in cascade checkbox-selection mode."
+    },
     "class": {
       "type": "string",
       "description": "Additional CSS class merged with `.cinder-tree-item`."

@@ -3,6 +3,12 @@ import type { TreeNodeRegistration } from './tree-registry.svelte.ts';
 // Inline the selection mode type here to avoid a circular import with
 // tree.svelte (which imports TreeContext from this file).
 type TreeSelectionMode = 'none' | 'single' | 'multiple';
+type TreeSelectionBehavior = 'independent' | 'cascade';
+
+export type TreeItemSelectionState = {
+  checked: boolean;
+  indeterminate: boolean;
+};
 
 /**
  * Shape of the context object provided by Tree to all descendant TreeItems.
@@ -16,6 +22,8 @@ type TreeSelectionMode = 'none' | 'single' | 'multiple';
  */
 export type TreeContext = {
   readonly selectionMode: TreeSelectionMode;
+  readonly selectionBehavior: TreeSelectionBehavior;
+  readonly checkboxSelection: boolean;
   readonly multiselectable: boolean;
   readonly typeaheadEnabled: boolean;
   /** Reactive getter — reading inside $derived registers cross-component dependency. */
@@ -27,6 +35,15 @@ export type TreeContext = {
   isExpanded(id: string): boolean;
   isSelected(id: string): boolean;
   isFocused(id: string): boolean;
+  checkboxSelectionActive(): boolean;
+  selectionStateFor(id: string): TreeItemSelectionState;
+  toggleSelectionScope(id: string): void;
+  selectSelectionScope(parentId: string | null, next: boolean, includeDescendants: boolean): void;
+  selectionTargetsFor(id: string): readonly string[];
+  selectionTargetsForChildren(
+    parentId: string | null,
+    includeDescendants: boolean,
+  ): readonly string[];
   setExpanded(id: string, next: boolean): void;
   toggleSelected(id: string, event: KeyboardEvent | MouseEvent | null): void;
   register(node: TreeNodeRegistration): () => void;

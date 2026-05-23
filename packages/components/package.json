@@ -2142,6 +2142,10 @@
     "./tree/styles": {
       "default": "./dist/components/tree/tree.css"
     },
+    "./tree/examples": {
+      "import": "./src/components/tree/tree.examples.json",
+      "default": "./src/components/tree/tree.examples.json"
+    },
     "./tree-item": {
       "types": "./dist/components/tree-item/index.d.ts",
       "svelte": "./src/components/tree-item/index.ts",
@@ -2155,6 +2159,23 @@
     "./tree-item/variables": {
       "types": "./dist/components/tree-item/tree-item.variables.d.ts",
       "svelte": "./src/components/tree-item/tree-item.variables.ts"
+    },
+    "./tree-select-all": {
+      "types": "./dist/components/tree-select-all/index.d.ts",
+      "svelte": "./src/components/tree-select-all/index.ts",
+      "node": "./dist/server/components/tree-select-all/index.js",
+      "default": "./dist/components/tree-select-all/index.js"
+    },
+    "./tree-select-all/schema": {
+      "types": "./dist/components/tree-select-all/tree-select-all.schema.d.ts",
+      "svelte": "./src/components/tree-select-all/tree-select-all.schema.ts"
+    },
+    "./tree-select-all/variables": {
+      "types": "./dist/components/tree-select-all/tree-select-all.variables.d.ts",
+      "svelte": "./src/components/tree-select-all/tree-select-all.variables.ts"
+    },
+    "./tree-select-all/styles": {
+      "default": "./dist/components/tree-select-all/tree-select-all.css"
     },
     "./visually-hidden": {
       "types": "./dist/components/visually-hidden/index.d.ts",

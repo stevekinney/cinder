@@ -100,6 +100,7 @@
 @import '../components/toggle/toggle.css';
 @import '../components/tooltip/tooltip.css';
 @import '../components/tree/tree.css';
+@import '../components/tree-select-all/tree-select-all.css';
 
 /* INTERNAL — used by Alert and Banner dismiss buttons.
  * Provides hit-area + icon sizing + baseline interaction chrome.

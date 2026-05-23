@@ -8,6 +8,16 @@ const schema = {
       enum: ['none', 'single', 'multiple'],
       description: "Selection model. Default: 'none'.",
     },
+    checkboxSelection: {
+      type: 'boolean',
+      description:
+        'Render tree-owned checkbox indicators when selectionMode is multiple. Default: false.',
+    },
+    selectionBehavior: {
+      enum: ['independent', 'cascade'],
+      description:
+        "Select only the target item or cascade through its selectable scope. Default: 'independent'.",
+    },
     selectedIds: {
       type: 'array',
       items: {
@@ -44,6 +54,10 @@ const schema = {
     unsupportedProps: [
       {
         name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'selectionControls',
         reason: 'function-or-snippet',
       },
     ],

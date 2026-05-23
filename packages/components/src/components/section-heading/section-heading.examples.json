@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic section heading",
       "description": "A leveled section heading with description and actions, rendered without adding extra header landmarks.",
-      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { SectionHeading } from 'cinder/section-heading';\n</script>\n\n<SectionHeading title=\"Project overview\" description=\"Track the current milestone, recent activity, and next steps.\">\n  {#snippet actions()}\n    <Button size=\"sm\" variant=\"secondary\" label=\"Share\" />\n  {/snippet}\n</SectionHeading>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { SectionHeading } from 'cinder/section-heading';\n</script>\n\n<SectionHeading\n  title=\"Project overview\"\n  description=\"Track the current milestone, recent activity, and next steps.\"\n>\n  {#snippet actions()}\n    <Button size=\"sm\" variant=\"secondary\" label=\"Share\" />\n  {/snippet}\n</SectionHeading>\n"
     }
   ]
 }
