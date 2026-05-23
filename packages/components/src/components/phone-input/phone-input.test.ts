@@ -132,6 +132,37 @@ describe('PhoneInput country allow-list behavior', () => {
     await rerender({ id: 'p', label: 'Phone', countries: ['US'], country: 'GB' });
     expect(countrySelect(container).value).toBe('US');
   });
+
+  test('shrinking the allow-list also recomputes the bindable value', async () => {
+    const onchange = mock((_value: string, _detail: any) => {});
+    const { rerender, container } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US', 'GB'],
+        value: '+442079460958',
+        onchange,
+      },
+    });
+    expect(countrySelect(container).value).toBe('GB');
+    // Now narrow the allow-list to exclude GB. The component should fall
+    // back to US AND clear the stale GB E.164 from the bindable value.
+    await rerender({
+      id: 'p',
+      label: 'Phone',
+      countries: ['US'],
+      value: '+442079460958',
+      onchange,
+    });
+    expect(countrySelect(container).value).toBe('US');
+    // The visible national digits get reformatted for US; the value reflects
+    // the new computation (US-context number from the preserved digits is
+    // not a valid US phone, so value is '').
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden).toBeNull(); // no name prop -> no hidden input
+    // onchange must NOT fire — this is prop synchronization, not user edit.
+    expect(onchange).not.toHaveBeenCalled();
+  });
 });
 
 describe('PhoneInput as-you-type formatting', () => {

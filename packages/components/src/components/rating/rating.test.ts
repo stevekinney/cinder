@@ -222,6 +222,29 @@ describe('Rating readonly mode', () => {
     });
     expect(container.textContent).toContain('4 stars out of 5');
   });
+
+  test('readonly with a DOM label composes the label id with the value text id', () => {
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Quality', value: 4, readonly: true },
+    });
+    const region = container.querySelector('[role="img"]')!;
+    const labelledBy = region.getAttribute('aria-labelledby') ?? '';
+    expect(labelledBy).toContain('r-label');
+    expect(labelledBy).toContain('r-rating-value');
+    // No aria-label override when aria-labelledby is in play.
+    expect(region.getAttribute('aria-label')).toBeNull();
+    // The referenced value-text span exists with the readable rating.
+    expect(container.querySelector('#r-rating-value')?.textContent).toContain('4 stars out of 5');
+  });
+
+  test('readonly with only aria-label composes consumer label + value text', () => {
+    const { container } = render(Rating, {
+      props: { id: 'r', value: 4, readonly: true, 'aria-label': 'Average rating' },
+    });
+    const region = container.querySelector('[role="img"]')!;
+    expect(region.getAttribute('aria-labelledby')).toBeNull();
+    expect(region.getAttribute('aria-label')).toBe('Average rating: 4 stars out of 5');
+  });
 });
 
 describe('Rating error / required / disabled', () => {

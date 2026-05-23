@@ -147,6 +147,31 @@
     return `${resolvedValue} ${noun} out of ${normalizedCount}`;
   }
 
+  const readonlyValueTextId = $derived(`${id}-rating-value`);
+
+  /**
+   * Compose the readonly container's accessible-name reference. The value
+   * text MUST appear in the name — otherwise screen readers announce only
+   * the consumer's field label and lose the actual rating. When there is no
+   * DOM-backed label, fall back to `aria-label` so the value text still
+   * surfaces (the visually-hidden span exists as redundant context for AT
+   * stacks that ignore the role=img label).
+   */
+  const readonlyLabelledBy = $derived(
+    resolvedGroupLabelledBy
+      ? `${resolvedGroupLabelledBy} ${readonlyValueTextId}`
+      : ariaLabelledBy
+        ? `${ariaLabelledBy} ${readonlyValueTextId}`
+        : undefined,
+  );
+
+  const readonlyAriaLabel = $derived.by(() => {
+    if (readonlyLabelledBy) return undefined;
+    const consumerLabel = ariaLabel;
+    if (consumerLabel) return `${consumerLabel}: ${readableValueText()}`;
+    return readableValueText();
+  });
+
   function commit(next: number): void {
     const snapped = snapToOption(next);
     if (snapped !== resolvedValue) {
@@ -284,8 +309,8 @@
     <div
       class="cinder-rating cinder-rating--readonly"
       role="img"
-      aria-labelledby={resolvedGroupLabelledBy}
-      aria-label={groupAriaLabel ?? readableValueText()}
+      aria-labelledby={readonlyLabelledBy}
+      aria-label={readonlyAriaLabel}
       aria-describedby={describedBy}
     >
       {#each Array.from({ length: normalizedCount }, (_, i) => i + 1) as slot (slot)}
@@ -296,7 +321,7 @@
           ></span>
         </span>
       {/each}
-      <span class="cinder-sr-only">{readableValueText()}</span>
+      <span id={readonlyValueTextId} class="cinder-sr-only">{readableValueText()}</span>
     </div>
   {:else}
     <div

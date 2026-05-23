@@ -183,7 +183,11 @@
 
   /**
    * React when the allow-list itself changes — re-validate the selected
-   * country and reformat as needed.
+   * country, reformat the visible digits, AND recompute the bindable E.164
+   * `value`. Without the value recompute, the public API can diverge from
+   * the visible state (e.g. shrinking countries from ['US','GB'] to ['US']
+   * while `value` is `+442079460958` would keep the disallowed E.164 string
+   * on the prop). Prop synchronization — never fires `onchange`.
    */
   $effect(() => {
     if (allowedCountries === knownAllowList) return;
@@ -191,10 +195,16 @@
     if (!isAllowed(country)) {
       country = fallbackCountry();
       knownCountry = country;
-      if (nationalDisplay) {
-        const digits = digitsOnly(nationalDisplay);
-        nationalDisplay = formatNationalAsYouType(country, digits);
+      const digits = digitsOnly(nationalDisplay);
+      nationalDisplay = formatNationalAsYouType(country, digits);
+      const result = computeNationalResult(country, digits);
+      // Bring the bindable `value` back in line with the new selection.
+      // `''` when the preserved digits are not a valid number under the
+      // fallback country — consumers see a clean state, not stale E.164.
+      if (result.value !== value) {
+        value = result.value;
       }
+      knownValue = result.value;
     }
   });
 
