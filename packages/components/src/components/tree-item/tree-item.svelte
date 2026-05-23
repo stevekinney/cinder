@@ -279,17 +279,27 @@
 
       case 'Enter':
         event.preventDefault();
-        if (!disabled && !checkboxSelectionActive) {
-          context.toggleSelected(id, event);
+        if (checkboxSelectionActive) {
+          if (isBranch) {
+            context.setExpanded(id, !isExpanded);
+          } else if (!disabled) {
+            context.toggleSelectionScope(id);
+          }
+        } else {
+          if (!disabled) context.toggleSelected(id, event);
+          if (isBranch) context.setExpanded(id, !isExpanded);
         }
-        if (isBranch) context.setExpanded(id, !isExpanded);
         break;
 
       case ' ':
         event.preventDefault();
-        if (!disabled && !checkboxSelectionActive) {
-          context.toggleSelected(id, event);
-          // Space does NOT toggle expand on branches (per APG)
+        if (!disabled) {
+          if (checkboxSelectionActive) {
+            context.toggleSelectionScope(id);
+          } else {
+            context.toggleSelected(id, event);
+            // Space does NOT toggle expand on branches (per APG)
+          }
         }
         break;
 

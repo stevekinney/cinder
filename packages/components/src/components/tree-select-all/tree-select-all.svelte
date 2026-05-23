@@ -53,10 +53,22 @@
 
 <div class={classNames('cinder-tree-select-all', className)}>
   <span class="cinder-tree-select-all__label">{label}</span>
-  <button type="button" class="cinder-tree-select-all__button" {disabled} onclick={selectAll}>
+  <button
+    type="button"
+    class="cinder-tree-select-all__button"
+    aria-label={`${selectAllLabel}: ${label}`}
+    {disabled}
+    onclick={selectAll}
+  >
     {selectAllLabel}
   </button>
-  <button type="button" class="cinder-tree-select-all__button" {disabled} onclick={selectNone}>
+  <button
+    type="button"
+    class="cinder-tree-select-all__button"
+    aria-label={`${selectNoneLabel}: ${label}`}
+    {disabled}
+    onclick={selectNone}
+  >
     {selectNoneLabel}
   </button>
 </div>

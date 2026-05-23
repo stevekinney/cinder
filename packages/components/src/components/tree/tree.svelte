@@ -401,13 +401,25 @@
   }
 </script>
 
-<div class="cinder-tree-root">
-  {#if selectionControls}
+{#if selectionControls}
+  <div class="cinder-tree-root">
     <div class="cinder-tree__selection-controls">
       {@render selectionControls()}
     </div>
-  {/if}
 
+    <div
+      role="tree"
+      class={classNames('cinder-tree', className)}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
+      data-cinder-checkbox-selection={checkboxSelectionActive() ? '' : undefined}
+      onkeydown={handleKeydown}
+    >
+      {@render children()}
+    </div>
+  </div>
+{:else}
   <div
     role="tree"
     class={classNames('cinder-tree', className)}
@@ -419,4 +431,4 @@
   >
     {@render children()}
   </div>
-</div>
+{/if}

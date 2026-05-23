@@ -136,6 +136,14 @@ describe('Tree — structure and ARIA', () => {
     expect(container.querySelector('[role="tree"]')).not.toBeNull();
   });
 
+  test('tree remains the root element without selection controls', () => {
+    const { container } = render(Tree, {
+      props: { 'aria-label': 'Test tree', children: textSnippet('') },
+    });
+    expect(container.firstElementChild?.getAttribute('role')).toBe('tree');
+    expect(container.querySelector('.cinder-tree-root')).toBeNull();
+  });
+
   test('aria-multiselectable="true" only in multiple mode', () => {
     const { container: c1 } = render(Tree, {
       props: { 'aria-label': 'T', selectionMode: 'multiple', children: textSnippet('') },
@@ -1160,7 +1168,7 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['child']);
   });
 
-  test('row activation does not cascade selection in checkbox mode', async () => {
+  test('row click skips selection and Space toggles selection in checkbox mode', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {
       props: {
@@ -1191,7 +1199,44 @@ describe('Tree — selection', () => {
     await fireEvent.click(parent);
     expect(selectedIds).toEqual([]);
     await fireEvent.keyDown(parent, { key: ' ' });
+    expect(selectedIds).toEqual(['parent', 'child']);
+  });
+
+  test('Enter expands branches and toggles leaves in checkbox mode', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.keyDown(parent, { key: 'Enter' });
+    expect(parent.getAttribute('aria-expanded')).toBe('true');
     expect(selectedIds).toEqual([]);
+
+    await waitFor(() => expect(treeItem(container, 'Child')).not.toBeNull());
+    const child = treeItem(container, 'Child') as HTMLElement;
+    await fireEvent.keyDown(child, { key: 'Enter' });
+    expect(selectedIds).toEqual(['child']);
   });
 
   test('checkbox click does not expand or collapse branches', async () => {

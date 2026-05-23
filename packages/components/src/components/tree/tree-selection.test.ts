@@ -44,9 +44,9 @@ describe('tree selection helpers', () => {
     });
   });
 
-  test('all-disabled scope behaves as empty', () => {
+  test('disabled selected ids still contribute to display state', () => {
     expect(selectionStateFor(['a'], ['a'], new Set(['a']))).toEqual({
-      checked: false,
+      checked: true,
       indeterminate: false,
     });
   });

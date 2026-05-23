@@ -95,7 +95,9 @@ function formatType(prop: PropertySchema): string {
     return prop.anyOf.map(formatType).join(' \\| ');
   }
   if (prop.type === 'array' && prop.items) {
-    return `${formatType(prop.items)}[]`;
+    const itemType = formatType(prop.items);
+    const needsGrouping = itemType.includes(' \\| ');
+    return needsGrouping ? `readonly (${itemType})[]` : `readonly ${itemType}[]`;
   }
   if (prop.type) return '`' + prop.type + '`';
   return '`unknown`';

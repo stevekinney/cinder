@@ -15,7 +15,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 - `role="treeitem"` — each node in the tree.
 - `aria-level={n}` — 1-based nesting depth. Direct children of the tree root are level 1; each nested group increments by one.
 - `aria-expanded="true|false"` — present **only on branch nodes** (those with `branch={true}` or a `loadChildren` prop). Intentionally omitted on leaf nodes. Setting this attribute on leaves is a known accessibility bug this component avoids.
-- `aria-selected="true|false"` — present on every item when `selectionMode` is `'single'` or `'multiple'`. Omitted entirely in `'none'` mode. Assistive technologies announce "selected" alongside the item name.
+- `aria-selected="true|false"` — present on every item when `selectionMode` is `'single'` or `'multiple'`, except checkbox-selection mode where `aria-checked` owns the selection state. Omitted entirely in `'none'` mode. Assistive technologies announce "selected" alongside the item name.
 - `aria-checked="true|false|mixed"` — present only when `checkboxSelection={true}` and `selectionMode="multiple"`. The treeitem owns the semantic checked state; the visual checkbox is hidden from assistive technologies.
 - `aria-busy="true"` — set on the `role="treeitem"` element of the actively-loading branch (not on the whole tree). Cleared when the async loader resolves or is cancelled.
 - `aria-disabled="true"` — present when `disabled={true}`. Per the Disabled Items section below, disabled items remain keyboard-reachable.
@@ -27,23 +27,23 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 
 ## Keyboard Interactions
 
-| Key                                     | Behavior                                                                                                                                                                    |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ArrowDown`                             | Move focus to the next visible item. No wrap at the last item.                                                                                                              |
-| `ArrowUp`                               | Move focus to the previous visible item. No wrap at the first item.                                                                                                         |
-| `ArrowRight` (branch, collapsed)        | Expand the node. Focus stays on the branch.                                                                                                                                 |
-| `ArrowRight` (branch, expanded)         | Move focus to the first child.                                                                                                                                              |
-| `ArrowRight` (leaf)                     | No-op.                                                                                                                                                                      |
-| `ArrowLeft` (branch, expanded)          | Collapse the node. Focus stays on the branch.                                                                                                                               |
-| `ArrowLeft` (branch, collapsed or leaf) | Move focus to the parent node. No-op at root level.                                                                                                                         |
-| `Home`                                  | Move focus to the first visible item.                                                                                                                                       |
-| `End`                                   | Move focus to the last visible item.                                                                                                                                        |
-| `Enter`                                 | If `selectionMode !== 'none'`: toggle selection. If branch: also toggle expand.                                                                                             |
-| `Space`                                 | Toggle selection (same as `Enter` for selection only). Does **not** toggle expand on branches per APG guidance.                                                             |
-| `*` (asterisk)                          | Expand all sibling branches at the current level.                                                                                                                           |
-| Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `disableTypeahead`. |
-| `Shift+ArrowUp/Down`                    | Multi-select only: select the current anchor-to-current range, then move focus one item.                                                                                    |
-| `Ctrl/Cmd+A`                            | Multi-select only: select all currently visible, non-disabled items.                                                                                                        |
+| Key                                     | Behavior                                                                                                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ArrowDown`                             | Move focus to the next visible item. No wrap at the last item.                                                                                                                         |
+| `ArrowUp`                               | Move focus to the previous visible item. No wrap at the first item.                                                                                                                    |
+| `ArrowRight` (branch, collapsed)        | Expand the node. Focus stays on the branch.                                                                                                                                            |
+| `ArrowRight` (branch, expanded)         | Move focus to the first child.                                                                                                                                                         |
+| `ArrowRight` (leaf)                     | No-op.                                                                                                                                                                                 |
+| `ArrowLeft` (branch, expanded)          | Collapse the node. Focus stays on the branch.                                                                                                                                          |
+| `ArrowLeft` (branch, collapsed or leaf) | Move focus to the parent node. No-op at root level.                                                                                                                                    |
+| `Home`                                  | Move focus to the first visible item.                                                                                                                                                  |
+| `End`                                   | Move focus to the last visible item.                                                                                                                                                   |
+| `Enter`                                 | If `selectionMode !== 'none'`: toggle selection. If branch: also toggle expand. In checkbox-selection mode, branch `Enter` only toggles expand and leaf `Enter` toggles checked state. |
+| `Space`                                 | Toggle selection or checked state. Does **not** toggle expand on branches per APG guidance.                                                                                            |
+| `*` (asterisk)                          | Expand all sibling branches at the current level.                                                                                                                                      |
+| Printable character                     | Typeahead: focus the next visible item whose label starts with the buffered string (case-insensitive). Buffer resets after 500 ms. Disable per-tree via `disableTypeahead`.            |
+| `Shift+ArrowUp/Down`                    | Multi-select only: select the current anchor-to-current range, then move focus one item.                                                                                               |
+| `Ctrl/Cmd+A`                            | Multi-select only: select all currently visible, non-disabled items.                                                                                                                   |
 
 In checkbox-selection mode, keyboard focus remains on the `role="treeitem"` element. The tree-generated checkbox is a visual indicator with `tabindex="-1"` and `aria-hidden="true"`, so it does not add a second tab stop inside the tree.
 
