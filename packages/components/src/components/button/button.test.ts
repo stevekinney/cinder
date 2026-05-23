@@ -14,11 +14,22 @@ setupHappyDom();
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Button } = await import('./button.svelte');
 
+const originalConsoleWarn = console.warn;
+let captureWarningsForTest = false;
+
 // Without per-test cleanup the rendered tree from a previous test (in this file
 // or — when bun-test runs files in shared globals — a previous file) lingers
 // in document.body, and getByText/getByRole queries hit unrelated content.
+beforeEach(() => {
+  if (!captureWarningsForTest) {
+    console.warn = () => {};
+  }
+});
+
 afterEach(() => {
   cleanup();
+  console.warn = originalConsoleWarn;
+  captureWarningsForTest = false;
 });
 
 function readTokenSource(): string {
@@ -289,18 +300,13 @@ describe('Button ghost-danger disabled state', () => {
 
 describe('Button dev warnings', () => {
   let warnMessages: string[] = [];
-  let originalWarn: typeof console.warn;
 
   beforeEach(() => {
     warnMessages = [];
-    originalWarn = console.warn;
+    captureWarningsForTest = true;
     console.warn = (...args: unknown[]) => {
       warnMessages.push(args.join(' '));
     };
-  });
-
-  afterEach(() => {
-    console.warn = originalWarn;
   });
 
   test('iconOnly=true with aria-label: no iconOnly name warning', () => {
