@@ -7,9 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
-const { default: TrailingWrapper } = await import(
-  '../../test/fixtures/tabs-trailing-fixture.svelte'
-);
+const { default: TrailingWrapper } =
+  await import('../../test/fixtures/tabs-trailing-fixture.svelte');
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
@@ -96,7 +95,7 @@ describe('Tab trailing snippet', () => {
     expect(trailing?.textContent).toContain('3');
   });
 
-  test("accessible name excludes trailing content (aria-hidden subtree is omitted)", () => {
+  test('accessible name excludes trailing content (aria-hidden subtree is omitted)', () => {
     const { container } = render(TrailingWrapper, { value: 'inbox', trailingText: '3' });
     const tab = container.querySelector('[role="tab"][aria-selected="true"]') as HTMLElement;
     expect(tab).not.toBeNull();

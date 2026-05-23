@@ -28,6 +28,13 @@ function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
 
+export function parsePlaygroundListeningPort(output: string): number | null {
+  const match = output.match(/\[playground\] Listening at http:\/\/localhost:(\d+)/);
+  if (!match) return null;
+  const port = Number(match[1]);
+  return Number.isInteger(port) && port > 0 ? port : null;
+}
+
 async function readPlaygroundPortFile(path: string): Promise<number | null> {
   const file = Bun.file(path);
   if (!(await file.exists())) return null;
@@ -86,15 +93,19 @@ async function main(): Promise<void> {
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
-    serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
-      process.stdout.write(chunk);
-    });
 
     const startedAt = Date.now();
     const deadline = startedAt + 120_000;
     let lastLog = startedAt;
+    let reportedPlaygroundPort: number | null = null;
+    serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
+      process.stdout.write(chunk);
+      const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      reportedPlaygroundPort = parsePlaygroundListeningPort(output) ?? reportedPlaygroundPort;
+    });
     while (Date.now() < deadline) {
-      const selectedPort = await readPlaygroundPortFile(playgroundPortFile);
+      const selectedPort =
+        (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
       if (selectedPort !== null) {
         targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
         if (await ping()) break;
@@ -189,7 +200,9 @@ async function main(): Promise<void> {
   process.exit(playwrightCode);
 }
 
-main().catch((error: unknown) => {
-  console.error('start-server failed:', error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('start-server failed:', error);
+    process.exit(1);
+  });
+}
