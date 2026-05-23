@@ -1,35 +1,24 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import type { ComponentProps } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ColorFieldProps } from './color-field.types.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
-const { default: ColorFieldFormFieldFixture } =
-  await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 const { default: ColorFieldFormFixture } =
   await import('../../test/fixtures/color-field-form-fixture.svelte');
-
-type ColorFieldComponentProps = ColorFieldProps;
+const { default: ColorFieldFormFieldFixture } =
+  await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
-  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
-  // the still-attached DOM it expects. Removing wrapper forms before
-  // cleanup() detaches the parent under the unmount, and happy-dom throws
-  // a detached-child DOMException through flushSync's Promise wrapper
-  // (which surfaces as an "unhandled error between tests" in Bun).
-  cleanup();
-  document.querySelectorAll('body > form').forEach((form) => {
-    try {
-      form.remove();
-    } catch {
-      // ignore detached-node errors
-    }
-  });
+  // Rendering the fixture into the default container avoids the happy-dom
+  // detached-child teardown failure that showed up when these tests mounted
+  // standalone forms under document.body.
+  document.body.replaceChildren();
 });
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
@@ -42,47 +31,22 @@ function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
   return q<HTMLInputElement>(container, `#${id}`);
 }
 
+function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
+  const result = render(ColorFieldFormFixture, { props });
+  const form = result.container.querySelector('form');
+  if (!(form instanceof HTMLElement)) {
+    throw new Error('ColorField form fixture did not render a <form> element.');
+  }
+  return {
+    ...result,
+    container: form,
+  };
+}
+
 async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
   await fireEvent.input(input, { target: { value: text } });
   await fireEvent.blur(input);
   await tick();
-}
-
-function renderColorFieldInForm(
-  componentProps: ColorFieldComponentProps,
-  options: {
-    includeSubmitButton?: boolean;
-    onsubmit?: (event: SubmitEvent) => void;
-  } = {},
-): {
-  container: HTMLDivElement;
-  form: HTMLFormElement;
-  rerender: (props: ColorFieldComponentProps) => Promise<void>;
-} {
-  const form = document.createElement('form');
-  document.body.appendChild(form);
-  if (options.onsubmit) {
-    form.addEventListener('submit', options.onsubmit as EventListener);
-  }
-  const mount = document.createElement('div');
-  form.appendChild(mount);
-  if (options.includeSubmitButton ?? true) {
-    const button = document.createElement('button');
-    button.type = 'submit';
-    button.textContent = 'Save';
-    form.appendChild(button);
-  }
-  const view = render(ColorField, {
-    target: mount,
-    props: componentProps,
-  });
-  return {
-    container: mount,
-    form,
-    rerender: async (props: ColorFieldComponentProps) => {
-      await view.rerender(props);
-    },
-  };
 }
 
 describe('ColorField — parse round-trips', () => {
@@ -217,17 +181,13 @@ describe('ColorField — Enter behavior', () => {
   test('default commit-then-submit fires onchange and submits via requestSubmit', async () => {
     const onchange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
-    const { container } = renderColorFieldInForm(
-      {
-        id: 'color',
-        name: 'c',
-        enterBehavior: 'commit-then-submit',
-        onchange,
-      },
-      {
-        onsubmit,
-      },
-    );
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
+    });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#ff0000' } });
     const event = await fireEvent.keyDown(input, { key: 'Enter' });
@@ -242,17 +202,13 @@ describe('ColorField — Enter behavior', () => {
   test('commit-only commits but does NOT submit', async () => {
     const onchange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
-    const { container } = renderColorFieldInForm(
-      {
-        id: 'color',
-        name: 'c',
-        enterBehavior: 'commit-only',
-        onchange,
-      },
-      {
-        onsubmit,
-      },
-    );
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-only',
+      onchange,
+      onsubmit,
+    });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#00ff00' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -264,17 +220,13 @@ describe('ColorField — Enter behavior', () => {
   test('invalid + Enter raises error, does NOT submit', async () => {
     const onchange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
-    const { container } = renderColorFieldInForm(
-      {
-        id: 'color',
-        name: 'c',
-        enterBehavior: 'commit-then-submit',
-        onchange,
-      },
-      {
-        onsubmit,
-      },
-    );
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
+    });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: 'nope' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -287,16 +239,12 @@ describe('ColorField — Enter behavior', () => {
   test('no-name case: Enter still submits with no color in FormData', async () => {
     const onchange = mock<(value: string) => void>(() => {});
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
-    const { container } = renderColorFieldInForm(
-      {
-        id: 'color',
-        enterBehavior: 'commit-then-submit',
-        onchange,
-      },
-      {
-        onsubmit,
-      },
-    );
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
+    });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#abcdef' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -341,7 +289,7 @@ describe('ColorField — blur idempotence', () => {
 describe('ColorField — form reset', () => {
   test('uncontrolled: reset reverts to defaultValue without firing onchange', async () => {
     const onchange = mock<(value: string) => void>(() => {});
-    const { container, form } = renderColorFieldInForm({
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#abcdef',
@@ -351,6 +299,7 @@ describe('ColorField — form reset', () => {
     await typeAndBlur(input, '#ff0000');
     expect(input.value).toBe('#ff0000');
     expect(onchange).toHaveBeenCalledTimes(1);
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#abcdef');
@@ -358,7 +307,7 @@ describe('ColorField — form reset', () => {
   });
 
   test('uncontrolled with alpha-bearing default: alpha=true reconstructs after reset', async () => {
-    const { container, form, rerender } = renderColorFieldInForm({
+    const { container, rerender } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#ff000080',
@@ -367,6 +316,7 @@ describe('ColorField — form reset', () => {
     const input = getInput(container);
     expect(input.value).toBe('#ff0000');
     await typeAndBlur(input, '#00ff00');
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#ff0000');
@@ -521,12 +471,13 @@ describe('ColorField — composition + DOM contract', () => {
 
   test('reset on a mounted form runs once and survives a follow-up dispatch', async () => {
     const onchange = mock<(value: string) => void>(() => {});
-    const { container, form } = renderColorFieldInForm({
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#abcdef',
       onchange,
     });
+    const form = container;
     const input = getInput(container);
     await typeAndBlur(input, '#000000');
     expect(input.value).toBe('#000000');
@@ -635,17 +586,13 @@ describe('ColorField — controlled reconcile trims whitespace', () => {
 describe('ColorField — Enter in controlled mode with equivalent syntax', () => {
   test('controlled value + user typing equivalent syntax + Enter still submits', async () => {
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
-    const { container } = renderColorFieldInForm(
-      {
-        id: 'color',
-        name: 'c',
-        value: '#ff0000',
-        enterBehavior: 'commit-then-submit',
-      },
-      {
-        onsubmit,
-      },
-    );
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      value: '#ff0000',
+      enterBehavior: 'commit-then-submit',
+      onsubmit,
+    });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: 'rgb(255,0,0)' } });
     await fireEvent.keyDown(input, { key: 'Enter' });

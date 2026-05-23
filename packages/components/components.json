@@ -1561,6 +1561,32 @@
       }
     },
     {
+      "name": "MenuBar",
+      "id": "menu-bar",
+      "import": "cinder/menu-bar",
+      "exportName": "MenuBar",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Command menubar for application chrome such as File, Edit, and View menus.",
+      "tags": ["navigation", "menu", "chrome"],
+      "useWhen": [
+        "Building a desktop-style command menubar with dropdown command groups.",
+        "Exposing top-level application menus that need arrow-key traversal and optional submenus."
+      ],
+      "avoidWhen": [
+        "Linking between routes or sections — use navigation-bar or side-navigation instead.",
+        "Showing one standalone trigger with a menu — use dropdown, dropdown-menu, and dropdown-item directly."
+      ],
+      "related": ["navigation-bar", "dropdown", "dropdown-menu", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/menu-bar/schema",
+        "variables": "cinder/menu-bar/variables",
+        "examples": "cinder/menu-bar/examples"
+      }
+    },
+    {
       "name": "Message",
       "id": "message",
       "import": "cinder/experimental/message",
@@ -2816,11 +2842,11 @@
       "exportName": "Timeline",
       "category": "data-display",
       "status": "alpha",
-      "purpose": "Vertical event-rail container that renders timeline-item children along a shared axis for workflow, audit, or run histories.",
+      "purpose": "Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.",
       "tags": ["timeline", "history", "events"],
       "useWhen": [
-        "Visualizing an ordered sequence of events with consistent marker and content layout along a vertical rail.",
-        "Displaying workflow steps, audit logs, or run histories where each entry needs a status-colored marker."
+        "Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.",
+        "Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks."
       ],
       "avoidWhen": [
         "Surfacing a real-time social or activity stream — feed is the higher-affordance composition.",
@@ -2829,10 +2855,11 @@
       ],
       "related": ["timeline-item", "feed", "steps"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/experimental/timeline/schema",
-        "variables": "cinder/experimental/timeline/variables"
+        "variables": "cinder/experimental/timeline/variables",
+        "examples": "cinder/experimental/timeline/examples"
       }
     },
     {
@@ -2842,11 +2869,11 @@
       "exportName": "TimelineItem",
       "category": "data-display",
       "status": "alpha",
-      "purpose": "Single entry inside a timeline rail with a status-colored marker, optional title and timestamp header, and a body slot.",
+      "purpose": "Single event inside a timeline rail with a decorative tone marker, timestamp-first header, optional group header, and body content.",
       "tags": ["timeline", "event"],
       "useWhen": [
-        "Rendering one event along a timeline rail with consistent marker, header, and body structure.",
-        "Coloring marker semantics by status (info, success, warning, danger) to communicate severity at a glance."
+        "Rendering one event along a timeline rail with consistent marker, header, connector, and body structure.",
+        "Coloring decorative markers by tone (info, success, warning, error) while keeping the meaningful status in title or content."
       ],
       "avoidWhen": [
         "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better.",

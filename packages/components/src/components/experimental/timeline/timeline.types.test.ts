@@ -1,12 +1,20 @@
 import { expect, test } from 'bun:test';
 import type { ComponentProps, Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
 
 import Timeline from './timeline.svelte';
-import type { TimelineProps } from './timeline.types.ts';
+import type { TimelineEntry, TimelineProps } from './timeline.types.ts';
 
-type SnapshotTimelineProps = {
-  class?: string;
-  children: Snippet;
+type SnapshotTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class' | 'children'> & {
+  entries: TimelineEntry[];
+  orientation?: 'vertical' | 'horizontal' | undefined;
+  groupBy?: 'none' | 'day' | 'week' | undefined;
+  weekStartsOn?: 'sunday' | 'monday' | undefined;
+  gapThresholdMinutes?: number | undefined;
+  label?: string | undefined;
+  class?: string | undefined;
+  children?: Snippet<[TimelineEntry]> | undefined;
+  marker?: Snippet<[TimelineEntry]> | undefined;
 };
 
 type Assignable<A, B> = A extends B ? true : false;
@@ -18,7 +26,7 @@ const componentAcceptsSnapshot: Assignable<
   ComponentProps<typeof Timeline>
 > = true;
 
-test('Timeline public prop surface unchanged after migration', () => {
+test('Timeline public prop surface matches entry-driven API snapshot', () => {
   expect(aliasForward).toBe(true);
   expect(aliasBackward).toBe(true);
   expect(componentAcceptsSnapshot).toBe(true);

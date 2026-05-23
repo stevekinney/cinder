@@ -11,6 +11,29 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
 const TOKENS_DIR = join(import.meta.dir, 'tokens');
+const TOKENS_BASE_PATH = join(import.meta.dir, 'tokens-base.css');
+
+function extractRootBlock(css: string): string {
+  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
+
+  if (!rootMatch?.[1]) {
+    throw new Error('Could not find :root { ... } block in tokens-base.css');
+  }
+
+  return rootMatch[1];
+}
+
+function extractReducedMotionRootBlock(css: string): string {
+  const reducedMotionMatch = css.match(
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{([\s\S]*?)\n\s*\}\s*\}/m,
+  );
+
+  if (!reducedMotionMatch?.[1]) {
+    throw new Error('Could not find reduced-motion :root block in tokens-base.css');
+  }
+
+  return reducedMotionMatch[1];
+}
 
 describe('token naming conventions', () => {
   test('per-component token files follow --cinder-<name>-* naming', async () => {
@@ -49,5 +72,25 @@ describe('token naming conventions', () => {
     }
 
     expect(errors).toEqual([]);
+  });
+});
+
+describe('global motion tokens', () => {
+  test('tokens-base.css declares dedicated repeating animation duration tokens', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf-8');
+    const rootBlock = extractRootBlock(css);
+
+    expect(rootBlock).toContain('--cinder-duration-spin: 750ms;');
+    expect(rootBlock).toContain('--cinder-duration-progress-bar-indeterminate: 1.6s;');
+    expect(rootBlock).toContain('--cinder-duration-progress-ring-spin: 1.4s;');
+  });
+
+  test('repeating animation duration tokens collapse to 0ms under prefers-reduced-motion', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf-8');
+    const reducedMotionRootBlock = extractReducedMotionRootBlock(css);
+
+    expect(reducedMotionRootBlock).toContain('--cinder-duration-spin: 0ms;');
+    expect(reducedMotionRootBlock).toContain('--cinder-duration-progress-bar-indeterminate: 0ms;');
+    expect(reducedMotionRootBlock).toContain('--cinder-duration-progress-ring-spin: 0ms;');
   });
 });
