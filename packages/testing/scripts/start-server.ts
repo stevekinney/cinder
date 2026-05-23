@@ -28,20 +28,12 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
   }
 }
 
-export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
-  return port === null ? null : localPlaygroundUrlForPort(port);
-}
-
 function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
 
-async function readPlaygroundPortFile(path: string): Promise<number | null> {
-  const file = Bun.file(path);
-  if (!(await file.exists())) return null;
-  const text = await file.text();
-  const port = Number(text.trim());
-  return Number.isInteger(port) && port > 0 ? port : null;
+export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
+  return port === null ? null : localPlaygroundUrlForPort(port);
 }
 
 export function parsePlaygroundListeningPort(output: string): number | null {
@@ -49,6 +41,14 @@ export function parsePlaygroundListeningPort(output: string): number | null {
   const match = matches.at(-1);
   if (!match) return null;
   const port = Number(match[1]);
+  return Number.isInteger(port) && port > 0 ? port : null;
+}
+
+async function readPlaygroundPortFile(path: string): Promise<number | null> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) return null;
+  const text = await file.text();
+  const port = Number(text.trim());
   return Number.isInteger(port) && port > 0 ? port : null;
 }
 
@@ -95,7 +95,6 @@ async function main(): Promise<void> {
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
-    let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
@@ -104,6 +103,10 @@ async function main(): Promise<void> {
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
 
+    const startedAt = Date.now();
+    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
+    let lastLog = startedAt;
+    let reportedPlaygroundPort: number | null = null;
     let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
@@ -116,9 +119,6 @@ async function main(): Promise<void> {
       }
     });
 
-    const startedAt = Date.now();
-    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
-    let lastLog = startedAt;
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;

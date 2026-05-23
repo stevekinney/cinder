@@ -226,6 +226,19 @@ export type {
   ToolbarContext,
 } from './components/markdown-editor/index.ts';
 
+export { default as MenuBar } from './components/menu-bar/index.ts';
+export type {
+  MenuBarEntry,
+  MenuBarItem,
+  MenuBarItemVariant,
+  MenuBarLabel,
+  MenuBarMenu,
+  MenuBarProps,
+  MenuBarSeparator,
+  MenuBarSubmenu,
+  MenuBarSubmenuEntry,
+} from './components/menu-bar/index.ts';
+
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
@@ -468,6 +481,9 @@ export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts'
 export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
+
+export { default as TimePicker } from './components/time-picker/index.ts';
+export type { TimePickerProps } from './components/time-picker/index.ts';
 
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';

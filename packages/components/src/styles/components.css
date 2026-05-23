@@ -48,6 +48,7 @@
 @import '../components/json-schema-editor/json-schema-editor.css';
 @import '../components/kbd/kbd.css';
 @import '../components/label/label.css';
+@import '../components/menu-bar/menu-bar.css';
 @import '../components/modal/modal.css';
 @import '../components/navigation-bar/navigation-bar.css';
 @import '../components/navigation-item/navigation-item.css';
@@ -95,6 +96,7 @@
 @import '../components/table-row/table-row.css';
 @import '../components/tabs/tabs.css';
 @import '../components/textarea/textarea.css';
+@import '../components/time-picker/time-picker.css';
 @import '../components/toast-region/toast-region.css';
 @import '../components/toggle/toggle.css';
 @import '../components/toolbar/toolbar.css';

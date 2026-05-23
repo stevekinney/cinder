@@ -1106,6 +1106,27 @@
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
     },
+    "./menu-bar": {
+      "types": "./dist/components/menu-bar/index.d.ts",
+      "svelte": "./src/components/menu-bar/index.ts",
+      "node": "./dist/server/components/menu-bar/index.js",
+      "default": "./dist/components/menu-bar/index.js"
+    },
+    "./menu-bar/schema": {
+      "types": "./dist/components/menu-bar/menu-bar.schema.d.ts",
+      "svelte": "./src/components/menu-bar/menu-bar.schema.ts"
+    },
+    "./menu-bar/variables": {
+      "types": "./dist/components/menu-bar/menu-bar.variables.d.ts",
+      "svelte": "./src/components/menu-bar/menu-bar.variables.ts"
+    },
+    "./menu-bar/styles": {
+      "default": "./dist/components/menu-bar/menu-bar.css"
+    },
+    "./menu-bar/examples": {
+      "import": "./src/components/menu-bar/menu-bar.examples.json",
+      "default": "./src/components/menu-bar/menu-bar.examples.json"
+    },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
       "svelte": "./src/components/modal/index.ts",
@@ -2041,6 +2062,27 @@
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
     },
+    "./time-picker": {
+      "types": "./dist/components/time-picker/index.d.ts",
+      "svelte": "./src/components/time-picker/index.ts",
+      "node": "./dist/server/components/time-picker/index.js",
+      "default": "./dist/components/time-picker/index.js"
+    },
+    "./time-picker/schema": {
+      "types": "./dist/components/time-picker/time-picker.schema.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.schema.ts"
+    },
+    "./time-picker/variables": {
+      "types": "./dist/components/time-picker/time-picker.variables.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.variables.ts"
+    },
+    "./time-picker/styles": {
+      "default": "./dist/components/time-picker/time-picker.css"
+    },
+    "./time-picker/examples": {
+      "import": "./src/components/time-picker/time-picker.examples.json",
+      "default": "./src/components/time-picker/time-picker.examples.json"
+    },
     "./toast-region": {
       "types": "./dist/components/toast-region/index.d.ts",
       "svelte": "./src/components/toast-region/index.ts",
@@ -2241,6 +2283,10 @@
     },
     "./experimental/timeline/styles": {
       "default": "./dist/components/experimental/timeline/timeline.css"
+    },
+    "./experimental/timeline/examples": {
+      "import": "./src/components/experimental/timeline/timeline.examples.json",
+      "default": "./src/components/experimental/timeline/timeline.examples.json"
     },
     "./experimental/timeline-item": {
       "types": "./dist/components/experimental/timeline-item/index.d.ts",

@@ -72,7 +72,7 @@
 }
 
 .cinder-rating__option:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-focus-ring);
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);
   border-radius: var(--cinder-radius-sm);
 }
