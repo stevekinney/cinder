@@ -50,18 +50,25 @@
 
 .cinder-menu-bar__dropdown-menu {
   position: absolute;
+  display: grid;
   inset-block-start: calc(100% + var(--cinder-space-1));
   right: auto;
   left: 0;
   min-inline-size: 12rem;
   max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
-  max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
   overflow: visible;
   z-index: var(--cinder-z-dropdown, 1100);
 }
 
+.cinder-menu-bar__dropdown-scroll {
+  min-inline-size: 100%;
+  max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
+  overflow: auto;
+}
+
 .cinder-menu-bar__submenu {
   position: relative;
+  inline-size: 100%;
 }
 
 .cinder-menu-bar__submenu-menu {

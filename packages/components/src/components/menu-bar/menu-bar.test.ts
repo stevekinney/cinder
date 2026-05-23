@@ -220,6 +220,20 @@ describe('MenuBar', () => {
     expect(document.activeElement).toBe(file);
   });
 
+  test('closes the menu and restores top-level focus when a top-level item is selected', async () => {
+    const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    await fireEvent.click(getByRole('menuitem', { name: 'New' }));
+    await tick();
+
+    expect(file.getAttribute('aria-expanded')).toBe('false');
+    expect(queryByRole('menuitem', { name: 'New' })).toBeNull();
+    expect(document.activeElement).toBe(file);
+  });
+
   test('opens a submenu on pointer entry while the parent menu is open', async () => {
     const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
     const file = getByRole('menuitem', { name: 'File' });

@@ -175,6 +175,11 @@
     initialFocus = undefined;
   }
 
+  function closeMenuAndFocusTrigger(index: number): void {
+    closeAll();
+    void tick().then(() => focusTopLevelTrigger(index));
+  }
+
   function labelParts(menu: MenuBarMenu): { before: string; key: string; after: string } | null {
     if (!menu.accessKey) return null;
     const index = menu.label.toLocaleLowerCase().indexOf(menu.accessKey.toLocaleLowerCase());
@@ -367,7 +372,7 @@
         context={makeContext({
           menuId,
           isOpen: () => openMenuIndex === menuIndex,
-          close: closeAll,
+          close: () => closeMenuAndFocusTrigger(menuIndex),
           focusTrigger: () => focusTopLevelTrigger(menuIndex),
         })}
         registerMenu={noopRegister}
@@ -378,113 +383,118 @@
         }}
       >
         <DropdownMenu class="cinder-menu-bar__dropdown-menu" aria-labelledby={triggerId}>
-          {#each menu.items as entry, entryIndex (ancestryKey('menu', menuIndex, menu.id, entryIndex, entry.id))}
-            {#if isItem(entry)}
-              <DropdownItem
-                variant={entry.variant ?? 'default'}
-                disabled={entry.disabled ?? false}
-                closeOnSelect={entry.closeOnSelect ?? true}
-                onclick={(event) => entry.onSelect?.(event)}
-                onfocus={() => {
-                  openSubmenuKey = null;
-                }}
-                onpointerenter={() => {
-                  openSubmenuKey = null;
-                }}
-              >
-                <span class="cinder-menu-bar__item-label">{entry.label}</span>
-                {#if entry.shortcut}
-                  <span class="cinder-menu-bar__shortcut" aria-hidden="true">{entry.shortcut}</span>
-                {/if}
-              </DropdownItem>
-            {:else if isSubmenu(entry)}
-              {@const submenuKey = submenuMenuId(menuIndex, menu, entryIndex, entry)}
-              {@const submenuTrigger = submenuTriggerId(menuIndex, menu, entryIndex, entry)}
-              <div class="cinder-menu-bar__submenu">
+          <div class="cinder-menu-bar__dropdown-scroll" role="presentation">
+            {#each menu.items as entry, entryIndex (ancestryKey('menu', menuIndex, menu.id, entryIndex, entry.id))}
+              {#if isItem(entry)}
                 <DropdownItem
-                  id={submenuTrigger}
-                  class="cinder-menu-bar__submenu-trigger"
-                  disabled={entry.disabled}
-                  closeOnSelect={false}
-                  aria-haspopup="menu"
-                  aria-expanded={openSubmenuKey === submenuKey ? 'true' : 'false'}
-                  aria-controls={submenuKey}
-                  data-cinder-menu-bar-submenu-trigger
-                  onclick={() => {
-                    if (!entry.disabled) openSubmenu(submenuKey);
-                  }}
+                  variant={entry.variant ?? 'default'}
+                  disabled={entry.disabled ?? false}
+                  closeOnSelect={entry.closeOnSelect ?? true}
+                  onclick={(event) => entry.onSelect?.(event)}
                   onfocus={() => {
-                    if (!entry.disabled && !suppressSubmenuFocusOpen)
-                      openSubmenu(submenuKey, 'none');
+                    openSubmenuKey = null;
                   }}
                   onpointerenter={() => {
-                    if (openMenuIndex === menuIndex && !entry.disabled)
-                      openSubmenu(submenuKey, 'none');
-                  }}
-                  onkeydown={(event) => {
-                    if (entry.disabled) return;
-                    if (event.key === 'ArrowRight' || event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openSubmenu(submenuKey);
-                    }
+                    openSubmenuKey = null;
                   }}
                 >
                   <span class="cinder-menu-bar__item-label">{entry.label}</span>
-                  <span class="cinder-menu-bar__submenu-indicator" aria-hidden="true">&gt;</span>
+                  {#if entry.shortcut}
+                    <span class="cinder-menu-bar__shortcut" aria-hidden="true">
+                      {entry.shortcut}
+                    </span>
+                  {/if}
                 </DropdownItem>
-
-                <MenuBarDropdownContext
-                  context={makeContext({
-                    menuId: submenuKey,
-                    isOpen: () => openSubmenuKey === submenuKey,
-                    close: () => {
-                      closeAll();
-                      void tick().then(() => focusTopLevelTrigger(menuIndex));
-                    },
-                    focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),
-                  })}
-                  registerMenu={noopRegister}
-                  registerTrigger={noopRegister}
-                  setOpen={(open) => {
-                    if (open) openSubmenu(submenuKey);
-                    else openSubmenuKey = null;
-                  }}
-                >
-                  <DropdownMenu
-                    class="cinder-menu-bar__submenu-menu"
-                    aria-labelledby={submenuTrigger}
+              {:else if isSubmenu(entry)}
+                {@const submenuKey = submenuMenuId(menuIndex, menu, entryIndex, entry)}
+                {@const submenuTrigger = submenuTriggerId(menuIndex, menu, entryIndex, entry)}
+                <div class="cinder-menu-bar__submenu">
+                  <DropdownItem
+                    id={submenuTrigger}
+                    class="cinder-menu-bar__submenu-trigger"
+                    disabled={entry.disabled}
+                    closeOnSelect={false}
+                    aria-haspopup="menu"
+                    aria-expanded={openSubmenuKey === submenuKey ? 'true' : 'false'}
+                    aria-controls={submenuKey}
+                    data-cinder-menu-bar-submenu-trigger
+                    onclick={() => {
+                      if (!entry.disabled) openSubmenu(submenuKey);
+                    }}
+                    onfocus={() => {
+                      if (!entry.disabled && !suppressSubmenuFocusOpen)
+                        openSubmenu(submenuKey, 'none');
+                    }}
+                    onpointerenter={() => {
+                      if (openMenuIndex === menuIndex && !entry.disabled)
+                        openSubmenu(submenuKey, 'none');
+                    }}
+                    onkeydown={(event) => {
+                      if (entry.disabled) return;
+                      if (
+                        event.key === 'ArrowRight' ||
+                        event.key === 'Enter' ||
+                        event.key === ' '
+                      ) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openSubmenu(submenuKey);
+                      }
+                    }}
                   >
-                    {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}
-                      {#if isItem(submenuEntry)}
-                        <DropdownItem
-                          variant={submenuEntry.variant ?? 'default'}
-                          disabled={submenuEntry.disabled ?? false}
-                          closeOnSelect={submenuEntry.closeOnSelect ?? true}
-                          onclick={(event) => submenuEntry.onSelect?.(event)}
-                        >
-                          <span class="cinder-menu-bar__item-label">{submenuEntry.label}</span>
-                          {#if submenuEntry.shortcut}
-                            <span class="cinder-menu-bar__shortcut" aria-hidden="true">
-                              {submenuEntry.shortcut}
-                            </span>
-                          {/if}
-                        </DropdownItem>
-                      {:else if submenuEntry.type === 'label'}
-                        <DropdownLabel>{submenuEntry.label}</DropdownLabel>
-                      {:else}
-                        <DropdownSeparator />
-                      {/if}
-                    {/each}
-                  </DropdownMenu>
-                </MenuBarDropdownContext>
-              </div>
-            {:else if entry.type === 'label'}
-              <DropdownLabel>{entry.label}</DropdownLabel>
-            {:else}
-              <DropdownSeparator />
-            {/if}
-          {/each}
+                    <span class="cinder-menu-bar__item-label">{entry.label}</span>
+                    <span class="cinder-menu-bar__submenu-indicator" aria-hidden="true">&gt;</span>
+                  </DropdownItem>
+
+                  <MenuBarDropdownContext
+                    context={makeContext({
+                      menuId: submenuKey,
+                      isOpen: () => openSubmenuKey === submenuKey,
+                      close: () => closeMenuAndFocusTrigger(menuIndex),
+                      focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),
+                    })}
+                    registerMenu={noopRegister}
+                    registerTrigger={noopRegister}
+                    setOpen={(open) => {
+                      if (open) openSubmenu(submenuKey);
+                      else openSubmenuKey = null;
+                    }}
+                  >
+                    <DropdownMenu
+                      class="cinder-menu-bar__submenu-menu"
+                      aria-labelledby={submenuTrigger}
+                    >
+                      {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}
+                        {#if isItem(submenuEntry)}
+                          <DropdownItem
+                            variant={submenuEntry.variant ?? 'default'}
+                            disabled={submenuEntry.disabled ?? false}
+                            closeOnSelect={submenuEntry.closeOnSelect ?? true}
+                            onclick={(event) => submenuEntry.onSelect?.(event)}
+                          >
+                            <span class="cinder-menu-bar__item-label">{submenuEntry.label}</span>
+                            {#if submenuEntry.shortcut}
+                              <span class="cinder-menu-bar__shortcut" aria-hidden="true">
+                                {submenuEntry.shortcut}
+                              </span>
+                            {/if}
+                          </DropdownItem>
+                        {:else if submenuEntry.type === 'label'}
+                          <DropdownLabel>{submenuEntry.label}</DropdownLabel>
+                        {:else}
+                          <DropdownSeparator />
+                        {/if}
+                      {/each}
+                    </DropdownMenu>
+                  </MenuBarDropdownContext>
+                </div>
+              {:else if entry.type === 'label'}
+                <DropdownLabel>{entry.label}</DropdownLabel>
+              {:else}
+                <DropdownSeparator />
+              {/if}
+            {/each}
+          </div>
         </DropdownMenu>
       </MenuBarDropdownContext>
     </div>
