@@ -1,9 +1,27 @@
 import type { HTMLInputAttributes } from 'svelte/elements';
 
-export type TagInputProps = Omit<
+type SupportedInputAttributes = Pick<
   HTMLInputAttributes,
-  'value' | 'defaultValue' | 'onchange' | 'disabled' | 'name' | 'class' | 'required'
-> & {
+  | 'aria-describedby'
+  | 'aria-invalid'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'autocomplete'
+  | 'autocapitalize'
+  | 'enterkeyhint'
+  | 'inputmode'
+  | 'maxlength'
+  | 'minlength'
+  | 'onblur'
+  | 'onfocus'
+  | 'oninput'
+  | 'onkeydown'
+  | 'pattern'
+  | 'placeholder'
+  | 'spellcheck'
+>;
+
+export type TagInputProps = SupportedInputAttributes & {
   /** Stable id for the visible text input. Falls back to FormField context or a generated id. */
   id?: string;
   /** Controlled tags. When provided, the parent owns the tag array. */
@@ -20,6 +38,8 @@ export type TagInputProps = Omit<
   allowDuplicates?: boolean;
   /** Disable the input and chip removal affordances. */
   disabled?: boolean;
+  /** Render the pending-tag input as read-only and make committed tags non-removable. */
+  readonly?: boolean;
   /** Hidden input name used for native form submission. */
   name?: string;
   /** Additional class merged onto the root element. */

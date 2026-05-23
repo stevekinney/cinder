@@ -43,9 +43,46 @@ const schema = {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
     },
+    autocomplete: {
+      type: 'string',
+      description: 'Autocomplete hint forwarded to the visible text input.',
+    },
+    autocapitalize: {
+      type: 'string',
+      description: 'Autocapitalization hint forwarded to the visible text input.',
+    },
+    enterkeyhint: {
+      type: 'string',
+      description: 'Virtual-keyboard Enter hint forwarded to the visible text input.',
+    },
+    inputmode: {
+      type: 'string',
+      description: 'Virtual-keyboard input mode forwarded to the visible text input.',
+    },
+    maxlength: {
+      type: 'number',
+      description: 'Maximum pending-text length forwarded to the visible text input.',
+    },
+    minlength: {
+      type: 'number',
+      description: 'Minimum pending-text length forwarded to the visible text input.',
+    },
+    pattern: {
+      type: 'string',
+      description: 'Validation pattern forwarded to the visible text input.',
+    },
     placeholder: {
       type: 'string',
       description: 'Placeholder text shown while the pending tag input is empty.',
+    },
+    readonly: {
+      type: 'boolean',
+      description:
+        'Render the pending-tag input as read-only and make committed tags non-removable.',
+    },
+    spellcheck: {
+      type: 'boolean',
+      description: 'Spellcheck setting forwarded to the visible text input.',
     },
     disabled: {
       type: 'boolean',
@@ -64,6 +101,18 @@ const schema = {
       type: 'string',
       description: 'Accessible label applied when no labelled-by chain is present.',
     },
+    'aria-invalid': {
+      anyOf: [
+        {
+          type: 'boolean',
+        },
+        {
+          type: 'string',
+        },
+      ],
+      description:
+        'Manual invalid-state override used when no inline validation message or FormField invalid state is active.',
+    },
     'aria-labelledby': {
       type: 'string',
       description: 'Element ids that label both the text input and the committed-tag listbox.',
@@ -78,7 +127,23 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'onblur',
+        reason: 'function-or-snippet',
+      },
+      {
         name: 'onchange',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onfocus',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'oninput',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onkeydown',
         reason: 'function-or-snippet',
       },
       {

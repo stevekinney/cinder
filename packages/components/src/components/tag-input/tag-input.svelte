@@ -37,6 +37,7 @@
     validate,
     allowDuplicates = false,
     disabled,
+    readonly = false,
     name,
     class: className,
     oninput: consumerInput,
@@ -70,6 +71,7 @@
   const isControlled = $derived(value !== undefined);
   const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const resolvedReadonly = $derived(readonly === true);
   const resolvedRequired = $derived(context?.required ?? false);
   const resolvedMax = $derived(
     Number.isFinite(max) ? Math.max(0, Math.floor(max as number)) : undefined,
@@ -173,6 +175,7 @@
   }
 
   function commitDraft(): boolean {
+    if (resolvedDisabled || resolvedReadonly) return false;
     const candidate = draftValue.trim();
     if (!candidate) return false;
 
@@ -190,7 +193,7 @@
   }
 
   function removeTag(index: number): void {
-    if (resolvedDisabled) return;
+    if (resolvedDisabled || resolvedReadonly) return;
     inlineError = null;
     const nextTags = currentTags.filter((_, candidateIndex) => candidateIndex !== index);
     setTags(nextTags);
@@ -208,6 +211,10 @@
 
   function handleInput(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
+    if (resolvedReadonly) {
+      target.value = draftValue;
+      return;
+    }
     draftValue = target.value;
     inlineError = null;
     consumerInput?.(event as Event & { currentTarget: EventTarget & HTMLInputElement });
@@ -223,7 +230,7 @@
   }
 
   function handleInputKeydown(event: KeyboardEvent): void {
-    if (!resolvedDisabled) {
+    if (!resolvedDisabled && !resolvedReadonly) {
       const input = event.currentTarget as HTMLInputElement;
       const candidate = draftValue.trim();
       const delimiterMatch = matchesDelimiter(event.key);
@@ -267,7 +274,7 @@
   }
 
   function handleChipKeydown(index: number, event: KeyboardEvent): void {
-    if (resolvedDisabled) return;
+    if (resolvedDisabled || resolvedReadonly) return;
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
@@ -329,7 +336,7 @@
             class="cinder-tag-input__remove"
             tabindex="-1"
             aria-label={`Remove ${tag}`}
-            disabled={resolvedDisabled}
+            disabled={resolvedDisabled || resolvedReadonly}
             onclick={(event) => {
               event.stopPropagation();
               removeTag(index);
@@ -349,6 +356,7 @@
       type="text"
       class="cinder-tag-input__input"
       value={draftValue}
+      readonly={resolvedReadonly}
       disabled={resolvedDisabled}
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}

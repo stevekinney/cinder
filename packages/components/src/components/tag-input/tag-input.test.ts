@@ -79,6 +79,17 @@ describe('TagInput rendering', () => {
     expect(removeButton?.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('readonly forwards to the input and disables remove buttons', () => {
+    const { container } = render(TagInput, {
+      props: { readonly: true, defaultValue: ['Svelte'] },
+    });
+
+    expect(getInput(container).readOnly).toBe(true);
+    expect(container.querySelector<HTMLButtonElement>('.cinder-tag-input__remove')?.disabled).toBe(
+      true,
+    );
+  });
+
   test('standalone aria-label applies to both the input and the listbox', () => {
     const { container } = render(TagInput, {
       props: { 'aria-label': 'Tags', defaultValue: ['Svelte'] },
@@ -289,6 +300,25 @@ describe('TagInput keyboard removal and navigation', () => {
     const options = getOptions(container);
     expect(options).toHaveLength(1);
     expect(document.activeElement).toBe(options[0]!);
+  });
+
+  test('readonly blocks both commits and removals', async () => {
+    const { container } = render(TagInput, {
+      props: { readonly: true, defaultValue: ['Svelte', 'Bun'] },
+    });
+    const input = getInput(container);
+    input.focus();
+
+    await fireEvent.input(input, { target: { value: 'TypeScript' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(getOptions(container)).toHaveLength(2);
+    expect(input.value).toBe('');
+
+    await fireEvent.keyDown(input, { key: 'Backspace' });
+    expect(document.activeElement).toBe(input);
+
+    await fireEvent.click(container.querySelector('.cinder-tag-input__remove')!);
+    expect(getOptions(container)).toHaveLength(2);
   });
 });
 
