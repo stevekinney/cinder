@@ -396,6 +396,42 @@ describe('Autocomplete — async source handling', () => {
     console.warn = originalWarn;
   });
 
+  test('parent value updates fetch suggestions after Escape closes the focused popup', async () => {
+    const suggestionSource = mock((query: string) =>
+      fruits.filter((suggestion) => suggestion.value.startsWith(query)),
+    );
+
+    const rendered = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        value: 'ap',
+        suggestionSource,
+      },
+    });
+
+    const input = getInput(rendered.container);
+    await fireEvent.focus(input);
+    await waitFor(() => {
+      expect(getListbox()).not.toBeNull();
+    });
+
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await waitFor(() => {
+      expect(getListbox()).toBeNull();
+    });
+
+    await rendered.rerender({
+      id: 'fruit-search',
+      value: 'ba',
+      suggestionSource,
+    });
+
+    await waitFor(() => {
+      expect(suggestionSource).toHaveBeenLastCalledWith('ba', expect.any(Object));
+      expect(getListbox()).not.toBeNull();
+    });
+  });
+
   test('Home and End preserve default caret behavior when the popup is closed', async () => {
     const { container } = render(Autocomplete, {
       props: {

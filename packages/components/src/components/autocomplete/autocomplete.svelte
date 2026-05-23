@@ -160,7 +160,6 @@
     pendingRequestController = null;
     requestVersion += 1;
     autocompleteDismissed = true;
-    inputFocused = false;
     loading = false;
     activeIndex = null;
     suggestions = [];
@@ -171,7 +170,6 @@
     pendingRequestController = null;
     requestVersion += 1;
     autocompleteDismissed = true;
-    inputFocused = false;
     open = false;
     loading = false;
     activeIndex = null;
