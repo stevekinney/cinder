@@ -6,7 +6,7 @@ import type { ColorFieldProps } from './color-field.types.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte/pure');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFieldFixture } =
@@ -16,7 +16,21 @@ const { default: ColorFieldFormFixture } =
 
 type ColorFieldComponentProps = ColorFieldProps;
 
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
+  // the still-attached DOM it expects. Removing wrapper forms before
+  // cleanup() detaches the parent under the unmount, and happy-dom throws
+  // a detached-child DOMException through flushSync's Promise wrapper
+  // (which surfaces as an "unhandled error between tests" in Bun).
+  cleanup();
+  document.querySelectorAll('body > form').forEach((form) => {
+    try {
+      form.remove();
+    } catch {
+      // ignore detached-node errors
+    }
+  });
+});
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
   const element = root.querySelector(selector);
