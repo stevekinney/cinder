@@ -4,7 +4,7 @@
   grid-template-rows: auto auto auto;
   row-gap: var(--cinder-space-1, 0.25rem);
   align-items: start;
-  color: var(--cinder-color-text, currentColor);
+  color: var(--cinder-text);
 }
 
 .cinder-stat[data-cinder-has-icon] {
@@ -19,12 +19,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cinder-color-text-muted, currentColor);
+  color: var(--cinder-text-muted);
 }
 
 .cinder-stat__label {
-  font-size: var(--cinder-font-size-sm, 0.875rem);
-  color: var(--cinder-color-text-muted, currentColor);
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
 }
 
 .cinder-stat[data-cinder-has-icon] .cinder-stat__label {
@@ -32,7 +32,7 @@
 }
 
 .cinder-stat__value {
-  font-size: var(--cinder-font-size-2xl, 1.875rem);
+  font-size: var(--cinder-text-2xl);
   font-weight: var(--cinder-font-semibold);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -46,7 +46,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--cinder-space-1, 0.25rem);
-  font-size: var(--cinder-font-size-sm, 0.875rem);
+  font-size: var(--cinder-text-sm);
 }
 
 .cinder-stat[data-cinder-has-icon] .cinder-stat__change {
@@ -54,17 +54,17 @@
 }
 
 .cinder-stat__change[data-cinder-direction='up'] {
-  color: var(--cinder-color-success, #15803d);
+  color: var(--cinder-success);
 }
 
 .cinder-stat__change[data-cinder-direction='down'] {
-  color: var(--cinder-color-danger, #b91c1c);
+  color: var(--cinder-danger);
 }
 
 .cinder-stat__change[data-cinder-direction='neutral'] {
-  color: var(--cinder-color-text-muted, currentColor);
+  color: var(--cinder-text-muted);
 }
 
 .cinder-stat__change-description {
-  color: var(--cinder-color-text-muted, currentColor);
+  color: var(--cinder-text-muted);
 }
