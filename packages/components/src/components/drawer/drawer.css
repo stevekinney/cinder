@@ -108,9 +108,12 @@
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-drawer__close:hover {
-  background: color-mix(in oklch, currentColor, transparent 85%);
-  color: var(--cinder-text);
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-drawer__close:hover {
+    background: color-mix(in oklch, currentColor, transparent 85%);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-drawer__close:focus-visible {

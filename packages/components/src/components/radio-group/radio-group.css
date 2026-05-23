@@ -73,8 +73,12 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-radio:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-radio:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-radio:focus-visible {
@@ -184,8 +188,13 @@
     background var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-radio-group[data-variant='card'] .cinder-radio-row:hover {
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. The :not([data-disabled])
+ * exclusion replaces a separate reset rule for disabled cards. */
+@media (hover: hover) {
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row:hover:not([data-disabled]) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 /* Selection reinforcement — NOT the sole indicator. */
@@ -204,11 +213,6 @@
   background: var(--cinder-surface-inset);
   border-color: var(--cinder-border-muted);
   cursor: not-allowed;
-}
-
-/* Suppress hover on disabled cards. */
-.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled]:hover {
-  border-color: var(--cinder-border-muted);
 }
 
 @media (forced-colors: active) {

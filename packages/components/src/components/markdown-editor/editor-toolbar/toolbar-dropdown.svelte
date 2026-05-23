@@ -96,9 +96,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  :global(.toolbar-dropdown-trigger:hover:not(:disabled)) {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    :global(.toolbar-dropdown-trigger:hover:not(:disabled)) {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   :global(.toolbar-dropdown-trigger:focus-visible) {

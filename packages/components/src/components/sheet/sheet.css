@@ -110,9 +110,11 @@
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-sheet__close:hover {
-  background: color-mix(in oklch, currentColor, transparent 85%);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-sheet__close:hover {
+    background: color-mix(in oklch, currentColor, transparent 85%);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-sheet__close:focus-visible {
