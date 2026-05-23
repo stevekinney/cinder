@@ -876,6 +876,23 @@
       "types": "./dist/components/feed-event/feed-event.variables.d.ts",
       "svelte": "./src/components/feed-event/feed-event.variables.ts"
     },
+    "./file-upload": {
+      "types": "./dist/components/file-upload/index.d.ts",
+      "svelte": "./src/components/file-upload/index.ts",
+      "node": "./dist/server/components/file-upload/index.js",
+      "default": "./dist/components/file-upload/index.js"
+    },
+    "./file-upload/schema": {
+      "types": "./dist/components/file-upload/file-upload.schema.d.ts",
+      "svelte": "./src/components/file-upload/file-upload.schema.ts"
+    },
+    "./file-upload/variables": {
+      "types": "./dist/components/file-upload/file-upload.variables.d.ts",
+      "svelte": "./src/components/file-upload/file-upload.variables.ts"
+    },
+    "./file-upload/styles": {
+      "default": "./dist/components/file-upload/file-upload.css"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "svelte": "./src/components/form-field/index.ts",

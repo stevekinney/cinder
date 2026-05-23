@@ -1218,6 +1218,28 @@
       }
     },
     {
+      "name": "FileUpload",
+      "id": "file-upload",
+      "import": "cinder/file-upload",
+      "exportName": "FileUpload",
+      "category": "form",
+      "status": "stable",
+      "purpose": "File picker and drag-and-drop surface that validates files locally and can render upload progress rows.",
+      "tags": ["form", "upload"],
+      "useWhen": [
+        "Collecting one or more files while keeping the native picker available for keyboard and assistive-technology users.",
+        "Showing per-file upload progress or rejection errors below a prominent dropzone surface."
+      ],
+      "avoidWhen": ["You only need a hidden native file input with no custom UI."],
+      "related": ["form-field", "progress", "input"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/file-upload/schema",
+        "variables": "cinder/file-upload/variables"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "cinder/form-field",
