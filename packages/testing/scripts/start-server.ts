@@ -94,10 +94,16 @@ async function main(): Promise<void> {
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
+    let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
-      reportedPlaygroundPort = parsePlaygroundListeningPort(output) ?? reportedPlaygroundPort;
+      serverOutputBuffer = `${serverOutputBuffer}${output}`;
+      reportedPlaygroundPort =
+        parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
+      if (serverOutputBuffer.length > 4096 || reportedPlaygroundPort !== null) {
+        serverOutputBuffer = serverOutputBuffer.slice(-4096);
+      }
     });
 
     const startedAt = Date.now();
@@ -110,6 +116,7 @@ async function main(): Promise<void> {
         targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
         if (await ping()) break;
       }
+      if (await ping()) break;
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
         console.log(`Waiting for playground to report its selected port (${elapsed}s elapsed)...`);
