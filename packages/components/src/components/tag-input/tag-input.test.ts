@@ -405,11 +405,15 @@ describe('TagInput form participation', () => {
       expect(getOptions(mount.container)).toHaveLength(1);
       expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
 
+      await fireEvent.input(input, { target: { value: 'Draft tag' } });
+      expect(input.value).toBe('Draft tag');
+
       mount.form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
       await tick();
 
       expect(getOptions(mount.container)).toHaveLength(1);
       expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+      expect(input.value).toBe('');
       const hiddenInputs = Array.from(
         mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
       );

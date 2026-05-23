@@ -112,15 +112,17 @@
   });
 
   $effect(() => {
-    if (isControlled || !inputElement) return;
+    if (!inputElement) return;
     const form = inputElement.closest('form');
     if (!form) return;
 
     const onReset = () => {
-      uncontrolledTags = [...initialDefaultTags];
       draftValue = '';
       inlineError = null;
       focusedChipIndex = -1;
+      if (!isControlled) {
+        uncontrolledTags = [...initialDefaultTags];
+      }
     };
 
     form.addEventListener('reset', onReset);
