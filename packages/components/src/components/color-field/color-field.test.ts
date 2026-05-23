@@ -15,6 +15,9 @@ const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
+  // Rendering the fixture into the default container avoids the happy-dom
+  // detached-child teardown failure that showed up when these tests mounted
+  // standalone forms under document.body.
   document.body.replaceChildren();
 });
 
