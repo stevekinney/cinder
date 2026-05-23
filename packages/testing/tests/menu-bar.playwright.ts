@@ -10,9 +10,7 @@ test.describe('MenuBar open menu positioning', () => {
   test.skip(!desktop, 'Desktop viewport fixture is missing.');
 
   for (const theme of themes) {
-    test(`${theme} File menu and submenu are visible and non-overlapping`, async ({
-      componentPage,
-    }) => {
+    test(`${theme} File menu and submenu are visible and adjacent`, async ({ componentPage }) => {
       const page = await componentPage.open({
         entry: menuBarEntry!,
         theme,
@@ -20,7 +18,7 @@ test.describe('MenuBar open menu positioning', () => {
       });
 
       await page.getByRole('menuitem', { name: 'File' }).click();
-      await page.getByRole('menuitem', { name: 'Open Recent' }).press('ArrowRight');
+      await page.getByRole('menuitem', { name: 'Open Recent' }).click();
 
       const topLevelMenu = page.locator('.cinder-menu-bar__dropdown-menu').first();
       const submenu = page.locator('.cinder-menu-bar__submenu-menu').first();
@@ -32,8 +30,8 @@ test.describe('MenuBar open menu positioning', () => {
       expect(topLevelBox, 'Top-level File menu must have a visible bounding box.').not.toBeNull();
       expect(submenuBox, 'Open Recent submenu must have a visible bounding box.').not.toBeNull();
 
-      expect(submenuBox!.x).toBeGreaterThan(topLevelBox!.x);
-      expect(submenuBox!.x).toBeGreaterThanOrEqual(topLevelBox!.x + topLevelBox!.width - 1);
+      const expectedSubmenuStart = topLevelBox!.x + topLevelBox!.width;
+      expect(Math.abs(submenuBox!.x - expectedSubmenuStart)).toBeLessThanOrEqual(8);
       expect(submenuBox!.width).toBeGreaterThan(0);
       expect(submenuBox!.height).toBeGreaterThan(0);
     });

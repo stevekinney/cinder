@@ -74,7 +74,8 @@
   let activeMenuIndex = $state(0);
   let openMenuIndex = $state<number | null>(null);
   let openSubmenuKey = $state<string | null>(null);
-  let initialFocus = $state<'first' | 'last' | undefined>(undefined);
+  let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
+  let suppressSubmenuFocusOpen = false;
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
@@ -125,6 +126,14 @@
     document.getElementById(id)?.focus();
   }
 
+  function focusSubmenuTriggerAfterClose(id: string): void {
+    suppressSubmenuFocusOpen = true;
+    focusElement(id);
+    void tick().then(() => {
+      suppressSubmenuFocusOpen = false;
+    });
+  }
+
   function focusTopLevelTrigger(index: number): void {
     const menu = menus[index];
     if (!menu) return;
@@ -152,6 +161,11 @@
     activeMenuIndex = index;
     openMenuIndex = index;
     openSubmenuKey = null;
+    initialFocus = focus;
+  }
+
+  function openSubmenu(key: string, focus: 'first' | 'last' | 'none' = 'first'): void {
+    openSubmenuKey = key;
     initialFocus = focus;
   }
 
@@ -264,13 +278,19 @@
 
     if (openMenuIndex !== null && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.closest('.cinder-menu-bar__submenu-menu') && event.key === 'ArrowLeft') {
-        event.preventDefault();
-        const triggerId = target
-          .closest<HTMLElement>('.cinder-menu-bar__submenu')
-          ?.querySelector<HTMLElement>('[data-cinder-menu-bar-submenu-trigger]')?.id;
-        openSubmenuKey = null;
-        if (triggerId) void tick().then(() => focusElement(triggerId));
+      if (target?.closest('.cinder-menu-bar__submenu-menu')) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          const triggerId = target
+            .closest<HTMLElement>('.cinder-menu-bar__submenu')
+            ?.querySelector<HTMLElement>('[data-cinder-menu-bar-submenu-trigger]')?.id;
+          openSubmenuKey = null;
+          if (triggerId) void tick().then(() => focusElement(triggerId));
+        } else {
+          event.preventDefault();
+          const nextIndex = nextEnabledMenuIndex(openMenuIndex, 1);
+          if (nextIndex !== -1) openMenu(nextIndex, 'first');
+        }
         return;
       }
 
@@ -365,6 +385,12 @@
                 disabled={entry.disabled ?? false}
                 closeOnSelect={entry.closeOnSelect ?? true}
                 onclick={(event) => entry.onSelect?.(event)}
+                onfocus={() => {
+                  openSubmenuKey = null;
+                }}
+                onpointerenter={() => {
+                  openSubmenuKey = null;
+                }}
               >
                 <span class="cinder-menu-bar__item-label">{entry.label}</span>
                 {#if entry.shortcut}
@@ -385,13 +411,22 @@
                   aria-controls={submenuKey}
                   data-cinder-menu-bar-submenu-trigger
                   onclick={() => {
-                    if (!entry.disabled) openSubmenuKey = submenuKey;
+                    if (!entry.disabled) openSubmenu(submenuKey);
+                  }}
+                  onfocus={() => {
+                    if (!entry.disabled && !suppressSubmenuFocusOpen)
+                      openSubmenu(submenuKey, 'none');
+                  }}
+                  onpointerenter={() => {
+                    if (openMenuIndex === menuIndex && !entry.disabled)
+                      openSubmenu(submenuKey, 'none');
                   }}
                   onkeydown={(event) => {
                     if (entry.disabled) return;
                     if (event.key === 'ArrowRight' || event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      openSubmenuKey = submenuKey;
+                      event.stopPropagation();
+                      openSubmenu(submenuKey);
                     }
                   }}
                 >
@@ -403,19 +438,21 @@
                   context={makeContext({
                     menuId: submenuKey,
                     isOpen: () => openSubmenuKey === submenuKey,
-                    close: closeAll,
-                    focusTrigger: () => focusTopLevelTrigger(menuIndex),
+                    close: () => {
+                      closeAll();
+                      void tick().then(() => focusTopLevelTrigger(menuIndex));
+                    },
+                    focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),
                   })}
                   registerMenu={noopRegister}
                   registerTrigger={noopRegister}
                   setOpen={(open) => {
-                    if (open) openSubmenuKey = submenuKey;
+                    if (open) openSubmenu(submenuKey);
                     else openSubmenuKey = null;
                   }}
                 >
                   <DropdownMenu
                     class="cinder-menu-bar__submenu-menu"
-                    style="right: auto; left: calc(100% + var(--cinder-space-1)); transform: translateX(100%);"
                     aria-labelledby={submenuTrigger}
                   >
                     {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}

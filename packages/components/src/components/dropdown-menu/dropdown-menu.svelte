@@ -51,6 +51,7 @@
       return;
     }
     if (focusedFallbackOpen) return;
+    if (context.initialFocus === 'none') return;
     focusedFallbackOpen = true;
     void tick().then(() => focusMenuItem(context.initialFocus === 'last' ? -1 : 0));
   });
@@ -76,8 +77,12 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest('[role="menu"]') !== menuElement) return;
+
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       setOpen(false);
       context.focusTrigger();
       return;
@@ -89,15 +94,19 @@
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
+      event.stopPropagation();
       focusMenuItem(currentIndex < itemsArray.length - 1 ? currentIndex + 1 : 0);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
+      event.stopPropagation();
       focusMenuItem(currentIndex > 0 ? currentIndex - 1 : itemsArray.length - 1);
     } else if (event.key === 'Home') {
       event.preventDefault();
+      event.stopPropagation();
       focusMenuItem(0);
     } else if (event.key === 'End') {
       event.preventDefault();
+      event.stopPropagation();
       focusMenuItem(itemsArray.length - 1);
     }
   }
@@ -107,6 +116,7 @@
     setOpen(isOpenNow);
 
     if (isOpenNow) {
+      if (context.initialFocus === 'none') return;
       void tick().then(() => focusMenuItem(context.initialFocus === 'last' ? -1 : 0));
     }
   }

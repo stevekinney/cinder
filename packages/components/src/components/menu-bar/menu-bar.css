@@ -69,7 +69,6 @@
   inset-block-start: 0;
   right: auto;
   left: calc(100% + var(--cinder-space-1));
-  transform: translateX(100%);
   min-inline-size: 12rem;
   max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
   max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
