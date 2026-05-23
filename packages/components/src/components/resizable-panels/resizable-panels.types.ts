@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type ResizablePanelsOrientation = 'horizontal' | 'vertical';
 export type ResizablePanelSizeUnit = 'px' | 'percent';
 export type ResizablePanelsCollapseTarget = 'leading' | 'trailing' | 'nearest-collapsible';
-export type ResizablePanelsResizeReason = 'pointer' | 'keyboard' | 'double-click';
+export type ResizablePanelsResizeReason = 'pointer' | 'keyboard' | 'double-click' | 'rebase';
 
 export type ResizablePanelSize = {
   value: number;

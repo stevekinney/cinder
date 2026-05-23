@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -44,7 +44,7 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
   value: ResizeObserverStub,
 });
 
-const { cleanup, render } = await import('@testing-library/svelte/pure');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte/pure');
 const { default: ResizablePanels } = await import('./resizable-panels.svelte');
 const { createRawSnippet } = await import('svelte');
 
@@ -159,5 +159,17 @@ describe('ResizablePanels', () => {
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     expect(handle.getAttribute('aria-controls')).toContain('sidebar');
     expect(handle.getAttribute('aria-controls')).toContain('editor');
+  });
+
+  test('pointer release does not commit without a size change', async () => {
+    const onlayoutcommit = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    mockMeasurements(container);
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    await fireEvent.pointerDown(handle, { pointerId: 1, clientX: 200 });
+    await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 200 });
+
+    expect(onlayoutcommit).not.toHaveBeenCalled();
   });
 });

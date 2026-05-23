@@ -76,6 +76,7 @@
   let activeHandleIndex = $state<number | null>(null);
   let activePointerId = $state<number | null>(null);
   let previousPointerAxis = $state(0);
+  let pointerDragChanged = $state(false);
   let layoutState: ResizablePanelsLayoutState | null = $state(null);
   let previousPaneLayoutSignature = $state('');
 
@@ -133,6 +134,7 @@
     ) {
       layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
       previousPaneLayoutSignature = nextPaneLayoutSignature;
+      emit('rebase', true);
       return;
     }
     if (
@@ -142,6 +144,7 @@
     ) {
       layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
       previousPaneLayoutSignature = nextPaneLayoutSignature;
+      emit('rebase', true);
     }
   }
 
@@ -194,6 +197,7 @@
     activeHandleIndex = handleIndex;
     activePointerId = event.pointerId;
     previousPointerAxis = axisValueFromPointerEvent(event);
+    pointerDragChanged = false;
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.focus();
       if ('setPointerCapture' in event.currentTarget) {
@@ -215,6 +219,7 @@
     if (!next.changed) return;
     previousPointerAxis = next.axis;
     layoutState = next.state;
+    pointerDragChanged = true;
     emit('pointer', false);
   }
 
@@ -232,7 +237,10 @@
     }
     activeHandleIndex = null;
     activePointerId = null;
-    emit('pointer', true);
+    if (pointerDragChanged) {
+      emit('pointer', true);
+    }
+    pointerDragChanged = false;
   }
 
   function handleDoubleClick(handleIndex: number): void {

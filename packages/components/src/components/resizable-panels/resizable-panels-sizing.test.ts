@@ -96,11 +96,18 @@ describe('resizable-panels sizing', () => {
     expect(snapshot[0]!.percentage).toBeCloseTo(25, 1);
   });
 
-  test('returns separator aria values for the leading pane', () => {
+  test('returns separator aria values for the leading adjacent pane pair', () => {
     const state = createInitialLayoutState(panes, 1000, 'horizontal');
     const aria = getHandleAriaState(state, panes, 0);
-    expect(aria.valueNow).toBe(25);
+    expect(aria.valueNow).toBe(33);
     expect(aria.valueText).toContain('250px');
+  });
+
+  test('returns separator aria values relative to the adjacent pane pair', () => {
+    const state = createInitialLayoutState(panes, 1000, 'horizontal');
+    const aria = getHandleAriaState(state, panes, 1);
+    expect(aria.valueNow).toBe(67);
+    expect(aria.valueText).toContain('500px');
   });
 
   test('scales impossible minimum totals back into the available budget', () => {

@@ -594,9 +594,9 @@ export function getHandleAriaState(
   }
 
   const currentPixels = state.panels[handleIndex]!.sizePixels;
-  const currentPercent = Math.round((currentPixels / state.availablePanePixels) * 100);
-  const minimumPercent = Math.round((minimumLeading / state.availablePanePixels) * 100);
-  const maximumPercent = Math.round((maximumLeading / state.availablePanePixels) * 100);
+  const currentPercent = Math.round((currentPixels / pairTotal) * 100);
+  const minimumPercent = Math.round((minimumLeading / pairTotal) * 100);
+  const maximumPercent = Math.round((maximumLeading / pairTotal) * 100);
 
   return {
     valueNow: currentPercent,
