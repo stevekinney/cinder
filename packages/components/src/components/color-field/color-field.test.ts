@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte/pure');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
@@ -14,12 +14,21 @@ const { default: ColorFieldFormFixture } =
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
-// testing-library/svelte's cleanup() races with happy-dom during async Svelte
-// destroy_effect — the resulting "removeChild" DOMException escapes the
-// afterEach try/catch as an unhandled rejection and fails the bun:test process
-// exit even though every test passes. Wiping the body is sufficient teardown
-// for these tests because each test renders fresh into an empty document.
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
+  // the still-attached DOM it expects. Removing wrapper forms before
+  // cleanup() detaches the parent under the unmount, and happy-dom throws
+  // a detached-child DOMException through flushSync's Promise wrapper
+  // (which surfaces as an "unhandled error between tests" in Bun).
+  cleanup();
+  document.querySelectorAll('body > form').forEach((form) => {
+    try {
+      form.remove();
+    } catch {
+      // ignore detached-node errors
+    }
+  });
+});
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
   const element = root.querySelector(selector);
