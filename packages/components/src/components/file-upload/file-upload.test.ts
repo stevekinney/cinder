@@ -87,7 +87,7 @@ describe('FileUpload rendering', () => {
     expect(container.querySelector('button')?.textContent).toBe('Choose files');
   });
 
-  test('forwards accept, multiple, name, and disabled to the input', () => {
+  test('forwards accept, multiple, name, disabled, and required to the input', () => {
     const { container } = render(FileUpload, {
       props: {
         id: 'attachments',
@@ -95,6 +95,7 @@ describe('FileUpload rendering', () => {
         multiple: true,
         name: 'attachments',
         disabled: true,
+        required: true,
       },
     });
     const input = container.querySelector('#attachments') as HTMLInputElement;
@@ -102,6 +103,7 @@ describe('FileUpload rendering', () => {
     expect(input.hasAttribute('multiple')).toBe(true);
     expect(input.getAttribute('name')).toBe('attachments');
     expect(input.disabled).toBe(true);
+    expect(input.required).toBe(true);
   });
 
   test('merges aria-describedby from FormField context and the consumer', () => {
@@ -115,6 +117,20 @@ describe('FileUpload rendering', () => {
     });
     const input = container.querySelector('#resume') as HTMLInputElement;
     expect(input.getAttribute('aria-describedby')).toBe('resume-description resume-help');
+  });
+
+  test('inherits required and disabled from FormField context', () => {
+    const { container } = render(FormFieldFileUploadFixture, {
+      props: {
+        fieldId: 'resume',
+        fieldLabel: 'Resume',
+        required: true,
+        disabled: true,
+      },
+    });
+    const input = container.querySelector('#resume') as HTMLInputElement;
+    expect(input.required).toBe(true);
+    expect(input.disabled).toBe(true);
   });
 });
 
@@ -218,6 +234,16 @@ describe('FileUpload drag state and accessibility', () => {
     expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
   });
 
+  test('disabled dragleave clears active drag state after disabling mid-drag', async () => {
+    const { container, rerender } = render(FileUpload, { props: { id: 'upload' } });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    await fireEvent(dropzone, createDropEvent('dragenter', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
+    await rerender({ id: 'upload', disabled: true });
+    await fireEvent(dropzone, createDropEvent('dragleave', []));
+    expect(dropzone.hasAttribute('data-drag-active')).toBe(false);
+  });
+
   test('dragover prevents default', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
@@ -273,6 +299,29 @@ describe('FileUpload drag state and accessibility', () => {
     const input = container.querySelector('#upload') as HTMLInputElement;
     input.focus();
     expect(document.activeElement).toBe(input);
+  });
+
+  test('native input activation clears the previous selected file value', async () => {
+    const { container } = render(FileUpload, { props: { id: 'upload' } });
+    const input = container.querySelector('#upload') as HTMLInputElement;
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\resume.pdf',
+    });
+    await fireEvent.click(input);
+    expect(input.value).toBe('');
+  });
+
+  test('dropzone is labelled by FormField context', () => {
+    const { container } = render(FormFieldFileUploadFixture, {
+      props: {
+        fieldId: 'resume',
+        fieldLabel: 'Resume',
+      },
+    });
+    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    expect(dropzone.getAttribute('aria-labelledby')).toBe('resume-label');
   });
 
   test('visible button trigger opens the native picker path', async () => {

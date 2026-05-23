@@ -37,6 +37,7 @@
     multiple = false,
     maxSize,
     disabled,
+    required,
     name,
     class: className,
     files,
@@ -60,6 +61,9 @@
     context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
   );
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const resolvedRequired = $derived(required ?? context?.required ?? false);
+  const dropzoneLabelledBy = $derived(context?.labelId);
+  const dropzoneLabel = $derived(dropzoneLabelledBy === undefined ? 'File upload' : undefined);
 
   let inputElement = $state<HTMLInputElement | null>(null);
   let dragDepth = $state(0);
@@ -206,7 +210,6 @@
   }
 
   function handleDragLeave(event: DragEvent) {
-    if (resolvedDisabled) return;
     if (event.dataTransfer && !hasFilesPayload(event.dataTransfer)) return;
     dragDepth = Math.max(0, dragDepth - 1);
   }
@@ -232,10 +235,19 @@
 
   function openPicker() {
     if (resolvedDisabled) return;
+    clearInputValue();
+    inputElement?.click();
+  }
+
+  function clearInputValue() {
     if (inputElement) {
       inputElement.value = '';
     }
-    inputElement?.click();
+  }
+
+  function handleInputClick() {
+    if (resolvedDisabled) return;
+    clearInputValue();
   }
 
   function progressValue(progress: number | undefined): number {
@@ -279,6 +291,8 @@
   <div
     class="cinder-file-upload__dropzone"
     role="group"
+    aria-label={dropzoneLabel}
+    aria-labelledby={dropzoneLabelledBy}
     data-drag-active={isDragActive || undefined}
     data-disabled={resolvedDisabled || undefined}
     ondragenter={handleDragEnter}
@@ -295,9 +309,11 @@
       {multiple}
       {name}
       disabled={resolvedDisabled}
+      required={resolvedRequired}
       {...rest}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
+      onclick={handleInputClick}
       onchange={handleInputChange}
     />
 
