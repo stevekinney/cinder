@@ -34,16 +34,19 @@
 }
 
 .cinder-tooltip[data-cinder-position-ready='false'] {
+  visibility: hidden;
   opacity: 0;
 }
 
 /* Visible state */
 .cinder-tooltip[aria-hidden='false'] {
+  visibility: visible;
   opacity: 1;
 }
 
 /* Hidden state */
 .cinder-tooltip[aria-hidden='true'] {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
 }

@@ -52,6 +52,7 @@
   let computedPlacement = $state<Placement>(placement);
   let positionStyle = $state('');
   let positionReady = $state(false);
+  const isTooltipExposed = $derived(visible && positionReady);
 
   function show() {
     clearTimeout(showTimer);
@@ -236,7 +237,7 @@
     id={tooltipId}
     role="tooltip"
     class="cinder-tooltip"
-    aria-hidden={!visible}
+    aria-hidden={!isTooltipExposed}
     data-cinder-placement={visible ? computedPlacement : placement}
     data-cinder-position-ready={positionReady}
     style={positionStyle}

@@ -418,10 +418,8 @@ describe('Tooltip', () => {
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
-      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
-    });
-    await waitFor(() => {
       expect(queryTooltip()?.getAttribute('data-cinder-position-ready')).toBe('false');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     });
 
     await fireEvent.mouseLeave(wrapper);
@@ -435,6 +433,7 @@ describe('Tooltip', () => {
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
       expect(queryTooltip()?.getAttribute('data-cinder-position-ready')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
       expect(queryTooltip()?.getAttribute('data-cinder-placement')).toBe('right');
       expect(queryTooltip()?.getAttribute('style')).toContain('left: 101px');
       expect(queryTooltip()?.getAttribute('style')).toContain('top: 202px');
