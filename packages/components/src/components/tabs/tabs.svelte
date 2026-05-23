@@ -97,21 +97,30 @@
     } else {
       const target = event.target as HTMLElement | null;
       const focusedValue = target?.dataset['cinderValue'];
-      const anchor =
-        focusedValue && order.includes(focusedValue)
-          ? focusedValue
-          : order.includes(value)
-            ? value
-            : undefined;
-      const anchorIndex = anchor === undefined ? 0 : order.indexOf(anchor);
-      const nextIdx = nextIndex(anchorIndex, order.length, intent);
-      nextValue = order[nextIdx];
+      let anchorIndex = -1;
+      if (focusedValue && order.includes(focusedValue)) {
+        anchorIndex = order.indexOf(focusedValue);
+      } else if (order.includes(value)) {
+        anchorIndex = order.indexOf(value);
+      }
+      if (anchorIndex === -1) {
+        // No usable anchor (keydown came from somewhere unregistered and the
+        // controlled value isn't enabled either). Land on a deterministic
+        // edge: first enabled for forward, last enabled for backward — same
+        // shape Home/End would produce.
+        nextValue = intent === 'next' ? order[0] : order[order.length - 1];
+      } else {
+        const nextIdx = nextIndex(anchorIndex, order.length, intent);
+        nextValue = order[nextIdx];
+      }
     }
 
     if (nextValue === undefined) return;
 
     focusValue(nextValue);
-    if (effectiveActivateOnFocus && !disabledValues.has(nextValue)) {
+    if (effectiveActivateOnFocus) {
+      // `nextValue` is drawn from `enabledValuesInOrder()` so it is always
+      // enabled — no second disabled check needed here.
       value = nextValue;
     }
   }

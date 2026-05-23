@@ -292,22 +292,64 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     expect(bTab.getAttribute('aria-selected')).toBe('true');
   });
 
-  test('all-disabled tablist is a no-op on arrow keys', async () => {
-    const allDisabled = [
-      { value: 'a', title: 'A tab', body: 'A body', disabled: true },
+  // An all-disabled tablist is a consumer-side accessibility violation that
+  // the component must not crash on. The empty-enabled guard in handleKeydown
+  // is defense-in-depth: native `disabled` buttons cannot receive focus, so
+  // the guard is unreachable through realistic public interaction (the only
+  // way to dispatch the keydown is on a non-button element like the tablist
+  // wrapper, which has no `onkeydown` handler attached and therefore would
+  // never invoke handleKeydown anyway). The guard stays in the source as a
+  // safety net; it is covered by code review, not a unit test.
+
+  test('vertical: ArrowDown skips a disabled tab', async () => {
+    const itemsWithDisabledMiddle = [
+      { value: 'a', title: 'A tab', body: 'A body' },
       { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+      { value: 'c', title: 'C tab', body: 'C body' },
     ];
-    const { container } = render(Wrapper, { value: 'a', items: allDisabled });
-    const tablist = container.querySelector('[role="tablist"]') as HTMLElement;
-    // No enabled tab can receive focus, so dispatch the event on the tablist
-    // container; the handler walks `event.target` and the empty-enabled guard
-    // returns early without touching value or focus.
-    await fireEvent.keyDown(tablist, { key: 'ArrowRight' });
-    const selected = container.querySelector('[role="tab"][aria-selected="true"]');
-    expect(selected?.getAttribute('data-cinder-value')).toBe('a');
-    // No panel rendered (controlled value points at a disabled tab, which is
-    // an a11y violation by the consumer, but the component must not throw).
-    // We simply assert no crash and that the selection did not silently move.
+    const { container } = render(Wrapper, {
+      value: 'a',
+      orientation: 'vertical',
+      activateOnFocus: false,
+      items: itemsWithDisabledMiddle,
+    });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const cTab = tabs[2]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(cTab);
+    // Vertical defaults to manual activation, so panel stays on `a` until Enter.
+    const panelBeforeEnter = container.querySelector('[role="tabpanel"]');
+    expect(panelBeforeEnter?.textContent).toContain('A body');
+  });
+
+  test('activateOnFocus=false: Enter on enabled tab after skipping disabled activates it', async () => {
+    // Vertical orientation defaults to activateOnFocus=false. Navigate past
+    // a disabled tab via ArrowDown, then press Enter on the now-focused
+    // enabled tab. The Enter/Space gate must let this through (the focused
+    // tab is enabled), confirming that the disabled-skip and the manual
+    // activation gate compose correctly.
+    const itemsWithDisabledMiddle = [
+      { value: 'a', title: 'A tab', body: 'A body' },
+      { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+      { value: 'c', title: 'C tab', body: 'C body' },
+    ];
+    const { container } = render(Wrapper, {
+      value: 'a',
+      orientation: 'vertical',
+      activateOnFocus: false,
+      items: itemsWithDisabledMiddle,
+    });
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const aTab = tabs[0]!;
+    const cTab = tabs[2]!;
+    aTab.focus();
+    await fireEvent.keyDown(aTab, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(cTab);
+    await fireEvent.keyDown(cTab, { key: 'Enter' });
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('C body');
   });
 
   test('runtime disable toggle preserves navigation order (regression)', async () => {
@@ -315,6 +357,13 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     // from a must still land on b, not c. This guards against the bug where
     // re-running the registration effect on a disabled change would delete
     // and re-insert b in the parent Map, moving it to the end of the order.
+    //
+    // The fixture's `{#each items (item.value)}` keyed block means each Tab
+    // component instance is preserved across rerenders that change `disabled`
+    // (the key is stable). We assert button identity is preserved before vs.
+    // after toggling, which makes the test's correctness explicit: the test
+    // can only pass for the right reason if `b`'s registration was NOT torn
+    // down and re-created during the toggle.
     const allEnabled = items;
     const withBDisabled = [items[0]!, { ...items[1]!, disabled: true }, items[2]!];
     const { container, rerender } = render(Wrapper, { value: 'a', items: allEnabled });

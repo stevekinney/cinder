@@ -41,29 +41,35 @@
 
   let buttonElement: HTMLButtonElement | undefined = $state();
 
-  // Register on mount and re-register if the button element changes; unregister
-  // on unmount so the parent's navigation order stays accurate. This effect
-  // intentionally does NOT read `disabled` — toggling the disabled flag must
-  // not cleanup+re-register, because that would move the tab to the end of the
-  // parent's Map insertion order (which is the navigation order). The
-  // separate effect below syncs disabled state through `setDisabled`.
+  // Register the tab once when its button element becomes defined and
+  // unregister on unmount. `value` is treated as stable for this tab's
+  // lifetime (it is the identity key used by the parent's Map and the
+  // recommended key for keyed `{#each}` blocks); reading it via `untrack`
+  // ensures that a sibling prop change (e.g., `disabled` toggling) on the
+  // same render pass cannot cause Svelte to re-trigger this effect, which
+  // would delete and re-insert this tab's key in the parent's Map and
+  // move it to the end of the navigation order. If a consumer needs to
+  // change a Tab's `value` at runtime they should remount the Tab via a
+  // changed key in their `{#each}` block.
   $effect(() => {
-    // Track only `buttonElement` becoming defined; read `value` without
-    // tracking so toggling sibling props that share a render pass cannot
-    // trigger a cleanup+re-register cycle (which would re-insert this
-    // tab's key at the end of the parent's Map and corrupt nav order).
     if (!buttonElement) return;
     const currentValue = untrack(() => value);
-    tabs.register(currentValue, buttonElement);
+    const currentButton = buttonElement;
+    tabs.register(currentValue, currentButton);
     return () => {
       tabs.unregister(currentValue);
     };
   });
 
   // Sync disabled state without touching the registry, so flipping `disabled`
-  // at runtime preserves navigation order.
+  // at runtime preserves navigation order. The cleanup clears the disabled
+  // flag explicitly so this effect owns the lifecycle of the disabled bit
+  // and stops relying on `unregister`'s incidental cleanup for that.
   $effect(() => {
     tabs.setDisabled(value, disabled);
+    return () => {
+      tabs.setDisabled(value, false);
+    };
   });
 
   function handleClick(): void {
