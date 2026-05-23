@@ -286,9 +286,8 @@
 
   // ── Slider pointer handling ─────────────────────────────────────────────
 
-  // bind:this refs and the drag-discriminator are coordination state read only
-  // inside event handlers, never inside the template or effects — plain `let`
-  // is sufficient and avoids unnecessary reactive tracking.
+  // bind:this refs use $state so teardown sees the latest element references;
+  // the drag discriminator is read only inside event handlers.
   let hueElement = $state<HTMLDivElement | null>(null);
   let alphaElement = $state<HTMLDivElement | null>(null);
   let draggingSlider: 'hue' | 'alpha' | null = null;
