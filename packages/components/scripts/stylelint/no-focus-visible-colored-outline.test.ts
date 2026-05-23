@@ -74,6 +74,19 @@ describe('cinder/no-focus-visible-colored-outline — allowed patterns', () => {
     expect(warningsFor(result)).toEqual([]);
   });
 
+  test('forced-colors fallback is allowed when nested inside another non-forced-colors @media', async () => {
+    const result = await lintWithDirectRule(`
+      @media (hover: hover) {
+        @media (forced-colors: active) {
+          .x:focus-visible {
+            outline: var(--cinder-ring-width) solid Highlight;
+          }
+        }
+      }
+    `);
+    expect(warningsFor(result)).toEqual([]);
+  });
+
   test('comma-separated media query is allowed when EVERY branch includes forced-colors: active', async () => {
     const result = await lintWithDirectRule(`
       @media (forced-colors: active), (forced-colors: active) and (max-width: 47.99rem) {

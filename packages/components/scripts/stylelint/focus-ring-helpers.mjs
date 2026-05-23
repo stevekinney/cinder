@@ -45,17 +45,21 @@ export function ancestorMediaQueries(node) {
 }
 
 /**
- * Is `node` nested under one or more `@media (forced-colors: active)`
- * queries, with every branch of every ancestor query matching? A
- * comma-separated query like `(forced-colors: active), (hover: hover)` is
- * intentionally NOT treated as a forced-colors fallback — the non-forced
- * branch would still apply the rule's declarations to ordinary viewports
- * and let a colored outline slip through.
+ * Is `node` nested inside an `@media` query that gates only on
+ * `(forced-colors: active)`? The check walks every ancestor `@media`; if
+ * any one of them has all comma-separated branches matching
+ * `(forced-colors: active)`, the rule is treated as a forced-colors
+ * fallback even if it also sits inside an unrelated outer query like
+ * `@media (hover: hover)`. A comma-separated query that mixes
+ * forced-colors with another feature (e.g. `(forced-colors: active),
+ * (hover: hover)`) is intentionally NOT treated as a fallback — the
+ * non-forced branch would still apply the rule's declarations to ordinary
+ * viewports and let a colored outline slip through.
  */
 export function isUnderForcedColors(node) {
   const queries = ancestorMediaQueries(node);
   if (queries.length === 0) return false;
-  return queries.every((params) => {
+  return queries.some((params) => {
     const branches = params.split(',');
     return branches.every((branch) => FORCED_COLORS_FEATURE.test(branch));
   });
