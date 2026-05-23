@@ -1537,6 +1537,32 @@
       }
     },
     {
+      "name": "MenuBar",
+      "id": "menu-bar",
+      "import": "cinder/menu-bar",
+      "exportName": "MenuBar",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Command menubar for application chrome such as File, Edit, and View menus.",
+      "tags": ["navigation", "menu", "chrome"],
+      "useWhen": [
+        "Building a desktop-style command menubar with dropdown command groups.",
+        "Exposing top-level application menus that need arrow-key traversal and optional submenus."
+      ],
+      "avoidWhen": [
+        "Linking between routes or sections — use navigation-bar or side-navigation instead.",
+        "Showing one standalone trigger with a menu — use dropdown, dropdown-menu, and dropdown-item directly."
+      ],
+      "related": ["navigation-bar", "dropdown", "dropdown-menu", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/menu-bar/schema",
+        "variables": "cinder/menu-bar/variables",
+        "examples": "cinder/menu-bar/examples"
+      }
+    },
+    {
       "name": "Message",
       "id": "message",
       "import": "cinder/experimental/message",

@@ -52,14 +52,26 @@
     }
     if (focusedFallbackOpen) return;
     focusedFallbackOpen = true;
-    void tick().then(() => focusMenuItem(0));
+    void tick().then(() => focusMenuItem(context.initialFocus === 'last' ? -1 : 0));
   });
 
+  function getOwnedMenuItems(): HTMLElement[] {
+    if (!menuElement) return [];
+
+    return Array.from(
+      menuElement.querySelectorAll<HTMLElement>('[role="menuitem"]:not([data-disabled])'),
+    ).filter((item) => item.closest('[role="menu"]') === menuElement);
+  }
+
   function focusMenuItem(index: number): void {
-    const items = menuElement?.querySelectorAll<HTMLElement>(
-      '[role="menuitem"]:not([data-disabled])',
-    );
-    const item = items?.item(index);
+    const items = getOwnedMenuItems();
+    if (!items.length) {
+      menuElement?.focus();
+      return;
+    }
+
+    const resolvedIndex = index < 0 ? items.length - 1 : index;
+    const item = items.at(resolvedIndex);
     item?.focus();
   }
 
@@ -71,12 +83,8 @@
       return;
     }
 
-    const items = menuElement?.querySelectorAll<HTMLElement>(
-      '[role="menuitem"]:not([data-disabled])',
-    );
-    if (!items?.length) return;
-
-    const itemsArray = Array.from(items);
+    const itemsArray = getOwnedMenuItems();
+    if (!itemsArray.length) return;
     const currentIndex = itemsArray.findIndex((item) => item === document.activeElement);
 
     if (event.key === 'ArrowDown') {
@@ -99,7 +107,7 @@
     setOpen(isOpenNow);
 
     if (isOpenNow) {
-      void tick().then(() => focusMenuItem(0));
+      void tick().then(() => focusMenuItem(context.initialFocus === 'last' ? -1 : 0));
     }
   }
 </script>
