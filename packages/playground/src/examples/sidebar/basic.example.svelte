@@ -54,7 +54,7 @@
       {/snippet}
 
       {#snippet footer()}
-        <NavigationItem href="#account">
+        <NavigationItem variant="vertical" href="#account">
           {#snippet children()}Account{/snippet}
         </NavigationItem>
       {/snippet}

@@ -87,11 +87,6 @@
   border-color: transparent;
 }
 
-.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
-  outline: 2px solid var(--cinder-ring-color);
-  outline-offset: 2px;
-}
-
 /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
    Svelte appends new nodes alongside the old when an `{@html}` value changes
    between two non-null strings unless it sits inside a stable parent element.

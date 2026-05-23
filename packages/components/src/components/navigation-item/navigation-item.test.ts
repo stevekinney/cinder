@@ -204,4 +204,33 @@ describe('NavigationItem rendering', () => {
     });
     expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('mobile');
   });
+
+  test('link arm emits data-variant="vertical" when variant="vertical" is passed', () => {
+    const { container } = render(NavigationItem, {
+      props: { href: '/home', variant: 'vertical', children: (() => {}) as never },
+    });
+    expect(container.querySelector('a')?.getAttribute('data-variant')).toBe('vertical');
+  });
+
+  test('button arm emits data-variant="vertical" when variant="vertical" is passed', () => {
+    const { container } = render(NavigationItem, {
+      props: { onclick: () => {}, variant: 'vertical', children: (() => {}) as never },
+    });
+    expect(container.querySelector('button')?.getAttribute('data-variant')).toBe('vertical');
+  });
+
+  test('vertical link with active state still emits data-active and data-variant', () => {
+    const { container } = render(NavigationItem, {
+      props: {
+        href: '/projects',
+        variant: 'vertical',
+        active: true,
+        children: (() => {}) as never,
+      },
+    });
+    const anchor = container.querySelector('a');
+    expect(anchor?.getAttribute('data-variant')).toBe('vertical');
+    expect(anchor?.getAttribute('data-active')).toBe('true');
+    expect(anchor?.getAttribute('aria-current')).toBe('page');
+  });
 });

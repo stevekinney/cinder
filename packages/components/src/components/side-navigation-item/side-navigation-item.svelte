@@ -24,5 +24,5 @@
 </script>
 
 <li class={classNames('cinder-side-navigation__item', listItemClass)}>
-  <NavigationItem {...navigationItemProps} />
+  <NavigationItem {...navigationItemProps} variant="vertical" />
 </li>

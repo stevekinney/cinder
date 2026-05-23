@@ -16,36 +16,12 @@
 }
 
 /* ----------------------------------------
- * Vertical-context overrides for NavigationItem leaves.
- * Escalated specificity targets the leaf's actual tags so these
- * rules win over the base .cinder-navigation-item selector.
- * ---------------------------------------- */
-
-.cinder-side-navigation a.cinder-navigation-item,
-.cinder-side-navigation button.cinder-navigation-item {
-  display: flex;
-  inline-size: 100%;
-  justify-content: flex-start;
-  border-bottom: none;
-  border-radius: var(--cinder-radius-sm);
-  border-inline-start: 2px solid transparent;
-  /* Reset the horizontal top-radius-only shape from the base rule */
-  border-start-start-radius: var(--cinder-radius-sm);
-  border-start-end-radius: var(--cinder-radius-sm);
-  border-end-start-radius: var(--cinder-radius-sm);
-  border-end-end-radius: var(--cinder-radius-sm);
-}
-
-.cinder-side-navigation a.cinder-navigation-item[data-active='true'],
-.cinder-side-navigation button.cinder-navigation-item[data-active='true'] {
-  border-inline-start-color: var(--cinder-accent);
-  background-color: color-mix(in oklch, var(--cinder-accent), transparent 92%);
-  /* Remove the horizontal bottom-border active indicator */
-  border-bottom-color: transparent;
-}
-
-/* ----------------------------------------
  * Item wrapper <li> — reset list styles
+ *
+ * Vertical geometry (symmetric radius, inline-start active border) now lives
+ * on `.cinder-navigation-item[data-variant='vertical']` in `navigation-item.css`.
+ * `SideNavigationItem` forces `variant="vertical"` on its inner item, so no
+ * ancestor-specificity overrides are needed here.
  * ---------------------------------------- */
 
 .cinder-side-navigation__item {

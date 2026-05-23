@@ -1,5 +1,8 @@
 {
-  "plugins": ["stylelint-use-logical"],
+  "plugins": [
+    "stylelint-use-logical",
+    "./packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs"
+  ],
   "overrides": [
     {
       "files": ["**/*.svelte"],
@@ -7,6 +10,12 @@
     }
   ],
   "rules": {
+    "cinder/no-focus-visible-colored-outline": [
+      true,
+      {
+        "severity": "warning"
+      }
+    ],
     "csstools/use-logical": [
       "always",
       {

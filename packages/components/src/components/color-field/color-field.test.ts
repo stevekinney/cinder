@@ -660,7 +660,7 @@ describe('ColorField — Enter-clear sync regression', () => {
       hiddenAtSubmit = mirror?.value;
       onsubmit(event);
     };
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#ff0000',
@@ -679,7 +679,7 @@ describe('ColorField — Enter-clear sync regression', () => {
 
 describe('ColorField — reset honors formats gate', () => {
   test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       formats: ['hex'],
@@ -690,7 +690,7 @@ describe('ColorField — reset honors formats gate', () => {
     expect(input.value).toBe('');
     await typeAndBlur(input, '#abcdef');
     expect(input.value).toBe('#abcdef');
-    const form = q<HTMLFormElement>(container, 'form');
+    const form = container as HTMLFormElement;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     // After reset: defaultValue still fails formats gate; field clears.

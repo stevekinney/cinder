@@ -1,6 +1,9 @@
 # Focus Ring Policy
 
-This document defines the two approved strategies for `:focus-visible` rings in Cinder component CSS. Pick from this list. Do not invent a third approach.
+This document defines the approved strategies for `:focus-visible` rings in Cinder component CSS. Pick from this list. Do not invent a third approach.
+
+> [!NOTE] Default recipe
+> Component `:focus-visible` rules should use **Strategy B** — the transparent-outline placeholder paired with `box-shadow: var(--_cinder-focus-ring-shadow)`. The `cinder/no-focus-visible-colored-outline` Stylelint rule enforces this: colored `outline` channels are rejected outside `@media (forced-colors: active)`. Strategy A (a colored outline) is retained for the bare `:focus-visible` global default in `foundation.css` only.
 
 ## Token Reference
 
@@ -13,12 +16,12 @@ Four tokens in `packages/components/src/styles/tokens-base.css` (the `/* Focus r
 | `--cinder-ring-offset-color` | `var(--cinder-bg)`     | Color of the offset band in Strategy B. Matches the page background so the ring visually floats off the control. Not used in A or B-inset.                                                                   |
 | `--cinder-ring-color`        | `light-dark(…)` accent | The ring color. Per-variant overrides should use a private `--_cinder-<component>-ring` custom property whose fallback is `var(--cinder-ring-color)`.                                                        |
 
-## Strategy A — Outline ring
+## Strategy A — Outline ring (foundation-only)
 
 Use when:
 
-- The component's `box-shadow` is reserved for something else (elevation, an inset border, a composed effect).
-- A single-band ring is sufficient and no offset color band is needed between the element edge and the ring.
+- The selector is the **bare `:focus-visible` global default** in `foundation.css`. That single low-specificity rule paints the baseline ring for any element a component CSS file does not own.
+- Otherwise, do not pick Strategy A for new component rules. The Stylelint rule will reject a colored `outline` in `:focus-visible`. Existing call sites that still use Strategy A should migrate to Strategy B opportunistically.
 
 ```css
 .cinder-component:focus-visible {
@@ -31,12 +34,9 @@ Use when:
 
 Strategy A does **not** need a `@media (forced-colors: active)` override. A solid `outline` is already preserved by forced-colors mode (the system substitutes a system color). Adding a redundant override is unnecessary.
 
-**Representative call sites** (selector references):
+**Representative call site:**
 
-- `packages/components/src/styles/foundation.css` — bare `:focus-visible` selector (global default).
-- `packages/components/src/styles/components/breadcrumbs.css` — `.cinder-breadcrumbs__link:focus-visible`.
-- `packages/components/src/styles/components/copy-button.css` — `.cinder-copy-button:focus-visible`.
-- `packages/components/src/styles/components/tabs.css` — `.cinder-tab-panel:focus-visible`.
+- `packages/components/src/styles/foundation.css` — bare `:focus-visible` selector (global default). This is the only place Strategy A is sanctioned going forward.
 
 ## Strategy B — Box-shadow ring with transparent outline placeholder
 
@@ -116,10 +116,24 @@ The offset color band is intentionally omitted — there is no usable space insi
 
 Variants that change foreground or background (danger inputs, accent buttons) **should not** change the ring color. Focus ring color carries a single semantic — "keyboard focus is here." A danger-toned ring on a danger-toned background loses contrast and confuses the focus signal. Use `--_cinder-<component>-ring` only to distinguish one component's ring from the global default, not to reflect variant state.
 
-## Future Enforcement
+## Enforcement (Stylelint)
 
-Cinder does not currently run stylelint. A custom rule could enforce: "any `:focus-visible` block containing `box-shadow` must also contain `outline` set to either `transparent` or a non-`none` value." This would catch the bare-box-shadow deviation this policy was written to fix. Wiring up stylelint is a separate task.
+The root `bun run lint` pipeline runs Stylelint over `packages/**/src/**/*.{css,svelte}` with the local `cinder/no-focus-visible-colored-outline` plugin (`packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs`). The rule is currently configured at **`severity: warning`** because surveying the codebase at introduction time revealed ~40 pre-existing colored-outline call sites that pre-date this policy. Surfacing them as warnings keeps the rule visible without gating every unrelated PR on a sweep-up. Promote to `error` once the colored-outline sites are migrated.
+
+The rule:
+
+- Rejects colored `outline`, `outline-color`, `outline-style`, and `outline-width` declarations inside any non-forced-colors `:focus-visible` rule. Token aliases (`var(--cinder-ring-color)`, `CanvasText`, `currentColor`, `revert`, `auto`) are all rejected — only the exact transparent placeholder `outline: var(--cinder-ring-width) solid transparent` is permitted.
+- Allows colored outlines inside `@media (forced-colors: active)`. A comma-separated media query is treated as a forced-colors fallback only when **every** branch contains `(forced-colors: active)`; partial matches (e.g. `(forced-colors: active), (hover: hover)`) are rejected.
+- Permits `outline: none` inside `:focus-visible` only when preceded by a `/* cinder-focus-ring-owner: parent */` comment on the line above.
+
+The `box-shadow` half of Strategy B (the requirement to reference `var(--_cinder-focus-ring-shadow)` rather than reconstruct the formula longhand) is pinned by parser-based tests in `packages/components/src/test/focus-ring-recipe.test.ts`. New components that follow Strategy B should be added to that test file as a regression target.
+
+Forced-colors fallbacks are exempt from the lint rule because `box-shadow` is suppressed in Windows High Contrast Mode — without an outline channel painted with a system color, the ring would vanish ([WCAG 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html) failure).
 
 ## Deviations Appendix
 
 **Dropdown (resolved, 2026-05).** `.cinder-dropdown-trigger` and `.cinder-dropdown-item` previously used `outline: none` with a bare `0 0 0 2px var(--cinder-ring-color)` box-shadow — skipping `--cinder-ring-width`, omitting the transparent outline, and hard-coding `2px`. Both selectors were realigned: the trigger now follows Strategy B (matches `.cinder-button`), and the items follow Strategy B-inset (they live inside `.cinder-dropdown__menu` which sets `overflow: hidden`). The forced-colors override was updated to use variant-attribute selectors so it wins over the base rules' higher specificity.
+
+**Slider thumb, tab panel, CopyButton, number-input stepper, selection-popover (resolved, 2026-05).** These selectors previously used Strategy A with a colored outline (or, in selection-popover's case, hardcoded `outline: 2px solid var(--cinder-accent)`). They were realigned to Strategy B with explicit forced-colors fallbacks, and `code-block.css` lost its nested CopyButton focus override so the base recipe applies uniformly. The Stylelint rule was added at the same time to prevent the drift from returning.
+
+**NavigationItem / Tab vertical variant (resolved, 2026-05).** `NavigationItem` and `Tab` had horizontal top-rounded/bottom-square radii by default, which the focus-ring `box-shadow` inherited as a tombstone shape in vertical contexts. The vertical geometry now lives on `.cinder-navigation-item[data-variant='vertical']` and `.cinder-tab[data-variant='vertical']` — emitted from `tabs.orientation` for tabs, and forced by `SideNavigationItem` for sidebar items. The previous ancestor-class reset in `side-navigation.css` was removed.
