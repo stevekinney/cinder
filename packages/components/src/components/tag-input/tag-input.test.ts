@@ -317,6 +317,12 @@ describe('TagInput keyboard removal and navigation', () => {
     await fireEvent.keyDown(input, { key: 'Backspace' });
     expect(document.activeElement).toBe(input);
 
+    const firstOption = getOptions(container)[0]!;
+    firstOption.focus();
+    await fireEvent.keyDown(firstOption, { key: 'Delete' });
+    expect(document.activeElement).toBe(firstOption);
+    expect(getOptions(container)).toHaveLength(2);
+
     await fireEvent.click(container.querySelector('.cinder-tag-input__remove')!);
     expect(getOptions(container)).toHaveLength(2);
   });
