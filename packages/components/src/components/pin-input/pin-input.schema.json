@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable id used as the segment id prefix and as the hidden input id."
+    },
+    "value": {
+      "type": "string",
+      "description": "Bindable code value. Defaults to an empty string."
+    },
+    "length": {
+      "type": "number",
+      "description": "Number of segments to render. Normalized to an integer in `[1, 12]`;\nnon-finite or out-of-range values fall back to `6`."
+    },
+    "mode": {
+      "enum": ["numeric", "alphanumeric"],
+      "description": "Character set accepted in each segment. Defaults to `'numeric'`."
+    },
+    "masked": {
+      "type": "boolean",
+      "description": "Render segments as password-style fields without changing the emitted value."
+    },
+    "label": {
+      "type": "string",
+      "description": "Visible group label rendered above the segments."
+    },
+    "hideLabel": {
+      "type": "boolean",
+      "description": "Visually hide the rendered `label` while keeping it programmatically associated."
+    },
+    "aria-label": {
+      "type": "string",
+      "description": "Group accessible name when no visible `label` is supplied."
+    },
+    "aria-labelledby": {
+      "type": "string",
+      "description": "Space-separated list of ids that label the group when no `label` is supplied."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description text rendered below the segments."
+    },
+    "error": {
+      "type": "string",
+      "description": "Optional error message; sets `aria-invalid=\"true\"` on every segment."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disable every segment and the hidden input."
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Mark the group as required for assistive technology."
+    },
+    "name": {
+      "type": "string",
+      "description": "Form-control name applied to the hidden `<input>` that submits with the form."
+    },
+    "class": {
+      "type": "string",
+      "description": "Extra class names appended to the root group element."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "autocomplete",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

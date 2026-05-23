@@ -1,0 +1,93 @@
+/* ========================================
+ * PIN INPUT
+ * ======================================== */
+
+.cinder-pin-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-1-5);
+  inline-size: max-content;
+}
+
+.cinder-pin-input-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  line-height: 1;
+  color: var(--cinder-text);
+}
+
+.cinder-pin-input-field__label[data-disabled] {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+.cinder-pin-input {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-pin-input__segment {
+  inline-size: 2.5rem;
+  block-size: 3rem;
+  padding: 0;
+  font-family: var(--cinder-font-mono, ui-monospace, monospace);
+  font-size: var(--cinder-text-lg);
+  font-weight: var(--cinder-font-medium);
+  line-height: 1;
+  text-align: center;
+  color: var(--cinder-text);
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  appearance: none;
+
+  transition:
+    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+@media (hover: hover) {
+  .cinder-pin-input__segment:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
+}
+
+.cinder-pin-input__segment:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-surface),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-focus-ring);
+  border-color: var(--cinder-border-strong);
+}
+
+.cinder-pin-input__segment[aria-invalid='true'] {
+  border-color: var(--cinder-danger);
+}
+
+.cinder-pin-input__segment:disabled {
+  cursor: not-allowed;
+  color: var(--cinder-text-disabled);
+  background: var(--cinder-surface-muted);
+}
+
+@media (forced-colors: active) {
+  .cinder-pin-input__segment:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+  }
+}
+
+.cinder-pin-input-field__description {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+.cinder-pin-input-field__error {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-danger);
+}
