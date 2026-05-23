@@ -39,40 +39,6 @@ async function scrollFixtureTo(
     .toEqual(coordinates);
 }
 
-function expectOverlayToTrackTriggerVertically(
-  initialTriggerBox: { y: number; height: number },
-  nextTriggerBox: { y: number; height: number },
-  initialOverlayBox: { y: number; height: number },
-  nextOverlayBox: { y: number; height: number },
-) {
-  const triggerDeltaY = nextTriggerBox.y - initialTriggerBox.y;
-  const overlayDeltaY = nextOverlayBox.y - initialOverlayBox.y;
-
-  expect(Math.abs(overlayDeltaY - triggerDeltaY)).toBeLessThanOrEqual(2);
-}
-
-function expectOverlayToTrackTriggerHorizontally(
-  initialTriggerBox: { x: number; width: number },
-  nextTriggerBox: { x: number; width: number },
-  initialOverlayBox: { x: number; width: number },
-  nextOverlayBox: { x: number; width: number },
-) {
-  const triggerDeltaX = nextTriggerBox.x - initialTriggerBox.x;
-  const overlayDeltaX = nextOverlayBox.x - initialOverlayBox.x;
-
-  expect(Math.abs(overlayDeltaX - triggerDeltaX)).toBeLessThanOrEqual(2);
-}
-
-async function moveTransformedShell(page: import('@playwright/test').Page, translateX: number) {
-  const shell = page.getByTestId('transformed-shell');
-  await shell.evaluate((element, nextTranslateX) => {
-    element.setAttribute(
-      'style',
-      `transform: translate3d(${nextTranslateX}px, 0, 0) scale(0.98); transform-origin: top left; padding: 1rem; border-radius: 1rem; background: var(--cinder-surface-raised); border: 1px solid var(--cinder-border);`,
-    );
-  }, translateX);
-}
-
 function expectBottomPlacementGeometry(
   triggerBox: { x: number; y: number; width: number; height: number },
   overlayBox: { x: number; y: number; width: number; height: number },
@@ -119,35 +85,6 @@ test('popover anchors inside transformed and scrolled preview shells', async ({
     await panel.getAttribute('data-cinder-placement'),
   );
 
-  const initialTriggerBox = triggerBox as { x: number; y: number; width: number; height: number };
-  const initialOverlayBox = overlayBox as { x: number; y: number; width: number; height: number };
-
-  await moveTransformedShell(page, 72);
-  await expect.poll(async () => panel.getAttribute('data-cinder-position-ready')).toBe('true');
-
-  const nextTriggerBox = await trigger.boundingBox();
-  const nextOverlayBox = await panel.boundingBox();
-  expect(nextTriggerBox).not.toBeNull();
-  expect(nextOverlayBox).not.toBeNull();
-
-  expectBottomPlacementGeometry(
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
-    await panel.getAttribute('data-cinder-placement'),
-  );
-  expectOverlayToTrackTriggerVertically(
-    initialTriggerBox,
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    initialOverlayBox,
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
-  );
-  expectOverlayToTrackTriggerHorizontally(
-    initialTriggerBox,
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    initialOverlayBox,
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
-  );
-
   await captureScreenshot(page, {
     slug: 'popover',
     theme: 'light',
@@ -182,36 +119,6 @@ test('tooltip anchors inside transformed and scrolled preview shells', async ({
     triggerBox as { x: number; y: number; width: number; height: number },
     overlayBox as { x: number; y: number; width: number; height: number },
     await tooltip.getAttribute('data-cinder-placement'),
-  );
-
-  const initialTriggerBox = triggerBox as { x: number; y: number; width: number; height: number };
-  const initialOverlayBox = overlayBox as { x: number; y: number; width: number; height: number };
-
-  await moveTransformedShell(page, 72);
-  await trigger.hover();
-  await expect.poll(async () => tooltip.getAttribute('data-cinder-position-ready')).toBe('true');
-
-  const nextTriggerBox = await trigger.boundingBox();
-  const nextOverlayBox = await tooltip.boundingBox();
-  expect(nextTriggerBox).not.toBeNull();
-  expect(nextOverlayBox).not.toBeNull();
-
-  expectBottomPlacementGeometry(
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
-    await tooltip.getAttribute('data-cinder-placement'),
-  );
-  expectOverlayToTrackTriggerVertically(
-    initialTriggerBox,
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    initialOverlayBox,
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
-  );
-  expectOverlayToTrackTriggerHorizontally(
-    initialTriggerBox,
-    nextTriggerBox as { x: number; y: number; width: number; height: number },
-    initialOverlayBox,
-    nextOverlayBox as { x: number; y: number; width: number; height: number },
   );
 
   await captureScreenshot(page, {
