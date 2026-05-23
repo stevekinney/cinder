@@ -24,8 +24,10 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-tag-input__control:hover:not([data-disabled]) {
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-tag-input__control:hover:not([data-disabled]) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-tag-input__control:focus-within {
@@ -126,9 +128,11 @@
   transform: translate(-50%, -50%);
 }
 
-.cinder-tag-input__remove:hover:not(:disabled) {
-  color: var(--cinder-text);
-  background: color-mix(in oklch, var(--cinder-text), transparent 92%);
+@media (hover: hover) {
+  .cinder-tag-input__remove:hover:not(:disabled) {
+    color: var(--cinder-text);
+    background: color-mix(in oklch, var(--cinder-text), transparent 92%);
+  }
 }
 
 .cinder-tag-input__remove:focus-visible {
