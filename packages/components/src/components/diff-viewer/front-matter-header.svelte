@@ -133,8 +133,10 @@
     padding: 0;
   }
 
-  .front-matter-header:hover {
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .front-matter-header:hover {
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .front-matter-header:focus-visible {

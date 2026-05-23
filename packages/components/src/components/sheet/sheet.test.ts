@@ -12,6 +12,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.showModal) {
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
         this.setAttribute('open', '');
       },
       configurable: true,
@@ -21,6 +26,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.close) {
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
         this.removeAttribute('open');
         this.dispatchEvent(new Event('close'));
       },
@@ -32,6 +42,19 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Sheet } = await import('./sheet.svelte');
+const originalGetComputedStyle = window.getComputedStyle.bind(window);
+
+window.getComputedStyle = ((target: Element) => {
+  if (target instanceof HTMLElement && target.classList.contains('cinder-sheet__panel')) {
+    return {
+      transitionProperty: 'translate, opacity',
+      transitionDuration: '150ms, 150ms',
+      transitionDelay: '0ms, 0ms',
+    } as CSSStyleDeclaration;
+  }
+
+  return originalGetComputedStyle(target);
+}) as typeof window.getComputedStyle;
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -44,6 +67,20 @@ const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
   setup: () => {},
 }));
+
+function createTransitionEndEvent(propertyName: string): Event {
+  const event = new Event('transitionend');
+  Object.defineProperty(event, 'propertyName', { value: propertyName });
+  return event;
+}
+
+async function finishCloseTransition(container: HTMLElement): Promise<void> {
+  const panel = container.querySelector('.cinder-sheet__panel');
+  if (!panel) return;
+  panel.dispatchEvent(createTransitionEndEvent('translate'));
+  panel.dispatchEvent(createTransitionEndEvent('opacity'));
+  await Promise.resolve();
+}
 
 afterEach(() => {
   _resetScrollLock();
@@ -207,6 +244,7 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -242,6 +280,7 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).toBe(previouslyFocused);
 
     document.body.removeChild(previouslyFocused);
@@ -270,6 +309,7 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).not.toBe(triggerEl);
   });
 
@@ -295,6 +335,7 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -319,14 +360,11 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
   });
 
-  test('Escape key on dialog fires close event and sets open to false', async () => {
-    // The native <dialog> handles ESC → cancel → close automatically with showModal().
-    // happy-dom does not fully emulate this native behaviour, so we fire the close
-    // event after dispatching Escape to replicate the browser sequence — same pattern
-    // as drawer.test.ts. This tests the onclose → handleClose → open=false chain.
+  test('Escape cancel keeps the sheet mounted until the close transition completes', async () => {
     let openValue = true;
     const { container } = render(Sheet, {
       props: {
@@ -342,24 +380,50 @@ describe('Sheet', () => {
     });
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
     expect(dialog).not.toBeNull();
-    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
-    await fireEvent(dialog, new Event('close'));
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
     expect(openValue).toBe(false);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+    await finishCloseTransition(container);
+    expect(dialog.hasAttribute('open')).toBe(false);
   });
 
-  test('sheet.css contains prefers-reduced-motion: reduce with cinder-sheet-fade', async () => {
-    const cssFile = Bun.file(new URL('./sheet.css', import.meta.url));
-    const cssText = await cssFile.text();
+  test('close applies inert closing state until the delayed close finishes', async () => {
+    let openValue = true;
+    const { container } = render(Sheet, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    expect(openValue).toBe(false);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.getAttribute('data-cinder-closing')).toBe('');
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+    expect(panel.hasAttribute('inert')).toBe(true);
+    await finishCloseTransition(container);
+    expect(dialog.hasAttribute('open')).toBe(false);
+  });
+
+  test('sheet.css disables panel and backdrop transitions under prefers-reduced-motion: reduce', async () => {
+    const cssText = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
     expect(cssText).toContain('prefers-reduced-motion: reduce');
-    expect(cssText).toContain('cinder-sheet-fade');
-  });
-
-  test('sheet.css contains slide-up keyframe under prefers-reduced-motion: no-preference', async () => {
-    const cssFile = Bun.file(new URL('./sheet.css', import.meta.url));
-    const cssText = await cssFile.text();
-    expect(cssText).toContain('prefers-reduced-motion: no-preference');
-    expect(cssText).toContain('cinder-sheet-slide-up');
+    expect(cssText).toContain('.cinder-sheet__panel');
+    expect(cssText).toContain('.cinder-sheet::backdrop');
+    expect(cssText).toContain('transition: none');
   });
 
   test('bindable open: closing from inside the sheet updates consumer state', async () => {
@@ -380,6 +444,7 @@ describe('Sheet', () => {
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
     expect(openValue).toBe(false);
+    await finishCloseTransition(container);
   });
 
   test('unmount-while-open (no triggerRef): restores scroll lock and escape stack', () => {
@@ -442,6 +507,8 @@ describe('Sheet', () => {
 
     const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
     await fireEvent.click(closeButton);
+    expect(closeCount).toBe(0);
+    await finishCloseTransition(container);
     expect(closeCount).toBe(1);
   });
 
@@ -500,9 +567,18 @@ describe('Sheet', () => {
     });
     expect(document.body.style.overflow).toBe('hidden');
 
-    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
-    await fireEvent.click(closeButton);
-    expect(openValue).toBe(false);
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'State Machine',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -629,8 +705,18 @@ describe('Sheet', () => {
     });
 
     expect(document.body.style.overflow).toBe('hidden');
-    let closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
-    await fireEvent.click(closeButton);
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
     await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(siblingEscapeCount).toBe(1);
@@ -648,8 +734,18 @@ describe('Sheet', () => {
     });
 
     expect(document.body.style.overflow).toBe('hidden');
-    closeButton = container.querySelector('.cinder-sheet__close') as HTMLButtonElement;
-    await fireEvent.click(closeButton);
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
     expect(document.body.style.overflow).toBe('');
     await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(siblingEscapeCount).toBe(2);

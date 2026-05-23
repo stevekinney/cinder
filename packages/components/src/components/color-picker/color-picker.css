@@ -179,6 +179,9 @@
 }
 
 .cinder-color-picker__swatch {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -188,10 +191,26 @@
   outline: none;
 }
 
-.cinder-color-picker__swatch:focus-visible,
 .cinder-color-picker__swatch[data-cinder-selected] {
+  border-color: color-mix(in srgb, var(--cinder-border, rgba(0, 0, 0, 0.1)) 20%, currentColor);
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.cinder-color-picker__swatch:focus-visible {
   outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
   outline-offset: 2px;
+}
+
+.cinder-color-picker__swatch-indicator {
+  display: inline-flex;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  pointer-events: none;
+}
+
+.cinder-color-picker__swatch-indicator :global(svg) {
+  inline-size: 100%;
+  block-size: 100%;
 }
 
 @media (forced-colors: active) {

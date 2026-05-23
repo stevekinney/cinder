@@ -1,12 +1,52 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+type Resolver = (value: unknown) => void;
+
+let computePositionResult = {
+  x: 16,
+  y: 24,
+  placement: 'top',
+};
+let computePositionShouldReject = false;
+let deferComputePosition = false;
+let deferredResolvers: Resolver[] = [];
+
+const computePositionSpy = mock(async () => {
+  if (computePositionShouldReject) {
+    throw new Error('computePosition failed');
+  }
+  if (deferComputePosition) {
+    return new Promise((resolve) => {
+      deferredResolvers.push(resolve as Resolver);
+    });
+  }
+  return computePositionResult;
+});
+
+const autoUpdateTeardown = mock(() => {});
+const autoUpdateSpy = mock((_anchor: HTMLElement, _tooltip: HTMLElement, update: () => void) => {
+  update();
+  return autoUpdateTeardown;
+});
+const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
+const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () => ({}) }));
+const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
+
+mock.module('@floating-ui/dom', () => ({
+  autoUpdate: autoUpdateSpy,
+  computePosition: computePositionSpy,
+  flip: flipSpy,
+  shift: shiftSpy,
+  offset: offsetSpy,
+}));
+
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: Tooltip } = await import('./tooltip.svelte');
 
 function textSnippet(text: string) {
@@ -21,6 +61,47 @@ const triggerSnippet = createRawSnippet(() => ({
   setup: () => {},
 }));
 
+const multiDescriptionTriggerSnippet = createRawSnippet(() => ({
+  render: () => `<button type="button" aria-describedby="alpha beta">Hover me</button>`,
+  setup: () => {},
+}));
+
+const disabledTabindexTriggerSnippet = createRawSnippet(() => ({
+  render: () =>
+    [
+      '<span>',
+      '<button type="button" tabindex="0" disabled>Disabled focus target</button>',
+      '<span>Plain wrapper fallback</span>',
+      '</span>',
+    ].join(''),
+  setup: () => {},
+}));
+
+function queryTooltip(): HTMLElement | null {
+  return document.body.querySelector('[role="tooltip"]');
+}
+
+beforeEach(() => {
+  computePositionResult = {
+    x: 16,
+    y: 24,
+    placement: 'top',
+  };
+  computePositionShouldReject = false;
+  deferComputePosition = false;
+  deferredResolvers = [];
+});
+
+afterEach(() => {
+  cleanup();
+  computePositionSpy.mockClear();
+  autoUpdateSpy.mockClear();
+  autoUpdateTeardown.mockClear();
+  flipSpy.mockClear();
+  shiftSpy.mockClear();
+  offsetSpy.mockClear();
+});
+
 describe('Tooltip', () => {
   test('renders children (trigger) content', () => {
     const { container } = render(Tooltip, {
@@ -32,16 +113,18 @@ describe('Tooltip', () => {
     expect(container.textContent).toContain('Trigger');
   });
 
-  test('tooltip element is present but aria-hidden="true" initially', () => {
+  test('tooltip element is portaled to document.body and hidden initially', () => {
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: triggerSnippet,
       },
     });
-    const tooltip = container.querySelector('[role="tooltip"]');
+    const tooltip = queryTooltip();
     expect(tooltip).not.toBeNull();
+    expect(container.querySelector('[role="tooltip"]')).toBeNull();
     expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
+    expect(tooltip?.parentElement).toBe(document.body);
   });
 
   test('focusable trigger inside wrapper has aria-describedby that matches the tooltip id', () => {
@@ -51,29 +134,97 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    // aria-describedby must be on the element that receives focus, not the wrapper.
     const trigger = container.querySelector<HTMLElement>('button');
-    const tooltip = container.querySelector('[role="tooltip"]');
+    const tooltip = queryTooltip();
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
   });
 
-  test('tooltip becomes visible on focusin (aria-hidden="false")', async () => {
-    const { container } = render(Tooltip, {
+  test('pre-existing aria-describedby ids are merged and restored on cleanup', () => {
+    const { container, unmount } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
-        children: triggerSnippet,
+        children: multiDescriptionTriggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
-    await fireEvent.focusIn(wrapper);
+    const trigger = container.querySelector<HTMLElement>('button');
+    const tooltipId = queryTooltip()?.getAttribute('id');
 
-    await waitFor(() => {
-      const tooltip = container.querySelector('[role="tooltip"]');
-      expect(tooltip?.getAttribute('aria-hidden')).toBe('false');
-    });
+    expect(trigger?.getAttribute('aria-describedby')).toBe(`alpha beta ${tooltipId}`);
+
+    unmount();
+
+    expect(trigger?.getAttribute('aria-describedby')).toBe('alpha beta');
   });
 
-  test('tooltip becomes hidden on focusout', async () => {
+  test('tooltip becomes visible on focusin and receives fixed-position coordinates', async () => {
+    computePositionResult = {
+      x: 48,
+      y: 72,
+      placement: 'bottom',
+    };
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    await fireEvent.focusIn(wrapper);
+
+    await waitFor(() => {
+      const tooltip = queryTooltip();
+      expect(tooltip?.getAttribute('aria-hidden')).toBe('false');
+      expect(tooltip?.getAttribute('data-cinder-position-ready')).toBe('true');
+      expect(tooltip?.getAttribute('data-cinder-placement')).toBe('bottom');
+      expect(tooltip?.getAttribute('style')).toContain('left: 48px');
+      expect(tooltip?.getAttribute('style')).toContain('top: 72px');
+    });
+
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
+    expect(options?.strategy).toBe('fixed');
+  });
+
+  test('autoUpdate receives the resolved anchor and tooltip element', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const trigger = container.querySelector('button') as HTMLElement;
+    await fireEvent.mouseEnter(wrapper);
+
+    await waitFor(() => {
+      expect(autoUpdateSpy).toHaveBeenCalled();
+    });
+
+    const [anchor, tooltip] = autoUpdateSpy.mock.calls[0] ?? [];
+    expect(anchor).toBe(trigger);
+    const portaledTooltip = queryTooltip();
+    expect(portaledTooltip).not.toBeNull();
+    expect(tooltip).toBe(portaledTooltip as HTMLElement);
+  });
+
+  test('disabled tabindex child is ignored and wrapper becomes the anchor fallback', async () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: disabledTabindexTriggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    await fireEvent.mouseEnter(wrapper);
+
+    await waitFor(() => {
+      expect(autoUpdateSpy).toHaveBeenCalled();
+    });
+
+    const [anchor] = autoUpdateSpy.mock.calls[0] ?? [];
+    expect(anchor).toBe(wrapper);
+  });
+
+  test('tooltip becomes hidden on focusout and tears down autoUpdate', async () => {
     const { container } = render(Tooltip, {
       props: {
         text: 'Tooltip content',
@@ -82,53 +233,47 @@ describe('Tooltip', () => {
     });
     const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    // Show first
     await fireEvent.focusIn(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
-        'false',
-      );
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
     });
 
-    // Then hide — focusout bubbles from any descendant losing focus.
     await fireEvent.focusOut(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     });
+    expect(autoUpdateTeardown).toHaveBeenCalled();
   });
 
-  test('data-cinder-placement reflects the placement prop', () => {
-    const { container } = render(Tooltip, {
+  test('data-cinder-placement reflects the placement prop when hidden', () => {
+    render(Tooltip, {
       props: {
         text: 'Tooltip content',
         placement: 'bottom',
         children: triggerSnippet,
       },
     });
-    const tooltip = container.querySelector('[role="tooltip"]');
-    expect(tooltip?.getAttribute('data-cinder-placement')).toBe('bottom');
+    expect(queryTooltip()?.getAttribute('data-cinder-placement')).toBe('bottom');
   });
 
   test('defaults to placement "top" when placement prop is omitted', () => {
-    const { container } = render(Tooltip, {
+    render(Tooltip, {
       props: {
         text: 'Tooltip content',
         children: triggerSnippet,
       },
     });
-    const tooltip = container.querySelector('[role="tooltip"]');
-    expect(tooltip?.getAttribute('data-cinder-placement')).toBe('top');
+    expect(queryTooltip()?.getAttribute('data-cinder-placement')).toBe('top');
   });
 
   test('tooltip text content is rendered', () => {
-    const { container } = render(Tooltip, {
+    render(Tooltip, {
       props: {
         text: 'This is the tooltip text',
         children: triggerSnippet,
       },
     });
-    const tooltip = container.querySelector('[role="tooltip"]');
-    expect(tooltip?.textContent?.trim()).toBe('This is the tooltip text');
+    expect(queryTooltip()?.textContent?.trim()).toBe('This is the tooltip text');
   });
 
   test('shows tooltip on mouseenter and hides on mouseleave', async () => {
@@ -142,14 +287,12 @@ describe('Tooltip', () => {
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
-        'false',
-      );
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
     });
 
     await fireEvent.mouseLeave(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 
@@ -164,14 +307,12 @@ describe('Tooltip', () => {
 
     await fireEvent.focusIn(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
-        'false',
-      );
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
     });
 
     await fireEvent.keyDown(wrapper, { key: 'Escape' });
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 
@@ -186,14 +327,12 @@ describe('Tooltip', () => {
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe(
-        'false',
-      );
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
     });
 
     await fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => {
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 
@@ -229,7 +368,7 @@ describe('Tooltip', () => {
         runTimer();
       }
 
-      expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     } finally {
       globalThis.setTimeout = originalSetTimeout;
       globalThis.clearTimeout = originalClearTimeout;
@@ -245,8 +384,97 @@ describe('Tooltip', () => {
     });
     const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     await fireEvent.keyDown(wrapper, { key: 'Escape' });
-    expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('copies inherited dir and theme to the portaled tooltip', () => {
+    render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: createRawSnippet(() => ({
+          render: () =>
+            '<div dir="rtl" data-cinder-theme="dark"><button type="button">Hover me</button></div>',
+          setup: () => {},
+        })),
+      },
+    });
+
+    const tooltip = queryTooltip();
+    expect(tooltip?.getAttribute('dir')).toBe('rtl');
+    expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
+  });
+
+  test('computePosition failure keeps tooltip hidden until the next successful show', async () => {
+    computePositionShouldReject = true;
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.getAttribute('data-cinder-position-ready')).toBe('false');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    await fireEvent.mouseLeave(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    computePositionShouldReject = false;
+    computePositionResult = { x: 101, y: 202, placement: 'right' };
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.getAttribute('data-cinder-position-ready')).toBe('true');
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false');
+      expect(queryTooltip()?.getAttribute('data-cinder-placement')).toBe('right');
+      expect(queryTooltip()?.getAttribute('style')).toContain('left: 101px');
+      expect(queryTooltip()?.getAttribute('style')).toContain('top: 202px');
+    });
+  });
+
+  test('stale deferred compute results do not overwrite a newer visible tooltip position', async () => {
+    deferComputePosition = true;
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Tooltip content',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+
+    await fireEvent.mouseEnter(wrapper);
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalled();
+    });
+
+    await fireEvent.mouseLeave(wrapper);
+    await waitFor(() => {
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    deferComputePosition = false;
+    computePositionResult = { x: 303, y: 404, placement: 'left' };
+    await fireEvent.mouseEnter(wrapper);
+
+    const staleResolvers = [...deferredResolvers];
+    deferredResolvers = [];
+    for (const resolve of staleResolvers) {
+      resolve({ x: 5, y: 6, placement: 'bottom' });
+    }
+
+    await waitFor(() => {
+      expect(queryTooltip()?.getAttribute('data-cinder-position-ready')).toBe('true');
+      expect(queryTooltip()?.getAttribute('style')).toContain('left: 303px');
+      expect(queryTooltip()?.getAttribute('style')).toContain('top: 404px');
+      expect(queryTooltip()?.getAttribute('data-cinder-placement')).toBe('left');
+    });
   });
 });

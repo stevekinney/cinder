@@ -183,7 +183,8 @@ describe('Dropdown', () => {
     expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
     expect(container.querySelector('.cinder-dropdown-label')?.textContent).toContain('Document');
     expect(container.querySelector('[role="separator"]')).not.toBeNull();
-    expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[role="group"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(3);
   });
 
   test('compound fallback menu focuses the first enabled item when opened', async () => {
@@ -278,6 +279,55 @@ describe('Dropdown', () => {
     await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
 
     expect(container.querySelector('output')?.textContent).toBe('copy');
+  });
+
+  test('grouped menu exposes aria-labelledby boundaries', async () => {
+    const { container } = render(DropdownCompoundFixture);
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+
+    const groups = Array.from(container.querySelectorAll<HTMLElement>('[role="group"]'));
+    expect(groups).toHaveLength(2);
+    expect(groups[0]?.getAttribute('aria-labelledby')).toBe('actions-menu-document-label');
+    expect(container.querySelector('#actions-menu-document-label')?.textContent?.trim()).toBe(
+      'Document',
+    );
+    expect(groups[1]?.getAttribute('aria-labelledby')).toBe('actions-menu-sharing-label');
+    expect(container.querySelector('#actions-menu-sharing-label')?.textContent?.trim()).toBe(
+      'Sharing',
+    );
+  });
+
+  test('ArrowDown and ArrowUp move across grouped menu boundaries', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement?.textContent).toContain('Copy link');
+  });
+
+  test('Home and End land on the first and last enabled grouped menu items', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Home' });
+    expect(document.activeElement?.textContent).toContain('Copy link');
   });
 
   test('legacy trigger wrapper does not own aria-haspopup', () => {

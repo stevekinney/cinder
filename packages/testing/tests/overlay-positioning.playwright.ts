@@ -1,0 +1,132 @@
+import { expect, test } from '../src/fixtures/component-page.ts';
+import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
+import { captureScreenshot } from '../src/helpers/screenshot.ts';
+
+const manifest = loadManifest();
+const desktopViewport = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
+
+if (!desktopViewport) {
+  throw new Error('Desktop viewport is required for overlay positioning tests.');
+}
+
+function manifestEntry(slug: 'popover' | 'tooltip') {
+  const entry = manifest.find((candidate) => candidate.slug === slug);
+  if (!entry) {
+    throw new Error(`Missing manifest entry for ${slug}.`);
+  }
+  return entry;
+}
+
+async function scrollFixture(page: import('@playwright/test').Page) {
+  return scrollFixtureTo(page, { top: 120, left: 140 });
+}
+
+async function scrollFixtureTo(
+  page: import('@playwright/test').Page,
+  coordinates: { top: number; left: number },
+) {
+  const scrollContainer = page.getByTestId('transformed-scroll-container');
+  await scrollContainer.evaluate((element, nextCoordinates) => {
+    element.scrollTo(nextCoordinates);
+  }, coordinates);
+  await expect
+    .poll(async () =>
+      scrollContainer.evaluate((element) => ({
+        top: element.scrollTop,
+        left: element.scrollLeft,
+      })),
+    )
+    .toEqual(coordinates);
+}
+
+function expectVerticalPlacementGeometry(
+  triggerBox: { x: number; y: number; width: number; height: number },
+  overlayBox: { x: number; y: number; width: number; height: number },
+  placement: string | null,
+) {
+  expect(overlayBox.width).toBeGreaterThan(0);
+  expect(overlayBox.height).toBeGreaterThan(0);
+  expect(placement).toMatch(/^(bottom|top)/);
+
+  const verticalGap = placement?.startsWith('top')
+    ? triggerBox.y - (overlayBox.y + overlayBox.height)
+    : overlayBox.y - (triggerBox.y + triggerBox.height);
+  expect(verticalGap).toBeGreaterThanOrEqual(4);
+  expect(verticalGap).toBeLessThanOrEqual(24);
+
+  const triggerCenter = triggerBox.x + triggerBox.width / 2;
+  expect(triggerCenter).toBeGreaterThanOrEqual(overlayBox.x - 16);
+  expect(triggerCenter).toBeLessThanOrEqual(overlayBox.x + overlayBox.width + 16);
+}
+
+test('popover anchors inside transformed and scrolled preview shells', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: manifestEntry('popover'),
+    theme: 'light',
+    viewport: desktopViewport,
+    fixtureName: 'transformed-ancestor',
+  });
+
+  await scrollFixture(page);
+
+  const trigger = page.getByTestId('transformed-popover-trigger');
+  await trigger.click();
+  const panel = page.locator('.transformed-ancestor-popover-panel');
+  await expect(panel).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  const triggerBox = await trigger.boundingBox();
+  const overlayBox = await panel.boundingBox();
+  expect(triggerBox).not.toBeNull();
+  expect(overlayBox).not.toBeNull();
+
+  expectVerticalPlacementGeometry(
+    triggerBox as { x: number; y: number; width: number; height: number },
+    overlayBox as { x: number; y: number; width: number; height: number },
+    await panel.getAttribute('data-cinder-placement'),
+  );
+
+  await captureScreenshot(page, {
+    slug: 'popover',
+    theme: 'light',
+    viewport: 'desktop',
+    fixture: 'transformed-ancestor-shell',
+  });
+});
+
+test('tooltip anchors inside transformed and scrolled preview shells', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: manifestEntry('tooltip'),
+    theme: 'light',
+    viewport: desktopViewport,
+    fixtureName: 'transformed-ancestor',
+  });
+
+  await scrollFixture(page);
+
+  const trigger = page.getByTestId('transformed-tooltip-trigger');
+  await trigger.hover();
+  const tooltip = page.getByRole('tooltip', { name: 'Transformed ancestor tooltip anchor' });
+  await expect(tooltip).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  const triggerBox = await trigger.boundingBox();
+  const overlayBox = await tooltip.boundingBox();
+  expect(triggerBox).not.toBeNull();
+  expect(overlayBox).not.toBeNull();
+
+  expectVerticalPlacementGeometry(
+    triggerBox as { x: number; y: number; width: number; height: number },
+    overlayBox as { x: number; y: number; width: number; height: number },
+    await tooltip.getAttribute('data-cinder-placement'),
+  );
+
+  await captureScreenshot(page, {
+    slug: 'tooltip',
+    theme: 'light',
+    viewport: 'desktop',
+    fixture: 'transformed-ancestor-shell',
+  });
+});

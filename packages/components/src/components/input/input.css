@@ -59,8 +59,11 @@
   color: var(--cinder-text-subtle);
 }
 
-.cinder-input:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-input:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-input[data-cinder-native-date] {
@@ -121,8 +124,10 @@
   border-color: var(--cinder-danger);
 }
 
-.cinder-input[aria-invalid='true']:hover:not(:disabled) {
-  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+@media (hover: hover) {
+  .cinder-input[aria-invalid='true']:hover:not(:disabled) {
+    border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+  }
 }
 
 /* ----------------------------------------
@@ -189,9 +194,11 @@
   outline: none;
 }
 
-/* Hover mirrors the standalone input. */
-.cinder-input-group:hover:not([data-disabled]) {
-  border-color: var(--cinder-border-strong);
+/* Hover mirrors the standalone input. Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-input-group:hover:not([data-disabled]) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 /* Focus ring on the group via :focus-within — same token math as standalone. */
@@ -215,8 +222,10 @@
   --_cinder-input-ring: var(--cinder-danger);
   border-color: var(--cinder-danger);
 }
-.cinder-input-group[data-invalid]:hover:not([data-disabled]) {
-  border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+@media (hover: hover) {
+  .cinder-input-group[data-invalid]:hover:not([data-disabled]) {
+    border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+  }
 }
 
 /* Disabled state. */
