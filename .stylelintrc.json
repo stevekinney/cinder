@@ -1,7 +1,8 @@
 {
   "plugins": [
     "stylelint-use-logical",
-    "./packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs"
+    "./packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs",
+    "./packages/components/scripts/stylelint/no-unguarded-hover-colors.cjs"
   ],
   "overrides": [
     {
@@ -16,6 +17,7 @@
         "severity": "warning"
       }
     ],
+    "cinder/no-unguarded-hover-colors": true,
     "csstools/use-logical": [
       "always",
       {

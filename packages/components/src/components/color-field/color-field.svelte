@@ -77,11 +77,14 @@
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^rgba?\s*\([^)]*\)\s*$/i;
   const HSL_RE = /^hsla?\s*\([^)]*\)\s*$/i;
+  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl'] as const;
+
+  const acceptedFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
 
   function passesFormatGate(text: string): boolean {
-    if (HEX_RE.test(text)) return formats.includes('hex');
-    if (RGB_RE.test(text)) return formats.includes('rgb');
-    if (HSL_RE.test(text)) return formats.includes('hsl');
+    if (HEX_RE.test(text)) return acceptedFormats.includes('hex');
+    if (RGB_RE.test(text)) return acceptedFormats.includes('rgb');
+    if (HSL_RE.test(text)) return acceptedFormats.includes('hsl');
     return false;
   }
 
@@ -92,8 +95,7 @@
       rgb: 'rgb()',
       hsl: 'hsl()',
     };
-    const accepted = formats.map((format) => labels[format]);
-    if (accepted.length === 0) return 'No color formats are accepted.';
+    const accepted = acceptedFormats.map((format) => labels[format]);
     if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
     if (accepted.length === 2) return `Enter a valid ${accepted[0]} or ${accepted[1]} color.`;
     return `Enter a valid ${accepted.slice(0, -1).join(', ')}, or ${accepted.at(-1)} color.`;
@@ -223,7 +225,7 @@
   // committed state. If there's a current parse error, re-run the gate on the
   // visible text and clear the error when the value now passes.
   $effect(() => {
-    void formats;
+    void acceptedFormats;
     if (parseError === null) return;
     const text = visibleText.trim();
     if (text === '') {
@@ -432,5 +434,12 @@
     trailing={swatch}
   />
 
-  <input type="hidden" {name} value={committedHex} bind:this={anchorInput} aria-hidden="true" />
+  <input
+    type="hidden"
+    {name}
+    disabled={disabled || undefined}
+    value={committedHex}
+    bind:this={anchorInput}
+    aria-hidden="true"
+  />
 </div>

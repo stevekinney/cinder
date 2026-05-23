@@ -20,7 +20,7 @@ const schema = {
     },
     class: {
       type: 'string',
-      description: 'Additional class names merged onto the root `<header>`.',
+      description: 'Additional class names merged onto the root `<div>`.',
     },
   },
   additionalProperties: false,

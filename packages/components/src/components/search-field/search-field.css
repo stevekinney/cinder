@@ -18,8 +18,10 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-search-field:hover:not([data-disabled]) {
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-search-field:hover:not([data-disabled]) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-search-field:focus-within {
@@ -141,9 +143,11 @@
   display: none;
 }
 
-.cinder-search-field__clear:hover:not(:disabled) {
-  color: var(--cinder-text);
-  background: var(--cinder-surface-inset);
+@media (hover: hover) {
+  .cinder-search-field__clear:hover:not(:disabled) {
+    color: var(--cinder-text);
+    background: var(--cinder-surface-inset);
+  }
 }
 
 .cinder-search-field__clear:focus-visible {

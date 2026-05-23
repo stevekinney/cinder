@@ -227,10 +227,12 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-search-nav-button:hover,
-  .chat-search-close:hover {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .chat-search-nav-button:hover,
+    .chat-search-close:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   .chat-search-nav-button:focus-visible,
@@ -244,8 +246,10 @@
     cursor: not-allowed;
   }
 
-  .chat-search-nav-button:disabled:hover {
-    background: transparent;
-    color: var(--cinder-text-muted);
+  @media (hover: hover) {
+    .chat-search-nav-button:disabled:hover {
+      background: transparent;
+      color: var(--cinder-text-muted);
+    }
   }
 </style>

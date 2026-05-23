@@ -1,0 +1,19 @@
+<script lang="ts" module>
+  export const title = 'Alphanumeric code';
+  export const description = 'Eight-character alphanumeric invite code with description text.';
+  export const component = 'pin-input';
+</script>
+
+<script lang="ts">
+  import { PinInput } from 'cinder/pin-input';
+  let invite = $state('');
+</script>
+
+<PinInput
+  id="invite-code"
+  bind:value={invite}
+  length={8}
+  mode="alphanumeric"
+  label="Invite code"
+  description="Type or paste the code from your invitation email."
+/>

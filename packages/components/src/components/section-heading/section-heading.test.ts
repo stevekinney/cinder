@@ -145,9 +145,9 @@ describe('SectionHeading', () => {
       props: { title: 'Title', tabs: tabsSnippet },
     });
 
-    const header = container.querySelector('header');
-    const row = header?.querySelector('.cinder-section-heading__row');
-    const tabsEl = header?.querySelector('.cinder-section-heading__tabs');
+    const root = container.querySelector('.cinder-section-heading');
+    const row = root?.querySelector('.cinder-section-heading__row');
+    const tabsEl = root?.querySelector('.cinder-section-heading__tabs');
 
     expect(row?.nextElementSibling).toBe(tabsEl);
   });
@@ -166,11 +166,11 @@ describe('SectionHeading', () => {
       props: { title: 'Title', actions: actionsSnippet, tabs: tabsSnippet },
     });
 
-    const header = container.querySelector('header');
-    expect(header?.getAttribute('data-cinder-variant')).toBe('actions-and-tabs');
+    const root = container.querySelector('.cinder-section-heading');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('actions-and-tabs');
 
-    const row = header?.querySelector('.cinder-section-heading__row');
-    const tabsEl = header?.querySelector('.cinder-section-heading__tabs');
+    const row = root?.querySelector('.cinder-section-heading__row');
+    const tabsEl = root?.querySelector('.cinder-section-heading__tabs');
     expect(row?.nextElementSibling).toBe(tabsEl);
   });
 
@@ -184,8 +184,8 @@ describe('SectionHeading', () => {
       props: { title: 'Title', actions: actionsSnippet },
     });
 
-    const header = container.querySelector('header');
-    expect(header?.getAttribute('data-cinder-variant')).toBeNull();
+    const root = container.querySelector('.cinder-section-heading');
+    expect(root?.getAttribute('data-cinder-variant')).toBeNull();
   });
 
   test('variant attribute is absent when only tabs is present', () => {
@@ -198,11 +198,11 @@ describe('SectionHeading', () => {
       props: { title: 'Title', tabs: tabsSnippet },
     });
 
-    const header = container.querySelector('header');
-    expect(header?.getAttribute('data-cinder-variant')).toBeNull();
+    const root = container.querySelector('.cinder-section-heading');
+    expect(root?.getAttribute('data-cinder-variant')).toBeNull();
   });
 
-  test('only one header landmark is rendered regardless of variant', () => {
+  test('root element is always a div', () => {
     const actionsSnippet = createRawSnippet(() => ({
       render: () => `<button>Edit</button>`,
       setup: () => {},
@@ -216,7 +216,27 @@ describe('SectionHeading', () => {
       props: { title: 'Title', actions: actionsSnippet, tabs: tabsSnippet },
     });
 
-    expect(container.querySelectorAll('header').length).toBe(1);
+    expect(container.querySelector('.cinder-section-heading')?.tagName).toBe('DIV');
+  });
+
+  test('rendering multiple section headings does not create header landmarks', () => {
+    const firstTarget = document.createElement('div');
+    const secondTarget = document.createElement('div');
+    document.body.append(firstTarget, secondTarget);
+
+    render(SectionHeading, {
+      target: firstTarget,
+      props: { title: 'First section' },
+    });
+    render(SectionHeading, {
+      target: secondTarget,
+      props: { title: 'Second section' },
+    });
+
+    expect(firstTarget.querySelectorAll('.cinder-section-heading')).toHaveLength(1);
+    expect(secondTarget.querySelectorAll('.cinder-section-heading')).toHaveLength(1);
+    expect(firstTarget.querySelectorAll('header')).toHaveLength(0);
+    expect(secondTarget.querySelectorAll('header')).toHaveLength(0);
   });
 
   test('class prop merges onto root element', () => {

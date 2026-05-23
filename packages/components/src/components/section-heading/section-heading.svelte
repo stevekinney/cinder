@@ -32,7 +32,7 @@
   const headingTag = $derived(`h${level}` satisfies `h${SectionHeadingLevel}`);
 </script>
 
-<header
+<div
   class={classNames('cinder-section-heading', className)}
   data-cinder-variant={actions && tabs ? 'actions-and-tabs' : undefined}
 >
@@ -61,4 +61,4 @@
   {#if tabs}
     <div class="cinder-section-heading__tabs">{@render tabs()}</div>
   {/if}
-</header>
+</div>

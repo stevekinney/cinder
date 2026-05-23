@@ -81,10 +81,13 @@
   color: var(--cinder-text-subtle);
 }
 
-.cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
-  background: var(--cinder-surface-hover);
-  color: var(--cinder-text);
-  border-color: transparent;
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+    border-color: transparent;
+  }
 }
 
 /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —

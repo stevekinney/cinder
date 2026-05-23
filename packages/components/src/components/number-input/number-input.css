@@ -14,8 +14,10 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-number-input:hover:not([data-disabled]) {
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-number-input:hover:not([data-disabled]) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-number-input:focus-within {
@@ -81,9 +83,11 @@
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-number-input__stepper:hover:not(:disabled) {
-  background: var(--cinder-surface-hover);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-number-input__stepper:hover:not(:disabled) {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-number-input__stepper:focus-visible {

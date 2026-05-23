@@ -152,8 +152,10 @@
   color: var(--cinder-text);
 }
 
-.cinder-jse-collapsed:hover {
-  background: var(--cinder-surface-raised);
+@media (hover: hover) {
+  .cinder-jse-collapsed:hover {
+    background: var(--cinder-surface-raised);
+  }
 }
 
 .cinder-jse-collapsed__hint {
