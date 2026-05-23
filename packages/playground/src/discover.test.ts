@@ -168,6 +168,11 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).not.toContain('date-picker');
   });
 
+  it('excludes cinder-provider because it is app-wide context setup, not a visual component', async () => {
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar).not.toContain('cinder-provider');
+  });
+
   it('returns an array of strings, no duplicates', async () => {
     const sidebar = await discoverSidebarComponents();
     expect(Array.isArray(sidebar)).toBe(true);

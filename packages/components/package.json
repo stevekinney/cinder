@@ -408,10 +408,6 @@
       "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
       "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
     },
-    "./cinder-provider/examples": {
-      "import": "./src/components/cinder-provider/cinder-provider.examples.json",
-      "default": "./src/components/cinder-provider/cinder-provider.examples.json"
-    },
     "./cluster": {
       "types": "./dist/components/cluster/index.d.ts",
       "svelte": "./src/components/cluster/index.ts",

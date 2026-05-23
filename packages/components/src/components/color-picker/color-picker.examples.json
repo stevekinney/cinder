@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic color picker",
       "description": "A color picker with preset swatches where the selected swatch shows a persistent check indicator without looking keyboard-focused.",
-      "code": "<script lang=\"ts\">\n  import { ColorPicker } from 'cinder/color-picker';\n\n  const swatches = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];\n</script>\n\n<ColorPicker\n  defaultValue=\"#22c55e\"\n  label=\"Accent color\"\n  swatches={swatches}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from 'cinder/color-picker';\n\n  const swatches = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];\n</script>\n\n<ColorPicker defaultValue=\"#22c55e\" label=\"Accent color\" {swatches} />\n"
     }
   ]
 }

@@ -77,6 +77,10 @@ that supplies no `highlighter`) falls back to escaped plaintext — the
 adapter follows the same fallback contract: empty/missing/unknown
 languages render as escaped plaintext rather than throwing.
 
+`<CinderProvider>` is app setup context, not a visual component. Treat it
+like a root-level capability boundary for syntax highlighting rather than
+something you render in a component gallery or playground sidebar.
+
 The provider is reactive: assigning a new `highlighter` re-renders every
 descendant `<CodeBlock>`. Nest a second `<CinderProvider>` to scope a
 different highlighter to a subtree (the nearest provider wins). For a

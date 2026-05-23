@@ -514,11 +514,10 @@
       ],
       "related": ["code-block"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "cinder/cinder-provider/schema",
-        "variables": "cinder/cinder-provider/variables",
-        "examples": "cinder/cinder-provider/examples"
+        "variables": "cinder/cinder-provider/variables"
       }
     },
     {
