@@ -2,6 +2,21 @@ import { describe, expect, test } from 'bun:test';
 
 import { useHistory } from './use-history.svelte.ts';
 
+function withSilencedSvelteSnapshotWarning(run: () => void) {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  console.error = () => {};
+  console.warn = () => {};
+
+  try {
+    run();
+  } finally {
+    console.error = originalError;
+    console.warn = originalWarn;
+  }
+}
+
 describe('useHistory', () => {
   test('starts with the initial value as the only history entry', () => {
     const history = useHistory({ initial: { count: 0 } });
@@ -209,7 +224,9 @@ describe('useHistory', () => {
       initial: { tag: 'a' },
     });
 
-    expect(() => history.commit({ tag: 'b', run: () => 0 })).toThrow();
+    expect(() =>
+      withSilencedSvelteSnapshotWarning(() => history.commit({ tag: 'b', run: () => 0 })),
+    ).toThrow();
   });
 
   test('canUndo / canRedo reflect bounds', () => {
@@ -297,6 +314,8 @@ describe('useHistory', () => {
     // This value JSON-serialises to {"tag":"a"} (function dropped) but is
     // not structuredClone-able. Spec says commit must enforce cloneability
     // before any decision.
-    expect(() => history.commit({ tag: 'a', run: () => 0 })).toThrow();
+    expect(() =>
+      withSilencedSvelteSnapshotWarning(() => history.commit({ tag: 'a', run: () => 0 })),
+    ).toThrow();
   });
 });

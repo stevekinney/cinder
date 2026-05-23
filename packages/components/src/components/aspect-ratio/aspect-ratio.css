@@ -1,0 +1,14 @@
+.cinder-aspect-ratio {
+  display: block;
+  position: relative;
+  inline-size: 100%;
+  aspect-ratio: 16/9;
+}
+
+.cinder-aspect-ratio[data-cinder-overflow='hidden'] {
+  overflow: hidden;
+}
+
+.cinder-aspect-ratio[data-cinder-overflow='visible'] {
+  overflow: visible;
+}

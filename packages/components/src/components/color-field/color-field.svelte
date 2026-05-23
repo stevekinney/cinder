@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
-  import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
@@ -59,7 +58,9 @@
   let lastReconciledValue = '';
 
   function toHex2(n: number): string {
-    return Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+    return Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, '0');
   }
 
   function normalizeHex(parts: RgbaParts, emitAlpha: boolean): string {
@@ -168,9 +169,7 @@
     if (!isControlled) return;
     if (value === undefined) {
       if (DEV) {
-        console.warn(
-          '[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)',
-        );
+        console.warn('[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)');
       }
       return;
     }
@@ -369,7 +368,6 @@
     }
 
     attach();
-    void tick().then(attach);
 
     return () => {
       currentForm?.removeEventListener('reset', onFormReset);
@@ -399,9 +397,9 @@
   <Input
     {id}
     bind:value={visibleText}
-    disabled={disabled}
-    required={required}
-    readonly={readonly}
+    {disabled}
+    {required}
+    {readonly}
     placeholder={placeholder ?? ''}
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledby}
@@ -411,11 +409,5 @@
     trailing={swatch}
   />
 
-  <input
-    type="hidden"
-    {name}
-    value={committedHex}
-    bind:this={anchorInput}
-    aria-hidden="true"
-  />
+  <input type="hidden" {name} value={committedHex} bind:this={anchorInput} aria-hidden="true" />
 </div>
