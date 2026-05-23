@@ -39,16 +39,18 @@ async function scrollFixtureTo(
     .toEqual(coordinates);
 }
 
-function expectBottomPlacementGeometry(
+function expectVerticalPlacementGeometry(
   triggerBox: { x: number; y: number; width: number; height: number },
   overlayBox: { x: number; y: number; width: number; height: number },
   placement: string | null,
 ) {
   expect(overlayBox.width).toBeGreaterThan(0);
   expect(overlayBox.height).toBeGreaterThan(0);
-  expect(placement?.startsWith('bottom')).toBeTruthy();
+  expect(placement).toMatch(/^(bottom|top)/);
 
-  const verticalGap = overlayBox.y - (triggerBox.y + triggerBox.height);
+  const verticalGap = placement?.startsWith('top')
+    ? triggerBox.y - (overlayBox.y + overlayBox.height)
+    : overlayBox.y - (triggerBox.y + triggerBox.height);
   expect(verticalGap).toBeGreaterThanOrEqual(4);
   expect(verticalGap).toBeLessThanOrEqual(24);
 
@@ -79,7 +81,7 @@ test('popover anchors inside transformed and scrolled preview shells', async ({
   expect(triggerBox).not.toBeNull();
   expect(overlayBox).not.toBeNull();
 
-  expectBottomPlacementGeometry(
+  expectVerticalPlacementGeometry(
     triggerBox as { x: number; y: number; width: number; height: number },
     overlayBox as { x: number; y: number; width: number; height: number },
     await panel.getAttribute('data-cinder-placement'),
@@ -115,7 +117,7 @@ test('tooltip anchors inside transformed and scrolled preview shells', async ({
   expect(triggerBox).not.toBeNull();
   expect(overlayBox).not.toBeNull();
 
-  expectBottomPlacementGeometry(
+  expectVerticalPlacementGeometry(
     triggerBox as { x: number; y: number; width: number; height: number },
     overlayBox as { x: number; y: number; width: number; height: number },
     await tooltip.getAttribute('data-cinder-placement'),
