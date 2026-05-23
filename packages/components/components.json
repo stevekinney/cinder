@@ -1782,10 +1782,11 @@
       ],
       "related": ["surface"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/scroll-area/schema",
-        "variables": "cinder/scroll-area/variables"
+        "variables": "cinder/scroll-area/variables",
+        "examples": "cinder/scroll-area/examples"
       }
     },
     {
