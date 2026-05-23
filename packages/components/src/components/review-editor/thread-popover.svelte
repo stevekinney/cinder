@@ -270,9 +270,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .thread-popover-close:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .thread-popover-close:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .thread-popover-close:focus-visible {

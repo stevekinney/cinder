@@ -22,7 +22,7 @@ import type {
   ConstraintsDocument,
   ConstraintSeverity,
 } from '../src/_internal/constraints.ts';
-import { discoverComponentDirectories } from './generate-component-artifacts.ts';
+import { discoverComponentDirectories } from './discover-component-directories.ts';
 
 // ---------------------------------------------------------------------------
 // Constants

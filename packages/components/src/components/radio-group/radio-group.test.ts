@@ -380,3 +380,28 @@ describe('RadioGroup', () => {
     rows3.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(false));
   });
 });
+
+describe('Radio indicator', () => {
+  test('renders exactly one aria-hidden indicator per radio input', () => {
+    const { container } = render(Wrapper, {
+      name: 'ind-group',
+      value: 'a',
+      options: [
+        { id: 'ind-a', value: 'a', label: 'A' },
+        { id: 'ind-b', value: 'b', label: 'B' },
+      ],
+    });
+    const inputs = container.querySelectorAll('input[type="radio"]');
+    const indicators = container.querySelectorAll('.cinder-radio-row__indicator');
+    expect(indicators.length).toBe(inputs.length);
+    indicators.forEach((indicator) => {
+      expect(indicator.getAttribute('aria-hidden')).toBe('true');
+    });
+    const controls = container.querySelectorAll('.cinder-radio-row__control');
+    expect(controls.length).toBe(inputs.length);
+    controls.forEach((control) => {
+      expect(control.querySelector('input[type="radio"]')).not.toBeNull();
+      expect(control.querySelector('.cinder-radio-row__indicator')).not.toBeNull();
+    });
+  });
+});

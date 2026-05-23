@@ -54,17 +54,20 @@
 
 <div class="cinder-checkbox-field">
   <div class="cinder-checkbox-row">
-    <input
-      bind:this={inputElement}
-      {id}
-      type="checkbox"
-      {disabled}
-      bind:checked
-      class={cn('cinder-checkbox', className)}
-      aria-invalid={ariaInvalid(!!error)}
-      aria-describedby={describedBy}
-      {...rest}
-    />
+    <span class="cinder-checkbox-field__control">
+      <input
+        bind:this={inputElement}
+        {id}
+        type="checkbox"
+        {disabled}
+        bind:checked
+        class={cn('cinder-checkbox', className)}
+        aria-invalid={ariaInvalid(!!error)}
+        aria-describedby={describedBy}
+        {...rest}
+      />
+      <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
+    </span>
     {#if label}
       <label for={id} class="cinder-checkbox-field__label" data-disabled={disabled || undefined}>
         {label}

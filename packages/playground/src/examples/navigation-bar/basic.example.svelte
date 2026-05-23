@@ -18,7 +18,7 @@
   {/snippet}
   {#snippet menuToggle(attrs)}
     <button type="button" {...attrs} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}>
-      ☰
+      <span aria-hidden="true">☰</span>
     </button>
   {/snippet}
   {#snippet items({ variant })}

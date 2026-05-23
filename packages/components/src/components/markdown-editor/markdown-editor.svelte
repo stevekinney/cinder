@@ -835,9 +835,14 @@
     line-height: 1.4;
   }
 
-  .markdown-editor :global(.template-completion-item:hover),
   .markdown-editor :global(.template-completion-item--active) {
     background: var(--cinder-surface-active, #f0f4ff);
+  }
+
+  @media (hover: hover) {
+    .markdown-editor :global(.template-completion-item:hover) {
+      background: var(--cinder-surface-active, #f0f4ff);
+    }
   }
 
   .markdown-editor :global(.template-completion-item-path) {

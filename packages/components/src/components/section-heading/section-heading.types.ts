@@ -16,7 +16,7 @@ export type SectionHeadingProps = {
   /** Heading level for the title element. Defaults to `2`. The correct level
    *  relative to the surrounding document outline is the consumer's responsibility. */
   level?: SectionHeadingLevel;
-  /** Additional class names merged onto the root `<header>`. */
+  /** Additional class names merged onto the root `<div>`. */
   class?: string;
   /** Optional small uppercase "eyebrow" label. When present, the label is
    *  rendered as a `<p>` inside an `<hgroup>` that also contains the heading.
@@ -32,6 +32,6 @@ export type SectionHeadingProps = {
    *  as the title at wide viewports. */
   actions?: Snippet;
   /** Optional tablist. When both `actions` and `tabs` are present, `tabs`
-   *  sits on a second row inside the shared `<header>`. */
+   *  sits on a second row inside the shared root container. */
   tabs?: Snippet;
 };

@@ -18,7 +18,7 @@ A SectionHeading component. Replace this sentence with a one-line purpose statem
 
 | Prop          | Type              | Required | Default | Description                                                                                                                                            |
 | ------------- | ----------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `class`       | `string`          | no       | —       | Additional class names merged onto the root `<header>`.                                                                                                |
+| `class`       | `string`          | no       | —       | Additional class names merged onto the root `<div>`.                                                                                                   |
 | `description` | `string`          | no       | —       | Optional supporting description. Supplementary body text, not a heading subtitle — rendered after the heading but outside `<hgroup>`.                  |
 | `level`       | `2` \| `3` \| `4` | no       | —       | Heading level for the title element. Defaults to `2`. The correct level relative to the surrounding document outline is the consumer's responsibility. |
 | `title`       | `string`          | yes      | —       | Section title text. Rendered inside the dynamic heading element.                                                                                       |
