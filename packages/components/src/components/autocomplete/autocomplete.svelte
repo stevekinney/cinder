@@ -103,6 +103,9 @@
   let suppressNextQuery = false;
   let ignoreSyntheticInput = false;
   let completionPointerIndex = $state<number | null>(null);
+  let pendingRequestController: AbortController | null = null;
+  let previousOpen = false;
+  let autocompleteDismissed = true;
 
   let requestVersion = 0;
 
@@ -147,11 +150,32 @@
     clampActiveIndex(renderedSuggestions);
   });
 
-  function closePopup(options: { clearSuggestions?: boolean } = {}): void {
+  $effect(() => {
+    const wasOpen = previousOpen;
+    previousOpen = open;
+
+    if (!open || !wasOpen) return;
+
+    pendingRequestController?.abort();
+    pendingRequestController = null;
+    requestVersion += 1;
+    autocompleteDismissed = true;
+    inputFocused = false;
+    loading = false;
+    activeIndex = null;
+    suggestions = [];
+  });
+
+  function closePopup(): void {
+    pendingRequestController?.abort();
+    pendingRequestController = null;
+    requestVersion += 1;
+    autocompleteDismissed = true;
+    inputFocused = false;
     open = false;
     loading = false;
     activeIndex = null;
-    if (options.clearSuggestions) suggestions = [];
+    suggestions = [];
   }
 
   $effect(() => {
@@ -172,6 +196,8 @@
 
     const currentVersion = ++requestVersion;
     const controller = new AbortController();
+    autocompleteDismissed = false;
+    pendingRequestController = controller;
     loading = true;
     open = true;
     suggestions = [];
@@ -193,23 +219,43 @@
 
     Promise.resolve(result)
       .then((nextSuggestions) => {
-        if (controller.signal.aborted || currentVersion !== requestVersion) return;
+        if (
+          controller.signal.aborted ||
+          currentVersion !== requestVersion ||
+          autocompleteDismissed
+        ) {
+          return;
+        }
         suggestions = nextSuggestions;
         loading = false;
         open = true;
         clampActiveIndex(nextSuggestions.slice(0, resolvedMaxVisibleSuggestions));
       })
       .catch((errorValue: unknown) => {
-        if (controller.signal.aborted || currentVersion !== requestVersion) return;
+        if (
+          controller.signal.aborted ||
+          currentVersion !== requestVersion ||
+          autocompleteDismissed
+        ) {
+          return;
+        }
         suggestions = [];
         closePopup();
         if (DEV) {
           console.warn('[cinder/autocomplete] suggestionSource failed.', errorValue);
         }
+      })
+      .finally(() => {
+        if (pendingRequestController === controller) {
+          pendingRequestController = null;
+        }
       });
 
     return () => {
       controller.abort();
+      if (pendingRequestController === controller) {
+        pendingRequestController = null;
+      }
     };
   });
 
@@ -261,7 +307,7 @@
     suppressNextQuery = true;
     value = suggestion.value;
     if (inputElement) inputElement.value = suggestion.value;
-    closePopup({ clearSuggestions: true });
+    closePopup();
     oninput?.(suggestion.value);
     oncomplete?.(suggestion);
     dispatchCompletionInputEvent();
@@ -272,6 +318,7 @@
       ignoreSyntheticInput = false;
       return;
     }
+    autocompleteDismissed = false;
     inputFocused = true;
     const target = event.currentTarget as HTMLInputElement;
     value = target.value;
@@ -279,6 +326,7 @@
   }
 
   function handleFocus(): void {
+    autocompleteDismissed = false;
     inputFocused = true;
     if (isEligibleQuery(value)) {
       open = true;
