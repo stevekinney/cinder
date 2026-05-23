@@ -159,6 +159,19 @@ describe('ColorField — formats gate', () => {
     await typeAndBlur(input, '#abc');
     expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
   });
+
+  test('empty formats falls back to the default accepted formats', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: [],
+      onchange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#000000');
+  });
 });
 
 describe('ColorField — no commit during typing', () => {
@@ -463,6 +476,17 @@ describe('ColorField — composition + DOM contract', () => {
     expect(input.disabled).toBe(true);
     const wrapper = q(container, '.cinder-color-field');
     expect(wrapper.getAttribute('data-cinder-disabled')).toBe('');
+  });
+
+  test('disabled forwards to the hidden form mirror', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      name: 'accent',
+      defaultValue: '#ff0000',
+      disabled: true,
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="accent"]');
+    expect(hidden.disabled).toBe(true);
   });
 
   test('reset on a mounted form runs once and survives a follow-up dispatch', async () => {
