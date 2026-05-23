@@ -259,7 +259,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
 
   'file-upload': {
     kind: 'intersection',
-    html_attrs: 'HTMLLabelAttributes',
+    html_attrs: 'HTMLInputAttributes',
     props: {
       id: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       accept: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },

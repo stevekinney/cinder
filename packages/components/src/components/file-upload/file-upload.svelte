@@ -231,6 +231,9 @@
 
   function openPicker() {
     if (resolvedDisabled) return;
+    if (inputElement) {
+      inputElement.value = '';
+    }
     inputElement?.click();
   }
 

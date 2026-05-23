@@ -262,9 +262,15 @@ describe('FileUpload drag state and accessibility', () => {
     const input = container.querySelector('#upload') as HTMLInputElement;
     const button = container.querySelector('button') as HTMLButtonElement;
     const click = mock(() => {});
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\resume.pdf',
+    });
     input.click = click as unknown as typeof input.click;
     await fireEvent.click(button);
     expect(button.textContent).toBe('Choose files');
+    expect(input.value).toBe('');
     expect(click).toHaveBeenCalledTimes(1);
   });
 });
