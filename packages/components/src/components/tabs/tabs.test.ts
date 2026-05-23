@@ -358,12 +358,13 @@ describe('Tabs keyboard navigation skips disabled tabs', () => {
     // re-running the registration effect on a disabled change would delete
     // and re-insert b in the parent Map, moving it to the end of the order.
     //
-    // The fixture's `{#each items (item.value)}` keyed block means each Tab
-    // component instance is preserved across rerenders that change `disabled`
-    // (the key is stable). We assert button identity is preserved before vs.
-    // after toggling, which makes the test's correctness explicit: the test
-    // can only pass for the right reason if `b`'s registration was NOT torn
-    // down and re-created during the toggle.
+    // The contract being asserted is the observable navigation result, not
+    // the internal mechanism: if the registration order were corrupted by
+    // the toggle, ArrowRight from a would land on c. We do not assert DOM
+    // identity preservation across rerender because @testing-library/svelte
+    // does not reliably preserve `Node` identity through `rerender` even
+    // with a keyed `{#each (item.value)}` block; that assertion would be
+    // brittle for reasons orthogonal to the bug being guarded.
     const allEnabled = items;
     const withBDisabled = [items[0]!, { ...items[1]!, disabled: true }, items[2]!];
     const { container, rerender } = render(Wrapper, { value: 'a', items: allEnabled });
