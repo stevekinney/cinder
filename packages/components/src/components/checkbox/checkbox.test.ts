@@ -120,3 +120,20 @@ describe('Checkbox', () => {
     expect(input.classList.contains('extra')).toBe(true);
   });
 });
+
+describe('Checkbox indicator', () => {
+  test('renders exactly one aria-hidden indicator element per checkbox', () => {
+    const { container } = render(Checkbox, { id: 'ind' });
+    const indicators = container.querySelectorAll('.cinder-checkbox-field__indicator');
+    expect(indicators.length).toBe(1);
+    expect(indicators[0]!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('indicator is a sibling of the input inside the control wrapper', () => {
+    const { container } = render(Checkbox, { id: 'ind2' });
+    const wrapper = container.querySelector('.cinder-checkbox-field__control');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.querySelector('input#ind2')).not.toBeNull();
+    expect(wrapper!.querySelector('.cinder-checkbox-field__indicator')).not.toBeNull();
+  });
+});

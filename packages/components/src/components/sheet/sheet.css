@@ -21,8 +21,13 @@
 }
 
 .cinder-sheet::backdrop {
-  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
+  background-color: color-mix(in oklch, var(--cinder-text) 40%, transparent);
   backdrop-filter: blur(2px);
+  transition: background-color var(--cinder-duration-normal) var(--cinder-ease-standard);
+}
+
+.cinder-sheet[data-cinder-closing]::backdrop {
+  background-color: transparent;
 }
 
 .cinder-sheet__panel {
@@ -39,6 +44,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  opacity: 1;
+  transition:
+    translate var(--cinder-duration-normal) var(--cinder-ease-spring),
+    opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
 }
 
 .cinder-sheet__drag-handle {
@@ -101,9 +110,11 @@
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-sheet__close:hover {
-  background: color-mix(in oklch, currentColor, transparent 85%);
-  color: var(--cinder-text);
+@media (hover: hover) {
+  .cinder-sheet__close:hover {
+    background: color-mix(in oklch, currentColor, transparent 85%);
+    color: var(--cinder-text);
+  }
 }
 
 .cinder-sheet__close:focus-visible {
@@ -152,35 +163,25 @@
  * Animation targets the panel, not the dialog (which is transparent).
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: no-preference) {
-  .cinder-sheet__panel {
-    animation: cinder-sheet-slide-up var(--cinder-duration-normal) var(--cinder-ease-spring)
-      forwards;
-  }
+.cinder-sheet__panel[data-cinder-closing] {
+  translate: 0 100%;
+  opacity: 0.85;
+  pointer-events: none;
+}
 
-  @keyframes cinder-sheet-slide-up {
-    from {
-      translate: 0 100%;
-      opacity: 0.85;
-    }
-    to {
-      translate: 0 0;
-      opacity: 1;
-    }
+@starting-style {
+  .cinder-sheet__panel {
+    translate: 0 100%;
+    opacity: 0.85;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .cinder-sheet__panel {
-    animation: cinder-sheet-fade var(--cinder-duration-fast) linear forwards;
+    transition: none;
   }
 
-  @keyframes cinder-sheet-fade {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .cinder-sheet::backdrop {
+    transition: none;
   }
 }

@@ -48,6 +48,27 @@ function toggleSnippet(buttonId = 'toggle-btn') {
   }));
 }
 
+function glyphToggleSnippet(buttonId = 'toggle-glyph-btn') {
+  return createRawSnippet<
+    [
+      {
+        'aria-expanded': string;
+        'aria-controls': string;
+        onclick: (event: MouseEvent) => void;
+      },
+    ]
+  >((getAttrs) => ({
+    render: () =>
+      `<button type="button" id="${buttonId}" aria-label="Open menu"><span aria-hidden="true">☰</span></button>`,
+    setup(element: Element) {
+      const attrs = getAttrs();
+      element.setAttribute('aria-expanded', attrs['aria-expanded']);
+      element.setAttribute('aria-controls', attrs['aria-controls']);
+      element.addEventListener('click', attrs.onclick as EventListener);
+    },
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -213,6 +234,19 @@ describe('NavigationBar', () => {
     });
     const toggle = container.querySelector('#toggle-btn');
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('menu toggle can hide a decorative glyph from assistive technology', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: glyphToggleSnippet(),
+    });
+    const toggle = container.querySelector('#toggle-glyph-btn');
+    const glyph = toggle?.querySelector('span');
+
+    expect(toggle?.getAttribute('aria-label')).toBe('Open menu');
+    expect(toggle?.textContent?.trim()).toBe('☰');
+    expect(glyph?.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('aria-controls value equals the items region id', () => {

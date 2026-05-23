@@ -65,12 +65,14 @@
  * Hover
  * ---------------------------------------- */
 
-.cinder-toggle:hover:not(:disabled) {
-  background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
-}
+@media (hover: hover) {
+  .cinder-toggle:hover:not(:disabled) {
+    background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
+  }
 
-.cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
-  background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
+  .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
+    background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
+  }
 }
 
 /* ----------------------------------------

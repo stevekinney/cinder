@@ -46,7 +46,7 @@ The `<dialog>` element fills the viewport (not the panel itself), so any pointer
 
 ## Reduced motion
 
-The slide-in animation is gated behind `@media (prefers-reduced-motion: no-preference)`. Under `prefers-reduced-motion: reduce`, a short opacity fade replaces the spatial slide. There is no looping animation. The panel never moves on the spatial axis under reduced motion.
+Open and close transitions are gated by `@media (prefers-reduced-motion: no-preference)`. Under `prefers-reduced-motion: reduce`, both the panel and native backdrop disable transitions and close immediately after the deterministic cleanup path runs.
 
 ## SSR — drawer is a client-only overlay
 

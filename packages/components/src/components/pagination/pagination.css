@@ -74,10 +74,12 @@
  * Hover — non-current, non-disabled
  * ---------------------------------------- */
 
-.cinder-pagination__step:hover:not(:disabled),
-.cinder-pagination__page:hover:not([data-cinder-current]) {
-  background: color-mix(in oklch, var(--cinder-text) 8%, transparent);
-  border-color: var(--cinder-border-muted);
+@media (hover: hover) {
+  .cinder-pagination__step:hover:not(:disabled),
+  .cinder-pagination__page:hover:not([data-cinder-current]) {
+    background: color-mix(in oklch, var(--cinder-text) 8%, transparent);
+    border-color: var(--cinder-border-muted);
+  }
 }
 
 /* ----------------------------------------
