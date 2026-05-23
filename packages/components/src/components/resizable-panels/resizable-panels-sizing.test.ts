@@ -7,6 +7,7 @@ import {
   createInitialLayoutState,
   getHandleAriaState,
   getLayoutSnapshot,
+  getPaneLayoutSignature,
   rebaseLayoutState,
   resolveSizeToPixels,
   setLeadingPanePixels,
@@ -185,5 +186,19 @@ describe('resizable-panels sizing', () => {
 
     expect(resized.panels[0]!.sizePixels).toBe(220);
     expect(resized.panels[1]!.sizePixels).toBe(380);
+  });
+
+  test('changes pane layout signature when constraints change without changing pane ids', () => {
+    const initialSignature = getPaneLayoutSignature(panes);
+    const updatedSignature = getPaneLayoutSignature([
+      {
+        ...panes[0]!,
+        maxSize: { value: 120, unit: 'px' },
+      },
+      panes[1]!,
+      panes[2]!,
+    ]);
+
+    expect(updatedSignature).not.toBe(initialSignature);
   });
 });

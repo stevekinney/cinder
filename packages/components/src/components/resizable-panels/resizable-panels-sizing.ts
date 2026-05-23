@@ -80,6 +80,27 @@ function getPreferredUnit(pane: ResizablePanelDefinition): ResizablePanelSize['u
   return pane.defaultSize?.unit ?? 'percent';
 }
 
+function formatSizeSignature(size: ResizablePanelSize | undefined): string {
+  if (!size) return '';
+  return `${size.value}:${size.unit}`;
+}
+
+export function getPaneLayoutSignature(panes: ResizablePanelDefinition[]): string {
+  return panes
+    .map((pane) =>
+      [
+        pane.id,
+        formatSizeSignature(pane.defaultSize),
+        formatSizeSignature(pane.minSize),
+        formatSizeSignature(pane.maxSize),
+        (pane.snapPoints ?? []).map((size) => formatSizeSignature(size)).join(','),
+        pane.collapsible ? '1' : '0',
+        pane.defaultCollapsed ? '1' : '0',
+      ].join('|'),
+    )
+    .join('||');
+}
+
 function getPanelConstraints(
   panes: ResizablePanelDefinition[],
   availablePanePixels: number,

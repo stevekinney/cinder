@@ -39,6 +39,7 @@
     createInitialLayoutState,
     getHandleAriaState,
     getLayoutSnapshot,
+    getPaneLayoutSignature,
     rebaseLayoutState,
     resolveKeyboardStep,
     setLeadingPanePixels,
@@ -76,6 +77,7 @@
   let activePointerId = $state<number | null>(null);
   let previousPointerAxis = $state(0);
   let layoutState: ResizablePanelsLayoutState | null = $state(null);
+  let previousPaneLayoutSignature = $state('');
 
   const issues = $derived(validatePanes(panes));
 
@@ -119,8 +121,10 @@
 
   function syncMeasuredLayout(nextAvailablePanePixels = availablePanePixels): void {
     if (nextAvailablePanePixels <= 0 || panes.length === 0) return;
+    const nextPaneLayoutSignature = getPaneLayoutSignature(panes);
     if (!layoutState) {
       layoutState = createInitialLayoutState(panes, nextAvailablePanePixels, orientation);
+      previousPaneLayoutSignature = nextPaneLayoutSignature;
       return;
     }
     if (
@@ -128,13 +132,16 @@
       layoutState.orientation !== orientation
     ) {
       layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
+      previousPaneLayoutSignature = nextPaneLayoutSignature;
       return;
     }
     if (
       layoutState.panels.length !== panes.length ||
-      layoutState.panels.some((panel, index) => panel.id !== panes[index]?.id)
+      layoutState.panels.some((panel, index) => panel.id !== panes[index]?.id) ||
+      previousPaneLayoutSignature !== nextPaneLayoutSignature
     ) {
       layoutState = rebaseLayoutState(layoutState, panes, nextAvailablePanePixels, orientation);
+      previousPaneLayoutSignature = nextPaneLayoutSignature;
     }
   }
 
