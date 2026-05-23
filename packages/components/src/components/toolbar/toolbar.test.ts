@@ -233,6 +233,27 @@ describe('Toolbar', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Three' }));
   });
 
+  test('Escape moves backward from a trailing editable field and places the caret at the end', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet(`
+          <input aria-label="Previous" value="abc" />
+          <input aria-label="Current" value="def" />
+        `),
+      },
+    });
+
+    const previousInput = screen.getByRole<HTMLInputElement>('textbox', { name: 'Previous' });
+    const currentInput = screen.getByRole<HTMLInputElement>('textbox', { name: 'Current' });
+    currentInput.focus();
+    await fireEvent.keyDown(currentInput, { key: 'Escape' });
+    await flushEffects();
+
+    expect(document.activeElement).toBe(previousInput);
+    expect(previousInput.selectionStart).toBe(previousInput.value.length);
+  });
+
   test('hidden inputs and hidden descendants are excluded from the managed set', async () => {
     render(Toolbar, {
       props: {

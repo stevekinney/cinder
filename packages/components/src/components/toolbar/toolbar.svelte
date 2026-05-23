@@ -244,7 +244,7 @@
           ? currentIndex - 1
           : -1;
     if (nextIndex < 0) return false;
-    moveFocus(nextIndex, 1);
+    moveFocus(nextIndex, nextIndex > currentIndex ? 1 : -1);
     return true;
   }
 
