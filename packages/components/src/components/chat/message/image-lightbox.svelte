@@ -190,8 +190,10 @@
     z-index: 1;
   }
 
-  .lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) {
+    .lightbox-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 
   .lightbox-close:focus-visible {
@@ -218,8 +220,10 @@
     z-index: 1;
   }
 
-  .lightbox-nav:hover {
-    background: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) {
+    .lightbox-nav:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 
   .lightbox-nav:focus-visible {

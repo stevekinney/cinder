@@ -244,3 +244,32 @@ describe('Select field-control contract', () => {
     );
   });
 });
+
+describe('Select chevron indicator', () => {
+  test('renders exactly one aria-hidden chevron element after the <select> for non-empty options', () => {
+    const { container } = render(Select, {
+      props: { id: 'cv', value: 'a', options: defaultOptions },
+    });
+    const chevrons = container.querySelectorAll('.cinder-select-field__chevron');
+    expect(chevrons.length).toBe(1);
+    expect(chevrons[0]!.getAttribute('aria-hidden')).toBe('true');
+    const controlWrapper = container.querySelector('.cinder-select-field__control');
+    expect(controlWrapper).not.toBeNull();
+    expect(controlWrapper!.querySelector('select')).not.toBeNull();
+    expect(controlWrapper!.querySelector('.cinder-select-field__chevron')).not.toBeNull();
+  });
+
+  test('renders exactly one aria-hidden chevron element for the empty-options branch', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(Select, {
+        props: { id: 'cv-empty', value: '', options: [] },
+      });
+      const chevrons = container.querySelectorAll('.cinder-select-field__chevron');
+      expect(chevrons.length).toBe(1);
+      expect(chevrons[0]!.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+});

@@ -183,8 +183,10 @@
     transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .export-actions :global(.export-trigger:hover) {
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .export-actions :global(.export-trigger:hover) {
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .export-actions :global(.export-trigger:focus-visible) {

@@ -15,6 +15,9 @@ export type AxeViolation = {
   nodes: Array<{ target: Array<string | string[]>; html: string; failureSummary?: string }>;
 };
 export type AxeBuckets = Record<AxeImpact, AxeViolation[]>;
+export type AxeOptions = {
+  include?: string | string[];
+};
 
 const VALID_IMPACTS = new Set<string>(['critical', 'serious', 'moderate', 'minor']);
 
@@ -24,10 +27,20 @@ function isAxeImpact(value: string | null | undefined): value is AxeImpact {
 
 const EMPTY_BUCKETS = (): AxeBuckets => ({ critical: [], serious: [], moderate: [], minor: [] });
 
-export async function runAxe(page: Page, key: ArtifactKey): Promise<AxeBuckets> {
-  const result = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
+export async function runAxe(
+  page: Page,
+  key: ArtifactKey,
+  options?: AxeOptions,
+): Promise<AxeBuckets> {
+  let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+  const includeSelectors =
+    typeof options?.include === 'string' ? [options.include] : (options?.include ?? []);
+
+  for (const selector of includeSelectors) {
+    builder = builder.include(selector);
+  }
+
+  const result = await builder.analyze();
 
   const buckets = EMPTY_BUCKETS();
   for (const v of result.violations) {

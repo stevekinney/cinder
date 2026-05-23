@@ -817,9 +817,11 @@
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-empty-prompt:hover {
-    background: var(--cinder-surface-hover);
-    border-color: var(--cinder-accent);
+  @media (hover: hover) {
+    .chat-empty-prompt:hover {
+      background: var(--cinder-surface-hover);
+      border-color: var(--cinder-accent);
+    }
   }
 
   .chat-empty-prompt:focus-visible {

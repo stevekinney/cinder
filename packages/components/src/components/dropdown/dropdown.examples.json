@@ -24,8 +24,8 @@
     {
       "id": "with-label",
       "title": "With group labels",
-      "description": "DropdownLabel groups related menu actions without entering the tab order.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownLabel } from 'cinder/dropdown-label';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <DropdownTrigger>Grouped menu</DropdownTrigger>\n  <DropdownMenu>\n    <DropdownLabel>Document</DropdownLabel>\n    <DropdownItem>Rename</DropdownItem>\n    <DropdownItem>Move</DropdownItem>\n    <DropdownLabel>Sharing</DropdownLabel>\n    <DropdownItem>Copy link</DropdownItem>\n    <DropdownItem>Invite people</DropdownItem>\n  </DropdownMenu>\n</Dropdown>\n"
+      "description": "DropdownGroup and DropdownLabel expose accessible group boundaries for related menu actions.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownGroup } from 'cinder/dropdown-group';\n  import { DropdownItem } from 'cinder/dropdown-item';\n  import { DropdownLabel } from 'cinder/dropdown-label';\n  import { DropdownMenu } from 'cinder/dropdown-menu';\n  import { DropdownTrigger } from 'cinder/dropdown-trigger';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <DropdownTrigger>Grouped menu</DropdownTrigger>\n  <DropdownMenu>\n    <DropdownGroup labelledBy=\"dropdown-with-label-document\">\n      <DropdownLabel id=\"dropdown-with-label-document\">Document</DropdownLabel>\n      <DropdownItem>Rename</DropdownItem>\n      <DropdownItem>Move</DropdownItem>\n    </DropdownGroup>\n    <DropdownGroup labelledBy=\"dropdown-with-label-sharing\">\n      <DropdownLabel id=\"dropdown-with-label-sharing\">Sharing</DropdownLabel>\n      <DropdownItem>Copy link</DropdownItem>\n      <DropdownItem>Invite people</DropdownItem>\n    </DropdownGroup>\n  </DropdownMenu>\n</Dropdown>\n"
     },
     {
       "id": "with-separator",

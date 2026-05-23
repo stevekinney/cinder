@@ -62,19 +62,22 @@
   data-invalid={group.invalid || undefined}
   data-has-description={description ? '' : undefined}
 >
-  <input
-    {id}
-    type="radio"
-    name={group.name}
-    {value}
-    {checked}
-    disabled={effectiveDisabled}
-    aria-invalid={ariaInvalid(group.invalid)}
-    onchange={handleChange}
-    class={cn('cinder-radio', className)}
-    {...rest}
-    aria-describedby={describedBy}
-  />
+  <span class="cinder-radio-row__control">
+    <input
+      {id}
+      type="radio"
+      name={group.name}
+      {value}
+      {checked}
+      disabled={effectiveDisabled}
+      aria-invalid={ariaInvalid(group.invalid)}
+      onchange={handleChange}
+      class={cn('cinder-radio', className)}
+      {...rest}
+      aria-describedby={describedBy}
+    />
+    <span class="cinder-radio-row__indicator" aria-hidden="true"></span>
+  </span>
   <label for={id} class="cinder-radio-row__label" data-disabled={effectiveDisabled || undefined}>
     {label}
   </label>
