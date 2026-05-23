@@ -40,6 +40,9 @@ export interface PropertySchema {
   enum?: ReadonlyArray<string | number | boolean | null>;
   const?: string | number | boolean | null;
   items?: PropertySchema;
+  properties?: Record<string, PropertySchema>;
+  required?: string[];
+  additionalProperties?: boolean;
   anyOf?: PropertySchema[];
   description?: string;
   default?: unknown;
@@ -67,6 +70,7 @@ export interface GenerateResult {
 
 /** Map of project files keyed by absolute path — avoids reparsing across calls. */
 let cachedProject: Project | null = null;
+let activeTypesFilePath: string | null = null;
 function getProject(): Project {
   if (cachedProject) return cachedProject;
   cachedProject = new Project({
@@ -95,6 +99,7 @@ export interface GenerateOptions {
  */
 export function generateSchemaForComponent(options: GenerateOptions): GenerateResult {
   const { typesFilePath, componentName, depthToSrc } = options;
+  activeTypesFilePath = typesFilePath;
   const project = options.project ?? getProject();
   const sourceFile = project.addSourceFileAtPath(typesFilePath);
 
@@ -136,7 +141,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
 
     const propType = getPropType(symbol);
 
-    const converted = convertType(propType);
+    const converted = convertType(propType, 0, hasJsDocTag(symbol, 'schemaObject'));
     if (converted.kind === 'unsupported') {
       unsupportedProps.push({ name: propName, reason: converted.reason });
       continue;
@@ -183,25 +188,25 @@ interface ConvertUnsupported {
 
 type ConvertResult = ConvertSuccess | ConvertUnsupported;
 
-function convertType(type: Type): ConvertResult {
+function convertType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
   // Strip `undefined` — optional props are handled by `symbol.isOptional()`,
   // so the schema only needs to describe the present-value type.
   if (type.isUnion()) {
     const parts = type.getUnionTypes().filter((t) => !t.isUndefined());
     if (parts.length === 0) return { kind: 'unsupported', reason: 'unknown-shape' };
-    if (parts.length === 1) return convertSingleType(parts[0]!);
+    if (parts.length === 1) return convertSingleType(parts[0]!, depth, expandObjectShapes);
     // After stripping undefined, if every remaining type is a boolean literal
     // (`true` and `false`), collapse to a plain boolean schema rather than an enum.
     if (parts.length === 2 && parts.every((t) => t.isBooleanLiteral())) {
       return { kind: 'ok', schema: { type: 'boolean' } };
     }
-    return convertUnion(parts);
+    return convertUnion(parts, depth, expandObjectShapes);
   }
 
-  return convertSingleType(type);
+  return convertSingleType(type, depth, expandObjectShapes);
 }
 
-function convertUnion(parts: Type[]): ConvertResult {
+function convertUnion(parts: Type[], depth = 0, expandObjectShapes = false): ConvertResult {
   const nonNullParts = parts.filter((t) => !t.isNull());
   const hasNull = parts.some((t) => t.isNull());
 
@@ -215,7 +220,7 @@ function convertUnion(parts: Type[]): ConvertResult {
   // Mixed-shape union → anyOf, but each part must be convertible.
   const anyOf: PropertySchema[] = [];
   for (const part of nonNullParts) {
-    const converted = convertSingleType(part);
+    const converted = convertSingleType(part, depth, expandObjectShapes);
     if (converted.kind === 'unsupported') return converted;
     anyOf.push(converted.schema);
   }
@@ -223,7 +228,7 @@ function convertUnion(parts: Type[]): ConvertResult {
   return { kind: 'ok', schema: { anyOf } };
 }
 
-function convertSingleType(type: Type): ConvertResult {
+function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
   if (type.isStringLiteral())
     return { kind: 'ok', schema: { const: type.getLiteralValueOrThrow() as string } };
   if (type.isNumberLiteral())
@@ -238,7 +243,7 @@ function convertSingleType(type: Type): ConvertResult {
 
   if (type.isArray()) {
     const element = type.getArrayElementTypeOrThrow();
-    const inner = convertType(element);
+    const inner = convertType(element, depth + 1, expandObjectShapes);
     if (inner.kind === 'unsupported') return inner;
     return { kind: 'ok', schema: { type: 'array', items: inner.schema } };
   }
@@ -260,16 +265,59 @@ function convertSingleType(type: Type): ConvertResult {
   if (type.isObject()) {
     const stringIndex = type.getStringIndexType();
     if (stringIndex) {
-      const inner = convertType(stringIndex);
+      const inner = convertType(stringIndex, depth + 1, expandObjectShapes);
       if (inner.kind === 'unsupported') return inner;
       return { kind: 'ok', schema: { type: 'object' } };
     }
-    // Plain object shape with members — not currently modeled; emit a typed
-    // object placeholder.
-    return { kind: 'ok', schema: { type: 'object' } };
+
+    if (depth > 2 || !expandObjectShapes || !isDeclaredInActiveTypesFile(type)) {
+      return { kind: 'ok', schema: { type: 'object' } };
+    }
+
+    const properties: Record<string, PropertySchema> = {};
+    const required: string[] = [];
+
+    for (const property of type.getProperties()) {
+      const converted = convertType(getPropType(property), depth + 1, expandObjectShapes);
+      if (converted.kind === 'unsupported') return { kind: 'ok', schema: { type: 'object' } };
+
+      const schemaEntry: PropertySchema = { ...converted.schema };
+      const description = readJsDocDescription(property);
+      const defaultValue = readJsDocDefault(property);
+      if (description) schemaEntry.description = description;
+      if (defaultValue !== undefined) schemaEntry.default = defaultValue;
+      properties[property.getName()] = schemaEntry;
+
+      if (!property.isOptional()) required.push(property.getName());
+    }
+
+    if (Object.keys(properties).length === 0) return { kind: 'ok', schema: { type: 'object' } };
+
+    return {
+      kind: 'ok',
+      schema: {
+        type: 'object',
+        properties,
+        additionalProperties: false,
+        ...(required.length > 0 ? { required: required.toSorted() } : {}),
+      },
+    };
   }
 
   return { kind: 'unsupported', reason: 'unknown-shape' };
+}
+
+function isDeclaredInActiveTypesFile(type: Type): boolean {
+  if (activeTypesFilePath === null) return false;
+
+  const declarations = [
+    ...(type.getAliasSymbol()?.getDeclarations() ?? []),
+    ...(type.getSymbol()?.getDeclarations() ?? []),
+  ];
+
+  return declarations.some(
+    (declaration) => declaration.getSourceFile().getFilePath() === activeTypesFilePath,
+  );
 }
 
 function literalValue(type: Type): string | number | boolean {
@@ -413,6 +461,23 @@ function readJsDocDefault(symbol: MorphSymbol): unknown {
     }
   }
   return undefined;
+}
+
+function hasJsDocTag(symbol: MorphSymbol, tagName: string): boolean {
+  for (const decl of symbol.getDeclarations()) {
+    if (!('getJsDocs' in decl)) continue;
+    const docs = (
+      decl as {
+        getJsDocs(): Array<{
+          getTags(): Array<{ getTagName(): string }>;
+        }>;
+      }
+    ).getJsDocs();
+    if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === tagName))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function parseDefaultValue(raw: string): unknown {
