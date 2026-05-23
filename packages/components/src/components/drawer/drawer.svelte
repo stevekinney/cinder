@@ -17,12 +17,14 @@
 
 <script lang="ts">
   import type { DrawerProps } from './drawer.types.ts';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
 
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
   let {
     open = $bindable(false),
@@ -42,11 +44,31 @@
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
+  let panelElement: HTMLDivElement | undefined = $state();
   let hydrated = $state(false);
+  let renderPanel = $state(open);
+  let isClosing = $state(false);
+  let closeGeneration = $state(0);
+  let pendingOpenFocus = $state(false);
 
   let capturedFocus: HTMLElement | null = null;
   let releaseScrollLock: (() => void) | null = null;
   let releaseEscape: (() => void) | null = null;
+  let cancelPendingClose: (() => void) | null = null;
+
+  const reducedMotion = useReducedMotion();
+
+  function acquireScrollLock(): void {
+    if (releaseScrollLock) return;
+    releaseScrollLock = lockBodyScroll();
+  }
+
+  function acquireEscapeMarker(): void {
+    if (releaseEscape) return;
+    // No-op handler: presence marker so stacked non-dialog overlays
+    // route ESC to themselves. Native <dialog> owns the actual ESC close.
+    releaseEscape = pushEscapeHandler(() => {});
+  }
 
   $effect(() => {
     hydrated = true;
@@ -54,21 +76,77 @@
 
   $effect(() => {
     if (!dialogElement) return;
-    if (open && !dialogElement.open) {
-      capturedFocus = captureFocus();
-      dialogElement.showModal();
-      releaseScrollLock = lockBodyScroll();
-      // No-op handler: presence marker so stacked non-dialog overlays
-      // route ESC to themselves. Native <dialog> owns the actual ESC close.
-      releaseEscape = pushEscapeHandler(() => {});
-      const hasAutofocus = dialogElement.querySelector('[autofocus]') !== null;
-      if (!hasAutofocus && bodyElement) {
-        bodyElement.focus();
+    if (open) {
+      if (isClosing) {
+        closeGeneration += 1;
+        cancelPendingClose?.();
+        cancelPendingClose = null;
+        isClosing = false;
       }
-    } else if (!open && dialogElement.open) {
-      dialogElement.close();
+
+      if (!renderPanel) {
+        renderPanel = true;
+      }
+
+      if (!dialogElement.open) {
+        capturedFocus = captureFocus();
+        pendingOpenFocus = true;
+        dialogElement.showModal();
+        acquireScrollLock();
+        acquireEscapeMarker();
+      }
+      return;
+    }
+
+    if (dialogElement.open) {
+      beginClosing();
     }
   });
+
+  $effect(() => {
+    if (!pendingOpenFocus || !dialogElement?.open) return;
+    pendingOpenFocus = false;
+    void tick().then(() => {
+      if (!open || !dialogElement?.open) return;
+      const hasExplicitAutofocus =
+        dialogElement.querySelector('[autofocus]') !== null ||
+        Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
+          (element) => element.autofocus === true,
+        );
+      if (!hasExplicitAutofocus && bodyElement) {
+        bodyElement.focus();
+      }
+    });
+  });
+
+  function beginClosing(): void {
+    if (!dialogElement?.open || isClosing) return;
+    if (!panelElement) {
+      finishClosing(closeGeneration);
+      return;
+    }
+
+    isClosing = true;
+    const generation = ++closeGeneration;
+    cancelPendingClose?.();
+    cancelPendingClose = waitForTransitionCompletion({
+      element: panelElement,
+      reducedMotion: reducedMotion.current,
+      onComplete: () => finishClosing(generation),
+    });
+  }
+
+  function finishClosing(generation: number): void {
+    if (generation !== closeGeneration) return;
+    cancelPendingClose?.();
+    cancelPendingClose = null;
+    isClosing = false;
+    renderPanel = false;
+    pendingOpenFocus = false;
+    if (dialogElement?.open) {
+      dialogElement.close();
+    }
+  }
 
   function handleClose() {
     if (releaseScrollLock) {
@@ -81,6 +159,12 @@
     }
     open = false;
     returnFocus();
+  }
+
+  function requestClose(): void {
+    if (!open && (isClosing || !dialogElement?.open)) return;
+    open = false;
+    beginClosing();
   }
 
   // Iterate candidates so a disconnected `triggerRef` falls through to the
@@ -101,16 +185,18 @@
     // This matches modal.svelte's pattern; without it, ESC would close the
     // dialog out from under Svelte's `open` state for one tick.
     event.preventDefault();
-    dialogElement?.close();
+    requestClose();
   }
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === dialogElement) {
-      dialogElement?.close();
+      requestClose();
     }
   }
 
   onDestroy(() => {
+    cancelPendingClose?.();
+    cancelPendingClose = null;
     const wasOpen = releaseScrollLock !== null || releaseEscape !== null;
     if (releaseScrollLock) {
       releaseScrollLock();
@@ -133,6 +219,7 @@
     class={classNames('cinder-drawer', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
+    data-cinder-closing={isClosing ? '' : undefined}
     onclose={handleClose}
     oncancel={handleNativeCancel}
     onclick={handleBackdropClick}
@@ -142,7 +229,7 @@
         type="button"
         class="cinder-drawer__close"
         aria-label="Close drawer"
-        onclick={() => dialogElement?.close()}
+        onclick={requestClose}
       >
         <svg
           class="cinder-drawer__close-icon"
@@ -158,8 +245,15 @@
       </button>
     {/snippet}
 
-    {#if open}
-      <div class="cinder-drawer__panel" data-cinder-side={side} data-cinder-size={size}>
+    {#if renderPanel}
+      <div
+        bind:this={panelElement}
+        class="cinder-drawer__panel"
+        data-cinder-side={side}
+        data-cinder-size={size}
+        data-cinder-closing={isClosing ? '' : undefined}
+        inert={isClosing}
+      >
         <header class="cinder-drawer__header">
           {#if header}
             {#if !ariaLabelledBy}

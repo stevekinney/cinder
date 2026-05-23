@@ -20,8 +20,13 @@
 }
 
 .cinder-drawer::backdrop {
-  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
+  background-color: color-mix(in oklch, var(--cinder-text) 40%, transparent);
   backdrop-filter: blur(2px);
+  transition: background-color var(--cinder-duration-normal) var(--cinder-ease-standard);
+}
+
+.cinder-drawer[data-cinder-closing]::backdrop {
+  background-color: transparent;
 }
 
 .cinder-drawer__panel {
@@ -34,6 +39,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  opacity: 1;
+  transition:
+    translate var(--cinder-duration-normal) var(--cinder-ease-spring),
+    opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
 }
 
 .cinder-drawer__panel[data-cinder-side='right'] {
@@ -145,51 +154,38 @@
  * Animation targets the panel, not the dialog (which is transparent).
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: no-preference) {
+.cinder-drawer__panel[data-cinder-side='right'][data-cinder-closing] {
+  translate: 100% 0;
+  opacity: 0.85;
+}
+
+.cinder-drawer__panel[data-cinder-side='left'][data-cinder-closing] {
+  translate: -100% 0;
+  opacity: 0.85;
+}
+
+.cinder-drawer__panel[data-cinder-closing] {
+  pointer-events: none;
+}
+
+@starting-style {
   .cinder-drawer__panel[data-cinder-side='right'] {
-    animation: cinder-drawer-slide-right var(--cinder-duration-normal) var(--cinder-ease-spring)
-      forwards;
+    translate: 100% 0;
+    opacity: 0.85;
   }
 
   .cinder-drawer__panel[data-cinder-side='left'] {
-    animation: cinder-drawer-slide-left var(--cinder-duration-normal) var(--cinder-ease-spring)
-      forwards;
-  }
-
-  @keyframes cinder-drawer-slide-right {
-    from {
-      translate: 100% 0;
-      opacity: 0.85;
-    }
-    to {
-      translate: 0 0;
-      opacity: 1;
-    }
-  }
-
-  @keyframes cinder-drawer-slide-left {
-    from {
-      translate: -100% 0;
-      opacity: 0.85;
-    }
-    to {
-      translate: 0 0;
-      opacity: 1;
-    }
+    translate: -100% 0;
+    opacity: 0.85;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .cinder-drawer__panel {
-    animation: cinder-drawer-fade var(--cinder-duration-fast) linear forwards;
+    transition: none;
   }
 
-  @keyframes cinder-drawer-fade {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .cinder-drawer::backdrop {
+    transition: none;
   }
 }
