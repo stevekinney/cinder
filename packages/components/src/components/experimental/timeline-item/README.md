@@ -2,26 +2,37 @@
 
 > **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.
 
-One entry in a `Timeline`. Renders a marker (dot or custom glyph) on the rail beside the item's title, time, and body content.
+One event entry in a `Timeline`. Renders a decorative tone marker on the rail beside the item's timestamp, title, and body content.
 
 ## Usage
 
 ```svelte
-<TimelineItem time="10:00" title="Workflow started" status="success">
+<TimelineItem
+  datetime="2026-05-23T10:00:00Z"
+  timestamp="10:00"
+  title="Workflow started"
+  tone="success"
+>
   Successfully kicked off the workflow.
 </TimelineItem>
 ```
+
+Marker snippets are decorative. Do not place focusable or interactive content inside `marker`; the marker wrapper is hidden from assistive technology and marked inert.
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop     | Type                                                 | Required | Default  | Description                                                          |
-| -------- | ---------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------- |
-| `class`  | `string`                                             | no       | —        | Additional class names merged with `.cinder-timeline-item`.          |
-| `status` | `"info"` \| `"success"` \| `"warning"` \| `"danger"` | no       | `"info"` | Optional status that drives the marker color via a data attribute.   |
-| `time`   | `string`                                             | no       | —        | Optional ISO timestamp / formatted time string for the entry header. |
-| `title`  | `string`                                             | no       | —        | Visible event title.                                                 |
+| Prop               | Type                                                | Required | Default     | Description                                                                           |
+| ------------------ | --------------------------------------------------- | -------- | ----------- | ------------------------------------------------------------------------------------- |
+| `class`            | `string`                                            | no       | —           | Additional class names merged with `.cinder-timeline-item`.                           |
+| `connectorAfter`   | `"visible"` \| `"hidden"`                           | no       | `"visible"` | Whether to draw the connector to the following event.                                 |
+| `datetime`         | `string`                                            | yes      | —           | Machine-readable ISO datetime rendered into `<time datetime>`.                        |
+| `groupHeader`      | `string`                                            | no       | —           | Optional adjacent group heading rendered inside this list item before the event body. |
+| `groupHeaderLevel` | `1` \| `2` \| `3` \| `4` \| `5` \| `6`              | no       | `3`         | Heading level applied when `groupHeader` is rendered.                                 |
+| `timestamp`        | `string`                                            | yes      | —           | Visible timestamp label rendered inside `<time>`.                                     |
+| `title`            | `string`                                            | yes      | —           | Visible event title.                                                                  |
+| `tone`             | `"info"` \| `"success"` \| `"warning"` \| `"error"` | no       | `"info"`    | Semantic marker tone.                                                                 |
 
 <!-- generated:props:end -->
 

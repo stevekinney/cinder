@@ -32,6 +32,10 @@ function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
 
+export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
+  return port === null ? null : localPlaygroundUrlForPort(port);
+}
+
 export function parsePlaygroundListeningPort(output: string): number | null {
   const match = output.match(/\[playground\] Listening at http:\/\/localhost:(\d+)/);
   if (!match) return null;
@@ -102,17 +106,24 @@ async function main(): Promise<void> {
     const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
     let lastLog = startedAt;
     let reportedPlaygroundPort: number | null = null;
+    let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
-      reportedPlaygroundPort = parsePlaygroundListeningPort(output) ?? reportedPlaygroundPort;
+      serverOutputBuffer = `${serverOutputBuffer}${output}`;
+      reportedPlaygroundPort =
+        parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
+      if (serverOutputBuffer.length > 4096 || reportedPlaygroundPort !== null) {
+        serverOutputBuffer = serverOutputBuffer.slice(-4096);
+      }
     });
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
-      if (selectedPort !== null) {
-        targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
-        if (await ping()) break;
+      const selectedPlaygroundUrl = localPlaygroundUrlForReportedPort(selectedPort);
+      if (selectedPlaygroundUrl !== null) {
+        targetPlaygroundUrl = selectedPlaygroundUrl;
+        if (await ping(selectedPlaygroundUrl)) break;
       } else if (await ping(targetPlaygroundUrl)) {
         // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but some local
         // runs start successfully on the default port without ever writing the

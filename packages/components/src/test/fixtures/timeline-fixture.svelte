@@ -3,37 +3,57 @@
   export type TimelineFixtureProps = {
     items: Array<{
       id: string;
-      title?: string;
-      time?: string;
-      status?: 'info' | 'success' | 'warning' | 'danger';
-      body?: string;
+      title?: string | undefined;
+      datetime: string;
+      timestamp: string;
+      tone?: 'info' | 'success' | 'warning' | 'error' | undefined;
+      groupLabel?: string | undefined;
+      body?: string | undefined;
     }>;
+    orientation?: 'vertical' | 'horizontal' | undefined;
+    groupBy?: 'none' | 'day' | 'week' | undefined;
+    weekStartsOn?: 'sunday' | 'monday' | undefined;
+    groupHeaderLevel?: 1 | 2 | 3 | 4 | 5 | 6 | undefined;
+    gapThresholdMinutes?: number | undefined;
   };
 </script>
 
 <script lang="ts">
   import Timeline from '../../components/experimental/timeline/timeline.svelte';
-  import TimelineItem from '../../components/experimental/timeline-item/timeline-item.svelte';
 
-  let { items }: TimelineFixtureProps = $props();
+  let {
+    items,
+    orientation = 'vertical',
+    groupBy = 'none',
+    weekStartsOn = 'monday',
+    groupHeaderLevel,
+    gapThresholdMinutes,
+  }: TimelineFixtureProps = $props();
 </script>
 
-<Timeline>
-  {#each items as item (item.id)}
-    {#if item.body !== undefined}
-      <TimelineItem
-        {...item.title !== undefined ? { title: item.title } : {}}
-        {...item.time !== undefined ? { time: item.time } : {}}
-        {...item.status !== undefined ? { status: item.status } : {}}
-      >
-        {item.body}
-      </TimelineItem>
-    {:else}
-      <TimelineItem
-        {...item.title !== undefined ? { title: item.title } : {}}
-        {...item.time !== undefined ? { time: item.time } : {}}
-        {...item.status !== undefined ? { status: item.status } : {}}
-      />
+<Timeline
+  entries={items.map((item) => ({
+    id: item.id,
+    datetime: item.datetime,
+    timestamp: item.timestamp,
+    title: item.title ?? '',
+    tone: item.tone,
+    groupLabel: item.groupLabel,
+  }))}
+  {orientation}
+  {groupBy}
+  {weekStartsOn}
+  {groupHeaderLevel}
+  {gapThresholdMinutes}
+>
+  {#snippet children(item)}
+    {@const body = items.find((sourceItem) => sourceItem.id === item.id)?.body}
+    {#if body}
+      {body}
     {/if}
-  {/each}
+  {/snippet}
+
+  {#snippet marker(item)}
+    <span data-testid={`marker-${item.id}`}></span>
+  {/snippet}
 </Timeline>

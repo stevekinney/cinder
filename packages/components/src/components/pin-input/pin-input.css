@@ -58,9 +58,7 @@
 
 .cinder-pin-input__segment:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-surface),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-focus-ring);
+  box-shadow: var(--_cinder-focus-ring-shadow);
   border-color: var(--cinder-border-strong);
 }
 

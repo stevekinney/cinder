@@ -102,6 +102,9 @@
     get supportsPopover() {
       return supportsPopover;
     },
+    get initialFocus() {
+      return undefined;
+    },
     close: closeCompoundMenu,
     focusTrigger: focusCompoundTrigger,
   });
