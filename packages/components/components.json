@@ -167,6 +167,31 @@
       }
     },
     {
+      "name": "Autocomplete",
+      "id": "autocomplete",
+      "import": "cinder/autocomplete",
+      "exportName": "Autocomplete",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Free-form text input with asynchronous suggestion hints rendered in a listbox popover.",
+      "tags": ["form", "autocomplete"],
+      "useWhen": [
+        "Accepting arbitrary text while offering completions from a local or remote source.",
+        "Keeping the user's text as the committed value while suggestions remain optional hints."
+      ],
+      "avoidWhen": [
+        "Requiring the final value to come from a fixed option list — use combobox instead."
+      ],
+      "related": ["combobox", "search-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/autocomplete/schema",
+        "variables": "cinder/autocomplete/variables",
+        "examples": "cinder/autocomplete/examples"
+      }
+    },
+    {
       "name": "Avatar",
       "id": "avatar",
       "import": "cinder/avatar",
@@ -514,11 +539,10 @@
       ],
       "related": ["code-block"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "cinder/cinder-provider/schema",
-        "variables": "cinder/cinder-provider/variables",
-        "examples": "cinder/cinder-provider/examples"
+        "variables": "cinder/cinder-provider/variables"
       }
     },
     {
@@ -1508,6 +1532,30 @@
       "artifacts": {
         "schema": "cinder/label/schema",
         "variables": "cinder/label/variables"
+      }
+    },
+    {
+      "name": "LoadMore",
+      "id": "load-more",
+      "import": "cinder/load-more",
+      "exportName": "LoadMore",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.",
+      "tags": ["navigation", "paging"],
+      "useWhen": [
+        "Streaming results into a long list and you want the next page to load as the user approaches the end."
+      ],
+      "avoidWhen": [
+        "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
+      ],
+      "related": ["pagination"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/load-more/schema",
+        "variables": "cinder/load-more/variables",
+        "examples": "cinder/load-more/examples"
       }
     },
     {
@@ -2789,6 +2837,32 @@
       }
     },
     {
+      "name": "TagInput",
+      "id": "tag-input",
+      "import": "cinder/tag-input",
+      "exportName": "TagInput",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Free-form token entry field that turns committed text into removable tags while keeping native input, form, and accessibility wiring intact.",
+      "tags": ["form", "tags"],
+      "useWhen": [
+        "Collecting zero or more short free-form values such as labels, emails, or technologies.",
+        "Letting users review and remove committed values inline before submitting a form."
+      ],
+      "avoidWhen": [
+        "Users must choose from a fixed option list — use combobox instead.",
+        "The value is a single free-form string rather than a list — use input instead."
+      ],
+      "related": ["combobox", "chip", "form-field", "input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/tag-input/schema",
+        "variables": "cinder/tag-input/variables",
+        "examples": "cinder/tag-input/examples"
+      }
+    },
+    {
       "name": "Textarea",
       "id": "textarea",
       "import": "cinder/textarea",
@@ -2935,6 +3009,31 @@
         "schema": "cinder/toggle/schema",
         "variables": "cinder/toggle/variables",
         "examples": "cinder/toggle/examples"
+      }
+    },
+    {
+      "name": "Toolbar",
+      "id": "toolbar",
+      "import": "cinder/toolbar",
+      "exportName": "Toolbar",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Named grouping of related controls that implements the WAI-ARIA toolbar pattern with DOM-driven roving tabindex.",
+      "tags": ["action", "grouping"],
+      "useWhen": [
+        "Rendering a row or column of related controls where the whole set should be one Tab stop and arrow keys should move between items.",
+        "Wrapping existing cinder controls such as Button, SegmentedControl, and NumberInput without adding toolbar-specific child APIs."
+      ],
+      "avoidWhen": [
+        "Building a static flex row of controls that should remain in ordinary Tab order — use inline, cluster, or button-group instead."
+      ],
+      "related": ["button-group", "segmented-control", "number-input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/toolbar/schema",
+        "variables": "cinder/toolbar/variables",
+        "examples": "cinder/toolbar/examples"
       }
     },
     {

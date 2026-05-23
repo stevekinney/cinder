@@ -43,7 +43,7 @@
 }
 
 .cinder-time-picker[data-invalid] .cinder-time-picker__input {
-  border-color: var(--cinder-color-danger);
+  border-color: var(--cinder-color-danger-border);
 }
 
 .cinder-time-picker__toggle:focus-visible,
@@ -59,7 +59,7 @@
 }
 
 .cinder-time-picker-field__error {
-  color: var(--cinder-color-danger);
+  color: var(--cinder-color-danger-fg);
   font-size: var(--cinder-text-sm);
 }
 
@@ -116,8 +116,8 @@
 .cinder-time-picker__option[aria-selected='true'],
 .cinder-time-picker__period[aria-checked='true'] {
   border-color: var(--cinder-accent);
-  background: var(--cinder-accent-subtle);
-  color: var(--cinder-accent-foreground);
+  background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+  color: var(--cinder-accent);
 }
 
 .cinder-time-picker__periods {

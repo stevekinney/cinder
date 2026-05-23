@@ -18,7 +18,10 @@ export type PopoverPlacement =
   | 'bottom-start'
   | 'bottom-end';
 export type PopoverRole = 'dialog' | 'group' | 'listbox';
+export type PopoverFocusManagement = 'panel' | 'preserve';
 export type PopoverProps = {
+  /** Optional panel id. Defaults to a generated `cinder-popover-*` id. */
+  id?: string;
   /** Open state. Bindable. Default `false`. */
   open?: boolean;
   /** Anchor placement. Default `'bottom-start'`. */
@@ -39,6 +42,10 @@ export type PopoverProps = {
   trigger?: Snippet;
   /** ARIA role for the panel. Default `'dialog'`. */
   role?: PopoverRole;
+  /** Focus behavior for each open session. Default `'panel'`. */
+  focusManagement?: PopoverFocusManagement;
+  /** Whether Popover owns trigger ARIA wiring. Default `true`. */
+  wireTriggerAria?: boolean;
   /** Extra class merged onto `.cinder-popover`. */
   class?: string;
 };

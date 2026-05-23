@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "minQueryLength": {
+      "type": "number"
+    },
+    "maxVisibleSuggestions": {
+      "type": "number"
+    },
+    "placeholder": {
+      "type": "string"
+    },
+    "disabled": {
+      "type": "boolean"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "readonly": {
+      "type": "boolean"
+    },
+    "emptyMessage": {
+      "type": "string"
+    },
+    "loadingMessage": {
+      "type": "string"
+    },
+    "class": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "oncomplete",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "oninput",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "suggestionSource",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}
