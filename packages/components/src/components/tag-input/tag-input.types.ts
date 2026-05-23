@@ -11,12 +11,10 @@ type SupportedInputAttributes = Pick<
   | 'enterkeyhint'
   | 'inputmode'
   | 'maxlength'
-  | 'minlength'
   | 'onblur'
   | 'onfocus'
   | 'oninput'
   | 'onkeydown'
-  | 'pattern'
   | 'placeholder'
   | 'spellcheck'
 >;

@@ -63,14 +63,6 @@ const schema = {
       type: 'number',
       description: 'Maximum pending-text length forwarded to the visible text input.',
     },
-    minlength: {
-      type: 'number',
-      description: 'Minimum pending-text length forwarded to the visible text input.',
-    },
-    pattern: {
-      type: 'string',
-      description: 'Validation pattern forwarded to the visible text input.',
-    },
     placeholder: {
       type: 'string',
       description: 'Placeholder text shown while the pending tag input is empty.',
