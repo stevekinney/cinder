@@ -469,6 +469,9 @@ export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 
+export { default as Toggle } from './components/toggle/index.ts';
+export type { ToggleProps } from './components/toggle/index.ts';
+
 export { default as Toolbar } from './components/toolbar/index.ts';
 export type {
   ToolbarGroupProps,
@@ -476,9 +479,6 @@ export type {
   ToolbarProps,
   ToolbarSpacerProps,
 } from './components/toolbar/index.ts';
-
-export { default as Toggle } from './components/toggle/index.ts';
-export type { ToggleProps } from './components/toggle/index.ts';
 
 export { default as Tree } from './components/tree/index.ts';
 export type { TreeProps, TreeSelectionMode } from './components/tree/index.ts';
