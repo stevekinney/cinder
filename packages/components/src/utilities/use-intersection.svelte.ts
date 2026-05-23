@@ -46,6 +46,10 @@ export function useIntersection(
 
       observer = new IntersectionObserver(
         (entries) => {
+          if (!enabled()) {
+            return;
+          }
+
           for (const entry of entries) {
             onIntersect(entry);
           }

@@ -1,6 +1,6 @@
 export type LoadMoreProps = {
   /** Called when the next page should be loaded. Caller flips `loading` and `hasMore`. */
-  onLoadMore: () => void | Promise<void>;
+  onLoadMore?: () => void | Promise<void>;
   /** Whether more items are available. Bindable. */
   hasMore?: boolean;
   /** Whether a load is in progress. Bindable. */

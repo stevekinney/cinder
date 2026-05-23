@@ -2,6 +2,8 @@
 
 Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.
 
+`onLoadMore` should be provided in real usage. When omitted, the component falls back to a no-op handler.
+
 ## Usage
 
 ```svelte

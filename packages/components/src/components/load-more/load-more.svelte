@@ -20,7 +20,7 @@
   import { useIntersection } from '../../utilities/use-intersection.svelte.ts';
 
   let {
-    onLoadMore,
+    onLoadMore = async () => {},
     onError,
     hasMore = $bindable(true),
     loading = $bindable(false),
@@ -58,7 +58,11 @@
   });
 
   async function requestNextPage(source: 'button' | 'sentinel'): Promise<void> {
-    if (!hasMore || requestInFlight || (source === 'sentinel' && retryCount >= maxRetries)) {
+    if (!hasMore || loading || requestInFlight) {
+      return;
+    }
+
+    if (source === 'sentinel' && (errorState || retryCount >= maxRetries)) {
       return;
     }
 
@@ -71,6 +75,9 @@
 
     try {
       await onLoadMore();
+      if (source === 'button') {
+        retryCount = 0;
+      }
       if (!loading) {
         requestInFlight = false;
       }

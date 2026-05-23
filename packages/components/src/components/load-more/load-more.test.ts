@@ -130,6 +130,56 @@ describe('LoadMore', () => {
     });
   });
 
+  test('ignores stale sentinel callbacks while loading or after an error', async () => {
+    let calls = 0;
+    let rejectNextRequest = false;
+
+    const rendered = render(LoadMore, {
+      props: {
+        onLoadMore: async () => {
+          calls += 1;
+          if (rejectNextRequest) {
+            throw new Error('network');
+          }
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    await rendered.rerender({
+      onLoadMore: async () => {
+        calls += 1;
+      },
+      loading: true,
+    });
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    expect(calls).toBe(0);
+
+    rejectNextRequest = true;
+    await rendered.rerender({
+      onLoadMore: async () => {
+        calls += 1;
+        if (rejectNextRequest) {
+          throw new Error('network');
+        }
+      },
+      loading: false,
+    });
+
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+
+    await waitFor(() => {
+      expect(rendered.getByRole('button', { name: 'Retry loading' })).toBeDefined();
+    });
+
+    rejectNextRequest = false;
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    expect(calls).toBe(1);
+  });
+
   test('does not call onLoadMore for a non-intersecting sentinel entry', () => {
     let calls = 0;
     const { container } = render(LoadMore, {
@@ -163,6 +213,45 @@ describe('LoadMore', () => {
 
     await waitFor(() => {
       expect(getByRole('button', { name: 'Try again' })).toBeDefined();
+    });
+  });
+
+  test('manual loads reset the sentinel retry budget after a failure', async () => {
+    let calls = 0;
+    let shouldFail = true;
+
+    const rendered = render(LoadMore, {
+      props: {
+        maxRetries: 1,
+        onLoadMore: async () => {
+          calls += 1;
+          if (shouldFail) {
+            throw new Error('network');
+          }
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
+    await waitFor(() => {
+      expect(rendered.getByRole('button', { name: 'Retry loading' })).toBeDefined();
+    });
+
+    shouldFail = false;
+    await fireEvent.click(rendered.getByRole('button', { name: 'Retry loading' }));
+
+    await waitFor(() => {
+      expect(calls).toBe(2);
+    });
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
+    await waitFor(() => {
+      expect(calls).toBe(3);
     });
   });
 

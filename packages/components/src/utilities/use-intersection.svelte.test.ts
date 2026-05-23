@@ -115,6 +115,35 @@ describe('useIntersection', () => {
     expect(seen).toEqual([true, false]);
   });
 
+  test('ignores queued observer entries after enabled flips false', async () => {
+    let enabled = true;
+    const seen: boolean[] = [];
+
+    const rendered = render(UseIntersectionAttachFixture, {
+      props: {
+        onIntersect: (entry: IntersectionObserverEntry) => seen.push(entry.isIntersecting),
+        options: {
+          enabled: () => enabled,
+        },
+      },
+    });
+
+    const sentinel = rendered.getByTestId('sentinel');
+    const [record] = FakeIntersectionObserver.records;
+
+    enabled = false;
+    await rendered.rerender({
+      onIntersect: (entry: IntersectionObserverEntry) => seen.push(entry.isIntersecting),
+      options: {
+        enabled: () => enabled,
+      },
+    });
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
+    expect(seen).toEqual([]);
+  });
+
   test('disconnects when the attachment is destroyed', () => {
     const rendered = render(UseIntersectionAttachFixture, {
       props: {
