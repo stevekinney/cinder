@@ -5,6 +5,7 @@ import {
   applyPairSnap,
   applyPointerDragDelta,
   createInitialLayoutState,
+  formatSizeFromPixels,
   getHandleAriaState,
   getLayoutSnapshot,
   getPaneLayoutSignature,
@@ -109,6 +110,10 @@ describe('resizable-panels sizing', () => {
     expect(snapshot[0]!.percentage).toBeCloseTo(25, 1);
   });
 
+  test('formats percent sizes as zero percent when the measured budget is zero', () => {
+    expect(formatSizeFromPixels(48, 'percent', 0)).toEqual({ value: 0, unit: 'percent' });
+  });
+
   test('returns separator aria values for the leading adjacent pane pair', () => {
     const state = createInitialLayoutState(panes, 1000, 'horizontal');
     const aria = getHandleAriaState(state, panes, 0);
@@ -199,13 +204,40 @@ describe('resizable-panels sizing', () => {
         defaultSize: { value: 50, unit: 'percent' },
         minSize: { value: 100, unit: 'px' },
       },
-    ];
+    ] satisfies ResizablePanelDefinition[];
 
     const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
     const resized = applyPairDelta(state, maxConstrainedPanes, 0, 200);
 
     expect(resized.panels[0]!.sizePixels).toBe(220);
     expect(resized.panels[1]!.sizePixels).toBe(380);
+  });
+
+  test('respects the opposite pane maxSize while collapsing', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 400, unit: 'px' },
+        minSize: { value: 0, unit: 'px' },
+        collapsible: true,
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 200, unit: 'px' },
+        minSize: { value: 100, unit: 'px' },
+        maxSize: { value: 220, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
+    const collapsed = toggleCollapseForHandle(state, maxConstrainedPanes, 0, 'leading');
+
+    expect(collapsed.changed).toBe(true);
+    expect(collapsed.state.panels[0]!.sizePixels).toBe(380);
+    expect(collapsed.state.panels[0]!.collapsed).toBe(false);
+    expect(collapsed.state.panels[1]!.sizePixels).toBe(220);
   });
 
   test('reports no pointer change when constraints keep the layout fixed', () => {

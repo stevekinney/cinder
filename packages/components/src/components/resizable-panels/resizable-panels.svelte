@@ -194,9 +194,12 @@
 
   $effect(() => {
     if (!browser) return;
-    availablePanePixels;
     orientation;
     panes;
+    if (rootElement) {
+      measureRoot();
+      return;
+    }
     syncMeasuredLayout();
   });
 
@@ -212,6 +215,7 @@
   }
 
   function handlePointerDown(event: PointerEvent, handleIndex: number): void {
+    if (event.button !== 0) return;
     if (!layoutState) return;
     activeHandleIndex = handleIndex;
     activePointerId = event.pointerId;

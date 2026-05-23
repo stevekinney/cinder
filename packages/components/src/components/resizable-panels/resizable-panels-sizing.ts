@@ -67,8 +67,11 @@ export function formatSizeFromPixels(
   preferredUnit: ResizablePanelSize['unit'],
   availablePanePixels: number,
 ): ResizablePanelSize {
-  if (preferredUnit === 'px' || availablePanePixels <= 0) {
-    return { value: roundToThousandth(pixels), unit: preferredUnit === 'px' ? 'px' : 'percent' };
+  if (preferredUnit === 'px') {
+    return { value: roundToThousandth(pixels), unit: 'px' };
+  }
+  if (availablePanePixels <= 0) {
+    return { value: 0, unit: 'percent' };
   }
   return {
     value: roundToThousandth((pixels / availablePanePixels) * 100),
@@ -360,10 +363,16 @@ function getPairBounds(
   const trailingConstraints = constraints[handleIndex + 1]!;
   const pairTotal = leading.sizePixels + trailing.sizePixels;
 
-  const minimumLeading =
+  const leadingMinimum =
     leading.collapsed && options.allowCollapsedLeadingMinimum ? 0 : leadingConstraints.minPixels;
   const trailingMinimum =
     trailing.collapsed && options.allowCollapsedTrailingMinimum ? 0 : trailingConstraints.minPixels;
+  const minimumLeading = Math.max(
+    leadingMinimum,
+    Number.isFinite(trailingConstraints.maxPixels)
+      ? pairTotal - trailingConstraints.maxPixels
+      : Number.NEGATIVE_INFINITY,
+  );
   const pairMaximumLeading = pairTotal - trailingMinimum;
   const maximumLeading = clamp(
     leadingConstraints.maxPixels,
@@ -543,22 +552,28 @@ export function toggleCollapseForHandle(
   const targetIndex = chooseCollapseIndex(panes, handleIndex, collapseTarget);
   if (targetIndex === null) return { state, changed: false };
 
-  const oppositeIndex = targetIndex === handleIndex ? handleIndex + 1 : handleIndex;
   const target = state.panels[targetIndex]!;
-  const opposite = state.panels[oppositeIndex]!;
-  const pairTotal = target.sizePixels + opposite.sizePixels;
-  const panels = clonePanels(state);
+  const pairTotal =
+    state.panels[handleIndex]!.sizePixels + state.panels[handleIndex + 1]!.sizePixels;
 
   if (!target.collapsed) {
+    const panels = clonePanels(state);
     panels[targetIndex]!.restorePixels = target.sizePixels;
-    panels[targetIndex]!.sizePixels = 0;
     panels[targetIndex]!.collapsed = true;
-    panels[oppositeIndex]!.sizePixels = pairTotal;
-    panels[oppositeIndex]!.collapsed = false;
-    panels[oppositeIndex]!.restorePixels = pairTotal;
-    return { state: { ...state, panels }, changed: true };
+    const collapsed = setLeadingPanePixels(
+      { ...state, panels },
+      panes,
+      handleIndex,
+      targetIndex === handleIndex ? 0 : pairTotal,
+      {
+        allowCollapsedLeadingMinimum: targetIndex === handleIndex,
+        allowCollapsedTrailingMinimum: targetIndex !== handleIndex,
+      },
+    );
+    return { state: collapsed, changed: hasLayoutPixelChanges(state, collapsed) };
   }
 
+  const panels = clonePanels(state);
   const restored = setLeadingPanePixels(
     { ...state, panels },
     panes,

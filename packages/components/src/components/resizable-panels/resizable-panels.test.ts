@@ -46,7 +46,7 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte/pure');
 const { default: ResizablePanels } = await import('./resizable-panels.svelte');
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
 
 afterEach(() => {
   cleanup();
@@ -194,6 +194,20 @@ describe('ResizablePanels', () => {
     expect(onlayoutcommit).not.toHaveBeenCalled();
   });
 
+  test('non-primary pointer buttons do not start a resize drag', async () => {
+    const onlayoutchange = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutchange });
+    mockMeasurements(container);
+    onlayoutchange.mockClear();
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    await fireEvent.pointerDown(handle, { pointerId: 1, button: 2, clientX: 200 });
+    document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 260 }));
+    await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 260 });
+
+    expect(onlayoutchange).not.toHaveBeenCalled();
+  });
+
   test('keyboard resize does not commit when constraints keep the layout fixed', async () => {
     const onlayoutcommit = mock(() => {});
     const constrainedPanes = [
@@ -232,5 +246,30 @@ describe('ResizablePanels', () => {
     mockMeasurements(container, { rootWidth: 812 });
 
     expect(onlayoutcommit).not.toHaveBeenCalled();
+  });
+
+  test('orientation changes remeasure on the new axis immediately', async () => {
+    const rendered = render(ResizablePanels, {
+      panes,
+      children: textSnippet,
+      orientation: 'horizontal',
+    });
+    await tick();
+    mockMeasurements(rendered.container, { rootWidth: 812, rootHeight: 412, handleThickness: 12 });
+    await tick();
+    const firstPane = rendered.container.querySelector<HTMLElement>(
+      '.cinder-resizable-panels__pane',
+    )!;
+
+    expect(firstPane.getAttribute('style')).toContain('200px');
+
+    await rendered.rerender({
+      panes,
+      children: textSnippet,
+      orientation: 'vertical',
+    });
+    await tick();
+
+    expect(firstPane.getAttribute('style')).toContain('120px');
   });
 });
