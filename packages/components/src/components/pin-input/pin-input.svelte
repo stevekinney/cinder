@@ -316,7 +316,6 @@
         aria-labelledby={segmentLabelledBy(index)}
         aria-label={segmentAriaLabel(index)}
         aria-describedby={describedBy}
-        aria-invalid={resolvedAriaInvalid}
         aria-required={resolvedRequired || undefined}
         data-cinder-pin-segment={index}
         oninput={(event) => handleInput(event, index)}

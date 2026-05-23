@@ -344,7 +344,7 @@
         </span>
       {/each}
 
-      <div class="cinder-rating__hit-area" aria-hidden="false">
+      <div class="cinder-rating__hit-area">
         {#each valueOptions as option (option)}
           <button
             id={optionId(option)}

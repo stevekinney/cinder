@@ -85,6 +85,21 @@ describe('parseE164Value', () => {
   test('returns null for garbage input', () => {
     expect(parseE164Value('not-a-phone')).toBeNull();
   });
+
+  test('rejects free-form text that embeds a valid number', () => {
+    // libphonenumber happily extracts a number from arbitrary text. The
+    // strict E.164 grammar in parseE164Value rejects anything that isn't
+    // `+` followed by digits, so this must be null even though libphonenumber
+    // could otherwise pull a US number out of it.
+    expect(parseE164Value('call +1 415 555 0132')).toBeNull();
+    expect(parseE164Value('+1 (415) 555-0132')).toBeNull();
+    expect(parseE164Value(' +14155550132 ')).toBeNull();
+  });
+
+  test('exposes the canonical E.164 string on `e164`', () => {
+    const result = parseE164Value('+14155550132');
+    expect(result?.e164).toBe('+14155550132');
+  });
 });
 
 describe('resolveCountryList', () => {

@@ -129,8 +129,15 @@ export function parseE164Value(value: string): {
   nationalNumber: string;
   formatted: string;
   isValid: boolean;
+  /** Canonical E.164 number as libphonenumber normalized it (e.g. `+14155550132`). */
+  e164: string;
 } | null {
   if (!value) return null;
+  // Reject anything that is not a strict E.164 string. `parsePhoneNumberFromString`
+  // happily extracts a number out of free-form text like "call +1 415 555 0132"
+  // and would let that flow through `submittedValue` unchanged. The E.164 grammar
+  // is `+` followed by up to 15 digits.
+  if (!/^\+\d{1,15}$/.test(value)) return null;
   const parsed = parsePhoneNumberFromString(value);
   if (!parsed || !parsed.country) return null;
   // Prefer libphonenumber's `formatNational()` for hydration — it carries the
@@ -147,6 +154,7 @@ export function parseE164Value(value: string): {
     nationalNumber: parsed.nationalNumber,
     formatted,
     isValid: parsed.isValid(),
+    e164: parsed.number,
   };
 }
 

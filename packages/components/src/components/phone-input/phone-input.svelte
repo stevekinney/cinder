@@ -108,7 +108,7 @@
 
   /** Type-guard sourced from the live allow-list so we never widen an unknown string. */
   function isCountryCode(rawCode: string): rawCode is PhoneInputCountryCode {
-    return isAllowed(rawCode as PhoneInputCountryCode);
+    return (allowedCountries as readonly string[]).includes(rawCode);
   }
 
   function fallbackCountry(): PhoneInputCountryCode {
@@ -187,11 +187,26 @@
    * `value`. Without the value recompute, the public API can diverge from
    * the visible state (e.g. shrinking countries from ['US','GB'] to ['US']
    * while `value` is `+442079460958` would keep the disallowed E.164 string
-   * on the prop). Prop synchronization — never fires `onchange`.
+   * on the prop, and expanding ['US'] to ['US','GB'] while value points at
+   * a GB number would leave the dropdown on the fallback US). Prop
+   * synchronization — never fires `onchange`.
    */
   $effect(() => {
     if (allowedCountries === knownAllowList) return;
     knownAllowList = allowedCountries;
+
+    // Allow-list expanded such that the value's parsed country is now allowed:
+    // recover the original country/display by reparsing `value`.
+    if (value) {
+      const parsed = parseE164Value(value);
+      if (parsed && isAllowed(parsed.country) && parsed.country !== country) {
+        country = parsed.country;
+        knownCountry = parsed.country;
+        nationalDisplay = parsed.formatted;
+        return;
+      }
+    }
+
     if (!isAllowed(country)) {
       country = fallbackCountry();
       knownCountry = country;
@@ -208,6 +223,12 @@
     }
   });
 
+  /**
+   * Compose a `PhoneInputChange` detail for a country that is not in the
+   * allow-list. `targetCountry` is typed as `PhoneInputCountryCode` because
+   * libphonenumber and `<select>` only ever surface ISO 3166-1 alpha-2 codes,
+   * even when the runtime allow-list rejects the value.
+   */
   function detailForCountryNotAllowed(
     targetCountry: PhoneInputCountryCode,
     nationalDigits: string,
@@ -227,7 +248,7 @@
       value = detail.value;
       knownValue = detail.value;
     }
-    onchange?.(detail.value, detail);
+    onchange?.(detail);
   }
 
   function handleNationalInput(event: Event): void {
@@ -372,7 +393,10 @@
     const parsed = parseE164Value(value);
     if (!parsed) return '';
     if (!isAllowed(parsed.country)) return '';
-    return parsed.isValid ? value : '';
+    // Use libphonenumber's canonical E.164 string — `parseE164Value` already
+    // rejects non-strict input, but `parsed.e164` guarantees the submitted
+    // value is exactly the normalized form.
+    return parsed.isValid ? parsed.e164 : '';
   });
 </script>
 

@@ -111,7 +111,7 @@ describe('PhoneInput country allow-list behavior', () => {
   });
 
   test('typing a `+`-prefixed E.164 string re-detects the country', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onchange },
     });
@@ -119,7 +119,7 @@ describe('PhoneInput country allow-list behavior', () => {
     await fireEvent.input(input, { target: { value: '+442079460958' } });
     expect(countrySelect(container).value).toBe('GB');
     const last = onchange.mock.calls.at(-1)!;
-    const [, detail] = last as [string, any];
+    const [detail] = last as [any];
     expect(detail.country).toBe('GB');
     expect(detail.reason).toBe('valid');
   });
@@ -134,7 +134,7 @@ describe('PhoneInput country allow-list behavior', () => {
   });
 
   test('shrinking the allow-list also recomputes the bindable value', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { rerender, container } = render(PhoneInput, {
       props: {
         id: 'p',
@@ -194,7 +194,7 @@ describe('PhoneInput as-you-type formatting', () => {
 
 describe('PhoneInput onchange', () => {
   test('valid US number emits E.164 with reason "valid"', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', onchange },
     });
@@ -202,52 +202,52 @@ describe('PhoneInput onchange', () => {
     await fireEvent.input(input, { target: { value: '4155550132' } });
     expect(onchange).toHaveBeenCalled();
     const lastCall = onchange.mock.calls.at(-1)!;
-    const [emittedValue, detail] = lastCall as [string, any];
-    expect(emittedValue).toBe('+14155550132');
+    const [detail] = lastCall as [any];
+    expect(detail.value).toBe('+14155550132');
     expect(detail.reason).toBe('valid');
     expect(detail.isValid).toBe(true);
   });
 
   test('cleared input emits "" with reason "empty"', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', value: '+14155550132', onchange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '' } });
     const lastCall = onchange.mock.calls.at(-1)!;
-    const [emittedValue, detail] = lastCall as [string, any];
-    expect(emittedValue).toBe('');
+    const [detail] = lastCall as [any];
+    expect(detail.value).toBe('');
     expect(detail.reason).toBe('empty');
   });
 
   test('incomplete number emits "" without clearing visible digits', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', onchange },
     });
     const input = nationalInput(container);
     await fireEvent.input(input, { target: { value: '415' } });
     const lastCall = onchange.mock.calls.at(-1)!;
-    const [emittedValue] = lastCall as [string, any];
-    expect(emittedValue).toBe('');
+    const [detail] = lastCall as [any];
+    expect(detail.value).toBe('');
     expect(input.value).not.toBe('');
   });
 
   test('switching country fires onchange with the new country', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], onchange },
     });
     const select = countrySelect(container);
     await fireEvent.change(select, { target: { value: 'GB' } });
     const lastCall = onchange.mock.calls.at(-1)!;
-    const [, detail] = lastCall as [string, any];
+    const [detail] = lastCall as [any];
     expect(detail.country).toBe('GB');
   });
 
   test('onchange does NOT fire on external value synchronization', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { rerender } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', value: '+14155550132', onchange },
     });
@@ -256,7 +256,7 @@ describe('PhoneInput onchange', () => {
   });
 
   test('onchange does NOT fire on external country synchronization', async () => {
-    const onchange = mock((_value: string, _detail: any) => {});
+    const onchange = mock((_detail: any) => {});
     const { rerender } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', country: 'US', onchange },
     });
@@ -308,5 +308,78 @@ describe('PhoneInput error / disabled / required', () => {
       props: { id: 'p', label: 'Phone', required: true },
     });
     expect(nationalInput(container).required).toBe(true);
+  });
+});
+
+describe('PhoneInput allow-list expansion', () => {
+  test('expanding the allow-list to include the value-country restores it from the fallback', async () => {
+    const { container, rerender } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US'],
+        value: '+442079460958', // GB number, but GB is not in allow-list yet
+      },
+    });
+    // GB is disallowed: fallback to US.
+    expect(countrySelect(container).value).toBe('US');
+    // Now expand the allow-list to include GB — the component should
+    // re-detect the country and reformat the visible field.
+    await rerender({
+      id: 'p',
+      label: 'Phone',
+      countries: ['US', 'GB'],
+      value: '+442079460958',
+    });
+    expect(countrySelect(container).value).toBe('GB');
+    expect(nationalInput(container).value).toContain('020');
+  });
+});
+
+describe('PhoneInput hidden form value', () => {
+  test('hidden input carries the canonical E.164 string for a valid number', async () => {
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', name: 'phone' },
+    });
+    await fireEvent.input(nationalInput(container), { target: { value: '4155550132' } });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('+14155550132');
+  });
+
+  test('non-strict E.164 value (free-form text) is never forwarded to the hidden input', () => {
+    // libphonenumber can extract a phone number from arbitrary text like
+    // "call +1 415 555 0132" — the hidden form value must NOT carry such
+    // input through unchanged. parseE164Value enforces a strict `^\+\d+$`
+    // grammar, so the hidden value should be empty.
+    const { container } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        name: 'phone',
+        value: 'call +1 415 555 0132',
+      },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('');
+  });
+});
+
+describe('PhoneInput keyboard tab order', () => {
+  test('country select precedes the national input in DOM order', () => {
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone' },
+    });
+    const select = countrySelect(container);
+    const input = nationalInput(container);
+    // DOCUMENT_POSITION_FOLLOWING (4) means select comes before input.
+    expect(select.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(4);
+  });
+
+  test('neither control has a tabindex override', () => {
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone' },
+    });
+    expect(countrySelect(container).getAttribute('tabindex')).toBeNull();
+    expect(nationalInput(container).getAttribute('tabindex')).toBeNull();
   });
 });

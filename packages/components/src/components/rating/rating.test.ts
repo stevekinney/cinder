@@ -191,6 +191,27 @@ describe('Rating interaction', () => {
     expect(onchange).toHaveBeenCalledWith(1);
   });
 
+  test('Enter commits the focused option just like Space (from unrated)', async () => {
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 0, onchange },
+    });
+    const all = options(container);
+    all[0]!.focus();
+    await fireEvent.keyDown(all[0]!, { key: 'Enter' });
+    expect(onchange).toHaveBeenCalledWith(1);
+  });
+
+  test('clicking the already-selected option does not re-fire onchange', async () => {
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 3, onchange },
+    });
+    const all = options(container);
+    await fireEvent.click(all[2]!);
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
   test('onchange does NOT fire on hover preview', async () => {
     const onchange = mock((_value: number) => {});
     const { container } = render(Rating, { props: { id: 'r', label: 'Q', value: 1, onchange } });

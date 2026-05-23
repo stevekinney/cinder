@@ -84,7 +84,7 @@ export type PhoneInputProps = {
   /**
    * Fires only for user-initiated committed value changes (editing the national
    * number, switching the country). Never fires for external value or country
-   * synchronization.
+   * synchronization. The detail object carries the E.164 string on `detail.value`.
    */
-  onchange?: (value: string, detail: PhoneInputChange) => void;
+  onchange?: (detail: PhoneInputChange) => void;
 };

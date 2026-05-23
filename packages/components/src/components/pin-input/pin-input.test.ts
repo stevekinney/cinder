@@ -148,6 +148,38 @@ describe('PinInput keyboard navigation', () => {
     await fireEvent.keyDown(all[1]!, { key: 'ArrowLeft' });
     expect(document.activeElement).toBe(all[0] ?? null);
   });
+
+  test('ArrowLeft on the first segment does not wrap or move focus', async () => {
+    const { container } = render(PinInput, { props: { id: 'otp', value: '12', length: 4 } });
+    const all = segments(container);
+    all[0]!.focus();
+    await fireEvent.keyDown(all[0]!, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(all[0] ?? null);
+  });
+
+  test('ArrowRight on the last segment does not wrap or move focus', async () => {
+    const { container } = render(PinInput, { props: { id: 'otp', value: '1234', length: 4 } });
+    const all = segments(container);
+    all[3]!.focus();
+    await fireEvent.keyDown(all[3]!, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(all[3] ?? null);
+  });
+
+  test('Home focuses the first segment from any position', async () => {
+    const { container } = render(PinInput, { props: { id: 'otp', value: '1234', length: 4 } });
+    const all = segments(container);
+    all[2]!.focus();
+    await fireEvent.keyDown(all[2]!, { key: 'Home' });
+    expect(document.activeElement).toBe(all[0] ?? null);
+  });
+
+  test('End focuses the last segment from any position', async () => {
+    const { container } = render(PinInput, { props: { id: 'otp', value: '1', length: 4 } });
+    const all = segments(container);
+    all[0]!.focus();
+    await fireEvent.keyDown(all[0]!, { key: 'End' });
+    expect(document.activeElement).toBe(all[3] ?? null);
+  });
 });
 
 describe('PinInput paste and autofill', () => {
@@ -185,12 +217,16 @@ describe('PinInput masked mode', () => {
 });
 
 describe('PinInput error / disabled / required', () => {
-  test('error sets aria-invalid on every segment and renders message', () => {
+  test('error sets aria-invalid on the group and renders message', () => {
     const { container } = render(PinInput, {
       props: { id: 'otp', value: '', error: 'Invalid code', length: 3 },
     });
+    const group = container.querySelector<HTMLElement>('[role="group"]');
+    expect(group?.getAttribute('aria-invalid')).toBe('true');
+    // Individual segments should NOT carry aria-invalid — screen readers would
+    // announce "invalid" on every segment as the user tabs through.
     const all = segments(container);
-    expect(all.every((segment) => segment.getAttribute('aria-invalid') === 'true')).toBe(true);
+    expect(all.every((segment) => segment.getAttribute('aria-invalid') === null)).toBe(true);
     const errorNode = container.querySelector('#otp-error');
     expect(errorNode?.textContent).toContain('Invalid code');
   });
