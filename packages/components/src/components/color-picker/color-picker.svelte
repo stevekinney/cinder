@@ -137,10 +137,6 @@
     return formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha).toLowerCase();
   }
 
-  function swatchContrastColor(swatch: string): 'black' | 'white' {
-    return pickContrastColor(swatch);
-  }
-
   function applyHsla(next: Hsla): void {
     hue = next.h;
     saturation = next.s;
@@ -692,7 +688,7 @@
         {@const normalized = normalizeSwatch(swatch)}
         {@const isSelected =
           internalValue !== '' && normalized !== null && normalized === currentHex.toLowerCase()}
-        {@const contrastColor = swatchContrastColor(swatch)}
+        {@const contrastColor = pickContrastColor(swatch)}
         <li
           bind:this={swatchRefs[index]}
           role="option"
