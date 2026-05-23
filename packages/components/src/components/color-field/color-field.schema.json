@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Inner `<input>` id. Required (mirrors Input)."
+    },
+    "value": {
+      "type": "string",
+      "description": "Controlled value as a hex string. One-way: parent sets, child reads.\nNot bindable — use `onchange` to observe commits. Accepts any color\nstring the configured `formats` allow when set externally."
+    },
+    "defaultValue": {
+      "type": "string",
+      "description": "Initial value when uncontrolled. Accepts any allowed `formats` input."
+    },
+    "alpha": {
+      "type": "boolean",
+      "description": "Accept and emit alpha when the parsed value has partial alpha. When\n`false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed\nbut alpha is stripped on emit."
+    },
+    "formats": {
+      "type": "array",
+      "items": {
+        "enum": ["hex", "rgb", "hsl"]
+      },
+      "description": "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disable the input."
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Mark the input as required for form submission and a11y."
+    },
+    "readonly": {
+      "type": "boolean",
+      "description": "Render the inner `<input>` as read-only."
+    },
+    "name": {
+      "type": "string",
+      "description": "Form field name. When set, the hidden mirror input contributes the current\ncommitted hex value to native form submission."
+    },
+    "placeholder": {
+      "type": "string",
+      "description": "Placeholder text for the inner `<input>`."
+    },
+    "ariaLabel": {
+      "type": "string",
+      "description": "Accessible label applied directly to the inner `<input>` when no `FormField` wraps it."
+    },
+    "ariaLabelledby": {
+      "type": "string",
+      "description": "Id of an external element that labels the inner `<input>`."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`)."
+    },
+    "errorMessage": {
+      "type": "string",
+      "description": "Override the default parse-failure error message."
+    },
+    "enterBehavior": {
+      "enum": ["commit-then-submit", "commit-only"],
+      "description": "Commit-on-Enter behavior. Default `'commit-then-submit'`:\n  - `'commit-then-submit'`: Enter commits the value, then lets the form's\n    native submission proceed via `requestSubmit`.\n  - `'commit-only'`: Enter commits and `preventDefault()`s, suppressing\n    form submission (useful in dialogs / multi-field flows where Enter\n    must not submit)."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}
