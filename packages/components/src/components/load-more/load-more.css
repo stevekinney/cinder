@@ -33,9 +33,11 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-load-more__button:hover:not(:disabled) {
-  background: var(--cinder-surface);
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-load-more__button:hover:not(:disabled) {
+    background: var(--cinder-surface);
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-load-more__button:focus-visible {
