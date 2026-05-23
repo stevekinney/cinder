@@ -12,7 +12,7 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
   let color = $state('#3366ff');
 </script>
 
-<FormField label="Accent color" controlId="accent">
+<FormField id="accent" label="Accent color">
   <ColorField id="accent" value={color} onchange={(next) => (color = next)} />
 </FormField>
 ```

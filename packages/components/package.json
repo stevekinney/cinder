@@ -275,6 +275,27 @@
       "import": "./src/components/card/card.examples.json",
       "default": "./src/components/card/card.examples.json"
     },
+    "./center": {
+      "types": "./dist/components/center/index.d.ts",
+      "svelte": "./src/components/center/index.ts",
+      "node": "./dist/server/components/center/index.js",
+      "default": "./dist/components/center/index.js"
+    },
+    "./center/schema": {
+      "types": "./dist/components/center/center.schema.d.ts",
+      "svelte": "./src/components/center/center.schema.ts"
+    },
+    "./center/variables": {
+      "types": "./dist/components/center/center.variables.d.ts",
+      "svelte": "./src/components/center/center.variables.ts"
+    },
+    "./center/styles": {
+      "default": "./dist/components/center/center.css"
+    },
+    "./center/examples": {
+      "import": "./src/components/center/center.examples.json",
+      "default": "./src/components/center/center.examples.json"
+    },
     "./chat": {
       "types": "./dist/components/chat/index.d.ts",
       "svelte": "./src/components/chat/index.ts",
@@ -369,6 +390,27 @@
     "./cinder-provider/examples": {
       "import": "./src/components/cinder-provider/cinder-provider.examples.json",
       "default": "./src/components/cinder-provider/cinder-provider.examples.json"
+    },
+    "./cluster": {
+      "types": "./dist/components/cluster/index.d.ts",
+      "svelte": "./src/components/cluster/index.ts",
+      "node": "./dist/server/components/cluster/index.js",
+      "default": "./dist/components/cluster/index.js"
+    },
+    "./cluster/schema": {
+      "types": "./dist/components/cluster/cluster.schema.d.ts",
+      "svelte": "./src/components/cluster/cluster.schema.ts"
+    },
+    "./cluster/variables": {
+      "types": "./dist/components/cluster/cluster.variables.d.ts",
+      "svelte": "./src/components/cluster/cluster.variables.ts"
+    },
+    "./cluster/styles": {
+      "default": "./dist/components/cluster/cluster.css"
+    },
+    "./cluster/examples": {
+      "import": "./src/components/cluster/cluster.examples.json",
+      "default": "./src/components/cluster/cluster.examples.json"
     },
     "./code-block": {
       "types": "./dist/components/code-block/index.d.ts",
@@ -885,6 +927,27 @@
     "./image/styles": {
       "default": "./dist/components/image/image.css"
     },
+    "./inline": {
+      "types": "./dist/components/inline/index.d.ts",
+      "svelte": "./src/components/inline/index.ts",
+      "node": "./dist/server/components/inline/index.js",
+      "default": "./dist/components/inline/index.js"
+    },
+    "./inline/schema": {
+      "types": "./dist/components/inline/inline.schema.d.ts",
+      "svelte": "./src/components/inline/inline.schema.ts"
+    },
+    "./inline/variables": {
+      "types": "./dist/components/inline/inline.variables.d.ts",
+      "svelte": "./src/components/inline/inline.variables.ts"
+    },
+    "./inline/styles": {
+      "default": "./dist/components/inline/inline.css"
+    },
+    "./inline/examples": {
+      "import": "./src/components/inline/inline.examples.json",
+      "default": "./src/components/inline/inline.examples.json"
+    },
     "./input": {
       "types": "./dist/components/input/index.d.ts",
       "svelte": "./src/components/input/index.ts",
@@ -1248,6 +1311,10 @@
     "./scroll-area/styles": {
       "default": "./dist/components/scroll-area/scroll-area.css"
     },
+    "./scroll-area/examples": {
+      "import": "./src/components/scroll-area/scroll-area.examples.json",
+      "default": "./src/components/scroll-area/scroll-area.examples.json"
+    },
     "./search-field": {
       "types": "./dist/components/search-field/index.d.ts",
       "svelte": "./src/components/search-field/index.ts",
@@ -1504,6 +1571,27 @@
     "./sortable-list/styles": {
       "default": "./dist/components/sortable-list/sortable-list.css"
     },
+    "./spacer": {
+      "types": "./dist/components/spacer/index.d.ts",
+      "svelte": "./src/components/spacer/index.ts",
+      "node": "./dist/server/components/spacer/index.js",
+      "default": "./dist/components/spacer/index.js"
+    },
+    "./spacer/schema": {
+      "types": "./dist/components/spacer/spacer.schema.d.ts",
+      "svelte": "./src/components/spacer/spacer.schema.ts"
+    },
+    "./spacer/variables": {
+      "types": "./dist/components/spacer/spacer.variables.d.ts",
+      "svelte": "./src/components/spacer/spacer.variables.ts"
+    },
+    "./spacer/styles": {
+      "default": "./dist/components/spacer/spacer.css"
+    },
+    "./spacer/examples": {
+      "import": "./src/components/spacer/spacer.examples.json",
+      "default": "./src/components/spacer/spacer.examples.json"
+    },
     "./spinner": {
       "types": "./dist/components/spinner/index.d.ts",
       "svelte": "./src/components/spinner/index.ts",
@@ -1524,6 +1612,27 @@
     "./spinner/examples": {
       "import": "./src/components/spinner/spinner.examples.json",
       "default": "./src/components/spinner/spinner.examples.json"
+    },
+    "./stack": {
+      "types": "./dist/components/stack/index.d.ts",
+      "svelte": "./src/components/stack/index.ts",
+      "node": "./dist/server/components/stack/index.js",
+      "default": "./dist/components/stack/index.js"
+    },
+    "./stack/schema": {
+      "types": "./dist/components/stack/stack.schema.d.ts",
+      "svelte": "./src/components/stack/stack.schema.ts"
+    },
+    "./stack/variables": {
+      "types": "./dist/components/stack/stack.variables.d.ts",
+      "svelte": "./src/components/stack/stack.variables.ts"
+    },
+    "./stack/styles": {
+      "default": "./dist/components/stack/stack.css"
+    },
+    "./stack/examples": {
+      "import": "./src/components/stack/stack.examples.json",
+      "default": "./src/components/stack/stack.examples.json"
     },
     "./stacked-list-item": {
       "types": "./dist/components/stacked-list-item/index.d.ts",

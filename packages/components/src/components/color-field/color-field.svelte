@@ -85,7 +85,17 @@
   }
 
   function defaultErrorMessage(): string {
-    return errorMessage ?? 'Enter a valid hex, rgb(), or hsl() color.';
+    if (errorMessage !== undefined) return errorMessage;
+    const labels: Record<'hex' | 'rgb' | 'hsl', string> = {
+      hex: 'hex',
+      rgb: 'rgb()',
+      hsl: 'hsl()',
+    };
+    const accepted = formats.map((format) => labels[format]);
+    if (accepted.length === 0) return 'No color formats are accepted.';
+    if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
+    if (accepted.length === 2) return `Enter a valid ${accepted[0]} or ${accepted[1]} color.`;
+    return `Enter a valid ${accepted.slice(0, -1).join(', ')}, or ${accepted.at(-1)} color.`;
   }
 
   function seedFromParts(parts: RgbaParts): void {
@@ -221,9 +231,17 @@
       parseError = null;
       return;
     }
-    if (!passesFormatGate(text)) return;
+    if (!passesFormatGate(text)) {
+      // Refresh the message so its wording reflects the new `formats` set,
+      // not the wording that was current when the error was first raised.
+      parseError = defaultErrorMessage();
+      return;
+    }
     const parsed = parseColor(text);
-    if (parsed === null) return;
+    if (parsed === null) {
+      parseError = defaultErrorMessage();
+      return;
+    }
     parseError = null;
   });
 
@@ -316,10 +334,10 @@
     runCommit();
     syncCustomValidity();
 
-    if (anchorInput !== null && committedHex !== '') {
+    if (anchorInput !== null) {
       // Imperatively sync the hidden mirror's DOM value so a synchronous
-      // requestSubmit sees the canonical hex even before Svelte's effect
-      // queue flushes.
+      // requestSubmit sees the canonical hex (or the empty string after a
+      // clear) even before Svelte's reactive binding flushes.
       anchorInput.value = committedHex;
     }
 
@@ -346,7 +364,12 @@
       clearAll();
       return;
     }
-    const parsed = parseColor(defaultValue);
+    const trimmedDefault = defaultValue.trim();
+    if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
+      clearAll();
+      return;
+    }
+    const parsed = parseColor(trimmedDefault);
     if (parsed === null) {
       clearAll();
       return;

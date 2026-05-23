@@ -680,3 +680,106 @@ describe('ColorField — forwarded form attributes', () => {
     expect(input.getAttribute('aria-label')).toBe('Accent color');
   });
 });
+
+describe('ColorField — Enter-clear sync regression', () => {
+  test('clearing the field and pressing Enter submits with empty hidden mirror', async () => {
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    let hiddenAtSubmit: string | undefined;
+    const onsubmitCapture: (event: SubmitEvent) => void = (event) => {
+      const target = event.target as HTMLFormElement;
+      const mirror = target.querySelector<HTMLInputElement>('input[type="hidden"][name="c"]');
+      hiddenAtSubmit = mirror?.value;
+      onsubmit(event);
+    };
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      defaultValue: '#ff0000',
+      enterBehavior: 'commit-then-submit',
+      onsubmit: onsubmitCapture,
+    });
+    const input = getInput(container);
+    expect(input.value).toBe('#ff0000');
+    await fireEvent.input(input, { target: { value: '' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+    expect(hiddenAtSubmit).toBe('');
+  });
+});
+
+describe('ColorField — reset honors formats gate', () => {
+  test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      formats: ['hex'],
+      defaultValue: 'rgb(0,0,0)',
+    });
+    const input = getInput(container);
+    // Initial: defaultValue is rgb() but formats=['hex'] — silently rejected at mount.
+    expect(input.value).toBe('');
+    await typeAndBlur(input, '#abcdef');
+    expect(input.value).toBe('#abcdef');
+    const form = q<HTMLFormElement>(container, 'form');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    // After reset: defaultValue still fails formats gate; field clears.
+    expect(input.value).toBe('');
+  });
+});
+
+describe('ColorField — default error message reflects formats', () => {
+  test('formats=[hex] surfaces a hex-only error message', async () => {
+    const { container } = render(ColorField, { id: 'color', formats: ['hex'] });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    expect(errorText).not.toContain('hsl');
+  });
+
+  test('default formats produces the legacy three-format message', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).toContain('rgb()');
+    expect(errorText).toContain('hsl()');
+  });
+
+  test('error wording refreshes when formats changes at runtime', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      formats: ['hex'],
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    let errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    // Widen formats to include rgb. The visible text is now valid; the error
+    // should be cleared.
+    await rerender({ id: 'color', formats: ['hex', 'rgb'] });
+    await tick();
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toBe('');
+
+    // Now type something that fails the new gate (an hsl color, still not allowed)
+    // and assert the wording mentions the currently allowed formats, not the old set.
+    await typeAndBlur(input, 'hsl(0,100%,50%)');
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('rgb()');
+
+    // Narrow back down. Wording should refresh even though the text still
+    // fails the gate.
+    await rerender({ id: 'color', formats: ['hex'] });
+    await tick();
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    expect(errorText).not.toContain('hsl');
+  });
+});
