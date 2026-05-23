@@ -1,0 +1,37 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "tag-input",
+  "import": "cinder/tag-input",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic tag input",
+      "description": "Commit free-form tags with Enter or a comma delimiter.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n</script>\n\n<FormField\n  id=\"basic-tag-input\"\n  label=\"Topics\"\n  description=\"Press Enter or comma to turn the current text into a tag.\"\n>\n  <TagInput placeholder=\"Add a topic…\" />\n</FormField>\n"
+    },
+    {
+      "id": "disabled",
+      "title": "Disabled tag input",
+      "description": "Mirror a locked field that can be read but not changed.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n</script>\n\n<FormField\n  id=\"disabled-tag-input\"\n  label=\"Protected labels\"\n  description=\"This field is disabled while the record is syncing.\"\n  disabled={true}\n>\n  <TagInput defaultValue={['Synced', 'Locked']} disabled={true} placeholder=\"Unavailable\" />\n</FormField>\n"
+    },
+    {
+      "id": "max",
+      "title": "Maximum tag count",
+      "description": "Cap the number of committed tags and surface an inline message when the limit is reached.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n</script>\n\n<FormField\n  id=\"max-tag-input\"\n  label=\"Three highlights\"\n  description=\"Add up to three short highlights for this release note.\"\n>\n  <TagInput max={3} placeholder=\"Add a highlight…\" />\n</FormField>\n"
+    },
+    {
+      "id": "pre-populated",
+      "title": "Pre-populated tags",
+      "description": "Start uncontrolled with existing tags and keep editing in place.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n</script>\n\n<FormField\n  id=\"prepopulated-tag-input\"\n  label=\"Technologies\"\n  description=\"Review the initial stack and remove anything that does not apply.\"\n>\n  <TagInput defaultValue={['Svelte', 'Bun', 'TypeScript']} placeholder=\"Add a technology…\" />\n</FormField>\n"
+    },
+    {
+      "id": "validation",
+      "title": "Validated email tags",
+      "description": "Keep the value controlled and reject entries that are not email addresses.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n\n  let tags = $state<string[]>([]);\n\n  function validateEmailTag(tag: string): boolean | string {\n    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(tag) ? true : 'Enter a valid email address.';\n  }\n</script>\n\n<FormField\n  id=\"validated-tag-input\"\n  label=\"Guests\"\n  description=\"Enter one email address per guest.\"\n>\n  <TagInput\n    value={tags}\n    placeholder=\"guest@example.com\"\n    validate={validateEmailTag}\n    onchange={(nextTags) => {\n      tags = nextTags;\n    }}\n  />\n</FormField>\n"
+    }
+  ]
+}

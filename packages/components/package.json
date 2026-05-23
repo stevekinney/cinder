@@ -2058,6 +2058,27 @@
       "import": "./src/components/tabs/tabs.examples.json",
       "default": "./src/components/tabs/tabs.examples.json"
     },
+    "./tag-input": {
+      "types": "./dist/components/tag-input/index.d.ts",
+      "svelte": "./src/components/tag-input/index.ts",
+      "node": "./dist/server/components/tag-input/index.js",
+      "default": "./dist/components/tag-input/index.js"
+    },
+    "./tag-input/schema": {
+      "types": "./dist/components/tag-input/tag-input.schema.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.schema.ts"
+    },
+    "./tag-input/variables": {
+      "types": "./dist/components/tag-input/tag-input.variables.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.variables.ts"
+    },
+    "./tag-input/styles": {
+      "default": "./dist/components/tag-input/tag-input.css"
+    },
+    "./tag-input/examples": {
+      "import": "./src/components/tag-input/tag-input.examples.json",
+      "default": "./src/components/tag-input/tag-input.examples.json"
+    },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",
       "svelte": "./src/components/textarea/index.ts",
