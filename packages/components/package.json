@@ -2221,6 +2221,10 @@
     "./experimental/timeline/styles": {
       "default": "./dist/components/experimental/timeline/timeline.css"
     },
+    "./experimental/timeline/examples": {
+      "import": "./src/components/experimental/timeline/timeline.examples.json",
+      "default": "./src/components/experimental/timeline/timeline.examples.json"
+    },
     "./experimental/timeline-item": {
       "types": "./dist/components/experimental/timeline-item/index.d.ts",
       "svelte": "./src/components/experimental/timeline-item/index.ts",
