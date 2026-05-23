@@ -19,7 +19,7 @@ const ruleName = 'cinder/no-unguarded-hover-colors';
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
   unguarded: (selector, property) =>
-    `Unguarded :hover rule "${selector}" declares "${property}". Wrap in @media (hover: hover) to avoid sticky hover on touch.`,
+    `Unguarded :hover rule "${String(selector)}" declares "${String(property)}". Wrap in @media (hover: hover) to avoid sticky hover on touch.`,
 });
 
 const meta = {
