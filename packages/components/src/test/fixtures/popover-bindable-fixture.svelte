@@ -1,14 +1,37 @@
 <script lang="ts">
   import Popover from '../../components/popover/popover.svelte';
+  import type { PopoverProps } from '../../components/popover/popover.types.ts';
 
-  type Props = { initialOpen?: boolean };
-  let { initialOpen = true }: Props = $props();
+  type Props = {
+    initialOpen?: boolean;
+    focusManagement?: PopoverProps['focusManagement'];
+    triggerRef?: PopoverProps['triggerRef'];
+    wireTriggerAria?: PopoverProps['wireTriggerAria'];
+    id?: PopoverProps['id'];
+    role?: PopoverProps['role'];
+  };
+  let {
+    initialOpen = true,
+    focusManagement,
+    triggerRef = null,
+    wireTriggerAria,
+    id,
+    role,
+  }: Props = $props();
 
   let open = $state(initialOpen);
+
+  const popoverProps = {
+    ...(focusManagement !== undefined ? { focusManagement } : {}),
+    ...(triggerRef !== null ? { triggerRef } : {}),
+    ...(wireTriggerAria !== undefined ? { wireTriggerAria } : {}),
+    ...(id !== undefined ? { id } : {}),
+    ...(role !== undefined ? { role } : {}),
+  };
 </script>
 
 <div>
-  <Popover bind:open>
+  <Popover bind:open {...popoverProps}>
     {#snippet trigger()}
       <button type="button">Open</button>
     {/snippet}

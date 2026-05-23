@@ -802,6 +802,37 @@ describe('Tree — selection', () => {
     expect(selectedIds).toContain('c');
   });
 
+  test('Ctrl/Cmd+A preserves collapsed cascade-selected descendants', async () => {
+    let selectedIds: string[] = ['parent', 'child'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+          { id: 'sibling', label: 'Sibling' },
+        ]),
+      },
+    });
+
+    const tree = container.querySelector('[role="tree"]') as HTMLElement;
+    await fireEvent.keyDown(tree, { key: 'a', ctrlKey: true });
+    expect(selectedIds).toEqual(['parent', 'child', 'sibling']);
+  });
+
   test('Enter toggles selection', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {

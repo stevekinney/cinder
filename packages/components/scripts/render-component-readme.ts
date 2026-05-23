@@ -96,11 +96,14 @@ function formatType(prop: PropertySchema): string {
   }
   if (prop.type === 'array' && prop.items) {
     const itemType = formatType(prop.items);
-    const needsGrouping = itemType.includes(' \\| ');
-    return needsGrouping ? `readonly (${itemType})[]` : `readonly ${itemType}[]`;
+    return `${needsArrayItemGrouping(itemType) ? `(${itemType})` : itemType}[]`;
   }
   if (prop.type) return '`' + prop.type + '`';
   return '`unknown`';
+}
+
+function needsArrayItemGrouping(type: string): boolean {
+  return type.includes(' \\| ');
 }
 
 function formatDefault(value: unknown): string {

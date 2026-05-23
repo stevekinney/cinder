@@ -252,13 +252,19 @@
 
   function selectAll(): void {
     if (selectionMode !== 'multiple') return;
-    const allVisible = visibleIds.filter((id) => {
+    const allVisibleTargets = visibleIds.flatMap((id) => {
       const node = registry.getNode(id);
-      return node && !node.disabled;
+      if (!node || node.disabled) return [];
+      return selectionBehavior === 'cascade' ? selectionTargetsFor(id) : [id];
     });
-    selectedIds = allVisible;
+    const disabledIds = disabledIdsFor(allVisibleTargets);
+    selectedIds = selectIds(
+      selectionBehavior === 'cascade' ? selectedIds : [],
+      allVisibleTargets,
+      disabledIds,
+    );
     // Guarded by length, so the first selected id is present.
-    if (allVisible.length > 0) selectionAnchorId = allVisible[0]!;
+    if (allVisibleTargets.length > 0) selectionAnchorId = allVisibleTargets[0]!;
   }
 
   // ---------------------------------------------------------------------------

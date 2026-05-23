@@ -132,6 +132,27 @@
       "import": "./src/components/aspect-ratio/aspect-ratio.examples.json",
       "default": "./src/components/aspect-ratio/aspect-ratio.examples.json"
     },
+    "./autocomplete": {
+      "types": "./dist/components/autocomplete/index.d.ts",
+      "svelte": "./src/components/autocomplete/index.ts",
+      "node": "./dist/server/components/autocomplete/index.js",
+      "default": "./dist/components/autocomplete/index.js"
+    },
+    "./autocomplete/schema": {
+      "types": "./dist/components/autocomplete/autocomplete.schema.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.schema.ts"
+    },
+    "./autocomplete/variables": {
+      "types": "./dist/components/autocomplete/autocomplete.variables.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.variables.ts"
+    },
+    "./autocomplete/styles": {
+      "default": "./dist/components/autocomplete/autocomplete.css"
+    },
+    "./autocomplete/examples": {
+      "import": "./src/components/autocomplete/autocomplete.examples.json",
+      "default": "./src/components/autocomplete/autocomplete.examples.json"
+    },
     "./avatar": {
       "types": "./dist/components/avatar/index.d.ts",
       "svelte": "./src/components/avatar/index.ts",
@@ -407,10 +428,6 @@
     "./cinder-provider/variables": {
       "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
       "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
-    },
-    "./cinder-provider/examples": {
-      "import": "./src/components/cinder-provider/cinder-provider.examples.json",
-      "default": "./src/components/cinder-provider/cinder-provider.examples.json"
     },
     "./cluster": {
       "types": "./dist/components/cluster/index.d.ts",
@@ -1087,6 +1104,27 @@
     },
     "./label/styles": {
       "default": "./dist/components/label/label.css"
+    },
+    "./load-more": {
+      "types": "./dist/components/load-more/index.d.ts",
+      "svelte": "./src/components/load-more/index.ts",
+      "node": "./dist/server/components/load-more/index.js",
+      "default": "./dist/components/load-more/index.js"
+    },
+    "./load-more/schema": {
+      "types": "./dist/components/load-more/load-more.schema.d.ts",
+      "svelte": "./src/components/load-more/load-more.schema.ts"
+    },
+    "./load-more/variables": {
+      "types": "./dist/components/load-more/load-more.variables.d.ts",
+      "svelte": "./src/components/load-more/load-more.variables.ts"
+    },
+    "./load-more/styles": {
+      "default": "./dist/components/load-more/load-more.css"
+    },
+    "./load-more/examples": {
+      "import": "./src/components/load-more/load-more.examples.json",
+      "default": "./src/components/load-more/load-more.examples.json"
     },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
@@ -2041,6 +2079,27 @@
       "import": "./src/components/tabs/tabs.examples.json",
       "default": "./src/components/tabs/tabs.examples.json"
     },
+    "./tag-input": {
+      "types": "./dist/components/tag-input/index.d.ts",
+      "svelte": "./src/components/tag-input/index.ts",
+      "node": "./dist/server/components/tag-input/index.js",
+      "default": "./dist/components/tag-input/index.js"
+    },
+    "./tag-input/schema": {
+      "types": "./dist/components/tag-input/tag-input.schema.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.schema.ts"
+    },
+    "./tag-input/variables": {
+      "types": "./dist/components/tag-input/tag-input.variables.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.variables.ts"
+    },
+    "./tag-input/styles": {
+      "default": "./dist/components/tag-input/tag-input.css"
+    },
+    "./tag-input/examples": {
+      "import": "./src/components/tag-input/tag-input.examples.json",
+      "default": "./src/components/tag-input/tag-input.examples.json"
+    },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",
       "svelte": "./src/components/textarea/index.ts",
@@ -2061,6 +2120,27 @@
     "./textarea/examples": {
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
+    },
+    "./time-picker": {
+      "types": "./dist/components/time-picker/index.d.ts",
+      "svelte": "./src/components/time-picker/index.ts",
+      "node": "./dist/server/components/time-picker/index.js",
+      "default": "./dist/components/time-picker/index.js"
+    },
+    "./time-picker/schema": {
+      "types": "./dist/components/time-picker/time-picker.schema.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.schema.ts"
+    },
+    "./time-picker/variables": {
+      "types": "./dist/components/time-picker/time-picker.variables.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.variables.ts"
+    },
+    "./time-picker/styles": {
+      "default": "./dist/components/time-picker/time-picker.css"
+    },
+    "./time-picker/examples": {
+      "import": "./src/components/time-picker/time-picker.examples.json",
+      "default": "./src/components/time-picker/time-picker.examples.json"
     },
     "./toast-region": {
       "types": "./dist/components/toast-region/index.d.ts",
@@ -2103,6 +2183,27 @@
     "./toggle/examples": {
       "import": "./src/components/toggle/toggle.examples.json",
       "default": "./src/components/toggle/toggle.examples.json"
+    },
+    "./toolbar": {
+      "types": "./dist/components/toolbar/index.d.ts",
+      "svelte": "./src/components/toolbar/index.ts",
+      "node": "./dist/server/components/toolbar/index.js",
+      "default": "./dist/components/toolbar/index.js"
+    },
+    "./toolbar/schema": {
+      "types": "./dist/components/toolbar/toolbar.schema.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.schema.ts"
+    },
+    "./toolbar/variables": {
+      "types": "./dist/components/toolbar/toolbar.variables.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.variables.ts"
+    },
+    "./toolbar/styles": {
+      "default": "./dist/components/toolbar/toolbar.css"
+    },
+    "./toolbar/examples": {
+      "import": "./src/components/toolbar/toolbar.examples.json",
+      "default": "./src/components/toolbar/toolbar.examples.json"
     },
     "./tooltip": {
       "types": "./dist/components/tooltip/index.d.ts",

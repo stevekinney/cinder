@@ -4,6 +4,10 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    id: {
+      type: 'string',
+      description: 'Optional panel id. Defaults to a generated `cinder-popover-*` id.',
+    },
     open: {
       type: 'boolean',
       description: 'Open state. Bindable. Default `false`.',
@@ -51,6 +55,14 @@ const schema = {
     role: {
       enum: ['dialog', 'group', 'listbox'],
       description: "ARIA role for the panel. Default `'dialog'`.",
+    },
+    focusManagement: {
+      enum: ['panel', 'preserve'],
+      description: "Focus behavior for each open session. Default `'panel'`.",
+    },
+    wireTriggerAria: {
+      type: 'boolean',
+      description: 'Whether Popover owns trigger ARIA wiring. Default `true`.',
     },
     class: {
       type: 'string',

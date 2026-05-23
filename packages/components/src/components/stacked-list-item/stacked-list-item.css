@@ -7,7 +7,7 @@
   container-type: inline-size;
   container-name: cinder-stacked-list-item;
   padding: var(--cinder-space-3) var(--cinder-space-4);
-  border-bottom: 1px solid var(--cinder-color-border-subtle);
+  border-bottom: 1px solid var(--cinder-border-muted);
 }
 
 .cinder-stacked-list-item[data-cinder-density='condensed'] {
@@ -58,9 +58,9 @@
 }
 
 .cinder-stacked-list-item__title {
-  font-size: var(--cinder-font-size-sm);
-  line-height: var(--cinder-line-height-sm);
-  color: var(--cinder-color-foreground);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
 }
 
 .cinder-stacked-list-item__title-link {
@@ -87,20 +87,20 @@
 }
 
 .cinder-stacked-list-item__description {
-  font-size: var(--cinder-font-size-sm);
-  line-height: var(--cinder-line-height-sm);
-  color: var(--cinder-color-foreground-muted);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text-muted);
 }
 
 .cinder-stacked-list-item__meta {
-  font-size: var(--cinder-font-size-xs);
-  line-height: var(--cinder-line-height-xs);
-  color: var(--cinder-color-foreground-muted);
+  font-size: var(--cinder-text-xs);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text-muted);
 }
 
 .cinder-stacked-list-item[data-cinder-density='condensed'] .cinder-stacked-list-item__description,
 .cinder-stacked-list-item[data-cinder-density='condensed'] .cinder-stacked-list-item__meta {
-  line-height: var(--cinder-line-height-xs);
+  line-height: var(--cinder-leading-snug);
 }
 
 /* Narrow container query — trailing drops below body */

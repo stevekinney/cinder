@@ -7,6 +7,15 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as Autocomplete } from './components/autocomplete/index.ts';
+export type {
+  AutocompleteProps,
+  AutocompleteSchemaProps,
+  AutocompleteSuggestion,
+  AutocompleteSuggestionSource,
+  AutocompleteSuggestionSourceContext,
+} from './components/autocomplete/index.ts';
+
 export { default as AspectRatio } from './components/aspect-ratio/index.ts';
 export type {
   AspectRatioElement,
@@ -217,6 +226,9 @@ export type { KbdProps } from './components/kbd/index.ts';
 
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
+
+export { default as LoadMore } from './components/load-more/index.ts';
+export type { LoadMoreProps } from './components/load-more/index.ts';
 
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
@@ -439,6 +451,9 @@ export type { TableBodyProps } from './components/table-body/index.ts';
 export { default as TableCell } from './components/table-cell/index.ts';
 export type { TableCellProps } from './components/table-cell/index.ts';
 
+export { default as TagInput } from './components/tag-input/index.ts';
+export type { TagInputProps } from './components/tag-input/index.ts';
+
 export { default as TableHeader } from './components/table-header/index.ts';
 export type { TableHeaderProps } from './components/table-header/index.ts';
 
@@ -475,6 +490,7 @@ export type {
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
 
+export { useIntersection } from './utilities/use-intersection.svelte.ts';
 export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 
@@ -482,8 +498,19 @@ export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 
+export { default as TimePicker } from './components/time-picker/index.ts';
+export type { TimePickerProps } from './components/time-picker/index.ts';
+
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
+
+export { default as Toolbar } from './components/toolbar/index.ts';
+export type {
+  ToolbarGroupProps,
+  ToolbarOrientation,
+  ToolbarProps,
+  ToolbarSpacerProps,
+} from './components/toolbar/index.ts';
 
 export { default as Tree } from './components/tree/index.ts';
 export type {

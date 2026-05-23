@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "disabled": {
+      "type": "boolean"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "id": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "defaultValue": {
+      "type": "string"
+    },
+    "hourCycle": {
+      "enum": ["h11", "h12", "h23", "h24"]
+    },
+    "locale": {
+      "type": "string"
+    },
+    "seconds": {
+      "type": "boolean"
+    },
+    "min": {
+      "type": "string"
+    },
+    "max": {
+      "type": "string"
+    },
+    "step": {
+      "type": "number"
+    },
+    "name": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "class",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}
