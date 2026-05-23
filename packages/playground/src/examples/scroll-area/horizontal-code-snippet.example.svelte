@@ -6,11 +6,11 @@
 
 <script lang="ts">
   import { ScrollArea } from 'cinder/scroll-area';
+
+  const command =
+    '$ bun run --filter @cinder/components build && bun run --filter @cinder/components test --coverage --reporter=verbose --bail';
 </script>
 
 <ScrollArea as="pre" direction="horizontal" maxWidth="32rem" ariaLabel="Example command"
-  ><code
-    >$ bun run --filter @cinder/components build && bun run --filter @cinder/components test
-    --coverage --reporter=verbose --bail</code
-  ></ScrollArea
+  ><code>{command}</code></ScrollArea
 >
