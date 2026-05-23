@@ -1,14 +1,15 @@
 /**
- * Regression test that scans component source (and optionally built output) for
- * SVG data URIs containing hardcoded `fill` or `stroke` color literals.
+ * Regression test that scans component source for SVG data URIs containing
+ * hardcoded `fill` or `stroke` color literals. Defaults to scanning
+ * `packages/components/src` only — set `CINDER_SVG_DATA_URI_ROOTS` to a
+ * comma-separated list of paths to add other roots (the build verification
+ * step in the task plan passes `packages/components/src,packages/components/dist`
+ * to also catch hardcoded literals leaking through generated artifacts).
  *
  * Hardcoded SVG colors don't respond to theme tokens — a light-mode `#9ca3af`
  * chevron disappears in dark mode. SVG data URIs must encode shapes only;
  * coloring is the job of `mask-image` + `background-color: currentColor`, or
  * inline `<svg>` with `fill="currentColor"` / `stroke="currentColor"`.
- *
- * Set `CINDER_SVG_DATA_URI_ROOTS` to a comma-separated list of paths to
- * override the default scan root (defaults to `packages/components/src`).
  */
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
@@ -98,7 +99,7 @@ function extractSvgDataUris(file: string, source: string): SvgDataUri[] {
 
     let endIndex = -1;
     if (leading === '"' || leading === "'") {
-      let scan = start;
+      let scan = start + marker.length;
       while (scan < source.length) {
         const character = source[scan];
         if (character === '\\') {

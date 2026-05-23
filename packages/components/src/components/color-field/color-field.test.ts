@@ -14,10 +14,11 @@ const { default: ColorFieldFormFixture } =
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
-// Skip @testing-library/svelte's cleanup() — its unmount path triggers an
-// async destroy_effect that throws "removeChild" DOMExceptions inside happy-dom
-// and surfaces as unhandled rejections that fail the bun:test process even
-// though every test passes. Wiping the body is sufficient teardown here.
+// testing-library/svelte's cleanup() races with happy-dom during async Svelte
+// destroy_effect — the resulting "removeChild" DOMException escapes the
+// afterEach try/catch as an unhandled rejection and fails the bun:test process
+// exit even though every test passes. Wiping the body is sufficient teardown
+// for these tests because each test renders fresh into an empty document.
 afterEach(() => document.body.replaceChildren());
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {

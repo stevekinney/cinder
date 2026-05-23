@@ -71,7 +71,6 @@
         aria-describedby={describedBy}
         aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
       ></select>
-      <span class="cinder-select-field__chevron" aria-hidden="true"></span>
     {:else}
       <select
         {id}
@@ -87,8 +86,8 @@
           <option value={option.value} disabled={option.disabled}>{option.label}</option>
         {/each}
       </select>
-      <span class="cinder-select-field__chevron" aria-hidden="true"></span>
     {/if}
+    <span class="cinder-select-field__chevron" aria-hidden="true"></span>
   </div>
   {#if description}
     <p id={descriptionId} class="cinder-select-field__description">{description}</p>

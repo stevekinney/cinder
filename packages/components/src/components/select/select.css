@@ -119,11 +119,20 @@
 
 .cinder-select:disabled + .cinder-select-field__chevron {
   color: var(--cinder-text-disabled);
-  opacity: 0.6;
 }
 
 .cinder-select[data-cinder-empty='true'] + .cinder-select-field__chevron {
   opacity: 0.5;
+}
+
+/* Forced Colors Mode override — UA suppresses `background-color: currentColor`,
+ * so the masked chevron becomes invisible. Opt out of forced-color adjustment
+ * for the glyph and paint with a system color that survives the override. */
+@media (forced-colors: active) {
+  .cinder-select-field__chevron {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
 }
 
 /* ----------------------------------------

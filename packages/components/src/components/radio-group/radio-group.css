@@ -139,6 +139,14 @@
   mask-image: var(--_cinder-radio-dot-mask);
 }
 
+/* Forced Colors Mode override — see checkbox.css for rationale. */
+@media (forced-colors: active) {
+  .cinder-radio:checked + .cinder-radio-row__indicator {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+}
+
 .cinder-radio:disabled {
   cursor: not-allowed;
   background: var(--cinder-surface-inset);
