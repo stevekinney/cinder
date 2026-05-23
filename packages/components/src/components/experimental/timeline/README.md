@@ -2,29 +2,54 @@
 
 > **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.
 
-Vertical event-rail container. Render `TimelineItem` children inside to display workflow events, audit logs, or run histories.
+Timestamp-first event rail for workflow events, audit logs, run histories, and grouped temporal sequences. Timeline is not a live region; use `Feed` for streaming activity that should be announced to assistive technology.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import Timeline from 'cinder/experimental/timeline';
-  import TimelineItem from 'cinder/experimental/timeline-item';
+
+  const entries = [
+    {
+      id: 'created',
+      datetime: '2026-05-23T10:00:00Z',
+      timestamp: '10:00',
+      title: 'Workflow started',
+      tone: 'info',
+    },
+    {
+      id: 'completed',
+      datetime: '2026-05-23T10:30:00Z',
+      timestamp: '10:30',
+      title: 'Workflow completed',
+      tone: 'success',
+    },
+  ];
 </script>
 
-<Timeline>
-  <TimelineItem id="created" title="Workflow started" time="10:00" status="info" />
-  <TimelineItem id="completed" title="Workflow completed" time="10:30" status="success" />
+<Timeline {entries} label="Workflow timeline">
+  {#snippet children(entry)}
+    {entry.title}
+  {/snippet}
 </Timeline>
 ```
+
+Marker snippets are decorative. Do not place focusable or interactive content inside `marker`; the marker wrapper is hidden from assistive technology and marked inert.
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop    | Type     | Required | Default | Description                                            |
-| ------- | -------- | -------- | ------- | ------------------------------------------------------ |
-| `class` | `string` | no       | —       | Additional class names merged with `.cinder-timeline`. |
+| Prop                  | Type                            | Required | Default      | Description                                                                         |
+| --------------------- | ------------------------------- | -------- | ------------ | ----------------------------------------------------------------------------------- |
+| `class`               | `string`                        | no       | —            | Additional class names merged with `.cinder-timeline`.                              |
+| `entries`             | `object`[]                      | yes      | —            | Timeline entries rendered in source order.                                          |
+| `gapThresholdMinutes` | `number`                        | no       | —            | Hide the following connector when adjacent valid timestamps exceed this gap.        |
+| `groupBy`             | `"none"` \| `"day"` \| `"week"` | no       | `"none"`     | Optional adjacent grouping mode.                                                    |
+| `label`               | `string`                        | no       | —            | Fallback accessible label used only when aria-label and aria-labelledby are absent. |
+| `orientation`         | `"vertical"` \| `"horizontal"`  | no       | `"vertical"` | Layout orientation.                                                                 |
+| `weekStartsOn`        | `"sunday"` \| `"monday"`        | no       | `"monday"`   | Week start used for week grouping.                                                  |
 
 <!-- generated:props:end -->
 

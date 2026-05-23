@@ -3,12 +3,12 @@
    * @cinder
    * @category data-display
    * @status alpha
-   * @purpose Vertical event-rail container that renders timeline-item children along a shared axis for workflow, audit, or run histories.
+   * @purpose Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.
    * @tag timeline
    * @tag history
    * @tag events
-   * @useWhen Visualizing an ordered sequence of events with consistent marker and content layout along a vertical rail.
-   * @useWhen Displaying workflow steps, audit logs, or run histories where each entry needs a status-colored marker.
+   * @useWhen Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.
+   * @useWhen Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks.
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
    * @avoidWhen Guiding users through a numbered procedural flow — steps conveys progress more clearly.
    * @avoidWhen Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta.
@@ -19,11 +19,68 @@
 
 <script lang="ts">
   import { cn } from '../../../utilities/class-names.ts';
+  import TimelineItem from '../timeline-item/timeline-item.svelte';
+  import { buildTimelineRenderPlan } from './timeline-groups.ts';
   import type { TimelineProps } from './timeline.types.ts';
 
-  let { class: className, children }: TimelineProps = $props();
+  let {
+    entries,
+    orientation = 'vertical',
+    groupBy = 'none',
+    weekStartsOn = 'monday',
+    gapThresholdMinutes,
+    label,
+    class: className,
+    children,
+    marker: customMarker,
+    role: _role,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
+    ...rest
+  }: TimelineProps = $props();
+
+  const renderGroups = $derived(
+    buildTimelineRenderPlan({
+      entries,
+      groupBy,
+      weekStartsOn,
+      gapThresholdMinutes,
+    }),
+  );
+
+  const resolvedAriaLabel = $derived(
+    ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
+  );
 </script>
 
-<ol class={cn('cinder-timeline', className)}>
-  {@render children()}
+<ol
+  {...rest}
+  class={cn('cinder-timeline', className)}
+  data-cinder-orientation={orientation}
+  aria-label={resolvedAriaLabel}
+  aria-labelledby={ariaLabelledby}
+>
+  {#each renderGroups as group (group.key)}
+    {#each group.entries as renderEntry (renderEntry.entry.id)}
+      {@const entry = renderEntry.entry}
+      {#snippet markerContent()}
+        {#if customMarker}
+          {@render customMarker(entry)}
+        {/if}
+      {/snippet}
+      <TimelineItem
+        datetime={entry.datetime}
+        timestamp={entry.timestamp}
+        title={entry.title}
+        tone={entry.tone ?? 'info'}
+        connectorAfter={renderEntry.connectorAfter}
+        groupHeader={renderEntry.index === group.entries[0]?.index ? group.label : undefined}
+        marker={customMarker ? markerContent : undefined}
+      >
+        {#if children}
+          {@render children(entry)}
+        {/if}
+      </TimelineItem>
+    {/each}
+  {/each}
 </ol>

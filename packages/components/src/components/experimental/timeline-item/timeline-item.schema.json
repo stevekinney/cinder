@@ -2,23 +2,37 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "time": {
+    "datetime": {
       "type": "string",
-      "description": "Optional ISO timestamp / formatted time string for the entry header."
+      "description": "Machine-readable ISO datetime rendered into `<time datetime>`."
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Visible timestamp label rendered inside `<time>`."
     },
     "title": {
       "type": "string",
       "description": "Visible event title."
     },
-    "status": {
-      "enum": ["info", "success", "warning", "danger"],
-      "description": "Optional status that drives the marker color via a data attribute.",
+    "tone": {
+      "enum": ["info", "success", "warning", "error"],
+      "description": "Semantic marker tone.",
       "default": "info"
+    },
+    "connectorAfter": {
+      "enum": ["visible", "hidden"],
+      "description": "Whether to draw the connector to the following event.",
+      "default": "visible"
+    },
+    "groupHeader": {
+      "type": "string",
+      "description": "Optional adjacent group header rendered inside this list item before the event body."
     },
     "class": {
       "type": "string",
       "description": "Additional class names merged with `.cinder-timeline-item`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["datetime", "timestamp", "title"]
 }
