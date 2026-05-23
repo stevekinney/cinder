@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "center",
+  "import": "cinder/center",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Center basic",
+      "description": "Block centered horizontally with the default content-width cap.",
+      "code": "<script lang=\"ts\">\n  import { Center } from 'cinder/center';\n</script>\n\n<Center maxWidth=\"32rem\">\n  <p>\n    This block is horizontally centered and capped at a configurable max-inline-size. Resize the\n    viewport to see the cap stay in effect.\n  </p>\n</Center>\n"
+    },
+    {
+      "id": "intrinsic",
+      "title": "Center intrinsic",
+      "description": "Intrinsic mode centers based on the natural width of the content rather than filling the container.",
+      "code": "<script lang=\"ts\">\n  import { Center } from 'cinder/center';\n</script>\n\n<Center intrinsic>\n  <h2>A heading</h2>\n  <p>Centered to content width, not container width.</p>\n  <button type=\"button\">Trailing action</button>\n</Center>\n"
+    }
+  ]
+}
