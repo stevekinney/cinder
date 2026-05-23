@@ -246,6 +246,19 @@ describe('Popover — rendering', () => {
     expect(style).toContain('left: 33px');
     expect(style).toContain('top: 44px');
   });
+
+  test('computePosition uses fixed strategy', async () => {
+    render(Popover, {
+      props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+    });
+
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalled();
+    });
+
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
+    expect(options?.strategy).toBe('fixed');
+  });
 });
 
 // ---------------------------------------------------------------------------
