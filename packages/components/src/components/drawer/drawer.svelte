@@ -100,6 +100,9 @@
 
     if (dialogElement.open) {
       beginClosing();
+    } else {
+      renderPanel = false;
+      pendingOpenFocus = false;
     }
   });
 
