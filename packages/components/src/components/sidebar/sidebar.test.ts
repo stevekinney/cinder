@@ -562,10 +562,12 @@ function isCollapsedScopedRule(rule: CssRule): boolean {
 }
 
 // Parse a declaration block into a normalized [property, value] list:
-// lowercase property names, trimmed values, no semicolons or stray
-// whitespace. Used by the banned-declaration check so that variants like
-// `DISPLAY: none` or `display:none` cannot bypass the visually-hidden
-// accessibility contract.
+// lowercase property names, first-token-only values, no semicolons, stray
+// whitespace, or `!important` modifiers. Used by the banned-declaration
+// check so that variants like `DISPLAY: none`, `display:none`, or
+// `display: none !important` cannot bypass the visually-hidden
+// accessibility contract — `!important` strengthens the rule, not weakens
+// it, so an important banned declaration is still a banned declaration.
 function parseDeclarations(declarationBlock: string): Array<[string, string]> {
   return declarationBlock
     .split(';')
@@ -575,10 +577,15 @@ function parseDeclarations(declarationBlock: string): Array<[string, string]> {
       const colonIndex = entry.indexOf(':');
       if (colonIndex === -1) return [entry.toLowerCase(), ''];
       const property = entry.slice(0, colonIndex).trim().toLowerCase();
-      const value = entry
+      // Take only the first whitespace-separated token of the value so that
+      // `!important`, multi-token shorthand values, or trailing comments
+      // don't escape the banned-declaration check. The banned values
+      // (`none`, `hidden`) are always single tokens, so this is sound.
+      const rawValue = entry
         .slice(colonIndex + 1)
         .trim()
         .toLowerCase();
+      const value = rawValue.split(/\s+/)[0] ?? '';
       return [property, value];
     });
 }
