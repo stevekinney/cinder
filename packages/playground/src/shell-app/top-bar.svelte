@@ -166,11 +166,7 @@
           <Segment value={option.value}>{option.label}</Segment>
         {/each}
       </SegmentedControl>
-    </Toolbar.Group>
 
-    <Toolbar.Spacer />
-
-    <Toolbar.Group>
       <Button
         variant="ghost"
         size="sm"
@@ -180,7 +176,11 @@
       >
         <span aria-hidden="true">▦</span>
       </Button>
+    </Toolbar.Group>
 
+    <Toolbar.Spacer />
+
+    <Toolbar.Group>
       <Button
         variant="ghost"
         size="sm"
