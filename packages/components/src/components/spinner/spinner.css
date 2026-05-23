@@ -10,7 +10,7 @@
   border-top-color: var(--cinder-spinner-indicator, currentColor);
   border-radius: 50%;
   vertical-align: -0.125em;
-  animation: cinder-spinner-spin var(--cinder-duration-slow, 1s) linear infinite;
+  animation: cinder-spinner-spin var(--cinder-duration-spin) linear infinite;
   flex-shrink: 0;
 }
 

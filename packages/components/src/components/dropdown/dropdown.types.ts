@@ -5,6 +5,7 @@ export type DropdownContext = {
   get menuId(): string;
   get isOpen(): boolean;
   get supportsPopover(): boolean;
+  readonly initialFocus?: 'first' | 'last' | 'none' | undefined;
   close: () => void;
   focusTrigger: () => void;
 };

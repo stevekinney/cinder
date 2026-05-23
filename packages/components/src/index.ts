@@ -235,6 +235,19 @@ export type {
   ToolbarContext,
 } from './components/markdown-editor/index.ts';
 
+export { default as MenuBar } from './components/menu-bar/index.ts';
+export type {
+  MenuBarEntry,
+  MenuBarItem,
+  MenuBarItemVariant,
+  MenuBarLabel,
+  MenuBarMenu,
+  MenuBarProps,
+  MenuBarSeparator,
+  MenuBarSubmenu,
+  MenuBarSubmenuEntry,
+} from './components/menu-bar/index.ts';
+
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
