@@ -132,6 +132,27 @@
       "import": "./src/components/aspect-ratio/aspect-ratio.examples.json",
       "default": "./src/components/aspect-ratio/aspect-ratio.examples.json"
     },
+    "./autocomplete": {
+      "types": "./dist/components/autocomplete/index.d.ts",
+      "svelte": "./src/components/autocomplete/index.ts",
+      "node": "./dist/server/components/autocomplete/index.js",
+      "default": "./dist/components/autocomplete/index.js"
+    },
+    "./autocomplete/schema": {
+      "types": "./dist/components/autocomplete/autocomplete.schema.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.schema.ts"
+    },
+    "./autocomplete/variables": {
+      "types": "./dist/components/autocomplete/autocomplete.variables.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.variables.ts"
+    },
+    "./autocomplete/styles": {
+      "default": "./dist/components/autocomplete/autocomplete.css"
+    },
+    "./autocomplete/examples": {
+      "import": "./src/components/autocomplete/autocomplete.examples.json",
+      "default": "./src/components/autocomplete/autocomplete.examples.json"
+    },
     "./avatar": {
       "types": "./dist/components/avatar/index.d.ts",
       "svelte": "./src/components/avatar/index.ts",

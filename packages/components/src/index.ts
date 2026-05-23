@@ -7,6 +7,15 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as Autocomplete } from './components/autocomplete/index.ts';
+export type {
+  AutocompleteProps,
+  AutocompleteSchemaProps,
+  AutocompleteSuggestion,
+  AutocompleteSuggestionSource,
+  AutocompleteSuggestionSourceContext,
+} from './components/autocomplete/index.ts';
+
 export { default as AspectRatio } from './components/aspect-ratio/index.ts';
 export type {
   AspectRatioElement,
