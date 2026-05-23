@@ -1,13 +1,19 @@
 /// <reference lib="dom" />
-import { describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
+const { default: ColorFieldFormFixture } =
+  await import('../../test/fixtures/color-field-form-fixture.svelte');
+const { default: ColorFieldFormFieldFixture } =
+  await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+
+afterEach(() => document.body.replaceChildren());
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
   const element = root.querySelector(selector);
@@ -15,625 +21,699 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
   return element as T;
 }
 
-function getVisibleInput(container: ParentNode): HTMLInputElement {
-  return q<HTMLInputElement>(container, 'input:not([type="hidden"])');
+function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
+  return q<HTMLInputElement>(container, `#${id}`);
 }
 
-function getNamedHidden(container: ParentNode, name: string): HTMLInputElement | null {
-  return container.querySelector<HTMLInputElement>(`input[type="hidden"][name="${name}"]`);
-}
-
-async function typeAndBlur(container: ParentNode, value: string): Promise<void> {
-  const input = getVisibleInput(container);
-  await fireEvent.input(input, { target: { value } });
+async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
+  await fireEvent.input(input, { target: { value: text } });
   await fireEvent.blur(input);
   await tick();
 }
 
-describe('ColorField — parse round-trip', () => {
-  test.each([
+describe('ColorField — parse round-trips', () => {
+  const cases = [
     { input: '#f00', expected: '#ff0000' },
-    { input: 'rgb(255,0,0)', expected: '#ff0000' },
-    { input: 'hsl(0,100%,50%)', expected: '#ff0000' },
+    { input: 'rgb(255, 0, 0)', expected: '#ff0000' },
+    { input: 'hsl(0, 100%, 50%)', expected: '#ff0000' },
     { input: '#ff0000', expected: '#ff0000' },
-  ])('parses $input -> $expected', async ({ input, expected }) => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
+  ];
+
+  for (const { input: text, expected } of cases) {
+    test(`commits ${text} as ${expected}`, async () => {
+      const onchange = mock<(value: string) => void>(() => {});
+      const { container } = render(ColorField, { id: 'color', name: 'c', onchange });
+      const input = getInput(container);
+      await typeAndBlur(input, text);
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]?.[0]).toBe(expected);
+      expect(input.value).toBe(expected);
+      const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+      expect(hidden.value).toBe(expected);
     });
-    await typeAndBlur(container, input);
-    expect(emitted).toEqual([expected]);
-    expect(getVisibleInput(container).value).toBe(expected);
-  });
+  }
 });
 
 describe('ColorField — invalid input', () => {
-  test('raises a parse error with aria-invalid', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, 'not-a-color');
-    const input = getVisibleInput(container);
-    expect(input.getAttribute('aria-invalid')).toBe('true');
+  test('raises parse error, sets aria-invalid, does not fire onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, 'not-a-color');
+    expect(onchange).not.toHaveBeenCalled();
     expect(input.value).toBe('not-a-color');
-    expect(emitted).toEqual([]);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(container.querySelector('.cinder-input-field__error')?.textContent ?? '').toContain(
+      'valid hex',
+    );
   });
 
-  test('custom errorMessage overrides default', async () => {
+  test('custom errorMessage overrides default text', async () => {
     const { container } = render(ColorField, {
-      props: { id: 'cf', errorMessage: 'Bad color!' },
+      id: 'color',
+      errorMessage: 'Pick a color from the palette.',
     });
-    await typeAndBlur(container, 'oops');
-    expect(container.textContent).toContain('Bad color!');
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Pick a color from the palette.',
+    );
   });
 });
 
-describe('ColorField — alpha rule', () => {
-  test.each([
+describe('ColorField — alpha behavior', () => {
+  const cases = [
     { alpha: false, input: '#ff000080', expected: '#ff0000' },
     { alpha: true, input: '#ff000080', expected: '#ff000080' },
     { alpha: true, input: '#ff0000', expected: '#ff0000' },
-  ])('alpha=$alpha input=$input -> $expected', async ({ alpha, input, expected }) => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', alpha, onchange: (v: string) => emitted.push(v) },
+  ];
+
+  for (const { alpha, input: text, expected } of cases) {
+    test(`alpha=${alpha} + ${text} → ${expected}`, async () => {
+      const onchange = mock<(value: string) => void>(() => {});
+      const { container } = render(ColorField, { id: 'color', alpha, name: 'c', onchange });
+      const input = getInput(container);
+      await typeAndBlur(input, text);
+      expect(onchange.mock.calls[0]?.[0]).toBe(expected);
+      const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+      expect(hidden.value).toBe(expected);
     });
-    await typeAndBlur(container, input);
-    expect(emitted).toEqual([expected]);
-  });
+  }
 });
 
-describe('ColorField — formats gate + canonical-display bypass', () => {
-  test('formats=hex rejects rgb()', async () => {
-    const emitted: string[] = [];
+describe('ColorField — formats gate', () => {
+  test('formats=[hex] rejects rgb input', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
-      props: { id: 'cf', formats: ['hex'], onchange: (v: string) => emitted.push(v) },
+      id: 'color',
+      formats: ['hex'],
+      onchange,
     });
-    await typeAndBlur(container, 'rgb(0,0,0)');
-    expect(emitted).toEqual([]);
-    expect(getVisibleInput(container).getAttribute('aria-invalid')).toBe('true');
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    expect(onchange).not.toHaveBeenCalled();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 
-  test('formats=rgb rejects #000', async () => {
-    const emitted: string[] = [];
+  test('formats=[rgb] accepts rgb, then re-blur on canonical hex is a no-op (bypass)', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
-      props: { id: 'cf', formats: ['rgb'], onchange: (v: string) => emitted.push(v) },
+      id: 'color',
+      formats: ['rgb'],
+      onchange,
     });
-    await typeAndBlur(container, '#000');
-    expect(emitted).toEqual([]);
-    expect(getVisibleInput(container).getAttribute('aria-invalid')).toBe('true');
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#000000');
+    expect(input.value).toBe('#000000');
+    // Re-blur with the canonical hex already in the field. The bypass should
+    // keep us in a valid state with no new error.
+    await fireEvent.blur(input);
+    await tick();
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onchange).toHaveBeenCalledTimes(1);
   });
 
-  test('formats=rgb accepts rgb() then bypasses gate on canonical re-blur', async () => {
-    const emitted: string[] = [];
+  test('formats=[hex] + #abc accepted', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
-      props: { id: 'cf', formats: ['rgb'], onchange: (v: string) => emitted.push(v) },
+      id: 'color',
+      formats: ['hex'],
+      onchange,
     });
-    await typeAndBlur(container, 'rgb(0,0,0)');
-    expect(emitted).toEqual(['#000000']);
-    await fireEvent.blur(getVisibleInput(container));
-    expect(getVisibleInput(container).getAttribute('aria-invalid')).not.toBe('true');
+    const input = getInput(container);
+    await typeAndBlur(input, '#abc');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
   });
 });
 
 describe('ColorField — no commit during typing', () => {
-  test('typing without blur does not emit or mark invalid', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    const input = getVisibleInput(container);
+  test('typing without blur does not call onchange or set aria-invalid', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#a' } });
-    expect(emitted).toEqual([]);
+    await tick();
+    expect(onchange).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
   });
 });
 
-function wrapInForm(container: HTMLElement): {
-  form: HTMLFormElement;
-  submitted: () => boolean;
-  submitterText: () => string | null;
-} {
-  // Reparent rendered nodes into a fresh form within the test container, so
-  // testing-library cleanup unmounts cleanly via the original container.
-  const form = document.createElement('form');
-  const button = document.createElement('button');
-  button.textContent = 'Save';
-  let submittedFlag = false;
-  let submitterText: string | null = null;
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    submittedFlag = true;
-    submitterText = event.submitter?.textContent ?? null;
-  });
-  while (container.firstChild) form.appendChild(container.firstChild);
-  form.appendChild(button);
-  container.appendChild(form);
-  return { form, submitted: () => submittedFlag, submitterText: () => submitterText };
-}
-
 describe('ColorField — Enter behavior', () => {
-  test('default commit-then-submit fires onchange and submits the form', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', onchange: (v: string) => emitted.push(v) },
+  test('default commit-then-submit fires onchange and submits via requestSubmit', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
     });
-    const wrapped = wrapInForm(container);
-    const input = getVisibleInput(wrapped.form);
+    const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#ff0000' } });
-    await fireEvent.keyDown(input, { key: 'Enter' });
+    const event = await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-
-    expect(emitted).toEqual(['#ff0000']);
-    expect(wrapped.submitted()).toBe(true);
-    expect(wrapped.submitterText()).toBe('Save');
-    expect(getNamedHidden(wrapped.form, 'c')!.value).toBe('#ff0000');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#ff0000');
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+    expect(event).toBe(false); // preventDefault returns false from fireEvent
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('#ff0000');
   });
 
-  test('commit-only fires onchange but does not submit', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: {
-        id: 'cf',
-        name: 'c',
-        enterBehavior: 'commit-only',
-        onchange: (v: string) => emitted.push(v),
-      },
+  test('commit-only commits but does NOT submit', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-only',
+      onchange,
+      onsubmit,
     });
-    const wrapped = wrapInForm(container);
-    const input = getVisibleInput(wrapped.form);
-    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: '#00ff00' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
-
-    expect(emitted).toEqual(['#ff0000']);
-    expect(wrapped.submitted()).toBe(false);
+    expect(onchange.mock.calls[0]?.[0]).toBe('#00ff00');
+    expect(onsubmit).not.toHaveBeenCalled();
   });
 
-  test('invalid input + Enter raises error and does not submit', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', onchange: (v: string) => emitted.push(v) },
+  test('invalid + Enter raises error, does NOT submit', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
     });
-    const wrapped = wrapInForm(container);
-    const input = getVisibleInput(wrapped.form);
-    await fireEvent.input(input, { target: { value: 'bad' } });
-    const ev = await fireEvent.keyDown(input, { key: 'Enter' });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'nope' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
     await tick();
+    expect(onchange).not.toHaveBeenCalled();
+    expect(onsubmit).not.toHaveBeenCalled();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
 
-    expect(emitted).toEqual([]);
-    expect(wrapped.submitted()).toBe(false);
-    expect(ev).toBe(false);
+  test('no-name case: Enter still submits with no color in FormData', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      enterBehavior: 'commit-then-submit',
+      onchange,
+      onsubmit,
+    });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: '#abcdef' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(onchange.mock.calls[0]?.[0]).toBe('#abcdef');
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('input[type="hidden"][name]')).toBeNull();
   });
 });
 
 describe('ColorField — blur idempotence', () => {
-  test('refocusing and reblurring without typing does not re-emit', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, '#ff0000');
-    await fireEvent.blur(getVisibleInput(container));
-    expect(emitted).toEqual(['#ff0000']);
+  test('blur after committing without typing does not refire onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#ff0000');
+    await fireEvent.focus(input);
+    await fireEvent.blur(input);
+    await tick();
+    expect(onchange).toHaveBeenCalledTimes(1);
   });
 
-  test('whitespace blur on empty field does not emit', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    const input = getVisibleInput(container);
-    await fireEvent.input(input, { target: { value: '   ' } });
-    await fireEvent.blur(input);
-    expect(emitted).toEqual([]);
+  test('whitespace blur on empty field is a no-op', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '   ');
+    expect(onchange).not.toHaveBeenCalled();
   });
 
-  test('whitespace blur after committed value clears and emits empty', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, '#ff0000');
-    const input = getVisibleInput(container);
-    await fireEvent.input(input, { target: { value: '   ' } });
-    await fireEvent.blur(input);
-    expect(emitted).toEqual(['#ff0000', '']);
+  test('whitespace blur after a committed value emits empty', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#ff0000');
+    await typeAndBlur(input, '   ');
+    expect(onchange).toHaveBeenCalledTimes(2);
+    expect(onchange.mock.calls[1]?.[0]).toBe('');
   });
 });
 
 describe('ColorField — form reset', () => {
-  test('uncontrolled reset reverts to defaultValue and does not emit', async () => {
-    const emitted: string[] = [];
-    const form = document.createElement('form');
-    document.body.appendChild(form);
-    const { container } = render(ColorField, {
-      target: form,
-      props: {
-        id: 'cf',
-        defaultValue: '#abcdef',
-        name: 'c',
-        onchange: (v: string) => emitted.push(v),
-      },
+  test('uncontrolled: reset reverts to defaultValue without firing onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      defaultValue: '#abcdef',
+      onchange,
     });
-    await tick();
-    const input = getVisibleInput(container);
-    await fireEvent.input(input, { target: { value: '#ff0000' } });
-    await fireEvent.blur(input);
-    await tick();
-    expect(emitted).toEqual(['#ff0000']);
+    const input = getInput(container);
+    await typeAndBlur(input, '#ff0000');
+    expect(input.value).toBe('#ff0000');
+    expect(onchange).toHaveBeenCalledTimes(1);
+    const form = q<HTMLFormElement>(container, 'form');
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
-    expect(getNamedHidden(container, 'c')!.value).toBe('#abcdef');
-    expect(getVisibleInput(container).value).toBe('#abcdef');
-    expect(emitted).toEqual(['#ff0000']);
-    document.body.removeChild(form);
+    expect(input.value).toBe('#abcdef');
+    expect(onchange).toHaveBeenCalledTimes(1);
+  });
+
+  test('uncontrolled with alpha-bearing default: alpha=true reconstructs after reset', async () => {
+    const { container, rerender } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      defaultValue: '#ff000080',
+      alpha: false,
+    });
+    const input = getInput(container);
+    expect(input.value).toBe('#ff0000');
+    await typeAndBlur(input, '#00ff00');
+    const form = q<HTMLFormElement>(container, 'form');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(input.value).toBe('#ff0000');
+    await rerender({ id: 'color', name: 'c', defaultValue: '#ff000080', alpha: true });
+    await tick();
+    expect(input.value).toBe('#ff000080');
   });
 });
 
 describe('ColorField — controlled invalid value', () => {
-  test('value=bad shows verbatim, error, empty mirror', async () => {
+  test('external invalid value preserves visible text, raises error, no onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
     const { container } = render(ColorField, {
-      props: { id: 'cf', value: 'bad', name: 'c' },
+      id: 'color',
+      name: 'c',
+      value: 'bad',
+      onchange,
     });
-    const input = getVisibleInput(container);
+    await tick();
+    const input = getInput(container);
     expect(input.value).toBe('bad');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('');
+    expect(onchange).not.toHaveBeenCalled();
+    const swatch = q(container, '.cinder-color-field__swatch');
+    expect(swatch.getAttribute('style') ?? '').not.toContain('bad');
+    expect(swatch.getAttribute('data-cinder-empty')).toBe('');
   });
 });
 
-describe('ColorField — hidden input mirror + alpha re-derivation', () => {
-  test('mirror reflects committedHex; alpha toggle re-derives without onchange', async () => {
-    const emitted: string[] = [];
-    const onchange = (v: string) => emitted.push(v);
+describe('ColorField — hidden mirror + alpha re-derivation', () => {
+  test('alpha toggle re-derives hidden mirror without firing onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
     const { container, rerender } = render(ColorField, {
-      props: { id: 'cf', name: 'c', alpha: false, onchange },
+      id: 'color',
+      name: 'c',
+      alpha: false,
+      onchange,
     });
-    await typeAndBlur(container, '#ff000080');
-    expect(getNamedHidden(container, 'c')!.value).toBe('#ff0000');
-    await rerender({ id: 'cf', name: 'c', alpha: true, onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#ff000080');
+    let hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('#ff0000');
+    expect(onchange).toHaveBeenCalledTimes(1);
+
+    await rerender({ id: 'color', name: 'c', alpha: true, onchange });
     await tick();
-    expect(getNamedHidden(container, 'c')!.value).toBe('#ff000080');
-    expect(emitted).toEqual(['#ff0000']);
+    hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('#ff000080');
+    expect(onchange).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('ColorField — controlled reconciliation', () => {
-  test('parent updates are not silently dropped', async () => {
-    const emitted: string[] = [];
-    const { rerender, container } = render(ColorField, {
-      props: { id: 'cf', value: '#000000', onchange: (v: string) => emitted.push(v) },
+  test('parent updates are always observed; same-value re-applies are safe', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      name: 'c',
+      value: '#000000',
+      onchange,
     });
-    await typeAndBlur(container, '#00ff00');
-    expect(emitted).toEqual(['#00ff00']);
-    await rerender({ id: 'cf', value: '#ff0000', onchange: (v: string) => emitted.push(v) });
+    const input = getInput(container);
+    await typeAndBlur(input, '#00ff00');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#00ff00');
+
+    // Parent rejects our commit and forces a different value.
+    await rerender({ id: 'color', name: 'c', value: '#ff0000', onchange });
     await tick();
-    expect(getVisibleInput(container).value).toBe('#ff0000');
-    await rerender({ id: 'cf', value: '#00ff00', onchange: (v: string) => emitted.push(v) });
+    expect(input.value).toBe('#ff0000');
+
+    // Parent applies the prior committed value.
+    await rerender({ id: 'color', name: 'c', value: '#00ff00', onchange });
     await tick();
-    expect(getVisibleInput(container).value).toBe('#00ff00');
+    expect(input.value).toBe('#00ff00');
+
+    // Parent re-applies the same value — no change in field, no error.
+    await rerender({ id: 'color', name: 'c', value: '#00ff00', onchange });
+    await tick();
+    expect(input.value).toBe('#00ff00');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+  });
+});
+
+describe('ColorField — controlled authority over alpha', () => {
+  test('parent echo without alpha + alpha toggle does not retain partial alpha', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      name: 'c',
+      value: '#ff0000',
+      alpha: false,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, '#ff000080');
+
+    // Parent echoes the opaque hex (rejecting the alpha component).
+    await rerender({ id: 'color', name: 'c', value: '#ff0000', alpha: false });
+    await tick();
+
+    await rerender({ id: 'color', name: 'c', value: '#ff0000', alpha: true });
+    await tick();
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('#ff0000');
   });
 });
 
 describe('ColorField — composition + DOM contract', () => {
-  test('class merges onto outer wrapper', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', class: 'custom' },
+  test('FormField error coexists with ColorField parse error', async () => {
+    const { container } = render(ColorFieldFormFieldFixture, {
+      id: 'color',
+      fieldError: 'Must match brand palette.',
     });
-    expect(container.querySelector('.cinder-color-field.custom')).not.toBeNull();
-  });
-
-  test('disabled flows to inner input and outer data attribute', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', disabled: true },
-    });
-    expect(getVisibleInput(container).disabled).toBe(true);
-    expect(container.querySelector('.cinder-color-field[data-cinder-disabled]')).not.toBeNull();
-  });
-
-  test('onchange not forwarded to native change event', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', onchange: (v: string) => emitted.push(v) },
-    });
-    const input = getVisibleInput(container);
-    await fireEvent.change(input, { target: { value: '#ff0000' } });
-    // Native change without blur should NOT trigger consumer onchange via blur pipeline
-    expect(emitted).toEqual([]);
-  });
-});
-
-describe('ColorField — API edge cases', () => {
-  test('both value and defaultValue emits DEV warn once; value wins', () => {
-    const warn = spyOn(console, 'warn').mockImplementation(() => {});
-    const { container } = render(ColorField, {
-      props: { id: 'cf', value: '#aaaaaa', defaultValue: '#bbbbbb' },
-    });
-    expect(getVisibleInput(container).value).toBe('#aaaaaa');
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
-  });
-
-  test('formats=[] emits DEV warn and accepts all formats', async () => {
-    const warn = spyOn(console, 'warn').mockImplementation(() => {});
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', formats: [], onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, 'rgb(0,0,0)');
-    expect(emitted).toEqual(['#000000']);
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
-  });
-});
-
-describe('ColorField — hidden mirror under parse error', () => {
-  test('clear invalid text -> mirror empty, onchange empty', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, '#ff0000');
-    expect(getNamedHidden(container, 'c')!.value).toBe('#ff0000');
-    await typeAndBlur(container, 'not-a-color');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-    const input = getVisibleInput(container);
-    await fireEvent.input(input, { target: { value: '' } });
-    await fireEvent.blur(input);
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-    expect(emitted).toEqual(['#ff0000', '']);
-  });
-
-  test('fix invalid text -> mirror updates to new valid color', async () => {
-    const emitted: string[] = [];
-    const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, '#ff0000');
-    await typeAndBlur(container, 'not-a-color');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-    await typeAndBlur(container, '#00ff00');
-    expect(getNamedHidden(container, 'c')!.value).toBe('#00ff00');
-    expect(emitted).toEqual(['#ff0000', '#00ff00']);
-  });
-});
-
-describe('ColorField — initialization', () => {
-  test('uncontrolled defaultValue=#ff000080 + alpha=false -> visible #ff0000', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', defaultValue: '#ff000080', alpha: false, name: 'c' },
-    });
-    expect(getVisibleInput(container).value).toBe('#ff0000');
-    expect(getNamedHidden(container, 'c')!.value).toBe('#ff0000');
-  });
-
-  test('uncontrolled invalid defaultValue collapses silently', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', defaultValue: 'bad', name: 'c' },
-    });
-    expect(getVisibleInput(container).value).toBe('');
-    expect(getVisibleInput(container).getAttribute('aria-invalid')).not.toBe('true');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-  });
-
-  test('controlled value=bad shows verbatim with error', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', value: 'bad', name: 'c' },
-    });
-    expect(getVisibleInput(container).value).toBe('bad');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-  });
-});
-
-describe('ColorField — formats change does not clear error', () => {
-  test('changing formats while error is active leaves error in place', async () => {
-    const emitted: string[] = [];
-    const { container, rerender } = render(ColorField, {
-      props: { id: 'cf', formats: ['hex'], name: 'c', onchange: (v: string) => emitted.push(v) },
-    });
-    await typeAndBlur(container, 'rgb(0,0,0)');
-    const input = getVisibleInput(container);
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
+    // Both error texts render somewhere in the composition.
+    const errorTexts = Array.from(
+      container.querySelectorAll('.cinder-input-field__error, .cinder-form-field__error'),
+    ).map((el) => el.textContent ?? '');
+    expect(errorTexts.some((t) => t.includes('Must match brand palette.'))).toBe(true);
+    expect(errorTexts.some((t) => t.includes('valid hex'))).toBe(true);
+    // aria-describedby references at least one error id (Input's own, since
+    // the ColorField-owned parse error takes precedence on the inner input).
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(describedBy.length).toBeGreaterThan(0);
+  });
 
-    await rerender({
-      id: 'cf',
-      formats: ['rgb'],
+  test('native change event does NOT invoke consumer onchange', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await tick();
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  test('class prop merges onto wrapper', () => {
+    const { container } = render(ColorField, { id: 'color', class: 'custom-extra' });
+    const wrapper = q(container, '.cinder-color-field');
+    expect(wrapper.classList.contains('custom-extra')).toBe(true);
+  });
+
+  test('disabled forwards to inner input and outer wrapper', () => {
+    const { container } = render(ColorField, { id: 'color', disabled: true });
+    const input = getInput(container);
+    expect(input.disabled).toBe(true);
+    const wrapper = q(container, '.cinder-color-field');
+    expect(wrapper.getAttribute('data-cinder-disabled')).toBe('');
+  });
+
+  test('reset on a mounted form runs once and survives a follow-up dispatch', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
       name: 'c',
-      onchange: (v: string) => emitted.push(v),
+      defaultValue: '#abcdef',
+      onchange,
     });
-    await tick();
-    // Error still present until next blur
-    expect(getVisibleInput(container).getAttribute('aria-invalid')).toBe('true');
-    expect(getNamedHidden(container, 'c')!.value).toBe('');
-
-    await fireEvent.blur(getVisibleInput(container));
-    expect(getNamedHidden(container, 'c')!.value).toBe('#000000');
-    expect(emitted).toEqual(['#000000']);
-  });
-});
-
-describe('ColorField — controlled parent ignores onchange', () => {
-  test('optimistic state persists across a same-value rerender', async () => {
-    // Tests the exact scenario the lastReconciledValue guard is for: the
-    // parent receives onchange but does not update value, then Svelte
-    // re-renders for some other prop. The controlled-sync effect must not
-    // overwrite the optimistic local state with the unchanged parent value.
-    const emitted: string[] = [];
-    const onchange = (v: string) => emitted.push(v);
-    const { rerender, container } = render(ColorField, {
-      props: { id: 'cf', value: '#000000', onchange },
-    });
-    await tick();
-    await typeAndBlur(container, '#ff0000');
-    await tick();
-    expect(emitted).toEqual(['#ff0000']);
-    expect(getVisibleInput(container).value).toBe('#ff0000');
-    // Same value re-rendered — must not revert.
-    await rerender({ id: 'cf', value: '#000000', onchange });
-    await tick();
-    expect(getVisibleInput(container).value).toBe('#ff0000');
-  });
-
-  test('parent prop change to a different value takes precedence', async () => {
-    const emitted: string[] = [];
-    const onchange = (v: string) => emitted.push(v);
-    const { rerender, container } = render(ColorField, {
-      props: { id: 'cf', value: '#000000', onchange },
-    });
-    await tick();
-    await typeAndBlur(container, '#ff0000');
-    await tick();
-    await rerender({ id: 'cf', value: '#0000ff', onchange });
-    await tick();
-    expect(getVisibleInput(container).value).toBe('#0000ff');
-  });
-});
-
-describe('ColorField — controlled form reset stays aligned with controlled value', () => {
-  test('after a form reset event, controlled field re-applies its current value', async () => {
-    const form = document.createElement('form');
-    document.body.appendChild(form);
-    const onchange = () => {};
-    render(ColorField, {
-      target: form,
-      props: { id: 'cf', value: '#abcdef', name: 'c', onchange },
-    });
-    await tick();
-    expect(getVisibleInput(form).value).toBe('#abcdef');
-    // Dispatch the reset event the same way as the uncontrolled-reset test
-    // (matches the working color-picker pattern). The component schedules a
-    // microtask in handleReset that re-applies the controlled value.
+    const form = q<HTMLFormElement>(container, 'form');
+    const input = getInput(container);
+    await typeAndBlur(input, '#000000');
+    expect(input.value).toBe('#000000');
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
-    await Promise.resolve();
+    expect(input.value).toBe('#abcdef');
+    // A second reset is also a no-op — listener still attached, default value re-applies.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
-    expect(getVisibleInput(form).value).toBe('#abcdef');
-    expect(getNamedHidden(form, 'c')!.value).toBe('#abcdef');
-    document.body.removeChild(form);
+    expect(input.value).toBe('#abcdef');
+    // Reset must not fire onchange — the test below asserts this didn't sneak through.
+    expect(onchange).toHaveBeenCalledTimes(1);
+  });
+
+  test('uncontrolled→controlled mode switch leaves prior state intact', async () => {
+    // Mount uncontrolled, then rerender with `value` set. The controlled-sync
+    // effect is gated by `isControlled` captured at mount, so the field should
+    // ignore the late `value` prop and keep whatever the user has typed.
+    const { container, rerender } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: '#123456' } });
+    await fireEvent.blur(input);
+    await tick();
+    expect(input.value).toBe('#123456');
+    await rerender({ id: 'color', value: '#000000' });
+    await tick();
+    // Late-arriving `value` is ignored because mode was captured as uncontrolled.
+    expect(input.value).toBe('#123456');
   });
 });
 
-describe('ColorField — parse error sets custom validity', () => {
-  test('visible input becomes constraint-invalid on parse error and clears on fix', async () => {
+describe('ColorField — constraint validation (submit-button click)', () => {
+  test('invalid text marks the input invalid via setCustomValidity', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.validity.valid).toBe(false);
+    expect(input.validationMessage).toBeTruthy();
+  });
+
+  test('valid commit clears customValidity', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.validity.valid).toBe(false);
+    await typeAndBlur(input, '#ff0000');
+    expect(input.validity.valid).toBe(true);
+  });
+});
+
+describe('ColorField — 4-char hex (#rgba)', () => {
+  test('alpha=false strips alpha from #abcd', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#abcd');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbcc');
+  });
+
+  test('alpha=true preserves alpha from #abcd', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', alpha: true, onchange });
+    const input = getInput(container);
+    await typeAndBlur(input, '#abcd');
+    expect(onchange.mock.calls[0]?.[0]).toBe('#aabbccdd');
+  });
+});
+
+describe('ColorField — controlled init honors formats gate', () => {
+  test('formats=[hex] + value="rgb(0,0,0)" surfaces parse error at mount', async () => {
     const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c' },
-    });
-    const input = getVisibleInput(container);
-    await typeAndBlur(container, 'not-a-color');
-    expect(input.validity.customError).toBe(true);
-    expect(input.checkValidity()).toBe(false);
-    await typeAndBlur(container, '#ff0000');
-    expect(input.validity.customError).toBe(false);
-    expect(input.checkValidity()).toBe(true);
-  });
-});
-
-describe('ColorField — composition with FormField (T-WrapperError)', () => {
-  test('ColorField parse error wins aria-describedby; FormField error renders but is unlinked', async () => {
-    // Documents the inner <Input>'s id-collision behavior: when both
-    // FormField's context error and the wrapped Input's own error share
-    // the base id pattern, Input allocates `{id}-input-error` for its own
-    // and resolvedErrorId points at that. FormField's error <p> still
-    // renders so sighted users see both messages, but it is not in the
-    // input's aria-describedby. Documented in color-field.a11y.md as a
-    // known limitation.
-    const { default: Fixture } =
-      await import('../../test/fixtures/form-field-color-field-fixture.svelte');
-    const { container } = render(Fixture, {
-      props: {
-        fieldId: 'wrap',
-        fieldLabel: 'Color',
-        fieldError: 'Color must match brand palette.',
-        initialValue: 'bad',
-      },
+      id: 'color',
+      formats: ['hex'],
+      value: 'rgb(0,0,0)',
     });
     await tick();
-    const input = getVisibleInput(container);
+    const input = getInput(container);
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    const describedBy = input.getAttribute('aria-describedby') ?? '';
-    const ids = describedBy.split(/\s+/).filter(Boolean);
-    expect(ids.length).toBe(1);
-    // The id present is the Input's own error, not FormField's
-    expect(ids[0]).toBe('wrap-input-error');
-    // Both message strings still render somewhere in the DOM
-    expect(container.textContent).toContain('Color must match brand palette.');
-    expect(container.textContent).toMatch(/Enter a valid .* color\./);
+    expect(input.value).toBe('rgb(0,0,0)');
+  });
+
+  test('formats=[hex] + defaultValue="rgb(0,0,0)" leaves field empty (silent reject)', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['hex'],
+      defaultValue: 'rgb(0,0,0)',
+    });
+    const input = getInput(container);
+    expect(input.value).toBe('');
   });
 });
 
-describe('ColorField — disabled hidden mirror does not submit', () => {
-  // Per the HTML form-data algorithm, disabled controls don't submit. The
-  // visible Input inherits `disabled` from the prop; the hidden mirror gets
-  // it via the explicit `disabled` attribute. Asserting via DOM rather than
-  // FormData because happy-dom's FormData enumeration depends on form-element
-  // owner registration, which testing-library's render container doesn't
-  // always set up the way a real browser does.
-  test('disabled hidden mirror has the disabled attribute set', () => {
+describe('ColorField — controlled reconcile trims whitespace', () => {
+  test('value with surrounding whitespace is accepted', async () => {
     const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', value: '#ff0000', disabled: true },
+      id: 'color',
+      value: '  #ff0000  ',
     });
-    const mirror = getNamedHidden(container, 'c');
-    expect(mirror).not.toBeNull();
-    expect(mirror!.disabled).toBe(true);
-  });
-
-  test('enabled hidden mirror has disabled false and carries the value', () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', name: 'c', value: '#ff0000' },
-    });
-    const mirror = getNamedHidden(container, 'c');
-    expect(mirror).not.toBeNull();
-    expect(mirror!.disabled).toBe(false);
-    expect(mirror!.value).toBe('#ff0000');
+    await tick();
+    const input = getInput(container);
+    expect(input.value).toBe('#ff0000');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
   });
 });
 
-describe('ColorField — controlled rerender syncs custom validity', () => {
-  test('valid -> invalid controlled rerender blocks native submission', async () => {
+describe('ColorField — Enter in controlled mode with equivalent syntax', () => {
+  test('controlled value + user typing equivalent syntax + Enter still submits', async () => {
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      value: '#ff0000',
+      enterBehavior: 'commit-then-submit',
+      onsubmit,
+    });
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'rgb(255,0,0)' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ColorField — forwarded form attributes', () => {
+  test('required forwards to native input', () => {
+    const { container } = render(ColorField, { id: 'color', required: true });
+    const input = getInput(container);
+    expect(input.required).toBe(true);
+  });
+
+  test('readonly forwards to native input', () => {
+    const { container } = render(ColorField, { id: 'color', readonly: true });
+    const input = getInput(container);
+    expect(input.readOnly).toBe(true);
+  });
+
+  test('placeholder forwards to native input', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      placeholder: 'Pick a color',
+    });
+    const input = getInput(container);
+    expect(input.placeholder).toBe('Pick a color');
+  });
+
+  test('ariaLabel forwards as aria-label', () => {
+    const { container } = render(ColorField, {
+      id: 'color',
+      ariaLabel: 'Accent color',
+    });
+    const input = getInput(container);
+    expect(input.getAttribute('aria-label')).toBe('Accent color');
+  });
+});
+
+describe('ColorField — Enter-clear sync regression', () => {
+  test('clearing the field and pressing Enter submits with empty hidden mirror', async () => {
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    let hiddenAtSubmit: string | undefined;
+    const onsubmitCapture: (event: SubmitEvent) => void = (event) => {
+      const target = event.target as HTMLFormElement;
+      const mirror = target.querySelector<HTMLInputElement>('input[type="hidden"][name="c"]');
+      hiddenAtSubmit = mirror?.value;
+      onsubmit(event);
+    };
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      defaultValue: '#ff0000',
+      enterBehavior: 'commit-then-submit',
+      onsubmit: onsubmitCapture,
+    });
+    const input = getInput(container);
+    expect(input.value).toBe('#ff0000');
+    await fireEvent.input(input, { target: { value: '' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await tick();
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+    expect(hiddenAtSubmit).toBe('');
+  });
+});
+
+describe('ColorField — reset honors formats gate', () => {
+  test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
+    const { container } = render(ColorFieldFormFixture, {
+      id: 'color',
+      name: 'c',
+      formats: ['hex'],
+      defaultValue: 'rgb(0,0,0)',
+    });
+    const input = getInput(container);
+    // Initial: defaultValue is rgb() but formats=['hex'] — silently rejected at mount.
+    expect(input.value).toBe('');
+    await typeAndBlur(input, '#abcdef');
+    expect(input.value).toBe('#abcdef');
+    const form = q<HTMLFormElement>(container, 'form');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    // After reset: defaultValue still fails formats gate; field clears.
+    expect(input.value).toBe('');
+  });
+});
+
+describe('ColorField — default error message reflects formats', () => {
+  test('formats=[hex] surfaces a hex-only error message', async () => {
+    const { container } = render(ColorField, { id: 'color', formats: ['hex'] });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    expect(errorText).not.toContain('hsl');
+  });
+
+  test('default formats produces the legacy three-format message', async () => {
+    const { container } = render(ColorField, { id: 'color' });
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).toContain('rgb()');
+    expect(errorText).toContain('hsl()');
+  });
+
+  test('error wording refreshes when formats changes at runtime', async () => {
     const { container, rerender } = render(ColorField, {
-      props: { id: 'cf', name: 'c', value: '#ff0000' },
+      id: 'color',
+      formats: ['hex'],
     });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    let errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    // Widen formats to include rgb. The visible text is now valid; the error
+    // should be cleared.
+    await rerender({ id: 'color', formats: ['hex', 'rgb'] });
     await tick();
-    const input = getVisibleInput(container);
-    expect(input.checkValidity()).toBe(true);
-    await rerender({ id: 'cf', name: 'c', value: 'bad' });
-    await tick();
-    expect(input.validity.customError).toBe(true);
-    expect(input.checkValidity()).toBe(false);
-  });
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toBe('');
 
-  test('invalid -> valid controlled rerender clears custom validity', async () => {
-    const { container, rerender } = render(ColorField, {
-      props: { id: 'cf', name: 'c', value: 'bad' },
-    });
-    await tick();
-    const input = getVisibleInput(container);
-    expect(input.validity.customError).toBe(true);
-    await rerender({ id: 'cf', name: 'c', value: '#ff0000' });
-    await tick();
-    expect(input.validity.customError).toBe(false);
-    expect(input.checkValidity()).toBe(true);
-  });
-});
+    // Now type something that fails the new gate (an hsl color, still not allowed)
+    // and assert the wording mentions the currently allowed formats, not the old set.
+    await typeAndBlur(input, 'hsl(0,100%,50%)');
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('rgb()');
 
-describe('ColorField — error message reflects accepted formats', () => {
-  test('formats=hex produces a hex-only error message', async () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', formats: ['hex'] },
-    });
-    await typeAndBlur(container, 'rgb(0,0,0)');
-    expect(container.textContent).toContain('Enter a valid hex color.');
-    expect(container.textContent).not.toContain('rgb()');
-  });
-
-  test('formats=hex,rgb produces a two-format error message', async () => {
-    const { container } = render(ColorField, {
-      props: { id: 'cf', formats: ['hex', 'rgb'] },
-    });
-    await typeAndBlur(container, 'hsl(0,0%,0%)');
-    expect(container.textContent).toContain('Enter a valid hex or rgb() color.');
+    // Narrow back down. Wording should refresh even though the text still
+    // fails the gate.
+    await rerender({ id: 'color', formats: ['hex'] });
+    await tick();
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    expect(errorText).not.toContain('hsl');
   });
 });

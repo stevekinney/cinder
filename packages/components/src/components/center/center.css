@@ -1,0 +1,17 @@
+/* ========================================
+ * CENTER
+ * ======================================== */
+
+.cinder-center {
+  margin-inline: auto;
+  max-inline-size: var(--center-max-width, var(--cinder-content-width));
+  min-block-size: var(--center-min-height);
+}
+
+.cinder-center[data-cinder-intrinsic='true'] {
+  inline-size: fit-content;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

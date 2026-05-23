@@ -6,21 +6,21 @@ const schema = {
   properties: {
     id: {
       type: 'string',
-      description: 'Stable id applied to the inner `<input>`. Required (mirrors `Input`).',
+      description: 'Inner `<input>` id. Required (mirrors Input).',
     },
     value: {
       type: 'string',
       description:
-        'Controlled value. One-way: parent passes, child reads. NOT `$bindable`;\npair with `onchange`. Reading the value yields a canonical hex string\n(`#rrggbb`, or `#rrggbbaa` when `alpha={true}` and `a < 1`).',
+        'Controlled value as a hex string. One-way: parent sets, child reads.\nNot bindable — use `onchange` to observe commits. Accepts any color\nstring the configured `formats` allow when set externally.',
     },
     defaultValue: {
       type: 'string',
-      description: 'Initial value when uncontrolled. Accepts any of the allowed `formats`.',
+      description: 'Initial value when uncontrolled. Accepts any allowed `formats` input.',
     },
     alpha: {
       type: 'boolean',
       description:
-        'Accept and emit alpha when partial. When `false` (default), `#rrggbbaa`\nis accepted on input but the alpha byte is stripped on emit.',
+        'Accept and emit alpha when the parsed value has partial alpha. When\n`false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed\nbut alpha is stripped on emit.',
     },
     formats: {
       type: 'array',
@@ -28,24 +28,42 @@ const schema = {
         enum: ['hex', 'rgb', 'hsl'],
       },
       description:
-        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is\nalways hex.",
+        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex.",
     },
     disabled: {
       type: 'boolean',
       description: 'Disable the input.',
     },
+    required: {
+      type: 'boolean',
+      description: 'Mark the input as required for form submission and a11y.',
+    },
+    readonly: {
+      type: 'boolean',
+      description: 'Render the inner `<input>` as read-only.',
+    },
     name: {
       type: 'string',
       description:
-        'Form field name. When set, a hidden sibling `<input>` mirrors the current\ncommitted canonical hex for form submission. The hidden input renders an\nempty value while a parse error is active so external submits do not send\na stale prior value.',
+        'Form field name. When set, the hidden mirror input contributes the current\ncommitted hex value to native form submission.',
     },
     placeholder: {
       type: 'string',
       description: 'Placeholder text for the inner `<input>`.',
     },
+    ariaLabel: {
+      type: 'string',
+      description:
+        'Accessible label applied directly to the inner `<input>` when no `FormField` wraps it.',
+    },
+    ariaLabelledby: {
+      type: 'string',
+      description: 'Id of an external element that labels the inner `<input>`.',
+    },
     class: {
       type: 'string',
-      description: 'Additional classes merged onto the outer wrapper (`.cinder-color-field`).',
+      description:
+        'Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`).',
     },
     errorMessage: {
       type: 'string',
@@ -54,7 +72,7 @@ const schema = {
     enterBehavior: {
       enum: ['commit-then-submit', 'commit-only'],
       description:
-        "Commit-on-Enter behavior. Default `'commit-then-submit'`:\n- `'commit-then-submit'`: Enter commits, then calls `requestSubmit` on\n  the associated form for any non-failure outcome.\n- `'commit-only'`: Enter commits but never submits, regardless of outcome.",
+        "Commit-on-Enter behavior. Default `'commit-then-submit'`:\n  - `'commit-then-submit'`: Enter commits the value, then lets the form's\n    native submission proceed via `requestSubmit`.\n  - `'commit-only'`: Enter commits and `preventDefault()`s, suppressing\n    form submission (useful in dialogs / multi-field flows where Enter\n    must not submit).",
     },
   },
   additionalProperties: false,

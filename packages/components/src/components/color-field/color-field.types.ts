@@ -1,69 +1,60 @@
-import type { HTMLInputAttributes } from 'svelte/elements';
-
-/** Accepted input formats for `ColorField`. Output is always hex regardless. */
+/** Accepted *input* color string formats. Output is always hex. */
 export type ColorFieldFormat = 'hex' | 'rgb' | 'hsl';
 
-/**
- * Subset of native input attributes safe to forward onto the underlying
- * `<input>`. Deliberately narrow — `value`, `id`, `class`, `disabled`, `name`,
- * `placeholder`, and event handlers are owned by `ColorField` and excluded from
- * this passthrough.
- */
-type ForwardedInputAttributes = Pick<
-  HTMLInputAttributes,
-  | 'required'
-  | 'readonly'
-  | 'autocomplete'
-  | 'autofocus'
-  | 'inputmode'
-  | 'aria-label'
-  | 'aria-labelledby'
->;
-
-/** Props for `ColorField`. */
-export type ColorFieldProps = ForwardedInputAttributes & {
-  /** Stable id applied to the inner `<input>`. Required (mirrors `Input`). */
+/** Props for ColorField. */
+export type ColorFieldProps = {
+  /** Inner `<input>` id. Required (mirrors Input). */
   id: string;
   /**
-   * Controlled value. One-way: parent passes, child reads. NOT `$bindable`;
-   * pair with `onchange`. Reading the value yields a canonical hex string
-   * (`#rrggbb`, or `#rrggbbaa` when `alpha={true}` and `a < 1`).
+   * Controlled value as a hex string. One-way: parent sets, child reads.
+   * Not bindable — use `onchange` to observe commits. Accepts any color
+   * string the configured `formats` allow when set externally.
    */
   value?: string;
-  /** Initial value when uncontrolled. Accepts any of the allowed `formats`. */
+  /** Initial value when uncontrolled. Accepts any allowed `formats` input. */
   defaultValue?: string;
   /**
-   * Accept and emit alpha when partial. When `false` (default), `#rrggbbaa`
-   * is accepted on input but the alpha byte is stripped on emit.
+   * Accept and emit alpha when the parsed value has partial alpha. When
+   * `false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed
+   * but alpha is stripped on emit.
    */
   alpha?: boolean;
-  /**
-   * Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is
-   * always hex.
-   */
+  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex. */
   formats?: readonly ColorFieldFormat[];
   /** Disable the input. */
   disabled?: boolean;
+  /** Mark the input as required for form submission and a11y. */
+  required?: boolean;
+  /** Render the inner `<input>` as read-only. */
+  readonly?: boolean;
   /**
-   * Form field name. When set, a hidden sibling `<input>` mirrors the current
-   * committed canonical hex for form submission. The hidden input renders an
-   * empty value while a parse error is active so external submits do not send
-   * a stale prior value.
+   * Form field name. When set, the hidden mirror input contributes the current
+   * committed hex value to native form submission.
    */
   name?: string;
   /** Placeholder text for the inner `<input>`. */
   placeholder?: string;
-  /** Additional classes merged onto the outer wrapper (`.cinder-color-field`). */
+  /** Accessible label applied directly to the inner `<input>` when no `FormField` wraps it. */
+  ariaLabel?: string;
+  /** Id of an external element that labels the inner `<input>`. */
+  ariaLabelledby?: string;
+  /** Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`). */
   class?: string;
   /** Override the default parse-failure error message. */
   errorMessage?: string;
   /**
    * Commit-on-Enter behavior. Default `'commit-then-submit'`:
-   * - `'commit-then-submit'`: Enter commits, then calls `requestSubmit` on
-   *   the associated form for any non-failure outcome.
-   * - `'commit-only'`: Enter commits but never submits, regardless of outcome.
+   *   - `'commit-then-submit'`: Enter commits the value, then lets the form's
+   *     native submission proceed via `requestSubmit`.
+   *   - `'commit-only'`: Enter commits and `preventDefault()`s, suppressing
+   *     form submission (useful in dialogs / multi-field flows where Enter
+   *     must not submit).
    */
   enterBehavior?: 'commit-then-submit' | 'commit-only';
-  /** Fires on a successful blur or Enter commit when the canonical hex changes. */
+  /**
+   * Fires on successful blur-time commit when the canonical hex actually
+   * changes. Value callback by repo convention — not forwarded to the inner
+   * native `<input>`.
+   */
   onchange?: (value: string) => void;
 };
