@@ -24,7 +24,7 @@
   color: var(--cinder-text);
   font: inherit;
   font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-weight-medium);
+  font-weight: var(--cinder-font-medium);
   line-height: var(--cinder-leading-snug);
   cursor: pointer;
   transition:

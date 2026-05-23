@@ -43,6 +43,12 @@
   const sentinelEnabled = $derived(
     hasMore && !loading && !errorState && !requestInFlight && retryCount < maxRetries,
   );
+  const sentinelIntersection = $derived(
+    useIntersection(handleIntersect, {
+      rootMargin,
+      enabled: () => sentinelEnabled,
+    }),
+  );
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
   const buttonDisabled = $derived(busy && !errorState);
 
@@ -103,14 +109,7 @@
 
 <div class={mergedClassName} aria-busy={busy}>
   {#if hasMore && !errorState}
-    <div
-      aria-hidden="true"
-      class="cinder-load-more__sentinel"
-      {@attach useIntersection(handleIntersect, {
-        rootMargin,
-        enabled: () => sentinelEnabled,
-      })}
-    ></div>
+    <div aria-hidden="true" class="cinder-load-more__sentinel" {@attach sentinelIntersection}></div>
   {/if}
 
   {#if hasMore}
