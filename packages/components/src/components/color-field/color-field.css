@@ -57,3 +57,27 @@
     3px -3px,
     -3px 0;
 }
+
+/*
+ * Forced-colors mode strips background gradients to system tokens, which
+ * flattens the swatch's checker pattern and makes empty / partial-alpha
+ * states indistinguishable from opaque ones. Fall back to border styles so
+ * the state remains visible.
+ */
+@media (forced-colors: active) {
+  .cinder-color-field__swatch {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background-color: ButtonFace;
+  }
+
+  .cinder-color-field__swatch[data-cinder-empty] {
+    background-image: none;
+    border-style: dashed;
+  }
+
+  .cinder-color-field__swatch[data-cinder-alpha]:not([data-cinder-empty]) {
+    background-image: none;
+    border-style: dotted;
+  }
+}

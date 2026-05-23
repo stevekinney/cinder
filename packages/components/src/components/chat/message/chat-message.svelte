@@ -620,9 +620,11 @@
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-retry:hover {
-    background: var(--cinder-color-danger-bg);
-    border-color: var(--cinder-danger);
+  @media (hover: hover) {
+    .chat-message-retry:hover {
+      background: var(--cinder-color-danger-bg);
+      border-color: var(--cinder-danger);
+    }
   }
 
   .chat-message-retry:focus-visible {
@@ -741,9 +743,11 @@
       background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-copy:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .chat-message-copy:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .chat-message-copy:focus-visible {
@@ -755,9 +759,11 @@
     color: var(--cinder-success);
   }
 
-  .chat-message-copy-success:hover {
-    color: var(--cinder-color-success-fg);
-    background: var(--cinder-color-success-bg);
+  @media (hover: hover) {
+    .chat-message-copy-success:hover {
+      color: var(--cinder-color-success-fg);
+      background: var(--cinder-color-success-bg);
+    }
   }
 
   /* Edit button (icon action button, visually identical to copy button) */
@@ -777,9 +783,11 @@
       background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-edit-button:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .chat-message-edit-button:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .chat-message-edit-button:focus-visible {
@@ -831,8 +839,10 @@
     transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-edit-save:hover {
-    background: color-mix(in oklch, var(--cinder-accent), black 15%);
+  @media (hover: hover) {
+    .chat-message-edit-save:hover {
+      background: color-mix(in oklch, var(--cinder-accent), black 15%);
+    }
   }
 
   .chat-message-edit-save:focus-visible {
@@ -855,9 +865,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .chat-message-edit-cancel:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .chat-message-edit-cancel:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .chat-message-edit-cancel:focus-visible {

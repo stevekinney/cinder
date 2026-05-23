@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "rating",
+  "import": "cinder/rating",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic rating",
+      "description": "Five-star rating with whole-star precision and keyboard navigation.",
+      "code": "<script lang=\"ts\">\n  import { Rating } from 'cinder/rating';\n  let score = $state(0);\n</script>\n\n<Rating id=\"basic-rating\" bind:value={score} label=\"Rate this article\" />\n\n{#if score > 0}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">You rated this {score} of 5.</p>\n{/if}\n"
+    },
+    {
+      "id": "half-stars",
+      "title": "Half-star precision",
+      "description": "Five-star rating with half-star steps for finer-grained scores.",
+      "code": "<script lang=\"ts\">\n  import { Rating } from 'cinder/rating';\n  let score = $state(0);\n</script>\n\n<Rating id=\"half-star-rating\" bind:value={score} precision=\"half\" label=\"Restaurant rating\" />\n"
+    },
+    {
+      "id": "readonly",
+      "title": "Readonly display",
+      "description": "Non-interactive readonly rating shown alongside a review count.",
+      "code": "<script lang=\"ts\">\n  import { Rating } from 'cinder/rating';\n</script>\n\n<div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n  <Rating\n    id=\"readonly-rating\"\n    value={4.5}\n    precision=\"half\"\n    readonly\n    label=\"Average customer rating\"\n    hideLabel\n  />\n  <span style=\"color: var(--cinder-text-muted);\">4.5 (1,238 reviews)</span>\n</div>\n"
+    }
+  ]
+}

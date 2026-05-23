@@ -268,9 +268,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .link-popover-close:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .link-popover-close:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .link-popover-close:focus-visible {

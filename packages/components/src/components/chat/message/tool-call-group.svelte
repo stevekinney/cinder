@@ -147,8 +147,10 @@
 
   /* Hover: subtle inset tint instead of the full surface-hover gray, which
    * looked harsh against the colored card border. */
-  .tool-call-header:hover {
-    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+  @media (hover: hover) {
+    .tool-call-header:hover {
+      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+    }
   }
 
   /* Focus: ring travels via box-shadow, not outline, so it sits inside the
