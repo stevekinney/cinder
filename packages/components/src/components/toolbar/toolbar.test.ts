@@ -152,6 +152,35 @@ describe('Toolbar', () => {
     expect(document.activeElement).toBe(buttons[0]!);
   });
 
+  test('Home and End place the caret at the semantic editable boundary', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet(`
+          <input aria-label="First" value="abc" />
+          <button type="button">Middle</button>
+          <input aria-label="Last" value="def" />
+        `),
+      },
+    });
+
+    const first = screen.getByRole<HTMLInputElement>('textbox', { name: 'First' });
+    const middle = screen.getByRole('button', { name: 'Middle' });
+    const last = screen.getByRole<HTMLInputElement>('textbox', { name: 'Last' });
+
+    middle.focus();
+    await fireEvent.keyDown(middle, { key: 'Home' });
+    await flushEffects();
+    expect(document.activeElement).toBe(first);
+    expect(first.selectionStart).toBe(0);
+
+    middle.focus();
+    await fireEvent.keyDown(middle, { key: 'End' });
+    await flushEffects();
+    expect(document.activeElement).toBe(last);
+    expect(last.selectionStart).toBe(last.value.length);
+  });
+
   test('editable inputs keep ArrowRight until the caret reaches the boundary', async () => {
     render(Toolbar, {
       props: {

@@ -111,10 +111,10 @@
     return direction === -1 ? element.selectionStart === 0 : element.selectionEnd === valueLength;
   }
 
-  function placeCaretForDirection(element: HTMLElement, direction: -1 | 1): void {
+  function placeCaret(element: HTMLElement, placement: 'start' | 'end'): void {
     if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return;
     if (typeof element.setSelectionRange !== 'function') return;
-    const position = direction === -1 ? element.value.length : 0;
+    const position = placement === 'end' ? element.value.length : 0;
     element.setSelectionRange(position, position);
   }
 
@@ -220,13 +220,13 @@
     activeItem = resolvedActiveItem;
   }
 
-  function moveFocus(nextIndex: number, direction: -1 | 1): void {
+  function moveFocus(nextIndex: number, caretPlacement: 'start' | 'end'): void {
     const nextItem = toolbarItems[nextIndex];
     if (!nextItem) return;
     activeItem = nextItem;
     syncToolbarItems(nextItem);
     nextItem.focus();
-    placeCaretForDirection(nextItem, direction);
+    placeCaret(nextItem, caretPlacement);
   }
 
   function getCurrentToolbarIndex(target: HTMLElement): number {
@@ -244,7 +244,7 @@
           ? currentIndex - 1
           : -1;
     if (nextIndex < 0) return false;
-    moveFocus(nextIndex, nextIndex > currentIndex ? 1 : -1);
+    moveFocus(nextIndex, nextIndex > currentIndex ? 'start' : 'end');
     return true;
   }
 
@@ -304,7 +304,7 @@
     event.stopPropagation();
     moveFocus(
       nextIndex,
-      event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'Home' ? -1 : 1,
+      event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'End' ? 'end' : 'start',
     );
   }
 
