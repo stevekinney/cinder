@@ -8,6 +8,7 @@ import {
   getHandleAriaState,
   getLayoutSnapshot,
   getPaneLayoutSignature,
+  hasLayoutPixelChanges,
   rebaseLayoutState,
   resolveSizeToPixels,
   setLeadingPanePixels,
@@ -205,6 +206,40 @@ describe('resizable-panels sizing', () => {
 
     expect(resized.panels[0]!.sizePixels).toBe(220);
     expect(resized.panels[1]!.sizePixels).toBe(380);
+  });
+
+  test('reports no pointer change when constraints keep the layout fixed', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 100, unit: 'px' },
+        maxSize: { value: 220, unit: 'px' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 100, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
+    const constrained = applyPairDelta(state, maxConstrainedPanes, 0, 200);
+    const dragged = applyPointerDragDelta(constrained, maxConstrainedPanes, 0, 200, 260);
+
+    expect(constrained.panels[0]!.sizePixels).toBe(220);
+    expect(dragged.changed).toBe(false);
+    expect(dragged.state).toBe(constrained);
+  });
+
+  test('compares layout pixel changes after constraints and snapping', () => {
+    const state = createInitialLayoutState(panes, 1000, 'horizontal');
+    const resized = applyPairDelta(state, panes, 0, 100);
+
+    expect(hasLayoutPixelChanges(state, state)).toBe(false);
+    expect(hasLayoutPixelChanges(state, resized)).toBe(true);
   });
 
   test('changes pane layout signature when constraints change without changing pane ids', () => {

@@ -193,4 +193,44 @@ describe('ResizablePanels', () => {
 
     expect(onlayoutcommit).not.toHaveBeenCalled();
   });
+
+  test('keyboard resize does not commit when constraints keep the layout fixed', async () => {
+    const onlayoutcommit = mock(() => {});
+    const constrainedPanes = [
+      {
+        id: 'sidebar',
+        label: 'Sidebar',
+        defaultSize: { value: 220, unit: 'px' },
+        minSize: { value: 100, unit: 'px' },
+        maxSize: { value: 220, unit: 'px' },
+      },
+      {
+        id: 'editor',
+        label: 'Editor',
+        defaultSize: { value: 380, unit: 'px' },
+        minSize: { value: 100, unit: 'px' },
+      },
+    ] satisfies import('./resizable-panels.types.ts').ResizablePanelDefinition[];
+    const { container } = render(ResizablePanels, {
+      panes: constrainedPanes,
+      children: textSnippet,
+      onlayoutcommit,
+    });
+    mockMeasurements(container, { rootWidth: 612 });
+    onlayoutcommit.mockClear();
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    await fireEvent.keyDown(handle, { key: 'ArrowRight' });
+
+    expect(onlayoutcommit).not.toHaveBeenCalled();
+  });
+
+  test('measurement from zero width does not commit a rebased default layout', async () => {
+    const onlayoutcommit = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    mockMeasurements(container, { rootWidth: 12 });
+    mockMeasurements(container, { rootWidth: 812 });
+
+    expect(onlayoutcommit).not.toHaveBeenCalled();
+  });
 });

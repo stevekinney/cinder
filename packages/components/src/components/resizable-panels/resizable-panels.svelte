@@ -38,6 +38,7 @@
     applyPairSnap,
     createInitialLayoutState,
     getHandleAriaState,
+    hasLayoutPixelChanges,
     getLayoutSnapshot,
     getPaneLayoutSignature,
     rebaseLayoutState,
@@ -137,6 +138,7 @@
       layoutState.availablePanePixels !== normalizedAvailablePanePixels ||
       layoutState.orientation !== orientation
     ) {
+      const previousAvailablePanePixels = layoutState.availablePanePixels;
       layoutState = rebaseLayoutState(
         layoutState,
         panes,
@@ -144,7 +146,9 @@
         orientation,
       );
       previousPaneLayoutSignature = nextPaneLayoutSignature;
-      emit('rebase', true);
+      if (previousAvailablePanePixels > 0 && normalizedAvailablePanePixels > 0) {
+        emit('rebase', true);
+      }
       return;
     }
     if (
@@ -303,7 +307,9 @@
 
     if (!nextState) return;
     event.preventDefault();
-    layoutState = applyPairSnap(nextState, panes, handleIndex, snapThreshold);
+    const snappedState = applyPairSnap(nextState, panes, handleIndex, snapThreshold);
+    if (!hasLayoutPixelChanges(layoutState, snappedState)) return;
+    layoutState = snappedState;
     emit('keyboard', true);
   }
 

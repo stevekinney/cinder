@@ -378,6 +378,21 @@ function clonePanels(state: ResizablePanelsLayoutState): PanelRuntimeState[] {
   return state.panels.map((panel) => ({ ...panel }));
 }
 
+export function hasLayoutPixelChanges(
+  previous: ResizablePanelsLayoutState,
+  next: ResizablePanelsLayoutState,
+): boolean {
+  if (previous.panels.length !== next.panels.length) return true;
+  return previous.panels.some((panel, index) => {
+    const nextPanel = next.panels[index];
+    if (!nextPanel) return true;
+    return (
+      Math.abs(panel.sizePixels - nextPanel.sizePixels) >= 0.001 ||
+      panel.collapsed !== nextPanel.collapsed
+    );
+  });
+}
+
 export function setLeadingPanePixels(
   state: ResizablePanelsLayoutState,
   panes: ResizablePanelDefinition[],
@@ -482,10 +497,12 @@ export function applyPointerDragDelta(
   }
 
   const resized = applyPairDelta(state, panes, handleIndex, delta);
+  const snapped = applyPairSnap(resized, panes, handleIndex, threshold);
+  const changed = hasLayoutPixelChanges(state, snapped);
   return {
     axis: currentAxis,
-    changed: true,
-    state: applyPairSnap(resized, panes, handleIndex, threshold),
+    changed,
+    state: changed ? snapped : state,
   };
 }
 

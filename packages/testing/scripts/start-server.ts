@@ -36,6 +36,13 @@ async function readPlaygroundPortFile(path: string): Promise<number | null> {
   return Number.isInteger(port) && port > 0 ? port : null;
 }
 
+export function parsePlaygroundListeningPort(output: string): number | null {
+  const match = /\[playground\] Listening at http:\/\/localhost:(\d+)/.exec(output);
+  if (!match) return null;
+  const port = Number(match[1]);
+  return Number.isInteger(port) && port > 0 ? port : null;
+}
+
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   return new Promise((resolve) => {
     // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
@@ -79,6 +86,7 @@ async function main(): Promise<void> {
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
+    let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
@@ -88,13 +96,16 @@ async function main(): Promise<void> {
     });
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
+      const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      reportedPlaygroundPort = parsePlaygroundListeningPort(output) ?? reportedPlaygroundPort;
     });
 
     const startedAt = Date.now();
     const deadline = startedAt + 120_000;
     let lastLog = startedAt;
     while (Date.now() < deadline) {
-      const selectedPort = await readPlaygroundPortFile(playgroundPortFile);
+      const selectedPort =
+        (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
       if (selectedPort !== null) {
         targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
         if (await ping()) break;
@@ -189,7 +200,9 @@ async function main(): Promise<void> {
   process.exit(playwrightCode);
 }
 
-main().catch((error: unknown) => {
-  console.error('start-server failed:', error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('start-server failed:', error);
+    process.exit(1);
+  });
+}
