@@ -408,10 +408,6 @@
       "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
       "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
     },
-    "./cinder-provider/examples": {
-      "import": "./src/components/cinder-provider/cinder-provider.examples.json",
-      "default": "./src/components/cinder-provider/cinder-provider.examples.json"
-    },
     "./cluster": {
       "types": "./dist/components/cluster/index.d.ts",
       "svelte": "./src/components/cluster/index.ts",
@@ -2082,6 +2078,27 @@
     "./textarea/examples": {
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
+    },
+    "./time-picker": {
+      "types": "./dist/components/time-picker/index.d.ts",
+      "svelte": "./src/components/time-picker/index.ts",
+      "node": "./dist/server/components/time-picker/index.js",
+      "default": "./dist/components/time-picker/index.js"
+    },
+    "./time-picker/schema": {
+      "types": "./dist/components/time-picker/time-picker.schema.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.schema.ts"
+    },
+    "./time-picker/variables": {
+      "types": "./dist/components/time-picker/time-picker.variables.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.variables.ts"
+    },
+    "./time-picker/styles": {
+      "default": "./dist/components/time-picker/time-picker.css"
+    },
+    "./time-picker/examples": {
+      "import": "./src/components/time-picker/time-picker.examples.json",
+      "default": "./src/components/time-picker/time-picker.examples.json"
     },
     "./toast-region": {
       "types": "./dist/components/toast-region/index.d.ts",

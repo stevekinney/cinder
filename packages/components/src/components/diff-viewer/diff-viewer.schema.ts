@@ -21,6 +21,14 @@ const schema = {
       type: 'boolean',
       description: 'Whether the viewer is read-only (hides revert buttons)',
     },
+    hunks: {
+      type: 'array',
+      items: {
+        type: 'object',
+      },
+      description:
+        'Bindable: reactive access to computed hunks.\nParent components can bind to this to reactively access hunk data.',
+    },
     viewMode: {
       enum: ['unified', 'final', 'original'],
       description:
@@ -35,10 +43,6 @@ const schema = {
   required: ['current', 'original'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'hunks',
-        reason: 'unknown-shape',
-      },
       {
         name: 'onrevertall',
         reason: 'function-or-snippet',

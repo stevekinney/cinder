@@ -51,7 +51,7 @@
 }
 
 .cinder-sortable-handle:focus-visible {
-  outline: var(--cinder-focus-ring, 2px solid currentcolor);
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: 2px;
   border-radius: 2px;
 }

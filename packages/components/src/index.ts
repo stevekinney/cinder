@@ -498,6 +498,9 @@ export type { Highlighter } from './utilities/highlighter.ts';
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
 
+export { default as TimePicker } from './components/time-picker/index.ts';
+export type { TimePickerProps } from './components/time-picker/index.ts';
+
 export { default as Tree } from './components/tree/index.ts';
 export type { TreeProps, TreeSelectionMode } from './components/tree/index.ts';
 
