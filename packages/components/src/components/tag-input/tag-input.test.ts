@@ -352,6 +352,27 @@ describe('TagInput form participation', () => {
     expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
   });
 
+  test('disabled tag inputs do not contribute hidden values to form data', () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      disabled: true,
+      defaultValue: ['Svelte', 'Bun'],
+    });
+
+    try {
+      const hiddenInputs = Array.from(
+        mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+      );
+      expect(hiddenInputs).toHaveLength(2);
+      expect(hiddenInputs.every((hiddenInput) => hiddenInput.disabled)).toBe(true);
+
+      const formData = new FormData(mount.form);
+      expect(formData.getAll('tags')).toEqual([]);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
   test('uncontrolled reset restores defaultValue, clears draft text, clears inline error, and does not fire onchange', async () => {
     const onchange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({

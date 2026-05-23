@@ -378,7 +378,7 @@
 
   {#if name}
     {#each currentTags as tag, index (`hidden:${index}:${tag}`)}
-      <input type="hidden" {name} value={tag} />
+      <input type="hidden" {name} value={tag} disabled={resolvedDisabled} />
     {/each}
   {/if}
 </div>
