@@ -9,17 +9,17 @@
     "preview": "node build/index.js"
   },
   "overrides": {
-    "@cinder/commentary": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/diff/cinder-diff-0.0.1.tgz",
-    "@cinder/editor": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/editor/cinder-editor-0.0.1.tgz",
-    "@cinder/markdown": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/markdown/cinder-markdown-0.0.1.tgz"
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz"
   },
   "dependencies": {
-    "@cinder/commentary": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/diff/cinder-diff-0.0.1.tgz",
-    "@cinder/editor": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/editor/cinder-editor-0.0.1.tgz",
-    "@cinder/markdown": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/markdown/cinder-markdown-0.0.1.tgz",
-    "cinder": "file:/Users/stevekinney/.codex/worktrees/b84f/cinder/packages/components/cinder-0.0.1.tgz"
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz",
+    "cinder": "file:../../cinder-0.0.1.tgz"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.4",

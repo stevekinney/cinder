@@ -340,7 +340,12 @@ function getPairBounds(
     leading.collapsed && options.allowCollapsedLeadingMinimum ? 0 : leadingConstraints.minPixels;
   const trailingMinimum =
     trailing.collapsed && options.allowCollapsedTrailingMinimum ? 0 : trailingConstraints.minPixels;
-  const maximumLeading = Math.max(minimumLeading, pairTotal - trailingMinimum);
+  const pairMaximumLeading = pairTotal - trailingMinimum;
+  const maximumLeading = clamp(
+    leadingConstraints.maxPixels,
+    minimumLeading,
+    Math.max(minimumLeading, pairMaximumLeading),
+  );
 
   return { pairTotal, minimumLeading, maximumLeading };
 }

@@ -162,4 +162,28 @@ describe('resizable-panels sizing', () => {
     expect(dragged.state.panels[0]!.sizePixels).toBeCloseTo(150, 3);
     expect(dragged.state.panels[1]!.sizePixels).toBeCloseTo(130, 3);
   });
+
+  test('respects maxSize while resizing an adjacent pair', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 100, unit: 'px' },
+        maxSize: { value: 220, unit: 'px' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 100, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
+    const resized = applyPairDelta(state, maxConstrainedPanes, 0, 200);
+
+    expect(resized.panels[0]!.sizePixels).toBe(220);
+    expect(resized.panels[1]!.sizePixels).toBe(380);
+  });
 });
