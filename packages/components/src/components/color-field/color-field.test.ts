@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
@@ -15,27 +15,7 @@ const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
-  // Tear down standalone forms first so happy-dom does not hit a detached-child
-  // race while Testing Library is unmounting the rendered Svelte tree.
-  document.querySelectorAll('body > form').forEach((form) => {
-    try {
-      form.remove();
-    } catch {
-      // ignore detached-node errors
-    }
-  });
-  try {
-    cleanup();
-  } catch (error) {
-    if (
-      error instanceof DOMException &&
-      error.message.includes("Failed to execute 'removeChild' on 'Node'")
-    ) {
-      document.body.innerHTML = '';
-      return;
-    }
-    throw error;
-  }
+  document.body.innerHTML = '';
 });
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
