@@ -190,6 +190,9 @@ export type { KbdProps } from './components/kbd/index.ts';
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
 
+export { default as LoadMore } from './components/load-more/index.ts';
+export type { LoadMoreProps } from './components/load-more/index.ts';
+
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
   EditorHandle,
@@ -413,6 +416,7 @@ export type {
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
 
+export { useIntersection } from './utilities/use-intersection.svelte.ts';
 export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 

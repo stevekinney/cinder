@@ -969,6 +969,27 @@
     "./label/styles": {
       "default": "./dist/components/label/label.css"
     },
+    "./load-more": {
+      "types": "./dist/components/load-more/index.d.ts",
+      "svelte": "./src/components/load-more/index.ts",
+      "node": "./dist/server/components/load-more/index.js",
+      "default": "./dist/components/load-more/index.js"
+    },
+    "./load-more/schema": {
+      "types": "./dist/components/load-more/load-more.schema.d.ts",
+      "svelte": "./src/components/load-more/load-more.schema.ts"
+    },
+    "./load-more/variables": {
+      "types": "./dist/components/load-more/load-more.variables.d.ts",
+      "svelte": "./src/components/load-more/load-more.variables.ts"
+    },
+    "./load-more/styles": {
+      "default": "./dist/components/load-more/load-more.css"
+    },
+    "./load-more/examples": {
+      "import": "./src/components/load-more/load-more.examples.json",
+      "default": "./src/components/load-more/load-more.examples.json"
+    },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
       "svelte": "./src/components/markdown-editor/index.ts",
