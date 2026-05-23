@@ -119,10 +119,12 @@
   }
 
   function isCssHidden(element: HTMLElement): boolean {
-    let current: HTMLElement | null = element;
+    const elementStyle = getComputedStyle(element);
+    if (elementStyle.display === 'none' || elementStyle.visibility === 'hidden') return true;
+
+    let current = element.parentElement;
     while (current) {
-      const style = getComputedStyle(current);
-      if (style.display === 'none' || style.visibility === 'hidden') return true;
+      if (getComputedStyle(current).display === 'none') return true;
       current = current.parentElement;
     }
     return false;
@@ -208,7 +210,10 @@
     const resolvedActiveItem = activeIndex >= 0 ? (items[activeIndex] ?? null) : null;
 
     for (const [index, item] of items.entries()) {
-      item.tabIndex = index === activeIndex ? 0 : -1;
+      const nextTabIndex = index === activeIndex ? 0 : -1;
+      if (item.tabIndex !== nextTabIndex) {
+        item.tabIndex = nextTabIndex;
+      }
     }
 
     toolbarItems = items;
@@ -363,6 +368,20 @@
       subtree: true,
       childList: true,
       attributes: true,
+      attributeFilter: [
+        'aria-disabled',
+        'aria-hidden',
+        'aria-label',
+        'aria-labelledby',
+        'class',
+        'data-cinder-toolbar-exclude',
+        'data-cinder-toolbar-item',
+        'disabled',
+        'hidden',
+        'inert',
+        'style',
+        'type',
+      ],
     });
 
     warnAboutAccessibleName();

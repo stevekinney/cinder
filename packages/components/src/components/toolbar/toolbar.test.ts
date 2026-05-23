@@ -251,6 +251,26 @@ describe('Toolbar', () => {
     expect(buttons).toHaveLength(2);
   });
 
+  test('visibility overrides on children remain eligible toolbar items', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet(`
+          <div style="visibility: hidden">
+            <button type="button" style="visibility: visible">Visible child</button>
+          </div>
+          <button type="button">Next</button>
+        `),
+      },
+    });
+    await flushEffects();
+
+    const visibleChild = screen.getByRole('button', { name: 'Visible child' });
+    const next = screen.getByRole('button', { name: 'Next' });
+    expect(visibleChild.tabIndex).toBe(0);
+    expect(next.tabIndex).toBe(-1);
+  });
+
   test('managed custom tabindex items stay in the set and restore after unmount', async () => {
     const { unmount } = render(Toolbar, {
       props: {
