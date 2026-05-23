@@ -370,6 +370,13 @@ describe('Toolbar', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
+  test('separator spacing relies on flex gap without extra separator margins', async () => {
+    const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
+
+    expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
+    expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');
+  });
+
   test('real segmented control and number input composition roves between concrete controls', async () => {
     render(ToolbarCompositionFixture);
     await flushEffects();
