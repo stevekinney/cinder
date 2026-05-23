@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -10,6 +11,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Spinner } = await import('./spinner.svelte');
+const spinnerCssPath = join(import.meta.dir, './spinner.css');
 
 describe('Spinner', () => {
   test('renders without errors', () => {
@@ -60,5 +62,14 @@ describe('Spinner', () => {
     const { container } = render(Spinner, { props: { label: 'Fetching data' } });
     const srOnly = container.querySelector('.cinder-spinner__sr-only');
     expect(srOnly?.textContent).toBe('Fetching data');
+  });
+
+  test('spinner.css uses the dedicated spin duration token without a fallback literal', async () => {
+    const css = await Bun.file(spinnerCssPath).text();
+
+    expect(css).toContain(
+      'animation: cinder-spinner-spin var(--cinder-duration-spin) linear infinite;',
+    );
+    expect(css).not.toContain('--cinder-duration-slow, 1s');
   });
 });
