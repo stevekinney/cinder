@@ -29,8 +29,6 @@
 </script>
 
 <script lang="ts">
-  import { BROWSER as browser } from 'esm-env';
-
   import { classNames } from '../../utilities/class-names.ts';
   import {
     applyPointerDragDelta,
@@ -76,6 +74,7 @@
   let measuredHandlePixels = $state(8);
   let activeHandleIndex = $state<number | null>(null);
   let activePointerId = $state<number | null>(null);
+  let activeHandleElement = $state<HTMLElement | null>(null);
   let previousPointerAxis = $state(0);
   let pointerDragChanged = $state(false);
   let layoutState: ResizablePanelsLayoutState | null = $state(null);
@@ -99,7 +98,7 @@
       const context: ResizablePanelRenderContext = {
         id: pane.id,
         index,
-        collapsed: false,
+        collapsed: Boolean(pane.defaultCollapsed && pane.collapsible),
         size,
         pixelSize: 0,
         percentage: percent,
@@ -183,7 +182,7 @@
   }
 
   $effect(() => {
-    if (!browser || !rootElement) return;
+    if (!rootElement || typeof ResizeObserver === 'undefined') return;
     measureRoot();
     const resizeObserver = new ResizeObserver(() => {
       measureRoot();
@@ -193,7 +192,6 @@
   });
 
   $effect(() => {
-    if (!browser) return;
     orientation;
     panes;
     if (rootElement) {
@@ -217,11 +215,13 @@
   function handlePointerDown(event: PointerEvent, handleIndex: number): void {
     if (event.button !== 0) return;
     if (!layoutState) return;
+    if (activePointerId !== null) return;
     activeHandleIndex = handleIndex;
     activePointerId = event.pointerId;
     previousPointerAxis = axisValueFromPointerEvent(event);
     pointerDragChanged = false;
     if (event.currentTarget instanceof HTMLElement) {
+      activeHandleElement = event.currentTarget;
       event.currentTarget.focus();
       if ('setPointerCapture' in event.currentTarget) {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -248,18 +248,16 @@
 
   function endPointerDrag(event: PointerEvent): void {
     if (activeHandleIndex === null || activePointerId !== event.pointerId) return;
-    if (
-      event.currentTarget instanceof HTMLElement &&
-      'releasePointerCapture' in event.currentTarget
-    ) {
+    if (activeHandleElement && 'releasePointerCapture' in activeHandleElement) {
       try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
+        activeHandleElement.releasePointerCapture(event.pointerId);
       } catch {
         // Ignore capture release failures in incomplete DOM implementations.
       }
     }
     activeHandleIndex = null;
     activePointerId = null;
+    activeHandleElement = null;
     if (pointerDragChanged) {
       emit('pointer', true);
     }
@@ -318,12 +316,26 @@
   }
 
   function paneContext(index: number): ResizablePanelRenderContext {
-    if (!layoutState || availablePanePixels <= 0) {
+    if (!layoutState) {
       return unmeasuredSizes[index]!;
     }
     const runtime = layoutState.panels[index]!;
+    if (layoutState.availablePanePixels <= 0) {
+      const unmeasured = unmeasuredSizes[index]!;
+      return {
+        ...unmeasured,
+        id: runtime.id,
+        index,
+        collapsed: runtime.collapsed,
+        size: runtime.collapsed ? { value: 0, unit: 'px' } : unmeasured.size,
+        pixelSize: 0,
+        percentage: runtime.collapsed ? 0 : unmeasured.percentage,
+      };
+    }
     const percentage =
-      availablePanePixels > 0 ? (runtime.sizePixels / availablePanePixels) * 100 : 0;
+      layoutState.availablePanePixels > 0
+        ? (runtime.sizePixels / layoutState.availablePanePixels) * 100
+        : 0;
     return {
       id: runtime.id,
       index,
@@ -338,7 +350,12 @@
   }
 
   function panelStyle(index: number): string | undefined {
-    if (!layoutState || availablePanePixels <= 0) return undefined;
+    if (!layoutState) return undefined;
+    if (layoutState.availablePanePixels <= 0) {
+      return layoutState.panels[index]!.collapsed
+        ? '--_cinder-resizable-panel-size:0px;'
+        : undefined;
+    }
     return `--_cinder-resizable-panel-size:${layoutState.panels[index]!.sizePixels}px;`;
   }
 

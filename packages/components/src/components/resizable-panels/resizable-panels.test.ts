@@ -198,6 +198,7 @@ describe('ResizablePanels', () => {
     const onlayoutchange = mock(() => {});
     const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutchange });
     mockMeasurements(container);
+    await tick();
     onlayoutchange.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
@@ -206,6 +207,39 @@ describe('ResizablePanels', () => {
     await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 260 });
 
     expect(onlayoutchange).not.toHaveBeenCalled();
+  });
+
+  test('ignores a second pointer while a drag is already active', async () => {
+    const onlayoutchange = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutchange });
+    mockMeasurements(container);
+    onlayoutchange.mockClear();
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    await fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientX: 200 });
+    await fireEvent.pointerDown(handle, { pointerId: 2, button: 0, clientX: 240 });
+    await tick();
+    document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 260 }));
+    document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 260 }));
+
+    expect(onlayoutchange).toHaveBeenCalled();
+  });
+
+  test('releases pointer capture on the handle that started the drag', async () => {
+    const { container } = render(ResizablePanels, { panes, children: textSnippet });
+    mockMeasurements(container);
+    await tick();
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    const releasePointerCapture = mock(() => {});
+    handle.setPointerCapture = mock(() => {});
+    handle.releasePointerCapture = releasePointerCapture;
+
+    await fireEvent.pointerDown(handle, { pointerId: 7, button: 0, clientX: 200 });
+    await tick();
+    document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, clientX: 200 }));
+
+    expect(releasePointerCapture).toHaveBeenCalledWith(7);
   });
 
   test('keyboard resize does not commit when constraints keep the layout fixed', async () => {
@@ -248,6 +282,24 @@ describe('ResizablePanels', () => {
     expect(onlayoutcommit).not.toHaveBeenCalled();
   });
 
+  test('default-collapsed panes remain hidden when measured pane space is zero', async () => {
+    const collapsedPanes = [
+      { ...panes[0]!, defaultCollapsed: true },
+      panes[1]!,
+    ] satisfies import('./resizable-panels.types.ts').ResizablePanelDefinition[];
+    const { container } = render(ResizablePanels, {
+      panes: collapsedPanes,
+      children: textSnippet,
+    });
+    mockMeasurements(container, { rootWidth: 12, handleThickness: 12 });
+    await tick();
+
+    const firstPane = container.querySelector<HTMLElement>('.cinder-resizable-panels__pane')!;
+
+    expect(firstPane.getAttribute('data-cinder-collapsed')).toBe('true');
+    expect(firstPane.getAttribute('aria-hidden')).toBe('true');
+  });
+
   test('orientation changes remeasure on the new axis immediately', async () => {
     const rendered = render(ResizablePanels, {
       panes,
@@ -256,6 +308,7 @@ describe('ResizablePanels', () => {
     });
     await tick();
     mockMeasurements(rendered.container, { rootWidth: 812, rootHeight: 412, handleThickness: 12 });
+    await tick();
     await tick();
     const firstPane = rendered.container.querySelector<HTMLElement>(
       '.cinder-resizable-panels__pane',
