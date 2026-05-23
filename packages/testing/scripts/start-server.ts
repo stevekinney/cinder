@@ -8,7 +8,10 @@ import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playgroun
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(here, '../../..');
-const readinessPath = '/api/manifest';
+// Probe the cheap liveness endpoint first. `/api/manifest` does real work and
+// can lag behind initial server readiness, which makes local startup look hung
+// even though the playground is already accepting requests.
+const readinessPath = '/ping';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
@@ -98,6 +101,12 @@ async function main(): Promise<void> {
       if (selectedPort !== null) {
         targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
         if (await ping()) break;
+      } else if (await ping(targetPlaygroundUrl)) {
+        // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but some local
+        // runs start successfully on the default port without ever writing the
+        // file. Accept direct readiness at the target URL in that case so the
+        // wrapper does not hang despite a healthy server.
+        break;
       }
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
