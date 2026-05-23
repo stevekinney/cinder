@@ -15,8 +15,12 @@ const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
-  // Tear down standalone forms first so happy-dom does not hit a detached-child
-  // race while Testing Library is unmounting the rendered Svelte tree.
+  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
+  // the still-attached DOM it expects. Removing wrapper forms before
+  // cleanup() detaches the parent under the unmount, and happy-dom throws
+  // a detached-child DOMException through flushSync's Promise wrapper
+  // (which surfaces as an "unhandled error between tests" in Bun).
+  cleanup();
   document.querySelectorAll('body > form').forEach((form) => {
     try {
       form.remove();
@@ -24,18 +28,6 @@ afterEach(() => {
       // ignore detached-node errors
     }
   });
-  try {
-    cleanup();
-  } catch (error) {
-    if (
-      error instanceof DOMException &&
-      error.message.includes("Failed to execute 'removeChild' on 'Node'")
-    ) {
-      document.body.innerHTML = '';
-      return;
-    }
-    throw error;
-  }
 });
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
