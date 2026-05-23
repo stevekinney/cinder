@@ -237,6 +237,18 @@ export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
+export { default as PhoneInput } from './components/phone-input/index.ts';
+export type {
+  PhoneInputChange,
+  PhoneInputCountryCode,
+  PhoneInputCountryOption,
+  PhoneInputProps,
+  PhoneInputReason,
+} from './components/phone-input/index.ts';
+
+export { default as PinInput } from './components/pin-input/index.ts';
+export type { PinInputMode, PinInputProps } from './components/pin-input/index.ts';
+
 export { default as Popover } from './components/popover/index.ts';
 export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
 
@@ -248,6 +260,9 @@ export type { RadioProps } from './components/radio/index.ts';
 
 export { default as RadioGroup } from './components/radio-group/index.ts';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
+
+export { default as Rating } from './components/rating/index.ts';
+export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
 
 export { default as ResizablePanels } from './components/resizable-panels/index.ts';
 export type {
