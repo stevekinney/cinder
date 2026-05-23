@@ -12,6 +12,7 @@ const readinessPath = '/api/manifest';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
+const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
 
 async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
   try {
@@ -91,7 +92,7 @@ async function main(): Promise<void> {
     });
 
     const startedAt = Date.now();
-    const deadline = startedAt + 120_000;
+    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
     let lastLog = startedAt;
     while (Date.now() < deadline) {
       const selectedPort = await readPlaygroundPortFile(playgroundPortFile);
@@ -114,7 +115,9 @@ async function main(): Promise<void> {
         console.error('Failed to kill unready server process:', error);
       }
       console.error(
-        `Playground server did not become ready within 120s at ${targetPlaygroundUrl}.`,
+        `Playground server did not become ready within ${Math.round(
+          PLAYGROUND_READY_TIMEOUT_MS / 1000,
+        )}s at ${targetPlaygroundUrl}.`,
       );
       if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
       process.exit(1);
