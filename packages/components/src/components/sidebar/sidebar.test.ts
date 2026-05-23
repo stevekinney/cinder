@@ -423,26 +423,275 @@ describe('Sidebar (mobile / drawer)', () => {
   });
 });
 
+/**
+ * Collapsed-state CSS contract.
+ *
+ * Happy-dom (the test runtime here) does not implement layout, so
+ * stylesheet-driven `getComputedStyle` and `getBoundingClientRect` cannot
+ * verify visual hiding. The contract is instead locked at the CSS source
+ * layer by parsing the file and checking that every required (arm × rule
+ * group) pair is present, with the required declaration set on the
+ * visually-hidden rule and an explicit ban on declarations that would remove
+ * the label from the accessibility tree. A future Playwright story should
+ * verify the rendered visual result; this lock catches selector regressions
+ * that would silently break the icon-rail in collapsed mode.
+ *
+ * The parser splits on `}` because `sidebar.css` has no nested at-rules. If
+ * a `@media` (or other nesting) is added later, the parser must be updated.
+ */
+
+type CssRule = { selectors: string[]; declarations: string };
+
+function parseCssRules(css: string): CssRule[] {
+  // Strip `/* ... */` comments first — they would otherwise glue onto the
+  // following selector list when we split on `}`.
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return stripped
+    .split('}')
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.includes('{'))
+    .map((chunk) => {
+      const braceIndex = chunk.indexOf('{');
+      const selectorList = chunk.slice(0, braceIndex);
+      const declarations = chunk.slice(braceIndex + 1).trim();
+      const selectors = selectorList
+        .split(',')
+        .map((selector) => selector.replace(/\s+/g, ' ').trim())
+        .filter((selector) => selector.length > 0);
+      return { selectors, declarations };
+    });
+}
+
+const COLLAPSED_SCOPE = '.cinder-sidebar[data-cinder-collapsed] ';
+
+// Each arm key maps to the selector substring that proves the rule covers
+// that arm. Substrings are anchored on the unique class+element pairing so
+// they cannot match unrelated selectors like `.cinder-side-navigation`
+// (group container) by accident.
+const ARM_KEYS = ['side-nav-a', 'side-nav-button', 'footer-a', 'footer-button'] as const;
+type ArmKey = (typeof ARM_KEYS)[number];
+
+const ARM_BASE: Record<ArmKey, string> = {
+  'side-nav-a': '.cinder-side-navigation a.cinder-navigation-item',
+  'side-nav-button': '.cinder-side-navigation button.cinder-navigation-item',
+  'footer-a': '.cinder-sidebar__footer a.cinder-navigation-item',
+  'footer-button': '.cinder-sidebar__footer button.cinder-navigation-item',
+};
+
+// Selector shape variants distinguish which part of the arm-base selector
+// the rule targets:
+// - `base`: the interactive element itself, with no trailing combinator
+//   (the icon-only width rule).
+// - `label-child`: a non-icon child of the interactive element — matched
+//   via the literal `:not([aria-hidden='true']):not(svg):not(img)` filter
+//   used by the visually-hidden rule, which is the only child target that
+//   should be visually hidden. Plain `> ` would also accept `> svg` and
+//   misreport the icon-only descendants as label-hiding coverage.
+// - `descendant-svg-or-img`: SVG/IMG icon children of the interactive
+//   element (the pass-through that restores icon sizing).
+// - `descendant-aria-hidden`: wrapped icon containers marked with
+//   `aria-hidden="true"` (same pass-through, different element shape).
+type ArmShape = 'base' | 'label-child' | 'descendant-svg-or-img' | 'descendant-aria-hidden';
+
+// Matches the label-child suffix structurally — a `>` combinator followed
+// by three `:not()` exclusions covering svg, img, and `aria-hidden="true"`
+// children, in any order, with either quote style. This avoids both the
+// over-broad `> ` match (which would accept `> svg`) and the over-narrow
+// fixed-string match (which would break on harmless reformatting like
+// reordered exclusions or swapped quote style).
+function matchesLabelChildSuffix(suffix: string): boolean {
+  const normalized = suffix.replace(/\s+/g, ' ').trim();
+  if (!normalized.startsWith('>')) return false;
+  // Must exclude all three icon paths so the rule only targets label-bearing
+  // children — never icon descendants.
+  const excludesAriaHidden = /:not\(\[aria-hidden=(["'])true\1\]\)/.test(normalized);
+  const excludesSvg = /:not\(svg\)/.test(normalized);
+  const excludesImg = /:not\(img\)/.test(normalized);
+  return excludesAriaHidden && excludesSvg && excludesImg;
+}
+
+function selectorMatchesArm(selector: string, arm: ArmKey, shape: ArmShape): boolean {
+  if (!selector.startsWith(COLLAPSED_SCOPE)) return false;
+  const base = ARM_BASE[arm];
+  if (!selector.includes(base)) return false;
+  switch (shape) {
+    case 'base':
+      // Selector targets the interactive element itself, not a descendant
+      // chain past it. Trim and ensure the normalized selector ends with
+      // the base selector with no trailing combinator.
+      return selector.replace(/\s+/g, ' ').trim().endsWith(base);
+    case 'label-child': {
+      // The visually-hidden rule must target non-icon children. Accepting a
+      // bare `> ` combinator would let `> svg` count as label-hiding
+      // coverage, masking a real regression. We require all three icon-path
+      // exclusions but tolerate reordering and quote-style changes so a
+      // CSS formatter rewrite doesn't break the test.
+      const baseIndex = selector.indexOf(base);
+      const suffix = selector.slice(baseIndex + base.length);
+      return matchesLabelChildSuffix(suffix);
+    }
+    case 'descendant-svg-or-img':
+      return selector.includes(`${base} > svg`) || selector.includes(`${base} > img`);
+    case 'descendant-aria-hidden':
+      return (
+        selector.includes(`${base} > [aria-hidden='true']`) ||
+        selector.includes(`${base} > [aria-hidden="true"]`)
+      );
+  }
+}
+
+function collectArms(
+  rules: CssRule[],
+  groupPredicate: (rule: CssRule) => boolean,
+  armShape: ArmShape,
+): Set<ArmKey> {
+  const arms = new Set<ArmKey>();
+  for (const rule of rules) {
+    if (!groupPredicate(rule)) continue;
+    for (const selector of rule.selectors) {
+      for (const arm of ARM_KEYS) {
+        if (selectorMatchesArm(selector, arm, armShape)) arms.add(arm);
+      }
+    }
+  }
+  return arms;
+}
+
+function isCollapsedScopedRule(rule: CssRule): boolean {
+  return rule.selectors.some((selector) => selector.startsWith(COLLAPSED_SCOPE));
+}
+
+// Parse a declaration block into a normalized [property, value] list:
+// lowercase property names, first-token-only values, no semicolons, stray
+// whitespace, or `!important` modifiers. Used by the banned-declaration
+// check so that variants like `DISPLAY: none`, `display:none`, or
+// `display: none !important` cannot bypass the visually-hidden
+// accessibility contract — `!important` strengthens the rule, not weakens
+// it, so an important banned declaration is still a banned declaration.
+function parseDeclarations(declarationBlock: string): Array<[string, string]> {
+  return declarationBlock
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry): [string, string] => {
+      const colonIndex = entry.indexOf(':');
+      if (colonIndex === -1) return [entry.toLowerCase(), ''];
+      const property = entry.slice(0, colonIndex).trim().toLowerCase();
+      // Take only the first whitespace-separated token of the value so that
+      // `!important`, multi-token shorthand values, or trailing comments
+      // don't escape the banned-declaration check. The banned values
+      // (`none`, `hidden`) are always single tokens, so this is sound.
+      const rawValue = entry
+        .slice(colonIndex + 1)
+        .trim()
+        .toLowerCase();
+      const value = rawValue.split(/\s+/)[0] ?? '';
+      return [property, value];
+    });
+}
+
 describe('Sidebar collapsed CSS contract', () => {
-  test('collapsed leaf rules cover side-navigation and footer navigation items', async () => {
+  test('all four arms × four rule groups are present', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
-    expect(css).toContain('.cinder-side-navigation a.cinder-navigation-item');
-    expect(css).toContain('.cinder-side-navigation button.cinder-navigation-item');
-    expect(css).toContain('.cinder-sidebar__footer a.cinder-navigation-item');
-    expect(css).toContain('.cinder-sidebar__footer button.cinder-navigation-item');
+    const rules = parseCssRules(css);
+    const allArms = new Set<ArmKey>(ARM_KEYS);
+
+    const visuallyHidden = collectArms(
+      rules,
+      (rule) => rule.declarations.includes('clip-path: inset(50%)'),
+      'label-child',
+    );
+    expect(visuallyHidden, 'visually-hidden block must cover all four arms').toEqual(allArms);
+
+    // Anchor the icon-width predicate on the collapsed scope so an unrelated
+    // future rule that happens to combine `font-size: 0` and
+    // `justify-content: center` cannot match (producing a false failure).
+    const iconWidth = collectArms(
+      rules,
+      (rule) =>
+        isCollapsedScopedRule(rule) &&
+        rule.declarations.includes('font-size: 0') &&
+        rule.declarations.includes('justify-content: center'),
+      'base',
+    );
+    expect(iconWidth, 'icon-only width block must cover all four arms').toEqual(allArms);
+
+    const svgImg = collectArms(
+      rules,
+      (rule) =>
+        isCollapsedScopedRule(rule) &&
+        rule.declarations.includes('flex-shrink: 0') &&
+        rule.selectors.some((selector) => selector.includes('> svg') || selector.includes('> img')),
+      'descendant-svg-or-img',
+    );
+    expect(svgImg, 'svg/img pass-through must cover all four arms').toEqual(allArms);
+
+    // Anchor the aria-hidden predicate on `flex-shrink: 0` (the same icon
+    // pass-through declaration the svg/img group uses) rather than the
+    // overly broad `font-size:` prefix, and scope to collapsed-state rules.
+    const ariaHidden = collectArms(
+      rules,
+      (rule) =>
+        isCollapsedScopedRule(rule) &&
+        rule.declarations.includes('flex-shrink: 0') &&
+        rule.selectors.some(
+          (selector) =>
+            selector.includes("[aria-hidden='true']") || selector.includes('[aria-hidden="true"]'),
+        ),
+      'descendant-aria-hidden',
+    );
+    expect(ariaHidden, 'aria-hidden pass-through must cover all four arms').toEqual(allArms);
   });
 
-  test('collapsed leaf rules hide bare text without removing DOM text', async () => {
+  test('visually-hidden rule preserves accessibility tree (required + banned declarations)', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
-    expect(css).toContain('font-size: 0;');
-    expect(css).toContain('The DOM text remains');
+    const rules = parseCssRules(css);
+    const matches = rules.filter((rule) => rule.declarations.includes('clip-path: inset(50%)'));
+    expect(matches.length, 'expected at least one visually-hidden rule').toBeGreaterThan(0);
+
+    // `clip: rect(` not `clip:` — a bare `clip:` prefix would be satisfied
+    // by `clip-path:` since the latter starts with the same five characters,
+    // letting a missing legacy `clip` declaration slip past.
+    const required = [
+      'position: absolute',
+      'width: 1px',
+      'height: 1px',
+      'overflow: hidden',
+      'clip: rect(',
+      'clip-path:',
+    ];
+    // Banned declarations are checked against the parsed property/value map
+    // so that whitespace or case variants (e.g. `display:none`,
+    // `DISPLAY: none`) cannot bypass the contract. Either would remove the
+    // label from the accessibility tree.
+    const bannedPairs: Array<[string, string]> = [
+      ['display', 'none'],
+      ['visibility', 'hidden'],
+    ];
+
+    for (const rule of matches) {
+      for (const declaration of required) {
+        expect(
+          rule.declarations.includes(declaration),
+          `visually-hidden rule must contain "${declaration}"`,
+        ).toBe(true);
+      }
+      const parsed = parseDeclarations(rule.declarations);
+      for (const [property, value] of bannedPairs) {
+        const found = parsed.find(([key, val]) => key === property && val === value);
+        expect(
+          found,
+          `visually-hidden rule must NOT set "${property}: ${value}" — it would remove the label from the accessibility tree`,
+        ).toBeUndefined();
+      }
+    }
   });
 
   test('visually-hidden block pairs `clip` with `clip-path` for modern browsers', async () => {
-    const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     // `clip` is deprecated and unimplemented in some modern browsers;
     // `clip-path: inset(50%)` is the modern equivalent. Both must be present
     // so the visually-hidden technique works across the supported matrix.
+    const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     expect(css).toContain('clip: rect(0, 0, 0, 0);');
     expect(css).toContain('clip-path: inset(50%);');
   });

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "stack",
+  "import": "cinder/stack",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Stack basic",
+      "description": "Vertical column with the default gap between children.",
+      "code": "<script lang=\"ts\">\n  import { Stack } from 'cinder/stack';\n</script>\n\n<Stack>\n  <div>First child</div>\n  <div>Second child</div>\n  <div>Third child</div>\n</Stack>\n"
+    },
+    {
+      "id": "composition",
+      "title": "Every-Layout composition",
+      "description": "Stack contains an Inline header with a Spacer pushing a trailing action, and a Cluster of chips.",
+      "code": "<script lang=\"ts\">\n  import { Stack } from 'cinder/stack';\n  import { Inline } from 'cinder/inline';\n  import { Cluster } from 'cinder/cluster';\n  import { Spacer } from 'cinder/spacer';\n</script>\n\n<Stack gap=\"1.5rem\">\n  <Inline>\n    <strong>Section title</strong>\n    <Spacer />\n    <button type=\"button\">Action</button>\n  </Inline>\n  <Cluster>\n    <span>tag-one</span>\n    <span>tag-two</span>\n    <span>tag-three</span>\n    <span>tag-four</span>\n  </Cluster>\n</Stack>\n"
+    }
+  ]
+}
