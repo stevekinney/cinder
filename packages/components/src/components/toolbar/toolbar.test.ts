@@ -177,6 +177,43 @@ describe('Toolbar', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Three' }));
   });
 
+  test('arrowing into an editable input places the caret at the entry boundary', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet(`
+          <button type="button">One</button>
+          <input aria-label="Search" value="abc" />
+          <button type="button">Three</button>
+        `),
+      },
+    });
+
+    const one = screen.getByRole('button', { name: 'One' });
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Search' });
+    const three = screen.getByRole('button', { name: 'Three' });
+
+    one.focus();
+    await fireEvent.keyDown(one, { key: 'ArrowRight' });
+    await flushEffects();
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+
+    await fireEvent.keyDown(input, { key: 'ArrowRight' });
+    await flushEffects();
+    expect(document.activeElement).toBe(input);
+
+    three.focus();
+    await fireEvent.keyDown(three, { key: 'ArrowLeft' });
+    await flushEffects();
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(input.value.length);
+
+    await fireEvent.keyDown(input, { key: 'ArrowLeft' });
+    await flushEffects();
+    expect(document.activeElement).toBe(input);
+  });
+
   test('Escape moves focus out of an editable field', async () => {
     render(Toolbar, {
       props: {

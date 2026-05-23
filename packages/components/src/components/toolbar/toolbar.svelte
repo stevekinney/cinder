@@ -113,7 +113,7 @@
   function placeCaretForDirection(element: HTMLElement, direction: -1 | 1): void {
     if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return;
     if (typeof element.setSelectionRange !== 'function') return;
-    const position = direction === -1 ? 0 : element.value.length;
+    const position = direction === -1 ? element.value.length : 0;
     element.setSelectionRange(position, position);
   }
 
