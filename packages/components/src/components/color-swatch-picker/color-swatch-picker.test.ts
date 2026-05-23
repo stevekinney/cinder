@@ -1,9 +1,19 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
+
+const originalConsoleWarn = console.warn;
+
+beforeEach(() => {
+  console.warn = () => {};
+});
+
+afterEach(() => {
+  console.warn = originalConsoleWarn;
+});
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: ColorSwatchPicker } = await import('./color-swatch-picker.svelte');

@@ -1,11 +1,21 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
+
+const originalConsoleWarn = console.warn;
+
+beforeEach(() => {
+  console.warn = () => {};
+});
+
+afterEach(() => {
+  console.warn = originalConsoleWarn;
+});
 
 const { render, waitFor } = await import('@testing-library/svelte');
 const { default: CinderProvider } = await import('../cinder-provider/cinder-provider.svelte');

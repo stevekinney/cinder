@@ -10,7 +10,7 @@ const { createRawSnippet } = await import('svelte');
 const { default: Message } = await import('./message.svelte');
 
 function snippet(html: string) {
-  return createRawSnippet(() => ({ render: () => html }));
+  return createRawSnippet(() => ({ render: () => `<span>${html}</span>` }));
 }
 
 describe('Message (experimental)', () => {
