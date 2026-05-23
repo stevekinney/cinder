@@ -991,6 +991,33 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['parent']);
   });
 
+  test('independent checkbox state ignores selected descendants', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectedIds: ['child'],
+        expandedIds: ['parent'],
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    const checkbox = parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox');
+    await waitFor(() => expect(checkbox?.indeterminate).toBe(false));
+    expect(checkbox?.checked).toBe(false);
+    expect(parent.getAttribute('aria-checked')).toBe('false');
+  });
+
   test('cascade checkbox activation selects and clears the explicit selection scope', async () => {
     let selectedIds: string[] = ['unknown'];
     const { container } = render(Tree, {
@@ -1053,6 +1080,22 @@ describe('Tree — selection', () => {
     expect(parent.getAttribute('aria-checked')).toBe('mixed');
   });
 
+  test('checkbox selection omits aria-selected from treeitems', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectedIds: ['a'],
+        children: treeItemsSnippet([{ id: 'a', label: 'A' }]),
+      },
+    });
+
+    const item = treeItem(container, 'A') as HTMLElement;
+    expect(item.hasAttribute('aria-selected')).toBe(false);
+    expect(item.getAttribute('aria-checked')).toBe('true');
+  });
+
   test('disabled ids are excluded from cascade checkbox updates', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {
@@ -1083,6 +1126,72 @@ describe('Tree — selection', () => {
     const parent = treeItem(container, 'Parent') as HTMLElement;
     await fireEvent.click(parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')!);
     expect(selectedIds).toEqual(['parent']);
+  });
+
+  test('disabled ids stay selected when cascade scope is cleared', async () => {
+    let selectedIds: string[] = ['parent', 'child'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child', disabled: true }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.click(parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')!);
+    expect(selectedIds).toEqual(['child']);
+  });
+
+  test('row activation does not cascade selection in checkbox mode', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.click(parent);
+    expect(selectedIds).toEqual([]);
+    await fireEvent.keyDown(parent, { key: ' ' });
+    expect(selectedIds).toEqual([]);
   });
 
   test('checkbox click does not expand or collapse branches', async () => {
@@ -1149,6 +1258,73 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['a', 'b']);
     await fireEvent.click(buttons[1]!);
     expect(selectedIds).toEqual([]);
+  });
+
+  test('TreeSelectAll includeDescendants selects nested ids', async () => {
+    let selectedIds: string[] = [];
+    const selectionControls = createRawSnippet(() => ({
+      render: () => `<div class="controls"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(TreeSelectAll, {
+          target: node,
+          props: { parentId: null, includeDescendants: true },
+        });
+        return () => unmount(instance);
+      },
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        selectionControls,
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const button = container.querySelector<HTMLButtonElement>('.cinder-tree-select-all__button');
+    await fireEvent.click(button as HTMLButtonElement);
+    expect(selectedIds).toEqual(['parent', 'child']);
+  });
+
+  test('TreeSelectAll disables when every target is disabled', async () => {
+    const selectionControls = createRawSnippet(() => ({
+      render: () => `<div class="controls"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(TreeSelectAll, { target: node, props: { parentId: null } });
+        return () => unmount(instance);
+      },
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        selectionControls,
+        children: treeItemsSnippet([{ id: 'a', label: 'A', disabled: true }]),
+      },
+    });
+
+    const buttons = container.querySelectorAll<HTMLButtonElement>(
+      '.cinder-tree-select-all__button',
+    );
+    expect(buttons[0]?.disabled).toBe(true);
+    expect(buttons[1]?.disabled).toBe(true);
   });
 
   test('TreeSelectAll outside tree context throws a clear usage error', () => {

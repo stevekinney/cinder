@@ -63,6 +63,10 @@ describe('tree selection helpers', () => {
     expect(deselectIds(['z', 'a', 'b', 'c'], ['a', 'c'])).toEqual(['z', 'b']);
   });
 
+  test('deselect preserves disabled target ids', () => {
+    expect(deselectIds(['z', 'a', 'b', 'c'], ['a', 'b', 'c'], new Set(['b']))).toEqual(['z', 'b']);
+  });
+
   test('independent toggle changes only the target id', () => {
     expect(toggleIndependentId(['a', 'x'], 'a')).toEqual(['x']);
     expect(toggleIndependentId(['x'], 'a')).toEqual(['x', 'a']);
@@ -78,6 +82,10 @@ describe('tree selection helpers', () => {
 
   test('scope toggle clears selectable ids when fully selected', () => {
     expect(toggleSelectionScope(['x', 'a', 'b', 'c'], ['a', 'b', 'c'])).toEqual(['x']);
+  });
+
+  test('scope toggle clear preserves disabled selected ids', () => {
+    expect(toggleSelectionScope(['x', 'a', 'b'], ['a', 'b'], new Set(['b']))).toEqual(['x', 'b']);
   });
 
   test('scope toggle preserves unknown selected ids outside the operation scope', () => {

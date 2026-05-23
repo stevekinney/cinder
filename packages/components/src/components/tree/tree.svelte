@@ -188,7 +188,7 @@
   }
 
   function selectionStateForId(id: string) {
-    const targets = selectionTargetsFor(id);
+    const targets = selectionBehavior === 'cascade' ? selectionTargetsFor(id) : [id];
     return selectionStateFor(selectedIds, targets, disabledIdsFor(targets));
   }
 
@@ -201,7 +201,7 @@
       next === true
         ? selectIds(selectedIds, targets, disabledIds)
         : next === false
-          ? deselectIds(selectedIds, targets)
+          ? deselectIds(selectedIds, targets, disabledIds)
           : toggleSelectionScope(selectedIds, targets, disabledIds);
   }
 
@@ -314,6 +314,11 @@
     selectSelectionScope(parentId, next, includeDescendants) {
       if (selectionMode !== 'multiple') return;
       applySelectionScope(selectionTargetsForChildren(parentId, includeDescendants), next);
+    },
+    hasSelectableSelectionScope(parentId, includeDescendants) {
+      const targets = selectionTargetsForChildren(parentId, includeDescendants);
+      const disabledIds = disabledIdsFor(targets);
+      return targets.some((id) => !disabledIds.has(id));
     },
     selectionTargetsFor,
     selectionTargetsForChildren,

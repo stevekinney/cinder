@@ -279,7 +279,7 @@
 
       case 'Enter':
         event.preventDefault();
-        if (!disabled) {
+        if (!disabled && !checkboxSelectionActive) {
           context.toggleSelected(id, event);
         }
         if (isBranch) context.setExpanded(id, !isExpanded);
@@ -287,7 +287,7 @@
 
       case ' ':
         event.preventDefault();
-        if (!disabled) {
+        if (!disabled && !checkboxSelectionActive) {
           context.toggleSelected(id, event);
           // Space does NOT toggle expand on branches (per APG)
         }
@@ -322,7 +322,7 @@
 
     outerElement?.focus();
 
-    if (!disabled) context.toggleSelected(id, event);
+    if (!disabled && !checkboxSelectionActive) context.toggleSelected(id, event);
 
     if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       // Plain click on a branch row toggles expand, including disabled branches.
@@ -351,7 +351,9 @@
   aria-labelledby={`${treeItemElementId}-label`}
   aria-level={level}
   aria-expanded={isBranch ? isExpanded : undefined}
-  aria-selected={context.selectionMode === 'none' ? undefined : isSelected}
+  aria-selected={context.selectionMode === 'none' || checkboxSelectionActive
+    ? undefined
+    : isSelected}
   aria-checked={ariaChecked}
   aria-busy={busy || undefined}
   aria-disabled={disabled || undefined}
@@ -386,7 +388,6 @@
         tabindex="-1"
         aria-hidden="true"
         onclick={handleCheckboxActivation}
-        onchange={handleCheckboxActivation}
       />
       <!--
         aria-hidden prevents the visible default text from being announced

@@ -55,8 +55,9 @@ export function selectIds(
 export function deselectIds(
   selectedIds: readonly string[],
   targetIds: readonly string[],
+  disabledIds: ReadonlySet<string> = new Set(),
 ): string[] {
-  const targetSet = new Set(targetIds);
+  const targetSet = new Set(selectableIds(targetIds, disabledIds));
   if (targetSet.size === 0) return [...selectedIds];
   return selectedIds.filter((id) => !targetSet.has(id));
 }
@@ -81,5 +82,7 @@ export function toggleSelectionScope(
   if (targets.length === 0) return [...selectedIds];
 
   const state = selectionStateFor(selectedIds, targets);
-  return state.checked ? deselectIds(selectedIds, targets) : selectIds(selectedIds, targets);
+  return state.checked
+    ? deselectIds(selectedIds, targets, disabledIds)
+    : selectIds(selectedIds, targets, disabledIds);
 }

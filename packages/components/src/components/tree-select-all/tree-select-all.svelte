@@ -38,8 +38,9 @@
   }
   const context = treeContext;
 
-  const targetIds = $derived(context.selectionTargetsForChildren(parentId, includeDescendants));
-  const disabled = $derived(!context.multiselectable || targetIds.length === 0);
+  const disabled = $derived(
+    !context.multiselectable || !context.hasSelectableSelectionScope(parentId, includeDescendants),
+  );
 
   function selectAll(): void {
     if (!disabled) context.selectSelectionScope(parentId, true, includeDescendants);

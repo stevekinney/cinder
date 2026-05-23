@@ -39,6 +39,7 @@ export type TreeContext = {
   selectionStateFor(id: string): TreeItemSelectionState;
   toggleSelectionScope(id: string): void;
   selectSelectionScope(parentId: string | null, next: boolean, includeDescendants: boolean): void;
+  hasSelectableSelectionScope(parentId: string | null, includeDescendants: boolean): boolean;
   selectionTargetsFor(id: string): readonly string[];
   selectionTargetsForChildren(
     parentId: string | null,
