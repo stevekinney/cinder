@@ -170,7 +170,12 @@ export function resolveCountryList(allowed: readonly CountryCode[] | undefined):
 } {
   const supported = new Set<CountryCode>(getCountries());
   if (!allowed) {
-    return { countries: Array.from(supported).toSorted(), usedFallback: false };
+    // Don't use `Array.prototype.toSorted()` — it is ES2023 and the package
+    // targets ES2022, so it crashes runtimes that follow the target. Sort the
+    // fresh array from `Array.from` in place; we own it, so mutation is safe.
+    const out = Array.from(supported);
+    out.sort((a, b) => a.localeCompare(b));
+    return { countries: out, usedFallback: false };
   }
   const out: CountryCode[] = [];
   const seen = new Set<CountryCode>();
