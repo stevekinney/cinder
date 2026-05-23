@@ -179,8 +179,10 @@
     transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .conversation-export-actions :global(.export-trigger:hover) {
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .conversation-export-actions :global(.export-trigger:hover) {
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .conversation-export-actions :global(.export-trigger:focus-visible) {

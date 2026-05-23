@@ -45,6 +45,17 @@ describe('ColorPicker structure', () => {
     expect(options.length).toBe(3);
   });
 
+  test('selected swatch renders a check indicator without depending on focus', () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#00ff00',
+      swatches: ['#ff0000', '#00ff00', '#0000ff'],
+    });
+
+    const selectedOption = q(container, '[role="option"][aria-selected="true"]');
+    expect(selectedOption.querySelector('svg')).toBeTruthy();
+    expect(document.activeElement).not.toBe(selectedOption);
+  });
+
   test('renders hidden input mirroring the value when name is provided', () => {
     const { container } = render(ColorPicker, { defaultValue: '#ff0000', name: 'pick' });
     const hidden = q<HTMLInputElement>(container, 'input[name="pick"]');
@@ -162,6 +173,18 @@ describe('ColorPicker invalid input', () => {
     expect(hidden.value).toBe('');
     expect(preview.getAttribute('aria-label')).toBe('Selected color: none');
     expect(option.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('unparseable swatches do not break selection rendering', () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#00ff00',
+      swatches: ['not-a-color', '#00ff00'],
+    });
+
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(2);
+    expect(options[0]?.getAttribute('aria-selected')).toBe('false');
+    expect(options[1]?.querySelector('svg')).toBeTruthy();
   });
 });
 

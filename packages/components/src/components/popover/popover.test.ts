@@ -84,6 +84,8 @@ function attachScratch(node: HTMLElement): void {
   document.body.appendChild(node);
 }
 
+const originalConsoleWarn = console.warn;
+
 beforeEach(() => {
   deferComputePosition = false;
   deferredResolvers = [];
@@ -93,6 +95,7 @@ beforeEach(() => {
     placement: 'bottom-start',
     middlewareData: {},
   };
+  console.warn = () => {};
 });
 
 afterEach(() => {
@@ -109,6 +112,7 @@ afterEach(() => {
   shiftSpy.mockClear();
   offsetSpy.mockClear();
   _resetEscapeStack();
+  console.warn = originalConsoleWarn;
 });
 
 // ---------------------------------------------------------------------------
@@ -241,6 +245,19 @@ describe('Popover — rendering', () => {
     const style = panel.getAttribute('style') ?? '';
     expect(style).toContain('left: 33px');
     expect(style).toContain('top: 44px');
+  });
+
+  test('computePosition uses fixed strategy', async () => {
+    render(Popover, {
+      props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+    });
+
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalled();
+    });
+
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
+    expect(options?.strategy).toBe('fixed');
   });
 });
 

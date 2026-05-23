@@ -163,11 +163,15 @@
 
 /* ── Hover ──────────────────────────────────────────────────────────────── */
 
-.cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
-    [data-cinder-pressed]
-  ) {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-  color: var(--cinder-text);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
+      [data-cinder-pressed]
+    ) {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    color: var(--cinder-text);
+  }
 }
 
 /* ── Focus ──────────────────────────────────────────────────────────────── */

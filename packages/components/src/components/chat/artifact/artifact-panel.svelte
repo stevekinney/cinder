@@ -97,9 +97,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .artifact-panel-close:hover {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .artifact-panel-close:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   .artifact-panel-close:focus-visible {

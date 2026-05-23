@@ -1,0 +1,11 @@
+/* ========================================
+ * INLINE
+ * ======================================== */
+
+.cinder-inline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: var(--inline-wrap, wrap);
+  align-items: var(--inline-align, center);
+  gap: var(--inline-gap, var(--cinder-space-4));
+}

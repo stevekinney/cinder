@@ -7,6 +7,13 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as AspectRatio } from './components/aspect-ratio/index.ts';
+export type {
+  AspectRatioElement,
+  AspectRatioOverflow,
+  AspectRatioProps,
+} from './components/aspect-ratio/index.ts';
+
 export { default as Avatar } from './components/avatar/index.ts';
 export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar/index.ts';
 
@@ -30,6 +37,9 @@ export type { CalloutProps, CalloutVariant } from './components/callout/index.ts
 
 export { default as Card } from './components/card/index.ts';
 export type { CardProps, CardTone, CardVariant } from './components/card/index.ts';
+
+export { default as Center } from './components/center/index.ts';
+export type { CenterProps } from './components/center/index.ts';
 
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
@@ -55,8 +65,14 @@ export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 export { default as CinderProvider } from './components/cinder-provider/index.ts';
 export type { CinderProviderProps } from './components/cinder-provider/index.ts';
 
+export { default as Cluster } from './components/cluster/index.ts';
+export type { ClusterProps } from './components/cluster/index.ts';
+
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
+
+export { default as ColorField } from './components/color-field/index.ts';
+export type { ColorFieldFormat, ColorFieldProps } from './components/color-field/index.ts';
 
 export { default as ColorPicker } from './components/color-picker/index.ts';
 export type { ColorPickerProps } from './components/color-picker/index.ts';
@@ -124,6 +140,9 @@ export type {
 export { default as DropdownItem } from './components/dropdown-item/index.ts';
 export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
 
+export { default as DropdownGroup } from './components/dropdown-group/index.ts';
+export type { DropdownGroupProps } from './components/dropdown-group/index.ts';
+
 export { default as DropdownLabel } from './components/dropdown-label/index.ts';
 export type { DropdownLabelProps } from './components/dropdown-label/index.ts';
 
@@ -145,6 +164,15 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event/i
 export { default as Feed } from './components/feed/index.ts';
 export type { FeedProps } from './components/feed/index.ts';
 
+export { default as FileUpload } from './components/file-upload/index.ts';
+export type {
+  FileUploadEntry,
+  FileUploadProps,
+  FileUploadRejectionReason,
+  FileUploadStatus,
+  RejectedFile,
+} from './components/file-upload/index.ts';
+
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldProps } from './components/form-field/index.ts';
 
@@ -161,6 +189,9 @@ export type { GridListItemProps } from './components/grid-list-item/index.ts';
 
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
+
+export { default as Inline } from './components/inline/index.ts';
+export type { InlineProps, InlineWrap } from './components/inline/index.ts';
 
 export { default as Input } from './components/input/index.ts';
 export type { InputProps, InputType } from './components/input/index.ts';
@@ -218,6 +249,18 @@ export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
+export { default as PhoneInput } from './components/phone-input/index.ts';
+export type {
+  PhoneInputChange,
+  PhoneInputCountryCode,
+  PhoneInputCountryOption,
+  PhoneInputProps,
+  PhoneInputReason,
+} from './components/phone-input/index.ts';
+
+export { default as PinInput } from './components/pin-input/index.ts';
+export type { PinInputMode, PinInputProps } from './components/pin-input/index.ts';
+
 export { default as Popover } from './components/popover/index.ts';
 export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
 
@@ -229,6 +272,9 @@ export type { RadioProps } from './components/radio/index.ts';
 
 export { default as RadioGroup } from './components/radio-group/index.ts';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
+
+export { default as Rating } from './components/rating/index.ts';
+export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
 
 export {
   default as ReviewEditor,
@@ -315,6 +361,12 @@ export type { SkeletonProps } from './components/skeleton/index.ts';
 
 export { default as Slider } from './components/slider/index.ts';
 export type { SliderMode, SliderProps, SliderValue } from './components/slider/index.ts';
+
+export { default as Spacer } from './components/spacer/index.ts';
+export type { SpacerProps } from './components/spacer/index.ts';
+
+export { default as Stack } from './components/stack/index.ts';
+export type { StackDirection, StackProps } from './components/stack/index.ts';
 
 export { default as StackedListItem } from './components/stacked-list-item/index.ts';
 export type {

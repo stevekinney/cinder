@@ -1,0 +1,181 @@
+.cinder-file-upload {
+  --cinder-file-upload-border-color: var(--cinder-border);
+  --cinder-file-upload-background: var(--cinder-surface);
+  --cinder-file-upload-progress-background: var(--cinder-surface-inset);
+  --cinder-file-upload-progress-fill: var(--cinder-accent);
+
+  display: grid;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-file-upload__dropzone {
+  display: grid;
+  gap: var(--cinder-space-3);
+  border: 2px dashed var(--cinder-file-upload-border-color);
+  border-radius: var(--cinder-radius-lg);
+  background: var(--cinder-file-upload-background);
+  padding: var(--cinder-space-4);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.cinder-file-upload__dropzone[data-drag-active] {
+  border-style: solid;
+  border-color: var(--cinder-accent);
+  background: color-mix(in srgb, var(--cinder-accent) 8%, var(--cinder-file-upload-background));
+}
+
+.cinder-file-upload__dropzone[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.cinder-file-upload__dropzone:focus-within {
+  outline: 2px solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+.cinder-file-upload__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cinder-file-upload__body {
+  display: grid;
+  gap: var(--cinder-space-2);
+  justify-items: start;
+}
+
+.cinder-file-upload__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  font-weight: var(--cinder-font-weight-medium);
+}
+
+.cinder-file-upload__eyebrow-icon {
+  inline-size: 1rem;
+  block-size: 1rem;
+  color: var(--cinder-accent);
+}
+
+.cinder-file-upload__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-foreground);
+  min-block-size: 2.75rem;
+  padding-inline: var(--cinder-space-4);
+  padding-block: var(--cinder-space-2);
+  font-weight: var(--cinder-font-weight-semibold);
+}
+
+.cinder-file-upload__hint {
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+  line-height: var(--cinder-leading-relaxed);
+}
+
+.cinder-file-upload__list {
+  display: grid;
+  gap: var(--cinder-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cinder-file-upload__row {
+  display: grid;
+  gap: var(--cinder-space-2);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface);
+  padding: var(--cinder-space-3);
+}
+
+.cinder-file-upload__row-main {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-file-upload__file-meta {
+  display: grid;
+  gap: var(--cinder-space-1);
+  min-inline-size: 0;
+}
+
+.cinder-file-upload__file-name {
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  font-weight: var(--cinder-font-weight-medium);
+}
+
+.cinder-file-upload__file-size {
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+}
+
+.cinder-file-upload__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+  white-space: nowrap;
+}
+
+.cinder-file-upload__status[data-status='success'] {
+  color: var(--cinder-color-success-fg);
+}
+
+.cinder-file-upload__status[data-status='error'] {
+  color: var(--cinder-color-danger-fg);
+}
+
+.cinder-file-upload__status-icon {
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  flex: none;
+}
+
+.cinder-file-upload__progress {
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--cinder-file-upload-progress-background);
+  block-size: 0.5rem;
+}
+
+.cinder-file-upload__progress-fill {
+  block-size: 100%;
+  background: var(--cinder-file-upload-progress-fill);
+  inline-size: calc(clamp(0, var(--cinder-file-upload-progress, 0), 100) * 1%);
+  transition: inline-size 150ms ease;
+}
+
+.cinder-file-upload__error {
+  color: var(--cinder-color-danger-fg);
+  font-size: var(--cinder-text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-file-upload__dropzone,
+  .cinder-file-upload__progress-fill {
+    transition: none;
+  }
+}

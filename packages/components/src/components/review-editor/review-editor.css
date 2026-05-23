@@ -219,6 +219,8 @@
   transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.review-editor-container .comment-anchor:hover {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 75%);
+@media (hover: hover) {
+  .review-editor-container .comment-anchor:hover {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 75%);
+  }
 }
