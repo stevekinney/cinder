@@ -1,15 +1,15 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 
 import { localPlaygroundUrlForReportedPort, parsePlaygroundListeningPort } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
-  it('extracts the selected port from playground output', () => {
-    expect(parsePlaygroundListeningPort('[playground] Listening at http://localhost:5555\n')).toBe(
+  test('reads the playground port from direct server output', () => {
+    expect(parsePlaygroundListeningPort('[playground] Listening at http://localhost:5555')).toBe(
       5555,
     );
   });
 
-  it('extracts the selected port when package runner prefixes the output', () => {
+  test('reads the playground port from package-runner-prefixed output', () => {
     expect(
       parsePlaygroundListeningPort(
         '@cinder/playground dev: [playground] Listening at http://localhost:5556',
@@ -17,19 +17,29 @@ describe('parsePlaygroundListeningPort', () => {
     ).toBe(5556);
   });
 
-  it('returns null when output does not contain the listening message', () => {
-    expect(parsePlaygroundListeningPort('Waiting for playground to report its selected port')).toBe(
-      null,
-    );
+  test('reads the latest playground port from accumulated output', () => {
+    expect(
+      parsePlaygroundListeningPort(
+        [
+          '[playground] Listening at http://localhost:5555',
+          '[playground] Restarting after file change',
+          '[playground] Listening at http://localhost:5557',
+        ].join('\n'),
+      ),
+    ).toBe(5557);
+  });
+
+  test('returns null when output does not include a playground listening line', () => {
+    expect(parsePlaygroundListeningPort('[playground] Pre-built 63/63 page bundles')).toBeNull();
   });
 });
 
 describe('localPlaygroundUrlForReportedPort', () => {
-  it('returns null before the spawned server reports a selected port', () => {
-    expect(localPlaygroundUrlForReportedPort(null)).toBe(null);
+  test('returns null before the spawned server reports a selected port', () => {
+    expect(localPlaygroundUrlForReportedPort(null)).toBeNull();
   });
 
-  it('returns the local playground URL for a reported port', () => {
+  test('returns the local playground URL for a reported port', () => {
     expect(localPlaygroundUrlForReportedPort(5556)).toBe('http://localhost:5556');
   });
 });

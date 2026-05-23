@@ -37,7 +37,8 @@ export function localPlaygroundUrlForReportedPort(port: number | null): string |
 }
 
 export function parsePlaygroundListeningPort(output: string): number | null {
-  const match = output.match(/\[playground\] Listening at http:\/\/localhost:(\d+)/);
+  const matches = [...output.matchAll(/\[playground\] Listening at http:\/\/localhost:(\d+)/g)];
+  const match = matches.at(-1);
   if (!match) return null;
   const port = Number(match[1]);
   return Number.isInteger(port) && port > 0 ? port : null;
@@ -117,6 +118,7 @@ async function main(): Promise<void> {
         serverOutputBuffer = serverOutputBuffer.slice(-4096);
       }
     });
+
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
@@ -125,15 +127,17 @@ async function main(): Promise<void> {
         targetPlaygroundUrl = selectedPlaygroundUrl;
         if (await ping(selectedPlaygroundUrl)) break;
       } else if (await ping(targetPlaygroundUrl)) {
-        // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but some local
-        // runs start successfully on the default port without ever writing the
-        // file. Accept direct readiness at the target URL in that case so the
-        // wrapper does not hang despite a healthy server.
+        // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but local
+        // runs can start successfully on the default port without writing the
+        // file or logging the selected port. Accept direct readiness at the
+        // target URL so the wrapper does not hang despite a healthy server.
         break;
       }
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
-        console.log(`Waiting for playground to report its selected port (${elapsed}s elapsed)...`);
+        console.log(
+          `Waiting for playground to report its selected port or become ready (${elapsed}s elapsed)...`,
+        );
         lastLog = Date.now();
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
