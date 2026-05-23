@@ -115,6 +115,21 @@
     return allowedCountries[0] ?? 'US';
   }
 
+  function synchronizeNationalDigitsToCountry(
+    nextCountry: PhoneInputCountryCode,
+    options?: { recomputeValue?: boolean },
+  ): void {
+    const { recomputeValue = true } = options ?? {};
+    const nationalDigits = digitsOnly(nationalDisplay);
+    nationalDisplay = formatNationalAsYouType(nextCountry, nationalDigits);
+    if (!recomputeValue) return;
+    const result = computeNationalResult(nextCountry, nationalDigits);
+    if (result.value !== value) {
+      value = result.value;
+    }
+    knownValue = result.value;
+  }
+
   // Internal visible national-number string. Kept separate so an internally
   // emitted `''` (incomplete / invalid) does not wipe the user's in-progress
   // digits from the field.
@@ -160,8 +175,9 @@
 
   /**
    * Synchronise to external `country` changes. Reformat the existing digits
-   * for the new country, but never emit. Initial `country` prop comes
-   * through this path too.
+   * for the new country and recompute the canonical E.164 value from those
+   * same digits, but never emit. Initial `country` prop comes through this
+   * path too.
    */
   $effect(() => {
     if (country === knownCountry) return;
@@ -176,8 +192,10 @@
       return;
     }
     if (nationalDisplay) {
-      const digits = digitsOnly(nationalDisplay);
-      nationalDisplay = formatNationalAsYouType(country, digits);
+      const shouldRecomputeValue = value === '' || parseE164Value(value) !== null;
+      synchronizeNationalDigitsToCountry(country, {
+        recomputeValue: shouldRecomputeValue,
+      });
     }
   });
 
@@ -210,16 +228,13 @@
     if (!isAllowed(country)) {
       country = fallbackCountry();
       knownCountry = country;
-      const digits = digitsOnly(nationalDisplay);
-      nationalDisplay = formatNationalAsYouType(country, digits);
-      const result = computeNationalResult(country, digits);
       // Bring the bindable `value` back in line with the new selection.
       // `''` when the preserved digits are not a valid number under the
       // fallback country — consumers see a clean state, not stale E.164.
-      if (result.value !== value) {
-        value = result.value;
-      }
-      knownValue = result.value;
+      const shouldRecomputeValue = value === '' || parseE164Value(value) !== null;
+      synchronizeNationalDigitsToCountry(country, {
+        recomputeValue: shouldRecomputeValue,
+      });
     }
   });
 
@@ -393,6 +408,12 @@
     const parsed = parseE164Value(value);
     if (!parsed) return '';
     if (!isAllowed(parsed.country)) return '';
+    // Guard against a stale E.164 from a previous country (e.g. consumer
+    // changed `country` externally without updating `value`). The country
+    // effect reformats the visible field but cannot always recompute `value`
+    // — if the parsed country no longer matches the selected one, do not
+    // submit the prior number.
+    if (parsed.country !== country) return '';
     // Use libphonenumber's canonical E.164 string — `parseE164Value` already
     // rejects non-strict input, but `parsed.e164` guarantees the submitted
     // value is exactly the normalized form.

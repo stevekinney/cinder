@@ -263,6 +263,35 @@ describe('PhoneInput onchange', () => {
     await rerender({ id: 'p', label: 'Phone', country: 'GB', onchange });
     expect(onchange).not.toHaveBeenCalled();
   });
+
+  test('external country synchronization recomputes the hidden value from the visible digits', async () => {
+    const onchange = mock((_detail: any) => {});
+    const { container, rerender } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        name: 'phone',
+        country: 'US',
+        value: '+14155550132',
+        onchange,
+      },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('+14155550132');
+
+    await rerender({
+      id: 'p',
+      label: 'Phone',
+      name: 'phone',
+      country: 'GB',
+      value: '+14155550132',
+      onchange,
+    });
+
+    expect(hidden.value).toBe('');
+    expect(countrySelect(container).value).toBe('GB');
+    expect(onchange).not.toHaveBeenCalled();
+  });
 });
 
 describe('PhoneInput external E.164 parsing', () => {
@@ -344,6 +373,35 @@ describe('PhoneInput hidden form value', () => {
     await fireEvent.input(nationalInput(container), { target: { value: '4155550132' } });
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
     expect(hidden.value).toBe('+14155550132');
+  });
+
+  test('hidden input does not emit a stale E.164 after country changes externally without a value update', async () => {
+    // Regression for cursor/bugbot: if a consumer changes `country` without
+    // updating `value`, the prior E.164 belongs to the previous country and
+    // must not be submitted under the new selection.
+    const { container, rerender } = render(PhoneInput, {
+      props: {
+        id: 'p',
+        label: 'Phone',
+        name: 'phone',
+        countries: ['US', 'GB'],
+        country: 'US',
+        value: '+14155550132',
+      },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('+14155550132');
+    await rerender({
+      id: 'p',
+      label: 'Phone',
+      name: 'phone',
+      countries: ['US', 'GB'],
+      country: 'GB',
+      value: '+14155550132',
+    });
+    // The stored E.164 still parses as US, but the user is now looking at a
+    // GB dropdown — submission must not carry the prior US number through.
+    expect(hidden.value).toBe('');
   });
 
   test('non-strict E.164 value (free-form text) is never forwarded to the hidden input', () => {
