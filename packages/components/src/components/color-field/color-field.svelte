@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
-  import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
@@ -392,7 +391,6 @@
     }
 
     attach();
-    void tick().then(attach);
 
     return () => {
       currentForm?.removeEventListener('reset', onFormReset);
