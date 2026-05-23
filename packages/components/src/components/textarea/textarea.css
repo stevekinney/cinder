@@ -57,8 +57,10 @@
   color: var(--cinder-text-placeholder, var(--cinder-text-muted));
 }
 
-.cinder-textarea:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+@media (hover: hover) {
+  .cinder-textarea:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-textarea:focus {

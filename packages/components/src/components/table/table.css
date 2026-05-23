@@ -154,8 +154,10 @@
   transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-table__body .cinder-table__row:hover {
-  background: var(--cinder-surface-hover);
+@media (hover: hover) {
+  .cinder-table__body .cinder-table__row:hover {
+    background: var(--cinder-surface-hover);
+  }
 }
 
 .cinder-table__cell {

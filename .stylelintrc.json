@@ -1,5 +1,8 @@
 {
-  "plugins": ["stylelint-use-logical"],
+  "plugins": [
+    "stylelint-use-logical",
+    "./packages/components/scripts/stylelint/no-unguarded-hover-colors.cjs"
+  ],
   "overrides": [
     {
       "files": ["**/*.svelte"],
@@ -7,6 +10,7 @@
     }
   ],
   "rules": {
+    "cinder/no-unguarded-hover-colors": true,
     "csstools/use-logical": [
       "always",
       {

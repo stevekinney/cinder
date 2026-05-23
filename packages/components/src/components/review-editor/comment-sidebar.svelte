@@ -282,9 +282,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .sidebar-header :global(.actions-trigger:hover) {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .sidebar-header :global(.actions-trigger:hover) {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   .sidebar-header :global(.actions-trigger:focus-visible) {
@@ -357,9 +359,11 @@
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .thread-item:hover {
-    background: var(--cinder-surface-hover);
-    border-color: var(--cinder-border);
+  @media (hover: hover) {
+    .thread-item:hover {
+      background: var(--cinder-surface-hover);
+      border-color: var(--cinder-border);
+    }
   }
 
   .thread-item:focus-visible {

@@ -48,8 +48,11 @@
     color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-accordion-item__trigger:hover:not(:disabled) {
-  background: var(--cinder-surface-hover);
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-accordion-item__trigger:hover:not(:disabled) {
+    background: var(--cinder-surface-hover);
+  }
 }
 
 .cinder-accordion-item__trigger:active:not(:disabled) {

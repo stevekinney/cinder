@@ -14,6 +14,12 @@
       "title": "Tooltip placements",
       "description": "Top, right, bottom, and left placement options.",
       "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Tooltip } from 'cinder/tooltip';\n</script>\n\n<div class=\"example-preview-row\" style=\"padding: 1rem;\">\n  <Tooltip text=\"Appears above\" placement=\"top\">\n    <Button variant=\"secondary\">Top</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears to the right\" placement=\"right\">\n    <Button variant=\"secondary\">Right</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears below\" placement=\"bottom\">\n    <Button variant=\"secondary\">Bottom</Button>\n  </Tooltip>\n  <Tooltip text=\"Appears to the left\" placement=\"left\">\n    <Button variant=\"secondary\">Left</Button>\n  </Tooltip>\n</div>\n"
+    },
+    {
+      "id": "transformed-ancestor",
+      "title": "Transformed ancestor anchoring",
+      "description": "Hover the trigger after scrolling the transformed preview shell to verify tooltip fixed-position anchoring.",
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Tooltip } from 'cinder/tooltip';\n</script>\n\n<div\n  data-testid=\"transformed-ancestor-example\"\n  style=\"display: grid; gap: 1rem; max-width: 40rem;\"\n>\n  <p style=\"margin: 0;\">\n    The tooltip trigger sits inside a transformed card and an inner scroll container. Hover after\n    scrolling the viewport to confirm the tooltip still anchors to the button instead of the\n    wrapper.\n  </p>\n\n  <div\n    data-testid=\"transformed-shell\"\n    style=\"transform: translate3d(32px, 0, 0) scale(0.98); transform-origin: top left; padding: 1rem; border-radius: 1rem; background: var(--cinder-surface-raised); border: 1px solid var(--cinder-border);\"\n  >\n    <div\n      data-testid=\"transformed-scroll-container\"\n      style=\"overflow: auto; width: 28rem; height: 18rem; padding: 1.5rem; border-radius: 0.75rem; background: var(--cinder-surface);\"\n    >\n      <div style=\"width: 48rem; height: 30rem; padding-top: 10rem; padding-left: 12rem;\">\n        <Tooltip text=\"Transformed ancestor tooltip anchor\" placement=\"bottom\">\n          <span data-testid=\"transformed-tooltip-trigger\">\n            <Button variant=\"secondary\">Hover for anchored tooltip</Button>\n          </span>\n        </Tooltip>\n      </div>\n    </div>\n  </div>\n</div>\n"
     }
   ]
 }
