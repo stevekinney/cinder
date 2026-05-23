@@ -25,6 +25,7 @@
  * ---------------------------------------- */
 
 .cinder-select-field__control {
+  display: block;
   position: relative;
   inline-size: 100%;
 }
@@ -127,11 +128,17 @@
 
 /* Forced Colors Mode override — UA suppresses `background-color: currentColor`,
  * so the masked chevron becomes invisible. Opt out of forced-color adjustment
- * for the glyph and paint with a system color that survives the override. */
+ * for the glyph and paint with a system color that survives the override.
+ * Disabled selects use the conventional `GrayText` system color to match how
+ * the rest of the disabled control reads in High Contrast. */
 @media (forced-colors: active) {
   .cinder-select-field__chevron {
     forced-color-adjust: none;
     background-color: ButtonText;
+  }
+
+  .cinder-select:disabled + .cinder-select-field__chevron {
+    background-color: GrayText;
   }
 }
 

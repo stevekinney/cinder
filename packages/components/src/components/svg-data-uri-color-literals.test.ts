@@ -2,9 +2,10 @@
  * Regression test that scans component source for SVG data URIs containing
  * hardcoded `fill` or `stroke` color literals. Defaults to scanning
  * `packages/components/src` only — set `CINDER_SVG_DATA_URI_ROOTS` to a
- * comma-separated list of paths to add other roots (the build verification
- * step in the task plan passes `packages/components/src,packages/components/dist`
- * to also catch hardcoded literals leaking through generated artifacts).
+ * comma-separated list of paths to override the default roots (the build
+ * verification step in the task plan passes
+ * `packages/components/src,packages/components/dist` to also catch hardcoded
+ * literals leaking through generated artifacts).
  *
  * Hardcoded SVG colors don't respond to theme tokens — a light-mode `#9ca3af`
  * chevron disappears in dark mode. SVG data URIs must encode shapes only;

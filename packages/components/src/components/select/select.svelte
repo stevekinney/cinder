@@ -59,7 +59,7 @@
   {#if label}
     <label for={id}>{label}</label>
   {/if}
-  <div class="cinder-select-field__control">
+  <span class="cinder-select-field__control">
     {#if options.length === 0}
       <select
         {id}
@@ -88,7 +88,7 @@
       </select>
     {/if}
     <span class="cinder-select-field__chevron" aria-hidden="true"></span>
-  </div>
+  </span>
   {#if description}
     <p id={descriptionId} class="cinder-select-field__description">{description}</p>
   {/if}
