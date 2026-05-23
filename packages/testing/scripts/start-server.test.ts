@@ -17,6 +17,18 @@ describe('parsePlaygroundListeningPort', () => {
     ).toBe(5556);
   });
 
+  test('reads the latest playground port from accumulated output', () => {
+    expect(
+      parsePlaygroundListeningPort(
+        [
+          '[playground] Listening at http://localhost:5555',
+          '[playground] Restarting after file change',
+          '[playground] Listening at http://localhost:5557',
+        ].join('\n'),
+      ),
+    ).toBe(5557);
+  });
+
   test('returns null when output does not include a playground listening line', () => {
     expect(parsePlaygroundListeningPort('[playground] Pre-built 63/63 page bundles')).toBeNull();
   });

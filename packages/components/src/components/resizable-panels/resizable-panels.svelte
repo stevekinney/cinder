@@ -38,6 +38,7 @@
     getHandleAriaState,
     hasLayoutPixelChanges,
     getLayoutSnapshot,
+    getPaneDefaultSizeSignature,
     getPaneLayoutSignature,
     rebaseLayoutState,
     resolveKeyboardStep,
@@ -79,6 +80,7 @@
   let pointerDragChanged = $state(false);
   let layoutState: ResizablePanelsLayoutState | null = $state(null);
   let previousPaneLayoutSignature = $state('');
+  let previousPaneDefaultSizeSignature = $state('');
 
   const issues = $derived(validatePanes(panes));
 
@@ -124,13 +126,16 @@
     if (panes.length === 0) {
       layoutState = null;
       previousPaneLayoutSignature = '';
+      previousPaneDefaultSizeSignature = '';
       return;
     }
     const normalizedAvailablePanePixels = Math.max(0, nextAvailablePanePixels);
     const nextPaneLayoutSignature = getPaneLayoutSignature(panes);
+    const nextPaneDefaultSizeSignature = getPaneDefaultSizeSignature(panes);
     if (!layoutState) {
       layoutState = createInitialLayoutState(panes, normalizedAvailablePanePixels, orientation);
       previousPaneLayoutSignature = nextPaneLayoutSignature;
+      previousPaneDefaultSizeSignature = nextPaneDefaultSizeSignature;
       return;
     }
     if (
@@ -145,6 +150,7 @@
         orientation,
       );
       previousPaneLayoutSignature = nextPaneLayoutSignature;
+      previousPaneDefaultSizeSignature = nextPaneDefaultSizeSignature;
       if (previousAvailablePanePixels > 0 && normalizedAvailablePanePixels > 0) {
         emit('rebase', true);
       }
@@ -161,9 +167,11 @@
         panes,
         normalizedAvailablePanePixels,
         orientation,
+        { useDefaultSizes: previousPaneDefaultSizeSignature !== nextPaneDefaultSizeSignature },
       );
       layoutState = nextLayoutState;
       previousPaneLayoutSignature = nextPaneLayoutSignature;
+      previousPaneDefaultSizeSignature = nextPaneDefaultSizeSignature;
       if (hasLayoutPixelChanges(previousLayoutState, nextLayoutState)) {
         emit('rebase', true);
       }

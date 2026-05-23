@@ -8,6 +8,7 @@ import {
   formatSizeFromPixels,
   getHandleAriaState,
   getLayoutSnapshot,
+  getPaneDefaultSizeSignature,
   getPaneLayoutSignature,
   hasLayoutPixelChanges,
   rebaseLayoutState,
@@ -65,6 +66,24 @@ describe('resizable-panels sizing', () => {
     const rebased = rebaseLayoutState(state, panes, 1200, 'horizontal');
     expect(rebased.panels[0]!.sizePixels).toBeCloseTo(300, 1);
     expect(rebased.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(1200, 3);
+  });
+
+  test('can rebase from updated default sizes', () => {
+    const state = createInitialLayoutState(panes, 1000, 'horizontal');
+    const updatedPanes = [
+      { ...panes[0]!, defaultSize: { value: 40, unit: 'percent' } },
+      { ...panes[1]!, defaultSize: { value: 35, unit: 'percent' } },
+      panes[2]!,
+    ] satisfies ResizablePanelDefinition[];
+
+    const rebased = rebaseLayoutState(state, updatedPanes, 1000, 'horizontal', {
+      useDefaultSizes: true,
+    });
+
+    expect(getPaneDefaultSizeSignature(updatedPanes)).not.toBe(getPaneDefaultSizeSignature(panes));
+    expect(rebased.panels[0]!.sizePixels).toBeCloseTo(400, 1);
+    expect(rebased.panels[1]!.sizePixels).toBeCloseTo(350, 1);
+    expect(rebased.panels[2]!.sizePixels).toBeCloseTo(250, 1);
   });
 
   test('rebases through a zero-pixel budget without preserving stale sizes', () => {
@@ -211,6 +230,29 @@ describe('resizable-panels sizing', () => {
 
     expect(resized.panels[0]!.sizePixels).toBe(220);
     expect(resized.panels[1]!.sizePixels).toBe(380);
+  });
+
+  test('fills the available budget when every pane is max constrained', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 100, unit: 'px' },
+        maxSize: { value: 120, unit: 'px' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 100, unit: 'px' },
+        maxSize: { value: 120, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
+
+    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(600, 3);
+    expect(state.panels[0]!.sizePixels).toBeCloseTo(300, 3);
+    expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
   });
 
   test('respects the opposite pane maxSize while collapsing', () => {

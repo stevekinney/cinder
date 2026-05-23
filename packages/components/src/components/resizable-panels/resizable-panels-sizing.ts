@@ -41,6 +41,10 @@ export type ApplyPointerDragResult = {
   state: ResizablePanelsLayoutState;
 };
 
+export type RebaseLayoutStateOptions = {
+  useDefaultSizes?: boolean;
+};
+
 const DEFAULT_KEYBOARD_STEP: ResizablePanelSize = { value: 10, unit: 'px' };
 const DEFAULT_SNAP_THRESHOLD: ResizablePanelSize = { value: 8, unit: 'px' };
 
@@ -102,6 +106,10 @@ export function getPaneLayoutSignature(panes: ResizablePanelDefinition[]): strin
       ].join('|'),
     )
     .join('||');
+}
+
+export function getPaneDefaultSizeSignature(panes: ResizablePanelDefinition[]): string {
+  return panes.map((pane) => [pane.id, formatSizeSignature(pane.defaultSize)].join('|')).join('||');
 }
 
 function getPanelConstraints(
@@ -204,6 +212,14 @@ function normalizeToAvailable(
     );
   }
 
+  const finiteMaximums = effectiveConstraints.map((constraint) => constraint.maxPixels);
+  if (finiteMaximums.every(Number.isFinite)) {
+    const maximumTotal = finiteMaximums.reduce((sum, value) => sum + value, 0);
+    if (maximumTotal > 0 && maximumTotal < availablePanePixels) {
+      return scaleSizesToTotal(finiteMaximums, availablePanePixels);
+    }
+  }
+
   const currentTotal = clampedSizes.reduce((sum, value) => sum + value, 0);
   if (currentTotal < availablePanePixels) {
     return distributeDelta(
@@ -298,6 +314,7 @@ export function rebaseLayoutState(
   panes: ResizablePanelDefinition[],
   availablePanePixels: number,
   orientation: ResizablePanelsOrientation,
+  options: RebaseLayoutStateOptions = {},
 ): ResizablePanelsLayoutState {
   const previousById = new Map(state.panels.map((panel) => [panel.id, panel] as const));
   const constraints = getPanelConstraints(panes, availablePanePixels);
@@ -311,6 +328,7 @@ export function rebaseLayoutState(
     const previous = previousById.get(pane.id);
     if (!previous) return fallback.panels[index]!.sizePixels;
     if (previous.collapsed) return 0;
+    if (options.useDefaultSizes) return fallback.panels[index]!.sizePixels;
     if (state.availablePanePixels <= 0) return fallback.panels[index]!.sizePixels;
     return (previous.sizePixels / state.availablePanePixels) * availablePanePixels;
   });
