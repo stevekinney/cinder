@@ -1,0 +1,99 @@
+.cinder-menu-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  position: relative;
+  inline-size: fit-content;
+}
+
+.cinder-menu-bar__menu {
+  position: relative;
+}
+
+.cinder-menu-bar__trigger {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--cinder-radius-sm);
+  background: transparent;
+  color: var(--cinder-text);
+  cursor: pointer;
+  font: inherit;
+  line-height: var(--cinder-leading-tight);
+  padding: var(--cinder-space-1) var(--cinder-space-2);
+}
+
+.cinder-menu-bar__trigger[data-cinder-state='open'] {
+  border-color: var(--cinder-border);
+  background: var(--cinder-surface-raised);
+}
+
+@media (hover: hover) {
+  .cinder-menu-bar__trigger:not(:disabled):hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.cinder-menu-bar__trigger:disabled {
+  color: var(--cinder-text-disabled);
+  cursor: not-allowed;
+}
+
+.cinder-menu-bar__trigger:focus-visible {
+  outline: var(--cinder-ring-width, 2px) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+.cinder-menu-bar__access-key {
+  text-decoration: underline;
+  text-underline-offset: 0.125em;
+}
+
+.cinder-menu-bar__dropdown-menu {
+  position: absolute;
+  display: grid;
+  inset-block-start: calc(100% + var(--cinder-space-1));
+  right: auto;
+  left: 0;
+  min-inline-size: 12rem;
+  max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
+  overflow: visible;
+  z-index: var(--cinder-z-dropdown, 1100);
+}
+
+.cinder-menu-bar__dropdown-scroll {
+  min-inline-size: 100%;
+  max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
+  overflow: auto;
+}
+
+.cinder-menu-bar__submenu {
+  position: relative;
+  inline-size: 100%;
+}
+
+.cinder-menu-bar__submenu-menu {
+  position: absolute;
+  inset-block-start: 0;
+  right: auto;
+  left: calc(100% + var(--cinder-space-1));
+  min-inline-size: 12rem;
+  max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
+  max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
+  overflow: auto;
+  z-index: var(--cinder-z-dropdown, 1100);
+}
+
+.cinder-menu-bar__item-label {
+  flex: 1 1 auto;
+}
+
+.cinder-menu-bar__shortcut {
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+  margin-inline-start: var(--cinder-space-4);
+}
+
+.cinder-menu-bar__submenu-indicator {
+  color: var(--cinder-text-muted);
+  margin-inline-start: var(--cinder-space-4);
+}

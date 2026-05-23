@@ -117,6 +117,24 @@ function extractReducedMotionBlocks(css: string): string[] {
 const progressCssPath = join(import.meta.dir, './progress.css');
 
 describe('Progress CSS reduced-motion audit', () => {
+  test('progress.css uses dedicated tokens for indeterminate animation durations', async () => {
+    const css = await Bun.file(progressCssPath).text();
+    const normalizedCss = css.replaceAll(/\s+/g, ' ');
+
+    expect(normalizedCss).toContain(
+      'animation: cinder-progress-bar-slide var(--cinder-duration-progress-bar-indeterminate) linear infinite;',
+    );
+    expect(normalizedCss).toContain(
+      'animation: cinder-progress-ring-spin var(--cinder-duration-progress-ring-spin) linear infinite;',
+    );
+    expect(normalizedCss).not.toContain(
+      'animation: cinder-progress-bar-slide 1.6s linear infinite;',
+    );
+    expect(normalizedCss).not.toContain(
+      'animation: cinder-progress-ring-spin 1.4s linear infinite;',
+    );
+  });
+
   test('progress.css disables the indeterminate bar animation under prefers-reduced-motion: reduce', async () => {
     const css = await Bun.file(progressCssPath).text();
     const blocks = extractReducedMotionBlocks(css);
