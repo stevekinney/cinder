@@ -28,6 +28,10 @@ function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
 
+export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
+  return port === null ? null : localPlaygroundUrlForPort(port);
+}
+
 export function parsePlaygroundListeningPort(output: string): number | null {
   const match = output.match(/\[playground\] Listening at http:\/\/localhost:(\d+)/);
   if (!match) return null;
@@ -111,11 +115,11 @@ async function main(): Promise<void> {
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
-      if (selectedPort !== null) {
-        targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
-        if (await ping()) break;
+      const selectedPlaygroundUrl = localPlaygroundUrlForReportedPort(selectedPort);
+      if (selectedPlaygroundUrl !== null) {
+        targetPlaygroundUrl = selectedPlaygroundUrl;
+        if (await ping(selectedPlaygroundUrl)) break;
       }
-      if (await ping()) break;
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
         console.log(`Waiting for playground to report its selected port (${elapsed}s elapsed)...`);
