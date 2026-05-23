@@ -156,6 +156,23 @@ describe('Popover — rendering', () => {
     expect(panel.hasAttribute('aria-labelledby')).toBe(false);
   });
 
+  test('non-dialog roles do not fall back to a generic aria-label', async () => {
+    render(Popover, {
+      props: {
+        open: true,
+        role: 'listbox',
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+    const panel = queryPopoverPanel()!;
+    expect(panel.getAttribute('role')).toBe('listbox');
+    expect(panel.hasAttribute('aria-label')).toBe(false);
+  });
+
   test('ariaLabelledby wins over label', async () => {
     render(Popover, {
       props: {

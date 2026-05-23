@@ -85,6 +85,9 @@
       ? triggerRef
       : (findFirstFocusable(triggerWrapper) ?? null),
   );
+  const resolvedAriaLabel = $derived(
+    ariaLabelledby ? undefined : role === 'dialog' ? (label ?? 'Popover') : label,
+  );
 
   // mounted gates the panel render so SSR emits empty markup regardless of
   // open. See _internal/OVERLAY-POLICY.md ("SSR rule").
@@ -336,7 +339,7 @@
     {@attach portalToDocumentBody}
     id={panelId}
     {role}
-    aria-label={ariaLabelledby ? undefined : (label ?? 'Popover')}
+    aria-label={resolvedAriaLabel}
     aria-labelledby={ariaLabelledby}
     aria-hidden={positionReady ? undefined : 'true'}
     class={classNames('cinder-popover', className)}

@@ -59,6 +59,8 @@
 
   const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
   const listboxId = $derived(`${resolvedId}-listbox`);
+  const resolvedMinQueryLength = $derived(toNonNegativeInteger(minQueryLength, 1));
+  const resolvedMaxVisibleSuggestions = $derived(toNonNegativeInteger(maxVisibleSuggestions, 50));
 
   $effect(() => {
     if (!DEV) return;
@@ -79,11 +81,14 @@
   const ownErrorId = $derived(
     error && defaultErrorId === context?.errorId ? `${resolvedId}-control-error` : defaultErrorId,
   );
+  const consumerDescribedBy = $derived(rest['aria-describedby']);
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+  const describedBy = $derived(
+    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, consumerDescribedBy),
+  );
   const resolvedAriaInvalid = $derived(
-    error ? ariaInvalid(true) : (context?.invalid ?? ariaInvalid(false)),
+    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
   );
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
@@ -92,6 +97,7 @@
   let open = $state(false);
   let loading = $state(false);
   let composing = $state(false);
+  let inputFocused = $state(false);
   let suggestions = $state<AutocompleteSuggestion[]>([]);
   let activeIndex = $state<number | null>(null);
   let suppressNextQuery = false;
@@ -100,13 +106,21 @@
 
   let requestVersion = 0;
 
-  const renderedSuggestions = $derived(suggestions.slice(0, maxVisibleSuggestions));
+  const renderedSuggestions = $derived(suggestions.slice(0, resolvedMaxVisibleSuggestions));
+  const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
   );
 
   function isEligibleQuery(query: string): boolean {
-    return !resolvedDisabled && !readonly && !!suggestionSource && query.length >= minQueryLength;
+    return (
+      !resolvedDisabled && !readonly && !!suggestionSource && query.length >= resolvedMinQueryLength
+    );
+  }
+
+  function toNonNegativeInteger(value: number, fallback: number): number {
+    if (!Number.isFinite(value)) return fallback;
+    return Math.max(0, Math.trunc(value));
   }
 
   function getEnabledIndexes(list: AutocompleteSuggestion[]): number[] {
@@ -118,13 +132,14 @@
   }
 
   function clampActiveIndex(list: AutocompleteSuggestion[]): void {
-    const enabledIndexes = getEnabledIndexes(list);
-    if (enabledIndexes.length === 0) {
+    const availableEnabledIndexes =
+      list === renderedSuggestions ? enabledIndexes : getEnabledIndexes(list);
+    if (availableEnabledIndexes.length === 0) {
       activeIndex = null;
       return;
     }
-    if (activeIndex !== null && enabledIndexes.includes(activeIndex)) return;
-    activeIndex = enabledIndexes[0] ?? null;
+    if (activeIndex !== null && availableEnabledIndexes.includes(activeIndex)) return;
+    activeIndex = availableEnabledIndexes[0] ?? null;
   }
 
   $effect(() => {
@@ -142,13 +157,14 @@
   $effect(() => {
     const query = value;
     const source = suggestionSource;
+    const isFocused = inputFocused;
 
     if (suppressNextQuery) {
       suppressNextQuery = false;
       return;
     }
 
-    if (!isEligibleQuery(query) || !source) {
+    if (!isFocused || !isEligibleQuery(query) || !source) {
       suggestions = [];
       closePopup();
       return;
@@ -161,7 +177,19 @@
     suggestions = [];
     activeIndex = null;
 
-    const result = source(query, { signal: controller.signal });
+    let result: AutocompleteSuggestion[] | Promise<AutocompleteSuggestion[]>;
+    try {
+      if (controller.signal.aborted || currentVersion !== requestVersion) return;
+      result = source(query, { signal: controller.signal });
+    } catch (errorValue: unknown) {
+      if (controller.signal.aborted || currentVersion !== requestVersion) return;
+      suggestions = [];
+      closePopup();
+      if (DEV) {
+        console.warn('[cinder/autocomplete] suggestionSource failed.', errorValue);
+      }
+      return;
+    }
 
     Promise.resolve(result)
       .then((nextSuggestions) => {
@@ -169,7 +197,7 @@
         suggestions = nextSuggestions;
         loading = false;
         open = true;
-        clampActiveIndex(nextSuggestions.slice(0, maxVisibleSuggestions));
+        clampActiveIndex(nextSuggestions.slice(0, resolvedMaxVisibleSuggestions));
       })
       .catch((errorValue: unknown) => {
         if (controller.signal.aborted || currentVersion !== requestVersion) return;
@@ -198,7 +226,6 @@
   }
 
   function moveActive(direction: 1 | -1): void {
-    const enabledIndexes = getEnabledIndexes(renderedSuggestions);
     if (enabledIndexes.length === 0) return;
 
     open = true;
@@ -217,7 +244,6 @@
 
   function moveToBoundary(direction: 'start' | 'end'): void {
     if (!open) return;
-    const enabledIndexes = getEnabledIndexes(renderedSuggestions);
     if (enabledIndexes.length === 0) return;
     activeIndex =
       direction === 'start' ? (enabledIndexes[0] ?? null) : (enabledIndexes.at(-1) ?? null);
@@ -235,7 +261,7 @@
     suppressNextQuery = true;
     value = suggestion.value;
     if (inputElement) inputElement.value = suggestion.value;
-    closePopup();
+    closePopup({ clearSuggestions: true });
     oninput?.(suggestion.value);
     oncomplete?.(suggestion);
     dispatchCompletionInputEvent();
@@ -246,41 +272,48 @@
       ignoreSyntheticInput = false;
       return;
     }
+    inputFocused = true;
     const target = event.currentTarget as HTMLInputElement;
     value = target.value;
     oninput?.(target.value);
   }
 
   function handleFocus(): void {
+    inputFocused = true;
     if (isEligibleQuery(value)) {
       open = true;
     }
   }
 
   function handleBlur(): void {
+    inputFocused = false;
     closePopup();
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'ArrowDown') {
+      if (enabledIndexes.length === 0) return;
       event.preventDefault();
       moveActive(1);
       return;
     }
 
     if (event.key === 'ArrowUp') {
+      if (enabledIndexes.length === 0) return;
       event.preventDefault();
       moveActive(-1);
       return;
     }
 
     if (event.key === 'Home') {
+      if (!open || enabledIndexes.length === 0) return;
       event.preventDefault();
       moveToBoundary('start');
       return;
     }
 
     if (event.key === 'End') {
+      if (!open || enabledIndexes.length === 0) return;
       event.preventDefault();
       moveToBoundary('end');
       return;
@@ -386,9 +419,27 @@
   class="cinder-autocomplete__panel"
 >
   {#if loading}
-    <div class="cinder-autocomplete__status">{loadingMessage}</div>
+    <div
+      id={`${resolvedId}-status-loading`}
+      role="option"
+      tabindex="-1"
+      class="cinder-autocomplete__option cinder-autocomplete__status"
+      aria-selected="false"
+      aria-disabled="true"
+    >
+      {loadingMessage}
+    </div>
   {:else if renderedSuggestions.length === 0}
-    <div class="cinder-autocomplete__status">{emptyMessage}</div>
+    <div
+      id={`${resolvedId}-status-empty`}
+      role="option"
+      tabindex="-1"
+      class="cinder-autocomplete__option cinder-autocomplete__status"
+      aria-selected="false"
+      aria-disabled="true"
+    >
+      {emptyMessage}
+    </div>
   {:else}
     {#each renderedSuggestions as suggestion, index (`${suggestion.value}-${index}`)}
       {@const suggestionLabel = suggestion.label ?? suggestion.value}

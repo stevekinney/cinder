@@ -147,6 +147,29 @@ describe('Autocomplete — suggestions and free-form input', () => {
       expect(getListbox()).not.toBeNull();
       expect(document.body.textContent).toContain('No suggestions');
     });
+
+    const emptyOption = getOptions()[0];
+    expect(emptyOption?.textContent).toContain('No suggestions');
+    expect(emptyOption?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  test('normalizes minQueryLength and maxVisibleSuggestions to non-negative integers', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        minQueryLength: -2.4,
+        maxVisibleSuggestions: 1.9,
+        suggestionSource: () => fruits,
+      },
+    });
+
+    await fireEvent.input(getInput(container), { target: { value: 'a' } });
+
+    await waitFor(() => {
+      expect(getOptions()).toHaveLength(1);
+    });
+
+    expect(getInput(container).getAttribute('aria-expanded')).toBe('true');
   });
 });
 
@@ -206,6 +229,32 @@ describe('Autocomplete — keyboard completion', () => {
     expect(input.value).toBe('ap');
     expect(getListbox()).toBeNull();
   });
+
+  test('completing a suggestion clears stale suggestions before the next ArrowDown', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource: () => fruits,
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'a' } });
+    await waitFor(() => {
+      expect(getOptions()).toHaveLength(3);
+    });
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(input.value).toBe('apricot');
+    expect(getListbox()).toBeNull();
+
+    const arrowDownDefaultAllowed = await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(arrowDownDefaultAllowed).toBe(true);
+    expect(getListbox()).toBeNull();
+    expect(document.body.textContent).not.toContain('Apple');
+  });
 });
 
 describe('Autocomplete — async source handling', () => {
@@ -233,6 +282,10 @@ describe('Autocomplete — async source handling', () => {
       expect(document.body.textContent).toContain('Loading suggestions');
     });
 
+    const loadingOption = getOptions()[0];
+    expect(loadingOption?.textContent).toContain('Loading suggestions');
+    expect(loadingOption?.getAttribute('aria-disabled')).toBe('true');
+
     await fireEvent.input(input, { target: { value: 'ap' } });
 
     expect(signals[0]?.aborted).toBe(true);
@@ -247,6 +300,41 @@ describe('Autocomplete — async source handling', () => {
 
     expect(document.body.textContent).not.toContain('Avocado');
     expect(suggestionSource).toHaveBeenCalledTimes(2);
+  });
+
+  test('blur aborts the in-flight request so resolved suggestions do not reopen the popup', async () => {
+    const pending = deferred<Suggestion[]>();
+    const signals: AbortSignal[] = [];
+    const suggestionSource = mock((_query: string, context: { signal: AbortSignal }) => {
+      signals.push(context.signal);
+      return pending.promise;
+    });
+
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource,
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ap' } });
+
+    await waitFor(() => {
+      expect(getListbox()).not.toBeNull();
+      expect(document.body.textContent).toContain('Loading suggestions');
+    });
+
+    await fireEvent.blur(input);
+
+    expect(signals[0]?.aborted).toBe(true);
+    pending.resolve([{ value: 'apple', label: 'Apple' }]);
+    await tick();
+
+    expect(getListbox()).toBeNull();
+    expect(document.body.textContent).not.toContain('Loading suggestions');
+    expect(document.body.textContent).not.toContain('Apple');
   });
 
   test('source rejection closes the popup and clears stale suggestions', async () => {
@@ -277,6 +365,74 @@ describe('Autocomplete — async source handling', () => {
     expect(warnings.some((warning) => warning.includes('[cinder/autocomplete]'))).toBe(true);
     console.warn = originalWarn;
   });
+
+  test('synchronous source failures close the popup and clear loading state', async () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (message?: unknown) => {
+      warnings.push(String(message));
+    };
+
+    const suggestionSource = mock(() => {
+      throw new Error('boom');
+    });
+
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource,
+      },
+    });
+
+    await fireEvent.input(getInput(container), { target: { value: 'ap' } });
+    await tick();
+
+    await waitFor(() => {
+      expect(getListbox()).toBeNull();
+      expect(document.body.textContent).not.toContain('Loading suggestions');
+    });
+
+    expect(warnings.some((warning) => warning.includes('[cinder/autocomplete]'))).toBe(true);
+    console.warn = originalWarn;
+  });
+
+  test('Home and End preserve default caret behavior when the popup is closed', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource: () => fruits,
+      },
+    });
+
+    const input = getInput(container);
+    const homeDefaultAllowed = await fireEvent.keyDown(input, { key: 'Home' });
+    const endDefaultAllowed = await fireEvent.keyDown(input, { key: 'End' });
+
+    expect(homeDefaultAllowed).toBe(true);
+    expect(endDefaultAllowed).toBe(true);
+  });
+
+  test('ArrowUp and ArrowDown preserve default behavior when no enabled suggestions are available', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource: () => [{ value: 'banana', label: 'Banana', disabled: true }],
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'b' } });
+    await waitFor(() => {
+      expect(getOptions()).toHaveLength(1);
+    });
+
+    const arrowDownDefaultAllowed = await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const arrowUpDefaultAllowed = await fireEvent.keyDown(input, { key: 'ArrowUp' });
+
+    expect(arrowDownDefaultAllowed).toBe(true);
+    expect(arrowUpDefaultAllowed).toBe(true);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+  });
 });
 
 describe('Autocomplete — FormField context', () => {
@@ -301,5 +457,24 @@ describe('Autocomplete — FormField context', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.required).toBe(true);
     expect(input.disabled).toBe(true);
+  });
+
+  test('composes consumer aria-describedby and aria-invalid with FormField wiring', () => {
+    const { container } = render(FormFieldAutocompleteFixture, {
+      props: {
+        fieldId: 'fruit-search',
+        fieldLabel: 'Favorite fruit',
+        fieldDescription: 'Choose a fruit',
+        suggestionSource: () => [],
+        autocompleteProps: {
+          'aria-describedby': 'external-hint',
+          'aria-invalid': 'grammar',
+        },
+      },
+    });
+
+    const input = getInput(container);
+    expect(input.getAttribute('aria-describedby')).toBe('fruit-search-description external-hint');
+    expect(input.getAttribute('aria-invalid')).toBe('grammar');
   });
 });

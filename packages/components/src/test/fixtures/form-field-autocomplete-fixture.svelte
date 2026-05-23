@@ -9,6 +9,7 @@
     fieldDescription?: string;
     fieldError?: string;
     controlError?: string;
+    autocompleteProps?: Record<string, unknown>;
     disabled?: boolean;
     required?: boolean;
     value?: string;
@@ -21,6 +22,7 @@
     fieldDescription,
     fieldError,
     controlError,
+    autocompleteProps = {},
     disabled = false,
     required = false,
     value = '',
@@ -36,15 +38,16 @@
     ...(required ? { required: true } : {}),
   };
 
-  const autocompleteProps = {
+  const resolvedAutocompleteProps = {
     id: fieldId,
     value,
     suggestionSource,
     placeholder: 'Start typing',
     ...(controlError !== undefined ? { error: controlError } : {}),
+    ...autocompleteProps,
   };
 </script>
 
 <FormField {...formFieldProps}>
-  <Autocomplete {...autocompleteProps} />
+  <Autocomplete {...resolvedAutocompleteProps} />
 </FormField>

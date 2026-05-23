@@ -55,8 +55,6 @@ export type AutocompleteProps = Omit<
   | 'disabled'
   | 'required'
   | 'readonly'
-  | 'aria-describedby'
-  | 'aria-invalid'
   | 'role'
 > &
   AutocompleteSchemaProps;
