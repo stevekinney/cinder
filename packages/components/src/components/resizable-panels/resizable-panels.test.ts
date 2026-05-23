@@ -282,6 +282,63 @@ describe('ResizablePanels', () => {
     expect(onlayoutcommit).not.toHaveBeenCalled();
   });
 
+  test('snap point metadata changes do not commit when pane pixels stay fixed', async () => {
+    const onlayoutcommit = mock(() => {});
+    const rendered = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    mockMeasurements(rendered.container);
+    await tick();
+    onlayoutcommit.mockClear();
+
+    await rendered.rerender({
+      panes: panes.map((pane, index) =>
+        index === 0 ? { ...pane, snapPoints: [{ value: 25, unit: 'percent' }] } : pane,
+      ),
+      children: textSnippet,
+      onlayoutcommit,
+    });
+    await tick();
+
+    expect(onlayoutcommit).not.toHaveBeenCalled();
+  });
+
+  test('constrained pointer moves keep the drag anchor current before reversing', async () => {
+    const onlayoutchange = mock(
+      (_event: import('./resizable-panels.types.ts').ResizablePanelsResizeEvent) => {},
+    );
+    const constrainedPanes = [
+      {
+        id: 'sidebar',
+        label: 'Sidebar',
+        defaultSize: { value: 200, unit: 'px' },
+        minSize: { value: 100, unit: 'px' },
+        maxSize: { value: 220, unit: 'px' },
+      },
+      {
+        id: 'editor',
+        label: 'Editor',
+        defaultSize: { value: 400, unit: 'px' },
+        minSize: { value: 100, unit: 'px' },
+      },
+    ] satisfies import('./resizable-panels.types.ts').ResizablePanelDefinition[];
+    const { container } = render(ResizablePanels, {
+      panes: constrainedPanes,
+      children: textSnippet,
+      onlayoutchange,
+    });
+    mockMeasurements(container, { rootWidth: 612 });
+    await tick();
+    onlayoutchange.mockClear();
+
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    await fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientX: 200 });
+    document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220 }));
+    document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 300 }));
+    document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 290 }));
+
+    const lastChange = onlayoutchange.mock.calls.at(-1)?.[0];
+    expect(lastChange?.sizes[0]?.size.value).toBeCloseTo(210, 3);
+  });
+
   test('default-collapsed panes remain hidden when measured pane space is zero', async () => {
     const collapsedPanes = [
       { ...panes[0]!, defaultCollapsed: true },

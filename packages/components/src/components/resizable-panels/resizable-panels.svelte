@@ -155,14 +155,18 @@
       layoutState.panels.some((panel, index) => panel.id !== panes[index]?.id) ||
       previousPaneLayoutSignature !== nextPaneLayoutSignature
     ) {
-      layoutState = rebaseLayoutState(
+      const previousLayoutState = layoutState;
+      const nextLayoutState = rebaseLayoutState(
         layoutState,
         panes,
         normalizedAvailablePanePixels,
         orientation,
       );
+      layoutState = nextLayoutState;
       previousPaneLayoutSignature = nextPaneLayoutSignature;
-      emit('rebase', true);
+      if (hasLayoutPixelChanges(previousLayoutState, nextLayoutState)) {
+        emit('rebase', true);
+      }
     }
   }
 
@@ -239,8 +243,8 @@
       axisValueFromPointerEvent(event),
       snapThreshold,
     );
-    if (!next.changed) return;
     previousPointerAxis = next.axis;
+    if (!next.changed) return;
     layoutState = next.state;
     pointerDragChanged = true;
     emit('pointer', false);
