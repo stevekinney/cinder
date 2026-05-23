@@ -59,33 +59,36 @@
   {#if label}
     <label for={id}>{label}</label>
   {/if}
-  {#if options.length === 0}
-    <select
-      {id}
-      class="cinder-select"
-      {disabled}
-      {required}
-      data-cinder-empty="true"
-      {...rest}
-      aria-describedby={describedBy}
-      aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
-    ></select>
-  {:else}
-    <select
-      {id}
-      class="cinder-select"
-      {disabled}
-      {required}
-      bind:value
-      {...rest}
-      aria-describedby={describedBy}
-      aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
-    >
-      {#each options as option (option.value)}
-        <option value={option.value} disabled={option.disabled}>{option.label}</option>
-      {/each}
-    </select>
-  {/if}
+  <span class="cinder-select-field__control">
+    {#if options.length === 0}
+      <select
+        {id}
+        class="cinder-select"
+        {disabled}
+        {required}
+        data-cinder-empty="true"
+        {...rest}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+      ></select>
+    {:else}
+      <select
+        {id}
+        class="cinder-select"
+        {disabled}
+        {required}
+        bind:value
+        {...rest}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+      >
+        {#each options as option (option.value)}
+          <option value={option.value} disabled={option.disabled}>{option.label}</option>
+        {/each}
+      </select>
+    {/if}
+    <span class="cinder-select-field__chevron" aria-hidden="true"></span>
+  </span>
   {#if description}
     <p id={descriptionId} class="cinder-select-field__description">{description}</p>
   {/if}
