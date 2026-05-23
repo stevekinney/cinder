@@ -1305,6 +1305,38 @@ describe('Tree — selection', () => {
     expect(treeItem(container, 'Child')?.getAttribute('tabindex')).toBe('0');
   });
 
+  test('cascade checkbox activation falls back to registered descendants for an empty selection scope', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: [],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const checkbox = container.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox');
+    await fireEvent.click(checkbox as HTMLInputElement);
+    expect(selectedIds).toEqual(['parent', 'child']);
+  });
+
   test('Enter expands branches and toggles leaves in checkbox mode', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {

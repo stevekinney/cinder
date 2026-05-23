@@ -169,7 +169,7 @@
     const node = registry.getNode(id);
     if (!node) return [];
     const explicitScopeIds = node.selectionScopeIds?.();
-    if (explicitScopeIds) return [...explicitScopeIds];
+    if (explicitScopeIds?.length) return [...explicitScopeIds];
     return [id, ...registry.descendantsOf(id)];
   }
 
