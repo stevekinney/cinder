@@ -140,6 +140,9 @@ export type {
 export { default as DropdownItem } from './components/dropdown-item/index.ts';
 export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
 
+export { default as DropdownGroup } from './components/dropdown-group/index.ts';
+export type { DropdownGroupProps } from './components/dropdown-group/index.ts';
+
 export { default as DropdownLabel } from './components/dropdown-label/index.ts';
 export type { DropdownLabelProps } from './components/dropdown-label/index.ts';
 

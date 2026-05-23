@@ -17,7 +17,7 @@ export type NavigationBarProps = HTMLAttributes<HTMLElement> & {
   /** Receives a context object with the current variant. */
   items: Snippet<[NavigationBarItemsContext]>;
   actions?: Snippet;
-  /** Snippet receiving toggle button attributes. Consumer renders the actual <button>. */
+  /** Snippet receiving toggle button attributes. Consumer renders the actual <button> and should mark decorative glyphs or icons inside it as aria-hidden so the button name comes from text or aria-label, not the ornament. */
   menuToggle?: Snippet<[NavigationBarToggleAttributes]>;
   /** Two-way bindable open state of the mobile menu. */
   mobileMenuOpen?: boolean;

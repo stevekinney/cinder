@@ -616,10 +616,11 @@
       ],
       "related": ["color-swatch-picker", "input"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/color-picker/schema",
-        "variables": "cinder/color-picker/variables"
+        "variables": "cinder/color-picker/variables",
+        "examples": "cinder/color-picker/examples"
       }
     },
     {
@@ -983,6 +984,37 @@
         "schema": "cinder/dropdown/schema",
         "variables": "cinder/dropdown/variables",
         "examples": "cinder/dropdown/examples"
+      }
+    },
+    {
+      "name": "DropdownGroup",
+      "id": "dropdown-group",
+      "import": "cinder/dropdown-group",
+      "exportName": "DropdownGroup",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Accessible group boundary that clusters related dropdown-item rows inside a dropdown-menu.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Grouping related dropdown actions under one accessible heading.",
+        "Pairing dropdown-label with a role='group' container inside dropdown-menu."
+      ],
+      "avoidWhen": [
+        "Rendering a clickable row — use dropdown-item.",
+        "Separating sections without a group label — use dropdown-separator."
+      ],
+      "related": [
+        "dropdown",
+        "dropdown-menu",
+        "dropdown-item",
+        "dropdown-label",
+        "dropdown-separator"
+      ],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-group/schema",
+        "variables": "cinder/dropdown-group/variables"
       }
     },
     {
@@ -1934,10 +1966,11 @@
       ],
       "related": ["page-layout", "card", "tab-list"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/section-heading/schema",
-        "variables": "cinder/section-heading/variables"
+        "variables": "cinder/section-heading/variables",
+        "examples": "cinder/section-heading/examples"
       }
     },
     {

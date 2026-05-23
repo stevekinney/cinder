@@ -488,6 +488,10 @@
     "./color-picker/styles": {
       "default": "./dist/components/color-picker/color-picker.css"
     },
+    "./color-picker/examples": {
+      "import": "./src/components/color-picker/color-picker.examples.json",
+      "default": "./src/components/color-picker/color-picker.examples.json"
+    },
     "./color-swatch-picker": {
       "types": "./dist/components/color-swatch-picker/index.d.ts",
       "svelte": "./src/components/color-swatch-picker/index.ts",
@@ -735,6 +739,20 @@
     "./dropdown/examples": {
       "import": "./src/components/dropdown/dropdown.examples.json",
       "default": "./src/components/dropdown/dropdown.examples.json"
+    },
+    "./dropdown-group": {
+      "types": "./dist/components/dropdown-group/index.d.ts",
+      "svelte": "./src/components/dropdown-group/index.ts",
+      "node": "./dist/server/components/dropdown-group/index.js",
+      "default": "./dist/components/dropdown-group/index.js"
+    },
+    "./dropdown-group/schema": {
+      "types": "./dist/components/dropdown-group/dropdown-group.schema.d.ts",
+      "svelte": "./src/components/dropdown-group/dropdown-group.schema.ts"
+    },
+    "./dropdown-group/variables": {
+      "types": "./dist/components/dropdown-group/dropdown-group.variables.d.ts",
+      "svelte": "./src/components/dropdown-group/dropdown-group.variables.ts"
     },
     "./dropdown-item": {
       "types": "./dist/components/dropdown-item/index.d.ts",
@@ -1411,6 +1429,10 @@
     },
     "./section-heading/styles": {
       "default": "./dist/components/section-heading/section-heading.css"
+    },
+    "./section-heading/examples": {
+      "import": "./src/components/section-heading/section-heading.examples.json",
+      "default": "./src/components/section-heading/section-heading.examples.json"
     },
     "./segment": {
       "types": "./dist/components/segment/index.d.ts",
