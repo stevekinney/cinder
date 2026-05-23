@@ -16,6 +16,7 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
+  import { untrack } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
   import { on } from 'svelte/events';
 
@@ -347,7 +348,7 @@
   $effect(() => {
     if (!rootElement) return;
 
-    syncToolbarItems();
+    syncToolbarItems(untrack(() => activeItem));
     cleanupKeyboardListener?.();
     cleanupFocusInListener?.();
     cleanupKeyboardListener = on(rootElement, 'keydown', handleToolbarKeyDown, { capture: true });
