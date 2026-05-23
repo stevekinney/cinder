@@ -1269,6 +1269,42 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['parent', 'child']);
   });
 
+  test('Shift+Arrow uses cascade scope selection in checkbox mode', async () => {
+    let selectedIds: string[] = ['unknown'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['parent', 'child'],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.keyDown(parent, { key: ' ' });
+    expect(selectedIds).toEqual(['unknown', 'parent', 'child']);
+
+    await fireEvent.keyDown(parent, { key: 'ArrowDown', shiftKey: true });
+    expect(selectedIds).toEqual(['unknown']);
+    expect(treeItem(container, 'Child')?.getAttribute('tabindex')).toBe('0');
+  });
+
   test('Enter expands branches and toggles leaves in checkbox mode', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {

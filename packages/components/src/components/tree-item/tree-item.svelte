@@ -56,7 +56,14 @@
   const level = parentContext?.level ?? 1;
 
   // Publish context for our own children
-  setContext<TreeItemParentContext>(TREE_ITEM_PARENT_KEY, { parentId: id, level: level + 1 });
+  setContext<TreeItemParentContext>(TREE_ITEM_PARENT_KEY, {
+    get parentId() {
+      return id;
+    },
+    get level() {
+      return level + 1;
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // Local state
@@ -219,6 +226,15 @@
   // Keyboard handler
   // ---------------------------------------------------------------------------
 
+  function toggleKeyboardSelection(event: KeyboardEvent): void {
+    if (disabled) return;
+    if (checkboxSelectionActive) {
+      context.toggleSelectionScope(id);
+    } else {
+      context.toggleSelected(id, event);
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
     // Ownership guard: if event came from a nested child treeitem, skip
     if (isFromNestedItem(event)) return;
@@ -231,7 +247,7 @@
       case 'ArrowDown':
         event.preventDefault();
         if (event.shiftKey && context.selectionMode === 'multiple') {
-          if (!disabled) context.toggleSelected(id, event);
+          toggleKeyboardSelection(event);
           context.focusVisibleDelta(id, 1);
         } else {
           context.focusVisibleDelta(id, 1);
@@ -241,7 +257,7 @@
       case 'ArrowUp':
         event.preventDefault();
         if (event.shiftKey && context.selectionMode === 'multiple') {
-          if (!disabled) context.toggleSelected(id, event);
+          toggleKeyboardSelection(event);
           context.focusVisibleDelta(id, -1);
         } else {
           context.focusVisibleDelta(id, -1);
