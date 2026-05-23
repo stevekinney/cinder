@@ -12,7 +12,12 @@
    * @avoidWhen Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal.
    * @related modal, drawer, sheet, tooltip
    */
-  export type { PopoverPlacement, PopoverProps, PopoverRole } from './popover.types.ts';
+  export type {
+    PopoverFocusManagement,
+    PopoverPlacement,
+    PopoverProps,
+    PopoverRole,
+  } from './popover.types.ts';
 </script>
 
 <script lang="ts">
@@ -35,6 +40,7 @@
   import type { Placement } from '@floating-ui/dom';
 
   let {
+    id: panelIdProp,
     open = $bindable(false),
     placement = 'bottom-start',
     offset = 8,
@@ -45,6 +51,8 @@
     trigger,
     children,
     role = 'dialog',
+    focusManagement = 'panel',
+    wireTriggerAria = true,
     class: className,
   }: PopoverProps = $props();
 
@@ -65,7 +73,8 @@
   let panelElement: HTMLDivElement | undefined = $state();
   let arrowElement: HTMLSpanElement | undefined = $state();
 
-  const panelId = useId('cinder-popover');
+  const generatedPanelId = useId('cinder-popover');
+  const panelId = $derived(panelIdProp ?? generatedPanelId);
 
   // Typed as floating-ui's full Placement union because flip() may resolve to
   // values outside the public PopoverPlacement input subset.
@@ -87,6 +96,7 @@
   let capturedFocus: HTMLElement | null = null;
   let resolvedAnchorAtOpen: HTMLElement | null = null;
   let pendingInitialFocus = $state(false);
+  let openSessionFocusManagement = $state<'panel' | 'preserve'>('panel');
 
   let isDestroyed = false;
   onDestroy(() => {
@@ -143,12 +153,18 @@
   $effect(() => {
     if (!open) return;
     if (!anchorElement) return;
-    capturedFocus = captureFocus();
+    openSessionFocusManagement = focusManagement;
+    if (openSessionFocusManagement === 'panel') {
+      capturedFocus = captureFocus();
+      pendingInitialFocus = true;
+    } else {
+      capturedFocus = null;
+      pendingInitialFocus = false;
+    }
     // Snapshot the anchor at open time. untrack so anchor/trigger changes while
     // open don't retrigger this effect; positioning rebind is the positioning
     // effect's responsibility.
     resolvedAnchorAtOpen = untrack(() => anchorElement);
-    pendingInitialFocus = true;
     const releaseEscape = pushEscapeHandler(() => {
       open = false;
     });
@@ -163,16 +179,18 @@
         resolvedAnchorAtOpen = null;
         return;
       }
-      // Preserve the 3-candidate priority order; the shared helper enforces
-      // the per-candidate connection/ownership check so we no longer need
-      // the inline `.isConnected` guards.
-      const candidates: Array<HTMLElement | null> = [
-        triggerRef,
-        resolvedAnchorAtOpen,
-        capturedFocus,
-      ];
-      for (const candidate of candidates) {
-        if (restoreFocusTo(candidate)) break;
+      if (openSessionFocusManagement === 'panel') {
+        // Preserve the 3-candidate priority order; the shared helper enforces
+        // the per-candidate connection/ownership check so we no longer need
+        // the inline `.isConnected` guards.
+        const candidates: Array<HTMLElement | null> = [
+          triggerRef,
+          resolvedAnchorAtOpen,
+          capturedFocus,
+        ];
+        for (const candidate of candidates) {
+          if (restoreFocusTo(candidate)) break;
+        }
       }
       capturedFocus = null;
       resolvedAnchorAtOpen = null;
@@ -242,6 +260,7 @@
   // never lands in invisible content.
   $effect(() => {
     if (isDestroyed) return;
+    if (openSessionFocusManagement !== 'panel') return;
     if (!open || !panelElement || !anchorElement || !positionReady || !pendingInitialFocus) return;
     moveFocusIntoPanel();
     pendingInitialFocus = false;
@@ -264,7 +283,7 @@
           'aria-label="Popover". Pass a descriptive name for production usage.',
       );
     }
-    if (role === 'listbox') {
+    if (role === 'listbox' && wireTriggerAria) {
       console.warn(
         '[cinder/popover] role="listbox" only sets the surface role. ' +
           'You must render role="option" children and own selection/keyboard semantics. ' +
@@ -276,6 +295,7 @@
   // Effect: trigger ARIA wiring. Captures pre-existing values and restores on
   // teardown so consumers can manage their own attributes through changes.
   $effect(() => {
+    if (!wireTriggerAria) return;
     const target = anchorElement;
     if (!target) return;
     const prior = {

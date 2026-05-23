@@ -352,6 +352,67 @@ describe('Popover — trigger ARIA', () => {
     const button = container.querySelector('button')!;
     expect(button.getAttribute('aria-haspopup')).toBe('listbox');
   });
+
+  test('wireTriggerAria=false preserves pre-existing trigger ARIA', async () => {
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    triggerButton.setAttribute('aria-expanded', 'mixed');
+    triggerButton.setAttribute('aria-controls', 'preexisting-controls');
+    triggerButton.setAttribute('aria-haspopup', 'menu');
+    attachScratch(triggerButton);
+
+    render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerButton,
+        wireTriggerAria: false,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    expect(triggerButton.getAttribute('aria-expanded')).toBe('mixed');
+    expect(triggerButton.getAttribute('aria-controls')).toBe('preexisting-controls');
+    expect(triggerButton.getAttribute('aria-haspopup')).toBe('menu');
+  });
+
+  test('disabling trigger ARIA wiring restores the trigger attributes Popover changed', async () => {
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    triggerButton.setAttribute('aria-expanded', 'mixed');
+    triggerButton.setAttribute('aria-controls', 'preexisting-controls');
+    triggerButton.setAttribute('aria-haspopup', 'menu');
+    attachScratch(triggerButton);
+
+    const { rerender } = render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+    expect(triggerButton.getAttribute('aria-expanded')).toBe('true');
+    expect(triggerButton.getAttribute('aria-controls')).toMatch(/^cinder-popover-/);
+    expect(triggerButton.getAttribute('aria-haspopup')).toBe('dialog');
+
+    await rerender({
+      open: true,
+      triggerRef: triggerButton,
+      wireTriggerAria: false,
+      children: textSnippet('content'),
+    });
+
+    expect(triggerButton.getAttribute('aria-expanded')).toBe('mixed');
+    expect(triggerButton.getAttribute('aria-controls')).toBe('preexisting-controls');
+    expect(triggerButton.getAttribute('aria-haspopup')).toBe('menu');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -420,6 +481,95 @@ describe('Popover — focus management', () => {
       expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('closed');
     });
     expect(document.activeElement).toBe(triggerButton);
+  });
+
+  test('focusManagement="preserve" keeps focus on the trigger when opening', async () => {
+    const triggerInput = document.createElement('input');
+    triggerInput.type = 'text';
+    attachScratch(triggerInput);
+    triggerInput.focus();
+    expect(document.activeElement).toBe(triggerInput);
+
+    render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerInput,
+        focusManagement: 'preserve',
+        children: focusableSnippet(),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
+    });
+    expect(document.activeElement).toBe(triggerInput);
+  });
+
+  test('focusManagement="preserve" closes on Escape without stealing focus from the input', async () => {
+    const triggerInput = document.createElement('input');
+    triggerInput.type = 'text';
+    attachScratch(triggerInput);
+    triggerInput.focus();
+
+    const { rerender } = render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerInput,
+        focusManagement: 'preserve',
+        children: focusableSnippet(),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    await rerender({
+      open: false,
+      triggerRef: triggerInput,
+      focusManagement: 'preserve',
+      children: focusableSnippet(),
+    });
+
+    expect(queryPopoverPanel()).toBeNull();
+    expect(document.activeElement).toBe(triggerInput);
+  });
+
+  test('focusManagement="preserve" does not refocus a blurred trigger on close', async () => {
+    const triggerInput = document.createElement('input');
+    triggerInput.type = 'text';
+    const outsideButton = document.createElement('button');
+    outsideButton.type = 'button';
+    outsideButton.textContent = 'outside';
+    attachScratch(triggerInput);
+    attachScratch(outsideButton);
+    triggerInput.focus();
+
+    const { rerender } = render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerInput,
+        focusManagement: 'preserve',
+        children: focusableSnippet(),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    outsideButton.focus();
+    expect(document.activeElement).toBe(outsideButton);
+
+    await rerender({
+      open: false,
+      triggerRef: triggerInput,
+      focusManagement: 'preserve',
+      children: focusableSnippet(),
+    });
+
+    expect(queryPopoverPanel()).toBeNull();
+    expect(document.activeElement).toBe(outsideButton);
   });
 
   // Skipped: introduced in #109 (Svelte 5 hygiene pass) but never passed.
@@ -674,5 +824,25 @@ describe('Popover — no-anchor degradation', () => {
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(siblingEscapes).toBe(1);
     release();
+  });
+});
+
+describe('Popover — panel id', () => {
+  test('uses a supplied id for the panel and trigger aria-controls', async () => {
+    const { container } = render(Popover, {
+      props: {
+        id: 'custom-popover-id',
+        open: true,
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()?.id).toBe('custom-popover-id');
+    });
+
+    const button = container.querySelector('button')!;
+    expect(button.getAttribute('aria-controls')).toBe('custom-popover-id');
   });
 });
