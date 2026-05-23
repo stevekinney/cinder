@@ -157,6 +157,7 @@
 
   $effect(() => {
     if (isFocused) return;
+    if (internalError && value.length === 0) return;
     editorValue = value;
     if (internalError) {
       clearInternalValidity();
@@ -202,6 +203,7 @@
 
     const normalizedValue = normalizeTimeString(nextValue, seconds);
     if (!normalizedValue) {
+      editorValue = nextValue;
       internalError = 'Please enter a valid time.';
       setNativeValidity(internalError);
       return false;
@@ -209,12 +211,14 @@
 
     const parsedValue = parseTimeString(normalizedValue);
     if (!parsedValue) {
+      editorValue = nextValue;
       internalError = 'Please enter a valid time.';
       setNativeValidity(internalError);
       return false;
     }
 
     if (!isTimePartsInRange(parsedValue, parsedMin, parsedMax)) {
+      editorValue = nextValue;
       internalError = 'Please choose a time within the allowed range.';
       setNativeValidity(internalError);
       return false;

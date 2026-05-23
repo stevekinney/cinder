@@ -104,6 +104,32 @@ describe('TimePicker', () => {
     expect(input.validationMessage).toBe('');
   });
 
+  test('invalid blur without a committed value keeps internal validity state', async () => {
+    const { container } = render(TimePicker, {
+      id: 'appointment-time',
+      label: 'Appointment time',
+      max: '10:00',
+    });
+
+    const input = container.querySelector('input') as HTMLInputElement;
+    // happy-dom clears out-of-range type=time values on assignment. Browsers
+    // keep the typed value and report validity, which is the state path this
+    // regression covers.
+    input.type = 'text';
+    await fireEvent.focus(input);
+    input.value = '11:00';
+    await fireEvent.input(input);
+    await fireEvent.blur(input);
+    await tick();
+
+    expect(input.value).toBe('11:00');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(container.querySelector('.cinder-time-picker-field__error')?.textContent).toBe(
+      'Please choose a time within the allowed range.',
+    );
+    expect(input.validationMessage).toBe('Please choose a time within the allowed range.');
+  });
+
   test('opens the popover from ArrowDown and moves focus through the hour list', async () => {
     const { container } = render(TimePicker, {
       id: 'appointment-time',
