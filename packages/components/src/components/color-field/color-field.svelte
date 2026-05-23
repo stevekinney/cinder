@@ -231,9 +231,17 @@
       parseError = null;
       return;
     }
-    if (!passesFormatGate(text)) return;
+    if (!passesFormatGate(text)) {
+      // Refresh the message so its wording reflects the new `formats` set,
+      // not the wording that was current when the error was first raised.
+      parseError = defaultErrorMessage();
+      return;
+    }
     const parsed = parseColor(text);
-    if (parsed === null) return;
+    if (parsed === null) {
+      parseError = defaultErrorMessage();
+      return;
+    }
     parseError = null;
   });
 

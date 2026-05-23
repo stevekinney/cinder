@@ -683,4 +683,37 @@ describe('ColorField — default error message reflects formats', () => {
     expect(errorText).toContain('rgb()');
     expect(errorText).toContain('hsl()');
   });
+
+  test('error wording refreshes when formats changes at runtime', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      formats: ['hex'],
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(0,0,0)');
+    let errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    // Widen formats to include rgb. The visible text is now valid; the error
+    // should be cleared.
+    await rerender({ id: 'color', formats: ['hex', 'rgb'] });
+    await tick();
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toBe('');
+
+    // Now type something that fails the new gate (an hsl color, still not allowed)
+    // and assert the wording mentions the currently allowed formats, not the old set.
+    await typeAndBlur(input, 'hsl(0,100%,50%)');
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('rgb()');
+
+    // Narrow back down. Wording should refresh even though the text still
+    // fails the gate.
+    await rerender({ id: 'color', formats: ['hex'] });
+    await tick();
+    errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).toContain('hex');
+    expect(errorText).not.toContain('rgb');
+    expect(errorText).not.toContain('hsl');
+  });
 });
