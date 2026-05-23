@@ -39,11 +39,8 @@
 }
 
 .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
-  background-color: var(
-    --cinder-accent-subtle,
-    color-mix(in srgb, var(--cinder-accent, currentColor) 15%, transparent)
-  );
-  color: var(--cinder-accent-foreground, inherit);
+  background-color: color-mix(in srgb, var(--cinder-accent) 15%, transparent);
+  color: var(--cinder-accent);
 }
 
 @media (forced-colors: active) {

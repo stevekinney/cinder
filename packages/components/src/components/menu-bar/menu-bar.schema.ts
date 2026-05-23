@@ -1,0 +1,30 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    id: {
+      type: 'string',
+    },
+    menus: {
+      type: 'array',
+      items: {
+        type: 'object',
+      },
+    },
+    label: {
+      type: 'string',
+    },
+    labelledBy: {
+      type: 'string',
+    },
+    class: {
+      type: 'string',
+    },
+  },
+  additionalProperties: false,
+  required: ['menus'],
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

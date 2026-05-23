@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { parsePlaygroundListeningPort } from './start-server.ts';
+import { localPlaygroundUrlForReportedPort, parsePlaygroundListeningPort } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
   it('extracts the selected port from playground output', () => {
@@ -21,5 +21,15 @@ describe('parsePlaygroundListeningPort', () => {
     expect(parsePlaygroundListeningPort('Waiting for playground to report its selected port')).toBe(
       null,
     );
+  });
+});
+
+describe('localPlaygroundUrlForReportedPort', () => {
+  it('returns null before the spawned server reports a selected port', () => {
+    expect(localPlaygroundUrlForReportedPort(null)).toBe(null);
+  });
+
+  it('returns the local playground URL for a reported port', () => {
+    expect(localPlaygroundUrlForReportedPort(5556)).toBe('http://localhost:5556');
   });
 });
