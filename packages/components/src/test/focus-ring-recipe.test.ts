@@ -17,6 +17,11 @@ import { describe, expect, test } from 'bun:test';
 
 import postcss, { type Rule } from 'postcss';
 
+// Shared helper — same forced-colors detection the Stylelint plugin uses.
+// Keeping it in one place means the two enforcement layers can't disagree
+// about whether a rule is inside `@media (forced-colors: active)`.
+import { isUnderForcedColors } from '../../scripts/stylelint/focus-ring-helpers.mjs';
+
 function loadCss(relativePath: string): string {
   const fullPath = fileURLToPath(new URL(relativePath, import.meta.url));
   return readFileSync(fullPath, 'utf8');
@@ -55,23 +60,6 @@ function findRules(root: ReturnType<typeof parse>, selector: string): Rule[] {
     if (rule.selectors.includes(selector)) matches.push(rule);
   });
   return matches;
-}
-
-function isUnderForcedColors(rule: Rule): boolean {
-  let parent: Rule['parent'] = rule.parent;
-  while (parent) {
-    if (
-      parent.type === 'atrule' &&
-      'name' in parent &&
-      parent.name === 'media' &&
-      'params' in parent &&
-      /forced-colors\s*:\s*active/i.test(parent.params)
-    ) {
-      return true;
-    }
-    parent = (parent as { parent?: Rule['parent'] }).parent;
-  }
-  return false;
 }
 
 function declValue(rule: Rule, property: string): string | undefined {

@@ -15,6 +15,8 @@
 
 import stylelint from 'stylelint';
 
+import { isUnderForcedColors } from './focus-ring-helpers.mjs';
+
 const ruleName = 'cinder/no-focus-visible-colored-outline';
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
@@ -54,33 +56,10 @@ const meta = {
  */
 const TRANSPARENT_OUTLINE_PATTERN = /^\S[\s\S]*\s+solid\s+transparent$/i;
 
-const FORCED_COLORS_FEATURE = /\(\s*forced-colors\s*:\s*active\s*\)/i;
-
 const OWNER_COMMENT_PATTERN = /cinder-focus-ring-owner\s*:\s*parent/i;
 
 function selectorMatchesFocusVisible(selector) {
   return /:focus-visible(?![\w-])/.test(selector);
-}
-
-function ancestorMediaQueries(node) {
-  const queries = [];
-  let current = node.parent;
-  while (current) {
-    if (current.type === 'atrule' && current.name && current.name.toLowerCase() === 'media') {
-      queries.push(current.params);
-    }
-    current = current.parent;
-  }
-  return queries;
-}
-
-function isUnderForcedColors(node) {
-  const queries = ancestorMediaQueries(node);
-  if (queries.length === 0) return false;
-  return queries.every((params) => {
-    const branches = params.split(',');
-    return branches.every((branch) => FORCED_COLORS_FEATURE.test(branch));
-  });
 }
 
 function hasOwnerComment(decl) {
