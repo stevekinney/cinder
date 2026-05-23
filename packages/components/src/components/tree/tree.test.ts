@@ -1482,6 +1482,56 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['parent', 'child']);
   });
 
+  test('TreeSelectAll includeDescendants respects explicit child selection scopes', async () => {
+    let selectedIds: string[] = [];
+    const selectionControls = createRawSnippet(() => ({
+      render: () => `<div class="controls"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(TreeSelectAll, {
+          target: node,
+          props: { parentId: null, includeDescendants: true },
+        });
+        return () => unmount(instance);
+      },
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        expandedIds: ['parent'],
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        selectionControls,
+        children: treeItemsSnippet([
+          {
+            id: 'parent',
+            label: 'Parent',
+            branch: true,
+            selectionScopeIds: ['child'],
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+
+    const selectAllButton = container.querySelector<HTMLButtonElement>(
+      '.cinder-tree-select-all__button',
+    );
+    await fireEvent.click(selectAllButton as HTMLButtonElement);
+    expect(selectedIds).toEqual(['child']);
+
+    const parent = treeItem(container, 'Parent') as HTMLElement;
+    await fireEvent.click(parent.querySelector<HTMLInputElement>('.cinder-tree-item__checkbox')!);
+    expect(selectedIds).toEqual([]);
+  });
+
   test('TreeSelectAll disables when every target is disabled', async () => {
     const selectionControls = createRawSnippet(() => ({
       render: () => `<div class="controls"></div>`,

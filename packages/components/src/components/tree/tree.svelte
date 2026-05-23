@@ -182,7 +182,7 @@
 
     const targets: string[] = [];
     for (const childId of childIds) {
-      targets.push(childId, ...selectionTargetsFor(childId).filter((id) => id !== childId));
+      targets.push(...selectionTargetsFor(childId));
     }
     return [...new Set(targets)];
   }
