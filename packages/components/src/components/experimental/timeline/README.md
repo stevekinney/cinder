@@ -44,7 +44,7 @@ Marker snippets are decorative. Do not place focusable or interactive content in
 | Prop                  | Type                                   | Required | Default      | Description                                                                         |
 | --------------------- | -------------------------------------- | -------- | ------------ | ----------------------------------------------------------------------------------- |
 | `class`               | `string`                               | no       | —            | Additional class names merged with `.cinder-timeline`.                              |
-| `entries`             | `object`[]                             | yes      | —            | Timeline entries rendered in source order.                                          |
+| `entries`             | readonly `object`[]                    | yes      | —            | Timeline entries rendered in source order.                                          |
 | `gapThresholdMinutes` | `number`                               | no       | —            | Hide the following connector when adjacent valid timestamps exceed this gap.        |
 | `groupBy`             | `"none"` \| `"day"` \| `"week"`        | no       | `"none"`     | Optional adjacent UTC day/week grouping mode.                                       |
 | `groupHeaderLevel`    | `1` \| `2` \| `3` \| `4` \| `5` \| `6` | no       | `3`          | Heading level applied to rendered group headers.                                    |

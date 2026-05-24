@@ -23,7 +23,7 @@ A Steps component. Replace this sentence with a one-line purpose statement once 
 | `currentStep`    | `number`                       | yes      | —       | Zero-based index of the active step. Steps with index < currentStep are "completed". Pass `steps.length` to mark every step as complete (terminal "done" state). |
 | `label`          | `string`                       | no       | —       | Accessible name for the wrapping nav landmark. Defaults to 'Progress'.                                                                                           |
 | `orientation`    | `"horizontal"` \| `"vertical"` | no       | —       | Layout direction. Defaults to 'horizontal'.                                                                                                                      |
-| `steps`          | `object`[]                     | yes      | —       | Ordered list of step entries from first to last.                                                                                                                 |
+| `steps`          | readonly `object`[]            | yes      | —       | Ordered list of step entries from first to last.                                                                                                                 |
 
 <!-- generated:props:end -->
 

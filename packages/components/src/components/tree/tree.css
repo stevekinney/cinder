@@ -2,11 +2,22 @@
  * TREE
  * ======================================== */
 
+.cinder-tree-root,
 .cinder-tree {
   display: flex;
   flex-direction: column;
   inline-size: 100%;
+}
+
+.cinder-tree {
   outline: none;
+}
+
+.cinder-tree__selection-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-2, 0.5rem);
+  margin-block-end: var(--cinder-space-2, 0.5rem);
 }
 
 .cinder-tree-item {
@@ -36,6 +47,14 @@
   padding-inline: var(--cinder-space-2, 0.5rem);
   border-radius: var(--cinder-radius-sm);
   user-select: none;
+}
+
+.cinder-tree-item__checkbox {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--cinder-accent, currentColor);
+  pointer-events: auto;
 }
 
 .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {

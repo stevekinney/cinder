@@ -1,4 +1,16 @@
 import type { Snippet } from 'svelte';
+import type { TreeItemSelectionState } from '../../_internal/tree-context.ts';
+
+export type TreeItemRowContext = {
+  expanded: boolean;
+  selected: boolean;
+  busy: boolean;
+  level: number;
+  checkboxSelection: boolean;
+  selectionState: TreeItemSelectionState;
+  toggleSelection: () => void;
+};
+
 /** Props for the TreeItem component. */
 export type TreeItemProps = {
   /** Stable unique id within the tree. */
@@ -22,8 +34,10 @@ export type TreeItemProps = {
   loadChildren?: (context: { id: string; signal: AbortSignal }) => void | Promise<void>;
   /** Called when `loadChildren` rejects with a non-abort error. */
   onLoadError?: (error: unknown, itemId: string) => void;
+  /** Explicit selectable ids controlled by this item in cascade checkbox-selection mode. */
+  selectionScopeIds?: string[];
   /** Optional row content snippet override. Default renders `label`. */
-  row?: Snippet<[{ expanded: boolean; selected: boolean; busy: boolean; level: number }]>;
+  row?: Snippet<[TreeItemRowContext]>;
   /** Nested TreeItem children for branch nodes. */
   children?: Snippet;
   /** Additional CSS class merged with `.cinder-tree-item`. */

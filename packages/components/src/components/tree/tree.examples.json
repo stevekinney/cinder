@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "tree",
+  "import": "cinder/tree",
+  "examples": [
+    {
+      "id": "cascading-toggle",
+      "title": "Cascading toggle",
+      "description": "Branch activation can opt into selecting or clearing the branch and its explicit selection scope.",
+      "code": "<script lang=\"ts\">\n  import { Tree } from 'cinder/tree';\n  import { TreeItem } from 'cinder/tree-item';\n\n  let selectedIds = $state<string[]>([]);\n  let expandedIds = $state<string[]>(['docs']);\n</script>\n\n<Tree\n  aria-label=\"Documentation folders\"\n  selectionMode=\"multiple\"\n  checkboxSelection\n  selectionBehavior=\"cascade\"\n  bind:selectedIds\n  bind:expandedIds\n>\n  <TreeItem id=\"docs\" label=\"docs\" branch selectionScopeIds={['docs', 'guides', 'api']}>\n    <TreeItem id=\"guides\" label=\"guides\" />\n    <TreeItem id=\"api\" label=\"api-reference.md\" />\n  </TreeItem>\n  <TreeItem id=\"changelog\" label=\"CHANGELOG.md\" />\n</Tree>\n\n<p style=\"margin-top: 0.75rem; font-size: 0.875rem; color: var(--cinder-text-muted);\">\n  Toggle the docs branch checkbox to select or clear its full scope.\n</p>\n"
+    },
+    {
+      "id": "file-explorer-multi-select",
+      "title": "File explorer multi-select",
+      "description": "A file-tree pattern with checkbox indicators, a root-level select-all control, and bindable selected ids.",
+      "code": "<script lang=\"ts\">\n  import { Tree } from 'cinder/tree';\n  import { TreeItem } from 'cinder/tree-item';\n  import { TreeSelectAll } from 'cinder/tree-select-all';\n\n  let selectedIds = $state<string[]>(['src']);\n  let expandedIds = $state<string[]>(['src', 'components']);\n</script>\n\n<Tree\n  aria-label=\"Project files\"\n  selectionMode=\"multiple\"\n  checkboxSelection\n  selectionBehavior=\"cascade\"\n  bind:selectedIds\n  bind:expandedIds\n>\n  {#snippet selectionControls()}\n    <TreeSelectAll label=\"Project files\" includeDescendants />\n  {/snippet}\n\n  <TreeItem id=\"src\" label=\"src\" branch selectionScopeIds={['src', 'components', 'tree', 'button']}>\n    <TreeItem\n      id=\"components\"\n      label=\"components\"\n      branch\n      selectionScopeIds={['components', 'tree', 'button']}\n    >\n      <TreeItem id=\"tree\" label=\"tree.svelte\" />\n      <TreeItem id=\"button\" label=\"button.svelte\" />\n    </TreeItem>\n  </TreeItem>\n  <TreeItem id=\"package\" label=\"package.json\" />\n  <TreeItem id=\"readme\" label=\"README.md\" />\n</Tree>\n\n<p style=\"margin-top: 0.75rem; font-size: 0.875rem; color: var(--cinder-text-muted);\">\n  Selected: {selectedIds.length > 0 ? selectedIds.join(', ') : 'none'}\n</p>\n"
+    },
+    {
+      "id": "indeterminate-parents",
+      "title": "Indeterminate parents",
+      "description": "Parent checkbox indicators move to mixed state when only part of their selection scope is selected.",
+      "code": "<script lang=\"ts\">\n  import { Tree } from 'cinder/tree';\n  import { TreeItem } from 'cinder/tree-item';\n\n  let selectedIds = $state<string[]>(['february']);\n  let expandedIds = $state<string[]>(['archive']);\n</script>\n\n<Tree\n  aria-label=\"Archived reports\"\n  selectionMode=\"multiple\"\n  checkboxSelection\n  selectionBehavior=\"cascade\"\n  bind:selectedIds\n  bind:expandedIds\n>\n  <TreeItem\n    id=\"archive\"\n    label=\"archive\"\n    branch\n    selectionScopeIds={['archive', 'january', 'february']}\n  >\n    <TreeItem id=\"january\" label=\"january.pdf\" />\n    <TreeItem id=\"february\" label=\"february.pdf\" />\n  </TreeItem>\n  <TreeItem id=\"summary\" label=\"summary.pdf\" />\n</Tree>\n"
+    }
+  ]
+}

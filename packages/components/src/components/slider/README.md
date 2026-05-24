@@ -16,22 +16,22 @@ A Slider component. Replace this sentence with a one-line purpose statement once
 
 <!-- generated:props:start -->
 
-| Prop           | Type                            | Required | Default | Description                                                                         |
-| -------------- | ------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------- |
-| `class`        | `string`                        | no       | —       | Extra class names merged with `.cinder-slider`.                                     |
-| `defaultValue` | `number` \| `object`            | no       | —       |                                                                                     |
-| `disabled`     | `boolean`                       | no       | —       | Disables interaction.                                                               |
-| `label`        | `string`                        | yes      | —       | Visible label / accessible name for the slider. Required.                           |
-| `max`          | `number`                        | no       | —       | Maximum value. Default `100`.                                                       |
-| `min`          | `number`                        | no       | —       | Minimum value. Default `0`.                                                         |
-| `mode`         | `"single"` \| `"range"`         | no       | —       |                                                                                     |
-| `name`         | `string`                        | no       | —       | Form field name. Renders hidden inputs for form submission.                         |
-| `pageStep`     | `number`                        | no       | —       | Step increment for Page Up/Down. Default `step * 10`.                               |
-| `step`         | `number`                        | no       | —       | Step increment for arrow keys. Default `1`. Must be a positive finite number.       |
-| `ticks`        | `false` \| `true` \| `number`[] | no       | —       | Optional tick marks. `true` renders one per `step`; an array snaps to those values. |
-| `value`        | `number` \| `object`            | no       | —       |                                                                                     |
-| `onchange`     | `(opaque)`                      | —        | —       | function-or-snippet                                                                 |
-| `valueText`    | `(opaque)`                      | —        | —       | function-or-snippet                                                                 |
+| Prop           | Type                                     | Required | Default | Description                                                                         |
+| -------------- | ---------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------- |
+| `class`        | `string`                                 | no       | —       | Extra class names merged with `.cinder-slider`.                                     |
+| `defaultValue` | `number` \| `object`                     | no       | —       |                                                                                     |
+| `disabled`     | `boolean`                                | no       | —       | Disables interaction.                                                               |
+| `label`        | `string`                                 | yes      | —       | Visible label / accessible name for the slider. Required.                           |
+| `max`          | `number`                                 | no       | —       | Maximum value. Default `100`.                                                       |
+| `min`          | `number`                                 | no       | —       | Minimum value. Default `0`.                                                         |
+| `mode`         | `"single"` \| `"range"`                  | no       | —       |                                                                                     |
+| `name`         | `string`                                 | no       | —       | Form field name. Renders hidden inputs for form submission.                         |
+| `pageStep`     | `number`                                 | no       | —       | Step increment for Page Up/Down. Default `step * 10`.                               |
+| `step`         | `number`                                 | no       | —       | Step increment for arrow keys. Default `1`. Must be a positive finite number.       |
+| `ticks`        | `false` \| `true` \| readonly `number`[] | no       | —       | Optional tick marks. `true` renders one per `step`; an array snaps to those values. |
+| `value`        | `number` \| `object`                     | no       | —       |                                                                                     |
+| `onchange`     | `(opaque)`                               | —        | —       | function-or-snippet                                                                 |
+| `valueText`    | `(opaque)`                               | —        | —       | function-or-snippet                                                                 |
 
 <!-- generated:props:end -->
 
