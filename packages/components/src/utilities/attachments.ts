@@ -24,57 +24,6 @@ export const bodyScrollLock: Attachment<HTMLElement> = () => {
   };
 };
 
-export type FocusTrapOptions = {
-  /** Whether the trap is currently active (default: true) */
-  enabled?: boolean;
-};
-
-/**
- * Creates a focus trap attachment that wraps Tab/Shift+Tab within an element.
- * Useful for modals, sheets, dropdowns, and other contained UI.
- *
- * @example
- * ```svelte
- * <div {@attach createFocusTrap()}>
- *   <button>First</button>
- *   <button>Last</button>
- * </div>
- * ```
- */
-export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTMLElement> {
-  const { enabled = true } = options;
-
-  return (node: HTMLElement) => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (!enabled || event.key !== 'Tab') return;
-
-      const focusableElements = node.querySelectorAll(FOCUSABLE_SELECTOR);
-      if (focusableElements.length === 0) return;
-
-      const firstFocusable = focusableElements[0] as HTMLElement;
-      const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
-
-      if (event.shiftKey) {
-        if (document.activeElement === firstFocusable) {
-          event.preventDefault();
-          lastFocusable?.focus();
-        }
-      } else {
-        if (document.activeElement === lastFocusable) {
-          event.preventDefault();
-          firstFocusable?.focus();
-        }
-      }
-    }
-
-    node.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      node.removeEventListener('keydown', handleKeyDown);
-    };
-  };
-}
-
 export type ClickOutsideOptions = {
   /** Callback when clicking outside the element */
   handler: () => void;

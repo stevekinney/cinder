@@ -23,8 +23,8 @@ A Tree component. Replace this sentence with a one-line purpose statement once t
 | `checkboxSelection` | `boolean`                              | no       | —       | Render tree-owned checkbox indicators when selectionMode is multiple. Default: false.        |
 | `class`             | `string`                               | no       | —       | Additional CSS class merged with `.cinder-tree`.                                             |
 | `disableTypeahead`  | `boolean`                              | no       | —       | Disable typeahead. Default: false.                                                           |
-| `expandedIds`       | readonly `string`[]                    | no       | —       | Currently expanded branch ids. Bindable.                                                     |
-| `selectedIds`       | readonly `string`[]                    | no       | —       | Currently selected node ids. Bindable.                                                       |
+| `expandedIds`       | `string`[]                             | no       | —       | Currently expanded branch ids. Bindable.                                                     |
+| `selectedIds`       | `string`[]                             | no       | —       | Currently selected node ids. Bindable.                                                       |
 | `selectionBehavior` | `"independent"` \| `"cascade"`         | no       | —       | Select only the target item or cascade through its selectable scope. Default: 'independent'. |
 | `selectionMode`     | `"none"` \| `"single"` \| `"multiple"` | no       | —       | Selection model. Default: 'none'.                                                            |
 | `children`          | `(opaque)`                             | —        | —       | function-or-snippet                                                                          |

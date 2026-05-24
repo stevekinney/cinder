@@ -31,7 +31,7 @@
       "id": "validation",
       "title": "Validated email tags",
       "description": "Keep the value controlled and reject entries that are not email addresses.",
-      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n\n  let tags = $state<string[]>([]);\n\n  function validateEmailTag(tag: string): boolean | string {\n    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(tag) ? true : 'Enter a valid email address.';\n  }\n</script>\n\n<FormField\n  id=\"validated-tag-input\"\n  label=\"Guests\"\n  description=\"Enter one email address per guest.\"\n>\n  <TagInput\n    value={tags}\n    placeholder=\"guest@example.com\"\n    validate={validateEmailTag}\n    onchange={(nextTags) => {\n      tags = nextTags;\n    }}\n  />\n</FormField>\n"
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from 'cinder';\n\n  let tags = $state<string[]>([]);\n\n  function validateEmailTag(tag: string): boolean | string {\n    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(tag) ? true : 'Enter a valid email address.';\n  }\n</script>\n\n<FormField id=\"validated-tag-input\" label=\"Guests\" description=\"Enter one email address per guest.\">\n  <TagInput\n    value={tags}\n    placeholder=\"guest@example.com\"\n    validate={validateEmailTag}\n    onchange={(nextTags) => {\n      tags = nextTags;\n    }}\n  />\n</FormField>\n"
     }
   ]
 }

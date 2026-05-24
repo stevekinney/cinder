@@ -19,11 +19,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { X, ChevronLeft, ChevronRight } from '../../icons/index.ts';
-  import {
-    bodyScrollLock,
-    createFocusTrap,
-    createFocusOnMount,
-  } from '../../../utilities/attachments.ts';
+  import { createFocusTrap } from '../../focus-trap/index.ts';
+  import { bodyScrollLock, createFocusOnMount } from '../../../utilities/attachments.ts';
 
   let { images, initialIndex = 0, open = $bindable(false), onclose }: ImageLightboxProps = $props();
 

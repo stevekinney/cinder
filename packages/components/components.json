@@ -1264,6 +1264,29 @@
       }
     },
     {
+      "name": "FocusTrap",
+      "id": "focus-trap",
+      "import": "cinder/focus-trap",
+      "exportName": "FocusTrap",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless focus-trap primitive that keeps Tab navigation within a container and restores focus on teardown.",
+      "tags": ["overlay", "accessibility"],
+      "useWhen": [
+        "Building non-native overlays or popovers that need contained keyboard focus.",
+        "Reusing the same focus-management behavior across custom floating surfaces."
+      ],
+      "avoidWhen": ["The surface already uses native dialog focus trapping."],
+      "related": ["modal", "drawer", "sheet", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/focus-trap/schema",
+        "variables": "cinder/focus-trap/variables",
+        "examples": "cinder/focus-trap/examples"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "cinder/form-field",
@@ -1867,6 +1890,31 @@
         "schema": "cinder/popover/schema",
         "variables": "cinder/popover/variables",
         "examples": "cinder/popover/examples"
+      }
+    },
+    {
+      "name": "Portal",
+      "id": "portal",
+      "import": "cinder/portal",
+      "exportName": "Portal",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless portal primitive that moves a subtree into a target element while preserving inline rendering as an explicit opt-out.",
+      "tags": ["overlay", "utilities"],
+      "useWhen": [
+        "Rendering an overlay or floating surface outside the current stacking or overflow context.",
+        "Building a custom anchored or modal primitive that needs to append content into document.body or a named host."
+      ],
+      "avoidWhen": [
+        "The content should stay in normal document flow or inherit layout from its original parent."
+      ],
+      "related": ["popover", "modal", "drawer", "sheet"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/portal/schema",
+        "variables": "cinder/portal/variables",
+        "examples": "cinder/portal/examples"
       }
     },
     {
@@ -3086,6 +3134,31 @@
         "schema": "cinder/tooltip/schema",
         "variables": "cinder/tooltip/variables",
         "examples": "cinder/tooltip/examples"
+      }
+    },
+    {
+      "name": "Transition",
+      "id": "transition",
+      "import": "cinder/transition",
+      "exportName": "Transition",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless mount-coordination primitives for CSS-driven presence state and Svelte transition functions.",
+      "tags": ["overlay", "motion"],
+      "useWhen": [
+        "Coordinating enter and exit lifecycle for overlays, floating panels, or other conditional UI.",
+        "Reusing either CSS transition-driven presence or a Svelte transition function behind one small API."
+      ],
+      "avoidWhen": [
+        "A plain `{#if}` block is sufficient and no enter or exit coordination is needed."
+      ],
+      "related": ["modal", "drawer", "sheet", "accordion-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/transition/schema",
+        "variables": "cinder/transition/variables",
+        "examples": "cinder/transition/examples"
       }
     },
     {
