@@ -35,6 +35,8 @@ const FOCUSABLE_SELECTOR = [
   '[contenteditable]:not([contenteditable="false"])',
 ].join(', ');
 
+function noop() {}
+
 function isHiddenByTree(element: HTMLElement): boolean {
   if (element.hidden) return true;
   if (element.matches('[inert], [aria-hidden="true"]')) return true;
@@ -110,7 +112,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
 
     let activated = false;
     let capturedFocus: HTMLElement | null = null;
-    let restoreRootFocusability = () => {};
+    let restoreRootFocusability = noop;
 
     function focusTrapTarget() {
       const preferred = resolveScopedTarget(node, initialFocus);
@@ -150,7 +152,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
       if (!activated) return;
       activated = false;
       restoreRootFocusability();
-      restoreRootFocusability = () => {};
+      restoreRootFocusability = noop;
       removeTrap(trapId);
       if (restoreFocus) {
         restoreFocusTo(capturedFocus);
