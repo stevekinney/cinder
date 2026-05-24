@@ -31,6 +31,16 @@ Distribution: subpath imports only. Bundlers tree-shake so consumers using only 
 - **`Dropdown` compound API choice**: option (a) — additive primitives in cinder. Cinder's existing snippet-based `Dropdown` stays; the compound parts ship as new sibling primitives matching depict's idiom. Rejected (b) adapter-shim-in-ported-components (heavy at port time, repeated 4× in review-editor's `comment-sidebar.svelte` alone) and (c) replace cinder's existing API (breaking change, ruled out).
 - **Test runner delta**: depict tests use `vitest-browser-svelte` (real browser via Playwright); cinder uses `@testing-library/svelte` + happy-dom under `bun:test`. Per-test migration: `page.getByRole(...)` → `screen.getByRole(...)`; `page.locator(...).click()` → `fireEvent.click(...)`; visual/screenshot tests dropped on initial port. Patterns captured in `tmp/port-inventory/test-classification.md`.
 
+### Post-port decision: MarkdownEditor / ReviewEditor consolidation
+
+**Decision:** Keep `markdown-editor` and `review-editor` as separate public components. The public API boundary stays stable: existing `cinder/markdown-editor` and `cinder/review-editor` subpath exports, component names, prop names, and prop meanings do not change as part of this decision. The current code already shares the editor core by composition: `packages/components/src/components/review-editor/review-editor-impl.svelte` renders `MarkdownEditor` for both the editable document and the read-only summary view. The remaining overlap is review-specific chrome and one CSS coupling point, not a duplicated formatting toolbar.
+
+This rejects the previously considered `<MarkdownEditor mode="review">` path. `MarkdownEditor` already uses `mode` for its source-mode switch (`'wysiwyg' | 'source'`), so a review mode would overload a shipped prop and push review-only state, diff tabs, summaries, comment threads, and anchoring into the lighter authoring component. That would create public API churn without increasing sharing.
+
+This also rejects a new shared editor-core abstraction for now. The [Milkdown](https://milkdown.dev/) / [ProseMirror](https://prosemirror.net/) editor, toolbar, link popover, and mode handling already live in `MarkdownEditor`; `ReviewEditor` composes that component instead of reimplementing it. Extracting another shell would add an abstraction layer around a problem that current composition already solves.
+
+The only remaining coupling is one CSS selector: `packages/components/src/components/review-editor/review-editor.css` reaches into MarkdownEditor's `.markdown-editor-wrapper[data-has-toolbar] .editor-toolbar` structure to connect the review controls bar to editor chrome. If that selector changes repeatedly or creates a visual regression in the controls-to-toolbar boundary, file a targeted CSS-boundary cleanup with a visual regression check. It is not an editor consolidation project.
+
 ---
 
 ## Phase decomposition
