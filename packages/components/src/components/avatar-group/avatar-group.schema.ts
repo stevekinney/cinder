@@ -1,0 +1,56 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    avatars: {
+      type: 'array',
+      items: {
+        type: 'object',
+      },
+      description: 'Collaborators to render in the stack.',
+    },
+    maxVisible: {
+      type: 'number',
+      description: 'Maximum visible avatars before overflow.',
+      default: 5,
+    },
+    overlap: {
+      type: 'string',
+      description: 'Positive CSS length for the amount each item overlaps its predecessor.',
+      default: '0.75rem',
+    },
+    zOrder: {
+      enum: ['first-on-top', 'last-on-top'],
+      description: 'Stacking order for visible avatars.',
+      default: 'last-on-top',
+    },
+    size: {
+      enum: ['xs', 'sm', 'md', 'lg', 'xl'],
+      description: 'Size token forwarded to each visible Avatar.',
+      default: 'md',
+    },
+    shape: {
+      enum: ['circle', 'square'],
+      description: 'Shape forwarded to each visible Avatar.',
+      default: 'circle',
+    },
+    overflowLabel: {
+      type: 'string',
+      description: 'Accessible label for the overflow indicator.',
+    },
+  },
+  additionalProperties: false,
+  required: ['avatars'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'class',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Chip } from 'cinder/chip';\n</script>\n\n<div class=\"example-preview-row\">\n  <Chip mode=\"toggle\" label=\"Disabled toggle\" pressed={false} disabled />\n  <Chip mode=\"removable\" label=\"Disabled removable\" disabled />\n</div>\n"
     },
     {
+      "id": "metadata-tags",
+      "title": "Metadata tags",
+      "description": "Display-mode chips used as issue labels and free-form metadata tags.",
+      "code": "<script lang=\"ts\">\n  import { Chip } from 'cinder/chip';\n</script>\n\n<div class=\"example-preview-row\">\n  <Chip label=\"frontend\" variant=\"info\" />\n  <Chip label=\"accessibility\" variant=\"success\" />\n  <Chip label=\"needs triage\" variant=\"warning\" />\n  <Chip label=\"customer-reported\" variant=\"accent\" />\n</div>\n"
+    },
+    {
       "id": "modes",
       "title": "Chip modes",
       "description": "Display, toggle, and removable chip modes.",
