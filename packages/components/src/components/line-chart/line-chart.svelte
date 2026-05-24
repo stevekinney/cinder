@@ -83,8 +83,11 @@
   const keyboardEnabled = $derived(
     model.targets.length > 0 && model.targets.length <= maximumInteractivePoints,
   );
+  const hasDataTable = $derived(dataTableVisibility !== 'hidden');
   const guidanceId = $derived(
-    !keyboardEnabled && model.targets.length > 0 ? `${rootId}-table-guidance` : undefined,
+    !keyboardEnabled && hasDataTable && model.targets.length > 0
+      ? `${rootId}-table-guidance`
+      : undefined,
   );
   const activeTargetId = $derived(activeTarget ? `${rootId}-active-target` : undefined);
 
@@ -95,6 +98,15 @@
       maximumInteractivePoints,
       'maximumInteractivePoints',
     );
+  });
+
+  $effect(() => {
+    if (
+      activeTarget &&
+      (loading || model.empty || !model.targets.some((target) => target.id === activeTarget?.id))
+    ) {
+      activeTarget = undefined;
+    }
   });
 
   function toggleSeries(seriesId: string): void {
@@ -297,7 +309,7 @@
     </p>
   {/if}
 
-  {#if dataTableVisibility !== 'hidden'}
+  {#if hasDataTable}
     <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead

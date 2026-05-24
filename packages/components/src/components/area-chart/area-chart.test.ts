@@ -89,6 +89,19 @@ describe('AreaChart', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('loading state clears an active tooltip', async () => {
+    const { getByRole, queryByText, rerender } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
+
+    await fireEvent.focus(getByRole('button', { name: 'Usage, Jan, 30' }));
+    expect(queryByText('Jan: 30')).toBeTruthy();
+
+    await rerender({ label: 'Usage trend', loading: true, series });
+    expect(queryByText('Jan: 30')).toBeNull();
+  });
+
   test('empty state renders the default fallback and silences the SVG', () => {
     const { getByText, container } = render(AreaChart, {
       label: 'Empty',
@@ -123,13 +136,15 @@ describe('AreaChart', () => {
   });
 
   test('hides the data table when dataTableVisibility is "hidden"', () => {
-    const { container } = render(AreaChart, {
+    const { container, queryByText } = render(AreaChart, {
       label: 'Hidden table',
       series,
       dataTableVisibility: 'hidden',
+      maximumInteractivePoints: 1,
     });
 
     expect(container.querySelector('table')).toBeNull();
+    expect(queryByText('Use the data table to inspect this chart with a keyboard.')).toBeNull();
   });
 
   test('hiding all series reveals the empty state', async () => {

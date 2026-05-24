@@ -93,6 +93,27 @@ describe('BarChart', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  test('loading state clears an active tooltip', async () => {
+    const { getByRole, queryByText, rerender } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+
+    await fireEvent.focus(getByRole('button', { name: 'Revenue, Jan, 120' }));
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await rerender({
+      label: 'Revenue by month',
+      loading: true,
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    expect(queryByText('Jan: 120')).toBeNull();
+  });
+
   test('empty state renders the default fallback and silences the SVG', () => {
     const { getByText, container } = render(BarChart, {
       label: 'Empty',
@@ -122,15 +143,17 @@ describe('BarChart', () => {
   });
 
   test('hides the data table when dataTableVisibility is "hidden"', () => {
-    const { container } = render(BarChart, {
+    const { container, queryByText } = render(BarChart, {
       label: 'Hidden table',
       data,
       categoryKey: 'month',
       series,
       dataTableVisibility: 'hidden',
+      maximumInteractivePoints: 1,
     });
 
     expect(container.querySelector('table')).toBeNull();
+    expect(queryByText('Use the data table to inspect this chart with a keyboard.')).toBeNull();
   });
 
   test('renders formatted axis tick labels', () => {

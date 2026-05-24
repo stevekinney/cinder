@@ -90,8 +90,11 @@
   const keyboardEnabled = $derived(
     model.targets.length > 0 && model.targets.length <= maximumInteractivePoints,
   );
+  const hasDataTable = $derived(dataTableVisibility !== 'hidden');
   const guidanceId = $derived(
-    !keyboardEnabled && model.targets.length > 0 ? `${rootId}-table-guidance` : undefined,
+    !keyboardEnabled && hasDataTable && model.targets.length > 0
+      ? `${rootId}-table-guidance`
+      : undefined,
   );
 
   $effect(() => {
@@ -101,6 +104,15 @@
       maximumInteractivePoints,
       'maximumInteractivePoints',
     );
+  });
+
+  $effect(() => {
+    if (
+      activeTarget &&
+      (loading || model.empty || !model.targets.some((target) => target.id === activeTarget?.id))
+    ) {
+      activeTarget = undefined;
+    }
   });
 
   function toggleSeries(seriesId: string): void {
@@ -295,10 +307,10 @@
         >
       </div>{/if}
   </div>
-  {#if !keyboardEnabled && model.targets.length > 0}<p id={guidanceId} class="cinder-sr-only">
+  {#if guidanceId}<p id={guidanceId} class="cinder-sr-only">
       Use the data table to inspect this chart with a keyboard.
     </p>{/if}
-  {#if dataTableVisibility !== 'hidden'}
+  {#if hasDataTable}
     <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead

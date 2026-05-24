@@ -50,13 +50,15 @@ describe('LineChart', () => {
   });
 
   test('hides data table when requested', () => {
-    const { container } = render(LineChart, {
+    const { container, queryByText } = render(LineChart, {
       label: 'Monthly revenue',
       dataTableVisibility: 'hidden',
+      maximumInteractivePoints: 1,
       series,
     });
 
     expect(container.querySelector('table')).toBeNull();
+    expect(queryByText('Use the data table to inspect this chart with a keyboard.')).toBeNull();
   });
 
   test('legend toggle hides and restores rendered series geometry', async () => {
@@ -138,6 +140,19 @@ describe('LineChart', () => {
     expect(getByText('Loading chart…')).toBeTruthy();
     expect(container.querySelector('[data-cinder-loading]')).not.toBeNull();
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('loading state clears an active tooltip', async () => {
+    const { getByRole, queryByText, rerender } = render(LineChart, {
+      label: 'Monthly revenue',
+      series,
+    });
+
+    await fireEvent.focus(getByRole('button', { name: 'Revenue, Jan, 120' }));
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await rerender({ label: 'Monthly revenue', loading: true, series });
+    expect(queryByText('Jan: 120')).toBeNull();
   });
 
   test('empty state renders the default fallback when series are empty', () => {
