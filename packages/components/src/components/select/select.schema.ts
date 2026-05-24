@@ -16,13 +16,6 @@ const schema = {
       type: 'string',
       description: 'Unique identifier — required for label association and ARIA wiring.',
     },
-    options: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Options to render as `<option>` children.',
-    },
     label: {
       type: 'string',
       description: 'Visible label rendered in a `<label>` associated via `for`.',
@@ -38,11 +31,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id', 'options'],
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {
         name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'options',
         reason: 'unknown-shape',
       },
       {

@@ -16,16 +16,16 @@ A SelectionPopover component. Replace this sentence with a one-line purpose stat
 
 <!-- generated:props:start -->
 
-| Prop              | Type               | Required | Default | Description                                                     |
-| ----------------- | ------------------ | -------- | ------- | --------------------------------------------------------------- |
-| `class`           | `string`           | no       | —       | Additional class names merged with `.cinder-selection-popover`. |
-| `id`              | `string`           | yes      | —       | Unique identifier for the popover.                              |
-| `open`            | `boolean`          | no       | —       | Whether the popover is visible.                                 |
-| `position`        | `object` \| `null` | yes      | —       | Viewport-relative position for the popover.                     |
-| `oncancel`        | `(opaque)`         | —        | —       | function-or-snippet                                             |
-| `onclose`         | `(opaque)`         | —        | —       | function-or-snippet                                             |
-| `oncommentsubmit` | `(opaque)`         | —        | —       | function-or-snippet                                             |
-| `onexpand`        | `(opaque)`         | —        | —       | function-or-snippet                                             |
+| Prop              | Type       | Required | Default | Description                                                     |
+| ----------------- | ---------- | -------- | ------- | --------------------------------------------------------------- |
+| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`. |
+| `id`              | `string`   | yes      | —       | Unique identifier for the popover.                              |
+| `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                 |
+| `oncancel`        | `(opaque)` | —        | —       | function-or-snippet                                             |
+| `onclose`         | `(opaque)` | —        | —       | function-or-snippet                                             |
+| `oncommentsubmit` | `(opaque)` | —        | —       | function-or-snippet                                             |
+| `onexpand`        | `(opaque)` | —        | —       | function-or-snippet                                             |
+| `position`        | `(opaque)` | —        | —       | unknown-shape                                                   |
 
 <!-- generated:props:end -->
 

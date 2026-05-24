@@ -16,13 +16,6 @@ const schema = {
       type: 'string',
       description: 'Free-text input value (the text the user has typed). Bindable.',
     },
-    options: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Full set of options to filter.',
-    },
     label: {
       type: 'string',
       description: 'Visible label rendered in a `<label>` associated via `for`.',
@@ -58,12 +51,16 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id', 'options'],
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {
         name: 'filter',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'options',
+        reason: 'unknown-shape',
       },
     ],
   },

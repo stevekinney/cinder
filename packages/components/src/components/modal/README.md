@@ -16,16 +16,16 @@ A Modal component. Replace this sentence with a one-line purpose statement once 
 
 <!-- generated:props:start -->
 
-| Prop            | Type               | Required | Default | Description                                                                                                |
-| --------------- | ------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `class`         | `string`           | no       | —       |                                                                                                            |
-| `describedById` | `string`           | no       | —       | When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only. |
-| `open`          | `boolean`          | yes      | —       |                                                                                                            |
-| `title`         | `string`           | yes      | —       |                                                                                                            |
-| `triggerRef`    | `object` \| `null` | no       | —       |                                                                                                            |
-| `children`      | `(opaque)`         | —        | —       | function-or-snippet                                                                                        |
-| `footer`        | `(opaque)`         | —        | —       | function-or-snippet                                                                                        |
-| `ondismiss`     | `(opaque)`         | —        | —       | function-or-snippet                                                                                        |
+| Prop            | Type       | Required | Default | Description                                                                                                |
+| --------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `class`         | `string`   | no       | —       |                                                                                                            |
+| `describedById` | `string`   | no       | —       | When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only. |
+| `open`          | `boolean`  | yes      | —       |                                                                                                            |
+| `title`         | `string`   | yes      | —       |                                                                                                            |
+| `children`      | `(opaque)` | —        | —       | function-or-snippet                                                                                        |
+| `footer`        | `(opaque)` | —        | —       | function-or-snippet                                                                                        |
+| `ondismiss`     | `(opaque)` | —        | —       | function-or-snippet                                                                                        |
+| `triggerRef`    | `(opaque)` | —        | —       | unknown-shape                                                                                              |
 
 <!-- generated:props:end -->
 

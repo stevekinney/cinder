@@ -78,11 +78,13 @@
   });
 
   const instructionsId = useId('cinder-kanban-board-instructions');
+  const columnInstructionsId = useId('cinder-kanban-board-column-instructions');
   let rootElement = $state<HTMLElement | null>(null);
   let cardTarget = $state<CardMoveTarget | null>(null);
   let pointerColumnIndex = $state<number | null>(null);
   let columnLiftedKey = $state<string | number | null>(null);
   let columnTargetIndex = $state<number | null>(null);
+  let lastInvalidKeyWarning = '';
 
   const keyValidation = $derived(validateKanbanBoardKeys(columns, getCardKey));
   const invalidKeys = $derived(!keyValidation.valid);
@@ -100,9 +102,15 @@
   });
 
   $effect(() => {
-    if (!invalidKeys) return;
+    if (!invalidKeys) {
+      lastInvalidKeyWarning = '';
+      return;
+    }
     const duplicateColumns = [...keyValidation.duplicateColumnKeys].join(', ');
     const duplicateCards = [...keyValidation.duplicateCardKeys].join(', ');
+    const warningSignature = `${duplicateColumns}|${duplicateCards}`;
+    if (warningSignature === lastInvalidKeyWarning) return;
+    lastInvalidKeyWarning = warningSignature;
     console.warn(
       `[cinder-kanban-board] duplicate keys disable reordering. Duplicate columns: ${duplicateColumns || 'none'}. Duplicate cards: ${duplicateCards || 'none'}.`,
     );
@@ -193,12 +201,21 @@
     return { columnIndex, cardIndex: insertionIndex };
   }
 
+  function getDestinationTotal(target: CardMoveTarget, itemKey: string | number | null): number {
+    const column = columns[target.columnIndex];
+    if (!column) return 1;
+    const located = itemKey === null ? null : findCard(columns, getCardKey, itemKey);
+    const sameColumn = located?.columnIndex === target.columnIndex;
+    return Math.max(1, sameColumn ? column.cards.length : column.cards.length + 1);
+  }
+
   function announceTarget(itemLabel: string): void {
     if (!cardTarget) return;
     const column = columns[cardTarget.columnIndex];
     if (!column) return;
+    const total = getDestinationTotal(cardTarget, cardController.liftedKey);
     announcer.announce(
-      `${itemLabel} moved to ${column.title}, position ${cardTarget.cardIndex + 1} of ${Math.max(1, column.cards.length)}.`,
+      `${itemLabel} moved to ${column.title}, position ${cardTarget.cardIndex + 1} of ${total}.`,
     );
   }
 
@@ -212,8 +229,9 @@
         cardTarget = null;
         return;
       }
+      const dropTotal = getDestinationTotal(cardTarget, itemKey);
       const result = moveKanbanCard(columns, getCardKey, itemKey, cardTarget);
-      cardController.drop([], itemLabel);
+      cardController.completeDrop(itemLabel, dropTotal);
       cardTarget = null;
       pointerColumnIndex = null;
       if (result) onchange(result.nextColumns, result.change);
@@ -230,16 +248,23 @@
       cardTarget = { columnIndex: located.columnIndex, cardIndex: located.cardIndex };
       cardController.lift(key, fromIndex, itemLabel, total);
     },
-    move(toIndex, itemLabel, total) {
+    move(toIndex, itemLabel, _total) {
       if (!cardTarget) return;
       const targetColumnIndex = pointerColumnIndex ?? cardTarget.columnIndex;
       const column = columns[targetColumnIndex];
       if (!column || column.collapsed) return;
-      const maxCardIndex =
-        pointerColumnIndex === null ? Math.max(0, getCardCount(column) - 1) : getCardCount(column);
+      const located =
+        cardController.liftedKey === null
+          ? null
+          : findCard(columns, getCardKey, cardController.liftedKey);
+      const allowAppend = pointerColumnIndex !== null || located?.columnIndex !== targetColumnIndex;
+      const maxCardIndex = allowAppend
+        ? getCardCount(column)
+        : Math.max(0, getCardCount(column) - 1);
       const cardIndex = Math.max(0, Math.min(toIndex, maxCardIndex));
       cardTarget = { columnIndex: targetColumnIndex, cardIndex };
-      cardController.move(cardIndex, itemLabel, Math.max(1, total));
+      const destinationTotal = getDestinationTotal(cardTarget, cardController.liftedKey);
+      cardController.move(cardIndex, itemLabel, destinationTotal);
       announceTarget(itemLabel);
       pointerColumnIndex = null;
     },
@@ -267,7 +292,8 @@
         columnIndex: nextColumnIndex,
         cardIndex: Math.max(0, Math.min(cardTarget.cardIndex, nextColumn.cards.length)),
       };
-      cardController.move(cardTarget.cardIndex, itemLabel, Math.max(1, getCardCount(nextColumn)));
+      const destinationTotal = getDestinationTotal(cardTarget, cardController.liftedKey);
+      cardController.move(cardTarget.cardIndex, itemLabel, destinationTotal);
       announceTarget(itemLabel);
       return true;
     },
@@ -303,6 +329,12 @@
     const currentTarget = columnTargetIndex ?? columnIndex;
     if (event.key === 'Escape') {
       event.preventDefault();
+      columnLiftedKey = null;
+      columnTargetIndex = null;
+      announcer.announce(`${column.title} column move cancelled.`);
+      return;
+    }
+    if (event.key === 'Tab') {
       columnLiftedKey = null;
       columnTargetIndex = null;
       announcer.announce(`${column.title} column move cancelled.`);
@@ -345,6 +377,10 @@
   <p id={instructionsId} class="cinder-sr-only">
     Press Space to lift a card, arrow keys to move it, Space to drop, and Escape to cancel.
   </p>
+  <p id={columnInstructionsId} class="cinder-sr-only">
+    Press Space to lift a column, Left and Right arrows to move it, Space to drop, and Escape to
+    cancel.
+  </p>
 
   <div class="cinder-kanban-board__columns" role="list">
     {#each visualColumns as column, columnIndex (invalidKeys ? `${column.id}-${columnIndex}` : column.id)}
@@ -362,6 +398,7 @@
               class="cinder-kanban-board__column-handle"
               aria-label={`Reorder ${column.title} column`}
               aria-pressed={columnLiftedKey === column.id}
+              aria-describedby={columnInstructionsId}
               disabled={invalidKeys}
               onkeydown={(event) => handleColumnKeydown(event, column, columnIndex)}
             >

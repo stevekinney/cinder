@@ -22,7 +22,6 @@ A NumberInput component. Replace this sentence with a one-line purpose statement
 | `description`  | `string`           | no       | —       |                     |
 | `disabled`     | `boolean`          | no       | —       |                     |
 | `error`        | `string`           | no       | —       |                     |
-| `format`       | `object`           | no       | —       |                     |
 | `id`           | `string`           | yes      | —       |                     |
 | `label`        | `string`           | no       | —       |                     |
 | `locale`       | `string`           | no       | —       |                     |
@@ -33,6 +32,7 @@ A NumberInput component. Replace this sentence with a one-line purpose statement
 | `step`         | `number`           | no       | —       |                     |
 | `value`        | `number` \| `null` | no       | —       |                     |
 | `class`        | `(opaque)`         | —        | —       | unknown-shape       |
+| `format`       | `(opaque)`         | —        | —       | unknown-shape       |
 | `onchange`     | `(opaque)`         | —        | —       | function-or-snippet |
 
 <!-- generated:props:end -->

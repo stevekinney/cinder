@@ -4,20 +4,8 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    panes: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-    },
     orientation: {
       enum: ['horizontal', 'vertical'],
-    },
-    keyboardStep: {
-      type: 'object',
-    },
-    snapThreshold: {
-      type: 'object',
     },
     collapseOnDoubleClick: {
       type: 'boolean',
@@ -30,12 +18,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['panes'],
   metadata: {
     unsupportedProps: [
       {
         name: 'children',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'keyboardStep',
+        reason: 'unknown-shape',
       },
       {
         name: 'onlayoutchange',
@@ -44,6 +35,14 @@ const schema = {
       {
         name: 'onlayoutcommit',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'panes',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'snapThreshold',
+        reason: 'unknown-shape',
       },
     ],
   },

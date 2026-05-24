@@ -41,17 +41,6 @@ const schema = {
       type: 'string',
       description: 'Id of an element labelling the panel. Wins over `label`.',
     },
-    triggerRef: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description: 'Explicit anchor element. Wins over the snippet-resolved focusable.',
-    },
     role: {
       enum: ['dialog', 'group', 'listbox'],
       description: "ARIA role for the panel. Default `'dialog'`.",
@@ -79,6 +68,10 @@ const schema = {
       {
         name: 'trigger',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'triggerRef',
+        reason: 'unknown-shape',
       },
     ],
   },

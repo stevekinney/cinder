@@ -1,7 +1,7 @@
 // @ts-nocheck — component tests exercise generic snippets and DOM APIs.
 /// <reference lib="dom" />
 import { describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import {
@@ -102,6 +102,10 @@ function installPointerCapture(handle: HTMLElement): void {
 
 async function waitForAnimationFrame(): Promise<void> {
   await new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+async function waitForAnnouncement(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 10));
 }
 
 describe('kanban board helpers', () => {
@@ -212,6 +216,27 @@ describe('KanbanBoard', () => {
     expect(change).toMatchObject({ type: 'card', fromColumnKey: 'todo', toColumnKey: 'doing' });
   });
 
+  test('keyboard append across columns announces the prospective destination total', async () => {
+    const { container, onchange } = renderBoard();
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    const movedHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    await fireEvent.keyDown(movedHandle, { key: 'ArrowDown' });
+    await waitForAnnouncement();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('position 2 of 2');
+    await fireEvent.keyDown(movedHandle, { key: ' ' });
+    await waitForAnnouncement();
+
+    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
+    expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'dropped at position 2 of 2',
+    );
+  });
+
   test('pointer drag moves a card across columns', async () => {
     const { container, onchange } = renderBoard();
     installPointerGeometry(container);
@@ -296,6 +321,22 @@ describe('KanbanBoard', () => {
       fromIndex: 0,
       toIndex: 1,
     });
+  });
+
+  test('column keyboard reorder cancels on Tab without moving focus prevention', async () => {
+    const { container, onchange } = renderBoard();
+    const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await tick();
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    handle.dispatchEvent(tabEvent);
+    await waitForAnnouncement();
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    expect(onchange).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
   test('reorderColumns=false removes column handles', () => {

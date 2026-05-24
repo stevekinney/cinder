@@ -141,6 +141,20 @@ describe('SortableController', () => {
     expect(announce.mock.calls[0][0]).toContain('dropped');
   });
 
+  test('completeDrop announces and resets without requiring a list item array', () => {
+    const announce = mock();
+    const controller = new SortableController<Item>({ announce });
+    controller.lift('a', 0, 'Alpha', 2);
+    controller.move(1, 'Alpha', 2);
+    announce.mockClear();
+
+    controller.completeDrop('Alpha', 2);
+
+    expect(controller.phase).toBe('idle');
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce.mock.calls[0][0]).toContain('2 of 2');
+  });
+
   test('cancel resets all state fields, announces cancelled', () => {
     const announce = mock();
     const controller = new SortableController({ announce });

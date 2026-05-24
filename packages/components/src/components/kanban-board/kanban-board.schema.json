@@ -2,12 +2,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "columns": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
-    },
     "label": {
       "type": "string"
     },
@@ -22,7 +16,6 @@
     }
   },
   "additionalProperties": false,
-  "required": ["columns"],
   "metadata": {
     "unsupportedProps": [
       {
@@ -36,6 +29,10 @@
       {
         "name": "columnHeader",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "columns",
+        "reason": "unknown-shape"
       },
       {
         "name": "emptyColumn",

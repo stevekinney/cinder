@@ -133,6 +133,14 @@ export class SortableController<Item> {
     return { nextItems, change: { itemKey, fromIndex, toIndex } };
   }
 
+  completeDrop(itemLabel: string, total: number): void {
+    if (this.phase !== 'lifted') return;
+    const boundedTotal = Math.max(1, total);
+    const position = Math.max(1, Math.min(this.liftedTo + 1, boundedTotal));
+    this.#announce(this.#announcements.dropped(itemLabel, position, boundedTotal));
+    this.#reset();
+  }
+
   cancel(itemLabel?: string): void {
     if (this.phase !== 'lifted') return;
     this.#announce(this.#announcements.cancelled(itemLabel ?? this.liftedLabel));

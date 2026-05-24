@@ -4,12 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-    },
     variant: {
       enum: ['default', 'striped', 'two-column', 'narrow'],
       description:
@@ -20,12 +14,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['items'],
   metadata: {
     unsupportedProps: [
       {
         name: 'actions',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'items',
+        reason: 'unknown-shape',
       },
     ],
   },

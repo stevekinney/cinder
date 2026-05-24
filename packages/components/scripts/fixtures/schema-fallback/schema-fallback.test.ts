@@ -140,4 +140,14 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     ]);
     expect(entries?.items?.properties?.['tone']?.default).toBe('info');
   });
+
+  test('untagged object props stay unsupported instead of widening to opaque object schemas', () => {
+    const { properties, metadata } = generate('opaque-object', 'opaque-object');
+    expect(properties['value']).toBeUndefined();
+    expect(properties['values']).toBeUndefined();
+    expect(metadata?.unsupportedProps).toEqual([
+      { name: 'value', reason: 'unknown-shape' },
+      { name: 'values', reason: 'unknown-shape' },
+    ]);
+  });
 });

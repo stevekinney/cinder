@@ -28,13 +28,6 @@ const schema = {
       type: 'number',
       description: 'Maximum allowed file size in bytes.',
     },
-    files: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Consumer-driven file rows, including upload progress and error states.',
-    },
   },
   additionalProperties: false,
   metadata: {
@@ -50,6 +43,10 @@ const schema = {
       {
         name: 'fileList',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'files',
+        reason: 'unknown-shape',
       },
       {
         name: 'idle',

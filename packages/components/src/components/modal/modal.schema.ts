@@ -13,16 +13,6 @@ const schema = {
     class: {
       type: 'string',
     },
-    triggerRef: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-    },
     describedById: {
       type: 'string',
       description:
@@ -44,6 +34,10 @@ const schema = {
       {
         name: 'ondismiss',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'triggerRef',
+        reason: 'unknown-shape',
       },
     ],
   },

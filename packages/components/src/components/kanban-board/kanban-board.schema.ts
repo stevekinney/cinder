@@ -4,12 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    columns: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-    },
     label: {
       type: 'string',
     },
@@ -24,7 +18,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['columns'],
   metadata: {
     unsupportedProps: [
       {
@@ -38,6 +31,10 @@ const schema = {
       {
         name: 'columnHeader',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'columns',
+        reason: 'unknown-shape',
       },
       {
         name: 'emptyColumn',

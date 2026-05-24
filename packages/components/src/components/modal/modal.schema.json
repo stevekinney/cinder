@@ -11,16 +11,6 @@
     "class": {
       "type": "string"
     },
-    "triggerRef": {
-      "anyOf": [
-        {
-          "type": "object"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "describedById": {
       "type": "string",
       "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only."
@@ -41,6 +31,10 @@
       {
         "name": "ondismiss",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "triggerRef",
+        "reason": "unknown-shape"
       }
     ]
   }

@@ -18,9 +18,9 @@ A SortableList component. Replace this sentence with a one-line purpose statemen
 
 | Prop                | Type       | Required | Default | Description                                                            |
 | ------------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------- |
-| `announcements`     | `object`   | no       | —       | Optional overrides for announcement strings.                           |
 | `class`             | `string`   | no       | —       |                                                                        |
 | `label`             | `string`   | no       | —       | Accessible name for the list (applied as aria-label on the list root). |
+| `announcements`     | `(opaque)` | —        | —       | unknown-shape                                                          |
 | `children`          | `(opaque)` | —        | —       | function-or-snippet                                                    |
 | `formatHandleLabel` | `(opaque)` | —        | —       | function-or-snippet                                                    |
 | `getItemLabel`      | `(opaque)` | —        | —       | function-or-snippet                                                    |
