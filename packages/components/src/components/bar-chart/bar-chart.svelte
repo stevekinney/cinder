@@ -22,6 +22,7 @@
     chartPaletteColor,
     createBarModel,
     dataTableClass,
+    formatNumericValue,
     legendVisible,
     nearestTarget,
     toggleSeriesId,
@@ -66,7 +67,7 @@
     if (!rootElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;
-      measuredWidth = Math.max(320, Math.round(entry.contentRect.width));
+      measuredWidth = Math.max(1, Math.round(entry.contentRect.width));
     });
     observer.observe(rootElement);
     return () => observer.disconnect();
@@ -191,7 +192,7 @@
       aria-hidden={loading || model.empty ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick}
+        {#each model.yTicks as tick, index}
           <text
             class="cinder-bar-chart__tick-label"
             x={orientation === 'vertical'
@@ -204,7 +205,10 @@
                   model.geometry.plotHeight
               : model.geometry.plotHeight + 20}
             text-anchor={orientation === 'vertical' ? 'end' : 'middle'}
-            dominant-baseline={orientation === 'vertical' ? 'middle' : undefined}>{tick}</text
+            dominant-baseline={orientation === 'vertical' ? 'middle' : undefined}
+            >{formatNumericValue(tick, orientation === 'vertical' ? yAxis : xAxis, undefined, {
+              index,
+            })}</text
           >
         {/each}
         {#each model.bars as bar}
@@ -220,18 +224,13 @@
             data-cinder-category={bar.categoryLabel}
           />
         {/each}
-        {#each model.categories as category, index}
+        {#each model.categoryTicks as tick}
           <text
             class="cinder-bar-chart__tick-label"
-            x={orientation === 'vertical'
-              ? (model.geometry.plotWidth / Math.max(1, model.categories.length)) * (index + 0.5)
-              : -8}
-            y={orientation === 'vertical'
-              ? model.geometry.plotHeight + 20
-              : (model.geometry.plotHeight / Math.max(1, model.categories.length)) * (index + 0.5)}
+            x={tick.x}
+            y={tick.y}
             text-anchor={orientation === 'vertical' ? 'middle' : 'end'}
-            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}
-            >{category.label}</text
+            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}>{tick.label}</text
           >
         {/each}
         {#if activeTarget}

@@ -121,6 +121,11 @@ export type BarChartModel = {
   geometry: ChartGeometry;
   categories: NormalizedXValue[];
   yTicks: number[];
+  categoryTicks: Array<{
+    label: string;
+    x: number;
+    y: number;
+  }>;
   bars: Array<{
     id: string;
     seriesId: string;
@@ -476,6 +481,10 @@ function buildXAxisTicks(
       x: scaleX(value),
     }));
   }
+  if (safeTickCount === 1) {
+    const value = sortedXValues[0];
+    return value ? [{ label: formatXValue(value, xAxis, { index: 0 }), x: scaleX(value) }] : [];
+  }
   // Sample evenly across the sorted x values.
   const step = (sortedXValues.length - 1) / (safeTickCount - 1);
   const ticks: ChartXTick[] = [];
@@ -603,6 +612,17 @@ export function createBarModel(options: {
     [0, categoryScale.bandwidth()],
     0.12,
   );
+  const categoryTicks = sortedCategories.map((category, index) => {
+    const categoryPosition = categoryScale(category.key) ?? 0;
+    return {
+      label: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
+      x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
+      y:
+        orientation === 'vertical'
+          ? geometry.plotHeight + 20
+          : categoryPosition + categoryScale.bandwidth() / 2,
+    };
+  });
 
   const bars: BarChartModel['bars'] = [];
   const targets: ChartTarget[] = [];
@@ -702,6 +722,7 @@ export function createBarModel(options: {
     geometry,
     categories: sortedCategories,
     yTicks: valueScale.ticks((orientation === 'vertical' ? yAxis : xAxis)?.tickCount ?? 5),
+    categoryTicks,
     bars,
     tableRows,
     targets,
@@ -725,7 +746,9 @@ export function nearestTarget(
   if (targets.length === 0) return undefined;
   if (targets.length === 1) return targets[0];
   const pointerKey = axis === 'x' ? x : y;
-  // Binary search for the leftmost target whose key is >= pointer.
+  // Binary search for the leftmost target whose key is >= pointer, then
+  // compare the adjacent dominant-axis buckets. The nearest target can live in
+  // either bucket when the pointer is between two x/y positions.
   let low = 0;
   let high = targets.length - 1;
   while (low < high) {
@@ -734,23 +757,43 @@ export function nearestTarget(
     if (midKey < pointerKey) low = mid + 1;
     else high = mid;
   }
-  // Walk outward from `low` while neighbors share the dominant-axis key so we
-  // consider every co-linear candidate, then break the tie by full Euclidean
-  // distance. This is O(k) in the size of the tie group, not the dataset.
-  const matchKey = axis === 'x' ? (targets[low]?.x ?? 0) : (targets[low]?.y ?? 0);
   const candidates: ChartTarget[] = [];
-  if (targets[low]) candidates.push(targets[low]!);
-  for (let index = low - 1; index >= 0; index--) {
-    const candidateKey = axis === 'x' ? (targets[index]?.x ?? 0) : (targets[index]?.y ?? 0);
-    if (candidateKey !== matchKey && index !== low - 1) break;
-    if (targets[index]) candidates.push(targets[index]!);
-    if (candidateKey !== matchKey) break;
+
+  function addBucket(start: number): void {
+    const target = targets[start];
+    if (!target) return;
+    const bucketKey = axis === 'x' ? target.x : target.y;
+    for (let index = start; index >= 0; index--) {
+      const candidate = targets[index];
+      if (!candidate) continue;
+      const candidateKey = axis === 'x' ? candidate.x : candidate.y;
+      if (candidateKey !== bucketKey) break;
+      candidates.push(candidate);
+    }
+    for (let index = start + 1; index < targets.length; index++) {
+      const candidate = targets[index];
+      if (!candidate) continue;
+      const candidateKey = axis === 'x' ? candidate.x : candidate.y;
+      if (candidateKey !== bucketKey) break;
+      candidates.push(candidate);
+    }
   }
-  for (let index = low + 1; index < targets.length; index++) {
-    const candidateKey = axis === 'x' ? (targets[index]?.x ?? 0) : (targets[index]?.y ?? 0);
-    if (candidateKey !== matchKey) break;
-    if (targets[index]) candidates.push(targets[index]!);
+
+  addBucket(low);
+  if (low > 0) {
+    let previous = low - 1;
+    const lowTarget = targets[low];
+    const lowKey = lowTarget ? (axis === 'x' ? lowTarget.x : lowTarget.y) : undefined;
+    while (previous > 0) {
+      const previousTarget = targets[previous];
+      if (!previousTarget) break;
+      const previousKey = axis === 'x' ? previousTarget.x : previousTarget.y;
+      if (previousKey !== lowKey) break;
+      previous--;
+    }
+    addBucket(previous);
   }
+
   return candidates.reduce<ChartTarget | undefined>((nearest, target) => {
     if (!nearest) return target;
     const targetDistance = Math.hypot(target.x - x, target.y - y);

@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -107,6 +108,18 @@ describe('AreaChart', () => {
 
     await fireEvent.keyDown(target, { key: 'Escape' });
     expect(queryByText('Jan: 30')).toBeNull();
+  });
+
+  test('renders formatted axis tick labels', () => {
+    const { getAllByText } = render(AreaChart, {
+      label: 'Usage trend',
+      xAxis: { format: (value: ChartXValue) => `Month ${String(value)}` },
+      yAxis: { format: (value: ChartXValue) => `${String(value)} GB` },
+      series: [{ id: 'usage', label: 'Usage', data: [{ x: 'Jan', y: 30 }] }],
+    });
+
+    expect(getAllByText('Month Jan').length).toBeGreaterThan(0);
+    expect(getAllByText('30 GB').length).toBeGreaterThan(0);
   });
 
   test('hides the data table when dataTableVisibility is "hidden"', () => {

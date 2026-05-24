@@ -1,8 +1,8 @@
 import type {
   ChartAxisSchemaConfiguration,
-  ChartCartesianSchemaSeries,
   ChartCartesianSeries,
   ChartDataTableVisibility,
+  ChartJsonXValue,
   ChartLegendPosition,
   ChartSharedProps,
 } from '../chart.types.ts';
@@ -10,6 +10,20 @@ import type {
 export type LineChartProps = ChartSharedProps & {
   /** Series to render as one or more connected line paths. */
   series: ChartCartesianSeries[];
+};
+
+/** @schemaObject */
+export type LineChartSchemaPoint = {
+  x: ChartJsonXValue;
+  y?: number | null;
+};
+
+/** @schemaObject */
+export type LineChartSchemaSeries = {
+  id: string;
+  label: string;
+  data: LineChartSchemaPoint[];
+  color?: string;
 };
 
 export type LineChartSchemaProps = {
@@ -25,5 +39,5 @@ export type LineChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   maximumInteractivePoints?: number;
   class?: string;
-  series: ChartCartesianSchemaSeries[];
+  series: LineChartSchemaSeries[];
 };

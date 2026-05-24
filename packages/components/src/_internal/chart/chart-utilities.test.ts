@@ -219,6 +219,16 @@ describe('nearestTarget', () => {
     expect(nearestTarget(targets, 500, 100)?.id).toBe('t-3');
   });
 
+  test('compares adjacent x buckets when the pointer is between them', () => {
+    const targets = buildTargets([
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ]);
+
+    expect(nearestTarget(targets, 40, 100)?.id).toBe('t-0');
+    expect(nearestTarget(targets, 60, 100)?.id).toBe('t-1');
+  });
+
   test('breaks 1-D ties using full Euclidean distance', () => {
     const targets = buildTargets([
       { x: 100, y: 0 },
@@ -237,6 +247,16 @@ describe('nearestTarget', () => {
     ]);
     expect(nearestTarget(targets, 50, 90, 'y')?.id).toBe('t-1');
     expect(nearestTarget(targets, 50, 210, 'y')?.id).toBe('t-2');
+  });
+
+  test('compares adjacent y buckets when the pointer is between them', () => {
+    const targets = buildTargets([
+      { x: 50, y: 0 },
+      { x: 50, y: 100 },
+    ]);
+
+    expect(nearestTarget(targets, 50, 40, 'y')?.id).toBe('t-0');
+    expect(nearestTarget(targets, 50, 60, 'y')?.id).toBe('t-1');
   });
 });
 
@@ -305,6 +325,29 @@ describe('createCartesianModel', () => {
     expect(first?.x).toBeCloseTo(0);
     expect(last?.x).toBeCloseTo(model.geometry.plotWidth);
     expect(middle?.x).toBeCloseTo(model.geometry.plotWidth * 0.1);
+  });
+
+  test('renders exactly one x tick when tickCount is 1', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        {
+          id: 's',
+          label: 'S',
+          data: [
+            { x: 'Jan', y: 1 },
+            { x: 'Feb', y: 2 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      xAxis: { tickCount: 1 },
+    });
+
+    expect(model.xTicks).toHaveLength(1);
+    expect(model.xTicks[0]?.label).toBe('Jan');
   });
 
   test('keeps string-domain points in insertion order (no NaN sort)', () => {
@@ -488,5 +531,43 @@ describe('createBarModel', () => {
     });
     const ys = model.targets.map((target) => target.y);
     expect(ys).toEqual([...ys].toSorted((a, b) => a - b));
+  });
+
+  test('category ticks use the category band scale instead of even index spacing', () => {
+    const model = createBarModel({
+      data: [
+        { month: 'Jan', value: 30 },
+        { month: 'Feb', value: 20 },
+      ],
+      categoryKey: 'month',
+      series: [{ id: 's', label: 'S', valueKey: 'value' }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+    });
+    const [tick] = model.categoryTicks;
+    const oldEvenIndexPosition = model.geometry.plotWidth / 4;
+
+    expect(tick?.x).not.toBeCloseTo(oldEvenIndexPosition);
+    expect(tick?.x).toBeGreaterThan(0);
+    expect(tick?.x).toBeLessThan(model.geometry.plotWidth);
+  });
+
+  test('category ticks honor category axis formatters', () => {
+    const model = createBarModel({
+      data: [{ month: 'Jan', value: 30 }],
+      categoryKey: 'month',
+      series: [{ id: 's', label: 'S', valueKey: 'value' }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+      xAxis: { format: (value) => `Month ${String(value)}` },
+    });
+
+    expect(model.categoryTicks[0]?.label).toBe('Month Jan');
   });
 });

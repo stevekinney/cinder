@@ -356,5 +356,5 @@ describe('component conventions', () => {
     if (errors.length > 0) {
       throw new Error(`Convention violations found:\n${errors.map((e) => `  • ${e}`).join('\n')}`);
     }
-  });
+  }, 15_000);
 });

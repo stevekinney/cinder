@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -130,6 +131,20 @@ describe('BarChart', () => {
     });
 
     expect(container.querySelector('table')).toBeNull();
+  });
+
+  test('renders formatted axis tick labels', () => {
+    const { getAllByText } = render(BarChart, {
+      label: 'Revenue by month',
+      data: [{ month: 'Jan', revenue: 120 }],
+      categoryKey: 'month',
+      xAxis: { format: (value: ChartXValue) => `Month ${String(value)}` },
+      yAxis: { format: (value: ChartXValue) => `$${String(value)}` },
+      series: [{ id: 'revenue', label: 'Revenue', valueKey: 'revenue' }],
+    });
+
+    expect(getAllByText('Month Jan').length).toBeGreaterThan(0);
+    expect(getAllByText('$120').length).toBeGreaterThan(0);
   });
 
   test('hiding all series reveals the empty state', async () => {

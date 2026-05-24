@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { ChartXValue } from '../chart.types.ts';
 
 setupHappyDom();
 
@@ -95,6 +96,18 @@ describe('LineChart', () => {
     await fireEvent.click(getByRole('button', { name: 'Revenue' }));
     expect(queryByText('$120')).toBeNull();
     expect(queryByText('$40')).toBeTruthy();
+  });
+
+  test('renders formatted axis tick labels', () => {
+    const { getAllByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      xAxis: { format: (value: ChartXValue) => `Month ${String(value)}` },
+      yAxis: { format: (value: ChartXValue) => `$${String(value)}` },
+      series: [{ id: 'revenue', label: 'Revenue', data: [{ x: 'Jan', y: 120 }] }],
+    });
+
+    expect(getAllByText('Month Jan').length).toBeGreaterThan(0);
+    expect(getAllByText('$120').length).toBeGreaterThan(0);
   });
 
   test('duplicate x values throw a stable developer error', () => {

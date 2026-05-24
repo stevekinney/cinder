@@ -22,6 +22,7 @@
     chartPaletteColor,
     createCartesianModel,
     dataTableClass,
+    formatNumericValue,
     legendVisible,
     nearestTarget,
     toggleSeriesId,
@@ -63,7 +64,7 @@
     if (!rootElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;
-      measuredWidth = Math.max(320, Math.round(entry.contentRect.width));
+      measuredWidth = Math.max(1, Math.round(entry.contentRect.width));
     });
     observer.observe(rootElement);
     return () => observer.disconnect();
@@ -184,7 +185,7 @@
       aria-hidden={loading || model.empty ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick}
+        {#each model.yTicks as tick, index}
           <line
             class="cinder-area-chart__gridline"
             x1="0"
@@ -204,7 +205,7 @@
               ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
                 model.geometry.plotHeight}
             text-anchor="end"
-            dominant-baseline="middle">{tick}</text
+            dominant-baseline="middle">{formatNumericValue(tick, yAxis, undefined, { index })}</text
           >
         {/each}
         {#each model.xTicks as tick (tick.label)}

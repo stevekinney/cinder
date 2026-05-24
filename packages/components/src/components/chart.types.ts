@@ -72,25 +72,30 @@ export type BarChartSeries = {
 export type ChartJsonXValue = string | number;
 export type ChartJsonValue = string | number | null;
 
+/** @schemaObject */
 export type ChartAxisSchemaConfiguration = {
   label?: string;
   tickCount?: number;
 };
 
+/** @schemaObject */
 export type ChartSchemaPoint = {
   x: ChartJsonXValue;
   y?: number | null;
 };
 
+/** @schemaObject */
 export type ChartCartesianSchemaSeries = {
   id: string;
   label: string;
+  /** @schemaObject */
   data: ChartSchemaPoint[];
   color?: string;
 };
 
 export type BarChartSchemaDatum = Record<string, ChartJsonValue>;
 
+/** @schemaObject */
 export type BarChartSchemaSeries = {
   id: string;
   label: string;

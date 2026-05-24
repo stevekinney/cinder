@@ -1,9 +1,9 @@
 import type {
   AreaChartMode,
   ChartAxisSchemaConfiguration,
-  ChartCartesianSchemaSeries,
   ChartCartesianSeries,
   ChartDataTableVisibility,
+  ChartJsonXValue,
   ChartLegendPosition,
   ChartSharedProps,
 } from '../chart.types.ts';
@@ -13,6 +13,20 @@ export type AreaChartProps = ChartSharedProps & {
   series: ChartCartesianSeries[];
   /** Area rendering mode. Default `single`. */
   mode?: AreaChartMode;
+};
+
+/** @schemaObject */
+export type AreaChartSchemaPoint = {
+  x: ChartJsonXValue;
+  y?: number | null;
+};
+
+/** @schemaObject */
+export type AreaChartSchemaSeries = {
+  id: string;
+  label: string;
+  data: AreaChartSchemaPoint[];
+  color?: string;
 };
 
 export type AreaChartSchemaProps = {
@@ -28,6 +42,6 @@ export type AreaChartSchemaProps = {
   dataTableVisibility?: ChartDataTableVisibility;
   maximumInteractivePoints?: number;
   class?: string;
-  series: ChartCartesianSchemaSeries[];
+  series: AreaChartSchemaSeries[];
   mode?: AreaChartMode;
 };

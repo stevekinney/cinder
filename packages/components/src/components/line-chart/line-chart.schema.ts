@@ -15,9 +15,27 @@ const schema = {
     },
     xAxis: {
       type: 'object',
+      properties: {
+        label: {
+          type: 'string',
+        },
+        tickCount: {
+          type: 'number',
+        },
+      },
+      additionalProperties: false,
     },
     yAxis: {
       type: 'object',
+      properties: {
+        label: {
+          type: 'string',
+        },
+        tickCount: {
+          type: 'number',
+        },
+      },
+      additionalProperties: false,
     },
     legendPosition: {
       enum: ['top', 'bottom', 'none'],
@@ -47,6 +65,49 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+          },
+          label: {
+            type: 'string',
+          },
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                x: {
+                  anyOf: [
+                    {
+                      type: 'string',
+                    },
+                    {
+                      type: 'number',
+                    },
+                  ],
+                },
+                y: {
+                  anyOf: [
+                    {
+                      type: 'number',
+                    },
+                    {
+                      type: 'null',
+                    },
+                  ],
+                },
+              },
+              additionalProperties: false,
+              required: ['x'],
+            },
+          },
+          color: {
+            type: 'string',
+          },
+        },
+        additionalProperties: false,
+        required: ['data', 'id', 'label'],
       },
     },
   },
