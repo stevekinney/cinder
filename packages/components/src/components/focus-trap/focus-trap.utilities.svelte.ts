@@ -44,10 +44,27 @@ function isHiddenByTree(element: HTMLElement): boolean {
   return ancestor !== null && ancestor !== element;
 }
 
+/**
+ * Whether an element is eligible to receive focus via Tab. Excludes `tabindex="-1"` because that
+ * value opts an element out of sequential focus navigation — used for auto-discovery in
+ * `getTabbableElements`.
+ */
 function isFocusableCandidate(element: HTMLElement): boolean {
   if (isHiddenByTree(element)) return false;
   if (element.hasAttribute('disabled')) return false;
   if (element.getAttribute('tabindex') === '-1') return false;
+  return true;
+}
+
+/**
+ * Whether an element can be programmatically focused via `.focus()`. Unlike `isFocusableCandidate`,
+ * this accepts `tabindex="-1"` — the standard pattern for making a non-interactive element
+ * (a container, heading, etc.) a valid `initialFocus`/`fallbackFocus` target without inserting it
+ * into the Tab order.
+ */
+function isProgrammaticallyFocusable(element: HTMLElement): boolean {
+  if (isHiddenByTree(element)) return false;
+  if (element.hasAttribute('disabled')) return false;
   return true;
 }
 
@@ -74,7 +91,7 @@ function resolveScopedTarget(root: HTMLElement, target: FocusTargetInput): HTMLE
 
 function getFallbackTarget(root: HTMLElement, fallbackFocus: FocusTargetInput): HTMLElement | null {
   const resolved = resolveScopedTarget(root, fallbackFocus);
-  return resolved && isFocusableCandidate(resolved) ? resolved : null;
+  return resolved && isProgrammaticallyFocusable(resolved) ? resolved : null;
 }
 
 function ensureRootFocusable(root: HTMLElement): () => void {
@@ -121,7 +138,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
 
     function focusTrapTarget() {
       const preferred = resolveScopedTarget(node, initialFocus);
-      if (preferred && isFocusableCandidate(preferred)) {
+      if (preferred && isProgrammaticallyFocusable(preferred)) {
         preferred.focus();
         return;
       }
