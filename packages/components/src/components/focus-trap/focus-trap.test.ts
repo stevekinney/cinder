@@ -111,4 +111,24 @@ describe('FocusTrap', () => {
 
     expect(document.activeElement).toBe(getByTestId('fallback-target'));
   });
+
+  test('restores focus to the previously focused element even if active is false at unmount', async () => {
+    // Regression for Codex round 1 finding: previously the cleanup branch checked the *current*
+    // `isActive()` value, so deactivating the trap before unmount silently skipped focus
+    // restoration. Activation-time captured state now drives restoration on unmount regardless.
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { rerender, unmount } = render(FocusTrap, {
+      props: { active: true, children: focusTrapChildren },
+    });
+
+    await tick();
+    await rerender({ active: false, children: focusTrapChildren });
+    await tick();
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+  });
 });

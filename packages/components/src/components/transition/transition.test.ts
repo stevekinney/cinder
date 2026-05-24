@@ -58,6 +58,52 @@ describe('Presence', () => {
     expect(wrapper.dataset['cinderPresence']).toBe('exiting');
   });
 
+  test('initial present=false + forceMount=true stays closed/exited and does not fire onExitComplete', async () => {
+    // Regression for Codex round 1 finding H2: the previous implementation initialized
+    // `isMounted = present || forceMount` then ran the main effect with `present=false`, falling
+    // into the exit branch and emitting `exiting` / calling `onExitComplete`. The plan requires
+    // the initial state to be closed/exited without a transition.
+    let exitCount = 0;
+    const { container } = render(Presence, {
+      props: {
+        present: false,
+        forceMount: true,
+        children: transitionChildren,
+        onExitComplete: () => {
+          exitCount += 1;
+        },
+      },
+    });
+
+    await tick();
+    await waitForAnimationFrame();
+    await waitForAnimationFrame();
+
+    const wrapper = container.querySelector('[data-cinder-state]') as HTMLDivElement;
+    expect(wrapper.dataset['cinderState']).toBe('closed');
+    expect(wrapper.dataset['cinderPresence']).toBe('exited');
+    expect(exitCount).toBe(0);
+  });
+
+  test('ignores bubbling transitionend events from descendants', async () => {
+    // Regression: `handleExitEvent` previously only checked `event.target !== wrapper`, which is
+    // always true when `wrapper` is `undefined`. A wrapped event from a child could fall through.
+    const { container, rerender } = render(Presence, {
+      props: { present: true, children: transitionChildren },
+    });
+
+    await tick();
+    await rerender({ present: false, children: transitionChildren });
+
+    const wrapper = container.querySelector('[data-cinder-state]');
+    // Dispatch a transitionend on a descendant; should NOT complete the exit early.
+    const child = wrapper?.querySelector('[data-testid="presence-child"]') as HTMLElement | null;
+    child?.dispatchEvent(new Event('transitionend', { bubbles: true }));
+
+    // The wrapper should still be in the DOM (exit not completed by a child event).
+    expect(container.querySelector('[data-cinder-state]')).not.toBeNull();
+  });
+
   test('unmounts after a zero-duration exit and calls onExitComplete', async () => {
     let exitCount = 0;
     const { container, rerender } = render(Presence, {
