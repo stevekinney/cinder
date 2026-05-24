@@ -81,6 +81,12 @@
   const groupRole = $derived(
     selectionMode === 'multiple' ? 'group' : variant === 'tablist' ? 'tablist' : 'radiogroup',
   );
+
+  // When density="toolbar" is requested it resolves to the compact `sm` visual
+  // size — explicit `size` values are ignored while toolbar density is on so
+  // toolbars line up with sibling toolbar controls. `data-cinder-size` reflects
+  // this resolved size; raw requested `size` is not surfaced through the DOM.
+  const effectiveSize = $derived(density === 'toolbar' ? 'sm' : size);
 </script>
 
 <div class="cinder-segmented-control-container">
@@ -98,7 +104,7 @@
     aria-disabled={disabled ? 'true' : undefined}
     aria-orientation={selectionMode === 'single' ? orientation : undefined}
     data-cinder-orientation={orientation}
-    data-cinder-size={size}
+    data-cinder-size={effectiveSize}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     data-cinder-selection-mode={selectionMode}
     data-cinder-detached={detached ? '' : undefined}

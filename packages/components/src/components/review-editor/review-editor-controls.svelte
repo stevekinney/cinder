@@ -210,10 +210,11 @@
 
   /* =========================================================================
    * Unified control heights
-   * The toolbar row uses --cinder-control-height-sm (32px) as the shared
-   * tier: SegmentedControl + DiffStatistics opt in via density="toolbar",
-   * Button (size="sm") already maps there through its alias. No per-instance
-   * height overrides are needed below.
+   * The toolbar row pairs Button (size="sm") with SegmentedControl and
+   * DiffStatistics opted in via density="toolbar". SegmentedControl's toolbar
+   * density resolves to its compact `sm` visual sizing; DiffStatistics and
+   * Button (size="sm") match the same `--cinder-control-height-sm` tier. No
+   * per-instance height overrides are needed below.
    * ========================================================================= */
 
   /* Comments toggle button with count */

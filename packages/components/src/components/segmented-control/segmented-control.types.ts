@@ -26,13 +26,18 @@ type CommonProps<T extends string> = Omit<
   hideLabel?: boolean | undefined;
   /** Disable the whole control. */
   disabled?: boolean | undefined;
-  /** Visual size of the control. */
+  /**
+   * Requested visual size of the control. The resolved size is reflected as
+   * `data-cinder-size` on the root; when `density="toolbar"` is set, the
+   * resolved size is forced to `"sm"` and any explicit `size` value is ignored.
+   */
   size?: 'sm' | 'md' | 'lg' | undefined;
   /**
-   * Opt the control into a shared toolbar height (via
-   * `--cinder-control-height-sm`) so it lines up cleanly with sibling
-   * `Button` (size="sm"), `Chip` (density="toolbar"), and other toolbar
-   * elements. Default rendering is unchanged.
+   * Opt the control into compact toolbar sizing so it lines up cleanly with
+   * sibling `Button` (size="sm"), `Chip` (density="toolbar"), and other
+   * toolbar elements. Toolbar density resolves to the same visual sizing as
+   * `size="sm"` — when set, any explicit `size` value is ignored and the
+   * resolved size (`data-cinder-size`) is `"sm"`.
    */
   density?: 'toolbar' | undefined;
   /** Layout orientation. */
