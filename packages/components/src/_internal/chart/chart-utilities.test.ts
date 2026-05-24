@@ -659,4 +659,31 @@ describe('createBarModel', () => {
 
     expect(model.categoryTicks[0]?.label).toBe('Month Jan');
   });
+
+  test('bar value and category formatter context uses the category index', () => {
+    const model = createBarModel({
+      data: [
+        { month: 'Jan', value: 30 },
+        { month: 'Feb', value: 20 },
+      ],
+      categoryKey: 'month',
+      series: [
+        {
+          id: 'value',
+          label: 'Value',
+          valueKey: 'value',
+          valueFormatter: (_value, context) => `value-${context.index}`,
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+      xAxis: { format: (_value, context) => `category-${context.index}` },
+    });
+
+    expect(model.bars.map((bar) => bar.categoryLabel)).toEqual(['category-0', 'category-1']);
+    expect(model.bars.map((bar) => bar.valueLabel)).toEqual(['value-0', 'value-1']);
+  });
 });

@@ -628,13 +628,13 @@ export function createBarModel(options: {
   const bars: BarChartModel['bars'] = [];
   const targets: ChartTarget[] = [];
   const tableRows: BarChartModel['tableRows'] = [];
-  for (const category of sortedCategories) {
+  for (const [categoryIndex, category] of sortedCategories.entries()) {
     const datum = datumByKey.get(category.key);
     if (!datum) continue;
     let positiveOffset = 0;
     let negativeOffset = 0;
     const rowValues: BarChartModel['tableRows'][number]['values'] = [];
-    visibleSeries.forEach((item, seriesIndex) => {
+    visibleSeries.forEach((item) => {
       const rawValue = datum[item.valueKey];
       if (typeof rawValue !== 'number') return;
       const value = rawValue;
@@ -681,12 +681,12 @@ export function createBarModel(options: {
         value,
         orientation === 'vertical' ? yAxis : xAxis,
         item.valueFormatter,
-        { seriesId: item.id, seriesLabel: item.label, index: seriesIndex },
+        { seriesId: item.id, seriesLabel: item.label, index: categoryIndex },
       );
       const categoryLabel = formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, {
         seriesId: item.id,
         seriesLabel: item.label,
-        index: seriesIndex,
+        index: categoryIndex,
       });
       rowValues.push({ seriesId: item.id, seriesLabel: item.label, valueLabel });
       const bar = {

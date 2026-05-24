@@ -1,3 +1,3 @@
 # LineChart Accessibility
 
-LineChart exposes one focusable plot interaction layer instead of one tab stop per point. Use arrow keys, Home, End, and Escape while the plot layer is focused. The data table fallback is the reliable assistive technology representation, especially for high-cardinality charts.
+LineChart exposes one focusable SVG target per visible point when the point count is under `maximumInteractivePoints`. Use Tab to move between point targets, arrow keys to inspect adjacent points, Home and End to jump to the first or last point, and Escape to clear the active tooltip. High-cardinality charts disable point keyboard targets and rely on the semantic data table fallback as the reliable assistive technology representation.
