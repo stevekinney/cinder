@@ -158,6 +158,20 @@ describe('selection-popover floating-button focus-visible', () => {
   });
 });
 
+describe('selection-popover programmatic textarea focus', () => {
+  test('keeps the shared ring on :focus for the expanded composer autofocus path', () => {
+    const root = parse(selectionPopoverCss);
+    const rules = findRules(root, '.cinder-selection-popover__textarea:focus').filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const rule = rules.find((candidate) => declValue(candidate, 'box-shadow') !== undefined);
+    expect(rule).toBeDefined();
+    expect(declValue(rule!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+    expect(declValue(rule!, 'box-shadow')).toContain(SHARED_BOX_SHADOW);
+  });
+});
+
 describe('vertical navigation-item geometry lives on the item', () => {
   test('navigation-item.css declares .cinder-navigation-item[data-variant="vertical"]', () => {
     const root = parse(navigationItemCss);

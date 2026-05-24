@@ -88,12 +88,14 @@
   border-color: var(--cinder-accent);
 }
 
+.cinder-selection-popover__textarea:focus,
 .cinder-selection-popover__textarea:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {
+  .cinder-selection-popover__textarea:focus,
   .cinder-selection-popover__textarea:focus-visible {
     outline: var(--cinder-ring-width) solid Highlight;
     outline-offset: 1px;
