@@ -298,6 +298,34 @@ describe('Popover — portal and arrow', () => {
     expect(container.contains(panel)).toBe(false);
   });
 
+  test('copies inherited dir and theme attributes before portaling', async () => {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('dir', 'rtl');
+    wrapper.setAttribute('data-cinder-theme', 'midnight');
+
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    triggerButton.textContent = 'Trigger';
+    wrapper.appendChild(triggerButton);
+    attachScratch(wrapper);
+
+    render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    const panel = queryPopoverPanel()!;
+    expect(panel.getAttribute('dir')).toBe('rtl');
+    expect(panel.getAttribute('data-cinder-theme')).toBe('midnight');
+  });
+
   test('renders an arrow inside a placed panel when showArrow=true', async () => {
     computePositionResult = {
       x: 10,

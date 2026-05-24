@@ -77,7 +77,7 @@
 
 .cinder-autocomplete__match {
   padding: 0;
-  background: color-mix(in oklch, var(--cinder-warning), transparent 80%);
+  background: oklch(from var(--cinder-warning) 96.5% 0.015 h);
   color: inherit;
 }
 

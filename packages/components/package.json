@@ -910,6 +910,24 @@
     "./file-upload/styles": {
       "default": "./dist/components/file-upload/file-upload.css"
     },
+    "./focus-trap": {
+      "types": "./dist/components/focus-trap/index.d.ts",
+      "svelte": "./src/components/focus-trap/index.ts",
+      "node": "./dist/server/components/focus-trap/index.js",
+      "default": "./dist/components/focus-trap/index.js"
+    },
+    "./focus-trap/schema": {
+      "types": "./dist/components/focus-trap/focus-trap.schema.d.ts",
+      "svelte": "./src/components/focus-trap/focus-trap.schema.ts"
+    },
+    "./focus-trap/variables": {
+      "types": "./dist/components/focus-trap/focus-trap.variables.d.ts",
+      "svelte": "./src/components/focus-trap/focus-trap.variables.ts"
+    },
+    "./focus-trap/examples": {
+      "import": "./src/components/focus-trap/focus-trap.examples.json",
+      "default": "./src/components/focus-trap/focus-trap.examples.json"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "svelte": "./src/components/form-field/index.ts",
@@ -1349,6 +1367,24 @@
     "./popover/examples": {
       "import": "./src/components/popover/popover.examples.json",
       "default": "./src/components/popover/popover.examples.json"
+    },
+    "./portal": {
+      "types": "./dist/components/portal/index.d.ts",
+      "svelte": "./src/components/portal/index.ts",
+      "node": "./dist/server/components/portal/index.js",
+      "default": "./dist/components/portal/index.js"
+    },
+    "./portal/schema": {
+      "types": "./dist/components/portal/portal.schema.d.ts",
+      "svelte": "./src/components/portal/portal.schema.ts"
+    },
+    "./portal/variables": {
+      "types": "./dist/components/portal/portal.variables.d.ts",
+      "svelte": "./src/components/portal/portal.variables.ts"
+    },
+    "./portal/examples": {
+      "import": "./src/components/portal/portal.examples.json",
+      "default": "./src/components/portal/portal.examples.json"
     },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
@@ -2246,6 +2282,24 @@
     "./tooltip/examples": {
       "import": "./src/components/tooltip/tooltip.examples.json",
       "default": "./src/components/tooltip/tooltip.examples.json"
+    },
+    "./transition": {
+      "types": "./dist/components/transition/index.d.ts",
+      "svelte": "./src/components/transition/index.ts",
+      "node": "./dist/server/components/transition/index.js",
+      "default": "./dist/components/transition/index.js"
+    },
+    "./transition/schema": {
+      "types": "./dist/components/transition/transition.schema.d.ts",
+      "svelte": "./src/components/transition/transition.schema.ts"
+    },
+    "./transition/variables": {
+      "types": "./dist/components/transition/transition.variables.d.ts",
+      "svelte": "./src/components/transition/transition.variables.ts"
+    },
+    "./transition/examples": {
+      "import": "./src/components/transition/transition.examples.json",
+      "default": "./src/components/transition/transition.examples.json"
     },
     "./tree": {
       "types": "./dist/components/tree/index.d.ts",
