@@ -132,6 +132,27 @@
       "import": "./src/components/aspect-ratio/aspect-ratio.examples.json",
       "default": "./src/components/aspect-ratio/aspect-ratio.examples.json"
     },
+    "./autocomplete": {
+      "types": "./dist/components/autocomplete/index.d.ts",
+      "svelte": "./src/components/autocomplete/index.ts",
+      "node": "./dist/server/components/autocomplete/index.js",
+      "default": "./dist/components/autocomplete/index.js"
+    },
+    "./autocomplete/schema": {
+      "types": "./dist/components/autocomplete/autocomplete.schema.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.schema.ts"
+    },
+    "./autocomplete/variables": {
+      "types": "./dist/components/autocomplete/autocomplete.variables.d.ts",
+      "svelte": "./src/components/autocomplete/autocomplete.variables.ts"
+    },
+    "./autocomplete/styles": {
+      "default": "./dist/components/autocomplete/autocomplete.css"
+    },
+    "./autocomplete/examples": {
+      "import": "./src/components/autocomplete/autocomplete.examples.json",
+      "default": "./src/components/autocomplete/autocomplete.examples.json"
+    },
     "./avatar": {
       "types": "./dist/components/avatar/index.d.ts",
       "svelte": "./src/components/avatar/index.ts",
@@ -429,10 +450,6 @@
       "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
       "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
     },
-    "./cinder-provider/examples": {
-      "import": "./src/components/cinder-provider/cinder-provider.examples.json",
-      "default": "./src/components/cinder-provider/cinder-provider.examples.json"
-    },
     "./cluster": {
       "types": "./dist/components/cluster/index.d.ts",
       "svelte": "./src/components/cluster/index.ts",
@@ -508,6 +525,10 @@
     },
     "./color-picker/styles": {
       "default": "./dist/components/color-picker/color-picker.css"
+    },
+    "./color-picker/examples": {
+      "import": "./src/components/color-picker/color-picker.examples.json",
+      "default": "./src/components/color-picker/color-picker.examples.json"
     },
     "./color-swatch-picker": {
       "types": "./dist/components/color-swatch-picker/index.d.ts",
@@ -757,6 +778,20 @@
       "import": "./src/components/dropdown/dropdown.examples.json",
       "default": "./src/components/dropdown/dropdown.examples.json"
     },
+    "./dropdown-group": {
+      "types": "./dist/components/dropdown-group/index.d.ts",
+      "svelte": "./src/components/dropdown-group/index.ts",
+      "node": "./dist/server/components/dropdown-group/index.js",
+      "default": "./dist/components/dropdown-group/index.js"
+    },
+    "./dropdown-group/schema": {
+      "types": "./dist/components/dropdown-group/dropdown-group.schema.d.ts",
+      "svelte": "./src/components/dropdown-group/dropdown-group.schema.ts"
+    },
+    "./dropdown-group/variables": {
+      "types": "./dist/components/dropdown-group/dropdown-group.variables.d.ts",
+      "svelte": "./src/components/dropdown-group/dropdown-group.variables.ts"
+    },
     "./dropdown-item": {
       "types": "./dist/components/dropdown-item/index.d.ts",
       "svelte": "./src/components/dropdown-item/index.ts",
@@ -878,6 +913,41 @@
     "./feed-event/variables": {
       "types": "./dist/components/feed-event/feed-event.variables.d.ts",
       "svelte": "./src/components/feed-event/feed-event.variables.ts"
+    },
+    "./file-upload": {
+      "types": "./dist/components/file-upload/index.d.ts",
+      "svelte": "./src/components/file-upload/index.ts",
+      "node": "./dist/server/components/file-upload/index.js",
+      "default": "./dist/components/file-upload/index.js"
+    },
+    "./file-upload/schema": {
+      "types": "./dist/components/file-upload/file-upload.schema.d.ts",
+      "svelte": "./src/components/file-upload/file-upload.schema.ts"
+    },
+    "./file-upload/variables": {
+      "types": "./dist/components/file-upload/file-upload.variables.d.ts",
+      "svelte": "./src/components/file-upload/file-upload.variables.ts"
+    },
+    "./file-upload/styles": {
+      "default": "./dist/components/file-upload/file-upload.css"
+    },
+    "./focus-trap": {
+      "types": "./dist/components/focus-trap/index.d.ts",
+      "svelte": "./src/components/focus-trap/index.ts",
+      "node": "./dist/server/components/focus-trap/index.js",
+      "default": "./dist/components/focus-trap/index.js"
+    },
+    "./focus-trap/schema": {
+      "types": "./dist/components/focus-trap/focus-trap.schema.d.ts",
+      "svelte": "./src/components/focus-trap/focus-trap.schema.ts"
+    },
+    "./focus-trap/variables": {
+      "types": "./dist/components/focus-trap/focus-trap.variables.d.ts",
+      "svelte": "./src/components/focus-trap/focus-trap.variables.ts"
+    },
+    "./focus-trap/examples": {
+      "import": "./src/components/focus-trap/focus-trap.examples.json",
+      "default": "./src/components/focus-trap/focus-trap.examples.json"
     },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
@@ -1074,6 +1144,27 @@
     "./label/styles": {
       "default": "./dist/components/label/label.css"
     },
+    "./load-more": {
+      "types": "./dist/components/load-more/index.d.ts",
+      "svelte": "./src/components/load-more/index.ts",
+      "node": "./dist/server/components/load-more/index.js",
+      "default": "./dist/components/load-more/index.js"
+    },
+    "./load-more/schema": {
+      "types": "./dist/components/load-more/load-more.schema.d.ts",
+      "svelte": "./src/components/load-more/load-more.schema.ts"
+    },
+    "./load-more/variables": {
+      "types": "./dist/components/load-more/load-more.variables.d.ts",
+      "svelte": "./src/components/load-more/load-more.variables.ts"
+    },
+    "./load-more/styles": {
+      "default": "./dist/components/load-more/load-more.css"
+    },
+    "./load-more/examples": {
+      "import": "./src/components/load-more/load-more.examples.json",
+      "default": "./src/components/load-more/load-more.examples.json"
+    },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
       "svelte": "./src/components/markdown-editor/index.ts",
@@ -1091,6 +1182,27 @@
     "./markdown-editor/examples": {
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
+    },
+    "./menu-bar": {
+      "types": "./dist/components/menu-bar/index.d.ts",
+      "svelte": "./src/components/menu-bar/index.ts",
+      "node": "./dist/server/components/menu-bar/index.js",
+      "default": "./dist/components/menu-bar/index.js"
+    },
+    "./menu-bar/schema": {
+      "types": "./dist/components/menu-bar/menu-bar.schema.d.ts",
+      "svelte": "./src/components/menu-bar/menu-bar.schema.ts"
+    },
+    "./menu-bar/variables": {
+      "types": "./dist/components/menu-bar/menu-bar.variables.d.ts",
+      "svelte": "./src/components/menu-bar/menu-bar.variables.ts"
+    },
+    "./menu-bar/styles": {
+      "default": "./dist/components/menu-bar/menu-bar.css"
+    },
+    "./menu-bar/examples": {
+      "import": "./src/components/menu-bar/menu-bar.examples.json",
+      "default": "./src/components/menu-bar/menu-bar.examples.json"
     },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
@@ -1277,6 +1389,24 @@
       "import": "./src/components/popover/popover.examples.json",
       "default": "./src/components/popover/popover.examples.json"
     },
+    "./portal": {
+      "types": "./dist/components/portal/index.d.ts",
+      "svelte": "./src/components/portal/index.ts",
+      "node": "./dist/server/components/portal/index.js",
+      "default": "./dist/components/portal/index.js"
+    },
+    "./portal/schema": {
+      "types": "./dist/components/portal/portal.schema.d.ts",
+      "svelte": "./src/components/portal/portal.schema.ts"
+    },
+    "./portal/variables": {
+      "types": "./dist/components/portal/portal.variables.d.ts",
+      "svelte": "./src/components/portal/portal.variables.ts"
+    },
+    "./portal/examples": {
+      "import": "./src/components/portal/portal.examples.json",
+      "default": "./src/components/portal/portal.examples.json"
+    },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
       "svelte": "./src/components/progress/index.ts",
@@ -1357,6 +1487,27 @@
       "import": "./src/components/rating/rating.examples.json",
       "default": "./src/components/rating/rating.examples.json"
     },
+    "./resizable-panels": {
+      "types": "./dist/components/resizable-panels/index.d.ts",
+      "svelte": "./src/components/resizable-panels/index.ts",
+      "node": "./dist/server/components/resizable-panels/index.js",
+      "default": "./dist/components/resizable-panels/index.js"
+    },
+    "./resizable-panels/schema": {
+      "types": "./dist/components/resizable-panels/resizable-panels.schema.d.ts",
+      "svelte": "./src/components/resizable-panels/resizable-panels.schema.ts"
+    },
+    "./resizable-panels/variables": {
+      "types": "./dist/components/resizable-panels/resizable-panels.variables.d.ts",
+      "svelte": "./src/components/resizable-panels/resizable-panels.variables.ts"
+    },
+    "./resizable-panels/styles": {
+      "default": "./dist/components/resizable-panels/resizable-panels.css"
+    },
+    "./resizable-panels/examples": {
+      "import": "./src/components/resizable-panels/resizable-panels.examples.json",
+      "default": "./src/components/resizable-panels/resizable-panels.examples.json"
+    },
     "./review-editor": {
       "types": "./dist/components/review-editor/index.d.ts",
       "svelte": "./src/components/review-editor/index.ts",
@@ -1432,6 +1583,10 @@
     },
     "./section-heading/styles": {
       "default": "./dist/components/section-heading/section-heading.css"
+    },
+    "./section-heading/examples": {
+      "import": "./src/components/section-heading/section-heading.examples.json",
+      "default": "./src/components/section-heading/section-heading.examples.json"
     },
     "./segment": {
       "types": "./dist/components/segment/index.d.ts",
@@ -2002,6 +2157,27 @@
       "import": "./src/components/tabs/tabs.examples.json",
       "default": "./src/components/tabs/tabs.examples.json"
     },
+    "./tag-input": {
+      "types": "./dist/components/tag-input/index.d.ts",
+      "svelte": "./src/components/tag-input/index.ts",
+      "node": "./dist/server/components/tag-input/index.js",
+      "default": "./dist/components/tag-input/index.js"
+    },
+    "./tag-input/schema": {
+      "types": "./dist/components/tag-input/tag-input.schema.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.schema.ts"
+    },
+    "./tag-input/variables": {
+      "types": "./dist/components/tag-input/tag-input.variables.d.ts",
+      "svelte": "./src/components/tag-input/tag-input.variables.ts"
+    },
+    "./tag-input/styles": {
+      "default": "./dist/components/tag-input/tag-input.css"
+    },
+    "./tag-input/examples": {
+      "import": "./src/components/tag-input/tag-input.examples.json",
+      "default": "./src/components/tag-input/tag-input.examples.json"
+    },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",
       "svelte": "./src/components/textarea/index.ts",
@@ -2022,6 +2198,27 @@
     "./textarea/examples": {
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
+    },
+    "./time-picker": {
+      "types": "./dist/components/time-picker/index.d.ts",
+      "svelte": "./src/components/time-picker/index.ts",
+      "node": "./dist/server/components/time-picker/index.js",
+      "default": "./dist/components/time-picker/index.js"
+    },
+    "./time-picker/schema": {
+      "types": "./dist/components/time-picker/time-picker.schema.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.schema.ts"
+    },
+    "./time-picker/variables": {
+      "types": "./dist/components/time-picker/time-picker.variables.d.ts",
+      "svelte": "./src/components/time-picker/time-picker.variables.ts"
+    },
+    "./time-picker/styles": {
+      "default": "./dist/components/time-picker/time-picker.css"
+    },
+    "./time-picker/examples": {
+      "import": "./src/components/time-picker/time-picker.examples.json",
+      "default": "./src/components/time-picker/time-picker.examples.json"
     },
     "./toast-region": {
       "types": "./dist/components/toast-region/index.d.ts",
@@ -2065,6 +2262,27 @@
       "import": "./src/components/toggle/toggle.examples.json",
       "default": "./src/components/toggle/toggle.examples.json"
     },
+    "./toolbar": {
+      "types": "./dist/components/toolbar/index.d.ts",
+      "svelte": "./src/components/toolbar/index.ts",
+      "node": "./dist/server/components/toolbar/index.js",
+      "default": "./dist/components/toolbar/index.js"
+    },
+    "./toolbar/schema": {
+      "types": "./dist/components/toolbar/toolbar.schema.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.schema.ts"
+    },
+    "./toolbar/variables": {
+      "types": "./dist/components/toolbar/toolbar.variables.d.ts",
+      "svelte": "./src/components/toolbar/toolbar.variables.ts"
+    },
+    "./toolbar/styles": {
+      "default": "./dist/components/toolbar/toolbar.css"
+    },
+    "./toolbar/examples": {
+      "import": "./src/components/toolbar/toolbar.examples.json",
+      "default": "./src/components/toolbar/toolbar.examples.json"
+    },
     "./tooltip": {
       "types": "./dist/components/tooltip/index.d.ts",
       "svelte": "./src/components/tooltip/index.ts",
@@ -2086,6 +2304,24 @@
       "import": "./src/components/tooltip/tooltip.examples.json",
       "default": "./src/components/tooltip/tooltip.examples.json"
     },
+    "./transition": {
+      "types": "./dist/components/transition/index.d.ts",
+      "svelte": "./src/components/transition/index.ts",
+      "node": "./dist/server/components/transition/index.js",
+      "default": "./dist/components/transition/index.js"
+    },
+    "./transition/schema": {
+      "types": "./dist/components/transition/transition.schema.d.ts",
+      "svelte": "./src/components/transition/transition.schema.ts"
+    },
+    "./transition/variables": {
+      "types": "./dist/components/transition/transition.variables.d.ts",
+      "svelte": "./src/components/transition/transition.variables.ts"
+    },
+    "./transition/examples": {
+      "import": "./src/components/transition/transition.examples.json",
+      "default": "./src/components/transition/transition.examples.json"
+    },
     "./tree": {
       "types": "./dist/components/tree/index.d.ts",
       "svelte": "./src/components/tree/index.ts",
@@ -2103,6 +2339,10 @@
     "./tree/styles": {
       "default": "./dist/components/tree/tree.css"
     },
+    "./tree/examples": {
+      "import": "./src/components/tree/tree.examples.json",
+      "default": "./src/components/tree/tree.examples.json"
+    },
     "./tree-item": {
       "types": "./dist/components/tree-item/index.d.ts",
       "svelte": "./src/components/tree-item/index.ts",
@@ -2116,6 +2356,23 @@
     "./tree-item/variables": {
       "types": "./dist/components/tree-item/tree-item.variables.d.ts",
       "svelte": "./src/components/tree-item/tree-item.variables.ts"
+    },
+    "./tree-select-all": {
+      "types": "./dist/components/tree-select-all/index.d.ts",
+      "svelte": "./src/components/tree-select-all/index.ts",
+      "node": "./dist/server/components/tree-select-all/index.js",
+      "default": "./dist/components/tree-select-all/index.js"
+    },
+    "./tree-select-all/schema": {
+      "types": "./dist/components/tree-select-all/tree-select-all.schema.d.ts",
+      "svelte": "./src/components/tree-select-all/tree-select-all.schema.ts"
+    },
+    "./tree-select-all/variables": {
+      "types": "./dist/components/tree-select-all/tree-select-all.variables.d.ts",
+      "svelte": "./src/components/tree-select-all/tree-select-all.variables.ts"
+    },
+    "./tree-select-all/styles": {
+      "default": "./dist/components/tree-select-all/tree-select-all.css"
     },
     "./visually-hidden": {
       "types": "./dist/components/visually-hidden/index.d.ts",
@@ -2202,6 +2459,10 @@
     },
     "./experimental/timeline/styles": {
       "default": "./dist/components/experimental/timeline/timeline.css"
+    },
+    "./experimental/timeline/examples": {
+      "import": "./src/components/experimental/timeline/timeline.examples.json",
+      "default": "./src/components/experimental/timeline/timeline.examples.json"
     },
     "./experimental/timeline-item": {
       "types": "./dist/components/experimental/timeline-item/index.d.ts",

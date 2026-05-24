@@ -20,8 +20,8 @@
             "description": "Optional avatar image source."
           }
         },
-        "required": ["name"],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "required": ["name"]
       },
       "description": "Collaborators to render in the stack."
     },

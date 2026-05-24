@@ -1,11 +1,11 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: AvatarGroup } = await import('./avatar-group.svelte');
 const { AvatarGroup: RootAvatarGroup } = await import('../../index.ts');
 
@@ -29,6 +29,10 @@ function avatarItems(container: HTMLElement): HTMLElement[] {
     ),
   );
 }
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('AvatarGroup', () => {
   test('renders five visible avatars and one overflow indicator by default', () => {
@@ -76,7 +80,7 @@ describe('AvatarGroup', () => {
     });
 
     const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
-    const tooltips = container.querySelectorAll<HTMLElement>('[role="tooltip"]');
+    const tooltips = document.body.querySelectorAll<HTMLElement>('[role="tooltip"]');
     expect(triggers).toHaveLength(2);
     expect(tooltips).toHaveLength(2);
     expect(tooltips[0]?.id).not.toBe(tooltips[1]?.id);
@@ -227,7 +231,7 @@ describe('AvatarGroup', () => {
 
     await waitFor(() => {
       const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
-      const tooltips = container.querySelectorAll<HTMLElement>('[role="tooltip"]');
+      const tooltips = document.body.querySelectorAll<HTMLElement>('[role="tooltip"]');
 
       expect(triggers).toHaveLength(2);
       expect(tooltips).toHaveLength(2);
@@ -251,13 +255,13 @@ describe('AvatarGroup', () => {
     await fireEvent.focusIn(trigger!);
 
     await waitFor(() => {
-      const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
       expect(tooltip?.getAttribute('aria-hidden')).toBe('false');
     });
 
     await fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => {
-      const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
       expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
     });
   });
@@ -281,7 +285,7 @@ describe('AvatarGroup', () => {
     expect(container.querySelector('[role="tooltip"]')).toBeNull();
   });
 
-  test('keeps tooltip nodes inside listitems and only listitems directly under the list', () => {
+  test('keeps only listitems directly under the list while tooltips are portaled', () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
     const list = container.querySelector<HTMLElement>('.cinder-avatar-group');
@@ -289,8 +293,8 @@ describe('AvatarGroup', () => {
     for (const child of Array.from(list?.children ?? [])) {
       expect(child.getAttribute('role')).toBe('listitem');
     }
-    for (const tooltip of container.querySelectorAll('[role="tooltip"]')) {
-      expect(tooltip.closest('[role="listitem"]')).not.toBeNull();
+    for (const tooltip of document.body.querySelectorAll('[role="tooltip"]')) {
+      expect(tooltip.closest('[role="listitem"]')).toBeNull();
     }
   });
 

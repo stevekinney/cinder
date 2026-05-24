@@ -7,9 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
-const { default: TrailingWrapper } = await import(
-  '../../test/fixtures/tabs-trailing-fixture.svelte'
-);
+const { default: TrailingWrapper } =
+  await import('../../test/fixtures/tabs-trailing-fixture.svelte');
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
@@ -96,7 +95,7 @@ describe('Tab trailing snippet', () => {
     expect(trailing?.textContent).toContain('3');
   });
 
-  test("accessible name excludes trailing content (aria-hidden subtree is omitted)", () => {
+  test('accessible name excludes trailing content (aria-hidden subtree is omitted)', () => {
     const { container } = render(TrailingWrapper, { value: 'inbox', trailingText: '3' });
     const tab = container.querySelector('[role="tab"][aria-selected="true"]') as HTMLElement;
     expect(tab).not.toBeNull();
@@ -129,6 +128,12 @@ describe('Tab trailing snippet', () => {
 });
 
 describe('Tabs keyboard navigation', () => {
+  const itemsWithDisabledMiddle = [
+    { value: 'design', title: 'Design', body: 'Design body' },
+    { value: 'ship', title: 'Ship', body: 'Ship body', disabled: true },
+    { value: 'review', title: 'Review', body: 'Review body' },
+  ];
+
   test('horizontal: ArrowRight moves to next tab and activates (default)', async () => {
     const { container } = render(Wrapper, { value: 'a', items });
     const aTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
@@ -184,6 +189,82 @@ describe('Tabs keyboard navigation', () => {
     await fireEvent.keyDown(bTab, { key: 'Enter' });
     panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.textContent).toContain('B body');
+  });
+
+  test('horizontal navigation skips disabled tabs', async () => {
+    const { container } = render(Wrapper, {
+      value: 'design',
+      items: itemsWithDisabledMiddle,
+    });
+
+    const tabButtons = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const designTab = tabButtons[0]!;
+    const shipTab = tabButtons[1]!;
+    const reviewTab = tabButtons[2]!;
+
+    designTab.focus();
+    await fireEvent.keyDown(designTab, { key: 'ArrowRight' });
+
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('Review body');
+    expect(document.activeElement).toBe(reviewTab);
+    expect(document.activeElement).not.toBe(shipTab);
+  });
+
+  test('Home and End skip disabled endpoint tabs', async () => {
+    const { container } = render(Wrapper, {
+      value: 'review',
+      items: [
+        {
+          value: 'disabled-start',
+          title: 'Disabled start',
+          body: 'Disabled start body',
+          disabled: true,
+        },
+        { value: 'design', title: 'Design', body: 'Design body' },
+        { value: 'review', title: 'Review', body: 'Review body' },
+        { value: 'disabled-end', title: 'Disabled end', body: 'Disabled end body', disabled: true },
+      ],
+    });
+
+    const tabButtons = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const reviewTab = tabButtons[2]!;
+    const designTab = tabButtons[1]!;
+
+    reviewTab.focus();
+    await fireEvent.keyDown(reviewTab, { key: 'Home' });
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain('Design body');
+
+    designTab.focus();
+    await fireEvent.keyDown(designTab, { key: 'End' });
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain('Review body');
+  });
+
+  test('disabled state updates remove tabs from keyboard navigation', async () => {
+    const { container, rerender } = render(Wrapper, {
+      value: 'design',
+      items: [
+        { value: 'design', title: 'Design', body: 'Design body' },
+        { value: 'review', title: 'Review', body: 'Review body' },
+        { value: 'ship', title: 'Ship', body: 'Ship body' },
+      ],
+    });
+
+    await rerender({
+      value: 'design',
+      items: [
+        { value: 'design', title: 'Design', body: 'Design body' },
+        { value: 'review', title: 'Review', body: 'Review body', disabled: true },
+        { value: 'ship', title: 'Ship', body: 'Ship body' },
+      ],
+    });
+
+    const designTab = Array.from(container.querySelectorAll('[role="tab"]'))[0] as HTMLElement;
+    designTab.focus();
+    await fireEvent.keyDown(designTab, { key: 'ArrowRight' });
+
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('Ship body');
   });
 });
 
@@ -514,5 +595,23 @@ describe('Tabs roving tabindex with disabled tabs', () => {
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs[0]?.getAttribute('tabindex')).toBe('-1');
     expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
+  });
+});
+
+describe('Tab data-variant reflects tabs orientation', () => {
+  test('horizontal Tabs render each Tab with data-variant="horizontal"', () => {
+    const { container } = render(Wrapper, { value: 'a', orientation: 'horizontal', items });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    for (const tab of tabs) {
+      expect(tab.getAttribute('data-variant')).toBe('horizontal');
+    }
+  });
+
+  test('vertical Tabs render each Tab with data-variant="vertical"', () => {
+    const { container } = render(Wrapper, { value: 'a', orientation: 'vertical', items });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    for (const tab of tabs) {
+      expect(tab.getAttribute('data-variant')).toBe('vertical');
+    }
   });
 });

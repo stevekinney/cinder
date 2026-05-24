@@ -25,11 +25,8 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import {
-    createFocusTrap,
-    createFocusOnMount,
-    createClickOutside,
-  } from '../../../utilities/attachments.ts';
+  import { createFocusTrap } from '../../focus-trap/index.ts';
+  import { createClickOutside } from '../../../utilities/attachments.ts';
   import Button from '../../button/button.svelte';
   import Input from '../../input/input.svelte';
   import { Link, Unlink, X } from '../../icons/index.ts';
@@ -158,7 +155,6 @@
   tabindex="-1"
   class={classNames('link-popover', className)}
   {@attach createFocusTrap()}
-  {@attach createFocusOnMount()}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >
@@ -268,9 +264,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .link-popover-close:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .link-popover-close:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .link-popover-close:focus-visible {

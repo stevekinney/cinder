@@ -8,10 +8,14 @@ import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playgroun
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(here, '../../..');
-const readinessPath = '/api/manifest';
+// Probe the cheap liveness endpoint first. `/api/manifest` does real work and
+// can lag behind initial server readiness, which makes local startup look hung
+// even though the playground is already accepting requests.
+const readinessPath = '/ping';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
+const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
 
 async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
   try {
@@ -24,6 +28,10 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
   }
 }
 
+export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
+  return port === null ? null : localPlaygroundUrlForPort(port);
+}
+
 function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
@@ -34,6 +42,24 @@ async function readPlaygroundPortFile(path: string): Promise<number | null> {
   const text = await file.text();
   const port = Number(text.trim());
   return Number.isInteger(port) && port > 0 ? port : null;
+}
+
+export function parsePlaygroundListeningPort(output: string): number | null {
+  const matches = [...output.matchAll(/\[playground\] Listening at http:\/\/localhost:(\d+)/g)];
+  const match = matches.at(-1);
+  if (!match) return null;
+  const port = Number(match[1]);
+  return Number.isInteger(port) && port > 0 ? port : null;
+}
+
+export function appendServerOutputBuffer(
+  currentBuffer: string,
+  output: string,
+  portHasBeenReported: boolean,
+): string {
+  const nextBuffer = `${currentBuffer}${output}`;
+  if (!portHasBeenReported) return nextBuffer;
+  return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
 }
 
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
@@ -79,6 +105,7 @@ async function main(): Promise<void> {
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
+    let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
@@ -86,22 +113,43 @@ async function main(): Promise<void> {
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
+
+    let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
+      const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        output,
+        reportedPlaygroundPort !== null,
+      );
+      reportedPlaygroundPort =
+        parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
+      serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
     });
 
     const startedAt = Date.now();
-    const deadline = startedAt + 120_000;
+    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
     let lastLog = startedAt;
     while (Date.now() < deadline) {
-      const selectedPort = await readPlaygroundPortFile(playgroundPortFile);
-      if (selectedPort !== null) {
-        targetPlaygroundUrl = localPlaygroundUrlForPort(selectedPort);
-        if (await ping()) break;
+      const selectedPort =
+        (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
+      const selectedPlaygroundUrl = localPlaygroundUrlForReportedPort(selectedPort);
+      if (selectedPlaygroundUrl !== null) {
+        targetPlaygroundUrl = selectedPlaygroundUrl;
+        if (await ping(selectedPlaygroundUrl)) break;
+      } else if (await ping(targetPlaygroundUrl)) {
+        // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but local
+        // runs can start successfully on the default port without writing the
+        // file or logging the selected port. Accept direct readiness at the
+        // target URL so the wrapper does not hang despite a healthy server.
+        break;
       }
       if (Date.now() - lastLog >= 10_000) {
         const elapsed = Math.round((Date.now() - startedAt) / 1000);
-        console.log(`Waiting for playground to report its selected port (${elapsed}s elapsed)...`);
+        console.log(
+          `Waiting for playground to report its selected port or become ready (${elapsed}s elapsed)...`,
+        );
         lastLog = Date.now();
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
@@ -114,7 +162,9 @@ async function main(): Promise<void> {
         console.error('Failed to kill unready server process:', error);
       }
       console.error(
-        `Playground server did not become ready within 120s at ${targetPlaygroundUrl}.`,
+        `Playground server did not become ready within ${Math.round(
+          PLAYGROUND_READY_TIMEOUT_MS / 1000,
+        )}s at ${targetPlaygroundUrl}.`,
       );
       if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
       process.exit(1);
@@ -189,7 +239,9 @@ async function main(): Promise<void> {
   process.exit(playwrightCode);
 }
 
-main().catch((error: unknown) => {
-  console.error('start-server failed:', error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('start-server failed:', error);
+    process.exit(1);
+  });
+}

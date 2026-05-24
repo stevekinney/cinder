@@ -85,4 +85,29 @@ describe('SideNavigationItem', () => {
     });
     expect(container.querySelector('.cinder-navigation-item')).not.toBeNull();
   });
+
+  test('inner NavigationItem (link arm) is always rendered with data-variant="vertical"', () => {
+    const { container } = render(SideNavigationItem, {
+      props: { href: '/dashboard', children: labelSnippet() },
+    });
+    const navItem = container.querySelector('.cinder-navigation-item');
+    expect(navItem?.getAttribute('data-variant')).toBe('vertical');
+  });
+
+  test('inner NavigationItem (button arm) is always rendered with data-variant="vertical"', () => {
+    const { container } = render(SideNavigationItem, {
+      props: { onclick: () => {}, children: labelSnippet('Action') },
+    });
+    const navItem = container.querySelector('.cinder-navigation-item');
+    expect(navItem?.getAttribute('data-variant')).toBe('vertical');
+  });
+
+  test('active vertical item exposes both data-active and data-variant', () => {
+    const { container } = render(SideNavigationItem, {
+      props: { href: '/projects', active: true, children: labelSnippet('Projects') },
+    });
+    const navItem = container.querySelector('.cinder-navigation-item');
+    expect(navItem?.getAttribute('data-variant')).toBe('vertical');
+    expect(navItem?.getAttribute('data-active')).toBe('true');
+  });
 });

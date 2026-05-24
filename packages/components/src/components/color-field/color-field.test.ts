@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
+const { render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
@@ -15,19 +15,10 @@ const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
 
 afterEach(() => {
-  // Unmount via Testing Library's tracker FIRST so Svelte's flushSync sees
-  // the still-attached DOM it expects. Removing wrapper forms before
-  // cleanup() detaches the parent under the unmount, and happy-dom throws
-  // a detached-child DOMException through flushSync's Promise wrapper
-  // (which surfaces as an "unhandled error between tests" in Bun).
-  cleanup();
-  document.querySelectorAll('body > form').forEach((form) => {
-    try {
-      form.remove();
-    } catch {
-      // ignore detached-node errors
-    }
-  });
+  // Rendering the fixture into the default container avoids the happy-dom
+  // detached-child teardown failure that showed up when these tests mounted
+  // standalone forms under document.body.
+  document.body.replaceChildren();
 });
 
 function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
@@ -36,20 +27,17 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
   return element as T;
 }
 
-function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
-  return q<HTMLInputElement>(container, `#${id}`);
-}
-
 function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
   const result = render(ColorFieldFormFixture, { target: document.body, props });
   const form = document.body.querySelector('form:last-of-type');
-  if (!(form instanceof HTMLElement)) {
-    throw new Error('ColorField form fixture did not render a <form> element.');
+  if (!(form instanceof HTMLFormElement)) {
+    throw new Error('Expected ColorFieldFormFixture to render a form');
   }
-  return {
-    ...result,
-    container: form,
-  };
+  return { ...result, container: form };
+}
+
+function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
+  return q<HTMLInputElement>(container, `#${id}`);
 }
 
 async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
@@ -308,7 +296,7 @@ describe('ColorField — form reset', () => {
     await typeAndBlur(input, '#ff0000');
     expect(input.value).toBe('#ff0000');
     expect(onchange).toHaveBeenCalledTimes(1);
-    const form = container as HTMLFormElement;
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#abcdef');
@@ -325,7 +313,7 @@ describe('ColorField — form reset', () => {
     const input = getInput(container);
     expect(input.value).toBe('#ff0000');
     await typeAndBlur(input, '#00ff00');
-    const form = container as HTMLFormElement;
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#ff0000');
@@ -486,7 +474,7 @@ describe('ColorField — composition + DOM contract', () => {
       defaultValue: '#abcdef',
       onchange,
     });
-    const form = container as HTMLFormElement;
+    const form = container;
     const input = getInput(container);
     await typeAndBlur(input, '#000000');
     expect(input.value).toBe('#000000');
@@ -652,7 +640,7 @@ describe('ColorField — Enter-clear sync regression', () => {
       hiddenAtSubmit = mirror?.value;
       onsubmit(event);
     };
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#ff0000',
@@ -671,7 +659,7 @@ describe('ColorField — Enter-clear sync regression', () => {
 
 describe('ColorField — reset honors formats gate', () => {
   test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       formats: ['hex'],
@@ -682,7 +670,7 @@ describe('ColorField — reset honors formats gate', () => {
     expect(input.value).toBe('');
     await typeAndBlur(input, '#abcdef');
     expect(input.value).toBe('#abcdef');
-    const form = q<HTMLFormElement>(container, 'form');
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     // After reset: defaultValue still fails formats gate; field clears.

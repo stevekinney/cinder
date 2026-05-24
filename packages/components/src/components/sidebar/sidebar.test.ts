@@ -242,9 +242,10 @@ describe('Sidebar context', () => {
 type Listener = (event: { matches: boolean }) => void;
 
 function installMatchMediaMock(initialMatches: boolean) {
+  const queries: string[] = [];
   const list = {
     matches: initialMatches,
-    media: '',
+    media: '(max-width: 47.99rem)',
     onchange: null as Listener | null,
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -255,11 +256,21 @@ function installMatchMediaMock(initialMatches: boolean) {
   const originalMatchMedia = (window as unknown as { matchMedia?: typeof window.matchMedia })
     .matchMedia;
   (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia = ((query: string) => {
-    list.media = query;
-    return list as unknown as MediaQueryList;
+    queries.push(query);
+
+    if (query === '(max-width: 47.99rem)') {
+      return list as unknown as MediaQueryList;
+    }
+
+    return {
+      ...list,
+      matches: false,
+      media: query,
+    } as unknown as MediaQueryList;
   }) as typeof window.matchMedia;
   return {
     list,
+    queries,
     restore() {
       if (originalMatchMedia) {
         (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia =
@@ -272,7 +283,7 @@ function installMatchMediaMock(initialMatches: boolean) {
 }
 
 function expectMobileQueryWasUsed(mock: ReturnType<typeof installMatchMediaMock>): void {
-  expect(mock.list.media).toBe('(max-width: 47.99rem)');
+  expect(mock.queries).toContain('(max-width: 47.99rem)');
 }
 
 // happy-dom doesn't implement HTMLDialogElement.showModal / close — stub them
@@ -281,6 +292,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.showModal) {
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
         this.setAttribute('open', '');
       },
       configurable: true,
@@ -290,6 +306,11 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.close) {
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
         this.removeAttribute('open');
         this.dispatchEvent(new Event('close'));
       },

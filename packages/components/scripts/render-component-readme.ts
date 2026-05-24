@@ -95,7 +95,8 @@ function formatType(prop: PropertySchema): string {
     return prop.anyOf.map(formatType).join(' \\| ');
   }
   if (prop.type === 'array' && prop.items) {
-    return `${formatType(prop.items)}[]`;
+    const itemType = formatType(prop.items);
+    return `${needsArrayItemGrouping(itemType) ? `(${itemType})` : itemType}[]`;
   }
   if (prop.type === 'object' && prop.properties) {
     const requiredSet = new Set(prop.required ?? []);
@@ -106,6 +107,10 @@ function formatType(prop: PropertySchema): string {
   }
   if (prop.type) return '`' + prop.type + '`';
   return '`unknown`';
+}
+
+function needsArrayItemGrouping(type: string): boolean {
+  return type.includes(' \\| ');
 }
 
 function formatDefault(value: unknown): string {

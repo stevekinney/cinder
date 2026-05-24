@@ -1,5 +1,9 @@
 {
-  "plugins": ["stylelint-use-logical"],
+  "plugins": [
+    "stylelint-use-logical",
+    "./packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs",
+    "./packages/components/scripts/stylelint/no-unguarded-hover-colors.cjs"
+  ],
   "overrides": [
     {
       "files": ["**/*.svelte"],
@@ -7,6 +11,19 @@
     }
   ],
   "rules": {
+    "declaration-property-value-disallowed-list": {
+      "/.*/": [
+        "/color-mix\\([\\s\\S]*?var\\(\\s*--cinder-(info|success|warning|danger)\\s*(?:[,\\)])/",
+        "/var\\(\\s*--cinder-(?:color-(?:text|text-muted|surface|border|border-subtle|foreground|foreground-muted|success|danger)|font-size-[a-z0-9-]+|line-height-[a-z0-9-]+|accent-subtle|accent-foreground|focus-ring)(?:\\s*[,)])/"
+      ]
+    },
+    "cinder/no-focus-visible-colored-outline": [
+      true,
+      {
+        "severity": "warning"
+      }
+    ],
+    "cinder/no-unguarded-hover-colors": true,
     "csstools/use-logical": [
       "always",
       {

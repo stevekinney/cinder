@@ -282,9 +282,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .sidebar-header :global(.actions-trigger:hover) {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .sidebar-header :global(.actions-trigger:hover) {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 
   .sidebar-header :global(.actions-trigger:focus-visible) {
@@ -298,14 +300,14 @@
     flex-direction: column;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-3);
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
-    border-bottom: 1px solid color-mix(in oklch, var(--cinder-danger), transparent 70%);
+    background: var(--cinder-color-danger-bg);
+    border-bottom: 1px solid var(--cinder-color-danger-border);
   }
 
   .confirm-message {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-danger);
+    color: var(--cinder-color-danger-fg);
     margin: 0;
   }
 
@@ -357,9 +359,11 @@
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .thread-item:hover {
-    background: var(--cinder-surface-hover);
-    border-color: var(--cinder-border);
+  @media (hover: hover) {
+    .thread-item:hover {
+      background: var(--cinder-surface-hover);
+      border-color: var(--cinder-border);
+    }
   }
 
   .thread-item:focus-visible {

@@ -70,6 +70,7 @@ export interface GenerateResult {
 
 /** Map of project files keyed by absolute path — avoids reparsing across calls. */
 let cachedProject: Project | null = null;
+let activeTypesFilePath: string | null = null;
 function getProject(): Project {
   if (cachedProject) return cachedProject;
   cachedProject = new Project({
@@ -98,6 +99,7 @@ export interface GenerateOptions {
  */
 export function generateSchemaForComponent(options: GenerateOptions): GenerateResult {
   const { typesFilePath, componentName, depthToSrc } = options;
+  activeTypesFilePath = typesFilePath;
   const project = options.project ?? getProject();
   const sourceFile = project.addSourceFileAtPath(typesFilePath);
 
@@ -143,7 +145,11 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
       continue;
     }
 
-    const converted = convertType(propType);
+    const converted = convertType(
+      propType,
+      0,
+      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTag(propType),
+    );
     if (converted.kind === 'unsupported') {
       unsupportedProps.push({ name: propName, reason: converted.reason });
       continue;
@@ -190,7 +196,7 @@ interface ConvertUnsupported {
 
 type ConvertResult = ConvertSuccess | ConvertUnsupported;
 
-function convertType(type: Type, depth = 0): ConvertResult {
+function convertType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
   if (depth > 4) return { kind: 'unsupported', reason: 'unknown-shape' };
 
   // Strip `undefined` — optional props are handled by `symbol.isOptional()`,
@@ -198,19 +204,19 @@ function convertType(type: Type, depth = 0): ConvertResult {
   if (type.isUnion()) {
     const parts = type.getUnionTypes().filter((t) => !t.isUndefined());
     if (parts.length === 0) return { kind: 'unsupported', reason: 'unknown-shape' };
-    if (parts.length === 1) return convertSingleType(parts[0]!, depth);
+    if (parts.length === 1) return convertSingleType(parts[0]!, depth, expandObjectShapes);
     // After stripping undefined, if every remaining type is a boolean literal
     // (`true` and `false`), collapse to a plain boolean schema rather than an enum.
     if (parts.length === 2 && parts.every((t) => t.isBooleanLiteral())) {
       return { kind: 'ok', schema: { type: 'boolean' } };
     }
-    return convertUnion(parts, depth);
+    return convertUnion(parts, depth, expandObjectShapes);
   }
 
-  return convertSingleType(type, depth);
+  return convertSingleType(type, depth, expandObjectShapes);
 }
 
-function convertUnion(parts: Type[], depth: number): ConvertResult {
+function convertUnion(parts: Type[], depth = 0, expandObjectShapes = false): ConvertResult {
   const nonNullParts = parts.filter((t) => !t.isNull());
   const hasNull = parts.some((t) => t.isNull());
 
@@ -224,7 +230,7 @@ function convertUnion(parts: Type[], depth: number): ConvertResult {
   // Mixed-shape union → anyOf, but each part must be convertible.
   const anyOf: PropertySchema[] = [];
   for (const part of nonNullParts) {
-    const converted = convertSingleType(part, depth + 1);
+    const converted = convertSingleType(part, depth, expandObjectShapes);
     if (converted.kind === 'unsupported') return converted;
     anyOf.push(converted.schema);
   }
@@ -232,7 +238,7 @@ function convertUnion(parts: Type[], depth: number): ConvertResult {
   return { kind: 'ok', schema: { anyOf } };
 }
 
-function convertSingleType(type: Type, depth: number): ConvertResult {
+function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
   if (type.isStringLiteral())
     return { kind: 'ok', schema: { const: type.getLiteralValueOrThrow() as string } };
   if (type.isNumberLiteral())
@@ -247,7 +253,11 @@ function convertSingleType(type: Type, depth: number): ConvertResult {
 
   if (type.isArray()) {
     const element = type.getArrayElementTypeOrThrow();
-    const inner = convertType(element, depth + 1);
+    const inner = convertType(
+      element,
+      depth + 1,
+      expandObjectShapes || hasSchemaObjectTag(element),
+    );
     if (inner.kind === 'unsupported') return inner;
     return { kind: 'ok', schema: { type: 'array', items: inner.schema } };
   }
@@ -268,42 +278,61 @@ function convertSingleType(type: Type, depth: number): ConvertResult {
   if (type.isObject()) {
     const stringIndex = type.getStringIndexType();
     if (stringIndex) {
-      const inner = convertType(stringIndex, depth + 1);
+      const inner = convertType(stringIndex, depth + 1, expandObjectShapes);
       if (inner.kind === 'unsupported') return inner;
       return { kind: 'ok', schema: { type: 'object' } };
     }
 
-    const properties = type.getProperties();
-    if (properties.length === 0) return { kind: 'ok', schema: { type: 'object' } };
-    if (!hasSchemaObjectTag(type)) return { kind: 'ok', schema: { type: 'object' } };
+    if (depth > 2 || !expandObjectShapes || !isDeclaredInActiveTypesFile(type)) {
+      return { kind: 'ok', schema: { type: 'object' } };
+    }
 
-    const objectProperties: Record<string, PropertySchema> = {};
+    const properties: Record<string, PropertySchema> = {};
     const required: string[] = [];
-    for (const property of properties) {
+
+    for (const property of type.getProperties()) {
       const propertyType = getPropType(property);
       if (!propertyType) return { kind: 'ok', schema: { type: 'object' } };
-      const converted = convertType(propertyType, depth + 1);
+      const converted = convertType(propertyType, depth + 1, expandObjectShapes);
       if (converted.kind === 'unsupported') return { kind: 'ok', schema: { type: 'object' } };
 
-      const description = readJsDocDescription(property);
       const schemaEntry: PropertySchema = { ...converted.schema };
+      const description = readJsDocDescription(property);
+      const defaultValue = readJsDocDefault(property);
       if (description) schemaEntry.description = description;
-      objectProperties[property.getName()] = schemaEntry;
+      if (defaultValue !== undefined) schemaEntry.default = defaultValue;
+      properties[property.getName()] = schemaEntry;
+
       if (!property.isOptional()) required.push(property.getName());
     }
+
+    if (Object.keys(properties).length === 0) return { kind: 'ok', schema: { type: 'object' } };
 
     return {
       kind: 'ok',
       schema: {
         type: 'object',
-        properties: objectProperties,
-        ...(required.length > 0 ? { required: required.toSorted() } : {}),
+        properties,
         additionalProperties: false,
+        ...(required.length > 0 ? { required: required.toSorted() } : {}),
       },
     };
   }
 
   return { kind: 'unsupported', reason: 'unknown-shape' };
+}
+
+function isDeclaredInActiveTypesFile(type: Type): boolean {
+  if (activeTypesFilePath === null) return false;
+
+  const declarations = [
+    ...(type.getAliasSymbol()?.getDeclarations() ?? []),
+    ...(type.getSymbol()?.getDeclarations() ?? []),
+  ];
+
+  return declarations.some(
+    (declaration) => declaration.getSourceFile().getFilePath() === activeTypesFilePath,
+  );
 }
 
 function literalValue(type: Type): string | number | boolean {
@@ -472,6 +501,23 @@ function readJsDocDefault(symbol: MorphSymbol): unknown {
     }
   }
   return undefined;
+}
+
+function hasJsDocTag(symbol: MorphSymbol, tagName: string): boolean {
+  for (const decl of symbol.getDeclarations()) {
+    if (!('getJsDocs' in decl)) continue;
+    const docs = (
+      decl as {
+        getJsDocs(): Array<{
+          getTags(): Array<{ getTagName(): string }>;
+        }>;
+      }
+    ).getJsDocs();
+    if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === tagName))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function parseDefaultValue(raw: string): unknown {

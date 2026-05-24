@@ -1,0 +1,43 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    parentId: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description:
+        'Parent whose direct registered children are targeted. null targets root-level items.',
+    },
+    includeDescendants: {
+      type: 'boolean',
+      description: "Include each target child's selection scope as well as the direct child id.",
+    },
+    label: {
+      type: 'string',
+      description: 'Text label shown before the action buttons.',
+    },
+    selectAllLabel: {
+      type: 'string',
+      description: 'Label for the select-all action.',
+    },
+    selectNoneLabel: {
+      type: 'string',
+      description: 'Label for the select-none action.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class merged with `.cinder-tree-select-all`.',
+    },
+  },
+  additionalProperties: false,
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

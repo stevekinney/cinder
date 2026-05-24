@@ -19,11 +19,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { X, ChevronLeft, ChevronRight } from '../../icons/index.ts';
-  import {
-    bodyScrollLock,
-    createFocusTrap,
-    createFocusOnMount,
-  } from '../../../utilities/attachments.ts';
+  import { createFocusTrap } from '../../focus-trap/index.ts';
+  import { bodyScrollLock } from '../../../utilities/attachments.ts';
 
   let { images, initialIndex = 0, open = $bindable(false), onclose }: ImageLightboxProps = $props();
 
@@ -40,8 +37,6 @@
     }
   });
 
-  let triggerElement: HTMLElement | null = null;
-
   const hasMultiple = $derived(images.length > 1);
   const currentImage = $derived(images[currentIndex]);
   const counterText = $derived(`${currentIndex + 1} of ${images.length}`);
@@ -49,9 +44,6 @@
   function close() {
     open = false;
     onclose?.();
-    // Restore focus to the trigger element
-    triggerElement?.focus();
-    triggerElement = null;
   }
 
   function previous() {
@@ -88,11 +80,6 @@
         break;
     }
   }
-
-  function captureRestoreTarget(node: HTMLElement) {
-    triggerElement = document.activeElement as HTMLElement | null;
-    return createFocusOnMount({ restoreTarget: null })(node);
-  }
 </script>
 
 {#if open && currentImage}
@@ -107,7 +94,6 @@
     transition:fade={{ duration: 150 }}
     {@attach bodyScrollLock}
     {@attach createFocusTrap()}
-    {@attach captureRestoreTarget}
   >
     <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
       <X size={20} />
@@ -190,8 +176,10 @@
     z-index: 1;
   }
 
-  .lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) {
+    .lightbox-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 
   .lightbox-close:focus-visible {
@@ -218,8 +206,10 @@
     z-index: 1;
   }
 
-  .lightbox-nav:hover {
-    background: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) {
+    .lightbox-nav:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 
   .lightbox-nav:focus-visible {

@@ -101,6 +101,25 @@ describe('CodeBlock (no provider in scope)', () => {
     expect(button?.textContent?.trim()).toBe('');
   });
 
+  test('copy button focus ring is inset inside the overflow-hidden shell', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+
+    expect(css).toContain(
+      '.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible',
+    );
+    expect(css).toContain(
+      'box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);',
+    );
+  });
+
+  test('copy button focus ring remains visible in forced-colors mode', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+
+    expect(css).toContain('@media (forced-colors: active)');
+    expect(css).toContain('outline-color: CanvasText;');
+    expect(css).toContain('box-shadow: none;');
+  });
+
   test('renders the unhighlighted fallback even when language is set', () => {
     // No provider in scope → no highlighter → plain `<pre><code>{code}</code></pre>`
     // regardless of whether `language` is provided.

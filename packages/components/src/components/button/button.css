@@ -293,8 +293,8 @@
 /* soft-danger — tinted danger background, danger foreground, no border. */
 .cinder-button[data-cinder-variant='soft-danger'] {
   --_cinder-button-ring: var(--cinder-danger);
-  background: color-mix(in oklch, var(--cinder-danger), transparent 88%);
-  color: var(--cinder-danger);
+  background: var(--cinder-color-danger-bg);
+  color: var(--cinder-color-danger-fg);
   border-color: transparent;
 }
 
@@ -352,7 +352,8 @@
   .cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 80%);
+    background: var(--cinder-color-danger-border);
+    color: var(--cinder-color-danger-fg);
   }
 }
 
@@ -378,7 +379,8 @@
 .cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
     [aria-disabled='true']
   ) {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 86%);
+  background: var(--cinder-color-danger-border);
+  color: var(--cinder-color-danger-fg);
 }
 
 .cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
@@ -388,5 +390,6 @@
 .cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
     [aria-disabled='true']
   ) {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 74%);
+  background: var(--cinder-danger);
+  color: var(--cinder-danger-contrast);
 }

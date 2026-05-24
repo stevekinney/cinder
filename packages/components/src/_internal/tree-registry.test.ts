@@ -194,6 +194,50 @@ describe('TreeRegistry', () => {
     });
   });
 
+  describe('childrenOf', () => {
+    test('returns root children in document order', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('a', null, 1));
+      registry.register(makeNode('b', null, 1));
+      expect(registry.childrenOf(null)).toEqual(['a', 'b']);
+    });
+
+    test('returns nested children in document order', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('parent', null, 1, { isBranch: true }));
+      registry.register(makeNode('a', 'parent', 2));
+      registry.register(makeNode('b', 'parent', 2));
+      expect(registry.childrenOf('parent')).toEqual(['a', 'b']);
+    });
+
+    test('returns empty array for unknown parent ids', () => {
+      const registry = new TreeRegistry();
+      expect(registry.childrenOf('missing')).toEqual([]);
+    });
+  });
+
+  describe('descendantsOf', () => {
+    test('returns nested descendants in depth-first order', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('parent', null, 1, { isBranch: true }));
+      registry.register(makeNode('a', 'parent', 2, { isBranch: true }));
+      registry.register(makeNode('a1', 'a', 3));
+      registry.register(makeNode('b', 'parent', 2));
+      expect(registry.descendantsOf('parent')).toEqual(['a', 'a1', 'b']);
+    });
+
+    test('does not invent collapsed or unregistered descendants', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('parent', null, 1, { isBranch: true }));
+      expect(registry.descendantsOf('parent')).toEqual([]);
+    });
+
+    test('returns empty array for unknown parent ids', () => {
+      const registry = new TreeRegistry();
+      expect(registry.descendantsOf('missing')).toEqual([]);
+    });
+  });
+
   describe('siblingsOf', () => {
     test('returns all siblings including self', () => {
       const registry = new TreeRegistry();

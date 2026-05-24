@@ -121,4 +121,23 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
       description: 'Items to render.',
     });
   });
+
+  test('nested object arrays include the object property schema', () => {
+    const { properties } = generate('nested-object-array', 'nested-object-array');
+    const entries = properties['entries'];
+
+    expect(entries?.type).toBe('array');
+    expect(entries?.items?.type).toBe('object');
+    expect(entries?.items?.additionalProperties).toBe(false);
+    expect(entries?.items?.required).toEqual(['id', 'title']);
+    expect(entries?.items?.properties?.['id']?.type).toBe('string');
+    expect(entries?.items?.properties?.['title']?.description).toBe('Visible title.');
+    expect(entries?.items?.properties?.['tone']?.enum).toEqual([
+      'info',
+      'success',
+      'warning',
+      'error',
+    ]);
+    expect(entries?.items?.properties?.['tone']?.default).toBe('info');
+  });
 });

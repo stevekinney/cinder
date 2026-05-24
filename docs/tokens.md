@@ -105,21 +105,24 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 
 ## Motion
 
-Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinder-duration` — both resolve to the same value. The `prefers-reduced-motion: reduce` media query collapses all durations to `0ms` automatically; you do not need to handle that case yourself.
+Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinder-duration` — both resolve to the same value. Transition durations stay separate from repeating animation durations so components like `Spinner` and indeterminate `Progress` can move at readable, intentionally slower cadences without making hover and value transitions feel sluggish. The `prefers-reduced-motion: reduce` media query collapses both transition and repeating animation duration tokens to `0ms` automatically; you do not need to handle that case yourself.
 
-| Token                        | Default                             |
-| ---------------------------- | ----------------------------------- |
-| `--cinder-duration-instant`  | `0ms`                               |
-| `--cinder-duration-fast`     | `120ms`                             |
-| `--cinder-duration`          | `200ms`                             |
-| `--cinder-duration-normal`   | `var(--cinder-duration)`            |
-| `--cinder-duration-moderate` | `280ms`                             |
-| `--cinder-duration-slow`     | `400ms`                             |
-| `--cinder-ease-standard`     | `cubic-bezier(0.2, 0, 0, 1)`        |
-| `--cinder-ease-decelerate`   | `cubic-bezier(0, 0, 0, 1)`          |
-| `--cinder-ease-accelerate`   | `cubic-bezier(0.3, 0, 1, 1)`        |
-| `--cinder-ease-spring`       | `cubic-bezier(0.34, 1.56, 0.64, 1)` |
-| `--cinder-ease-in-out`       | `cubic-bezier(0.4, 0, 0.2, 1)`      |
+| Token                                          | Default                             |
+| ---------------------------------------------- | ----------------------------------- |
+| `--cinder-duration-instant`                    | `0ms`                               |
+| `--cinder-duration-fast`                       | `120ms`                             |
+| `--cinder-duration`                            | `200ms`                             |
+| `--cinder-duration-normal`                     | `var(--cinder-duration)`            |
+| `--cinder-duration-moderate`                   | `280ms`                             |
+| `--cinder-duration-slow`                       | `400ms`                             |
+| `--cinder-duration-spin`                       | `750ms`                             |
+| `--cinder-duration-progress-bar-indeterminate` | `1.6s`                              |
+| `--cinder-duration-progress-ring-spin`         | `1.4s`                              |
+| `--cinder-ease-standard`                       | `cubic-bezier(0.2, 0, 0, 1)`        |
+| `--cinder-ease-decelerate`                     | `cubic-bezier(0, 0, 0, 1)`          |
+| `--cinder-ease-accelerate`                     | `cubic-bezier(0.3, 0, 1, 1)`        |
+| `--cinder-ease-spring`                         | `cubic-bezier(0.34, 1.56, 0.64, 1)` |
+| `--cinder-ease-in-out`                         | `cubic-bezier(0.4, 0, 0.2, 1)`      |
 
 ## Surfaces
 

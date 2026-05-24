@@ -42,8 +42,11 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-combobox__input:hover:not(:disabled) {
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-combobox__input:hover:not(:disabled) {
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-combobox__input:focus-visible {

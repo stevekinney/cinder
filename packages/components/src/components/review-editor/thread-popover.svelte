@@ -31,11 +31,8 @@
 <script lang="ts">
   import { innerWidth, innerHeight } from 'svelte/reactivity/window';
   import { classNames } from '../../utilities/class-names.ts';
-  import {
-    createFocusTrap,
-    createFocusOnMount,
-    createClickOutside,
-  } from '../../utilities/attachments.ts';
+  import { createFocusTrap } from '../focus-trap/index.ts';
+  import { createClickOutside } from '../../utilities/attachments.ts';
   import Button from '../button/button.svelte';
   import { isDocumentAnchor } from 'cinder/commentary/comments';
   import CommentList from './comment-list.svelte';
@@ -140,7 +137,6 @@
   class={classNames('thread-popover', className)}
   style={popoverStyle}
   {@attach createFocusTrap()}
-  {@attach createFocusOnMount()}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >
@@ -270,9 +266,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .thread-popover-close:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .thread-popover-close:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .thread-popover-close:focus-visible {

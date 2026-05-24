@@ -167,6 +167,31 @@
       }
     },
     {
+      "name": "Autocomplete",
+      "id": "autocomplete",
+      "import": "cinder/autocomplete",
+      "exportName": "Autocomplete",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Free-form text input with asynchronous suggestion hints rendered in a listbox popover.",
+      "tags": ["form", "autocomplete"],
+      "useWhen": [
+        "Accepting arbitrary text while offering completions from a local or remote source.",
+        "Keeping the user's text as the committed value while suggestions remain optional hints."
+      ],
+      "avoidWhen": [
+        "Requiring the final value to come from a fixed option list — use combobox instead."
+      ],
+      "related": ["combobox", "search-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/autocomplete/schema",
+        "variables": "cinder/autocomplete/variables",
+        "examples": "cinder/autocomplete/examples"
+      }
+    },
+    {
       "name": "Avatar",
       "id": "avatar",
       "import": "cinder/avatar",
@@ -540,11 +565,10 @@
       ],
       "related": ["code-block"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "cinder/cinder-provider/schema",
-        "variables": "cinder/cinder-provider/variables",
-        "examples": "cinder/cinder-provider/examples"
+        "variables": "cinder/cinder-provider/variables"
       }
     },
     {
@@ -642,10 +666,11 @@
       ],
       "related": ["color-swatch-picker", "input"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/color-picker/schema",
-        "variables": "cinder/color-picker/variables"
+        "variables": "cinder/color-picker/variables",
+        "examples": "cinder/color-picker/examples"
       }
     },
     {
@@ -1012,6 +1037,37 @@
       }
     },
     {
+      "name": "DropdownGroup",
+      "id": "dropdown-group",
+      "import": "cinder/dropdown-group",
+      "exportName": "DropdownGroup",
+      "category": "overlay",
+      "status": "stable",
+      "purpose": "Accessible group boundary that clusters related dropdown-item rows inside a dropdown-menu.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Grouping related dropdown actions under one accessible heading.",
+        "Pairing dropdown-label with a role='group' container inside dropdown-menu."
+      ],
+      "avoidWhen": [
+        "Rendering a clickable row — use dropdown-item.",
+        "Separating sections without a group label — use dropdown-separator."
+      ],
+      "related": [
+        "dropdown",
+        "dropdown-menu",
+        "dropdown-item",
+        "dropdown-label",
+        "dropdown-separator"
+      ],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/dropdown-group/schema",
+        "variables": "cinder/dropdown-group/variables"
+      }
+    },
+    {
       "name": "DropdownItem",
       "id": "dropdown-item",
       "import": "cinder/dropdown-item",
@@ -1209,6 +1265,51 @@
       "artifacts": {
         "schema": "cinder/feed-event/schema",
         "variables": "cinder/feed-event/variables"
+      }
+    },
+    {
+      "name": "FileUpload",
+      "id": "file-upload",
+      "import": "cinder/file-upload",
+      "exportName": "FileUpload",
+      "category": "form",
+      "status": "stable",
+      "purpose": "File picker and drag-and-drop surface that validates files locally and can render upload progress rows.",
+      "tags": ["form", "upload"],
+      "useWhen": [
+        "Collecting one or more files while keeping the native picker available for keyboard and assistive-technology users.",
+        "Showing per-file upload progress or rejection errors below a prominent dropzone surface."
+      ],
+      "avoidWhen": ["You only need a hidden native file input with no custom UI."],
+      "related": ["form-field", "progress", "input"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/file-upload/schema",
+        "variables": "cinder/file-upload/variables"
+      }
+    },
+    {
+      "name": "FocusTrap",
+      "id": "focus-trap",
+      "import": "cinder/focus-trap",
+      "exportName": "FocusTrap",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless focus-trap primitive that keeps Tab navigation within a container and restores focus on teardown.",
+      "tags": ["overlay", "accessibility"],
+      "useWhen": [
+        "Building non-native overlays or popovers that need contained keyboard focus.",
+        "Reusing the same focus-management behavior across custom floating surfaces."
+      ],
+      "avoidWhen": ["The surface already uses native dialog focus trapping."],
+      "related": ["modal", "drawer", "sheet", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/focus-trap/schema",
+        "variables": "cinder/focus-trap/variables",
+        "examples": "cinder/focus-trap/examples"
       }
     },
     {
@@ -1483,6 +1584,30 @@
       }
     },
     {
+      "name": "LoadMore",
+      "id": "load-more",
+      "import": "cinder/load-more",
+      "exportName": "LoadMore",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.",
+      "tags": ["navigation", "paging"],
+      "useWhen": [
+        "Streaming results into a long list and you want the next page to load as the user approaches the end."
+      ],
+      "avoidWhen": [
+        "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
+      ],
+      "related": ["pagination"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/load-more/schema",
+        "variables": "cinder/load-more/variables",
+        "examples": "cinder/load-more/examples"
+      }
+    },
+    {
       "name": "MarkdownEditor",
       "id": "markdown-editor",
       "import": "cinder/markdown-editor",
@@ -1506,6 +1631,32 @@
         "schema": "cinder/markdown-editor/schema",
         "variables": "cinder/markdown-editor/variables",
         "examples": "cinder/markdown-editor/examples"
+      }
+    },
+    {
+      "name": "MenuBar",
+      "id": "menu-bar",
+      "import": "cinder/menu-bar",
+      "exportName": "MenuBar",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Command menubar for application chrome such as File, Edit, and View menus.",
+      "tags": ["navigation", "menu", "chrome"],
+      "useWhen": [
+        "Building a desktop-style command menubar with dropdown command groups.",
+        "Exposing top-level application menus that need arrow-key traversal and optional submenus."
+      ],
+      "avoidWhen": [
+        "Linking between routes or sections — use navigation-bar or side-navigation instead.",
+        "Showing one standalone trigger with a menu — use dropdown, dropdown-menu, and dropdown-item directly."
+      ],
+      "related": ["navigation-bar", "dropdown", "dropdown-menu", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/menu-bar/schema",
+        "variables": "cinder/menu-bar/variables",
+        "examples": "cinder/menu-bar/examples"
       }
     },
     {
@@ -1768,6 +1919,31 @@
       }
     },
     {
+      "name": "Portal",
+      "id": "portal",
+      "import": "cinder/portal",
+      "exportName": "Portal",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless portal primitive that moves a subtree into a target element while preserving inline rendering as an explicit opt-out.",
+      "tags": ["overlay", "utilities"],
+      "useWhen": [
+        "Rendering an overlay or floating surface outside the current stacking or overflow context.",
+        "Building a custom anchored or modal primitive that needs to append content into document.body or a named host."
+      ],
+      "avoidWhen": [
+        "The content should stay in normal document flow or inherit layout from its original parent."
+      ],
+      "related": ["popover", "modal", "drawer", "sheet"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/portal/schema",
+        "variables": "cinder/portal/variables",
+        "examples": "cinder/portal/examples"
+      }
+    },
+    {
       "name": "Progress",
       "id": "progress",
       "import": "cinder/progress",
@@ -1868,6 +2044,32 @@
       }
     },
     {
+      "name": "ResizablePanels",
+      "id": "resizable-panels",
+      "import": "cinder/resizable-panels",
+      "exportName": "ResizablePanels",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Measured splitter layout that renders adjacent resize handles between panes and emits persisted layout state after pointer, keyboard, and collapse interactions.",
+      "tags": ["layout", "splitter", "panels"],
+      "useWhen": [
+        "Building editor, inspector, or dashboard layouts where neighboring panes must be resized directly by dragging a separator.",
+        "Persisting a multi-pane workspace layout without coupling the component to localStorage."
+      ],
+      "avoidWhen": [
+        "You only need a static two-column or stack layout with no interactive resizing.",
+        "Content should wrap naturally instead of claiming a fixed share of a measured container."
+      ],
+      "related": ["divider", "page-layout", "scroll-area"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/resizable-panels/schema",
+        "variables": "cinder/resizable-panels/variables",
+        "examples": "cinder/resizable-panels/examples"
+      }
+    },
+    {
       "name": "ReviewEditor",
       "id": "review-editor",
       "import": "cinder/review-editor",
@@ -1960,10 +2162,11 @@
       ],
       "related": ["page-layout", "card", "tab-list"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/section-heading/schema",
-        "variables": "cinder/section-heading/variables"
+        "variables": "cinder/section-heading/variables",
+        "examples": "cinder/section-heading/examples"
       }
     },
     {
@@ -2734,6 +2937,32 @@
       }
     },
     {
+      "name": "TagInput",
+      "id": "tag-input",
+      "import": "cinder/tag-input",
+      "exportName": "TagInput",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Free-form token entry field that turns committed text into removable tags while keeping native input, form, and accessibility wiring intact.",
+      "tags": ["form", "tags"],
+      "useWhen": [
+        "Collecting zero or more short free-form values such as labels, emails, or technologies.",
+        "Letting users review and remove committed values inline before submitting a form."
+      ],
+      "avoidWhen": [
+        "Users must choose from a fixed option list — use combobox instead.",
+        "The value is a single free-form string rather than a list — use input instead."
+      ],
+      "related": ["combobox", "chip", "form-field", "input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/tag-input/schema",
+        "variables": "cinder/tag-input/variables",
+        "examples": "cinder/tag-input/examples"
+      }
+    },
+    {
       "name": "Textarea",
       "id": "textarea",
       "import": "cinder/textarea",
@@ -2757,17 +2986,40 @@
       }
     },
     {
+      "name": "TimePicker",
+      "id": "time-picker",
+      "import": "cinder/time-picker",
+      "exportName": "TimePicker",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Time input with optional scroll-list popover for choosing hours, minutes, seconds, and meridiem.",
+      "tags": ["form", "time"],
+      "useWhen": [
+        "Collecting a time-of-day string while keeping native form participation.",
+        "Offering a keyboard-navigable chooser alongside direct typed entry."
+      ],
+      "avoidWhen": ["Collecting a date or date range — use a date-specific control instead."],
+      "related": ["input", "number-input", "form-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/time-picker/schema",
+        "variables": "cinder/time-picker/variables",
+        "examples": "cinder/time-picker/examples"
+      }
+    },
+    {
       "name": "Timeline",
       "id": "timeline",
       "import": "cinder/experimental/timeline",
       "exportName": "Timeline",
       "category": "data-display",
       "status": "alpha",
-      "purpose": "Vertical event-rail container that renders timeline-item children along a shared axis for workflow, audit, or run histories.",
+      "purpose": "Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.",
       "tags": ["timeline", "history", "events"],
       "useWhen": [
-        "Visualizing an ordered sequence of events with consistent marker and content layout along a vertical rail.",
-        "Displaying workflow steps, audit logs, or run histories where each entry needs a status-colored marker."
+        "Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.",
+        "Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks."
       ],
       "avoidWhen": [
         "Surfacing a real-time social or activity stream — feed is the higher-affordance composition.",
@@ -2776,10 +3028,11 @@
       ],
       "related": ["timeline-item", "feed", "steps"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/experimental/timeline/schema",
-        "variables": "cinder/experimental/timeline/variables"
+        "variables": "cinder/experimental/timeline/variables",
+        "examples": "cinder/experimental/timeline/examples"
       }
     },
     {
@@ -2789,11 +3042,11 @@
       "exportName": "TimelineItem",
       "category": "data-display",
       "status": "alpha",
-      "purpose": "Single entry inside a timeline rail with a status-colored marker, optional title and timestamp header, and a body slot.",
+      "purpose": "Single event inside a timeline rail with a decorative tone marker, timestamp-first header, optional group header, and body content.",
       "tags": ["timeline", "event"],
       "useWhen": [
-        "Rendering one event along a timeline rail with consistent marker, header, and body structure.",
-        "Coloring marker semantics by status (info, success, warning, danger) to communicate severity at a glance."
+        "Rendering one event along a timeline rail with consistent marker, header, connector, and body structure.",
+        "Coloring decorative markers by tone (info, success, warning, error) while keeping the meaningful status in title or content."
       ],
       "avoidWhen": [
         "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better.",
@@ -2859,6 +3112,31 @@
       }
     },
     {
+      "name": "Toolbar",
+      "id": "toolbar",
+      "import": "cinder/toolbar",
+      "exportName": "Toolbar",
+      "category": "action",
+      "status": "stable",
+      "purpose": "Named grouping of related controls that implements the WAI-ARIA toolbar pattern with DOM-driven roving tabindex.",
+      "tags": ["action", "grouping"],
+      "useWhen": [
+        "Rendering a row or column of related controls where the whole set should be one Tab stop and arrow keys should move between items.",
+        "Wrapping existing cinder controls such as Button, SegmentedControl, and NumberInput without adding toolbar-specific child APIs."
+      ],
+      "avoidWhen": [
+        "Building a static flex row of controls that should remain in ordinary Tab order — use inline, cluster, or button-group instead."
+      ],
+      "related": ["button-group", "segmented-control", "number-input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/toolbar/schema",
+        "variables": "cinder/toolbar/variables",
+        "examples": "cinder/toolbar/examples"
+      }
+    },
+    {
       "name": "Tooltip",
       "id": "tooltip",
       "import": "cinder/tooltip",
@@ -2885,6 +3163,31 @@
       }
     },
     {
+      "name": "Transition",
+      "id": "transition",
+      "import": "cinder/transition",
+      "exportName": "Transition",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless mount-coordination primitives for CSS-driven presence state and Svelte transition functions.",
+      "tags": ["overlay", "motion"],
+      "useWhen": [
+        "Coordinating enter and exit lifecycle for overlays, floating panels, or other conditional UI.",
+        "Reusing either CSS transition-driven presence or a Svelte transition function behind one small API."
+      ],
+      "avoidWhen": [
+        "A plain `{#if}` block is sufficient and no enter or exit coordination is needed."
+      ],
+      "related": ["modal", "drawer", "sheet", "accordion-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/transition/schema",
+        "variables": "cinder/transition/variables",
+        "examples": "cinder/transition/examples"
+      }
+    },
+    {
       "name": "Tree",
       "id": "tree",
       "import": "cinder/tree",
@@ -2903,10 +3206,11 @@
       ],
       "related": ["tree-item", "accordion"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/tree/schema",
-        "variables": "cinder/tree/variables"
+        "variables": "cinder/tree/variables",
+        "examples": "cinder/tree/examples"
       }
     },
     {
@@ -2929,6 +3233,31 @@
       "artifacts": {
         "schema": "cinder/tree-item/schema",
         "variables": "cinder/tree-item/variables"
+      }
+    },
+    {
+      "name": "TreeSelectAll",
+      "id": "tree-select-all",
+      "import": "cinder/tree-select-all",
+      "exportName": "TreeSelectAll",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Context control for selecting or clearing a Tree level in checkbox multi-selection mode.",
+      "tags": ["tree", "selection"],
+      "useWhen": [
+        "Adding select-all and select-none controls to a Tree selectionControls snippet.",
+        "Selecting a registered tree level without placing non-treeitem controls inside role=\"tree\"."
+      ],
+      "avoidWhen": [
+        "Rendering outside a Tree component — it requires Tree selectionControls context.",
+        "Selecting arbitrary data that is not represented by registered tree items or selectionScopeIds."
+      ],
+      "related": ["tree", "tree-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/tree-select-all/schema",
+        "variables": "cinder/tree-select-all/variables"
       }
     },
     {

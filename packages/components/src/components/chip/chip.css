@@ -65,51 +65,27 @@ button.cinder-chip {
 }
 
 .cinder-chip[data-cinder-variant='success'] {
-  background: var(
-    --cinder-color-success-bg,
-    color-mix(in oklch, var(--cinder-success, #059669), transparent 90%)
-  );
-  color: var(--cinder-color-success-fg, var(--cinder-success, #059669));
-  border-color: var(
-    --cinder-color-success-border,
-    color-mix(in oklch, var(--cinder-success, #059669), transparent 60%)
-  );
+  background: var(--cinder-color-success-bg);
+  color: var(--cinder-color-success-fg);
+  border-color: var(--cinder-color-success-border);
 }
 
 .cinder-chip[data-cinder-variant='warning'] {
-  background: var(
-    --cinder-color-warning-bg,
-    color-mix(in oklch, var(--cinder-warning, #d97706), transparent 90%)
-  );
-  color: var(--cinder-color-warning-fg, var(--cinder-warning, #d97706));
-  border-color: var(
-    --cinder-color-warning-border,
-    color-mix(in oklch, var(--cinder-warning, #d97706), transparent 60%)
-  );
+  background: var(--cinder-color-warning-bg);
+  color: var(--cinder-color-warning-fg);
+  border-color: var(--cinder-color-warning-border);
 }
 
 .cinder-chip[data-cinder-variant='danger'] {
-  background: var(
-    --cinder-color-danger-bg,
-    color-mix(in oklch, var(--cinder-danger, #dc2626), transparent 90%)
-  );
-  color: var(--cinder-color-danger-fg, var(--cinder-danger, #dc2626));
-  border-color: var(
-    --cinder-color-danger-border,
-    color-mix(in oklch, var(--cinder-danger, #dc2626), transparent 60%)
-  );
+  background: var(--cinder-color-danger-bg);
+  color: var(--cinder-color-danger-fg);
+  border-color: var(--cinder-color-danger-border);
 }
 
 .cinder-chip[data-cinder-variant='info'] {
-  background: var(
-    --cinder-color-info-bg,
-    color-mix(in oklch, var(--cinder-info, #2563eb), transparent 90%)
-  );
-  color: var(--cinder-color-info-fg, var(--cinder-info, #2563eb));
-  border-color: var(
-    --cinder-color-info-border,
-    color-mix(in oklch, var(--cinder-info, #2563eb), transparent 60%)
-  );
+  background: var(--cinder-color-info-bg);
+  color: var(--cinder-color-info-fg);
+  border-color: var(--cinder-color-info-border);
 }
 
 .cinder-chip[data-cinder-variant='accent'] {
@@ -151,37 +127,25 @@ button.cinder-chip {
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
   background: var(--cinder-success, #059669);
-  color: var(
-    --cinder-color-success-bg,
-    color-mix(in oklch, var(--cinder-success, #059669), transparent 90%)
-  );
+  color: var(--cinder-color-success-bg);
   border-color: var(--cinder-success, #059669);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='warning'] {
   background: var(--cinder-warning, #d97706);
-  color: var(
-    --cinder-color-warning-bg,
-    color-mix(in oklch, var(--cinder-warning, #d97706), transparent 90%)
-  );
+  color: var(--cinder-color-warning-bg);
   border-color: var(--cinder-warning, #d97706);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='danger'] {
   background: var(--cinder-danger, #dc2626);
-  color: var(
-    --cinder-color-danger-bg,
-    color-mix(in oklch, var(--cinder-danger, #dc2626), transparent 90%)
-  );
+  color: var(--cinder-color-danger-bg);
   border-color: var(--cinder-danger, #dc2626);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='info'] {
   background: var(--cinder-info, #2563eb);
-  color: var(
-    --cinder-color-info-bg,
-    color-mix(in oklch, var(--cinder-info, #2563eb), transparent 90%)
-  );
+  color: var(--cinder-color-info-bg);
   border-color: var(--cinder-info, #2563eb);
 }
 

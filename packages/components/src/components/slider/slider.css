@@ -104,8 +104,15 @@
 }
 
 .cinder-slider__thumb:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: var(--cinder-ring-offset);
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-slider__thumb:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
 }
 
 .cinder-slider[data-cinder-disabled] .cinder-slider__thumb {

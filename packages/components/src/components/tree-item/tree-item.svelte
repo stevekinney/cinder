@@ -35,6 +35,7 @@
     branch = false,
     loadChildren,
     onLoadError,
+    selectionScopeIds,
     row,
     children,
     class: className,
@@ -55,7 +56,14 @@
   const level = parentContext?.level ?? 1;
 
   // Publish context for our own children
-  setContext<TreeItemParentContext>(TREE_ITEM_PARENT_KEY, { parentId: id, level: level + 1 });
+  setContext<TreeItemParentContext>(TREE_ITEM_PARENT_KEY, {
+    get parentId() {
+      return id;
+    },
+    get level() {
+      return level + 1;
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // Local state
@@ -78,6 +86,21 @@
   const isExpanded = $derived(context.expandedIds.includes(id));
   const isSelected = $derived(context.selectedIds.includes(id));
   const isFocused = $derived(context.focusedId === id);
+  const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
+  const selectionState = $derived(context.selectionStateFor(id));
+  const ariaChecked = $derived.by(() => {
+    if (!checkboxSelectionActive) return undefined;
+    if (selectionState.indeterminate) return 'mixed';
+    return selectionState.checked ? 'true' : 'false';
+  });
+
+  let checkboxElement: HTMLInputElement | undefined = $state();
+
+  $effect(() => {
+    if (checkboxElement) {
+      checkboxElement.indeterminate = selectionState.indeterminate && !selectionState.checked;
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Registration
@@ -99,6 +122,7 @@
         get disabled() {
           return disabled;
         },
+        selectionScopeIds: () => selectionScopeIds,
         isBranch: () => isBranch,
         label: () => label,
         focus: () => outerElement?.focus(),
@@ -202,6 +226,15 @@
   // Keyboard handler
   // ---------------------------------------------------------------------------
 
+  function toggleKeyboardSelection(event: KeyboardEvent): void {
+    if (disabled) return;
+    if (checkboxSelectionActive) {
+      context.toggleSelectionScope(id);
+    } else {
+      context.toggleSelected(id, event);
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
     // Ownership guard: if event came from a nested child treeitem, skip
     if (isFromNestedItem(event)) return;
@@ -214,7 +247,7 @@
       case 'ArrowDown':
         event.preventDefault();
         if (event.shiftKey && context.selectionMode === 'multiple') {
-          if (!disabled) context.toggleSelected(id, event);
+          toggleKeyboardSelection(event);
           context.focusVisibleDelta(id, 1);
         } else {
           context.focusVisibleDelta(id, 1);
@@ -224,7 +257,7 @@
       case 'ArrowUp':
         event.preventDefault();
         if (event.shiftKey && context.selectionMode === 'multiple') {
-          if (!disabled) context.toggleSelected(id, event);
+          toggleKeyboardSelection(event);
           context.focusVisibleDelta(id, -1);
         } else {
           context.focusVisibleDelta(id, -1);
@@ -262,17 +295,27 @@
 
       case 'Enter':
         event.preventDefault();
-        if (!disabled) {
-          context.toggleSelected(id, event);
+        if (checkboxSelectionActive) {
+          if (isBranch) {
+            context.setExpanded(id, !isExpanded);
+          } else if (!disabled) {
+            context.toggleSelectionScope(id);
+          }
+        } else {
+          if (!disabled) context.toggleSelected(id, event);
+          if (isBranch) context.setExpanded(id, !isExpanded);
         }
-        if (isBranch) context.setExpanded(id, !isExpanded);
         break;
 
       case ' ':
         event.preventDefault();
         if (!disabled) {
-          context.toggleSelected(id, event);
-          // Space does NOT toggle expand on branches (per APG)
+          if (checkboxSelectionActive) {
+            context.toggleSelectionScope(id);
+          } else {
+            context.toggleSelected(id, event);
+            // Space does NOT toggle expand on branches (per APG)
+          }
         }
         break;
 
@@ -305,12 +348,23 @@
 
     outerElement?.focus();
 
-    if (!disabled) context.toggleSelected(id, event);
+    if (!disabled && !checkboxSelectionActive) context.toggleSelected(id, event);
 
     if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       // Plain click on a branch row toggles expand, including disabled branches.
       context.setExpanded(id, !isExpanded);
     }
+  }
+
+  function handleCheckboxActivation(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    outerElement?.focus();
+    if (!disabled) context.toggleSelectionScope(id);
+  }
+
+  function toggleSelectionFromRow(): void {
+    if (!disabled) context.toggleSelectionScope(id);
   }
 </script>
 
@@ -323,7 +377,10 @@
   aria-labelledby={`${treeItemElementId}-label`}
   aria-level={level}
   aria-expanded={isBranch ? isExpanded : undefined}
-  aria-selected={context.selectionMode === 'none' ? undefined : isSelected}
+  aria-selected={context.selectionMode === 'none' || checkboxSelectionActive
+    ? undefined
+    : isSelected}
+  aria-checked={ariaChecked}
   aria-busy={busy || undefined}
   aria-disabled={disabled || undefined}
   tabindex={isFocused ? 0 : -1}
@@ -338,7 +395,32 @@
   <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
     {#if row}
-      {@render row({ expanded: isExpanded, selected: isSelected, busy, level })}
+      {@render row({
+        expanded: isExpanded,
+        selected: isSelected,
+        busy,
+        level,
+        checkboxSelection: checkboxSelectionActive,
+        selectionState,
+        toggleSelection: toggleSelectionFromRow,
+      })}
+    {:else if checkboxSelectionActive}
+      <input
+        bind:this={checkboxElement}
+        type="checkbox"
+        class="cinder-tree-item__checkbox"
+        checked={selectionState.checked}
+        {disabled}
+        tabindex="-1"
+        aria-hidden="true"
+        onclick={handleCheckboxActivation}
+      />
+      <!--
+        aria-hidden prevents the visible default text from being announced
+        separately since the parent treeitem is labelled by the visually-hidden
+        label span above.
+      -->
+      <span aria-hidden="true">{label}</span>
     {:else}
       <!--
         aria-hidden prevents the visible default text from being announced

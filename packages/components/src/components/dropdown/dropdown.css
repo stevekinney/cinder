@@ -190,7 +190,8 @@
 }
 
 .cinder-dropdown-item[data-cinder-variant='danger']:active {
-  background: color-mix(in oklch, var(--cinder-danger), transparent 86%);
+  background: var(--cinder-color-danger-border);
+  color: var(--cinder-color-danger-fg);
 }
 
 @media (forced-colors: active) {

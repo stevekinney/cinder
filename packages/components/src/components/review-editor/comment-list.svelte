@@ -297,15 +297,17 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .comment-action:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
-  }
+  @media (hover: hover) {
+    .comment-action:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
 
-  .comment-action-danger:hover {
-    color: var(--cinder-danger);
-    background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
-    border-color: var(--cinder-danger);
+    .comment-action-danger:hover {
+      color: var(--cinder-color-danger-fg);
+      background: var(--cinder-color-danger-bg);
+      border-color: var(--cinder-color-danger-border);
+    }
   }
 
   .comment-list-empty {

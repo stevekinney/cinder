@@ -7,6 +7,15 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as Autocomplete } from './components/autocomplete/index.ts';
+export type {
+  AutocompleteProps,
+  AutocompleteSchemaProps,
+  AutocompleteSuggestion,
+  AutocompleteSuggestionSource,
+  AutocompleteSuggestionSourceContext,
+} from './components/autocomplete/index.ts';
+
 export { default as AspectRatio } from './components/aspect-ratio/index.ts';
 export type {
   AspectRatioElement,
@@ -147,6 +156,9 @@ export type {
 export { default as DropdownItem } from './components/dropdown-item/index.ts';
 export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
 
+export { default as DropdownGroup } from './components/dropdown-group/index.ts';
+export type { DropdownGroupProps } from './components/dropdown-group/index.ts';
+
 export { default as DropdownLabel } from './components/dropdown-label/index.ts';
 export type { DropdownLabelProps } from './components/dropdown-label/index.ts';
 
@@ -167,6 +179,18 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event/i
 
 export { default as Feed } from './components/feed/index.ts';
 export type { FeedProps } from './components/feed/index.ts';
+
+export { default as FileUpload } from './components/file-upload/index.ts';
+export type {
+  FileUploadEntry,
+  FileUploadProps,
+  FileUploadRejectionReason,
+  FileUploadStatus,
+  RejectedFile,
+} from './components/file-upload/index.ts';
+
+export { default as FocusTrap, createFocusTrap } from './components/focus-trap/index.ts';
+export type { FocusTrapOptions, FocusTrapProps } from './components/focus-trap/index.ts';
 
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldProps } from './components/form-field/index.ts';
@@ -213,6 +237,9 @@ export type { KbdProps } from './components/kbd/index.ts';
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
 
+export { default as LoadMore } from './components/load-more/index.ts';
+export type { LoadMoreProps } from './components/load-more/index.ts';
+
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
   EditorHandle,
@@ -220,6 +247,19 @@ export type {
   MarkdownEditorProps,
   ToolbarContext,
 } from './components/markdown-editor/index.ts';
+
+export { default as MenuBar } from './components/menu-bar/index.ts';
+export type {
+  MenuBarEntry,
+  MenuBarItem,
+  MenuBarItemVariant,
+  MenuBarLabel,
+  MenuBarMenu,
+  MenuBarProps,
+  MenuBarSeparator,
+  MenuBarSubmenu,
+  MenuBarSubmenuEntry,
+} from './components/menu-bar/index.ts';
 
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
@@ -231,6 +271,14 @@ export type {
   NavigationBarToggleAttributes,
   NavigationVariant,
 } from './components/navigation-bar/index.ts';
+export { default as Portal, createPortalAttachment } from './components/portal/index.ts';
+export type { PortalAttachmentOptions, PortalProps } from './components/portal/index.ts';
+export { Presence, default as Transition } from './components/transition/index.ts';
+export type {
+  PresenceProps,
+  TransitionFunction,
+  TransitionProps,
+} from './components/transition/index.ts';
 
 export { default as NavigationItem } from './components/navigation-item/index.ts';
 export type { NavigationItemProps } from './components/navigation-item/index.ts';
@@ -270,6 +318,19 @@ export type { RadioGroupContext, RadioGroupProps } from './components/radio-grou
 
 export { default as Rating } from './components/rating/index.ts';
 export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
+
+export { default as ResizablePanels } from './components/resizable-panels/index.ts';
+export type {
+  ResizablePanelDefinition,
+  ResizablePanelRenderContext,
+  ResizablePanelSize,
+  ResizablePanelSizeState,
+  ResizablePanelsCollapseTarget,
+  ResizablePanelsOrientation,
+  ResizablePanelsProps,
+  ResizablePanelsResizeEvent,
+  ResizablePanelsResizeReason,
+} from './components/resizable-panels/index.ts';
 
 export {
   default as ReviewEditor,
@@ -421,6 +482,9 @@ export type { TableBodyProps } from './components/table-body/index.ts';
 export { default as TableCell } from './components/table-cell/index.ts';
 export type { TableCellProps } from './components/table-cell/index.ts';
 
+export { default as TagInput } from './components/tag-input/index.ts';
+export type { TagInputProps } from './components/tag-input/index.ts';
+
 export { default as TableHeader } from './components/table-header/index.ts';
 export type { TableHeaderProps } from './components/table-header/index.ts';
 
@@ -457,6 +521,7 @@ export type {
   UseHistoryOptions,
 } from './utilities/use-history.svelte.ts';
 
+export { useIntersection } from './utilities/use-intersection.svelte.ts';
 export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 
@@ -464,14 +529,32 @@ export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 
+export { default as TimePicker } from './components/time-picker/index.ts';
+export type { TimePickerProps } from './components/time-picker/index.ts';
+
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
 
+export { default as Toolbar } from './components/toolbar/index.ts';
+export type {
+  ToolbarGroupProps,
+  ToolbarOrientation,
+  ToolbarProps,
+  ToolbarSpacerProps,
+} from './components/toolbar/index.ts';
+
 export { default as Tree } from './components/tree/index.ts';
-export type { TreeProps, TreeSelectionMode } from './components/tree/index.ts';
+export type {
+  TreeProps,
+  TreeSelectionBehavior,
+  TreeSelectionMode,
+} from './components/tree/index.ts';
 
 export { default as TreeItem } from './components/tree-item/index.ts';
-export type { TreeItemProps } from './components/tree-item/index.ts';
+export type { TreeItemProps, TreeItemRowContext } from './components/tree-item/index.ts';
+
+export { default as TreeSelectAll } from './components/tree-select-all/index.ts';
+export type { TreeSelectAllProps } from './components/tree-select-all/index.ts';
 
 export { default as Tooltip } from './components/tooltip/index.ts';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';

@@ -38,13 +38,13 @@ Switching between controlled and uncontrolled at runtime is unsupported. The com
 
 The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `defaultValue` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
 
-Parse errors propagate to the visible `<input>` via `setCustomValidity`, so invalid text blocks form submission regardless of whether the user pressed Enter or clicked a submit button — HTML constraint validation participates the same way it does for `<input type="email">`.
+Parse errors propagate to the visible `<input>` via `setCustomValidity`, so invalid text participates in HTML constraint validation whether the user pressed Enter or clicked a submit button.
 
 Moving the component across forms at runtime is not supported in v1.
 
 ## Limitations
 
-- Modern `rgb(r g b / a)` and `hsl(h s l / a)` slash syntax is rejected. Only legacy comma-separated forms parse. The `parseColor` utility we delegate to does not currently accept slash-alpha.
+- Modern `rgb(r g b / a)` and `hsl(h s l / a)` slash syntax is rejected by the parser. Only legacy comma-separated forms parse.
 - `rgb()` percent components are rounded to the nearest 0–255 byte.
 - `commit-then-submit` selects the first non-disabled `[type="submit"]` (or unmarked `<button>`) in document order, matching the common case but not every native browser nuance. Forms needing full fidelity should use `enterBehavior='commit-only'` and orchestrate `requestSubmit(submitter)` themselves.
 - The component contributes a form value only when `name` is set — just like a native `<input>` without `name`. Pressing Enter on a field without a `name` still commits and submits, but no color appears in `FormData`.
@@ -52,7 +52,7 @@ Moving the component across forms at runtime is not supported in v1.
 
 ## Errors and accessibility
 
-- Parse errors are owned by `ColorField` and rendered through the inner `Input`'s own `error` prop. The native `<input>` carries `aria-invalid="true"` and an `aria-describedby` that references the inline error message.
+- Parse errors are owned by `ColorField` and rendered by the inner `Input`. The native `<input>` carries `aria-invalid="true"` and an `aria-describedby` that references the inline error message.
 - When wrapped in a `FormField` with its own `error="..."`, both error texts render and both ids appear in `aria-describedby` without collision — the `Input` allocates a distinct id when its own error would collide with the context's error id.
 - The trailing swatch is decorative: it is `aria-hidden="true"`.
 
@@ -70,7 +70,7 @@ Moving the component across forms at runtime is not supported in v1.
 | `disabled`       | `boolean`                                 | no       | —       | Disable the input.                                                                                                                                                                                                                                                                                                                          |
 | `enterBehavior`  | `"commit-then-submit"` \| `"commit-only"` | no       | —       | Commit-on-Enter behavior. Default `'commit-then-submit'`: - `'commit-then-submit'`: Enter commits the value, then lets the form's native submission proceed via `requestSubmit`. - `'commit-only'`: Enter commits and `preventDefault()`s, suppressing form submission (useful in dialogs / multi-field flows where Enter must not submit). |
 | `errorMessage`   | `string`                                  | no       | —       | Override the default parse-failure error message.                                                                                                                                                                                                                                                                                           |
-| `formats`        | `"hex"` \| `"rgb"` \| `"hsl"`[]           | no       | —       | Accepted _input_ formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex.                                                                                                                                                                                                                                                        |
+| `formats`        | (`"hex"` \| `"rgb"` \| `"hsl"`)[]         | no       | —       | Accepted _input_ formats. Defaults to `['hex', 'rgb', 'hsl']`. Output is always hex.                                                                                                                                                                                                                                                        |
 | `id`             | `string`                                  | yes      | —       | Inner `<input>` id. Required (mirrors Input).                                                                                                                                                                                                                                                                                               |
 | `name`           | `string`                                  | no       | —       | Form field name. When set, the hidden mirror input contributes the current committed hex value to native form submission.                                                                                                                                                                                                                   |
 | `placeholder`    | `string`                                  | no       | —       | Placeholder text for the inner `<input>`.                                                                                                                                                                                                                                                                                                   |

@@ -17,9 +17,7 @@
 
   let { id, fieldError }: ColorFieldFormFieldFixtureProps = $props();
 
-  const fieldOptional = $derived(
-    fieldError !== undefined ? { error: fieldError } : {},
-  );
+  const fieldOptional = $derived(fieldError !== undefined ? { error: fieldError } : {});
 </script>
 
 <FormField {id} label="Accent color" {...fieldOptional}>

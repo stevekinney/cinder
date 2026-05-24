@@ -13,11 +13,6 @@ const schema = {
     class: {
       type: 'string',
     },
-    variant: {
-      enum: ['horizontal', 'mobile'],
-      description:
-        "Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'.",
-    },
     listItemClass: {
       type: 'string',
       description: 'Class merged onto the outer <li>.',

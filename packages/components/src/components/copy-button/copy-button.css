@@ -23,15 +23,26 @@
     border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
-.cinder-copy-button:hover {
-  color: var(--cinder-text);
-  background: var(--cinder-surface-hover);
-  border-color: var(--cinder-border-strong);
+/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+@media (hover: hover) {
+  .cinder-copy-button:hover {
+    color: var(--cinder-text);
+    background: var(--cinder-surface-hover);
+    border-color: var(--cinder-border-strong);
+  }
 }
 
 .cinder-copy-button:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: 2px;
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-copy-button:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 2px;
+  }
 }
 
 .cinder-copy-button[data-cinder-copied] {

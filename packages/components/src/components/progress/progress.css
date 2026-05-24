@@ -52,7 +52,8 @@
 
 .cinder-progress--bar .cinder-progress__fill--indeterminate {
   width: 30%;
-  animation: cinder-progress-bar-slide 1.6s linear infinite;
+  animation: cinder-progress-bar-slide var(--cinder-duration-progress-bar-indeterminate) linear
+    infinite;
 }
 
 @keyframes cinder-progress-bar-slide {
@@ -123,7 +124,7 @@
 .cinder-progress--ring .cinder-progress__fill--indeterminate {
   stroke-dasharray: 25 75;
   stroke-dashoffset: 0;
-  animation: cinder-progress-ring-spin 1.4s linear infinite;
+  animation: cinder-progress-ring-spin var(--cinder-duration-progress-ring-spin) linear infinite;
   transform-origin: 18px 18px;
 }
 
