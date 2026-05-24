@@ -27,17 +27,22 @@ type CommonProps<T extends string> = Omit<
   /** Disable the whole control. */
   disabled?: boolean | undefined;
   /**
-   * Requested visual size of the control. The resolved size is reflected as
-   * `data-cinder-size` on the root; when `density="toolbar"` is set, the
-   * resolved size is forced to `"sm"` and any explicit `size` value is ignored.
+   * Requested visual size of the control. Defaults to `"md"`. The resolved
+   * size is reflected as `data-cinder-size` on the root; when
+   * `density="toolbar"` is set, the resolved size is forced to `"sm"` and any
+   * explicit `size` value is ignored. `size="md"` option text uses
+   * `--cinder-text-sm`; `size="sm"` and `density="toolbar"` use
+   * `--cinder-text-xs`; `size="lg"` uses `--cinder-text-sm`.
    */
   size?: 'sm' | 'md' | 'lg' | undefined;
   /**
    * Opt the control into compact toolbar sizing so it lines up cleanly with
    * sibling `Button` (size="sm"), `Chip` (density="toolbar"), and other
-   * toolbar elements. Toolbar density resolves to the same visual sizing as
-   * `size="sm"` — when set, any explicit `size` value is ignored and the
-   * resolved size (`data-cinder-size`) is `"sm"`.
+   * toolbar elements. Toolbar density resolves to the compact `"sm"` font and
+   * padding scale — when set, any explicit `size` value is ignored and the
+   * resolved size (`data-cinder-size`) is `"sm"` — while pinning the option
+   * `min-block-size` to `--cinder-control-height-sm` so the bounding height
+   * matches sibling toolbar controls.
    */
   density?: 'toolbar' | undefined;
   /** Layout orientation. */

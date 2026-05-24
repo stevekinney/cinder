@@ -9,9 +9,10 @@
   import { SegmentedControl } from 'cinder/segmented-control';
 
   // Each control uses the same three options so size comparisons are not
-  // polluted by label/structure differences. The selected option is fixed to
-  // `rendered` and `diff` is disabled so disabled-state styling is exercised
-  // on every control.
+  // polluted by label/structure differences. The selected option is
+  // initialized to `rendered` (users can switch via click or keyboard) and
+  // `diff` is disabled so disabled-state styling is exercised on every
+  // control.
   type View = 'source' | 'rendered' | 'diff';
 
   let smValue = $state<View>('rendered');

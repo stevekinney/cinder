@@ -23,12 +23,12 @@ const schema = {
     size: {
       enum: ['sm', 'md', 'lg'],
       description:
-        'Requested visual size of the control. The resolved size is reflected as\n`data-cinder-size` on the root; when `density="toolbar"` is set, the\nresolved size is forced to `"sm"` and any explicit `size` value is ignored.',
+        'Requested visual size of the control. Defaults to `"md"`. The resolved\nsize is reflected as `data-cinder-size` on the root; when\n`density="toolbar"` is set, the resolved size is forced to `"sm"` and any\nexplicit `size` value is ignored. `size="md"` option text uses\n`--cinder-text-sm`; `size="sm"` and `density="toolbar"` use\n`--cinder-text-xs`; `size="lg"` uses `--cinder-text-sm`.',
     },
     density: {
       const: 'toolbar',
       description:
-        'Opt the control into compact toolbar sizing so it lines up cleanly with\nsibling `Button` (size="sm"), `Chip` (density="toolbar"), and other\ntoolbar elements. Toolbar density resolves to the same visual sizing as\n`size="sm"` — when set, any explicit `size` value is ignored and the\nresolved size (`data-cinder-size`) is `"sm"`.',
+        'Opt the control into compact toolbar sizing so it lines up cleanly with\nsibling `Button` (size="sm"), `Chip` (density="toolbar"), and other\ntoolbar elements. Toolbar density resolves to the compact `"sm"` font and\npadding scale — when set, any explicit `size` value is ignored and the\nresolved size (`data-cinder-size`) is `"sm"` — while pinning the option\n`min-block-size` to `--cinder-control-height-sm` so the bounding height\nmatches sibling toolbar controls.',
     },
     orientation: {
       enum: ['horizontal', 'vertical'],
