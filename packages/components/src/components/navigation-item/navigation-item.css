@@ -90,6 +90,31 @@ button.cinder-navigation-item {
 }
 
 /* ----------------------------------------
+ * Vertical variant — sidebar / vertical-tab contexts
+ *
+ * Symmetric border-radius (not the top-rounded/bottom-square horizontal
+ * shape) so the focus-ring box-shadow does not paint a tombstone in
+ * vertical contexts. The inline-start border is the active indicator and
+ * is reserved at all times so toggling active state never shifts the
+ * label.
+ * ---------------------------------------- */
+
+.cinder-navigation-item[data-variant='vertical'] {
+  display: flex;
+  inline-size: 100%;
+  justify-content: flex-start;
+  border-bottom: none;
+  border-radius: var(--cinder-radius-sm);
+  border-inline-start: 2px solid transparent;
+}
+
+.cinder-navigation-item[data-variant='vertical'][data-active='true'] {
+  border-bottom-color: transparent;
+  border-inline-start-color: var(--cinder-accent);
+  background-color: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+}
+
+/* ----------------------------------------
  * Mobile variant — stacked full-width layout
  * Breakpoint: 47.99rem (~767px). No breakpoint token exists in this
  * package yet; extract to a shared token in a follow-up task.

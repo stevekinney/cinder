@@ -597,3 +597,21 @@ describe('Tabs roving tabindex with disabled tabs', () => {
     expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
   });
 });
+
+describe('Tab data-variant reflects tabs orientation', () => {
+  test('horizontal Tabs render each Tab with data-variant="horizontal"', () => {
+    const { container } = render(Wrapper, { value: 'a', orientation: 'horizontal', items });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    for (const tab of tabs) {
+      expect(tab.getAttribute('data-variant')).toBe('horizontal');
+    }
+  });
+
+  test('vertical Tabs render each Tab with data-variant="vertical"', () => {
+    const { container } = render(Wrapper, { value: 'a', orientation: 'vertical', items });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    for (const tab of tabs) {
+      expect(tab.getAttribute('data-variant')).toBe('vertical');
+    }
+  });
+});

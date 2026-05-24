@@ -91,8 +91,15 @@
 }
 
 .cinder-number-input__stepper:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: -2px;
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-number-input__stepper:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: -2px;
+  }
 }
 
 .cinder-number-input__stepper:disabled {

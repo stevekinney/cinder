@@ -99,6 +99,7 @@
   data-cinder-value={value}
   data-cinder-active={isActive ? '' : undefined}
   data-cinder-disabled={disabled || undefined}
+  data-variant={tabs.orientation}
   aria-selected={isActive}
   aria-controls={panelId}
   tabindex={rovingTabIndex(isFocusable)}

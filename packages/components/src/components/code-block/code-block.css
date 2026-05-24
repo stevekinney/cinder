@@ -81,6 +81,18 @@
   color: var(--cinder-text-subtle);
 }
 
+.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+}
+
+@media (forced-colors: active) {
+  .cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
+    outline-color: CanvasText;
+    box-shadow: none;
+  }
+}
+
 /* Sticky-hover suppression on touch. */
 @media (hover: hover) {
   .cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
@@ -88,11 +100,6 @@
     color: var(--cinder-text);
     border-color: transparent;
   }
-}
-
-.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
-  outline: 2px solid var(--cinder-ring-color);
-  outline-offset: 2px;
 }
 
 /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —

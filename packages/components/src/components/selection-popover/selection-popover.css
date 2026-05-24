@@ -41,8 +41,17 @@
 }
 
 .cinder-selection-popover__button:focus-visible {
-  outline: 2px solid var(--cinder-accent);
+  outline: var(--cinder-ring-width) solid transparent;
   outline-offset: 2px;
+  box-shadow:
+    var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md, 0 4px 6px rgb(0 0 0 / 0.12));
+}
+
+@media (forced-colors: active) {
+  .cinder-selection-popover__button:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 2px;
+  }
 }
 
 .cinder-selection-popover__button:active {
@@ -77,8 +86,20 @@
 
 .cinder-selection-popover__textarea:focus {
   border-color: var(--cinder-accent);
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--cinder-accent), transparent 80%);
+}
+
+.cinder-selection-popover__textarea:focus,
+.cinder-selection-popover__textarea:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-selection-popover__textarea:focus,
+  .cinder-selection-popover__textarea:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 1px;
+  }
 }
 
 .cinder-selection-popover__textarea::placeholder {
@@ -133,8 +154,17 @@
 
 .cinder-selection-popover__cancel:focus-visible,
 .cinder-selection-popover__submit:focus-visible {
-  outline: 2px solid var(--cinder-accent);
+  outline: var(--cinder-ring-width) solid transparent;
   outline-offset: 2px;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-selection-popover__cancel:focus-visible,
+  .cinder-selection-popover__submit:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 2px;
+  }
 }
 
 .cinder-selection-popover__icon {

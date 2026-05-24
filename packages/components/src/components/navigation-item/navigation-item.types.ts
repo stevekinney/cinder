@@ -3,8 +3,18 @@ type CommonArm = {
   active?: boolean;
   disabled?: boolean;
   class?: string;
-  /** Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'. */
-  variant?: 'horizontal' | 'mobile';
+  /**
+   * Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.
+   *
+   * - `'horizontal'`: top-rounded radius, accent bottom-border active indicator.
+   *   Used inside `NavigationBar` and similar horizontal tab-bar contexts.
+   * - `'mobile'`: stacked full-width layout below the mobile breakpoint.
+   * - `'vertical'`: symmetric radius, accent inline-start border active indicator.
+   *   Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or
+   *   standalone sidebar footers — anywhere a vertical, non-tombstone focus ring
+   *   is required.
+   */
+  variant?: 'horizontal' | 'mobile' | 'vertical';
   children: Snippet;
 };
 export type LinkArm = CommonArm & {

@@ -72,6 +72,13 @@
   }
 }
 
+/* Vertical tab radius — override the horizontal top-rounded/bottom-square
+ * shape so the focus-ring box-shadow does not paint a tombstone in vertical
+ * tablists. Emitted from `tabs.orientation` context as `data-variant`. */
+.cinder-tab[data-variant='vertical'] {
+  border-radius: var(--cinder-radius-sm);
+}
+
 .cinder-tab[data-cinder-active] {
   color: var(--cinder-accent);
   font-weight: var(--cinder-font-medium);
@@ -130,6 +137,13 @@
 }
 
 .cinder-tab-panel:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: 2px;
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-tab-panel:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    outline-offset: 2px;
+  }
 }

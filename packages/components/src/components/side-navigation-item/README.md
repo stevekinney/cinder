@@ -16,15 +16,14 @@ A SideNavigationItem component. Replace this sentence with a one-line purpose st
 
 <!-- generated:props:start -->
 
-| Prop            | Type                         | Required | Default | Description                                                                       |
-| --------------- | ---------------------------- | -------- | ------- | --------------------------------------------------------------------------------- |
-| `active`        | `boolean`                    | no       | —       |                                                                                   |
-| `class`         | `string`                     | no       | —       |                                                                                   |
-| `disabled`      | `boolean`                    | no       | —       |                                                                                   |
-| `listItemClass` | `string`                     | no       | —       | Class merged onto the outer <li>.                                                 |
-| `variant`       | `"horizontal"` \| `"mobile"` | no       | —       | Controls stacked layout on mobile. Emitted as data-variant. Default 'horizontal'. |
-| `children`      | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
-| `onclick`       | `(opaque)`                   | —        | —       | function-or-snippet                                                               |
+| Prop            | Type       | Required | Default | Description                       |
+| --------------- | ---------- | -------- | ------- | --------------------------------- |
+| `active`        | `boolean`  | no       | —       |                                   |
+| `class`         | `string`   | no       | —       |                                   |
+| `disabled`      | `boolean`  | no       | —       |                                   |
+| `listItemClass` | `string`   | no       | —       | Class merged onto the outer <li>. |
+| `children`      | `(opaque)` | —        | —       | function-or-snippet               |
+| `onclick`       | `(opaque)` | —        | —       | function-or-snippet               |
 
 <!-- generated:props:end -->
 
