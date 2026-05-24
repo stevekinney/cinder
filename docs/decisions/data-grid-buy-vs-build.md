@@ -25,7 +25,7 @@ with **all** of these required-present behaviors in one coherent component:
 - row virtualization
 - column virtualization
 - inline cell editing with typed editors (text, number, select, date)
-- single-column and multi-column sort
+- single-column **and** multi-column sort (both are required-present; multi-sort is not optional)
 - column resize, reorder, pin (left and right)
 - cell selection, range selection
 - frozen header row
@@ -164,19 +164,19 @@ abandoned Svelte binding.
 `dist.unpackedSize` values are **unpacked tarball size**, intentionally
 larger than browser-shipped JS. Use only for relative comparison.
 
-| Candidate                                                                                                                     | `dist.unpackedSize` (bytes) | Rough scale                                                                                          |
-| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Build inside cinder (no dependency)                                                                                           | 0                           | shipped weight = cinder's implementation only                                                        |
-| Build inside cinder + [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) (**recommended path**) | 336,756 (virtual-core)      | ~330 KB unpacked; browser weight to measure in implementation gate                                   |
-| [`@tanstack/table-core`](https://www.npmjs.com/package/@tanstack/table-core) 8.21.3                                           | 3,296,952                   | ~3.3 MB unpacked                                                                                     |
-| [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) 3.15.0                                       | 336,756                     | ~330 KB unpacked                                                                                     |
-| [`@tanstack/svelte-table`](https://www.npmjs.com/package/@tanstack/svelte-table) 8.21.3                                       | 818,422                     | ~800 KB unpacked (types and ESM/CJS variants)                                                        |
-| [`ag-grid-community`](https://www.npmjs.com/package/ag-grid-community) 35.3.0                                                 | 20,012,579                  | ~20 MB unpacked                                                                                      |
-| [`@glideapps/glide-data-grid`](https://www.npmjs.com/package/@glideapps/glide-data-grid) 6.0.3                                | 3,662,455                   | ~3.7 MB unpacked                                                                                     |
-| [`handsontable`](https://www.npmjs.com/package/handsontable) 17.1.0                                                           | 26,956,584                  | ~27 MB unpacked                                                                                      |
-| [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables) 2.8.0                                                | 226,327                     | ~225 KB unpacked                                                                                     |
-| [`@revolist/svelte-datagrid`](https://www.npmjs.com/package/@revolist/svelte-datagrid) 4.21.11                                | 84,582 (wrapper)            | wrapper only — plus [`@revolist/revogrid`](https://www.npmjs.com/package/@revolist/revogrid) runtime |
-| [`@svar-ui/svelte-grid`](https://www.npmjs.com/package/@svar-ui/svelte-grid) 2.6.2                                            | 103,964 (wrapper)           | wrapper only — plus 9 [`@svar-ui/*`](https://www.npmjs.com/org/svar-ui) runtime packages             |
+| Candidate                                                                                                                     | `dist.unpackedSize` (bytes) | Rough scale                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build inside cinder (no dependency)                                                                                           | 0                           | shipped weight = cinder's implementation only                                                                                                           |
+| Build inside cinder + [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) (**recommended path**) | 336,756 (virtual-core)      | ~330 KB unpacked; browser weight to measure in implementation gate                                                                                      |
+| [`@tanstack/table-core`](https://www.npmjs.com/package/@tanstack/table-core) 8.21.3                                           | 3,296,952                   | ~3.3 MB unpacked                                                                                                                                        |
+| [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) 3.15.0                                       | 336,756                     | ~330 KB unpacked                                                                                                                                        |
+| [`@tanstack/svelte-table`](https://www.npmjs.com/package/@tanstack/svelte-table) 8.21.3                                       | 818,422                     | ~800 KB unpacked (types and ESM/CJS variants)                                                                                                           |
+| [`ag-grid-community`](https://www.npmjs.com/package/ag-grid-community) 35.3.0                                                 | 20,012,579                  | ~20 MB unpacked                                                                                                                                         |
+| [`@glideapps/glide-data-grid`](https://www.npmjs.com/package/@glideapps/glide-data-grid) 6.0.3                                | 3,662,455                   | ~3.7 MB unpacked                                                                                                                                        |
+| [`handsontable`](https://www.npmjs.com/package/handsontable) 17.1.0                                                           | 26,956,584                  | ~27 MB unpacked                                                                                                                                         |
+| [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables) 2.8.0                                                | 226,327                     | ~225 KB unpacked                                                                                                                                        |
+| [`@revolist/svelte-datagrid`](https://www.npmjs.com/package/@revolist/svelte-datagrid) 4.21.11                                | 84,582 (wrapper)            | wrapper only — runtime [`@revolist/revogrid`](https://www.npmjs.com/package/@revolist/revogrid) not measured (disqualified below on shadow-DOM grounds) |
+| [`@svar-ui/svelte-grid`](https://www.npmjs.com/package/@svar-ui/svelte-grid) 2.6.2                                            | 103,964 (wrapper)           | wrapper only — 9 transitive [`@svar-ui/*`](https://www.npmjs.com/org/svar-ui) runtime packages not measured (disqualified below)                        |
 
 This decision intentionally does **not** compare vendor-advertised
 minified browser weights. Those numbers vary by bundler, tree-shaking,
@@ -185,15 +185,22 @@ measurement in this decision is `dist.unpackedSize` from npm metadata; the
 implementation checkpoint must measure the final cinder bundle delta from
 the actual code path.
 
-### Cinder shipped-weight target (unvalidated)
+### Cinder shipped-weight: measure, don't pre-commit
 
-If the build path is approved, the **target budget** for cinder's grid
-code (virtualization integration + selection + editing UI + keyboard
-model + column ops + ARIA glue) is roughly **18–28 KB minified** before
-any dependency contribution. This estimate is **not yet measured** — it is
-a budget for the implementation gate, not a promise. The final design
-checkpoint (`data-grid-implementation-design.md`) will record the measured
-size and either confirm or surface the overrun.
+The build path's shipped weight is **measured at the implementation gate**,
+not budgeted here. The implementation-design checkpoint
+(`data-grid-implementation-design.md`) records the measured browser bundle
+contribution from cinder's grid code plus `virtual-core`, and that number
+becomes the baseline. No pre-implementation byte budget is set in this
+decision; declaring one before the code exists would create a phantom
+constraint without evidence.
+
+The implementation will be CSS-heavy regardless of byte count. A grid cell
+is the most CSS-state-dense element in any design system: it composes
+selection, range, editing, invalid, pinned, frozen-header-adjacency, hover,
+focus-visible, resize-active, and density — orthogonally. The CSS sidecar
+for `data-grid` will likely be cinder's largest. That cost is part of the
+"Medium-high up-front effort" estimate in the next section.
 
 ## Headless-vs-styled fit
 
@@ -218,9 +225,13 @@ grid must fit that pattern without an asterisk.
 ### Build inside cinder
 
 cinder writes its own virtualization, column model, selection model,
-editing model, and keyboard model. Composes from existing cinder primitives
-(`focus-trap`, the planned `Portal`) where applicable. No vendor styling,
-no vendor API on the public surface.
+editing model, and keyboard model. The component is self-contained: no
+vendor styling, no vendor API on the public surface, and no dependency on
+cinder primitives that don't yet exist. If the cell editor needs an
+overlay that escapes the scroll container, the implementation-design
+checkpoint will spell out whether `data-grid` ships its own minimal
+portal helper or whether a shared `Portal` primitive lands first as
+prerequisite work.
 
 ### Wrap headless primitives
 
@@ -296,16 +307,17 @@ benefits from a tested library.
 Other packages that surfaced during the npm search and were ruled out
 quickly with the reason:
 
-| Package                                                                                    | Last published                | Reason                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@mediakular/gridcraft`](https://www.npmjs.com/package/@mediakular/gridcraft) 0.2.9       | 2024-09-02                    | Stale (>20 months); Svelte 4 era                                                                                                                                        |
-| [`another-svelte-data-grid`](https://www.npmjs.com/package/another-svelte-data-grid) 4.0.1 | 2023-12-09                    | Abandoned (>2 years)                                                                                                                                                    |
-| [`sv-data-grid`](https://www.npmjs.com/package/sv-data-grid) 0.6.1                         | 2020-04-05                    | Abandoned (>5 years)                                                                                                                                                    |
-| [`svelte-virtual-table`](https://www.npmjs.com/package/svelte-virtual-table) 2.0.3         | 2025-04-28                    | Virtualized table only — no editing, no range selection, no column ops; same scope-mismatch as [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables) |
-| [`svelte-tiny-virtual-list`](https://www.npmjs.com/package/svelte-tiny-virtual-list) 3.0.1 | 2025-07-05                    | List virtualization only — not a grid                                                                                                                                   |
-| [`svelte-virtual`](https://www.npmjs.com/package/svelte-virtual) 0.6.3                     | 2024-11-11 (~18.3 months old) | Just over the freshness threshold; superseded by TanStack virtual-core for our use                                                                                      |
-| [`svelte-headless-table`](https://www.npmjs.com/package/svelte-headless-table) 0.18.3      | 2024-10-28 (~18.8 months old) | Just over the freshness threshold and pinned to Svelte 4 store APIs                                                                                                     |
-| [`ag-grid-svelte`](https://www.npmjs.com/package/ag-grid-svelte) 0.3.0                     | 2023-07-06 (~35 months old)   | Abandoned; predates Svelte 5; no maintained successor                                                                                                                   |
+| Package                                                                                    | Last published                | Reason                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@mediakular/gridcraft`](https://www.npmjs.com/package/@mediakular/gridcraft) 0.2.9       | 2024-09-02                    | Stale (>20 months); Svelte 4 era                                                                                                                                              |
+| [`another-svelte-data-grid`](https://www.npmjs.com/package/another-svelte-data-grid) 4.0.1 | 2023-12-09                    | Abandoned (>2 years)                                                                                                                                                          |
+| [`sv-data-grid`](https://www.npmjs.com/package/sv-data-grid) 0.6.1                         | 2020-04-05                    | Abandoned (>5 years)                                                                                                                                                          |
+| [`svelte-virtual-table`](https://www.npmjs.com/package/svelte-virtual-table) 2.0.3         | 2025-04-28                    | Virtualized table only — no editing, no range selection, no column ops; same scope-mismatch as [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables)       |
+| [`svelte-tiny-virtual-list`](https://www.npmjs.com/package/svelte-tiny-virtual-list) 3.0.1 | 2025-07-05                    | List virtualization only — not a grid                                                                                                                                         |
+| [`svelte-virtual`](https://www.npmjs.com/package/svelte-virtual) 0.6.3                     | 2024-11-11 (~18.3 months old) | Just over the freshness threshold; predates Svelte 5 runes                                                                                                                    |
+| [`react-data-grid`](https://www.npmjs.com/package/react-data-grid) (rdg) 7.x               | current                       | React-only — would require a React runtime inside a Svelte 5 library. Same disqualifier as Glide. Listed here because reviewers familiar with the JS-grid ecosystem will ask. |
+| [`svelte-headless-table`](https://www.npmjs.com/package/svelte-headless-table) 0.18.3      | 2024-10-28 (~18.8 months old) | Just over the freshness threshold and pinned to Svelte 4 store APIs                                                                                                           |
+| [`ag-grid-svelte`](https://www.npmjs.com/package/ag-grid-svelte) 0.3.0                     | 2023-07-06 (~35 months old)   | Abandoned; predates Svelte 5; no maintained successor                                                                                                                         |
 
 ### Svelte-native freshness rule
 
