@@ -1211,10 +1211,11 @@
       "avoidWhen": ["Displaying a one-off transient notice — use toast-region or banner instead."],
       "related": ["feed-event"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/feed/schema",
-        "variables": "cinder/feed/variables"
+        "variables": "cinder/feed/variables",
+        "examples": "cinder/feed/examples"
       }
     },
     {
@@ -1353,10 +1354,11 @@
       ],
       "related": ["grid-list-item", "table"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/grid-list/schema",
-        "variables": "cinder/grid-list/variables"
+        "variables": "cinder/grid-list/variables",
+        "examples": "cinder/grid-list/examples"
       }
     },
     {
@@ -2290,10 +2292,11 @@
       ],
       "related": ["side-navigation-item", "side-navigation-group", "navigation-bar", "sidebar"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/side-navigation/schema",
-        "variables": "cinder/side-navigation/variables"
+        "variables": "cinder/side-navigation/variables",
+        "examples": "cinder/side-navigation/examples"
       }
     },
     {
@@ -2597,10 +2600,11 @@
       ],
       "related": ["stat"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/stat-group/schema",
-        "variables": "cinder/stat-group/variables"
+        "variables": "cinder/stat-group/variables",
+        "examples": "cinder/stat-group/examples"
       }
     },
     {

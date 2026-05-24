@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "feed",
+  "import": "cinder/feed",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic feed",
+      "description": "A semantic feed of dated events. Uses the Feed namespace API: Feed.Event composes inside the parent Feed list.",
+      "code": "<script lang=\"ts\">\n  import { Feed } from 'cinder/feed';\n</script>\n\n<Feed aria-label=\"Project activity\">\n  <Feed.Event datetime=\"2025-05-12T15:30:00Z\">\n    {#snippet icon()}\n      <span aria-hidden=\"true\">★</span>\n    {/snippet}\n    {#snippet timestamp()}2m ago{/snippet}\n    {#snippet content()}\n      <p style=\"margin: 0;\">Ada Lovelace starred the repository.</p>\n    {/snippet}\n  </Feed.Event>\n  <Feed.Event datetime=\"2025-05-12T14:05:00Z\">\n    {#snippet icon()}\n      <span aria-hidden=\"true\">✎</span>\n    {/snippet}\n    {#snippet timestamp()}1h ago{/snippet}\n    {#snippet content()}\n      <p style=\"margin: 0;\">Grace Hopper opened a pull request.</p>\n    {/snippet}\n  </Feed.Event>\n  <Feed.Event variant=\"minimal\" datetime=\"2025-05-11T09:42:00Z\">\n    {#snippet timestamp()}Yesterday{/snippet}\n    {#snippet content()}\n      <p style=\"margin: 0;\">Alan Turing commented on issue #42.</p>\n    {/snippet}\n  </Feed.Event>\n</Feed>\n"
+    }
+  ]
+}

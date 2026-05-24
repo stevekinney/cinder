@@ -4,13 +4,11 @@ A TreeItem component. Replace this sentence with a one-line purpose statement on
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TreeItem from 'cinder/tree-item';
-</script>
-
-<TreeItem />
-```
+`TreeItem` is a compose-only leaf of [`Tree`](../tree/README.md).
+The idiomatic API is `Tree.Item`, reached through the parent
+namespace — see the [tree README](../tree/README.md#usage) for the composed
+snippet. The flat `cinder/tree-item` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

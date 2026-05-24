@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "stat-group",
+  "import": "cinder/stat-group",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic stat group",
+      "description": "A row of summary metrics. Uses the StatGroup namespace API: StatGroup.Stat renders each metric inside the parent StatGroup grid.",
+      "code": "<script lang=\"ts\">\n  import { StatGroup } from 'cinder/stat-group';\n</script>\n\n<StatGroup label=\"This quarter\" columns={3}>\n  <StatGroup.Stat\n    label=\"Monthly revenue\"\n    value={48250}\n    valueFormatOptions={{ style: 'currency', currency: 'USD', maximumFractionDigits: 0 }}\n    change={{ value: '4.75%', direction: 'up', description: 'from last month' }}\n  />\n  <StatGroup.Stat\n    label=\"Active users\"\n    value={1289}\n    change={{ value: '12', direction: 'up', description: 'this week' }}\n  />\n  <StatGroup.Stat\n    label=\"Churn\"\n    value=\"2.1%\"\n    change={{ value: '0.3%', direction: 'down', description: 'vs prior period' }}\n  />\n</StatGroup>\n"
+    }
+  ]
+}

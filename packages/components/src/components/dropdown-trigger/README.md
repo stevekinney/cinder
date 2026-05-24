@@ -4,13 +4,11 @@ A DropdownTrigger component. Replace this sentence with a one-line purpose state
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import DropdownTrigger from 'cinder/dropdown-trigger';
-</script>
-
-<DropdownTrigger />
-```
+`DropdownTrigger` is a compose-only leaf of [`Dropdown`](../dropdown/README.md).
+The idiomatic API is `Dropdown.Trigger`, reached through the parent
+namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed
+snippet. The flat `cinder/dropdown-trigger` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

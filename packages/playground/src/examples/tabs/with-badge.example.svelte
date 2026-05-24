@@ -5,38 +5,35 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from 'cinder/tab';
-  import { TabList } from 'cinder/tab-list';
-  import { TabPanel } from 'cinder/tab-panel';
   import { Tabs } from 'cinder/tabs';
 
   let active = $state('inbox');
 </script>
 
 <Tabs bind:value={active}>
-  <TabList label="Mailboxes">
-    <Tab value="inbox">
+  <Tabs.List label="Mailboxes">
+    <Tabs.Trigger value="inbox">
       Inbox
       {#snippet trailing()}
         <span>3</span>
       {/snippet}
-    </Tab>
-    <Tab value="drafts">
+    </Tabs.Trigger>
+    <Tabs.Trigger value="drafts">
       Drafts
       {#snippet trailing()}
         <span>12</span>
       {/snippet}
-    </Tab>
-    <Tab value="archive">Archive</Tab>
-  </TabList>
+    </Tabs.Trigger>
+    <Tabs.Trigger value="archive">Archive</Tabs.Trigger>
+  </Tabs.List>
 
-  <TabPanel value="inbox">
+  <Tabs.Panel value="inbox">
     <p>You have three unread messages.</p>
-  </TabPanel>
-  <TabPanel value="drafts">
+  </Tabs.Panel>
+  <Tabs.Panel value="drafts">
     <p>Twelve drafts waiting for your attention.</p>
-  </TabPanel>
-  <TabPanel value="archive">
+  </Tabs.Panel>
+  <Tabs.Panel value="archive">
     <p>Nothing archived recently.</p>
-  </TabPanel>
+  </Tabs.Panel>
 </Tabs>

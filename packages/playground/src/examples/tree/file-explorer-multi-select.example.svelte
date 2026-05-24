@@ -6,7 +6,6 @@
 
 <script lang="ts">
   import { Tree } from 'cinder/tree';
-  import { TreeItem } from 'cinder/tree-item';
   import { TreeSelectAll } from 'cinder/tree-select-all';
 
   let selectedIds = $state<string[]>(['src']);
@@ -25,19 +24,24 @@
     <TreeSelectAll label="Project files" includeDescendants />
   {/snippet}
 
-  <TreeItem id="src" label="src" branch selectionScopeIds={['src', 'components', 'tree', 'button']}>
-    <TreeItem
+  <Tree.Item
+    id="src"
+    label="src"
+    branch
+    selectionScopeIds={['src', 'components', 'tree', 'button']}
+  >
+    <Tree.Item
       id="components"
       label="components"
       branch
       selectionScopeIds={['components', 'tree', 'button']}
     >
-      <TreeItem id="tree" label="tree.svelte" />
-      <TreeItem id="button" label="button.svelte" />
-    </TreeItem>
-  </TreeItem>
-  <TreeItem id="package" label="package.json" />
-  <TreeItem id="readme" label="README.md" />
+      <Tree.Item id="tree" label="tree.svelte" />
+      <Tree.Item id="button" label="button.svelte" />
+    </Tree.Item>
+  </Tree.Item>
+  <Tree.Item id="package" label="package.json" />
+  <Tree.Item id="readme" label="README.md" />
 </Tree>
 
 <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--cinder-text-muted);">

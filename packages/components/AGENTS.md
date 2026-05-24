@@ -339,6 +339,38 @@ Convention shown for Button:
    manifest entry, and per-component READMEs. Re-run `bun run
 components:check` to confirm the drift checker is happy.
 
+### Compound components
+
+A compound component is a parent that owns context and a small fixed set of
+compose-only leaves (Tabs/TabList/Tab/TabPanel, Table/TableBody/TableRow/…,
+Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
+
+- **Keep leaves physically separate.** Each leaf lives in its own component
+  directory under `src/components/<leaf>/` with its own `.svelte`,
+  `.types.ts`, schema, variables, tests, and README. Do not merge leaves
+  into the parent directory.
+- **Parent `index.ts` owns namespace composition.** The parent barrel imports
+  each leaf's `.svelte` source (never its `index.ts`) and exposes them as
+  properties using `Object.assign(ParentRoot, { LeafName: Leaf })` cast to
+  the intersection type. See `tabs/index.ts` for the canonical pattern.
+- **Leaf barrels must stay independent.** A leaf `index.ts` must not import
+  the parent barrel, the root barrel, or any namespace helper — that would
+  defeat tree-shaking for consumers importing only `cinder/<leaf>`. The
+  `compound-leaf-import-boundary.test.ts` enforces this.
+- **Add flat exports for new leaves too.** Continue adding the flat
+  `cinder/<leaf>` subpath and the leaf's entry in `src/index.ts`. The
+  namespace API is additive, not a replacement — keep flat leaf exports
+  for the compatibility window.
+- **Playground examples belong on the parent page.** Put compound usage
+  under `examples/<parent>/`, never under `examples/<leaf>/`. Leaves
+  documented under their parent should also be listed in
+  `packages/playground/src/discover.ts`'s `COMPOSE_ONLY_COMPONENTS` set so
+  the sidebar shows one entry per family.
+- **README usage snippets show the namespace form.** Parent READMEs
+  demonstrate `Parent.Leaf` composition and list every namespaced leaf in
+  their `Subcomponents` region. Leaf READMEs point back at the parent for
+  composed usage instead of duplicating a standalone snippet.
+
 ### Generators
 
 All of these are idempotent — run the generator, commit the result, the

@@ -1,4 +1,16 @@
-import Accordion from './accordion.svelte';
+import AccordionItem from '../accordion-item/accordion-item.svelte';
+import AccordionRoot from './accordion.svelte';
+
+/**
+ * `Accordion` is the parent compound component and a namespace exposing the
+ * compose-only `Accordion.Item` leaf. The leaf remains importable individually
+ * via `cinder/accordion-item`.
+ */
+const Accordion = Object.assign(AccordionRoot, {
+  Item: AccordionItem,
+}) as typeof AccordionRoot & {
+  Item: typeof AccordionItem;
+};
 
 export default Accordion;
 export { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';

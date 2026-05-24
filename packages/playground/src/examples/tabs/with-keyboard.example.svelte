@@ -5,31 +5,28 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from 'cinder/tab';
-  import { TabList } from 'cinder/tab-list';
-  import { TabPanel } from 'cinder/tab-panel';
   import { Tabs } from 'cinder/tabs';
   let active = $state('design');
 </script>
 
 <Tabs bind:value={active}>
-  <TabList label="Workflow stages">
-    <Tab value="design">Design</Tab>
-    <Tab value="develop">Develop</Tab>
-    <Tab value="ship" disabled>Ship</Tab>
-    <Tab value="review">Review</Tab>
-  </TabList>
+  <Tabs.List label="Workflow stages">
+    <Tabs.Trigger value="design">Design</Tabs.Trigger>
+    <Tabs.Trigger value="develop">Develop</Tabs.Trigger>
+    <Tabs.Trigger value="ship" disabled>Ship</Tabs.Trigger>
+    <Tabs.Trigger value="review">Review</Tabs.Trigger>
+  </Tabs.List>
 
-  <TabPanel value="design">
+  <Tabs.Panel value="design">
     <p>Sketch the user experience before writing code.</p>
-  </TabPanel>
-  <TabPanel value="develop">
+  </Tabs.Panel>
+  <Tabs.Panel value="develop">
     <p>Build the components and wire up the state.</p>
-  </TabPanel>
-  <TabPanel value="ship">
+  </Tabs.Panel>
+  <Tabs.Panel value="ship">
     <p>Disabled tab — its panel is unreachable.</p>
-  </TabPanel>
-  <TabPanel value="review">
+  </Tabs.Panel>
+  <Tabs.Panel value="review">
     <p>Review and iterate based on feedback.</p>
-  </TabPanel>
+  </Tabs.Panel>
 </Tabs>

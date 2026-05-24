@@ -6,20 +6,20 @@
     {
       "id": "basic",
       "title": "Basic accordion",
-      "description": "Single-select: opening one item closes the others.",
-      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  import { AccordionItem } from 'cinder/accordion-item';\n  let expandedIds = $state<string[]>([]);\n</script>\n\n<Accordion bind:expandedIds>\n  <AccordionItem id=\"item-1\" title=\"What is Cinder?\">\n    Cinder is a Svelte 5 design system built for composability and accessibility.\n  </AccordionItem>\n  <AccordionItem id=\"item-2\" title=\"How do I install it?\">\n    Run <code>bun add cinder</code> and import components from <code>cinder</code> or via subpath imports.\n  </AccordionItem>\n  <AccordionItem id=\"item-3\" title=\"Does it support SSR?\">\n    Yes — every component is SSR-safe and renders meaningful HTML before hydration.\n  </AccordionItem>\n</Accordion>\n"
+      "description": "Single-select: opening one item closes the others. Uses the Accordion namespace API.",
+      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  let expandedIds = $state<string[]>([]);\n</script>\n\n<Accordion bind:expandedIds>\n  <Accordion.Item id=\"item-1\" title=\"What is Cinder?\">\n    Cinder is a Svelte 5 design system built for composability and accessibility.\n  </Accordion.Item>\n  <Accordion.Item id=\"item-2\" title=\"How do I install it?\">\n    Run <code>bun add cinder</code> and import components from <code>cinder</code> or via subpath imports.\n  </Accordion.Item>\n  <Accordion.Item id=\"item-3\" title=\"Does it support SSR?\">\n    Yes — every component is SSR-safe and renders meaningful HTML before hydration.\n  </Accordion.Item>\n</Accordion>\n"
     },
     {
       "id": "disabled",
       "title": "Disabled item",
-      "description": "A disabled AccordionItem cannot be toggled.",
-      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  import { AccordionItem } from 'cinder/accordion-item';\n  let expandedIds = $state<string[]>([]);\n</script>\n\n<Accordion bind:expandedIds>\n  <AccordionItem id=\"a\" title=\"Available\">This item can be toggled normally.</AccordionItem>\n  <AccordionItem id=\"b\" title=\"Disabled (locked)\" disabled>\n    This content is never shown because the item is disabled.\n  </AccordionItem>\n  <AccordionItem id=\"c\" title=\"Also available\">This one too.</AccordionItem>\n</Accordion>\n"
+      "description": "A disabled Accordion.Item cannot be toggled.",
+      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  let expandedIds = $state<string[]>([]);\n</script>\n\n<Accordion bind:expandedIds>\n  <Accordion.Item id=\"a\" title=\"Available\">This item can be toggled normally.</Accordion.Item>\n  <Accordion.Item id=\"b\" title=\"Disabled (locked)\" disabled>\n    This content is never shown because the item is disabled.\n  </Accordion.Item>\n  <Accordion.Item id=\"c\" title=\"Also available\">This one too.</Accordion.Item>\n</Accordion>\n"
     },
     {
       "id": "multiple",
       "title": "Multiple open",
       "description": "With multiple={true}, any number of items can be open at once.",
-      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  import { AccordionItem } from 'cinder/accordion-item';\n  let expandedIds = $state<string[]>(['faq-1', 'faq-3']);\n</script>\n\n<Accordion multiple bind:expandedIds>\n  <AccordionItem id=\"faq-1\" title=\"Can I use multiple themes?\">\n    Yes — swap the CSS variables or layer your own tokens on top.\n  </AccordionItem>\n  <AccordionItem id=\"faq-2\" title=\"Is it tree-shakeable?\">\n    Every component is individually importable via subpath exports.\n  </AccordionItem>\n  <AccordionItem id=\"faq-3\" title=\"What browsers are supported?\">\n    Modern evergreen browsers. IE is not supported.\n  </AccordionItem>\n</Accordion>\n"
+      "code": "<script lang=\"ts\">\n  import { Accordion } from 'cinder/accordion';\n  let expandedIds = $state<string[]>(['faq-1', 'faq-3']);\n</script>\n\n<Accordion multiple bind:expandedIds>\n  <Accordion.Item id=\"faq-1\" title=\"Can I use multiple themes?\">\n    Yes — swap the CSS variables or layer your own tokens on top.\n  </Accordion.Item>\n  <Accordion.Item id=\"faq-2\" title=\"Is it tree-shakeable?\">\n    Every component is individually importable via subpath exports.\n  </Accordion.Item>\n  <Accordion.Item id=\"faq-3\" title=\"What browsers are supported?\">\n    Modern evergreen browsers. IE is not supported.\n  </Accordion.Item>\n</Accordion>\n"
     }
   ]
 }

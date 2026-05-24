@@ -4,13 +4,29 @@ A Tree component. Replace this sentence with a one-line purpose statement once t
 
 ## Usage
 
+`Tree` is a compound component. Import the parent and compose `Tree.Item` via
+the namespace API.
+
 ```svelte
 <script lang="ts">
-  import Tree from 'cinder/tree';
+  import { Tree } from 'cinder/tree';
+
+  let expandedIds = $state<string[]>(['fruit']);
 </script>
 
-<Tree />
+<Tree aria-label="Pantry" bind:expandedIds>
+  <Tree.Item id="fruit" label="Fruit" branch>
+    <Tree.Item id="apple" label="Apple" />
+    <Tree.Item id="banana" label="Banana" />
+  </Tree.Item>
+  <Tree.Item id="grain" label="Grain" branch>
+    <Tree.Item id="rice" label="Rice" />
+  </Tree.Item>
+</Tree>
 ```
+
+The leaf remains importable individually for à-la-carte builds — see
+`cinder/tree-item`.
 
 ## Props
 
@@ -44,6 +60,8 @@ This component does not declare any local CSS variables.
 
 <!-- generated:subcomponents:start -->
 
-None.
+- `Tree.Item` — a tree node, branch or leaf; see [`tree-item`](../tree-item/README.md).
+  Use the related `TreeSelectAll` (still flat-exported as `cinder/tree-select-all`)
+  for the root-level select-all control.
 
 <!-- generated:subcomponents:end -->

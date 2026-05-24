@@ -66,6 +66,37 @@ Every component is individually importable in Vite/SvelteKit consumers (the `sve
 > [!NOTE]
 > Subpath exports only define `svelte` and `types` conditions — they are designed for Vite/SvelteKit bundler consumers. Plain Node SSR consumers should use the root barrel via the `node` condition: `import { Button } from 'cinder'`. Per-component Node SSR subpaths are a Phase 5 addition.
 
+### Compound components
+
+Components with compose-only leaves (`Tabs`, `Table`, `Dropdown`, `Accordion`,
+`Tree`, `Feed`, `GridList`, `StatGroup`, `SideNavigation`) expose those leaves
+as namespace properties on the parent. Importing the parent once is the
+idiomatic API:
+
+```svelte
+<script lang="ts">
+  import { Tabs } from 'cinder';
+  // or: import { Tabs } from 'cinder/tabs';
+
+  let active = $state('overview');
+</script>
+
+<Tabs bind:value={active}>
+  <Tabs.List label="Project sections">
+    <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
+    <Tabs.Trigger value="activity">Activity</Tabs.Trigger>
+  </Tabs.List>
+  <Tabs.Panel value="overview">Project overview.</Tabs.Panel>
+  <Tabs.Panel value="activity">Recent activity.</Tabs.Panel>
+</Tabs>
+```
+
+The flat leaf exports (`Tab`, `TabList`, `TabPanel`, `TableBody`,
+`DropdownTrigger`, `AccordionItem`, and the rest) remain supported for the
+foreseeable future. Both the root barrel (`import { Tab } from 'cinder'`)
+and the per-leaf subpaths (`import Tab from 'cinder/tab'`) continue to work
+unchanged — deprecation of those forms is out of scope for this change.
+
 ### Export conditions
 
 | Condition | Target                  | Consumer type                      |

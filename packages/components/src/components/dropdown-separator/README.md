@@ -4,13 +4,11 @@ A DropdownSeparator component. Replace this sentence with a one-line purpose sta
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import DropdownSeparator from 'cinder/dropdown-separator';
-</script>
-
-<DropdownSeparator />
-```
+`DropdownSeparator` is a compose-only leaf of [`Dropdown`](../dropdown/README.md).
+The idiomatic API is `Dropdown.Separator`, reached through the parent
+namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed
+snippet. The flat `cinder/dropdown-separator` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

@@ -1,18 +1,17 @@
 <script lang="ts" module>
   export const title = 'Disabled item';
-  export const description = 'A disabled AccordionItem cannot be toggled.';
+  export const description = 'A disabled Accordion.Item cannot be toggled.';
 </script>
 
 <script lang="ts">
   import { Accordion } from 'cinder/accordion';
-  import { AccordionItem } from 'cinder/accordion-item';
   let expandedIds = $state<string[]>([]);
 </script>
 
 <Accordion bind:expandedIds>
-  <AccordionItem id="a" title="Available">This item can be toggled normally.</AccordionItem>
-  <AccordionItem id="b" title="Disabled (locked)" disabled>
+  <Accordion.Item id="a" title="Available">This item can be toggled normally.</Accordion.Item>
+  <Accordion.Item id="b" title="Disabled (locked)" disabled>
     This content is never shown because the item is disabled.
-  </AccordionItem>
-  <AccordionItem id="c" title="Also available">This one too.</AccordionItem>
+  </Accordion.Item>
+  <Accordion.Item id="c" title="Also available">This one too.</Accordion.Item>
 </Accordion>

@@ -6,11 +6,6 @@
 
 <script lang="ts">
   import { Table } from 'cinder/table';
-  import { TableBody } from 'cinder/table-body';
-  import { TableCell } from 'cinder/table-cell';
-  import { TableHeader } from 'cinder/table-header';
-  import { TableHeaderCell } from 'cinder/table-header-cell';
-  import { TableRow } from 'cinder/table-row';
   const people = [
     {
       id: '1',
@@ -57,39 +52,39 @@
 </script>
 
 <Table caption="Recent contributors" selectable>
-  <TableHeader
+  <Table.Header
     {allSelected}
     {someSelected}
     {onSelectAll}
     selectAllLabel="Select all selectable rows"
   >
-    <TableRow>
-      <TableHeaderCell>Name</TableHeaderCell>
-      <TableHeaderCell>Role</TableHeaderCell>
-      <TableHeaderCell>Commits</TableHeaderCell>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
+    <Table.Row>
+      <Table.HeaderCell>Name</Table.HeaderCell>
+      <Table.HeaderCell>Role</Table.HeaderCell>
+      <Table.HeaderCell>Commits</Table.HeaderCell>
+    </Table.Row>
+  </Table.Header>
+  <Table.Body>
     {#each people as person (person.id)}
       {#if person.selectionDisabled}
-        <TableRow selectionDisabled={true}>
-          <TableCell>{person.name}</TableCell>
-          <TableCell>{person.role}</TableCell>
-          <TableCell align="right">{person.commits}</TableCell>
-        </TableRow>
+        <Table.Row selectionDisabled={true}>
+          <Table.Cell>{person.name}</Table.Cell>
+          <Table.Cell>{person.role}</Table.Cell>
+          <Table.Cell align="right">{person.commits}</Table.Cell>
+        </Table.Row>
       {:else}
-        <TableRow
+        <Table.Row
           selected={selectedIds.has(person.id)}
           onSelectedChange={(next) => onRowChange(person.id, next)}
           selectionLabel={`Select ${person.name}`}
         >
-          <TableCell>{person.name}</TableCell>
-          <TableCell>{person.role}</TableCell>
-          <TableCell align="right">{person.commits}</TableCell>
-        </TableRow>
+          <Table.Cell>{person.name}</Table.Cell>
+          <Table.Cell>{person.role}</Table.Cell>
+          <Table.Cell align="right">{person.commits}</Table.Cell>
+        </Table.Row>
       {/if}
     {/each}
-  </TableBody>
+  </Table.Body>
 </Table>
 
 {#if selectedIds.size > 0}
