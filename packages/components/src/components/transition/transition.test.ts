@@ -121,6 +121,48 @@ describe('Presence', () => {
     expect(wrapper.dataset['cinderState']).toBe('open');
   });
 
+  test('does not fire onExitComplete twice when forceMount keeps wrapper after an early transitionend', async () => {
+    // Regression for Cursor Bugbot finding on commit 26c18825: with forceMount the wrapper stays
+    // mounted after exit completes. A wrapper-level `transitionend` arriving before the rAF set
+    // `requiredElapsed`/`exitStart` passes the (0 - 0 < 0) timing check and runs `completeExit`.
+    // Without invalidating `exitGeneration` in `completeExit`, the subsequent rAF's
+    // `generation !== exitGeneration` guard still passes and re-enters `completeExit` —
+    // double-firing `onExitComplete`. Pinning exitCount === 1 here documents the invariant; the
+    // primary defense is `exitGeneration += 1` in `completeExit` itself.
+    let exitCount = 0;
+    const onExitComplete = () => {
+      exitCount += 1;
+    };
+
+    const { container, rerender } = render(Presence, {
+      props: {
+        present: true,
+        forceMount: true,
+        children: transitionChildren,
+        onExitComplete,
+      },
+    });
+
+    await tick();
+    await rerender({
+      present: false,
+      forceMount: true,
+      children: transitionChildren,
+      onExitComplete,
+    });
+
+    const wrapper = container.querySelector('[data-cinder-state]') as HTMLDivElement;
+    // Fire transitionend on the wrapper before the rAF has had a chance to record exit timing.
+    wrapper.dispatchEvent(new Event('transitionend', { bubbles: true }));
+
+    await waitForAnimationFrame();
+    await waitForAnimationFrame();
+    // Drain any pending setTimeout completeExit scheduled by the rAF callback (the bug path).
+    await new Promise<void>((resolve) => setTimeout(resolve, 60));
+
+    expect(exitCount).toBe(1);
+  });
+
   test('unmounts after a zero-duration exit and calls onExitComplete', async () => {
     let exitCount = 0;
     const { container, rerender } = render(Presence, {

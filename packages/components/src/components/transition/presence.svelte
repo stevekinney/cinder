@@ -34,6 +34,11 @@
 
   function completeExit(generation: number) {
     if (generation !== exitGeneration) return;
+    // Invalidate the generation so any pending rAF/timeout/transitionend callbacks for this exit
+    // fail their `generation !== exitGeneration` guard. With `forceMount`, the wrapper stays in the
+    // DOM after exit, so a late `transitionend` could otherwise pass the stale-zero timing check
+    // and re-enter `completeExit` — firing `onExitComplete` twice.
+    exitGeneration += 1;
     clearExitTimer();
     presenceState = 'exited';
     visibilityState = 'closed';
