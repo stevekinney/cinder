@@ -1539,6 +1539,32 @@
       }
     },
     {
+      "name": "KanbanBoard",
+      "id": "kanban-board",
+      "import": "cinder/kanban-board",
+      "exportName": "KanbanBoard",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Controlled multi-column board for reordering cards within and across workflow columns with keyboard, pointer, and live-region feedback.",
+      "tags": ["board", "kanban", "drag", "reorder"],
+      "useWhen": [
+        "Presenting a workflow board where users move cards between ordered columns.",
+        "Consumers own card rendering and need cinder to manage reorder affordances and change metadata."
+      ],
+      "avoidWhen": [
+        "Showing a single ordered list — use sortable-list instead.",
+        "Sorting by computed fields rather than direct manual placement."
+      ],
+      "related": ["sortable-list", "grid-list", "data-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/kanban-board/schema",
+        "variables": "cinder/kanban-board/variables",
+        "examples": "cinder/kanban-board/examples"
+      }
+    },
+    {
       "name": "Kbd",
       "id": "kbd",
       "import": "cinder/kbd",

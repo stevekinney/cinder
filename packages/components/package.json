@@ -1114,6 +1114,27 @@
       "import": "./src/components/json-schema-editor/json-schema-editor.examples.json",
       "default": "./src/components/json-schema-editor/json-schema-editor.examples.json"
     },
+    "./kanban-board": {
+      "types": "./dist/components/kanban-board/index.d.ts",
+      "svelte": "./src/components/kanban-board/index.ts",
+      "node": "./dist/server/components/kanban-board/index.js",
+      "default": "./dist/components/kanban-board/index.js"
+    },
+    "./kanban-board/schema": {
+      "types": "./dist/components/kanban-board/kanban-board.schema.d.ts",
+      "svelte": "./src/components/kanban-board/kanban-board.schema.ts"
+    },
+    "./kanban-board/variables": {
+      "types": "./dist/components/kanban-board/kanban-board.variables.d.ts",
+      "svelte": "./src/components/kanban-board/kanban-board.variables.ts"
+    },
+    "./kanban-board/styles": {
+      "default": "./dist/components/kanban-board/kanban-board.css"
+    },
+    "./kanban-board/examples": {
+      "import": "./src/components/kanban-board/kanban-board.examples.json",
+      "default": "./src/components/kanban-board/kanban-board.examples.json"
+    },
     "./kbd": {
       "types": "./dist/components/kbd/index.d.ts",
       "svelte": "./src/components/kbd/index.ts",

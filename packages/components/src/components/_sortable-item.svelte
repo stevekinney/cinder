@@ -54,6 +54,7 @@
   let moveRafHandle: number | null = null;
   let scrollRafHandle: number | null = null;
   let latestPointerY = 0;
+  let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
 
   const isLifted = $derived(
@@ -147,8 +148,18 @@
       return rect.top + rect.height / 2;
     });
     const insertionIndex = midpoints.filter((m) => m < latestPointerY).length;
-    const target = Math.max(0, Math.min(insertionIndex, total - 1));
+    if (context.getPointerTarget) {
+      const target = context.getPointerTarget({
+        activeKey: itemKey,
+        pointerX: latestPointerX,
+        pointerY: latestPointerY,
+        itemLabel,
+      });
+      if (target) context.move(target.index, itemLabel, target.total);
+      return;
+    }
 
+    const target = Math.max(0, Math.min(insertionIndex, total - 1));
     context.move(target, itemLabel, total);
   }
 
@@ -165,6 +176,7 @@
     event.preventDefault();
     pointerActive = true;
     pointerId = event.pointerId;
+    latestPointerX = event.clientX;
     latestPointerY = event.clientY;
 
     handleEl.setPointerCapture(event.pointerId);
@@ -174,6 +186,7 @@
 
   function handlePointerMove(event: PointerEvent): void {
     if (!pointerActive) return;
+    latestPointerX = event.clientX;
     latestPointerY = event.clientY;
     // Gate DOM reads to one per animation frame to avoid layout thrash on every event.
     // Uses a separate handle from scrollRafHandle so auto-scroll and move don't compete.
@@ -212,6 +225,21 @@
     }
 
     switch (key) {
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        if (
+          context.handleLiftedKeydown?.({
+            event,
+            itemKey,
+            itemLabel,
+            index,
+            total,
+          }) === true
+        ) {
+          return;
+        }
+        break;
+
       case ' ':
       case 'Enter':
         event.preventDefault();

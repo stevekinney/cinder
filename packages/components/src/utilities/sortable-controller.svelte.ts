@@ -33,6 +33,19 @@ export type SortableContextValue = {
   cancel: (itemLabel: string) => void;
   lift: (key: string | number, fromIndex: number, itemLabel: string, total: number) => void;
   move: (toIndex: number, itemLabel: string, total: number) => void;
+  getPointerTarget?: (input: {
+    activeKey: string | number;
+    pointerX: number;
+    pointerY: number;
+    itemLabel: string;
+  }) => { index: number; total: number } | null;
+  handleLiftedKeydown?: (input: {
+    event: KeyboardEvent;
+    itemKey: string | number;
+    itemLabel: string;
+    index: number;
+    total: number;
+  }) => boolean;
 };
 
 export const [getSortableContext, setSortableContext] = createContext<SortableContextValue>();
