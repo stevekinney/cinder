@@ -843,7 +843,7 @@ function sortXValues(values: NormalizedXValue[]): NormalizedXValue[] {
 }
 
 function createPaddedDomain(values: number[]): [number, number] {
-  if (values.length === 0) return [0, 0];
+  if (values.length === 0) return [-1, 1];
   // Avoid spread-call argument-limit cliffs on large arrays.
   let minimum = values[0]!;
   let maximum = values[0]!;

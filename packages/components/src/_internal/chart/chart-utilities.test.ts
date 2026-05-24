@@ -274,6 +274,61 @@ describe('createCartesianModel', () => {
     expect(model.xTicks).toHaveLength(0);
   });
 
+  test('uses a non-zero y-domain when no visible y values exist', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        {
+          id: 's',
+          label: 'S',
+          data: [
+            { x: 'Jan', y: null },
+            { x: 'Feb', y: undefined },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    expect(model.yDomain).toEqual([-1, 1]);
+    for (const tick of model.yTicks) {
+      const y =
+        model.geometry.plotHeight -
+        ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+          model.geometry.plotHeight;
+      expect(Number.isFinite(y)).toBe(true);
+    }
+  });
+
+  test('uses a non-zero y-domain when every series is hidden', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 's',
+          label: 'S',
+          data: [
+            { x: 'Jan', y: 10 },
+            { x: 'Feb', y: 20 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: ['s'],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+    expect(model.yDomain).toEqual([-1, 1]);
+    for (const tick of model.yTicks) {
+      const y =
+        model.geometry.plotHeight -
+        ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+          model.geometry.plotHeight;
+      expect(Number.isFinite(y)).toBe(true);
+    }
+  });
+
   test('surfaces pixel coordinates on placed points', () => {
     const model = createCartesianModel({
       componentId: 'line-chart',
