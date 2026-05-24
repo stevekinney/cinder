@@ -41,5 +41,7 @@ export interface PresenceSchemaProps {
 
 export interface TransitionSchemaProps {
   show: boolean;
+  transition?: TransitionFunction<unknown>;
+  transitionParameters?: unknown;
   class?: string;
 }

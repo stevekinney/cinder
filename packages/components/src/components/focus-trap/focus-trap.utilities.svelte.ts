@@ -61,7 +61,12 @@ function resolveScopedTarget(root: HTMLElement, target: FocusTargetInput): HTMLE
   const resolved = readOption(target ?? null);
   if (!resolved) return null;
   if (typeof resolved === 'string') {
-    const match = root.querySelector<HTMLElement>(resolved);
+    let match: HTMLElement | null = null;
+    try {
+      match = root.querySelector<HTMLElement>(resolved);
+    } catch {
+      return null;
+    }
     return match && root.contains(match) ? match : null;
   }
   return resolved instanceof HTMLElement && root.contains(resolved) ? resolved : null;

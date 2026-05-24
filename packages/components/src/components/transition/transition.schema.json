@@ -10,5 +10,17 @@
     }
   },
   "additionalProperties": false,
-  "required": ["show"]
+  "required": ["show"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "transition",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "transitionParameters",
+        "reason": "unknown-shape"
+      }
+    ]
+  }
 }

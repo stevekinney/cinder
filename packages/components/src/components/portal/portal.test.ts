@@ -9,6 +9,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
+const { copyInheritedPortalAttributes } = await import('./portal.utilities.svelte.ts');
 
 const childSnippet = createRawSnippet(() => ({
   render: () => '<button data-testid="portal-child">Portaled child</button>',
@@ -100,6 +101,46 @@ describe('Portal', () => {
 
     expect(hostA.querySelector('[data-testid="portal-child"]')).toBeNull();
     expect(hostB.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('renders inline when the target selector is unresolved after hydration', async () => {
+    const { container } = render(Portal, {
+      props: {
+        target: '#missing-portal-host',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    expect(container.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('clears inherited attributes back to explicit initial values', () => {
+    const element = document.createElement('div');
+    element.setAttribute('dir', 'ltr');
+
+    const themedSource = document.createElement('section');
+    themedSource.setAttribute('dir', 'rtl');
+    themedSource.setAttribute('data-cinder-theme', 'dark');
+    const child = document.createElement('span');
+    themedSource.appendChild(child);
+
+    copyInheritedPortalAttributes(element, child, true, {
+      dir: 'ltr',
+      theme: null,
+    });
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+    expect(element.getAttribute('data-cinder-theme')).toBe('dark');
+
+    copyInheritedPortalAttributes(element, null, true, {
+      dir: 'ltr',
+      theme: null,
+    });
+
+    expect(element.getAttribute('dir')).toBe('ltr');
+    expect(element.hasAttribute('data-cinder-theme')).toBe(false);
   });
 
   test('detaches from the target and reappears inline when disabled flips false to true', async () => {

@@ -27,6 +27,10 @@ Moves content into `document.body` or another host element while keeping inline 
 
 <!-- generated:props:end -->
 
+`target` accepts either a selector string or an `HTMLElement`. If a selector cannot
+be resolved after hydration, Portal keeps its children inline and warns in
+development.
+
 ## CSS Variables
 
 <!-- generated:variables:start -->

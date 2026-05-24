@@ -7,7 +7,7 @@
       "id": "presence",
       "title": "Presence state",
       "description": "Coordinates CSS-driven enter and exit states while keeping the wrapper mounted through the outro.",
-      "code": "<script lang=\"ts\">\n  import { Button, Presence } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Hide presence' : 'Show presence'}\n</Button>\n\n<Presence\n  present={open}\n  style=\"\n    display: block;\n    margin-block-start: var(--cinder-space-4);\n    transition:\n      opacity 180ms ease,\n      transform 180ms ease;\n  \"\n>\n  <div\n    style=\"\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    This card exits only after its CSS transition finishes.\n  </div>\n</Presence>\n"
+      "code": "<script lang=\"ts\">\n  import { Button, Presence } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Hide presence' : 'Show presence'}\n</Button>\n\n<Presence\n  present={open}\n  style=\"\n    display: block;\n    margin-block-start: var(--cinder-space-4);\n    opacity: {open ? 1 : 0};\n    transform: translateY({open ? 0 : '-0.25rem'});\n    transition:\n      opacity 180ms ease,\n      transform 180ms ease;\n  \"\n>\n  <div\n    style=\"\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    This card exits only after its CSS transition finishes.\n  </div>\n</Presence>\n"
     },
     {
       "id": "svelte-transition",

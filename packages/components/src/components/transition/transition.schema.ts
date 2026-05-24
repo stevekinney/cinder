@@ -13,6 +13,18 @@ const schema = {
   },
   additionalProperties: false,
   required: ['show'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'transition',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'transitionParameters',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

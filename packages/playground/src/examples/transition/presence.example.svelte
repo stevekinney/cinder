@@ -19,6 +19,8 @@
   style="
     display: block;
     margin-block-start: var(--cinder-space-4);
+    opacity: {open ? 1 : 0};
+    transform: translateY({open ? 0 : '-0.25rem'});
     transition:
       opacity 180ms ease,
       transform 180ms ease;

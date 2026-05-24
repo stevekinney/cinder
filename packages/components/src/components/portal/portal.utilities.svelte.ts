@@ -62,19 +62,29 @@ export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
+  fallbackAttributes: { dir: string | null; theme: string | null } = {
+    dir: element.getAttribute('dir'),
+    theme: element.getAttribute('data-cinder-theme'),
+  },
 ) {
-  if (!inheritAttributes || !source) return;
-
-  const inheritedDir = source.closest<HTMLElement>('[dir]')?.getAttribute('dir');
-  if (inheritedDir) {
-    element.setAttribute('dir', inheritedDir);
+  const inheritedDir =
+    inheritAttributes && source ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir') : null;
+  const nextDir = inheritedDir ?? fallbackAttributes.dir;
+  if (nextDir) {
+    element.setAttribute('dir', nextDir);
+  } else {
+    element.removeAttribute('dir');
   }
 
-  const inheritedTheme = source
-    .closest<HTMLElement>('[data-cinder-theme]')
-    ?.getAttribute('data-cinder-theme');
-  if (inheritedTheme) {
-    element.setAttribute('data-cinder-theme', inheritedTheme);
+  const inheritedTheme =
+    inheritAttributes && source
+      ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
+      : null;
+  const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
+  if (nextTheme) {
+    element.setAttribute('data-cinder-theme', nextTheme);
+  } else {
+    element.removeAttribute('data-cinder-theme');
   }
 }
 
@@ -88,6 +98,10 @@ export function createPortalAttachment(
     // `appendChild`, `element.parentElement` becomes the portal target — which would defeat the
     // "inherit dir/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
+    const initialAttributes = {
+      dir: element.getAttribute('dir'),
+      theme: element.getAttribute('data-cinder-theme'),
+    };
 
     // Drop a placeholder comment at the wrapper's original location. When `disabled` flips true or
     // the target can no longer be resolved, the wrapper is reinserted at this anchor so children
@@ -115,7 +129,12 @@ export function createPortalAttachment(
       const resolved = disabled ? null : resolvePortalTarget(targetValue);
 
       if (!disabled && resolved?.kind === 'resolved') {
-        copyInheritedPortalAttributes(element, attributeSource, inheritAttributes);
+        copyInheritedPortalAttributes(
+          element,
+          attributeSource,
+          inheritAttributes,
+          initialAttributes,
+        );
         resolved.target.appendChild(element);
         lastWarnedUnresolvedKey = null;
       } else if (!disabled && resolved?.kind === 'unresolved') {

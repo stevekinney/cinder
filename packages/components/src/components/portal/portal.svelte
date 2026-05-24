@@ -37,9 +37,7 @@
 
   const resolvedTarget = $derived(!disabled ? resolvePortalTarget(target) : null);
 
-  const shouldRenderChildren = $derived(
-    disabled || (hasHydrated && resolvedTarget?.kind === 'resolved'),
-  );
+  const shouldRenderChildren = $derived(disabled || (hasHydrated && resolvedTarget !== null));
 </script>
 
 <div

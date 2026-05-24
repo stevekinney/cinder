@@ -112,6 +112,19 @@ describe('FocusTrap', () => {
     expect(document.activeElement).toBe(getByTestId('fallback-target'));
   });
 
+  test('ignores invalid selector targets and falls back to tabbable content', async () => {
+    const { getByTestId } = render(FocusTrap, {
+      props: {
+        initialFocus: '[',
+        children: focusTrapChildren,
+      },
+    });
+
+    await tick();
+
+    expect(document.activeElement).toBe(getByTestId('first-button'));
+  });
+
   test('restores focus to the previously focused element even if active is false at unmount', async () => {
     // Regression for Codex round 1 finding: previously the cleanup branch checked the *current*
     // `isActive()` value, so deactivating the trap before unmount silently skipped focus

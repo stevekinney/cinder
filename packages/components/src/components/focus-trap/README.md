@@ -29,6 +29,10 @@ Traps keyboard focus within a container and restores focus to the previously foc
 
 <!-- generated:props:end -->
 
+`initialFocus` and `fallbackFocus` accept either selector strings or `HTMLElement`
+references. Invalid selectors are ignored so the trap can fall back to the next
+available focus target.
+
 ## CSS Variables
 
 <!-- generated:variables:start -->

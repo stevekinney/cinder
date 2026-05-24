@@ -18,12 +18,18 @@ Coordinates enter and exit lifecycles either with CSS-driven presence state or w
 
 <!-- generated:props:start -->
 
-| Prop    | Type      | Required | Default | Description |
-| ------- | --------- | -------- | ------- | ----------- |
-| `class` | `string`  | no       | —       |             |
-| `show`  | `boolean` | yes      | —       |             |
+| Prop                   | Type       | Required | Default | Description         |
+| ---------------------- | ---------- | -------- | ------- | ------------------- |
+| `class`                | `string`   | no       | —       |                     |
+| `show`                 | `boolean`  | yes      | —       |                     |
+| `transition`           | `(opaque)` | —        | —       | function-or-snippet |
+| `transitionParameters` | `(opaque)` | —        | —       | unknown-shape       |
 
 <!-- generated:props:end -->
+
+`Transition` also accepts a Svelte-compatible `transition` function and matching
+`transitionParameters`. `Presence` accepts `present`, `forceMount`, and
+`onExitComplete` for CSS-driven mount and unmount coordination.
 
 ## CSS Variables
 
