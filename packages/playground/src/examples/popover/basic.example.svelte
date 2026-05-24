@@ -5,24 +5,32 @@
 </script>
 
 <script lang="ts">
+  import { Button } from 'cinder/button';
   import { Popover } from 'cinder/popover';
+
+  const popoverHeadingId = 'account-settings-popover-title';
+
   let open = $state(false);
-  let triggerEl: HTMLButtonElement | null = $state(null);
 </script>
 
 <div style="padding: 4rem; display: flex; flex-direction: column; gap: 1rem;">
-  <button type="button" bind:this={triggerEl} onclick={() => (open = !open)}>
-    Toggle popover
-  </button>
+  <Popover bind:open ariaLabelledby={popoverHeadingId} showArrow>
+    {#snippet trigger()}
+      <Button label="Toggle popover" onclick={() => (open = !open)} />
+    {/snippet}
 
-  <Popover bind:open triggerRef={triggerEl} label="Account settings" showArrow>
     <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 14rem;">
-      <strong>Account</strong>
+      <h2
+        id={popoverHeadingId}
+        style="margin: 0; font-size: var(--cinder-text-sm); color: var(--cinder-text);"
+      >
+        Account settings
+      </h2>
       <p style="margin: 0; font-size: 0.875rem; color: var(--cinder-text-muted, currentColor);">
         Edit your profile, manage billing, or sign out.
       </p>
-      <button type="button" onclick={() => (open = false)}>Edit profile</button>
-      <button type="button" onclick={() => (open = false)}>Sign out</button>
+      <Button variant="secondary" label="Edit profile" onclick={() => (open = false)} />
+      <Button variant="ghost-danger" label="Sign out" onclick={() => (open = false)} />
     </div>
   </Popover>
 </div>
