@@ -318,10 +318,22 @@
     pointerColumnIndex = null;
   }
 
+  function cancelColumnLift(columnTitle?: string): void {
+    columnLiftedKey = null;
+    columnTargetIndex = null;
+    if (columnTitle) announcer.announce(`${columnTitle} column move cancelled.`);
+  }
+
   function handleWindowKeydown(event: KeyboardEvent): void {
     if (cardController.phase === 'lifted' && event.key === 'Escape') {
       event.preventDefault();
       cancelCardLift();
+      return;
+    }
+    if (columnLiftedKey !== null && event.key === 'Escape') {
+      event.preventDefault();
+      const column = columns.find((currentColumn) => currentColumn.id === columnLiftedKey);
+      cancelColumnLift(column?.title);
     }
   }
 
@@ -347,6 +359,9 @@
     const result = moveKanbanColumn(columns, column.id, targetIndex);
     columnLiftedKey = null;
     columnTargetIndex = null;
+    announcer.announce(
+      `${column.title} column dropped at position ${targetIndex + 1} of ${columns.length}.`,
+    );
     if (result) onchange(result.nextColumns, result.change);
   }
 
@@ -378,15 +393,11 @@
     const currentTarget = columnTargetIndex ?? columnIndex;
     if (event.key === 'Escape') {
       event.preventDefault();
-      columnLiftedKey = null;
-      columnTargetIndex = null;
-      announcer.announce(`${column.title} column move cancelled.`);
+      cancelColumnLift(column.title);
       return;
     }
     if (event.key === 'Tab') {
-      columnLiftedKey = null;
-      columnTargetIndex = null;
-      announcer.announce(`${column.title} column move cancelled.`);
+      cancelColumnLift(column.title);
       return;
     }
     if (event.key === ' ' || event.key === 'Enter') {

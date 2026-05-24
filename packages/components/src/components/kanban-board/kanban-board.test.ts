@@ -397,6 +397,7 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
     await fireEvent.keyDown(handle, { key: ' ' });
+    await waitForAnnouncement();
 
     expect(onchange).toHaveBeenCalledTimes(1);
     expect(onchange.mock.calls[0][0].map((column: KanbanBoardColumn<Card>) => column.id)).toEqual([
@@ -410,6 +411,9 @@ describe('KanbanBoard', () => {
       fromIndex: 0,
       toIndex: 1,
     });
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'To do column dropped at position 2 of 3',
+    );
   });
 
   test('column handle click lifts and drops the active column', async () => {
@@ -428,6 +432,24 @@ describe('KanbanBoard', () => {
       fromIndex: 0,
       toIndex: 1,
     });
+  });
+
+  test('window Escape cancels a lifted column after focus leaves the handle', async () => {
+    const { container, onchange } = renderBoard();
+    const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await tick();
+    expect(handle.getAttribute('aria-pressed')).toBe('true');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitForAnnouncement();
+
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    expect(onchange).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'To do column move cancelled',
+    );
   });
 
   test('column keyboard reorder cancels on Tab without moving focus prevention', async () => {
