@@ -403,46 +403,90 @@ editing, selection, and keyboard navigation. A smaller-scope path
 selection model. That smaller scope is a different ticket; this decision
 does not relitigate it.
 
-### Proposed shape if the user approves `build`
+### Scope contract if `build` is approved
 
-- `DataGrid` is a cinder component under
-  `packages/components/src/components/data-grid/` with `role="grid"`,
-  `aria-activedescendant` focus model, three column partitions
-  (pinned-left, virtual center, pinned-right), controlled single-column
-  sort with multi-sort opt-in, typed editor descriptors plus a custom
-  editor snippet, spreadsheet keyboard model, and the standard cinder
-  styling-state attributes (`data-cinder-active`, `-selected`, `-range`,
-  `-editing`, `-invalid`, `-pinned`, `-frozen-header`, `-resizing`).
-- The single new runtime dependency is `@tanstack/virtual-core`,
-  consumed internally only — no vendor type, vendor event, or vendor
-  configuration object on `DataGrid`'s public surface.
-- All other Requirement-21 behavior is cinder code under cinder's tests
-  and cinder's design tokens.
+The approved build commits cinder to delivering the full Requirement 21
+list — specifically, both single-column **and** multi-column sort, range
+selection, column pin/reorder/resize, inline editing, and the full
+spreadsheet keyboard model. The single new runtime dependency is
+`@tanstack/virtual-core`, consumed internally only — no vendor type,
+event, or configuration object reaches `DataGrid`'s public surface. All
+other Requirement-21 behavior is cinder code under cinder's tests and
+design tokens.
+
+The detailed API surface, internal module breakdown, ARIA model, and
+state attributes are decided in `data-grid-implementation-design.md`,
+not here. This decision locks in the dependency choice and the feature
+list above; nothing else.
+
+### Re-evaluation triggers (post-approval)
+
+Even after approval, the decision is revisited if any of these fire:
+
+- **`virtual-core` API break.** A breaking change in
+  `@tanstack/virtual-core` before `data-grid` reaches stable status —
+  re-evaluate whether to fork, pin, or replace before continuing.
+- **Maintenance stalls.** `@tanstack/virtual-core` goes 12 months without
+  a release or shows an unresponsive issue queue — re-evaluate writing
+  the virtualization math in-cinder.
+- **Bundle delta surprise.** The implementation-design checkpoint
+  measures cinder's grid + `virtual-core` browser contribution as
+  materially larger than the React/Vue ecosystem baseline for the same
+  library — surface and decide whether to continue.
+- **Scope overrun.** Implementation-design estimates more than 8 PRs to
+  reach Requirement 21 coverage, or the first 3 PRs slip the estimate by
+  50%+ — pause and re-decide rather than stack scope.
+- **Svelte-native option appears.** A new Svelte-native grid library
+  reaches Svelte 5 + Requirement 21 coverage on an MIT-class license —
+  re-open the wrap path.
+
+Triggers are recorded; they do not auto-revert the decision. Re-evaluation
+means a written follow-up note under `docs/decisions/`.
 
 ### Fallback if the user rejects `build`
 
-If the user prefers to wrap instead, the only candidate this document
-considers viable without further investigation is
+If the user prefers wrap instead, the recommended fallback is
 **`@tanstack/table-core` + `@tanstack/virtual-core`** (headless wrap).
-Every other wrap candidate is disqualified above. Picking the headless
-wrap would also need a separate analysis pass on whether the column-state
-savings justify the additional ~3.3 MB unpacked surface.
+The two Svelte adapter packages (`@tanstack/svelte-table`,
+`@tanstack/svelte-virtual`) were considered alongside but rejected as
+the fallback recommendation because the Svelte adapters historically lag
+the core packages on releases and add a second moving part to defend.
+The core packages are the recommended fallback. Every other wrap
+candidate is disqualified above. Picking the headless wrap would also
+need a separate analysis pass on whether the column-state savings
+justify the additional ~3.3 MB unpacked surface.
 
 ### What the user needs to do next
 
-Approval lives in `docs/decisions/data-grid-implementation-approval.md`
-and must include the literal line:
+Approval lives at `docs/decisions/data-grid-implementation-approval.md`.
+The plan's Acceptance Criterion 7 requires the approval to be
+**user-authored externally** (a task comment, a PR comment, or another
+pre-existing user-authored file) and then transcribed into the approval
+file with `Approval source:` pointing back at the external source. The
+approval file is the gate; the external source is the authority.
+
+For a build approval, the file must contain the literal line:
 
 ```
 APPROVED DATA GRID PATH: build
 ```
 
-…plus `Approved by:`, `Approval source:`, `Approval timestamp:`, and a
-quoted approval text per the plan's Acceptance Criterion 7. Until that
-file exists with a real user-authored approval, no implementation code,
-dependency, export, style, playground, or generated artifact will land
-on this branch.
+…plus `Approved by:`, `Approval source:`, `Approval timestamp:`, and
+`Quoted approval:` (a verbatim copy of the user's approval text from the
+external source).
 
-If wrapping is preferred instead, the approval format is
-`APPROVED DATA GRID PATH: wrap` plus an `Approved package:` line naming
-the headless-wrap pair.
+For a wrap approval, the file must contain:
+
+```
+APPROVED DATA GRID PATH: wrap
+Approved package: @tanstack/table-core
+Approved package: @tanstack/virtual-core
+```
+
+…plus `Approved by:`, `Approval source:`, `Approval timestamp:`, and
+`Quoted approval:` as above. One `Approved package:` line per package
+in the headless pair.
+
+Until that file exists with a real user-authored approval, no
+implementation code, dependency, export, style, playground, or generated
+artifact will land on this branch.
