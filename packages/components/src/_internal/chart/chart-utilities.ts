@@ -533,7 +533,8 @@ export function createBarModel(options: {
   const categories: NormalizedXValue[] = [];
   const seenCategories = new Set<string>();
   const categoryKinds = new Set<string>();
-  const allValues: number[] = [0];
+  const visibleSeries = series.filter((item) => !hiddenSeriesIds.includes(item.id));
+  const visibleValues: number[] = [0];
   // Build a key-keyed lookup once so the render loop is O(categories), not
   // O(categories * rows) with allocations per probe.
   const datumByKey = new Map<string, BarChartDatum>();
@@ -579,7 +580,8 @@ export function createBarModel(options: {
         );
       }
       const numericValue = normalizeNumericValue('bar-chart', item.id, category.label, value);
-      if (numericValue !== null) allValues.push(numericValue);
+      if (numericValue !== null && !hiddenSeriesIds.includes(item.id))
+        visibleValues.push(numericValue);
     }
   }
 
@@ -590,13 +592,12 @@ export function createBarModel(options: {
   }
 
   const sortedCategories = sortXValues(categories);
-  const visibleSeries = series.filter((item) => !hiddenSeriesIds.includes(item.id));
-  // Stack domain is computed from visible series only — same convention as
-  // stacked area — so the y-scale shrinks correctly when a series is hidden.
+  // Domain is computed from visible series only — same convention as cartesian
+  // charts — so the value scale shrinks correctly when a series is hidden.
   const valueDomain = createPaddedDomain(
     mode === 'stacked'
       ? createStackedBarDomainValues(datumByKey, sortedCategories, visibleSeries)
-      : allValues,
+      : visibleValues,
   );
   const valueScale = createLinearScale(
     valueDomain,

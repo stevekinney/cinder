@@ -76,6 +76,7 @@
 .cinder-line-chart__focus-target {
   fill: transparent;
   outline: none;
+  pointer-events: none;
 }
 
 /*

@@ -481,6 +481,40 @@ describe('createBarModel', () => {
     expect(allVisible.valueDomain[1]).toBeGreaterThan(bHidden.valueDomain[1]);
   });
 
+  test('grouped domain reflects visible series only', () => {
+    const data = [
+      { month: 'Jan', a: 10, b: 100 },
+      { month: 'Feb', a: 20, b: 200 },
+    ];
+    const series = [
+      { id: 'a', label: 'A', valueKey: 'a' },
+      { id: 'b', label: 'B', valueKey: 'b' },
+    ];
+    const allVisible = createBarModel({
+      data,
+      categoryKey: 'month',
+      series,
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+    });
+    const bHidden = createBarModel({
+      data,
+      categoryKey: 'month',
+      series,
+      hiddenSeriesIds: ['b'],
+      width: 640,
+      height: 280,
+      orientation: 'vertical',
+      mode: 'grouped',
+    });
+
+    expect(allVisible.valueDomain[1]).toBeGreaterThan(bHidden.valueDomain[1]);
+    expect(bHidden.valueDomain[1]).toBeLessThan(100);
+  });
+
   test('throws on invalid category types', () => {
     expect(() =>
       createBarModel({
