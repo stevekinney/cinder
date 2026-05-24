@@ -137,17 +137,8 @@
   }
 
   function recomputeTarget(): void {
-    if (!listEl || !pointerActive) return;
+    if (!pointerActive) return;
 
-    // :scope > limits to direct children of the list — avoids picking up nested sortable rows
-    const rows = Array.from(listEl.querySelectorAll<HTMLElement>(':scope > [data-sortable-row]'));
-    // data-row-id → dataset.rowId via DOM camelCase conversion
-    const nonLifted = rows.filter((r) => r.dataset['rowId'] !== String(rowId));
-    const midpoints = nonLifted.map((r) => {
-      const rect = r.getBoundingClientRect();
-      return rect.top + rect.height / 2;
-    });
-    const insertionIndex = midpoints.filter((m) => m < latestPointerY).length;
     if (context.getPointerTarget) {
       const target = context.getPointerTarget({
         activeKey: itemKey,
@@ -158,6 +149,18 @@
       if (target) context.move(target.index, itemLabel, target.total);
       return;
     }
+
+    if (!listEl) return;
+
+    // :scope > limits to direct children of the list — avoids picking up nested sortable rows
+    const rows = Array.from(listEl.querySelectorAll<HTMLElement>(':scope > [data-sortable-row]'));
+    // data-row-id → dataset.rowId via DOM camelCase conversion
+    const nonLifted = rows.filter((r) => r.dataset['rowId'] !== String(rowId));
+    const midpoints = nonLifted.map((r) => {
+      const rect = r.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    });
+    const insertionIndex = midpoints.filter((m) => m < latestPointerY).length;
 
     const target = Math.max(0, Math.min(insertionIndex, total - 1));
     context.move(target, itemLabel, total);

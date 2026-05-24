@@ -117,6 +117,12 @@
   });
 
   $effect(() => {
+    if (!invalidKeys) return;
+    if (cardController.phase === 'lifted') cancelCardLift();
+    if (columnLiftedKey !== null) cancelColumnLift();
+  });
+
+  $effect(() => {
     columns.forEach((column) => column.cards.forEach((currentCard) => getCardKey(currentCard)));
     if (cardController.phase !== 'lifted' || cardController.liftedKey === null) return;
     const located = findCard(columns, getCardKey, cardController.liftedKey);
@@ -235,6 +241,11 @@
       }
       const destinationColumn = columns[cardTarget.columnIndex];
       if (!destinationColumn || destinationColumn.collapsed) {
+        cancelCardLift(itemLabel);
+        return;
+      }
+      const located = findCard(columns, getCardKey, itemKey);
+      if (!located) {
         cancelCardLift(itemLabel);
         return;
       }

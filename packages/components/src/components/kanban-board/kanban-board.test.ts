@@ -361,6 +361,36 @@ describe('KanbanBoard', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
+  test('drop cancels when the lifted card is removed before commit', async () => {
+    const onchange = mock();
+    const columns = makeColumns();
+    const props = {
+      columns,
+      getCardKey,
+      getCardLabel,
+      onchange,
+      label: 'Work board',
+      card: cardSnippet(),
+    };
+    const { container, rerender } = render(KanbanBoard as any, { props });
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await rerender({
+      ...props,
+      columns: columns.map((column) =>
+        column.id === 'todo'
+          ? { ...column, cards: column.cards.filter((currentCard) => currentCard.id !== 'a') }
+          : column,
+      ),
+    });
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await waitForAnnouncement();
+
+    expect(onchange).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
+  });
+
   test('announces no destination when lateral movement is blocked', async () => {
     const columns = makeColumns();
     columns[1] = { ...columns[1], collapsed: true };
@@ -494,6 +524,80 @@ describe('KanbanBoard', () => {
         container.querySelector('.cinder-kanban-board')?.hasAttribute('data-cinder-invalid-keys'),
       ).toBe(true);
       expect(onchange).not.toHaveBeenCalled();
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('duplicate keys cancel an active card lift when they appear after lift', async () => {
+    const warn = mock(() => {});
+    const originalWarn = console.warn;
+    console.warn = warn;
+    try {
+      const columns = makeColumns();
+      const props = {
+        columns,
+        getCardKey,
+        getCardLabel,
+        onchange: mock(),
+        label: 'Work board',
+        card: cardSnippet(),
+      };
+      const { container, rerender } = render(KanbanBoard as any, { props });
+      const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+      await fireEvent.keyDown(handle, { key: ' ' });
+      expect(handle.getAttribute('aria-pressed')).toBe('true');
+
+      await rerender({
+        ...props,
+        columns: [
+          { id: 'todo', title: 'To do', cards: [alpha, alpha] },
+          { id: 'todo', title: 'Again', cards: [] },
+        ],
+      });
+      await waitForAnnouncement();
+
+      const duplicateHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+      expect(duplicateHandle.getAttribute('aria-pressed')).toBe('false');
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('duplicate keys cancel an active column lift when they appear after lift', async () => {
+    const warn = mock(() => {});
+    const originalWarn = console.warn;
+    console.warn = warn;
+    try {
+      const columns = makeColumns();
+      const props = {
+        columns,
+        getCardKey,
+        getCardLabel,
+        onchange: mock(),
+        label: 'Work board',
+        card: cardSnippet(),
+      };
+      const { container, rerender } = render(KanbanBoard as any, { props });
+      const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
+
+      await fireEvent.keyDown(handle, { key: ' ' });
+      expect(handle.getAttribute('aria-pressed')).toBe('true');
+
+      await rerender({
+        ...props,
+        columns: [
+          { id: 'todo', title: 'To do', cards: [alpha, alpha] },
+          { id: 'todo', title: 'Again', cards: [] },
+        ],
+      });
+
+      const duplicateHandle = container.querySelector(
+        '[aria-label="Reorder To do column"]',
+      ) as HTMLElement;
+      expect(duplicateHandle.getAttribute('aria-pressed')).toBe('false');
     } finally {
       console.warn = originalWarn;
     }
