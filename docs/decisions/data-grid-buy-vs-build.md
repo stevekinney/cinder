@@ -35,211 +35,355 @@ with **all** of these required-present behaviors in one coherent component:
   column counts)
 
 Every candidate is judged against that full list, not against a softer
-subset.
+subset. The scope is mandated by the task: Requirement 21 in the plan
+forces a single coherent grid component, not a stack of smaller primitives.
+A smaller scope (for example, row-only virtual table) would unlock simpler
+dependencies — but the user can revisit that only by editing the task,
+not by relaxing this decision.
 
 ## Methodology and data source
 
-Authoritative metadata is read with `npm view <pkg> version license
-time.modified dist.unpackedSize`. License text claims are taken from the
-package's `license` field in the npm registry; for non-SPDX licenses the
-manifest is treated as a flag to check the actual `LICENSE` file in the
-repository before adopting. "Bundle size" in this document refers to the
-**npm `dist.unpackedSize`** (the on-disk size of the published tarball) as
-a coarse comparative proxy. Tree-shaken browser-shipped weight is smaller
-and is recorded as a separate dimension where known from vendor
-documentation. Verification commands and their outputs are quoted inline so
-this document can be re-verified without re-querying the registry.
+Package metadata in this document was collected on **2026-05-23** with:
 
-Metadata snapshot taken on 2026-05-23.
+```bash
+npm view <package> version license time.modified dist.unpackedSize \
+                  peerDependencies dependencies repository.url
+```
+
+For every non-SPDX `license` field, the actual `LICENSE` (or `license.txt`)
+file inside the published npm tarball was extracted with `npm pack <pkg>` and
+read directly. Quoting the registry without checking the file is not enough
+when the license value is `"SEE LICENSE IN LICENSE.txt"`.
+
+The candidate pool came from:
+
+- the four packages named directly in the task description and plan
+  Requirement 5 (TanStack core, TanStack svelte adapters, AG Grid
+  Community + Svelte binding, Glide DataGrid, Handsontable),
+- an npm search pass with the queries `svelte datagrid`,
+  `svelte data-grid`, `svelte spreadsheet`, `svelte virtual table`, and
+  `svelte table virtualized`,
+- a follow-up search for any Svelte-5-compatible candidate published in
+  the last 18 months.
+
+Every package surfaced by those searches and not excluded for clear cause
+appears in this document either as a viable candidate, an excluded
+candidate (with the reason), or a clearly-out-of-scope library (logged
+once in the "Considered but excluded" section).
+
+"Bundle size" in this document refers to `dist.unpackedSize` — the on-disk
+size of the published tarball — as a **coarse comparative proxy**. Tree-
+shaken browser-shipped weight is smaller and is recorded as a separate
+dimension where the vendor publishes it.
 
 ## License compatibility
 
 cinder is consumed by downstream applications without a copyleft constraint
 and ships its own MIT-style license. A grid dependency must be either MIT,
-Apache-2.0, BSD, or ISC. A grid dependency with a non-OSS license, a
+Apache-2.0, BSD, or ISC. A dependency with a non-OSS license, a
 "free-for-personal-use" carveout, a commercial-use field-of-use restriction,
 or a CLA gate cannot be added.
 
-| Candidate                          | Manifest `license`                                                                                   | Verdict                                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Build inside cinder                | n/a                                                                                                  | n/a — no third-party license at all                                                       |
-| `@tanstack/table-core` 8.21.3      | `MIT`                                                                                                | ✅ compatible                                                                             |
-| `@tanstack/virtual-core` 3.15.0    | `MIT`                                                                                                | ✅ compatible                                                                             |
-| `@tanstack/svelte-table` 8.21.3    | `MIT`                                                                                                | ✅ compatible                                                                             |
-| `@tanstack/svelte-virtual` 3.13.25 | `MIT`                                                                                                | ✅ compatible                                                                             |
-| `ag-grid-community` 35.3.0         | `MIT`                                                                                                | ✅ compatible (Enterprise is a separate package with a commercial license — not in scope) |
-| `ag-grid-svelte` 0.3.0             | `MIT`                                                                                                | License OK, but package abandoned (see below)                                             |
-| `@glideapps/glide-data-grid` 6.0.3 | `MIT`                                                                                                | License OK, but React-only (see fit)                                                      |
-| `handsontable` 17.1.0              | `SEE LICENSE IN LICENSE.txt` — dual: Handsontable Free (non-commercial) plus Handsontable Commercial | ❌ not compatible with cinder's "drop into any downstream app" promise                    |
-| `svelte-headless-table` 0.18.3     | `MIT`                                                                                                | License OK, but stale (see below)                                                         |
-| `@vincjo/datatables` 2.8.0         | `MIT`                                                                                                | ✅ compatible                                                                             |
+| Candidate                                                                                      | Manifest `license`           | Verdict                                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| Build inside cinder                                                                            | n/a                          | n/a — no third-party license                                                             |
+| [`@tanstack/table-core`](https://www.npmjs.com/package/@tanstack/table-core) 8.21.3            | `MIT`                        | ✅ compatible                                                                            |
+| [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) 3.15.0        | `MIT`                        | ✅ compatible                                                                            |
+| [`@tanstack/svelte-table`](https://www.npmjs.com/package/@tanstack/svelte-table) 8.21.3        | `MIT`                        | ✅ compatible                                                                            |
+| [`@tanstack/svelte-virtual`](https://www.npmjs.com/package/@tanstack/svelte-virtual) 3.13.25   | `MIT`                        | ✅ compatible                                                                            |
+| [`ag-grid-community`](https://www.npmjs.com/package/ag-grid-community) 35.3.0                  | `MIT`                        | ✅ compatible (Enterprise is a separate commercial package — feature gaps covered below) |
+| [`ag-grid-svelte`](https://www.npmjs.com/package/ag-grid-svelte) 0.3.0                         | `MIT`                        | License OK, but binding abandoned (see freshness section)                                |
+| [`@glideapps/glide-data-grid`](https://www.npmjs.com/package/@glideapps/glide-data-grid) 6.0.3 | `MIT`                        | License OK, but React-only (see fit)                                                     |
+| [`handsontable`](https://www.npmjs.com/package/handsontable) 17.1.0                            | `SEE LICENSE IN LICENSE.txt` | ❌ non-OSS dual license with non-commercial-use clause (text quoted below)               |
+| [`svelte-headless-table`](https://www.npmjs.com/package/svelte-headless-table) 0.18.3          | `MIT`                        | License OK, but >18 months stale and pre-Svelte-5                                        |
+| [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables) 2.8.0                 | `MIT`                        | ✅ compatible (scope mismatch, see effort section)                                       |
+| [`@revolist/svelte-datagrid`](https://www.npmjs.com/package/@revolist/svelte-datagrid) 4.21.11 | `MIT`                        | ✅ compatible (Svelte wrapper over a Stencil web component)                              |
+| [`@svar-ui/svelte-grid`](https://www.npmjs.com/package/@svar-ui/svelte-grid) 2.6.2             | `MIT`                        | ✅ compatible (pulls in nine `@svar-ui/*` peer packages)                                 |
 
-Verification:
+### Handsontable — exact license text
 
-```bash
-npm view handsontable license
-# 'SEE LICENSE IN LICENSE.txt'
-```
+Confirmed by `npm pack handsontable@17.1.0` and reading `package/LICENSE.txt`
+directly. The relevant blocking clauses, quoted verbatim:
 
-Handsontable's license text is **not** an SPDX OSS license — its non-commercial
-clause makes it unusable as a default dependency of an open component library
-that any downstream app might consume commercially.
+> "This software is protected by applicable copyright laws, including
+> international treaties, and dual-licensed - depending on whether your use
+> for commercial purposes, meaning intended for or resulting in commercial
+> advantage or monetary compensation, or not."
+>
+> "If your use is strictly personal or solely for evaluation purposes …
+> you agree to be bound by the terms included in the
+> `handsontable-non-commercial-license.pdf` file."
+>
+> "Your use of this software for commercial purposes is subject to the
+> terms included in an applicable license agreement."
+>
+> "In any case, you must not make any such use of this software as to
+> develop software which may be considered competitive with this software."
+
+This is not an SPDX OSS license. Two clauses each independently rule it
+out for cinder: (1) the non-commercial / commercial split means cinder
+cannot promise downstream commercial apps a single license; (2) the
+"competitive software" clause is incompatible with shipping a generic
+data-grid component as part of an open design system, since cinder's
+`DataGrid` could plausibly be characterized as competitive with
+Handsontable.
+
+### AG Grid Community vs Enterprise feature coverage
+
+`ag-grid-community` 35.3.0 is MIT-licensed. `ag-grid-enterprise` is a
+separately-licensed commercial package and is intentionally out of scope —
+cinder cannot make any consumer install a commercial license. The
+**Community** package covers the following Requirement 21 behaviors:
+
+| Required behavior             | AG Grid Community                                                |
+| ----------------------------- | ---------------------------------------------------------------- |
+| Row virtualization            | ✅ Built-in (client-side row model)                              |
+| Column virtualization         | ✅ Built-in                                                      |
+| Inline cell editing (typed)   | ✅ Built-in (text, number, select editors; date via Date editor) |
+| Single-column sort            | ✅ Built-in                                                      |
+| Multi-column sort             | ✅ Built-in (Shift+click)                                        |
+| Column resize                 | ✅ Built-in                                                      |
+| Column reorder                | ✅ Built-in (drag reorder)                                       |
+| Column pin (left/right)       | ✅ Built-in                                                      |
+| Cell selection (single)       | ✅ Built-in                                                      |
+| Range selection (rectangular) | ❌ **Enterprise-only** (Range Selection module)                  |
+| Frozen header                 | ✅ Built-in                                                      |
+| Spreadsheet keyboard nav      | ✅ Arrows, Home, End, PageUp/Down, Tab, Shift+Tab                |
+| Shift+Arrow range extension   | ❌ **Enterprise-only** (depends on Range Selection)              |
+| ARIA grid semantics           | ✅ `role="grid"` and `aria-*` attributes                         |
+
+Range selection — both rectangular range and Shift+Arrow extension — is
+an Enterprise feature in AG Grid. That is a hard block: cinder cannot
+satisfy Requirement 21 on the Community license alone, and pulling in
+Enterprise would force every cinder consumer to acquire an AG Grid
+Enterprise license. AG Grid is therefore disqualified regardless of the
+abandoned Svelte binding.
 
 ## Bundle-size impact
 
-Sizes below are `npm view <pkg> dist.unpackedSize` in bytes. This is the
-**unpacked tarball size** — it is intentionally larger than the
-browser-shipped, tree-shaken JS. Use these only for relative comparison.
+`dist.unpackedSize` values are **unpacked tarball size**, intentionally
+larger than browser-shipped JS. Use only for relative comparison.
 
-| Candidate                          | `dist.unpackedSize` (bytes) | Rough scale                                          |
-| ---------------------------------- | --------------------------- | ---------------------------------------------------- |
-| Build inside cinder                | 0 (no new dependency)       | shipped weight = cinder's own implementation         |
-| `@tanstack/table-core` 8.21.3      | 3,296,952                   | ~3.3 MB unpacked                                     |
-| `@tanstack/virtual-core` 3.15.0    | 336,756                     | ~330 KB unpacked                                     |
-| `@tanstack/svelte-table` 8.21.3    | 818,422                     | ~800 KB unpacked (mostly types and ESM/CJS variants) |
-| `ag-grid-community` 35.3.0         | 20,012,579                  | ~20 MB unpacked                                      |
-| `@glideapps/glide-data-grid` 6.0.3 | 3,662,455                   | ~3.7 MB unpacked                                     |
-| `handsontable` 17.1.0              | 26,956,584                  | ~27 MB unpacked                                      |
-| `@vincjo/datatables` 2.8.0         | 226,327                     | ~225 KB unpacked                                     |
+| Candidate                                                                                                                     | `dist.unpackedSize` (bytes) | Rough scale                                         |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------- |
+| Build inside cinder (no dependency)                                                                                           | 0                           | shipped weight = cinder's implementation only       |
+| Build inside cinder + [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) (**recommended path**) | 336,756 (virtual-core)      | ~330 KB unpacked; ~5 KB minified browser            |
+| [`@tanstack/table-core`](https://www.npmjs.com/package/@tanstack/table-core) 8.21.3                                           | 3,296,952                   | ~3.3 MB unpacked                                    |
+| [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) 3.15.0                                       | 336,756                     | ~330 KB unpacked                                    |
+| [`@tanstack/svelte-table`](https://www.npmjs.com/package/@tanstack/svelte-table) 8.21.3                                       | 818,422                     | ~800 KB unpacked (types and ESM/CJS variants)       |
+| [`ag-grid-community`](https://www.npmjs.com/package/ag-grid-community) 35.3.0                                                 | 20,012,579                  | ~20 MB unpacked                                     |
+| [`@glideapps/glide-data-grid`](https://www.npmjs.com/package/@glideapps/glide-data-grid) 6.0.3                                | 3,662,455                   | ~3.7 MB unpacked                                    |
+| [`handsontable`](https://www.npmjs.com/package/handsontable) 17.1.0                                                           | 26,956,584                  | ~27 MB unpacked                                     |
+| [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables) 2.8.0                                                | 226,327                     | ~225 KB unpacked                                    |
+| [`@revolist/svelte-datagrid`](https://www.npmjs.com/package/@revolist/svelte-datagrid) 4.21.11                                | 84,582 (wrapper)            | wrapper only — plus `@revolist/revogrid` runtime    |
+| [`@svar-ui/svelte-grid`](https://www.npmjs.com/package/@svar-ui/svelte-grid) 2.6.2                                            | 103,964 (wrapper)           | wrapper only — plus 9 `@svar-ui/*` runtime packages |
 
-Shipped-to-browser weight, where vendor docs publish it: AG Grid Community
-advertises a ~360 KB minified core in its docs; Glide DataGrid advertises
-~150 KB minified plus a canvas runtime; TanStack Table core advertises
-~14 KB minified plus the parts you import. Build inside cinder is
-size-bounded by what cinder writes — realistic estimate based on existing
-cinder components is in the 12-20 KB range minified for virtualization,
-selection, editing, and column-operation state combined.
+Shipped-to-browser weight, where vendor docs publish it:
 
-Verification:
+- AG Grid Community: ~360 KB minified core (per ag-grid docs).
+- Glide DataGrid: ~150 KB minified plus a canvas-rendering runtime.
+- TanStack Table core: ~14 KB minified plus the bits you import.
+- `@tanstack/virtual-core`: ~5 KB minified (tree-shaken).
 
-```bash
-npm view @tanstack/table-core dist.unpackedSize
-# 3296952
-npm view ag-grid-community dist.unpackedSize
-# 20012579
-npm view handsontable dist.unpackedSize
-# 26956584
-```
+### Cinder shipped-weight target (unvalidated)
+
+If the build path is approved, the **target budget** for cinder's grid
+code (virtualization integration + selection + editing UI + keyboard
+model + column ops + ARIA glue) is roughly **18–28 KB minified**, with
+`@tanstack/virtual-core` adding another ~5 KB. This estimate is **not yet
+measured** — it is a budget for the implementation gate, not a promise.
+The final design checkpoint (`data-grid-implementation-design.md`) will
+record the measured size and either confirm or surface the overrun.
 
 ## Headless-vs-styled fit
 
 cinder is opinionated about its design system: every component has a CSS
 sidecar consuming `--cinder-*` tokens, a generated schema, a generated
-variables file, a generated README, generated examples, and an example set
-in the playground that imports only from `cinder` and `cinder/<subpath>`.
-The grid must fit that pattern without an asterisk.
+variables file, a generated README, generated examples, and a playground
+example set that imports only from `cinder` and `cinder/<subpath>`. The
+grid must fit that pattern without an asterisk.
 
-| Candidate                                                                         | Styling model                                                              | Fit                                                                                                                                                                 |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build inside cinder                                                               | Native cinder CSS sidecar + tokens                                         | ✅ Native fit — no adapter                                                                                                                                          |
-| `@tanstack/table-core` + `@tanstack/virtual-core` (headless)                      | None — math and state only, you render                                     | ✅ Headless: render with cinder CSS, tokens, data attributes                                                                                                        |
-| `@tanstack/svelte-table` + `@tanstack/svelte-virtual` (headless, Svelte wrappers) | None — store/runes wrappers around the headless core                       | ✅ Same fit as core but with idiomatic Svelte access                                                                                                                |
-| `ag-grid-community` (styled)                                                      | Ships its own theme system (Quartz, Alpine) with CSS variables AG controls | ⚠️ Two parallel theming systems. AG's CSS variables are not cinder's. Re-skinning to cinder tokens is possible but constant maintenance against AG's theme releases |
-| `@glideapps/glide-data-grid` (styled, canvas)                                     | Canvas rendering with a JS theme object, not CSS                           | ❌ Doesn't participate in cinder's CSS pipeline at all. Tokens, dark mode, density, focus rings, reduced motion all bypass it                                       |
-| `handsontable` (styled)                                                           | Ships its own LESS-derived CSS                                             | ❌ Even if licensing weren't blocking, the styling model is its own world                                                                                           |
-| `@vincjo/datatables`                                                              | Headless logic, BYO markup                                                 | ✅ Headless fit, but scope is narrower than the task requires (see effort table)                                                                                    |
+| Candidate                                                                                                                                                                  | Styling model                                                                        | Fit                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build inside cinder                                                                                                                                                        | Native cinder CSS sidecar + tokens                                                   | ✅ Native — no adapter                                                                                                                                      |
+| [`@tanstack/table-core`](https://www.npmjs.com/package/@tanstack/table-core) + [`@tanstack/virtual-core`](https://www.npmjs.com/package/@tanstack/virtual-core) (headless) | None — math and state only, you render                                               | ✅ Headless: render with cinder CSS, tokens, data attributes                                                                                                |
+| [`@tanstack/svelte-table`](https://www.npmjs.com/package/@tanstack/svelte-table) + [`@tanstack/svelte-virtual`](https://www.npmjs.com/package/@tanstack/svelte-virtual)    | None — Svelte runes wrappers around the headless core                                | ✅ Same fit as core, idiomatic Svelte access                                                                                                                |
+| [`ag-grid-community`](https://www.npmjs.com/package/ag-grid-community)                                                                                                     | Ships its own theme system (Quartz, Alpine) with AG-controlled CSS vars              | ⚠️ Two parallel theming systems. Disqualified above by Enterprise-only range selection.                                                                     |
+| [`@glideapps/glide-data-grid`](https://www.npmjs.com/package/@glideapps/glide-data-grid)                                                                                   | Canvas rendering with a JS theme object, not CSS                                     | ❌ Bypasses cinder's CSS pipeline entirely — tokens, dark mode, density, focus rings, reduced motion all skipped                                            |
+| [`handsontable`](https://www.npmjs.com/package/handsontable)                                                                                                               | Ships its own LESS-derived CSS                                                       | ❌ Even setting licensing aside, the styling model is its own world                                                                                         |
+| [`@vincjo/datatables`](https://www.npmjs.com/package/@vincjo/datatables)                                                                                                   | Headless logic, BYO markup                                                           | ✅ Fit OK, but scope is far narrower than the task (see effort)                                                                                             |
+| [`@revolist/svelte-datagrid`](https://www.npmjs.com/package/@revolist/svelte-datagrid)                                                                                     | Stencil web component (renders into shadow DOM), themed by CSS variables it controls | ❌ Shadow-DOM-rendered web component does not participate in cinder's CSS sidecar pipeline; styling is via the vendor's CSS-variable API, not cinder tokens |
+| [`@svar-ui/svelte-grid`](https://www.npmjs.com/package/@svar-ui/svelte-grid)                                                                                               | Svelte components shipping their own SCSS and theme system                           | ⚠️ Vendor theme; nine transitive runtime packages would all need their CSS suppressed and re-skinned to cinder tokens                                       |
 
 ### Build inside cinder
 
 cinder writes its own virtualization, column model, selection model,
 editing model, and keyboard model. Composes from existing cinder primitives
-(`focus-trap`, future `Portal`) where applicable. No vendor styling, no
-vendor API. Full ownership.
+(`focus-trap`, the planned `Portal`) where applicable. No vendor styling,
+no vendor API on the public surface.
 
 ### Wrap headless primitives
 
 cinder depends on `@tanstack/table-core` (column model, sort state, row
 model) and `@tanstack/virtual-core` (row/column virtualization math), and
 writes the rendered Svelte component, CSS sidecar, ARIA semantics, focus
-model, editing UI, and keyboard handling. The vendor APIs stay internal to
-cinder; consumers see only cinder props.
+model, editing UI, and keyboard handling. The vendor APIs stay internal;
+consumers see only cinder props.
 
 ### Wrap styled grid package
 
-cinder depends on a fully styled vendor grid (AG Grid Community, Glide
-DataGrid, Handsontable, or a Svelte-native option) and re-skins it to
-cinder tokens. Consumers may still see vendor concepts depending on how
-much bleeds through.
+cinder depends on a fully styled vendor grid (AG Grid, Glide, Handsontable,
+revogrid, or `@svar-ui/svelte-grid`) and re-skins it to cinder tokens.
+Consumers may still see vendor concepts depending on how much bleeds
+through.
 
 ## Effort to wrap vs build
 
 This compares the realistic engineering effort to deliver the **full
 Requirement-21 feature set** under each path. "Risk" calls out the failure
-modes that have to be designed around.
+modes that have to be designed around. The recommended path is bolded.
 
-| Path                                                       | Up-front effort                                                                                                                                                                             | Ongoing effort                                                                                                                                                                                                                                                  | Risk                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Build inside cinder                                        | High — virtualization, selection, editing, column-ops, ARIA, keyboard all written from scratch. Estimate 5–8 focused PRs after the design checkpoint.                                       | Medium — cinder owns the bugs but also the velocity. No vendor churn.                                                                                                                                                                                           | Scope creep; edge cases in virtualization math; ARIA grid is genuinely fiddly.                                                                                                                                                                                                                                                                         |
-| Wrap `@tanstack/table-core` + `@tanstack/virtual-core`     | Medium — vendor handles column/sort/row model and virtualization math. cinder writes rendering, ARIA, selection model, editing UI, column-ops UI, keyboard handling, CSS. Estimate 3–5 PRs. | Low-medium — TanStack Table moves at a steady pace; v9 alpha exists, breaking changes telegraphed in advance.                                                                                                                                                   | Vendor API surface bleeding into cinder types if not carefully isolated. Selection and editing aren't TanStack's strength — you write them.                                                                                                                                                                                                            |
-| Wrap `@tanstack/svelte-table` + `@tanstack/svelte-virtual` | Medium-low — same as above plus idiomatic Svelte access.                                                                                                                                    | Same as above plus dependency on Svelte adapter package velocity.                                                                                                                                                                                               | Adapter packages historically lag the core; check pin pairing every upgrade.                                                                                                                                                                                                                                                                           |
-| Wrap `ag-grid-community`                                   | Medium — wire to cinder props, restyle to cinder tokens, document bleed-through.                                                                                                            | **High** — AG releases breaking changes regularly, AG's theme system fights cinder's, no first-party Svelte 5 binding. `ag-grid-svelte` is abandoned (last published 2023-07-06; predates Svelte 5). Would need to write/maintain the Svelte binding in cinder. | Adopting AG without a maintained Svelte binding is the long-term cost.                                                                                                                                                                                                                                                                                 |
-| Wrap `@glideapps/glide-data-grid`                          | Medium — wire to a React-in-Svelte interop layer.                                                                                                                                           | **High** — Glide is React-only. cinder is Svelte 5. Wrapping a React canvas grid in a Svelte component requires a React runtime inside cinder, which contradicts cinder's "no framework runtime beyond Svelte" principle.                                       | Wrong framework. Disqualifying without a separate user decision.                                                                                                                                                                                                                                                                                       |
-| Wrap `handsontable`                                        | Low-medium technically                                                                                                                                                                      | n/a                                                                                                                                                                                                                                                             | Licensing disqualifies it before effort matters.                                                                                                                                                                                                                                                                                                       |
-| Wrap `@vincjo/datatables`                                  | Medium for the parts it covers                                                                                                                                                              | Low                                                                                                                                                                                                                                                             | **Scope mismatch**: package is sort/filter/pagination over arrays. It does not virtualize columns, does not implement spreadsheet keyboard, does not implement range selection, does not implement column pin/reorder/resize, does not implement cell editing. Wrapping it gets us roughly 25% of Requirement 21; we'd still write the rest ourselves. |
+| Path                                                             | Up-front effort                                                                                                                                                                    | Ongoing effort                                                                       | Risk                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure build inside cinder (no dependency)                         | High — virtualization math written from scratch alongside everything else. 6–9 focused PRs after the design checkpoint.                                                            | Medium                                                                               | Virtualization math edge cases (variable row heights, scroll snapping) are notoriously fiddly to get right.                                                                                                                         |
+| **Build inside cinder + `@tanstack/virtual-core`** (recommended) | Medium-high — cinder writes the rendered grid, ARIA, selection, editing UI, column-ops UI, keyboard handling, CSS sidecar. Virtualization math is delegated. 5–8 focused PRs.      | Low-medium — virtual-core is headless, tightly scoped, MIT, and actively maintained. | One narrow vendor dependency. virtual-core's API shape will influence cinder's internal virtualization state — see "Trade-off" section below.                                                                                       |
+| Wrap `@tanstack/table-core` + `@tanstack/virtual-core`           | Medium — vendor handles column/sort/row model and virtualization math. cinder writes rendering, ARIA, selection model, editing UI, column-ops UI, keyboard handling, CSS. 3–5 PRs. | Low-medium                                                                           | Vendor API surface bleeding into cinder types unless carefully isolated. Selection and editing aren't TanStack's strength — cinder writes them.                                                                                     |
+| Wrap `@tanstack/svelte-table` + `@tanstack/svelte-virtual`       | Medium-low — as above plus idiomatic Svelte access                                                                                                                                 | Same as above plus dependency on adapter package velocity.                           | Svelte adapter packages historically lag the core; pin both each upgrade.                                                                                                                                                           |
+| Wrap `ag-grid-community`                                         | n/a                                                                                                                                                                                | n/a                                                                                  | Disqualified — range selection is Enterprise-only. Adopting Enterprise forces a commercial license on every consumer.                                                                                                               |
+| Wrap `@glideapps/glide-data-grid`                                | n/a                                                                                                                                                                                | n/a                                                                                  | Disqualified — React-only; cinder is Svelte 5. Would require a React runtime inside cinder.                                                                                                                                         |
+| Wrap `handsontable`                                              | n/a                                                                                                                                                                                | n/a                                                                                  | Disqualified — non-OSS dual license + competitive-software clause.                                                                                                                                                                  |
+| Wrap `@vincjo/datatables`                                        | Medium for what it covers                                                                                                                                                          | Low                                                                                  | **Scope mismatch**: does not virtualize columns, no spreadsheet keyboard, no range selection, no column pin/reorder/resize, no cell editing. Roughly 25% of Requirement 21.                                                         |
+| Wrap `@revolist/svelte-datagrid` (over Stencil `revogrid`)       | Medium                                                                                                                                                                             | High                                                                                 | Shadow-DOM-rendered web component does not honor cinder's CSS sidecar; theming via vendor CSS variables. Cinder cannot reach into the shadow root to style cells with `--cinder-*` tokens. Vendor controls keyboard model and ARIA. |
+| Wrap `@svar-ui/svelte-grid`                                      | Medium-low                                                                                                                                                                         | High                                                                                 | Pulls in 9 transitive `@svar-ui/*` packages and a vendor theme. Re-skinning to cinder tokens would mean overriding the vendor's SCSS-generated CSS for every cell state and fighting it on every minor release.                     |
 
-### Svelte-native candidate research
+### TanStack Table requirements-coverage matrix
 
-Per Plan Requirement 5, at least one maintained Svelte-native data-grid or
-spreadsheet package is included. Search criteria: license present, Svelte 5
-compatible, publish within the last 18 months **or** repository activity
-within the last 12 months, no abandonment notice.
+Codex specifically asked: does TanStack Table reduce enough implementation
+risk to be worth the API coupling? Here is what `@tanstack/table-core`
+8.21.3 provides for each Requirement 21 behavior:
 
-- **`@vincjo/datatables` 2.8.0** — MIT, last published 2025-12-17, peer
-  dependency `svelte: ^5.16.0`. Maintained and Svelte-5 native. Listed
-  above; ruled out on scope, not on health.
-- **`svelte-headless-table` 0.18.3** — MIT, last published 2024-10-28
-  (over 18 months ago at the time of writing) and pinned to Svelte 4 store
-  APIs. **Excluded** under the 18-month / Svelte-5 freshness rule.
-- **`ag-grid-svelte` 0.3.0** — MIT, last published 2023-07-06. **Excluded**
-  under the 18-month freshness rule.
-- **`svelte-virtual` 0.6.3** — MIT, last published 2024-11-11
-  (over 18 months ago). **Excluded** under the 18-month freshness rule.
+| Required behavior           | `@tanstack/table-core` provides                                             |
+| --------------------------- | --------------------------------------------------------------------------- |
+| Row virtualization          | ❌ (separate library — `virtual-core`)                                      |
+| Column virtualization       | ❌ (separate library — `virtual-core`)                                      |
+| Inline cell editing (typed) | ❌ (you write the editing model and UI)                                     |
+| Single-column sort          | ✅ (sort state, sort comparators)                                           |
+| Multi-column sort           | ✅ (multi-sort state, configurable sort comparators)                        |
+| Column resize               | ⚠️ Partial — `columnSizing` state exists; you write the drag UI             |
+| Column reorder              | ⚠️ Partial — `columnOrder` state exists; you write the drag UI              |
+| Column pin (left/right)     | ⚠️ Partial — `columnPinning` state exists; you write the styling and layout |
+| Cell selection              | ❌ (you write the cell-selection model)                                     |
+| Range selection             | ❌ (you write range geometry, anchor, focus)                                |
+| Frozen header               | ❌ (sticky layout is a render concern)                                      |
+| Spreadsheet keyboard nav    | ❌ (you write the entire keyboard model)                                    |
+| ARIA grid semantics         | ❌ (you write the rendering, so you write the ARIA)                         |
 
-No other Svelte-native data-grid or spreadsheet package surfaced in the npm
-registry as both Svelte-5-compatible and scope-relevant during this
-research pass. If a new one appears before approval, the implementation
-phase can revisit this section.
+What `@tanstack/table-core` would actually save is sort state + sort
+comparators (small) and three pieces of column state machinery
+(`columnSizing`, `columnOrder`, `columnPinning`) where cinder would still
+write the drag UI, the CSS layout, and the keyboard handlers. The
+behaviors that drive most of the complexity (virtualization, selection,
+range, editing, keyboard, ARIA) are not covered.
+
+Conclusion: TanStack Table would save a few hundred lines of state
+management in exchange for a ~3.3 MB unpacked dependency and a vendor
+API surface to defend forever. Not worth it. virtual-core is a different
+calculation — it solves the one piece of the build that genuinely
+benefits from a tested library.
+
+## Considered but excluded
+
+Other packages that surfaced during the npm search and were ruled out
+quickly with the reason:
+
+| Package                          | Last published                | Reason                                                                                                              |
+| -------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `@mediakular/gridcraft` 0.2.9    | 2024-09-02                    | Stale (>20 months); Svelte 4 era                                                                                    |
+| `another-svelte-data-grid` 4.0.1 | 2023-12-09                    | Abandoned (>2 years)                                                                                                |
+| `sv-data-grid` 0.6.1             | 2020-04-05                    | Abandoned (>5 years)                                                                                                |
+| `svelte-virtual-table` 2.0.3     | 2025-04-28                    | Virtualized table only — no editing, no range selection, no column ops; same scope-mismatch as `@vincjo/datatables` |
+| `svelte-tiny-virtual-list` 3.0.1 | 2025-07-05                    | List virtualization only — not a grid                                                                               |
+| `svelte-virtual` 0.6.3           | 2024-11-11 (~18.3 months old) | Just over the freshness threshold; superseded by TanStack virtual-core for our use                                  |
+| `svelte-headless-table` 0.18.3   | 2024-10-28 (~18.8 months old) | Just over the freshness threshold and pinned to Svelte 4 store APIs                                                 |
+| `ag-grid-svelte` 0.3.0           | 2023-07-06 (~35 months old)   | Abandoned; predates Svelte 5; no maintained successor                                                               |
+
+### Svelte-native freshness rule
+
+A Svelte-native package was treated as viable only if all of these held:
+
+- license present in the manifest,
+- Svelte 5 compatible (Svelte 5 listed as peer or proven by current usage),
+- published within the last 18 months **or** repository activity within
+  the last 12 months,
+- no abandonment notice.
+
+The day-precise deltas as of **2026-05-23**: `svelte-headless-table`
+572 days (~18.8 months), `svelte-virtual` 558 days (~18.3 months),
+`ag-grid-svelte` 1052 days (~34.6 months), `@vincjo/datatables` 157 days
+(~5.2 months). Only `@vincjo/datatables`, `@revolist/svelte-datagrid`,
+and `@svar-ui/svelte-grid` cleared the freshness bar; the first is
+scope-mismatched, the second renders into shadow DOM, the third drags in
+a vendor theme + 9 transitive packages.
 
 ## Recommendation
 
-**Build inside cinder, on top of internal use of `@tanstack/virtual-core`
-for the virtualization math only.**
+**Build inside cinder, with `@tanstack/virtual-core` as the one runtime
+dependency for virtualization math.**
 
 The reasoning, in order of weight:
 
-1. **Styled wraps don't fit cinder's design system.** AG Grid and
-   Handsontable each ship their own theme system in parallel to cinder's
-   tokens. Even with a thorough re-skin, every minor vendor release risks
-   re-introducing vendor-themed pixels into cinder surfaces. Glide is
-   canvas-rendered and React-only — it doesn't participate in CSS or
-   Svelte at all.
-2. **Licensing eliminates Handsontable.** Its non-commercial clause
-   contradicts cinder's "drop into any downstream app" contract.
-3. **No maintained Svelte 5 binding for AG Grid exists.** `ag-grid-svelte`
-   was last published in 2023 and predates Svelte 5. Wrapping AG would
-   mean cinder also owns the Svelte binding for a 20 MB unpacked dependency
-   whose theme system fights cinder's. That is more ongoing work than
-   building the grid itself.
-4. **TanStack Table is a near-fit but solves the wrong half.** TanStack
-   Table's strength is column/sort/row models. The hard parts of this
-   ticket — virtualization, spreadsheet keyboard navigation, range
-   selection, ARIA grid semantics, inline editing UI, column pin/reorder/
-   resize UI — are work cinder writes either way. Pulling in TanStack
-   Table would save the column-model code and add a non-trivial API
-   surface to defend.
-5. **TanStack `virtual-core` is a tight, scoped fit.** Virtualization math
-   (visible-range computation, scroll-offset tracking, dynamic sizing) is
-   the one piece of this build where a battle-tested library genuinely
-   reduces both up-front and ongoing risk. It is headless (no rendering),
-   MIT-licensed, ~330 KB unpacked, and updated very recently. Using it
-   internally lets cinder own the rendered grid while inheriting tested
-   math.
-6. **No Svelte-native candidate covers Requirement 21.** The one
-   healthy candidate (`@vincjo/datatables`) explicitly does not virtualize
-   columns, edit cells, support range selection, or do spreadsheet keyboard
-   navigation. Wrapping it would still leave 75% of the work.
+1. **Every styled-grid wrap is blocked by something concrete, not just
+   taste.** AG Grid needs Enterprise for range selection (commercial
+   license cinder cannot impose); Glide is React-only; Handsontable is
+   non-OSS with a competitive-software clause; revogrid renders into
+   shadow DOM and bypasses cinder's CSS sidecar; `@svar-ui/svelte-grid`
+   brings a vendor theme + 9 transitive packages to re-skin.
+2. **No Svelte-native candidate covers Requirement 21.** The healthy ones
+   (`@vincjo/datatables`, revogrid, svar-grid) each fail for a different
+   reason above. The stale ones are stale.
+3. **TanStack Table is a near-fit but only solves the small half.** The
+   coverage matrix above shows it provides sort and partial column state
+   — useful, but most of the work (virtualization, selection, range,
+   editing, keyboard, ARIA, layout) is cinder's regardless. The dependency
+   would cost more in defended API surface than it saves in code.
+4. **`@tanstack/virtual-core` is the one piece of the build that genuinely
+   benefits from reuse.** Virtualization math (visible-range computation,
+   scroll-offset tracking, dynamic sizing) is the one piece where a
+   battle-tested library reduces both up-front and ongoing risk
+   significantly. It is headless (no rendering), MIT, ~330 KB unpacked
+   / ~5 KB minified browser, and actively maintained.
+5. **Single component, one dependency.** One sharp dependency is cheaper
+   to defend than several vendor APIs.
 
-Specifically, the proposed shape if the user approves `build`:
+### Trade-off: depending on virtual-core
+
+Picking the recommended path is not free — it commits cinder to TanStack's
+roadmap for the virtualization layer. Specifically:
+
+- virtual-core's API shape (visible-item range, scroll behavior, item
+  metrics) will influence cinder's internal virtualization state shape.
+- For edge cases (dynamic row heights, scroll snapping, overscan tuning),
+  the implementation will reflect virtual-core's assumptions.
+- A future maintainer debugging virtualization will need virtual-core's
+  documentation as well as cinder's source.
+- A breaking change in virtual-core forces cinder to write the migration
+  or fork.
+
+This is acceptable because virtualization math is conceptually stable,
+virtual-core is the de-facto standard in the React/Vue/Svelte ecosystem,
+and the vendor surface stays internal to one folder of cinder's grid code.
+But it is a commitment, not a free lunch.
+
+### Why a single component instead of factoring
+
+Requirement 21 mandates one component with virtualization, column ops,
+editing, selection, and keyboard navigation. A smaller-scope path
+(row-only virtual table; spreadsheet built separately) would unlock
+`@vincjo/datatables` or even just `svelte-virtual` plus a handwritten
+selection model. That smaller scope is a different ticket; this decision
+does not relitigate it.
+
+### Proposed shape if the user approves `build`
 
 - `DataGrid` is a cinder component under
   `packages/components/src/components/data-grid/` with `role="grid"`,
@@ -249,17 +393,20 @@ Specifically, the proposed shape if the user approves `build`:
   editor snippet, spreadsheet keyboard model, and the standard cinder
   styling-state attributes (`data-cinder-active`, `-selected`, `-range`,
   `-editing`, `-invalid`, `-pinned`, `-frozen-header`, `-resizing`).
-- The single new runtime dependency is `@tanstack/virtual-core`. It is
-  consumed internally only; no vendor type, vendor event, or vendor
-  configuration object appears on `DataGrid`'s public surface.
+- The single new runtime dependency is `@tanstack/virtual-core`,
+  consumed internally only — no vendor type, vendor event, or vendor
+  configuration object on `DataGrid`'s public surface.
 - All other Requirement-21 behavior is cinder code under cinder's tests
   and cinder's design tokens.
 
-This is the cheapest path that ships the full Requirement-21 feature set
-without compromising cinder's design-system contract, without adopting an
-abandoned Svelte binding, and without inheriting a vendor theme system to
-fight every release. The virtualization-math dependency is the one place
-where reuse genuinely beats from-scratch.
+### Fallback if the user rejects `build`
+
+If the user prefers to wrap instead, the only candidate this document
+considers viable without further investigation is
+**`@tanstack/table-core` + `@tanstack/virtual-core`** (headless wrap).
+Every other wrap candidate is disqualified above. Picking the headless
+wrap would also need a separate analysis pass on whether the column-state
+savings justify the additional ~3.3 MB unpacked surface.
 
 ### What the user needs to do next
 
@@ -276,8 +423,6 @@ file exists with a real user-authored approval, no implementation code,
 dependency, export, style, playground, or generated artifact will land
 on this branch.
 
-If the user prefers a wrap path instead, the same approval format with
-`APPROVED DATA GRID PATH: wrap` and an `Approved package:` line is the
-trigger. Among the wrap options, `@tanstack/table-core` plus
-`@tanstack/virtual-core` is the only one this document considers viable
-without further investigation.
+If wrapping is preferred instead, the approval format is
+`APPROVED DATA GRID PATH: wrap` plus an `Approved package:` line naming
+the headless-wrap pair.
