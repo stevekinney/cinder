@@ -27,8 +27,19 @@ const initialFocusChildren = createRawSnippet(() => ({
   `,
 }));
 
+const unfocusableInitialFocusChildren = createRawSnippet(() => ({
+  render: () => `
+    <div>
+      <div data-testid="unfocusable-target">Unfocusable</div>
+      <button data-testid="first-button">First</button>
+    </div>
+  `,
+}));
+
 const fallbackFocusChildren = createRawSnippet(() => ({
-  render: () => '<div data-testid="fallback-target">Fallback</div>',
+  // Fallback targets need an explicit `tabindex` (commonly `-1`) so they can accept programmatic
+  // focus without entering the Tab order — `.focus()` is a no-op on a plain `<div>`.
+  render: () => '<div data-testid="fallback-target" tabindex="-1">Fallback</div>',
 }));
 
 const programmaticFallbackFocusChildren = createRawSnippet(() => ({
@@ -101,6 +112,24 @@ describe('FocusTrap', () => {
     await tick();
 
     expect(document.activeElement).toBe(getByTestId('initial-button'));
+  });
+
+  test('falls back when initialFocus points at an unfocusable element', async () => {
+    // Regression for Bugbot finding on PR #150: `isProgrammaticallyFocusable` previously only
+    // filtered hidden/disabled — a plain `<div>` or `<h2>` (no tabindex, no native focus) passed
+    // the check, but `.focus()` is a no-op on it in real browsers, silently leaving focus outside
+    // the trap. The check now requires a tabindex attribute, a natively focusable tag, or
+    // contenteditable, so unfocusable elements fall through to tabbable descendants.
+    const { getByTestId } = render(FocusTrap, {
+      props: {
+        initialFocus: '[data-testid="unfocusable-target"]',
+        children: unfocusableInitialFocusChildren,
+      },
+    });
+
+    await tick();
+
+    expect(document.activeElement).toBe(getByTestId('first-button'));
   });
 
   test('uses fallbackFocus when no tabbable descendants exist', async () => {

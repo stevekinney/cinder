@@ -56,16 +56,26 @@ function isFocusableCandidate(element: HTMLElement): boolean {
   return true;
 }
 
+const NATIVELY_FOCUSABLE_TAGS = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY']);
+
 /**
  * Whether an element can be programmatically focused via `.focus()`. Unlike `isFocusableCandidate`,
  * this accepts `tabindex="-1"` — the standard pattern for making a non-interactive element
  * (a container, heading, etc.) a valid `initialFocus`/`fallbackFocus` target without inserting it
- * into the Tab order.
+ * into the Tab order. Requires the element to actually be capable of accepting focus: a
+ * `tabindex` attribute, a natively focusable tag, an anchor with `href`, or contenteditable.
+ * Plain `<div>` / `<h2>` etc. without `tabindex` are rejected because `.focus()` is a no-op on
+ * them in real browsers — accepting them would silently leave focus outside the trap.
  */
 function isProgrammaticallyFocusable(element: HTMLElement): boolean {
   if (isHiddenByTree(element)) return false;
   if (element.hasAttribute('disabled')) return false;
-  return true;
+  if (element.hasAttribute('tabindex')) return true;
+  if (NATIVELY_FOCUSABLE_TAGS.has(element.tagName)) return true;
+  if (element.tagName === 'A' && element.hasAttribute('href')) return true;
+  const contentEditable = element.getAttribute('contenteditable');
+  if (contentEditable !== null && contentEditable !== 'false') return true;
+  return false;
 }
 
 function getTabbableElements(root: HTMLElement): HTMLElement[] {
@@ -92,6 +102,18 @@ function resolveScopedTarget(root: HTMLElement, target: FocusTargetInput): HTMLE
 function getFallbackTarget(root: HTMLElement, fallbackFocus: FocusTargetInput): HTMLElement | null {
   const resolved = resolveScopedTarget(root, fallbackFocus);
   return resolved && isProgrammaticallyFocusable(resolved) ? resolved : null;
+}
+
+/**
+ * Calls `.focus()` and returns whether the element actually became `document.activeElement`.
+ * `isProgrammaticallyFocusable` cannot tell whether a plain `<div>` or `<h2>` (no `tabindex`,
+ * no native focus behavior) will accept focus — `.focus()` is a no-op on those. Verifying the
+ * landing lets callers fall through to the next strategy instead of silently leaving focus
+ * outside the trap.
+ */
+function tryFocus(element: HTMLElement): boolean {
+  element.focus();
+  return document.activeElement === element;
 }
 
 function ensureRootFocusable(root: HTMLElement): () => void {
@@ -138,20 +160,17 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
 
     function focusTrapTarget() {
       const preferred = resolveScopedTarget(node, initialFocus);
-      if (preferred && isProgrammaticallyFocusable(preferred)) {
-        preferred.focus();
+      if (preferred && isProgrammaticallyFocusable(preferred) && tryFocus(preferred)) {
         return;
       }
 
       const tabbable = getTabbableElements(node);
-      if (tabbable.length > 0) {
-        tabbable[0]?.focus();
+      if (tabbable.length > 0 && tabbable[0] && tryFocus(tabbable[0])) {
         return;
       }
 
       const fallbackTarget = getFallbackTarget(node, fallbackFocus);
-      if (fallbackTarget) {
-        fallbackTarget.focus();
+      if (fallbackTarget && tryFocus(fallbackTarget)) {
         return;
       }
 
@@ -192,9 +211,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
       if (tabbable.length === 0) {
         const fallbackTarget = getFallbackTarget(node, fallbackFocus);
         event.preventDefault();
-        if (fallbackTarget) {
-          fallbackTarget.focus();
-        } else {
+        if (!fallbackTarget || !tryFocus(fallbackTarget)) {
           restoreRootFocusability = ensureRootFocusable(node);
           node.focus();
         }
