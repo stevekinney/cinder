@@ -140,8 +140,16 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
     }
 
     const propType = getPropType(symbol);
+    if (!propType) {
+      unsupportedProps.push({ name: propName, reason: 'unknown-shape' });
+      continue;
+    }
 
-    const converted = convertType(propType, 0, hasJsDocTag(symbol, 'schemaObject'));
+    const converted = convertType(
+      propType,
+      0,
+      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTag(propType),
+    );
     if (converted.kind === 'unsupported') {
       unsupportedProps.push({ name: propName, reason: converted.reason });
       continue;
@@ -189,6 +197,8 @@ interface ConvertUnsupported {
 type ConvertResult = ConvertSuccess | ConvertUnsupported;
 
 function convertType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
+  if (depth > 4) return { kind: 'unsupported', reason: 'unknown-shape' };
+
   // Strip `undefined` — optional props are handled by `symbol.isOptional()`,
   // so the schema only needs to describe the present-value type.
   if (type.isUnion()) {
@@ -234,7 +244,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
   if (type.isNumberLiteral())
     return { kind: 'ok', schema: { const: type.getLiteralValueOrThrow() as number } };
   if (type.isBooleanLiteral()) {
-    return { kind: 'ok', schema: { const: type.getText() === 'true' } };
+    return { kind: 'ok', schema: { const: booleanLiteralValue(type) } };
   }
   if (type.isString()) return { kind: 'ok', schema: { type: 'string' } };
   if (type.isNumber()) return { kind: 'ok', schema: { type: 'number' } };
@@ -243,7 +253,11 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
 
   if (type.isArray()) {
     const element = type.getArrayElementTypeOrThrow();
-    const inner = convertType(element, depth + 1, expandObjectShapes);
+    const inner = convertType(
+      element,
+      depth + 1,
+      expandObjectShapes || hasSchemaObjectTag(element),
+    );
     if (inner.kind === 'unsupported') return inner;
     return { kind: 'ok', schema: { type: 'array', items: inner.schema } };
   }
@@ -258,10 +272,9 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     return { kind: 'unsupported', reason: 'generic-type-parameter' };
   }
 
-  // Object: best-effort — only allow plain `Record<string, X>`-shaped or
-  // empty objects. Anything with structural surface beyond that becomes
-  // unsupported. This keeps the schema generator simple while still covering
-  // most prop shapes.
+  // Object: model simple structural object types. This is intentionally shallow
+  // and conservative: unsupported member shapes fall back to a plain object
+  // instead of emitting a misleading partial contract.
   if (type.isObject()) {
     const stringIndex = type.getStringIndexType();
     if (stringIndex) {
@@ -278,7 +291,9 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     const required: string[] = [];
 
     for (const property of type.getProperties()) {
-      const converted = convertType(getPropType(property), depth + 1, expandObjectShapes);
+      const propertyType = getPropType(property);
+      if (!propertyType) return { kind: 'ok', schema: { type: 'object' } };
+      const converted = convertType(propertyType, depth + 1, expandObjectShapes);
       if (converted.kind === 'unsupported') return { kind: 'ok', schema: { type: 'object' } };
 
       const schemaEntry: PropertySchema = { ...converted.schema };
@@ -323,8 +338,33 @@ function isDeclaredInActiveTypesFile(type: Type): boolean {
 function literalValue(type: Type): string | number | boolean {
   if (type.isStringLiteral()) return type.getLiteralValueOrThrow() as string;
   if (type.isNumberLiteral()) return type.getLiteralValueOrThrow() as number;
-  if (type.isBooleanLiteral()) return type.getText() === 'true';
+  if (type.isBooleanLiteral()) return booleanLiteralValue(type);
   throw new Error(`literalValue called on non-literal type: ${type.getText()}`);
+}
+
+function booleanLiteralValue(type: Type): boolean {
+  return (type.compilerType as { intrinsicName?: string }).intrinsicName === 'true';
+}
+
+function hasSchemaObjectTag(type: Type): boolean {
+  const symbol = type.getAliasSymbol() ?? type.getSymbol();
+  if (!symbol) return false;
+
+  for (const declaration of symbol.getDeclarations()) {
+    if (!('getJsDocs' in declaration)) continue;
+    const docs = (
+      declaration as {
+        getJsDocs(): Array<{
+          getTags(): Array<{ getTagName(): string }>;
+        }>;
+      }
+    ).getJsDocs();
+    if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === 'schemaObject'))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -408,11 +448,11 @@ function getHtmlAttributeDeclarationSites(): Set<string> {
   return sites;
 }
 
-function getPropType(symbol: MorphSymbol): Type {
+function getPropType(symbol: MorphSymbol): Type | null {
   const declarations = symbol.getDeclarations();
   const decl = declarations[0];
   if (!decl) {
-    throw new Error(`Symbol ${symbol.getName()} has no declarations`);
+    return null;
   }
   return symbol.getTypeAtLocation(decl);
 }

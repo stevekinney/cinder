@@ -10,6 +10,10 @@ const schema = {
     placement: {
       enum: ['top', 'right', 'bottom', 'left'],
     },
+    describe: {
+      type: 'boolean',
+      description: 'Whether to wire tooltip text to the trigger via aria-describedby.',
+    },
     class: {
       type: 'string',
     },

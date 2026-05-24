@@ -41,16 +41,16 @@ Marker snippets are decorative. Do not place focusable or interactive content in
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                   | Required | Default      | Description                                                                         |
-| --------------------- | -------------------------------------- | -------- | ------------ | ----------------------------------------------------------------------------------- |
-| `class`               | `string`                               | no       | —            | Additional class names merged with `.cinder-timeline`.                              |
-| `entries`             | `object`[]                             | yes      | —            | Timeline entries rendered in source order.                                          |
-| `gapThresholdMinutes` | `number`                               | no       | —            | Hide the following connector when adjacent valid timestamps exceed this gap.        |
-| `groupBy`             | `"none"` \| `"day"` \| `"week"`        | no       | `"none"`     | Optional adjacent UTC day/week grouping mode.                                       |
-| `groupHeaderLevel`    | `1` \| `2` \| `3` \| `4` \| `5` \| `6` | no       | `3`          | Heading level applied to rendered group headers.                                    |
-| `label`               | `string`                               | no       | —            | Fallback accessible label used only when aria-label and aria-labelledby are absent. |
-| `orientation`         | `"vertical"` \| `"horizontal"`         | no       | `"vertical"` | Layout orientation.                                                                 |
-| `weekStartsOn`        | `"sunday"` \| `"monday"`               | no       | `"monday"`   | Week start used for UTC week grouping.                                              |
+| Prop                  | Type                                                                                                                                                              | Required | Default      | Description                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------ | ----------------------------------------------------------------------------------- |
+| `class`               | `string`                                                                                                                                                          | no       | —            | Additional class names merged with `.cinder-timeline`.                              |
+| `entries`             | ({ datetime: `string`; groupLabel?: `string`; id: `string`; timestamp: `string`; title: `string`; tone?: `"info"` \| `"success"` \| `"warning"` \| `"error"` })[] | yes      | —            | Timeline entries rendered in source order.                                          |
+| `gapThresholdMinutes` | `number`                                                                                                                                                          | no       | —            | Hide the following connector when adjacent valid timestamps exceed this gap.        |
+| `groupBy`             | `"none"` \| `"day"` \| `"week"`                                                                                                                                   | no       | `"none"`     | Optional adjacent UTC day/week grouping mode.                                       |
+| `groupHeaderLevel`    | `1` \| `2` \| `3` \| `4` \| `5` \| `6`                                                                                                                            | no       | `3`          | Heading level applied to rendered group headers.                                    |
+| `label`               | `string`                                                                                                                                                          | no       | —            | Fallback accessible label used only when aria-label and aria-labelledby are absent. |
+| `orientation`         | `"vertical"` \| `"horizontal"`                                                                                                                                    | no       | `"vertical"` | Layout orientation.                                                                 |
+| `weekStartsOn`        | `"sunday"` \| `"monday"`                                                                                                                                          | no       | `"monday"`   | Week start used for UTC week grouping.                                              |
 
 <!-- generated:props:end -->
 

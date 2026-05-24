@@ -26,6 +26,13 @@ export type {
 export { default as Avatar } from './components/avatar/index.ts';
 export type { AvatarProps, AvatarShape, AvatarSize } from './components/avatar/index.ts';
 
+export { default as AvatarGroup } from './components/avatar-group/index.ts';
+export type {
+  AvatarGroupItem,
+  AvatarGroupProps,
+  AvatarGroupZOrder,
+} from './components/avatar-group/index.ts';
+
 export { default as Badge } from './components/badge/index.ts';
 export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/index.ts';
 

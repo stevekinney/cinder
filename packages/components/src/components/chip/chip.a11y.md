@@ -14,6 +14,12 @@
 
 Non-interactive. No role or aria attributes needed — the span carries only visual meaning.
 
+## Tag metadata labels
+
+Use display-mode Chip for tag-like metadata labels such as issue labels, free-form tags, and entity categories when the label itself is the primary visible token. The default non-interactive `<span>` shape keeps these labels readable without implying an action.
+
+Use Badge instead when the token annotates another control or value with a compact status, count, or category. Use removable Chip when the tag can be removed, and toggle Chip when the tag is a selectable filter.
+
 ### Toggle (`mode="toggle"`)
 
 ```html

@@ -1,0 +1,69 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    avatars: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable identifier recommended for dynamic collaborator lists.',
+          },
+          name: {
+            type: 'string',
+            description: 'Display name used for initials, tooltip text, and accessible naming.',
+          },
+          src: {
+            type: 'string',
+            description: 'Optional avatar image source.',
+          },
+        },
+        additionalProperties: false,
+        required: ['name'],
+      },
+      description: 'Collaborators to render in the stack.',
+    },
+    maxVisible: {
+      type: 'number',
+      description: 'Maximum visible avatars before overflow.',
+      default: 5,
+    },
+    overlap: {
+      type: 'string',
+      description:
+        'Non-negative CSS length token for the amount each item overlaps its predecessor.',
+      default: '0.75rem',
+    },
+    zOrder: {
+      enum: ['first-on-top', 'last-on-top'],
+      description: 'Stacking order for visible avatars.',
+      default: 'last-on-top',
+    },
+    size: {
+      enum: ['xs', 'sm', 'md', 'lg', 'xl'],
+      description: 'Size token forwarded to each visible Avatar.',
+      default: 'md',
+    },
+    shape: {
+      enum: ['circle', 'square'],
+      description: 'Shape forwarded to each visible Avatar.',
+      default: 'circle',
+    },
+    overflowLabel: {
+      type: 'string',
+      description: 'Accessible label for the overflow indicator.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-avatar-group`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['avatars'],
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -34,11 +34,13 @@ const autoUpdateSpy = mock((_anchor: HTMLElement, _tooltip: HTMLElement, update:
   update();
   return autoUpdateTeardown;
 });
+const arrowSpy = mock((options: unknown) => ({ name: 'arrow', options, fn: () => ({}) }));
 const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
 const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () => ({}) }));
 const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: arrowSpy,
   autoUpdate: autoUpdateSpy,
   computePosition: computePositionSpy,
   flip: flipSpy,
@@ -97,6 +99,7 @@ afterEach(() => {
   computePositionSpy.mockClear();
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
+  arrowSpy.mockClear();
   flipSpy.mockClear();
   shiftSpy.mockClear();
   offsetSpy.mockClear();
@@ -137,6 +140,21 @@ describe('Tooltip', () => {
     const trigger = container.querySelector<HTMLElement>('button');
     const tooltip = queryTooltip();
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
+  });
+
+  test('describe=false keeps tooltip text visual without wiring aria-describedby', () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Visual-only tooltip',
+        describe: false,
+        children: triggerSnippet,
+      },
+    });
+
+    const trigger = container.querySelector<HTMLElement>('button');
+    const tooltip = queryTooltip();
+    expect(trigger?.hasAttribute('aria-describedby')).toBe(false);
+    expect(tooltip?.textContent?.trim()).toBe('Visual-only tooltip');
   });
 
   test('pre-existing aria-describedby ids are merged and restored on cleanup', () => {

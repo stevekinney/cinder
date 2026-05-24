@@ -23,7 +23,13 @@
   import { cn } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
 
-  let { text, placement = 'top', class: className, children }: TooltipProps = $props();
+  let {
+    text,
+    placement = 'top',
+    describe = true,
+    class: className,
+    children,
+  }: TooltipProps = $props();
 
   const tooltipId = useId('cinder-tooltip');
   const FOCUSABLE_SELECTOR = [
@@ -135,10 +141,10 @@
     wrapperElement = element;
     const focusable = resolveAnchorElement(element);
     anchorElement = focusable;
-    const teardownAriaDescribedBy = syncAriaDescribedBy(focusable);
+    const teardownAriaDescribedBy = describe ? syncAriaDescribedBy(focusable) : undefined;
 
     return () => {
-      teardownAriaDescribedBy();
+      teardownAriaDescribedBy?.();
       if (wrapperElement === element) wrapperElement = undefined;
       if (anchorElement === focusable) anchorElement = null;
     };

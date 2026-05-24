@@ -98,6 +98,30 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     expect(Object.keys(properties)).not.toContain('form');
   });
 
+  test('array props preserve simple object item contracts', () => {
+    const { properties, required } = generate('object-array', 'object-array');
+    expect(required).toContain('items');
+    expect(properties['items']).toEqual({
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable item identifier.',
+          },
+          label: {
+            type: 'string',
+            description: 'Visible item label.',
+          },
+        },
+        required: ['label'],
+        additionalProperties: false,
+      },
+      description: 'Items to render.',
+    });
+  });
+
   test('nested object arrays include the object property schema', () => {
     const { properties } = generate('nested-object-array', 'nested-object-array');
     const entries = properties['entries'];

@@ -215,6 +215,32 @@
       }
     },
     {
+      "name": "AvatarGroup",
+      "id": "avatar-group",
+      "import": "cinder/avatar-group",
+      "exportName": "AvatarGroup",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Overlapping collaborator avatar stack built on the Avatar primitive with focusable names and overflow count.",
+      "tags": ["identity", "collaboration"],
+      "useWhen": [
+        "Showing who is present, assigned, or collaborating in a compact surface.",
+        "Summarizing a bounded set of people with a visible overflow count."
+      ],
+      "avoidWhen": [
+        "Rendering a single person — use avatar instead.",
+        "Showing status, counts, or metadata labels unrelated to people — use badge, chip, or status-dot instead."
+      ],
+      "related": ["avatar", "badge", "tooltip", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/avatar-group/schema",
+        "variables": "cinder/avatar-group/variables",
+        "examples": "cinder/avatar-group/examples"
+      }
+    },
+    {
       "name": "Badge",
       "id": "badge",
       "import": "cinder/badge",
@@ -502,14 +528,14 @@
       "exportName": "Chip",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Compact pill that displays a value and optionally supports removal or toggle interactions via its mode prop.",
+      "purpose": "Compact pill for metadata labels, applied filters, selected entities, and tag-like tokens, with optional removal or toggle interactions via its mode prop.",
       "tags": ["tag", "filter"],
       "useWhen": [
-        "Representing applied filters, selected entities, or tags the user can remove.",
+        "Representing issue labels, free-form tags, applied filters, selected entities, or other metadata tokens.",
         "Offering a small toggleable option inside a group of choices."
       ],
       "avoidWhen": [
-        "The label is purely decorative and non-interactive — use badge instead.",
+        "Showing a numeric count, short status, or compact category annotation next to another element — use badge instead.",
         "Picking one of a small fixed set — use segmented-control instead."
       ],
       "related": ["badge", "status-dot"],

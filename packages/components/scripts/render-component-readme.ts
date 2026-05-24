@@ -98,6 +98,13 @@ function formatType(prop: PropertySchema): string {
     const itemType = formatType(prop.items);
     return `${needsArrayItemGrouping(itemType) ? `(${itemType})` : itemType}[]`;
   }
+  if (prop.type === 'object' && prop.properties) {
+    const requiredSet = new Set(prop.required ?? []);
+    const entries = Object.entries(prop.properties)
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([name, child]) => `${name}${requiredSet.has(name) ? '' : '?'}: ${formatType(child)}`);
+    return `{ ${entries.join('; ')} }`;
+  }
   if (prop.type) return '`' + prop.type + '`';
   return '`unknown`';
 }

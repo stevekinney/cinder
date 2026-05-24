@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "avatar-group",
+  "import": "cinder/avatar-group",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Collaborator stack",
+      "description": "A compact stack of visible collaborators with focusable names.",
+      "code": "<script lang=\"ts\">\n  import { AvatarGroup } from 'cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} aria-label=\"Active collaborators\" />\n</div>\n"
+    },
+    {
+      "id": "overflow",
+      "title": "Overflow count",
+      "description": "Limit visible avatars and summarize hidden collaborators with a count.",
+      "code": "<script lang=\"ts\">\n  import { AvatarGroup } from 'cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n    { id: 'dorothy', name: 'Dorothy Vaughan' },\n    { id: 'mary', name: 'Mary Jackson' },\n    { id: 'annie', name: 'Annie Easley' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} maxVisible={3} overflowLabel=\"Three hidden collaborators\" />\n  <AvatarGroup {avatars} maxVisible={0} overflowLabel=\"Six hidden collaborators\" />\n</div>\n"
+    },
+    {
+      "id": "overlap-and-order",
+      "title": "Overlap and order",
+      "description": "Customize overlap amount, shape, size, and visible stacking order.",
+      "code": "<script lang=\"ts\">\n  import { AvatarGroup } from 'cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n    { id: 'dorothy', name: 'Dorothy Vaughan' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} overlap=\"0.5rem\" zOrder=\"first-on-top\" size=\"lg\" />\n  <AvatarGroup {avatars} overlap=\"1rem\" zOrder=\"last-on-top\" shape=\"square\" />\n</div>\n"
+    }
+  ]
+}
