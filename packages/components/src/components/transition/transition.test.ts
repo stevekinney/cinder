@@ -18,6 +18,10 @@ function waitForAnimationFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
 beforeEach(() => {
   document.body.replaceChildren();
 });
@@ -145,6 +149,53 @@ describe('Presence', () => {
 
     expect(container.querySelector('[data-testid="presence-child"]')).toBeNull();
     expect(exitCount).toBe(1);
+  });
+
+  test('calls onExitComplete once when forceMount exit completes before duration setup', async () => {
+    const originalGetComputedStyle = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        transitionDuration: '1ms',
+        transitionDelay: '0ms',
+        animationDuration: '',
+        animationDelay: '',
+        animationIterationCount: '',
+      }) as CSSStyleDeclaration) as typeof getComputedStyle;
+
+    let exitCount = 0;
+    const { container, rerender } = render(Presence, {
+      props: {
+        present: true,
+        forceMount: true,
+        children: transitionChildren,
+        onExitComplete: () => {
+          exitCount += 1;
+        },
+      },
+    });
+
+    try {
+      await tick();
+      await rerender({
+        present: false,
+        forceMount: true,
+        children: transitionChildren,
+        onExitComplete: () => {
+          exitCount += 1;
+        },
+      });
+
+      const wrapper = container.querySelector('[data-cinder-state]') as HTMLDivElement;
+      wrapper.dispatchEvent(new Event('transitionend', { bubbles: true }));
+      await waitForAnimationFrame();
+      await wait(50);
+
+      expect(wrapper.dataset['cinderState']).toBe('closed');
+      expect(wrapper.dataset['cinderPresence']).toBe('exited');
+      expect(exitCount).toBe(1);
+    } finally {
+      globalThis.getComputedStyle = originalGetComputedStyle;
+    }
   });
 });
 

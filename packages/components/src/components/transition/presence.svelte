@@ -33,7 +33,8 @@
   }
 
   function completeExit(generation: number) {
-    if (generation !== exitGeneration) return;
+    if (generation !== exitGeneration || presenceState !== 'exiting') return;
+    exitGeneration += 1;
     clearExitTimer();
     presenceState = 'exited';
     visibilityState = 'closed';
