@@ -123,6 +123,19 @@ describe('AreaChart', () => {
     expect(queryByText('Jan: 30')).toBeNull();
   });
 
+  test('arrow keys move DOM focus to the active target', async () => {
+    const { getByRole, queryByText } = render(AreaChart, { label: 'Usage trend', series });
+    const firstTarget = getByRole('button', { name: 'Usage, Jan, 30' });
+    const secondTarget = getByRole('button', { name: 'Storage, Jan, 15' });
+
+    await fireEvent.focus(firstTarget);
+    await fireEvent.keyDown(firstTarget, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(secondTarget);
+    expect(secondTarget?.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 15')).toBeTruthy();
+  });
+
   test('renders formatted axis tick labels', () => {
     const { getAllByText } = render(AreaChart, {
       label: 'Usage trend',

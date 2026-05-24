@@ -142,6 +142,24 @@ describe('BarChart', () => {
     expect(queryByText('Jan: 120')).toBeNull();
   });
 
+  test('arrow keys move DOM focus to the active target', async () => {
+    const { getByRole, queryByText } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const firstTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const secondTarget = getByRole('button', { name: 'Expansion, Jan, 30' });
+
+    await fireEvent.focus(firstTarget);
+    await fireEvent.keyDown(firstTarget, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(secondTarget);
+    expect(secondTarget?.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 30')).toBeTruthy();
+  });
+
   test('hides the data table when dataTableVisibility is "hidden"', () => {
     const { container, queryByText } = render(BarChart, {
       label: 'Hidden table',

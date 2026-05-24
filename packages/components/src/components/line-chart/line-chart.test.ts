@@ -86,6 +86,19 @@ describe('LineChart', () => {
     expect(queryByText('Jan: 120')).toBeNull();
   });
 
+  test('arrow keys move DOM focus to the active target', async () => {
+    const { getByRole, queryByText } = render(LineChart, { label: 'Monthly revenue', series });
+    const firstTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const secondTarget = getByRole('button', { name: 'Signups, Jan, 40' });
+
+    await fireEvent.focus(firstTarget);
+    await fireEvent.keyDown(firstTarget, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(secondTarget);
+    expect(secondTarget?.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 40')).toBeTruthy();
+  });
+
   test('visible table follows formatted visible series state', async () => {
     const { getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',

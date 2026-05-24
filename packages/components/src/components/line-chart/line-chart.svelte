@@ -123,6 +123,16 @@
     );
   }
 
+  function focusTarget(targetId: string | undefined): void {
+    if (!rootElement || !targetId) return;
+    // Move DOM focus so focus-visible, aria-describedby, and the focused
+    // node's aria-label all attach to the new target, not the previous one.
+    const next = rootElement.querySelector<SVGGraphicsElement>(
+      `[data-cinder-target-id="${CSS.escape(targetId)}"]`,
+    );
+    next?.focus();
+  }
+
   function activateByKeyboard(event: KeyboardEvent): void {
     if (!keyboardEnabled) return;
     const currentIndex = Math.max(
@@ -139,14 +149,17 @@
       ArrowLeft: -1,
       ArrowUp: -1,
     };
-    if (event.key === 'Home') activeTarget = model.targets[0];
-    else if (event.key === 'End') activeTarget = model.targets.at(-1);
+    let next: ChartTarget | undefined;
+    if (event.key === 'Home') next = model.targets[0];
+    else if (event.key === 'End') next = model.targets.at(-1);
     else if (event.key in keyOffsets) {
       const nextIndex =
         (currentIndex + (keyOffsets[event.key] ?? 0) + model.targets.length) % model.targets.length;
-      activeTarget = model.targets[nextIndex] ?? activeTarget;
+      next = model.targets[nextIndex] ?? activeTarget;
     } else return;
+    activeTarget = next;
     event.preventDefault();
+    focusTarget(next?.id);
   }
 </script>
 
@@ -278,6 +291,7 @@
                 r="8"
                 tabindex="0"
                 role="button"
+                data-cinder-target-id={target.id}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
                 aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
                 onfocus={() => (activeTarget = target)}
