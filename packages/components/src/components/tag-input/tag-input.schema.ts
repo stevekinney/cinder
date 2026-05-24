@@ -43,28 +43,38 @@ const schema = {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
     },
-    autocomplete: {
-      type: 'string',
-      description: 'Autocomplete hint forwarded to the visible text input.',
-    },
     autocapitalize: {
-      type: 'string',
+      enum: ['off', 'on', 'characters', 'none', 'sentences', 'words', null],
       description: 'Autocapitalization hint forwarded to the visible text input.',
     },
     enterkeyhint: {
-      type: 'string',
+      enum: ['enter', 'done', 'go', 'next', 'previous', 'search', 'send', null],
       description: 'Virtual-keyboard Enter hint forwarded to the visible text input.',
     },
     inputmode: {
-      type: 'string',
+      enum: ['email', 'tel', 'url', 'none', 'search', 'text', 'numeric', 'decimal', null],
       description: 'Virtual-keyboard input mode forwarded to the visible text input.',
     },
     maxlength: {
-      type: 'number',
+      anyOf: [
+        {
+          type: 'number',
+        },
+        {
+          type: 'null',
+        },
+      ],
       description: 'Maximum pending-text length forwarded to the visible text input.',
     },
     placeholder: {
-      type: 'string',
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
       description: 'Placeholder text shown while the pending tag input is empty.',
     },
     readonly: {
@@ -73,7 +83,7 @@ const schema = {
         'Render the pending-tag input as read-only and make committed tags non-removable.',
     },
     spellcheck: {
-      type: 'boolean',
+      enum: [false, true, 'true', 'false', null],
       description: 'Spellcheck setting forwarded to the visible text input.',
     },
     disabled: {
@@ -90,27 +100,41 @@ const schema = {
       description: 'Additional class merged onto the root element.',
     },
     'aria-label': {
-      type: 'string',
-      description: 'Accessible label applied when no labelled-by chain is present.',
-    },
-    'aria-invalid': {
       anyOf: [
-        {
-          type: 'boolean',
-        },
         {
           type: 'string',
         },
+        {
+          type: 'null',
+        },
       ],
+      description: 'Accessible label applied when no labelled-by chain is present.',
+    },
+    'aria-invalid': {
+      enum: [false, true, 'true', 'false', 'grammar', 'spelling', null],
       description:
         'Manual invalid-state override used when no inline validation message or FormField invalid state is active.',
     },
     'aria-labelledby': {
-      type: 'string',
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
       description: 'Element ids that label both the text input and the committed-tag listbox.',
     },
     'aria-describedby': {
-      type: 'string',
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
       description:
         'Additional description ids composed into the visible input aria-describedby chain.',
     },
@@ -118,6 +142,10 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
+      {
+        name: 'autocomplete',
+        reason: 'unknown-shape',
+      },
       {
         name: 'onblur',
         reason: 'function-or-snippet',

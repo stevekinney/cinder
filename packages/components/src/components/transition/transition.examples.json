@@ -12,7 +12,7 @@
     {
       "id": "svelte-transition",
       "title": "Svelte transition",
-      "description": "Uses a Svelte-compatible transition function through the headless Transition wrapper.",
+      "description": "Uses a [Svelte transition](https://svelte.dev/docs/svelte-transition) function through the headless Transition wrapper.",
       "code": "<script lang=\"ts\">\n  import { Button, Transition } from 'cinder';\n\n  let open = $state(false);\n\n  function fade(_node: Element) {\n    return {\n      duration: 200,\n      css: (t: number) => `opacity: ${t};`,\n    };\n  }\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Hide fade transition' : 'Show fade transition'}\n</Button>\n\n<Transition show={open} transition={fade} transitionParameters={{ duration: 200 }}>\n  <div\n    style=\"\n      margin-block-start: var(--cinder-space-4);\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    This example uses a Svelte transition function.\n  </div>\n</Transition>\n"
     }
   ]

@@ -8,6 +8,7 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: FocusTrap } = await import('./focus-trap.svelte');
+const { createFocusTrap } = await import('./focus-trap.utilities.ts');
 
 const focusTrapChildren = createRawSnippet(() => ({
   render: () => `
@@ -55,18 +56,25 @@ describe('FocusTrap', () => {
     expect(document.activeElement).toBe(first);
   });
 
-  test('wraps Shift+Tab from the first element to the last', async () => {
-    const { getByTestId } = render(FocusTrap, {
-      props: { children: focusTrapChildren },
-    });
+  test('wraps Shift+Tab from the first element to the last', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <button data-testid="first-button">First</button>
+      <button data-testid="last-button">Last</button>
+    `;
+    document.body.appendChild(root);
+    const detach = createFocusTrap()(root);
 
-    const first = getByTestId('first-button') as HTMLButtonElement;
-    const last = getByTestId('last-button') as HTMLButtonElement;
+    const first = root.querySelector('[data-testid="first-button"]') as HTMLButtonElement;
+    const last = root.querySelector('[data-testid="last-button"]') as HTMLButtonElement;
     first.focus();
 
-    await fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    first.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }),
+    );
 
     expect(document.activeElement).toBe(last);
+    detach?.();
   });
 
   test('restores focus to the previously focused element on teardown', async () => {

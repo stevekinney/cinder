@@ -91,8 +91,9 @@ describe('Transition', () => {
       props: {
         show: true,
         children: transitionChildren,
-        transition: (_node: Element, parameters: { duration: number }) => {
-          return { duration: parameters.duration };
+        transition: (_node: Element, parameters: unknown) => {
+          const { duration } = parameters as { duration: number };
+          return { duration };
         },
         transitionParameters: { duration: 1 },
       },
