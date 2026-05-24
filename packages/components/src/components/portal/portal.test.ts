@@ -102,12 +102,15 @@ describe('Portal', () => {
     expect(hostB.querySelector('[data-testid="portal-child"]')).not.toBeNull();
   });
 
-  test('detaches when disabled flips from false to true', async () => {
+  test('detaches from the target and reappears inline when disabled flips false to true', async () => {
+    // Regression for Codex round 2 finding: previously the $effect cleanup detached the wrapper
+    // when `disabled` flipped true but nothing reattached it inline, so the child silently vanished
+    // from the entire DOM. The placeholder comment anchor now reinserts the wrapper inline.
     const host = document.createElement('div');
     host.id = 'portal-host';
     document.body.appendChild(host);
 
-    const { rerender } = render(Portal, {
+    const { container, rerender } = render(Portal, {
       props: { target: '#portal-host', disabled: false, children: childSnippet },
     });
 
@@ -117,7 +120,8 @@ describe('Portal', () => {
     await rerender({ target: '#portal-host', disabled: true, children: childSnippet });
     await tick();
 
-    // After disabling, the wrapper must not remain in the previous target.
+    // After disabling: gone from the previous target, present back in the original render container.
     expect(host.querySelector('[data-testid="portal-child"]')).toBeNull();
+    expect(container.querySelector('[data-testid="portal-child"]')).not.toBeNull();
   });
 });

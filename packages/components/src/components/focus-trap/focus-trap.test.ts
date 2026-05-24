@@ -131,4 +131,27 @@ describe('FocusTrap', () => {
 
     expect(document.activeElement).toBe(trigger);
   });
+
+  test('restores focus on reactive deactivation, before unmount', async () => {
+    // Regression for Codex round 2 finding: the `activated` flag alone did not handle the case
+    // where `active` flipped false while the component remained mounted. The nested `$effect` now
+    // runs `deactivate()` as soon as the getter returns false, restoring focus immediately.
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { rerender } = render(FocusTrap, {
+      props: { active: true, children: focusTrapChildren },
+    });
+
+    await tick();
+    // While active, focus should have moved into the trap.
+    expect(document.activeElement).not.toBe(trigger);
+
+    await rerender({ active: false, children: focusTrapChildren });
+    await tick();
+
+    // Without unmounting, deactivation alone restores focus to the trigger.
+    expect(document.activeElement).toBe(trigger);
+  });
 });

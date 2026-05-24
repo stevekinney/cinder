@@ -1,6 +1,7 @@
 import type { Attachment } from 'svelte/attachments';
 
 import { restoreFocusTo } from '../../utilities/focus.ts';
+import { readOption } from '../../utilities/read-option.ts';
 
 export type FocusTargetInput =
   | HTMLElement
@@ -33,10 +34,6 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
   '[contenteditable]:not([contenteditable="false"])',
 ].join(', ');
-
-function readOption<T>(value: T | (() => T)): T {
-  return typeof value === 'function' ? (value as () => T)() : value;
-}
 
 function isHiddenByTree(element: HTMLElement): boolean {
   if (element.hidden) return true;
@@ -195,12 +192,23 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
 
     node.addEventListener('keydown', handleKeydown);
 
-    if (isActive()) {
+    // Reactive activation: a getter-form `active` flipping true→false (or vice versa) must call
+    // `activate()` / `deactivate()` immediately, not only on unmount. Otherwise an inactive trap
+    // lingers on `trapStack`, blocking lower traps' Tab handling via `isTopTrap`, and focus is
+    // never restored to the previously-focused element on reactive deactivation.
+    $effect(() => {
+      if (!isActive()) return;
       activate();
-    }
+      return () => {
+        deactivate();
+      };
+    });
 
     return () => {
       node.removeEventListener('keydown', handleKeydown);
+      // `$effect` cleanup above already ran `deactivate()` when active flipped false; this final
+      // call is a defensive no-op in that case (guarded by the `activated` flag) and ensures
+      // restoration when the trap is still active at unmount.
       deactivate();
     };
   };

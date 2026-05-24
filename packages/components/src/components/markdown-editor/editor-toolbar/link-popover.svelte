@@ -26,7 +26,7 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { createFocusTrap } from '../../focus-trap/index.ts';
-  import { createFocusOnMount, createClickOutside } from '../../../utilities/attachments.ts';
+  import { createClickOutside } from '../../../utilities/attachments.ts';
   import Button from '../../button/button.svelte';
   import Input from '../../input/input.svelte';
   import { Link, Unlink, X } from '../../icons/index.ts';
@@ -155,7 +155,6 @@
   tabindex="-1"
   class={classNames('link-popover', className)}
   {@attach createFocusTrap()}
-  {@attach createFocusOnMount()}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >
