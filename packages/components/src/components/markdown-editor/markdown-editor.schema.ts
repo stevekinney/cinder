@@ -44,6 +44,16 @@ const schema = {
       type: 'string',
       description: 'Additional CSS classes',
     },
+    placeholderCompletion: {
+      type: 'object',
+      description:
+        'Placeholder completion configuration (DEP-583).\nWhen provided, enables inline suggestion menu for {{…}} tokens in WYSIWYG mode.',
+    },
+    placeholderDecoration: {
+      type: 'object',
+      description:
+        'Placeholder decoration configuration (DEP-583).\nWhen provided, decorates invalid {{…}} tokens with CSS class and data attributes.',
+    },
     snapshotMode: {
       type: 'boolean',
       description:
@@ -73,14 +83,6 @@ const schema = {
       {
         name: 'onSelectionChange',
         reason: 'function-or-snippet',
-      },
-      {
-        name: 'placeholderCompletion',
-        reason: 'unknown-shape',
-      },
-      {
-        name: 'placeholderDecoration',
-        reason: 'unknown-shape',
       },
       {
         name: 'plugins',
