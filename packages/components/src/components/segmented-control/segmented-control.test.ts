@@ -628,6 +628,50 @@ describe('SegmentedControl — variants', () => {
     const control = container.querySelector('.cinder-segmented-control');
     expect(control?.hasAttribute('data-cinder-density')).toBe(false);
   });
+
+  test('density="toolbar" with no explicit size resolves data-cinder-size="sm"', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'view',
+        label: 'View',
+        options: [{ value: 'a', label: 'A' }],
+        density: 'toolbar',
+      },
+    });
+    const control = container.querySelector('.cinder-segmented-control');
+    expect(control?.getAttribute('data-cinder-size')).toBe('sm');
+    expect(control?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
+
+  test('density="toolbar" overrides size="md" to data-cinder-size="sm"', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'view',
+        label: 'View',
+        options: [{ value: 'a', label: 'A' }],
+        size: 'md',
+        density: 'toolbar',
+      },
+    });
+    const control = container.querySelector('.cinder-segmented-control');
+    expect(control?.getAttribute('data-cinder-size')).toBe('sm');
+    expect(control?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
+
+  test('density="toolbar" overrides size="lg" to data-cinder-size="sm"', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'view',
+        label: 'View',
+        options: [{ value: 'a', label: 'A' }],
+        size: 'lg',
+        density: 'toolbar',
+      },
+    });
+    const control = container.querySelector('.cinder-segmented-control');
+    expect(control?.getAttribute('data-cinder-size')).toBe('sm');
+    expect(control?.getAttribute('data-cinder-density')).toBe('toolbar');
+  });
 });
 
 // ── Child-API regression (DOM order, dynamic add/remove) ─────────────────────

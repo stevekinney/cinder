@@ -126,7 +126,10 @@
 
 /* ── Size variants ──────────────────────────────────────────────────────── */
 
-/* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target */
+/* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target.
+ * Note: 2.5.8 also requires >=24px of offset space between adjacent targets
+ * smaller than 24px in either dimension. Attached options sit flush against
+ * each other so the bounding box must stay >= 24px; do not reduce this. */
 .cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
   min-block-size: 1.5rem;
   padding-block: var(--cinder-space-1);
@@ -139,7 +142,7 @@
   min-block-size: 2rem;
   padding-block: var(--cinder-space-1);
   padding-inline: var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
+  font-size: var(--cinder-text-sm);
 }
 
 /* lg: 2.75rem = 44px — recommended pointer/touch target per WCAG 2.5.5 */
@@ -150,15 +153,43 @@
   font-size: var(--cinder-text-sm);
 }
 
-/* density="toolbar": opt-in to the shared --cinder-control-height-sm tier so
- * the control lines up with sibling Button (size="sm"), Chip (density="toolbar"),
- * DiffStatistics (compact density="toolbar"), and any other toolbar element
- * adopting the same height. Overrides whatever size= rule preceded it. */
+/* density="toolbar" resolves through the component to data-cinder-size="sm",
+ * so font and (for detached or vertical toolbars) inline padding flow from
+ * the `sm` rule above; attached horizontal toolbars pick up the 12px inline
+ * padding from the override block below because they match the
+ * `[data-cinder-size='sm']` arm of that rule. The only declaration this
+ * block owns is the cross-component height contract:
+ * Chip[density=toolbar], DiffStatistics[variant=compact][density=toolbar],
+ * and Button (size="sm") all pin to --cinder-control-height-sm so they line
+ * up in editor toolbars. We do the same here so the SegmentedControl in a
+ * toolbar row matches its siblings' bounding height even though its
+ * effective `sm` typography stays compact. The height pin is currently
+ * unscoped by orientation — vertical toolbar density is not a supported
+ * combination, since stacking 32px options vertically would defeat the
+ * row-alignment contract; treat vertical + toolbar as undefined. */
 .cinder-segmented-control[data-cinder-density='toolbar'] .cinder-segmented-control-option {
   min-block-size: var(--cinder-control-height-sm);
-  padding-block: var(--cinder-space-1);
-  padding-inline: var(--cinder-space-3);
-  font-size: var(--cinder-text-xs);
+}
+
+/* Attached horizontal options need at least 12px between the inter-segment
+ * separator (rendered as a ::before pseudo-element at inset-inline-start: 0)
+ * and the option label. The base `sm` and `md` size rules use --cinder-space-2
+ * (0.5rem = 8px), which causes labels to pinch against the separator. Bump
+ * the inline padding to --cinder-space-3 (0.75rem = 12px) on attached
+ * horizontal sm/md controls only — `lg` already uses --cinder-space-3, and
+ * detached/vertical variants keep their per-size defaults. Toolbar-density
+ * controls resolve to data-cinder-size="sm" via the Svelte component, so
+ * attached horizontal toolbars match the `sm` arm of this selector and
+ * correctly receive the 12px inline padding too. */
+.cinder-segmented-control:not(
+    [data-cinder-detached]
+  )[data-cinder-orientation='horizontal'][data-cinder-size='sm']
+  .cinder-segmented-control-option,
+.cinder-segmented-control:not(
+    [data-cinder-detached]
+  )[data-cinder-orientation='horizontal'][data-cinder-size='md']
+  .cinder-segmented-control-option {
+  padding-inline: var(--cinder-space-3, 0.75rem);
 }
 
 /* ── Hover ──────────────────────────────────────────────────────────────── */
