@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "resizable-panels",
+  "import": "cinder/resizable-panels",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic horizontal layout",
+      "description": "Two panes with a draggable separator and persisted layout payloads.",
+      "code": "<script lang=\"ts\">\n  import { ResizablePanels, type ResizablePanelDefinition } from 'cinder/resizable-panels';\n\n  const panes = [\n    {\n      id: 'sidebar',\n      label: 'Sidebar',\n      defaultSize: { value: 28, unit: 'percent' },\n      minSize: { value: 180, unit: 'px' },\n    },\n    { id: 'editor', label: 'Editor', defaultSize: { value: 72, unit: 'percent' } },\n  ] satisfies ResizablePanelDefinition[];\n</script>\n\n<ResizablePanels {panes} style=\"min-block-size: 18rem; border: 1px solid var(--cinder-border);\">\n  {#snippet children(pane)}\n    <div style=\"padding: var(--cinder-space-4);\">{pane.label}</div>\n  {/snippet}\n</ResizablePanels>\n"
+    },
+    {
+      "id": "collapse",
+      "title": "Double-click collapse",
+      "description": "Double-click the handle to collapse or restore the leading pane.",
+      "code": "<script lang=\"ts\">\n  import { ResizablePanels, type ResizablePanelDefinition } from 'cinder/resizable-panels';\n\n  const panes = [\n    {\n      id: 'filters',\n      label: 'Filters',\n      defaultSize: { value: 24, unit: 'percent' },\n      minSize: { value: 180, unit: 'px' },\n      collapsible: true,\n    },\n    { id: 'results', label: 'Results', defaultSize: { value: 76, unit: 'percent' } },\n  ] satisfies ResizablePanelDefinition[];\n</script>\n\n<ResizablePanels\n  collapseOnDoubleClick\n  {panes}\n  style=\"min-block-size: 18rem; border: 1px solid var(--cinder-border);\"\n>\n  {#snippet children(pane)}\n    <div style=\"padding: var(--cinder-space-4);\">{pane.label}</div>\n  {/snippet}\n</ResizablePanels>\n"
+    },
+    {
+      "id": "nested",
+      "title": "Nested panes",
+      "description": "Compose outer and inner splitters without cross-talk.",
+      "code": "<script lang=\"ts\">\n  import { ResizablePanels, type ResizablePanelDefinition } from 'cinder/resizable-panels';\n\n  const outerPanes = [\n    {\n      id: 'navigation',\n      label: 'Navigation',\n      defaultSize: { value: 22, unit: 'percent' },\n      minSize: { value: 160, unit: 'px' },\n    },\n    { id: 'workspace', label: 'Workspace', defaultSize: { value: 78, unit: 'percent' } },\n  ] satisfies ResizablePanelDefinition[];\n\n  const innerPanes = [\n    { id: 'editor', label: 'Editor', defaultSize: { value: 70, unit: 'percent' } },\n    {\n      id: 'inspector',\n      label: 'Inspector',\n      defaultSize: { value: 30, unit: 'percent' },\n      minSize: { value: 220, unit: 'px' },\n    },\n  ] satisfies ResizablePanelDefinition[];\n</script>\n\n<ResizablePanels\n  panes={outerPanes}\n  style=\"min-block-size: 22rem; border: 1px solid var(--cinder-border);\"\n>\n  {#snippet children(pane)}\n    {#if pane.id === 'workspace'}\n      <ResizablePanels panes={innerPanes} style=\"block-size: 100%;\">\n        {#snippet children(innerPane)}\n          <div style=\"padding: var(--cinder-space-4);\">{innerPane.label}</div>\n        {/snippet}\n      </ResizablePanels>\n    {:else}\n      <div style=\"padding: var(--cinder-space-4);\">{pane.label}</div>\n    {/if}\n  {/snippet}\n</ResizablePanels>\n"
+    },
+    {
+      "id": "vertical",
+      "title": "Vertical layout",
+      "description": "Stack panes and resize them along the block axis.",
+      "code": "<script lang=\"ts\">\n  import { ResizablePanels, type ResizablePanelDefinition } from 'cinder/resizable-panels';\n\n  const panes = [\n    {\n      id: 'preview',\n      label: 'Preview',\n      defaultSize: { value: 35, unit: 'percent' },\n      minSize: { value: 120, unit: 'px' },\n    },\n    { id: 'console', label: 'Console', defaultSize: { value: 65, unit: 'percent' } },\n  ] satisfies ResizablePanelDefinition[];\n</script>\n\n<ResizablePanels\n  orientation=\"vertical\"\n  {panes}\n  style=\"block-size: 20rem; border: 1px solid var(--cinder-border);\"\n>\n  {#snippet children(pane)}\n    <div style=\"padding: var(--cinder-space-4);\">{pane.label}</div>\n  {/snippet}\n</ResizablePanels>\n"
+    }
+  ]
+}

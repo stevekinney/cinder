@@ -301,6 +301,19 @@ export type { RadioGroupContext, RadioGroupProps } from './components/radio-grou
 export { default as Rating } from './components/rating/index.ts';
 export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
 
+export { default as ResizablePanels } from './components/resizable-panels/index.ts';
+export type {
+  ResizablePanelDefinition,
+  ResizablePanelRenderContext,
+  ResizablePanelSize,
+  ResizablePanelSizeState,
+  ResizablePanelsCollapseTarget,
+  ResizablePanelsOrientation,
+  ResizablePanelsProps,
+  ResizablePanelsResizeEvent,
+  ResizablePanelsResizeReason,
+} from './components/resizable-panels/index.ts';
+
 export {
   default as ReviewEditor,
   buildFormData,

@@ -28,12 +28,20 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
   }
 }
 
+export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
+  return port === null ? null : localPlaygroundUrlForPort(port);
+}
+
 function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
 
-export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
-  return port === null ? null : localPlaygroundUrlForPort(port);
+async function readPlaygroundPortFile(path: string): Promise<number | null> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) return null;
+  const text = await file.text();
+  const port = Number(text.trim());
+  return Number.isInteger(port) && port > 0 ? port : null;
 }
 
 export function parsePlaygroundListeningPort(output: string): number | null {
@@ -44,12 +52,14 @@ export function parsePlaygroundListeningPort(output: string): number | null {
   return Number.isInteger(port) && port > 0 ? port : null;
 }
 
-async function readPlaygroundPortFile(path: string): Promise<number | null> {
-  const file = Bun.file(path);
-  if (!(await file.exists())) return null;
-  const text = await file.text();
-  const port = Number(text.trim());
-  return Number.isInteger(port) && port > 0 ? port : null;
+export function appendServerOutputBuffer(
+  currentBuffer: string,
+  output: string,
+  portHasBeenReported: boolean,
+): string {
+  const nextBuffer = `${currentBuffer}${output}`;
+  if (!portHasBeenReported) return nextBuffer;
+  return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
 }
 
 function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
@@ -95,6 +105,7 @@ async function main(): Promise<void> {
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
+    let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
     serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
@@ -103,22 +114,23 @@ async function main(): Promise<void> {
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
 
-    const startedAt = Date.now();
-    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
-    let lastLog = startedAt;
-    let reportedPlaygroundPort: number | null = null;
     let serverOutputBuffer = '';
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
-      serverOutputBuffer = `${serverOutputBuffer}${output}`;
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        output,
+        reportedPlaygroundPort !== null,
+      );
       reportedPlaygroundPort =
         parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
-      if (serverOutputBuffer.length > 4096 || reportedPlaygroundPort !== null) {
-        serverOutputBuffer = serverOutputBuffer.slice(-4096);
-      }
+      serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
     });
 
+    const startedAt = Date.now();
+    const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
+    let lastLog = startedAt;
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;

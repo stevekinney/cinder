@@ -1430,6 +1430,27 @@
       "import": "./src/components/rating/rating.examples.json",
       "default": "./src/components/rating/rating.examples.json"
     },
+    "./resizable-panels": {
+      "types": "./dist/components/resizable-panels/index.d.ts",
+      "svelte": "./src/components/resizable-panels/index.ts",
+      "node": "./dist/server/components/resizable-panels/index.js",
+      "default": "./dist/components/resizable-panels/index.js"
+    },
+    "./resizable-panels/schema": {
+      "types": "./dist/components/resizable-panels/resizable-panels.schema.d.ts",
+      "svelte": "./src/components/resizable-panels/resizable-panels.schema.ts"
+    },
+    "./resizable-panels/variables": {
+      "types": "./dist/components/resizable-panels/resizable-panels.variables.d.ts",
+      "svelte": "./src/components/resizable-panels/resizable-panels.variables.ts"
+    },
+    "./resizable-panels/styles": {
+      "default": "./dist/components/resizable-panels/resizable-panels.css"
+    },
+    "./resizable-panels/examples": {
+      "import": "./src/components/resizable-panels/resizable-panels.examples.json",
+      "default": "./src/components/resizable-panels/resizable-panels.examples.json"
+    },
     "./review-editor": {
       "types": "./dist/components/review-editor/index.d.ts",
       "svelte": "./src/components/review-editor/index.ts",
