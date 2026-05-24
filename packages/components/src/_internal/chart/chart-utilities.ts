@@ -80,6 +80,12 @@ export type CartesianChartModel = {
     areaPath: string;
     hidden: boolean;
   }>;
+  tableRows: Array<{
+    id: string;
+    seriesLabel: string;
+    xLabel: string;
+    valueLabel: string;
+  }>;
   targets: ChartTarget[];
   empty: boolean;
   yDomain: [number, number];
@@ -101,6 +107,10 @@ export type BarChartModel = {
     height: number;
     color: string;
     hidden: boolean;
+  }>;
+  tableRows: Array<{
+    categoryLabel: string;
+    values: Array<{ seriesId: string; seriesLabel: string; valueLabel: string }>;
   }>;
   targets: ChartTarget[];
   empty: boolean;
@@ -233,13 +243,11 @@ export function createCartesianModel(options: {
 
   const geometry = createGeometry(width, height);
   const allKinds = new Set<string>();
-  const seenXBySeries = new Map<string, Set<string>>();
   const xValuesByKey = new Map<string, NormalizedXValue>();
   const allNumericValues: number[] = [];
 
   const normalizedSeries = series.map((item, seriesIndex) => {
     const seenX = new Set<string>();
-    seenXBySeries.set(item.id, seenX);
     const color = item.color ?? chartPaletteColor(seriesIndex);
     const points = item.data.map((point, pointIndex) => {
       const x = normalizeXValue(point.x);
@@ -286,7 +294,18 @@ export function createCartesianModel(options: {
 
   const sortedXValues = sortXValues([...xValuesByKey.values()]);
   const xLabels = sortedXValues.map((value, index) => formatXValue(value, xAxis, { index }));
-  const [yMinimum, yMaximum] = createPaddedDomain(allNumericValues);
+  const stackedTotalsByKey = new Map(sortedXValues.map((value) => [value.key, 0]));
+  if (stackedArea) {
+    for (const item of normalizedSeries) {
+      if (hiddenSeriesIds.includes(item.id)) continue;
+      for (const point of item.points) {
+        if (point.y === null) continue;
+        stackedTotalsByKey.set(point.x.key, (stackedTotalsByKey.get(point.x.key) ?? 0) + point.y);
+      }
+    }
+  }
+  const domainValues = stackedArea ? [0, ...stackedTotalsByKey.values()] : allNumericValues;
+  const [yMinimum, yMaximum] = createPaddedDomain(domainValues);
   const xScale =
     sortedXValues[0]?.kind === 'string'
       ? createPointScale(
@@ -298,48 +317,74 @@ export function createCartesianModel(options: {
   const yScale = createLinearScale([yMinimum, yMaximum], [geometry.plotHeight, 0]);
 
   const targets: ChartTarget[] = [];
+  const tableRows: CartesianChartModel['tableRows'] = [];
+  const stackedOffsetsByKey = new Map(sortedXValues.map((value) => [value.key, 0]));
   const renderedSeries = normalizedSeries.map((item) => {
     const hidden = hiddenSeriesIds.includes(item.id);
     const points = item.points
       .filter((point) => point.y !== null)
       .toSorted((a, b) => Number(a.x.comparable) - Number(b.x.comparable));
-    const coordinates: Array<{ point: NormalizedPoint; x: number; y: number }> = points.map(
-      (point) => {
+    const coordinates: Array<{ point: NormalizedPoint; x: number; y: number; y0: number }> =
+      points.map((point) => {
         const scaledX =
           point.x.kind === 'string'
             ? (xScale as (value: string) => number | undefined)(point.x.key)
             : (xScale as (value: number) => number)(Number(point.x.comparable));
-        return { point, x: scaledX ?? 0, y: yScale(point.y ?? 0) };
-      },
-    );
+        const lowerValue = stackedArea ? (stackedOffsetsByKey.get(point.x.key) ?? 0) : 0;
+        const upperValue = lowerValue + (point.y ?? 0);
+        return {
+          point,
+          x: scaledX ?? 0,
+          y: yScale(stackedArea ? upperValue : (point.y ?? 0)),
+          y0: yScale(lowerValue),
+        };
+      });
     if (!hidden) {
       for (const coordinate of coordinates) {
+        const xLabel = formatXValue(coordinate.point.x, xAxis, {
+          seriesId: item.id,
+          seriesLabel: item.label,
+          index: coordinate.point.index,
+        });
+        const valueLabel = formatNumericValue(
+          coordinate.point.y ?? 0,
+          yAxis,
+          series.find((entry) => entry.id === item.id)?.valueFormatter,
+          { seriesId: item.id, seriesLabel: item.label, index: coordinate.point.index },
+        );
         targets.push({
           id: `${item.id}-${coordinate.point.x.key}`,
           seriesId: item.id,
           seriesLabel: item.label,
-          xLabel: formatXValue(coordinate.point.x, xAxis, {
-            seriesId: item.id,
-            seriesLabel: item.label,
-            index: coordinate.point.index,
-          }),
-          valueLabel: formatNumericValue(
-            coordinate.point.y ?? 0,
-            yAxis,
-            series.find((entry) => entry.id === item.id)?.valueFormatter,
-            { seriesId: item.id, seriesLabel: item.label, index: coordinate.point.index },
-          ),
+          xLabel,
+          valueLabel,
           x: coordinate.x,
           y: coordinate.y,
           color: item.color,
         });
+        tableRows.push({
+          id: `${item.id}-${coordinate.point.x.key}`,
+          seriesLabel: item.label,
+          xLabel,
+          valueLabel,
+        });
+      }
+      if (stackedArea) {
+        for (const point of points) {
+          stackedOffsetsByKey.set(
+            point.x.key,
+            (stackedOffsetsByKey.get(point.x.key) ?? 0) + (point.y ?? 0),
+          );
+        }
       }
     }
     return {
       ...item,
       hidden,
       path: hidden ? '' : createLinePath(coordinates),
-      areaPath: hidden ? '' : createAreaPath(coordinates, geometry.plotHeight),
+      areaPath: hidden
+        ? ''
+        : createAreaPath(coordinates, stackedArea ? undefined : geometry.plotHeight),
     };
   });
 
@@ -348,8 +393,9 @@ export function createCartesianModel(options: {
     xLabels,
     yTicks: yScale.ticks(yAxis?.tickCount ?? 5),
     normalizedSeries: renderedSeries,
+    tableRows,
     targets,
-    empty: normalizedSeries.every((item) => item.points.length === 0),
+    empty: targets.length === 0,
     yDomain: [yMinimum, yMaximum],
   };
 }
@@ -441,7 +487,11 @@ export function createBarModel(options: {
 
   const sortedCategories = sortXValues(categories);
   const visibleSeries = series.filter((item) => !hiddenSeriesIds.includes(item.id));
-  const valueDomain = createPaddedDomain(allValues);
+  const valueDomain = createPaddedDomain(
+    mode === 'stacked'
+      ? createStackedBarDomainValues(data, sortedCategories, categoryKey, series)
+      : allValues,
+  );
   const valueScale = createLinearScale(
     valueDomain,
     orientation === 'vertical' ? [geometry.plotHeight, 0] : [0, geometry.plotWidth],
@@ -459,6 +509,7 @@ export function createBarModel(options: {
 
   const bars: BarChartModel['bars'] = [];
   const targets: ChartTarget[] = [];
+  const tableRows: BarChartModel['tableRows'] = [];
   for (const category of sortedCategories) {
     const datum = data.find(
       (candidate) => normalizeXValue(candidate[categoryKey] as ChartXValue).key === category.key,
@@ -466,9 +517,11 @@ export function createBarModel(options: {
     if (!datum) continue;
     let positiveOffset = 0;
     let negativeOffset = 0;
+    const rowValues: BarChartModel['tableRows'][number]['values'] = [];
     visibleSeries.forEach((item, seriesIndex) => {
       const rawValue = datum[item.valueKey] as number | null | undefined;
-      const value = rawValue ?? 0;
+      if (rawValue === null || rawValue === undefined) return;
+      const value = rawValue;
       const seriesColorIndex = Math.max(
         0,
         series.findIndex((entry) => entry.id === item.id),
@@ -519,6 +572,7 @@ export function createBarModel(options: {
         seriesLabel: item.label,
         index: seriesIndex,
       });
+      rowValues.push({ seriesId: item.id, seriesLabel: item.label, valueLabel });
       const bar = {
         id: `${item.id}-${category.key}`,
         seriesId: item.id,
@@ -535,6 +589,14 @@ export function createBarModel(options: {
       bars.push(bar);
       targets.push({ ...bar, x: x + barWidth / 2, y: y + barHeight / 2, xLabel: categoryLabel });
     });
+    if (rowValues.length > 0) {
+      tableRows.push({
+        categoryLabel: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, {
+          index: tableRows.length,
+        }),
+        values: rowValues,
+      });
+    }
   }
 
   return {
@@ -542,8 +604,9 @@ export function createBarModel(options: {
     categories: sortedCategories,
     yTicks: valueScale.ticks((orientation === 'vertical' ? yAxis : xAxis)?.tickCount ?? 5),
     bars,
+    tableRows,
     targets,
-    empty: data.length === 0 || series.length === 0,
+    empty: targets.length === 0,
     valueDomain,
   };
 }
@@ -687,18 +750,49 @@ function createLinePath(points: Array<{ x: number; y: number }>): string {
   ].join('');
 }
 
-function createAreaPath(points: Array<{ x: number; y: number }>, baseline: number): string {
+function createAreaPath(
+  points: Array<{ x: number; y: number; y0?: number }>,
+  baseline: number | undefined,
+): string {
   if (points.length === 0) return '';
   const firstPoint = points[0];
   const lastPoint = points.at(-1);
   if (!firstPoint || !lastPoint) return '';
+  const lowerPoints = points
+    .toReversed()
+    .map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y0 ?? baseline ?? 0)}`);
   return [
-    `M${formatPathNumber(firstPoint.x)},${formatPathNumber(baseline)}`,
+    `M${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y0 ?? baseline ?? 0)}`,
     `L${formatPathNumber(firstPoint.x)},${formatPathNumber(firstPoint.y)}`,
     ...points.slice(1).map((point) => `L${formatPathNumber(point.x)},${formatPathNumber(point.y)}`),
-    `L${formatPathNumber(lastPoint.x)},${formatPathNumber(baseline)}`,
+    ...lowerPoints,
     'Z',
   ].join('');
+}
+
+function createStackedBarDomainValues(
+  data: BarChartDatum[],
+  categories: NormalizedXValue[],
+  categoryKey: string,
+  series: BarChartSeries[],
+): number[] {
+  const values = [0];
+  for (const category of categories) {
+    const datum = data.find(
+      (candidate) => normalizeXValue(candidate[categoryKey] as ChartXValue).key === category.key,
+    );
+    if (!datum) continue;
+    let positiveTotal = 0;
+    let negativeTotal = 0;
+    for (const item of series) {
+      const value = datum[item.valueKey];
+      if (typeof value !== 'number') continue;
+      if (value >= 0) positiveTotal += value;
+      else negativeTotal += value;
+    }
+    values.push(positiveTotal, negativeTotal);
+  }
+  return values;
 }
 
 function formatPathNumber(value: number): string {

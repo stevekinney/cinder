@@ -54,6 +54,11 @@
   stroke-width: 2;
 }
 
+.cinder-area-chart__gridline {
+  stroke: var(--cinder-border-muted);
+  stroke-width: 1;
+}
+
 .cinder-area-chart__crosshair {
   stroke: var(--cinder-text-muted);
   stroke-dasharray: 4 4;
@@ -61,6 +66,21 @@
 
 .cinder-area-chart__hit-surface {
   fill: transparent;
+}
+
+.cinder-area-chart__focus-target {
+  fill: transparent;
+  outline: none;
+}
+
+.cinder-area-chart__focus-target:focus-visible {
+  stroke: var(--cinder-accent);
+  stroke-width: var(--cinder-ring-width);
+}
+
+.cinder-area-chart__tick-label {
+  fill: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
 }
 
 .cinder-area-chart__state {

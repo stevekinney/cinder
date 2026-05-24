@@ -44,6 +44,31 @@ export type { BannerProps, BannerVariant } from './components/banner/index.ts';
 
 export { default as BarChart } from './components/bar-chart/index.ts';
 export type { BarChartProps, BarChartSchemaProps } from './components/bar-chart/index.ts';
+export type {
+  AreaChartMode,
+  BarChartDatum,
+  BarChartMode,
+  BarChartOrientation,
+  BarChartSchemaDatum,
+  BarChartSchemaSeries,
+  BarChartSeries,
+  ChartAxisConfiguration,
+  ChartAxisSchemaConfiguration,
+  ChartCartesianSchemaSeries,
+  ChartCartesianSeries,
+  ChartDataTableVisibility,
+  ChartFormatterContext,
+  ChartJsonValue,
+  ChartJsonXValue,
+  ChartLegendPosition,
+  ChartNumericValue,
+  ChartPoint,
+  ChartSchemaPoint,
+  ChartSharedProps,
+  ChartTickFormatter,
+  ChartValueFormatter,
+  ChartXValue,
+} from './components/chart.types.ts';
 
 export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';

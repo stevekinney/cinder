@@ -84,6 +84,7 @@
   const guidanceId = $derived(
     !keyboardEnabled && model.targets.length > 0 ? `${rootId}-table-guidance` : undefined,
   );
+  const activeTargetId = $derived(activeTarget ? `${rootId}-active-target` : undefined);
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -194,6 +195,23 @@
                 model.geometry.plotHeight}
             aria-hidden="true"
           />
+          <text
+            class="cinder-line-chart__tick-label"
+            x="-8"
+            y={model.geometry.plotHeight -
+              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+                model.geometry.plotHeight}
+            text-anchor="end"
+            dominant-baseline="middle">{tick}</text
+          >
+        {/each}
+        {#each model.xLabels as xLabel, index}
+          <text
+            class="cinder-line-chart__tick-label"
+            x={(model.geometry.plotWidth / Math.max(1, model.xLabels.length - 1)) * index}
+            y={model.geometry.plotHeight + 20}
+            text-anchor="middle">{xLabel}</text
+          >
         {/each}
         {#each model.normalizedSeries as item}
           {#if !item.hidden && item.path}
@@ -236,15 +254,25 @@
             class="cinder-line-chart__hit-surface"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
-            tabindex={keyboardEnabled ? 0 : undefined}
-            role={keyboardEnabled ? 'application' : undefined}
-            aria-label={keyboardEnabled ? `${label} plot area` : undefined}
             onpointermove={activateByPointer}
             onpointerleave={() => (activeTarget = undefined)}
-            onfocus={() => (activeTarget = model.targets[0])}
-            onblur={() => (activeTarget = undefined)}
-            onkeydown={activateByKeyboard}
           />
+          {#if keyboardEnabled}
+            {#each model.targets as target}
+              <circle
+                class="cinder-line-chart__focus-target"
+                cx={target.x}
+                cy={target.y}
+                r="8"
+                tabindex="0"
+                role="button"
+                aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                onfocus={() => (activeTarget = target)}
+                onblur={() => (activeTarget = undefined)}
+                onkeydown={activateByKeyboard}
+              />
+            {/each}
+          {/if}
         {/if}
       </g>
     </svg>
@@ -267,18 +295,17 @@
   {/if}
 
   {#if dataTableVisibility !== 'hidden'}
-    <table class={dataTableClass(dataTableVisibility)}>
+    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead
         ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
       >
       <tbody>
-        {#each model.normalizedSeries as item}
-          {#each item.points as point}
-            <tr
-              ><th scope="row">{item.label}</th><td>{point.x.label}</td><td>{point.y ?? ''}</td></tr
-            >
-          {/each}
+        {#each model.tableRows as row}
+          <tr id={activeTarget?.id === row.id ? activeTargetId : undefined}
+            ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
+            ></tr
+          >
         {/each}
       </tbody>
     </table>

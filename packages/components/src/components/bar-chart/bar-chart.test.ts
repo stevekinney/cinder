@@ -75,4 +75,19 @@ describe('BarChart', () => {
       }),
     ).toThrow('rule=invalid-bar-value');
   });
+
+  test('null values do not render zero-valued bars or table cells', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      dataTableVisibility: 'visible',
+      data: [{ month: 'Jan', revenue: null, expansion: 30 }],
+      categoryKey: 'month',
+      series,
+    });
+    const tableCellText = [...container.querySelectorAll('td, th')].map((cell) => cell.textContent);
+
+    expect(container.querySelectorAll('.cinder-bar-chart__bar').length).toBe(1);
+    expect(container.querySelector('table')?.textContent).toContain('30');
+    expect(tableCellText).not.toContain('Revenue');
+  });
 });

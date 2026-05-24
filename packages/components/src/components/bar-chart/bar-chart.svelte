@@ -88,6 +88,9 @@
   const keyboardEnabled = $derived(
     model.targets.length > 0 && model.targets.length <= maximumInteractivePoints,
   );
+  const guidanceId = $derived(
+    !keyboardEnabled && model.targets.length > 0 ? `${rootId}-table-guidance` : undefined,
+  );
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -185,6 +188,22 @@
       aria-hidden={loading ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
+        {#each model.yTicks as tick}
+          <text
+            class="cinder-bar-chart__tick-label"
+            x={orientation === 'vertical'
+              ? -8
+              : ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
+                model.geometry.plotWidth}
+            y={orientation === 'vertical'
+              ? model.geometry.plotHeight -
+                ((tick - model.valueDomain[0]) / (model.valueDomain[1] - model.valueDomain[0])) *
+                  model.geometry.plotHeight
+              : model.geometry.plotHeight + 20}
+            text-anchor={orientation === 'vertical' ? 'end' : 'middle'}
+            dominant-baseline={orientation === 'vertical' ? 'middle' : undefined}>{tick}</text
+          >
+        {/each}
         {#each model.bars as bar}
           <rect
             class="cinder-bar-chart__bar"
@@ -197,6 +216,20 @@
             data-cinder-series={bar.seriesId}
             data-cinder-category={bar.categoryLabel}
           />
+        {/each}
+        {#each model.categories as category, index}
+          <text
+            class="cinder-bar-chart__tick-label"
+            x={orientation === 'vertical'
+              ? (model.geometry.plotWidth / Math.max(1, model.categories.length)) * (index + 0.5)
+              : -8}
+            y={orientation === 'vertical'
+              ? model.geometry.plotHeight + 20
+              : (model.geometry.plotHeight / Math.max(1, model.categories.length)) * (index + 0.5)}
+            text-anchor={orientation === 'vertical' ? 'middle' : 'end'}
+            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}
+            >{category.label}</text
+          >
         {/each}
         {#if activeTarget}<line
             class="cinder-bar-chart__crosshair"
@@ -211,15 +244,26 @@
             class="cinder-bar-chart__hit-surface"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
-            tabindex={keyboardEnabled ? 0 : undefined}
-            role={keyboardEnabled ? 'application' : undefined}
-            aria-label={keyboardEnabled ? `${label} plot area` : undefined}
             onpointermove={activateByPointer}
             onpointerleave={() => (activeTarget = undefined)}
-            onfocus={() => (activeTarget = model.targets[0])}
-            onblur={() => (activeTarget = undefined)}
-            onkeydown={activateByKeyboard}
           />
+          {#if keyboardEnabled}
+            {#each model.targets as target}
+              <rect
+                class="cinder-bar-chart__focus-target"
+                x={(target.x ?? 0) - 6}
+                y={(target.y ?? 0) - 6}
+                width="12"
+                height="12"
+                tabindex="0"
+                role="button"
+                aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                onfocus={() => (activeTarget = target)}
+                onblur={() => (activeTarget = undefined)}
+                onkeydown={activateByKeyboard}
+              />
+            {/each}
+          {/if}
         {/if}
       </g>
     </svg>
@@ -233,27 +277,39 @@
         >
       </div>{/if}
   </div>
-  {#if !keyboardEnabled && model.targets.length > 0}<p class="cinder-sr-only">
+  {#if !keyboardEnabled && model.targets.length > 0}<p id={guidanceId} class="cinder-sr-only">
       Use the data table to inspect this chart with a keyboard.
     </p>{/if}
   {#if dataTableVisibility !== 'hidden'}
-    <table class={dataTableClass(dataTableVisibility)}>
+    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead
-        ><tr
-          ><th scope="col">Category</th>{#each series as item}<th scope="col">{item.label}</th
-            >{/each}</tr
+        ><tr><th scope="col">Category</th><th scope="col">Series</th><th scope="col">Value</th></tr
         ></thead
       >
       <tbody>
-        {#each data as datum}
-          <tr
-            ><th scope="row">{String(datum[categoryKey])}</th>{#each series as item}<td
-                >{datum[item.valueKey] ?? ''}</td
-              >{/each}</tr
-          >
+        {#each model.tableRows as row}
+          {#each row.values as value}
+            <tr
+              ><th scope="row">{row.categoryLabel}</th><td>{value.seriesLabel}</td><td
+                >{value.valueLabel}</td
+              ></tr
+            >
+          {/each}
         {/each}
       </tbody>
     </table>
+  {/if}
+  {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
+    <div class="cinder-bar-chart__legend" aria-label="Series">
+      {#each series as item}
+        <button
+          type="button"
+          aria-pressed={!hiddenSeriesIds.includes(item.id)}
+          onclick={() => toggleSeries(item.id)}
+          ><span style:background={item.color}></span>{item.label}</button
+        >
+      {/each}
+    </div>
   {/if}
 </figure>

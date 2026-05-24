@@ -83,6 +83,9 @@
   const keyboardEnabled = $derived(
     model.targets.length > 0 && model.targets.length <= maximumInteractivePoints,
   );
+  const guidanceId = $derived(
+    !keyboardEnabled && model.targets.length > 0 ? `${rootId}-table-guidance` : undefined,
+  );
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -179,6 +182,37 @@
       aria-hidden={loading ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
+        {#each model.yTicks as tick}
+          <line
+            class="cinder-area-chart__gridline"
+            x1="0"
+            x2={model.geometry.plotWidth}
+            y1={model.geometry.plotHeight -
+              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+                model.geometry.plotHeight}
+            y2={model.geometry.plotHeight -
+              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+                model.geometry.plotHeight}
+            aria-hidden="true"
+          />
+          <text
+            class="cinder-area-chart__tick-label"
+            x="-8"
+            y={model.geometry.plotHeight -
+              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+                model.geometry.plotHeight}
+            text-anchor="end"
+            dominant-baseline="middle">{tick}</text
+          >
+        {/each}
+        {#each model.xLabels as xLabel, index}
+          <text
+            class="cinder-area-chart__tick-label"
+            x={(model.geometry.plotWidth / Math.max(1, model.xLabels.length - 1)) * index}
+            y={model.geometry.plotHeight + 20}
+            text-anchor="middle">{xLabel}</text
+          >
+        {/each}
         {#each model.normalizedSeries as item}
           {#if !item.hidden && item.areaPath}
             <path
@@ -210,15 +244,25 @@
             class="cinder-area-chart__hit-surface"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
-            tabindex={keyboardEnabled ? 0 : undefined}
-            role={keyboardEnabled ? 'application' : undefined}
-            aria-label={keyboardEnabled ? `${label} plot area` : undefined}
             onpointermove={activateByPointer}
             onpointerleave={() => (activeTarget = undefined)}
-            onfocus={() => (activeTarget = model.targets[0])}
-            onblur={() => (activeTarget = undefined)}
-            onkeydown={activateByKeyboard}
           />
+          {#if keyboardEnabled}
+            {#each model.targets as target}
+              <circle
+                class="cinder-area-chart__focus-target"
+                cx={target.x}
+                cy={target.y}
+                r="8"
+                tabindex="0"
+                role="button"
+                aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                onfocus={() => (activeTarget = target)}
+                onblur={() => (activeTarget = undefined)}
+                onkeydown={activateByKeyboard}
+              />
+            {/each}
+          {/if}
         {/if}
       </g>
     </svg>
@@ -232,20 +276,33 @@
         >
       </div>{/if}
   </div>
-  {#if !keyboardEnabled && model.targets.length > 0}<p class="cinder-sr-only">
+  {#if !keyboardEnabled && model.targets.length > 0}<p id={guidanceId} class="cinder-sr-only">
       Use the data table to inspect this chart with a keyboard.
     </p>{/if}
   {#if dataTableVisibility !== 'hidden'}
-    <table class={dataTableClass(dataTableVisibility)}>
+    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead
         ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
       >
       <tbody
-        >{#each model.normalizedSeries as item}{#each item.points as point}<tr
-              ><th scope="row">{item.label}</th><td>{point.x.label}</td><td>{point.y ?? ''}</td></tr
-            >{/each}{/each}</tbody
+        >{#each model.tableRows as row}<tr
+            ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
+            ></tr
+          >{/each}</tbody
       >
     </table>
+  {/if}
+  {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
+    <div class="cinder-area-chart__legend" aria-label="Series">
+      {#each series as item}
+        <button
+          type="button"
+          aria-pressed={!hiddenSeriesIds.includes(item.id)}
+          onclick={() => toggleSeries(item.id)}
+          ><span style:background={item.color}></span>{item.label}</button
+        >
+      {/each}
+    </div>
   {/if}
 </figure>

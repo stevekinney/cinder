@@ -47,6 +47,16 @@ describe('AreaChart', () => {
     expect(container.querySelector('[data-cinder-mode="stacked"]')).not.toBeNull();
   });
 
+  test('stacked mode draws upper series from cumulative offsets', () => {
+    const { container } = render(AreaChart, { label: 'Usage trend', mode: 'stacked', series });
+    const paths = [...container.querySelectorAll('.cinder-area-chart__area')].map((path) =>
+      path.getAttribute('d'),
+    );
+
+    expect(paths[0]).not.toBe(paths[1]);
+    expect(paths[1]).toContain('Z');
+  });
+
   test('stacked mode rejects negative values', () => {
     expect(() =>
       render(AreaChart, {

@@ -72,6 +72,21 @@
   fill: transparent;
 }
 
+.cinder-line-chart__focus-target {
+  fill: transparent;
+  outline: none;
+}
+
+.cinder-line-chart__focus-target:focus-visible {
+  stroke: var(--cinder-accent);
+  stroke-width: var(--cinder-ring-width);
+}
+
+.cinder-line-chart__tick-label {
+  fill: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+}
+
 .cinder-line-chart__state {
   position: absolute;
   inset: 0;

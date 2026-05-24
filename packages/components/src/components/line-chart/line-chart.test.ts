@@ -72,13 +72,27 @@ describe('LineChart', () => {
 
   test('keyboard focus shows tooltip and escape clears it', async () => {
     const { getByRole, queryByText } = render(LineChart, { label: 'Monthly revenue', series });
-    const plot = getByRole('application', { name: 'Monthly revenue plot area' });
+    const plot = getByRole('button', { name: 'Revenue, Jan, 120' });
 
     await fireEvent.focus(plot);
     expect(queryByText('Jan: 120')).toBeTruthy();
 
     await fireEvent.keyDown(plot, { key: 'Escape' });
     expect(queryByText('Jan: 120')).toBeNull();
+  });
+
+  test('visible table follows formatted visible series state', async () => {
+    const { getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      dataTableVisibility: 'visible',
+      yAxis: { format: (value: string | number | Date) => `$${String(value)}` },
+      series,
+    });
+
+    expect(queryByText('$120')).toBeTruthy();
+    await fireEvent.click(getByRole('button', { name: 'Revenue' }));
+    expect(queryByText('$120')).toBeNull();
+    expect(queryByText('$40')).toBeTruthy();
   });
 
   test('duplicate x values throw a stable developer error', () => {
