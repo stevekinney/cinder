@@ -23,7 +23,12 @@ export const chartPalette = [
   'var(--cinder-chart-series-8)',
 ] as const;
 
-function chartPaletteColor(index: number): string {
+/**
+ * Resolves a palette color for a series by index, wrapping around the palette.
+ * Exported so chart components can render legend swatches using the same
+ * resolved color the chart uses for the series itself.
+ */
+export function chartPaletteColor(index: number): string {
   return chartPalette[index % chartPalette.length] ?? 'var(--cinder-chart-series-1)';
 }
 
@@ -43,6 +48,15 @@ export type NormalizedPoint = {
   y: number | null;
   originalY: ChartNumericValue;
   index: number;
+};
+
+/**
+ * A point that has been placed in pixel space by the chart model. Components
+ * read `pixelX`/`pixelY` directly without a secondary lookup against targets.
+ */
+export type PlacedPoint = NormalizedPoint & {
+  pixelX: number;
+  pixelY: number;
 };
 
 export type ChartTarget = {
@@ -67,15 +81,26 @@ export type ChartGeometry = {
   marginLeft: number;
 };
 
+/**
+ * An x-axis tick paired with its already-scaled pixel position. Charts render
+ * labels at the model-provided `x` so labels and points stay aligned for
+ * numeric and date domains.
+ */
+export type ChartXTick = {
+  label: string;
+  x: number;
+};
+
 export type CartesianChartModel = {
   geometry: ChartGeometry;
-  xLabels: string[];
+  /** Pre-scaled x-axis ticks. Render labels at `tick.x`, not by ordinal index. */
+  xTicks: ChartXTick[];
   yTicks: number[];
   normalizedSeries: Array<{
     id: string;
     label: string;
     color: string;
-    points: NormalizedPoint[];
+    points: PlacedPoint[];
     path: string;
     areaPath: string;
     hidden: boolean;
@@ -86,6 +111,7 @@ export type CartesianChartModel = {
     xLabel: string;
     valueLabel: string;
   }>;
+  /** Targets sorted by `x` (binary-search precondition for nearestTarget). */
   targets: ChartTarget[];
   empty: boolean;
   yDomain: [number, number];
@@ -172,7 +198,9 @@ export function formatNumericValue(
 ): string {
   if (formatter) return formatter(value, context);
   if (axis?.format) return axis.format(value, context);
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+  // Locale `undefined` inherits the browser's current locale rather than
+  // baking en-US formatting into every consumer.
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
 
 export function normalizeXValue(value: ChartXValue): NormalizedXValue {
@@ -244,12 +272,11 @@ export function createCartesianModel(options: {
   const geometry = createGeometry(width, height);
   const allKinds = new Set<string>();
   const xValuesByKey = new Map<string, NormalizedXValue>();
-  const allNumericValues: number[] = [];
 
   const normalizedSeries = series.map((item, seriesIndex) => {
     const seenX = new Set<string>();
     const color = item.color ?? chartPaletteColor(seriesIndex);
-    const points = item.data.map((point, pointIndex) => {
+    const points: NormalizedPoint[] = item.data.map((point, pointIndex) => {
       const x = normalizeXValue(point.x);
       allKinds.add(x.kind);
       if (seenX.has(x.key)) {
@@ -260,7 +287,6 @@ export function createCartesianModel(options: {
       seenX.add(x.key);
       xValuesByKey.set(x.key, x);
       const y = normalizeNumericValue(componentId, item.id, x.label, point.y);
-      if (y !== null) allNumericValues.push(y);
       return {
         seriesId: item.id,
         seriesLabel: item.label,
@@ -293,7 +319,22 @@ export function createCartesianModel(options: {
   }
 
   const sortedXValues = sortXValues([...xValuesByKey.values()]);
-  const xLabels = sortedXValues.map((value, index) => formatXValue(value, xAxis, { index }));
+  // Index by key so we can preserve canonical x-domain order when sorting a
+  // series' own points (string domains use insertion order, numeric/date sort
+  // by `comparable`). Avoids `Number(stringKey)` returning NaN.
+  const orderByKey = new Map(sortedXValues.map((value, index) => [value.key, index]));
+
+  // Visible-only domain values. Hidden series no longer compress the visible
+  // chart against invisible data, and the legend toggle's effect on scale is
+  // consistent with the table and targets.
+  const visibleNumericValues: number[] = [];
+  for (const item of normalizedSeries) {
+    if (hiddenSeriesIds.includes(item.id)) continue;
+    for (const point of item.points) {
+      if (point.y !== null) visibleNumericValues.push(point.y);
+    }
+  }
+
   const stackedTotalsByKey = new Map(sortedXValues.map((value) => [value.key, 0]));
   if (stackedArea) {
     for (const item of normalizedSeries) {
@@ -304,17 +345,34 @@ export function createCartesianModel(options: {
       }
     }
   }
-  const domainValues = stackedArea ? [0, ...stackedTotalsByKey.values()] : allNumericValues;
+  const domainValues = stackedArea ? [0, ...stackedTotalsByKey.values()] : visibleNumericValues;
   const [yMinimum, yMaximum] = createPaddedDomain(domainValues);
-  const xScale =
+
+  // Split scales into two correctly-typed variables so the use site can
+  // discriminate on `kind` without `as` casts.
+  const xStringScale: BandlikeScale | undefined =
     sortedXValues[0]?.kind === 'string'
       ? createPointScale(
           sortedXValues.map((value) => value.key),
           [0, geometry.plotWidth],
           0.5,
         )
-      : createLinearScale(createNumericDomain(sortedXValues), [0, geometry.plotWidth]);
+      : undefined;
+  const xNumericScale: LinearScale | undefined =
+    sortedXValues[0] && sortedXValues[0].kind !== 'string'
+      ? createLinearScale(createNumericDomain(sortedXValues), [0, geometry.plotWidth])
+      : undefined;
   const yScale = createLinearScale([yMinimum, yMaximum], [geometry.plotHeight, 0]);
+
+  function scaleX(value: NormalizedXValue): number {
+    if (value.kind === 'string') return xStringScale?.(value.key) ?? 0;
+    return xNumericScale?.(Number(value.comparable)) ?? 0;
+  }
+
+  // Build x-axis ticks placed at their true scaled positions so labels and
+  // points line up for numeric and date domains.
+  const tickCount = xAxis?.tickCount ?? sortedXValues.length;
+  const xTicks: ChartXTick[] = buildXAxisTicks(sortedXValues, tickCount, xAxis, scaleX);
 
   const targets: ChartTarget[] = [];
   const tableRows: CartesianChartModel['tableRows'] = [];
@@ -323,57 +381,58 @@ export function createCartesianModel(options: {
     const hidden = hiddenSeriesIds.includes(item.id);
     const points = item.points
       .filter((point) => point.y !== null)
-      .toSorted((a, b) => Number(a.x.comparable) - Number(b.x.comparable));
-    const coordinates: Array<{ point: NormalizedPoint; x: number; y: number; y0: number }> =
-      points.map((point) => {
-        const scaledX =
-          point.x.kind === 'string'
-            ? (xScale as (value: string) => number | undefined)(point.x.key)
-            : (xScale as (value: number) => number)(Number(point.x.comparable));
-        const lowerValue = stackedArea ? (stackedOffsetsByKey.get(point.x.key) ?? 0) : 0;
-        const upperValue = lowerValue + (point.y ?? 0);
-        return {
-          point,
-          x: scaledX ?? 0,
-          y: yScale(stackedArea ? upperValue : (point.y ?? 0)),
-          y0: yScale(lowerValue),
-        };
-      });
+      .toSorted((a, b) => (orderByKey.get(a.x.key) ?? 0) - (orderByKey.get(b.x.key) ?? 0));
+
+    const placedPoints: PlacedPoint[] = points.map((point) => {
+      const lowerValue = stackedArea ? (stackedOffsetsByKey.get(point.x.key) ?? 0) : 0;
+      const upperValue = lowerValue + (point.y ?? 0);
+      return {
+        ...point,
+        pixelX: scaleX(point.x),
+        pixelY: yScale(stackedArea ? upperValue : (point.y ?? 0)),
+      };
+    });
+    const coordinates = placedPoints.map((placed) => ({
+      x: placed.pixelX,
+      y: placed.pixelY,
+      y0: yScale(stackedArea ? (stackedOffsetsByKey.get(placed.x.key) ?? 0) : 0),
+    }));
+
     if (!hidden) {
-      for (const coordinate of coordinates) {
-        const xLabel = formatXValue(coordinate.point.x, xAxis, {
+      for (const placed of placedPoints) {
+        const xLabel = formatXValue(placed.x, xAxis, {
           seriesId: item.id,
           seriesLabel: item.label,
-          index: coordinate.point.index,
+          index: placed.index,
         });
         const valueLabel = formatNumericValue(
-          coordinate.point.y ?? 0,
+          placed.y ?? 0,
           yAxis,
           series.find((entry) => entry.id === item.id)?.valueFormatter,
-          { seriesId: item.id, seriesLabel: item.label, index: coordinate.point.index },
+          { seriesId: item.id, seriesLabel: item.label, index: placed.index },
         );
         targets.push({
-          id: `${item.id}-${coordinate.point.x.key}`,
+          id: `${item.id}-${placed.x.key}`,
           seriesId: item.id,
           seriesLabel: item.label,
           xLabel,
           valueLabel,
-          x: coordinate.x,
-          y: coordinate.y,
+          x: placed.pixelX,
+          y: placed.pixelY,
           color: item.color,
         });
         tableRows.push({
-          id: `${item.id}-${coordinate.point.x.key}`,
+          id: `${item.id}-${placed.x.key}`,
           seriesLabel: item.label,
           xLabel,
           valueLabel,
         });
       }
       if (stackedArea) {
-        for (const point of points) {
+        for (const placed of placedPoints) {
           stackedOffsetsByKey.set(
-            point.x.key,
-            (stackedOffsetsByKey.get(point.x.key) ?? 0) + (point.y ?? 0),
+            placed.x.key,
+            (stackedOffsetsByKey.get(placed.x.key) ?? 0) + (placed.y ?? 0),
           );
         }
       }
@@ -381,6 +440,7 @@ export function createCartesianModel(options: {
     return {
       ...item,
       hidden,
+      points: hidden ? [] : placedPoints,
       path: hidden ? '' : createLinePath(coordinates),
       areaPath: hidden
         ? ''
@@ -388,9 +448,11 @@ export function createCartesianModel(options: {
     };
   });
 
+  targets.sort((a, b) => a.x - b.x);
+
   return {
     geometry,
-    xLabels,
+    xTicks,
     yTicks: yScale.ticks(yAxis?.tickCount ?? 5),
     normalizedSeries: renderedSeries,
     tableRows,
@@ -398,6 +460,35 @@ export function createCartesianModel(options: {
     empty: targets.length === 0,
     yDomain: [yMinimum, yMaximum],
   };
+}
+
+function buildXAxisTicks(
+  sortedXValues: NormalizedXValue[],
+  tickCount: number,
+  xAxis: ChartAxisConfiguration | undefined,
+  scaleX: (value: NormalizedXValue) => number,
+): ChartXTick[] {
+  if (sortedXValues.length === 0) return [];
+  const safeTickCount = Math.max(1, Math.min(tickCount, sortedXValues.length));
+  if (safeTickCount >= sortedXValues.length) {
+    return sortedXValues.map((value, index) => ({
+      label: formatXValue(value, xAxis, { index }),
+      x: scaleX(value),
+    }));
+  }
+  // Sample evenly across the sorted x values.
+  const step = (sortedXValues.length - 1) / (safeTickCount - 1);
+  const ticks: ChartXTick[] = [];
+  for (let i = 0; i < safeTickCount; i++) {
+    const sourceIndex = Math.round(i * step);
+    const value = sortedXValues[sourceIndex];
+    if (!value) continue;
+    ticks.push({
+      label: formatXValue(value, xAxis, { index: i }),
+      x: scaleX(value),
+    });
+  }
+  return ticks;
 }
 
 export function createBarModel(options: {
@@ -434,6 +525,9 @@ export function createBarModel(options: {
   const seenCategories = new Set<string>();
   const categoryKinds = new Set<string>();
   const allValues: number[] = [0];
+  // Build a key-keyed lookup once so the render loop is O(categories), not
+  // O(categories * rows) with allocations per probe.
+  const datumByKey = new Map<string, BarChartDatum>();
 
   for (const datum of data) {
     if (!(categoryKey in datum)) {
@@ -462,6 +556,7 @@ export function createBarModel(options: {
     }
     seenCategories.add(category.key);
     categories.push(category);
+    datumByKey.set(category.key, datum);
     for (const item of series) {
       if (!(item.valueKey in datum)) {
         throw new Error(
@@ -487,9 +582,11 @@ export function createBarModel(options: {
 
   const sortedCategories = sortXValues(categories);
   const visibleSeries = series.filter((item) => !hiddenSeriesIds.includes(item.id));
+  // Stack domain is computed from visible series only — same convention as
+  // stacked area — so the y-scale shrinks correctly when a series is hidden.
   const valueDomain = createPaddedDomain(
     mode === 'stacked'
-      ? createStackedBarDomainValues(data, sortedCategories, categoryKey, series)
+      ? createStackedBarDomainValues(datumByKey, sortedCategories, visibleSeries)
       : allValues,
   );
   const valueScale = createLinearScale(
@@ -511,16 +608,14 @@ export function createBarModel(options: {
   const targets: ChartTarget[] = [];
   const tableRows: BarChartModel['tableRows'] = [];
   for (const category of sortedCategories) {
-    const datum = data.find(
-      (candidate) => normalizeXValue(candidate[categoryKey] as ChartXValue).key === category.key,
-    );
+    const datum = datumByKey.get(category.key);
     if (!datum) continue;
     let positiveOffset = 0;
     let negativeOffset = 0;
     const rowValues: BarChartModel['tableRows'][number]['values'] = [];
     visibleSeries.forEach((item, seriesIndex) => {
-      const rawValue = datum[item.valueKey] as number | null | undefined;
-      if (rawValue === null || rawValue === undefined) return;
+      const rawValue = datum[item.valueKey];
+      if (typeof rawValue !== 'number') return;
       const value = rawValue;
       const seriesColorIndex = Math.max(
         0,
@@ -599,6 +694,10 @@ export function createBarModel(options: {
     }
   }
 
+  // Sort targets by the dominant axis for binary-search nearestTarget. For
+  // vertical bars the dominant axis is x; for horizontal bars it is y.
+  targets.sort((a, b) => (orientation === 'vertical' ? a.x - b.x : a.y - b.y));
+
   return {
     geometry,
     categories: sortedCategories,
@@ -611,12 +710,48 @@ export function createBarModel(options: {
   };
 }
 
+/**
+ * Locates the target closest to a (x, y) pointer. Uses binary search on the
+ * provided `axis` (defaults to `x`) — targets MUST be sorted ascending on that
+ * axis (createCartesianModel and createBarModel guarantee this). Falls back to
+ * a linear scan when targets are empty.
+ */
 export function nearestTarget(
   targets: ChartTarget[],
   x: number,
   y: number,
+  axis: 'x' | 'y' = 'x',
 ): ChartTarget | undefined {
-  return targets.reduce<ChartTarget | undefined>((nearest, target) => {
+  if (targets.length === 0) return undefined;
+  if (targets.length === 1) return targets[0];
+  const pointerKey = axis === 'x' ? x : y;
+  // Binary search for the leftmost target whose key is >= pointer.
+  let low = 0;
+  let high = targets.length - 1;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    const midKey = axis === 'x' ? (targets[mid]?.x ?? 0) : (targets[mid]?.y ?? 0);
+    if (midKey < pointerKey) low = mid + 1;
+    else high = mid;
+  }
+  // Walk outward from `low` while neighbors share the dominant-axis key so we
+  // consider every co-linear candidate, then break the tie by full Euclidean
+  // distance. This is O(k) in the size of the tie group, not the dataset.
+  const matchKey = axis === 'x' ? (targets[low]?.x ?? 0) : (targets[low]?.y ?? 0);
+  const candidates: ChartTarget[] = [];
+  if (targets[low]) candidates.push(targets[low]!);
+  for (let index = low - 1; index >= 0; index--) {
+    const candidateKey = axis === 'x' ? (targets[index]?.x ?? 0) : (targets[index]?.y ?? 0);
+    if (candidateKey !== matchKey && index !== low - 1) break;
+    if (targets[index]) candidates.push(targets[index]!);
+    if (candidateKey !== matchKey) break;
+  }
+  for (let index = low + 1; index < targets.length; index++) {
+    const candidateKey = axis === 'x' ? (targets[index]?.x ?? 0) : (targets[index]?.y ?? 0);
+    if (candidateKey !== matchKey) break;
+    if (targets[index]) candidates.push(targets[index]!);
+  }
+  return candidates.reduce<ChartTarget | undefined>((nearest, target) => {
     if (!nearest) return target;
     const targetDistance = Math.hypot(target.x - x, target.y - y);
     const nearestDistance = Math.hypot(nearest.x - x, nearest.y - y);
@@ -664,14 +799,25 @@ function sortXValues(values: NormalizedXValue[]): NormalizedXValue[] {
 }
 
 function createPaddedDomain(values: number[]): [number, number] {
-  const minimum = values.length > 0 ? Math.min(...values) : 0;
-  const maximum = values.length > 0 ? Math.max(...values) : 0;
+  if (values.length === 0) return [0, 0];
+  // Avoid spread-call argument-limit cliffs on large arrays.
+  let minimum = values[0]!;
+  let maximum = values[0]!;
+  for (let index = 1; index < values.length; index++) {
+    const value = values[index]!;
+    if (value < minimum) minimum = value;
+    if (value > maximum) maximum = value;
+  }
   if (minimum === maximum) return [minimum - 1, maximum + 1];
   return [Math.min(0, minimum), Math.max(0, maximum)];
 }
 
 type LinearScale = ((value: number) => number) & {
   ticks: (count: number) => number[];
+};
+
+type BandlikeScale = ((value: string) => number | undefined) & {
+  bandwidth?: () => number;
 };
 
 type BandScale = ((value: string) => number | undefined) & {
@@ -684,9 +830,14 @@ function createLinearScale(domain: [number, number], range: [number, number]): L
   const [rangeMinimum, rangeMaximum] = range;
   const domainSpan = domainMaximum - domainMinimum;
   const rangeSpan = rangeMaximum - rangeMinimum;
-  const scale = ((value: number) =>
-    rangeMinimum + ((value - domainMinimum) / domainSpan) * rangeSpan) as LinearScale;
-  scale.ticks = (count: number) => createTicks([domainMinimum, domainMaximum], count);
+  // Build the scale by composing the call signature with the `ticks` method
+  // up front, so the intersection type holds without an `as` cast.
+  const scale = Object.assign(
+    (value: number): number => rangeMinimum + ((value - domainMinimum) / domainSpan) * rangeSpan,
+    {
+      ticks: (count: number): number[] => createTicks([domainMinimum, domainMaximum], count),
+    },
+  ) satisfies LinearScale;
   return scale;
 }
 
@@ -694,7 +845,7 @@ function createPointScale(
   domain: string[],
   range: [number, number],
   padding: number,
-): (value: string) => number | undefined {
+): BandlikeScale {
   const positions = new Map<string, number>();
   if (domain.length === 0) return () => undefined;
 
@@ -721,16 +872,23 @@ function createBandScale(domain: string[], range: [number, number], padding: num
   const bandWidth = Math.max(0, step * (1 - padding));
   domain.forEach((value, index) => positions.set(value, rangeMinimum + step * index));
 
-  const scale = ((value: string) => positions.get(value)) as BandScale;
-  scale.bandwidth = () => bandWidth;
+  // Same Object.assign + satisfies pattern as createLinearScale — the
+  // intersection type is satisfied at construction, not asserted after.
+  const scale = Object.assign((value: string) => positions.get(value), {
+    bandwidth: (): number => bandWidth,
+  }) satisfies BandScale;
   return scale;
 }
 
 function createNumericDomain(values: NormalizedXValue[]): [number, number] {
-  const numericValues = values.map((value) => Number(value.comparable));
-  if (numericValues.length === 0) return [0, 1];
-  const minimum = Math.min(...numericValues);
-  const maximum = Math.max(...numericValues);
+  if (values.length === 0) return [0, 1];
+  let minimum = Number(values[0]!.comparable);
+  let maximum = minimum;
+  for (let index = 1; index < values.length; index++) {
+    const numeric = Number(values[index]!.comparable);
+    if (numeric < minimum) minimum = numeric;
+    if (numeric > maximum) maximum = numeric;
+  }
   return minimum === maximum ? [minimum - 1, maximum + 1] : [minimum, maximum];
 }
 
@@ -771,16 +929,13 @@ function createAreaPath(
 }
 
 function createStackedBarDomainValues(
-  data: BarChartDatum[],
+  datumByKey: Map<string, BarChartDatum>,
   categories: NormalizedXValue[],
-  categoryKey: string,
   series: BarChartSeries[],
 ): number[] {
   const values = [0];
   for (const category of categories) {
-    const datum = data.find(
-      (candidate) => normalizeXValue(candidate[categoryKey] as ChartXValue).key === category.key,
-    );
+    const datum = datumByKey.get(category.key);
     if (!datum) continue;
     let positiveTotal = 0;
     let negativeTotal = 0;

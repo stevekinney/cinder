@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -12,8 +12,10 @@ class TestResizeObserver {
 
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: AreaChart } = await import('./area-chart.svelte');
+
+afterEach(() => cleanup());
 
 const series = [
   {
@@ -72,5 +74,55 @@ describe('AreaChart', () => {
     const button = getByRole('button', { name: 'Usage' });
     await fireEvent.click(button);
     expect(container.querySelectorAll('[data-cinder-series="usage"]').length).toBe(0);
+  });
+
+  test('loading state renders the loading indicator and hides the SVG', () => {
+    const { getByText, container } = render(AreaChart, {
+      label: 'Loading',
+      loading: true,
+      series,
+    });
+
+    expect(getByText('Loading chart…')).toBeTruthy();
+    expect(container.querySelector('[data-cinder-loading]')).not.toBeNull();
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('empty state renders the default fallback and silences the SVG', () => {
+    const { getByText, container } = render(AreaChart, {
+      label: 'Empty',
+      series: [],
+    });
+
+    expect(getByText('No chart data')).toBeTruthy();
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('keyboard focus shows the tooltip; Escape clears it', async () => {
+    const { getByRole, queryByText } = render(AreaChart, { label: 'Usage trend', series });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+
+    await fireEvent.focus(target);
+    expect(queryByText('Jan: 30')).toBeTruthy();
+
+    await fireEvent.keyDown(target, { key: 'Escape' });
+    expect(queryByText('Jan: 30')).toBeNull();
+  });
+
+  test('hides the data table when dataTableVisibility is "hidden"', () => {
+    const { container } = render(AreaChart, {
+      label: 'Hidden table',
+      series,
+      dataTableVisibility: 'hidden',
+    });
+
+    expect(container.querySelector('table')).toBeNull();
+  });
+
+  test('hiding all series reveals the empty state', async () => {
+    const { getByRole, getByText } = render(AreaChart, { label: 'Usage trend', series });
+    await fireEvent.click(getByRole('button', { name: 'Usage' }));
+    await fireEvent.click(getByRole('button', { name: 'Storage' }));
+    expect(getByText('No chart data')).toBeTruthy();
   });
 });

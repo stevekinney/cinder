@@ -19,6 +19,7 @@
 <script lang="ts">
   import {
     assertValidNonNegativeInteger,
+    chartPaletteColor,
     createBarModel,
     dataTableClass,
     legendVisible,
@@ -106,12 +107,13 @@
   }
 
   function activateByPointer(event: PointerEvent): void {
-    const target = event.currentTarget as SVGRectElement;
-    const bounds = target.getBoundingClientRect();
+    if (!(event.currentTarget instanceof SVGRectElement)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
     activeTarget = nearestTarget(
       model.targets,
       event.clientX - bounds.left,
       event.clientY - bounds.top,
+      orientation === 'vertical' ? 'x' : 'y',
     );
   }
 
@@ -158,12 +160,13 @@
     </p>{/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'top'}
     <div class="cinder-bar-chart__legend" aria-label="Series">
-      {#each series as item}
+      {#each series as item, index (item.id)}
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => toggleSeries(item.id)}
-          ><span style:background={item.color}></span>{item.label}</button
+          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ></span>{item.label}</button
         >
       {/each}
     </div>
@@ -185,7 +188,7 @@
     <svg
       viewBox={`0 0 ${measuredWidth} ${height}`}
       role="img"
-      aria-hidden={loading ? 'true' : undefined}
+      aria-hidden={loading || model.empty ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
         {#each model.yTicks as tick}
@@ -231,14 +234,27 @@
             >{category.label}</text
           >
         {/each}
-        {#if activeTarget}<line
-            class="cinder-bar-chart__crosshair"
-            x1={activeTarget.x}
-            x2={activeTarget.x}
-            y1="0"
-            y2={model.geometry.plotHeight}
-            aria-hidden="true"
-          />{/if}
+        {#if activeTarget}
+          {#if orientation === 'vertical'}
+            <line
+              class="cinder-bar-chart__crosshair"
+              x1={activeTarget.x}
+              x2={activeTarget.x}
+              y1="0"
+              y2={model.geometry.plotHeight}
+              aria-hidden="true"
+            />
+          {:else}
+            <line
+              class="cinder-bar-chart__crosshair"
+              x1="0"
+              x2={model.geometry.plotWidth}
+              y1={activeTarget.y}
+              y2={activeTarget.y}
+              aria-hidden="true"
+            />
+          {/if}
+        {/if}
         {#if model.targets.length > 0}
           <rect
             class="cinder-bar-chart__hit-surface"
@@ -248,7 +264,7 @@
             onpointerleave={() => (activeTarget = undefined)}
           />
           {#if keyboardEnabled}
-            {#each model.targets as target}
+            {#each model.targets as target (target.id)}
               <rect
                 class="cinder-bar-chart__focus-target"
                 x={(target.x ?? 0) - 6}
@@ -258,6 +274,7 @@
                 tabindex="0"
                 role="button"
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
                 onfocus={() => (activeTarget = target)}
                 onblur={() => (activeTarget = undefined)}
                 onkeydown={activateByKeyboard}
@@ -268,6 +285,8 @@
       </g>
     </svg>
     {#if activeTarget}<div
+        id="{rootId}-tooltip"
+        role="tooltip"
         class="cinder-bar-chart__tooltip"
         style:left="{model.geometry.marginLeft + activeTarget.x}px"
         style:top="{model.geometry.marginTop + activeTarget.y}px"
@@ -302,12 +321,13 @@
   {/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
     <div class="cinder-bar-chart__legend" aria-label="Series">
-      {#each series as item}
+      {#each series as item, index (item.id)}
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => toggleSeries(item.id)}
-          ><span style:background={item.color}></span>{item.label}</button
+          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ></span>{item.label}</button
         >
       {/each}
     </div>

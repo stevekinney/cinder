@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -12,8 +12,10 @@ class TestResizeObserver {
 
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: LineChart } = await import('./line-chart.svelte');
+
+afterEach(() => cleanup());
 
 const series = [
   {
@@ -111,5 +113,54 @@ describe('LineChart', () => {
         ],
       }),
     ).toThrow('rule=duplicate-x');
+  });
+
+  test('loading state renders the loading indicator and hides the SVG', () => {
+    const { getByText, container } = render(LineChart, {
+      label: 'Loading chart',
+      loading: true,
+      series,
+    });
+
+    expect(getByText('Loading chart…')).toBeTruthy();
+    expect(container.querySelector('[data-cinder-loading]')).not.toBeNull();
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('empty state renders the default fallback when series are empty', () => {
+    const { getByText, container } = render(LineChart, {
+      label: 'Empty chart',
+      series: [],
+    });
+
+    expect(getByText('No chart data')).toBeTruthy();
+    // SVG is silenced for screen readers in the empty state — no meaningful
+    // content to announce.
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('hiding all series reveals the empty state', async () => {
+    const { getByRole, getByText, container } = render(LineChart, {
+      label: 'Monthly revenue',
+      series,
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Revenue' }));
+    await fireEvent.click(getByRole('button', { name: 'Signups' }));
+
+    expect(getByText('No chart data')).toBeTruthy();
+    expect(container.querySelectorAll('path.cinder-line-chart__line').length).toBe(0);
+  });
+
+  test('disables keyboard targets when targets exceed maximumInteractivePoints', () => {
+    const bigData = Array.from({ length: 6 }, (_, index) => ({ x: `p${index}`, y: index }));
+    const { container } = render(LineChart, {
+      label: 'Big chart',
+      maximumInteractivePoints: 5,
+      series: [{ id: 's', label: 'S', data: bigData }],
+    });
+
+    // No focusable per-point button rendered when over the threshold.
+    expect(container.querySelectorAll('[role="button"][tabindex="0"]').length).toBe(0);
   });
 });

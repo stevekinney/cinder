@@ -19,6 +19,7 @@
 <script lang="ts">
   import {
     assertValidNonNegativeInteger,
+    chartPaletteColor,
     createCartesianModel,
     dataTableClass,
     legendVisible,
@@ -101,8 +102,8 @@
   }
 
   function activateByPointer(event: PointerEvent): void {
-    const target = event.currentTarget as SVGRectElement;
-    const bounds = target.getBoundingClientRect();
+    if (!(event.currentTarget instanceof SVGRectElement)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
     activeTarget = nearestTarget(
       model.targets,
       event.clientX - bounds.left,
@@ -152,12 +153,13 @@
     </p>{/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'top'}
     <div class="cinder-area-chart__legend" aria-label="Series">
-      {#each series as item}
+      {#each series as item, index (item.id)}
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => toggleSeries(item.id)}
-          ><span style:background={item.color}></span>{item.label}</button
+          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ></span>{item.label}</button
         >
       {/each}
     </div>
@@ -179,7 +181,7 @@
     <svg
       viewBox={`0 0 ${measuredWidth} ${height}`}
       role="img"
-      aria-hidden={loading ? 'true' : undefined}
+      aria-hidden={loading || model.empty ? 'true' : undefined}
     >
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
         {#each model.yTicks as tick}
@@ -205,12 +207,12 @@
             dominant-baseline="middle">{tick}</text
           >
         {/each}
-        {#each model.xLabels as xLabel, index}
+        {#each model.xTicks as tick (tick.label)}
           <text
             class="cinder-area-chart__tick-label"
-            x={(model.geometry.plotWidth / Math.max(1, model.xLabels.length - 1)) * index}
+            x={tick.x}
             y={model.geometry.plotHeight + 20}
-            text-anchor="middle">{xLabel}</text
+            text-anchor="middle">{tick.label}</text
           >
         {/each}
         {#each model.normalizedSeries as item}
@@ -248,7 +250,7 @@
             onpointerleave={() => (activeTarget = undefined)}
           />
           {#if keyboardEnabled}
-            {#each model.targets as target}
+            {#each model.targets as target (target.id)}
               <circle
                 class="cinder-area-chart__focus-target"
                 cx={target.x}
@@ -257,6 +259,7 @@
                 tabindex="0"
                 role="button"
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
+                aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
                 onfocus={() => (activeTarget = target)}
                 onblur={() => (activeTarget = undefined)}
                 onkeydown={activateByKeyboard}
@@ -267,6 +270,8 @@
       </g>
     </svg>
     {#if activeTarget}<div
+        id="{rootId}-tooltip"
+        role="tooltip"
         class="cinder-area-chart__tooltip"
         style:left="{model.geometry.marginLeft + activeTarget.x}px"
         style:top="{model.geometry.marginTop + activeTarget.y}px"
@@ -295,12 +300,13 @@
   {/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
     <div class="cinder-area-chart__legend" aria-label="Series">
-      {#each series as item}
+      {#each series as item, index (item.id)}
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
           onclick={() => toggleSeries(item.id)}
-          ><span style:background={item.color}></span>{item.label}</button
+          ><span style:background={item.color ?? chartPaletteColor(index)}
+          ></span>{item.label}</button
         >
       {/each}
     </div>

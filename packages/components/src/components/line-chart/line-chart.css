@@ -24,6 +24,7 @@
   border-radius: var(--cinder-radius-sm);
   background: var(--cinder-surface);
   color: var(--cinder-text);
+  cursor: pointer;
   font: inherit;
   font-size: var(--cinder-text-sm);
   padding: var(--cinder-space-1) var(--cinder-space-2);
@@ -37,7 +38,7 @@
   inline-size: 0.75rem;
   block-size: 0.75rem;
   border-radius: var(--cinder-radius-full);
-  background: var(--cinder-accent);
+  /* background is set inline from the resolved series color via `style:background` */
 }
 
 .cinder-line-chart__viewport {
@@ -77,9 +78,15 @@
   outline: none;
 }
 
+/*
+ * SVG focus indicator: drop-shadow filter renders an outline-equivalent ring
+ * around the focused circle that stays visible on any background. Stroke alone
+ * was invisible against transparent fills.
+ */
 .cinder-line-chart__focus-target:focus-visible {
   stroke: var(--cinder-accent);
   stroke-width: var(--cinder-ring-width);
+  filter: drop-shadow(0 0 var(--cinder-ring-width) var(--cinder-ring-color));
 }
 
 .cinder-line-chart__tick-label {

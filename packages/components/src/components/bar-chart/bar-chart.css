@@ -24,9 +24,14 @@
   border-radius: var(--cinder-radius-sm);
   background: var(--cinder-surface);
   color: var(--cinder-text);
+  cursor: pointer;
   font: inherit;
   font-size: var(--cinder-text-sm);
   padding: var(--cinder-space-1) var(--cinder-space-2);
+}
+
+.cinder-bar-chart__legend button[aria-pressed='false'] {
+  opacity: 0.55;
 }
 
 .cinder-bar-chart__legend span {
@@ -63,9 +68,14 @@
   outline: none;
 }
 
+/*
+ * SVG focus indicator: drop-shadow renders a visible ring around the focused
+ * element on any background. Matches line-chart and area-chart.
+ */
 .cinder-bar-chart__focus-target:focus-visible {
   stroke: var(--cinder-accent);
   stroke-width: var(--cinder-ring-width);
+  filter: drop-shadow(0 0 var(--cinder-ring-width) var(--cinder-ring-color));
 }
 
 .cinder-bar-chart__tick-label {
