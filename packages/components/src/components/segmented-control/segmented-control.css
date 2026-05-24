@@ -154,13 +154,19 @@
 }
 
 /* density="toolbar" resolves through the component to data-cinder-size="sm",
- * so font and inline padding flow from the `sm` rule above. The only
- * declaration this block owns is the cross-component height contract:
+ * so font and (for detached or vertical toolbars) inline padding flow from
+ * the `sm` rule above; attached horizontal toolbars pick up the 12px inline
+ * padding from the override block below because they match the
+ * `[data-cinder-size='sm']` arm of that rule. The only declaration this
+ * block owns is the cross-component height contract:
  * Chip[density=toolbar], DiffStatistics[variant=compact][density=toolbar],
  * and Button (size="sm") all pin to --cinder-control-height-sm so they line
  * up in editor toolbars. We do the same here so the SegmentedControl in a
  * toolbar row matches its siblings' bounding height even though its
- * effective `sm` typography stays compact. */
+ * effective `sm` typography stays compact. The height pin is currently
+ * unscoped by orientation — vertical toolbar density is not a supported
+ * combination, since stacking 32px options vertically would defeat the
+ * row-alignment contract; treat vertical + toolbar as undefined. */
 .cinder-segmented-control[data-cinder-density='toolbar'] .cinder-segmented-control-option {
   min-block-size: var(--cinder-control-height-sm);
 }
@@ -171,7 +177,10 @@
  * (0.5rem = 8px), which causes labels to pinch against the separator. Bump
  * the inline padding to --cinder-space-3 (0.75rem = 12px) on attached
  * horizontal sm/md controls only — `lg` already uses --cinder-space-3, and
- * detached/vertical variants keep their per-size defaults. */
+ * detached/vertical variants keep their per-size defaults. Toolbar-density
+ * controls resolve to data-cinder-size="sm" via the Svelte component, so
+ * attached horizontal toolbars match the `sm` arm of this selector and
+ * correctly receive the 12px inline padding too. */
 .cinder-segmented-control:not(
     [data-cinder-detached]
   )[data-cinder-orientation='horizontal'][data-cinder-size='sm']
