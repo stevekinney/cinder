@@ -1,3 +1,4 @@
+import type { TreeSelectionState } from '../components/tree/tree-selection.ts';
 import type { TreeNodeRegistration } from './tree-registry.svelte.ts';
 
 // Inline the selection mode type here to avoid a circular import with
@@ -5,10 +6,7 @@ import type { TreeNodeRegistration } from './tree-registry.svelte.ts';
 type TreeSelectionMode = 'none' | 'single' | 'multiple';
 type TreeSelectionBehavior = 'independent' | 'cascade';
 
-export type TreeItemSelectionState = {
-  checked: boolean;
-  indeterminate: boolean;
-};
+export type TreeItemSelectionState = TreeSelectionState;
 
 /**
  * Shape of the context object provided by Tree to all descendant TreeItems.
