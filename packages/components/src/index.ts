@@ -7,6 +7,9 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as AreaChart } from './components/area-chart/index.ts';
+export type { AreaChartProps, AreaChartSchemaProps } from './components/area-chart/index.ts';
+
 export { default as Autocomplete } from './components/autocomplete/index.ts';
 export type {
   AutocompleteProps,
@@ -38,6 +41,9 @@ export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/ind
 
 export { default as Banner } from './components/banner/index.ts';
 export type { BannerProps, BannerVariant } from './components/banner/index.ts';
+
+export { default as BarChart } from './components/bar-chart/index.ts';
+export type { BarChartProps, BarChartSchemaProps } from './components/bar-chart/index.ts';
 
 export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';
@@ -236,6 +242,9 @@ export type { KbdProps } from './components/kbd/index.ts';
 
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
+
+export { default as LineChart } from './components/line-chart/index.ts';
+export type { LineChartProps, LineChartSchemaProps } from './components/line-chart/index.ts';
 
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';

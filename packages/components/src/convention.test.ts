@@ -26,11 +26,14 @@ const COMPONENTS_DIR = join(import.meta.dir, 'components');
 // Tab is excluded — its a11y docs live in tabs.a11y.md.
 const INTERACTIVE_ALLOW_LIST = new Set([
   'accordion',
+  'area-chart',
+  'bar-chart',
   'checkbox',
   'combobox',
   'copy-button',
   'dropdown',
   'input',
+  'line-chart',
   'modal',
   'navigation-item',
   'pagination',

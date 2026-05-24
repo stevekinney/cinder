@@ -141,6 +141,32 @@
       }
     },
     {
+      "name": "AreaChart",
+      "id": "area-chart",
+      "import": "cinder/area-chart",
+      "exportName": "AreaChart",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Filled SVG area chart for showing magnitude and cumulative trends across an ordered x domain.",
+      "tags": ["chart", "area", "analytics"],
+      "useWhen": [
+        "Showing magnitude under a trend line.",
+        "Comparing cumulative or stacked contribution over an ordered domain."
+      ],
+      "avoidWhen": [
+        "Exact point comparison matters more than area magnitude — use line-chart instead.",
+        "Comparing discrete category totals — use bar-chart instead."
+      ],
+      "related": ["line-chart", "bar-chart", "table", "stat"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/area-chart/schema",
+        "variables": "cinder/area-chart/variables",
+        "examples": "cinder/area-chart/examples"
+      }
+    },
+    {
       "name": "AspectRatio",
       "id": "aspect-ratio",
       "import": "cinder/aspect-ratio",
@@ -289,6 +315,32 @@
       "artifacts": {
         "schema": "cinder/banner/schema",
         "variables": "cinder/banner/variables"
+      }
+    },
+    {
+      "name": "BarChart",
+      "id": "bar-chart",
+      "import": "cinder/bar-chart",
+      "exportName": "BarChart",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Responsive SVG bar chart for grouped or stacked category comparisons.",
+      "tags": ["chart", "bar", "analytics"],
+      "useWhen": [
+        "Comparing discrete category totals or grouped category breakdowns.",
+        "Showing stacked contribution across known categories."
+      ],
+      "avoidWhen": [
+        "Showing a continuous ordered trend — use line-chart instead.",
+        "Showing magnitude under a trend — use area-chart instead."
+      ],
+      "related": ["line-chart", "area-chart", "table", "stat"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/bar-chart/schema",
+        "variables": "cinder/bar-chart/variables",
+        "examples": "cinder/bar-chart/examples"
       }
     },
     {
@@ -1583,6 +1635,32 @@
       "artifacts": {
         "schema": "cinder/label/schema",
         "variables": "cinder/label/variables"
+      }
+    },
+    {
+      "name": "LineChart",
+      "id": "line-chart",
+      "import": "cinder/line-chart",
+      "exportName": "LineChart",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Responsive SVG line chart for comparing one or more numeric series over an ordered x domain.",
+      "tags": ["chart", "line", "analytics"],
+      "useWhen": [
+        "Showing trends over time or another ordered domain.",
+        "Comparing several metric series on the same numeric axis."
+      ],
+      "avoidWhen": [
+        "Comparing discrete category totals — use bar-chart instead.",
+        "Showing cumulative filled trends — use area-chart instead."
+      ],
+      "related": ["area-chart", "bar-chart", "table", "stat"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/line-chart/schema",
+        "variables": "cinder/line-chart/variables",
+        "examples": "cinder/line-chart/examples"
       }
     },
     {
