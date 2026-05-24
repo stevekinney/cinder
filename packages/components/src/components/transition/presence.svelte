@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { PresenceProps } from './transition.types.ts';
@@ -79,17 +81,23 @@
       return;
     }
 
+    // Read presenceState / isMounted untracked: reading them tracked would make this effect
+    // depend on the values we write to *inside* this same branch (`presenceState = 'exiting'`),
+    // triggering a wasted second run that invalidates the rAF scheduled below.
+    const currentPresenceState = untrack(() => presenceState);
+    const currentIsMounted = untrack(() => isMounted);
+
     // The first run with `present={false}` is the initial render. `forceMount` may have placed the
     // wrapper in the DOM, but the plan requires the initial state to be `closed`/`exited` — not
     // `exiting` followed by an `onExitComplete`. Skip the exit-scheduling branch on first run; the
     // `$effect.pre` block above has already set the correct attributes.
-    if (presenceState === 'exited') {
+    if (currentPresenceState === 'exited') {
       visibilityState = 'closed';
       return;
     }
 
-    if (!isMounted) {
-      presenceState = forceMount ? 'exited' : presenceState;
+    if (!currentIsMounted) {
+      presenceState = forceMount ? 'exited' : currentPresenceState;
       visibilityState = 'closed';
       return;
     }
