@@ -61,7 +61,9 @@
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
   let measuredWidth = $state(640);
   let rootElement = $state<HTMLElement>();
-  let activeTarget = $state<ChartTarget | undefined>();
+  let pointerTarget = $state<ChartTarget | undefined>();
+  let focusedTarget = $state<ChartTarget | undefined>();
+  const activeTarget = $derived(focusedTarget ?? pointerTarget);
 
   $effect(() => {
     if (!rootElement || typeof ResizeObserver === 'undefined') return;
@@ -106,13 +108,18 @@
     );
   });
 
+  function includesTarget(candidate: ChartTarget | undefined): boolean {
+    return Boolean(candidate && model.targets.some((target) => target.id === candidate.id));
+  }
+
   $effect(() => {
-    if (
-      activeTarget &&
-      (loading || model.empty || !model.targets.some((target) => target.id === activeTarget?.id))
-    ) {
-      activeTarget = undefined;
+    if (loading || model.empty) {
+      pointerTarget = undefined;
+      focusedTarget = undefined;
+      return;
     }
+    if (!includesTarget(pointerTarget)) pointerTarget = undefined;
+    if (!includesTarget(focusedTarget)) focusedTarget = undefined;
   });
 
   function toggleSeries(seriesId: string): void {
@@ -122,7 +129,7 @@
   function activateByPointer(event: PointerEvent): void {
     if (!(event.currentTarget instanceof SVGRectElement)) return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    activeTarget = nearestTarget(
+    pointerTarget = nearestTarget(
       model.targets,
       event.clientX - bounds.left,
       event.clientY - bounds.top,
@@ -142,12 +149,17 @@
 
   function activateByKeyboard(event: KeyboardEvent): void {
     if (!keyboardEnabled) return;
+    const currentTargetId =
+      event.currentTarget instanceof Element
+        ? event.currentTarget.getAttribute('data-cinder-target-id')
+        : undefined;
     const currentIndex = Math.max(
       0,
-      model.targets.findIndex((target) => target.id === activeTarget?.id),
+      model.targets.findIndex((target) => target.id === (currentTargetId ?? focusedTarget?.id)),
     );
     if (event.key === 'Escape') {
-      activeTarget = undefined;
+      focusedTarget = undefined;
+      event.preventDefault();
       return;
     }
     const offsets: Record<string, number> = {
@@ -165,7 +177,7 @@
           (currentIndex + (offsets[event.key] ?? 0) + model.targets.length) % model.targets.length
         ] ?? activeTarget;
     else return;
-    activeTarget = next;
+    focusedTarget = next;
     event.preventDefault();
     focusTarget(next?.id);
   }
@@ -285,7 +297,7 @@
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
             onpointermove={activateByPointer}
-            onpointerleave={() => (activeTarget = undefined)}
+            onpointerleave={() => (pointerTarget = undefined)}
           />
           {#if keyboardEnabled}
             {#each model.targets as target (target.id)}
@@ -300,8 +312,8 @@
                 data-cinder-target-id={target.id}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
                 aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
-                onfocus={() => (activeTarget = target)}
-                onblur={() => (activeTarget = undefined)}
+                onfocus={() => (focusedTarget = target)}
+                onblur={() => (focusedTarget = undefined)}
                 onkeydown={activateByKeyboard}
               />
             {/each}

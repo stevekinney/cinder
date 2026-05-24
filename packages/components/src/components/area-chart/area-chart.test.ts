@@ -136,6 +136,27 @@ describe('AreaChart', () => {
     expect(queryByText('Jan: 15')).toBeTruthy();
   });
 
+  test('pointer hover does not override the focused target description', async () => {
+    const { container, getByRole, queryByText } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
+    const focusedTarget = getByRole('button', { name: 'Usage, Jan, 30' });
+    const hoveredTarget = getByRole('button', { name: 'Storage, Jan, 15' });
+    const hitSurface = container.querySelector('.cinder-area-chart__hit-surface');
+
+    await fireEvent.focus(focusedTarget);
+    await fireEvent.pointerMove(hitSurface!, {
+      clientX: Number(hoveredTarget.getAttribute('cx')),
+      clientY: Number(hoveredTarget.getAttribute('cy')),
+    });
+    await fireEvent.pointerLeave(hitSurface!);
+
+    expect(focusedTarget.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 30')).toBeTruthy();
+    expect(queryByText('Jan: 15')).toBeNull();
+  });
+
   test('renders formatted axis tick labels', () => {
     const { getAllByText } = render(AreaChart, {
       label: 'Usage trend',

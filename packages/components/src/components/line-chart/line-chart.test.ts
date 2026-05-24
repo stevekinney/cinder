@@ -99,6 +99,27 @@ describe('LineChart', () => {
     expect(queryByText('Jan: 40')).toBeTruthy();
   });
 
+  test('pointer hover does not override the focused target description', async () => {
+    const { container, getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      series,
+    });
+    const focusedTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const hoveredTarget = getByRole('button', { name: 'Signups, Jan, 40' });
+    const hitSurface = container.querySelector('.cinder-line-chart__hit-surface');
+
+    await fireEvent.focus(focusedTarget);
+    await fireEvent.pointerMove(hitSurface!, {
+      clientX: Number(hoveredTarget.getAttribute('cx')),
+      clientY: Number(hoveredTarget.getAttribute('cy')),
+    });
+    await fireEvent.pointerLeave(hitSurface!);
+
+    expect(focusedTarget.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+    expect(queryByText('Jan: 40')).toBeNull();
+  });
+
   test('visible table follows formatted visible series state', async () => {
     const { getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',

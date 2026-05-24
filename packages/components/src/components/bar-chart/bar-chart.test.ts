@@ -160,6 +160,29 @@ describe('BarChart', () => {
     expect(queryByText('Jan: 30')).toBeTruthy();
   });
 
+  test('pointer hover does not override the focused target description', async () => {
+    const { container, getByRole, queryByText } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const focusedTarget = getByRole('button', { name: 'Revenue, Jan, 120' });
+    const hoveredTarget = getByRole('button', { name: 'Expansion, Jan, 30' });
+    const hitSurface = container.querySelector('.cinder-bar-chart__hit-surface');
+
+    await fireEvent.focus(focusedTarget);
+    await fireEvent.pointerMove(hitSurface!, {
+      clientX: Number(hoveredTarget.getAttribute('x')) + 6,
+      clientY: Number(hoveredTarget.getAttribute('y')) + 6,
+    });
+    await fireEvent.pointerLeave(hitSurface!);
+
+    expect(focusedTarget.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+    expect(queryByText('Jan: 30')).toBeNull();
+  });
+
   test('hides the data table when dataTableVisibility is "hidden"', () => {
     const { container, queryByText } = render(BarChart, {
       label: 'Hidden table',
