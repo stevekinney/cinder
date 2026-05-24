@@ -6,7 +6,7 @@ A Dropdown component. Replace this sentence with a one-line purpose statement on
 
 `Dropdown` is a compound component. Import the parent and compose its leaves
 via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
-`Dropdown.Label`, and `Dropdown.Separator`.
+`Dropdown.Label`, `Dropdown.Separator`, and `Dropdown.Group`.
 
 ```svelte
 <script lang="ts">
@@ -27,7 +27,7 @@ via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
 
 The leaves remain importable individually for à-la-carte builds — see
 `cinder/dropdown-trigger`, `cinder/dropdown-menu`, `cinder/dropdown-item`,
-`cinder/dropdown-label`, and `cinder/dropdown-separator`.
+`cinder/dropdown-label`, `cinder/dropdown-separator`, and `cinder/dropdown-group`.
 
 ## Props
 
