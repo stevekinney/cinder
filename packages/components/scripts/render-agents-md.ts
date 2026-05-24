@@ -18,6 +18,7 @@
 
 import { file, write } from 'bun';
 import { resolve } from 'node:path';
+import prettier from 'prettier';
 
 const PACKAGE_ROOT = resolve(import.meta.dir, '..');
 const MANIFEST_PATH = resolve(PACKAGE_ROOT, 'components.json');
@@ -111,7 +112,11 @@ async function main(): Promise<void> {
   const manifest = (await file(MANIFEST_PATH).json()) as Manifest;
   const existing = await file(AGENTS_PATH).text();
   const body = renderOverlapBlock(manifest);
-  const next = replaceBlock(existing, body);
+  const rendered = replaceBlock(existing, body);
+  // Format with Prettier so the generated tables match the repository-wide
+  // markdown style and `bun run format:check` stays green after a regenerate.
+  const prettierConfig = (await prettier.resolveConfig(AGENTS_PATH)) ?? {};
+  const next = await prettier.format(rendered, { ...prettierConfig, filepath: AGENTS_PATH });
 
   if (check) {
     if (next !== existing) {

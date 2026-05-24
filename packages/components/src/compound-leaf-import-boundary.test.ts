@@ -2,10 +2,16 @@
  * Static import-boundary regression test for compose-only leaf barrels.
  *
  * Each leaf in `COMPOSE_ONLY_LEAVES` must NOT import its parent component
- * barrel, the root barrel, or any namespace-composition helper. This keeps
- * the tree-shake story clean: importing `cinder/tab` must not transitively
- * pull in `Tabs`, `TabList`, `TabPanel`, or anything else in the parent
- * compound family.
+ * barrel, the root barrel, or another compose-only sibling in the same
+ * family. This keeps the tree-shake story clean: importing `cinder/tab`
+ * must not transitively pull in `Tabs`, `TabList`, `TabPanel`, or anything
+ * else in the parent compound family.
+ *
+ * Scope note: this test inspects only each leaf's `index.ts`. The `.svelte`
+ * source file is allowed to read sibling context keys (e.g., `tab.svelte`
+ * importing from `../tabs/tabs.svelte`) because that's how the compound
+ * context flows. The guarantee here is that the *public barrel* — what a
+ * consumer reaches via `cinder/tab` — pulls in nothing it shouldn't.
  *
  * The test parses each leaf `index.ts` with the TypeScript compiler API and
  * inspects every `ImportDeclaration` and `ExportDeclaration` module specifier
@@ -38,6 +44,7 @@ const COMPOSE_ONLY_LEAVES: ReadonlyArray<{ leaf: string; parent: string }> = [
   { leaf: 'dropdown-item', parent: 'dropdown' },
   { leaf: 'dropdown-label', parent: 'dropdown' },
   { leaf: 'dropdown-separator', parent: 'dropdown' },
+  { leaf: 'dropdown-group', parent: 'dropdown' },
   { leaf: 'tree-item', parent: 'tree' },
   { leaf: 'feed-event', parent: 'feed' },
   { leaf: 'grid-list-item', parent: 'grid-list' },
@@ -78,7 +85,7 @@ function collectModuleSpecifiers(filePath: string, source: string): string[] {
 
 describe('compose-only leaf import boundary', () => {
   for (const { leaf, parent } of COMPOSE_ONLY_LEAVES) {
-    it(`${leaf}/index.ts does not import its parent barrel, the root barrel, or any namespace helper`, async () => {
+    it(`${leaf}/index.ts does not import its parent barrel, the root barrel, or a sibling leaf`, async () => {
       const leafIndexPath = resolvePath(COMPONENTS_ROOT, leaf, 'index.ts');
       expect(existsSync(leafIndexPath)).toBe(true);
 
@@ -86,6 +93,14 @@ describe('compose-only leaf import boundary', () => {
       const specifiers = collectModuleSpecifiers(leafIndexPath, source);
 
       const parentBarrelCandidates = new Set([resolvePath(COMPONENTS_ROOT, parent, 'index.ts')]);
+      // Sibling leaves are every other compose-only leaf in the same parent family.
+      // Importing one defeats the leaf-subpath tree-shake guarantee: pulling in
+      // `cinder/tab` would also drag `tab-list` and `tab-panel` along.
+      const siblingBarrelCandidates = new Set(
+        COMPOSE_ONLY_LEAVES.filter((entry) => entry.parent === parent && entry.leaf !== leaf).map(
+          (entry) => resolvePath(COMPONENTS_ROOT, entry.leaf, 'index.ts'),
+        ),
+      );
 
       for (const specifier of specifiers) {
         const candidates = resolveSpecifierCandidates(leafIndexPath, specifier);
@@ -97,6 +112,10 @@ describe('compose-only leaf import boundary', () => {
           expect(
             candidate === ROOT_BARREL,
             `${leaf}/index.ts imports the root barrel via '${specifier}'`,
+          ).toBe(false);
+          expect(
+            siblingBarrelCandidates.has(candidate),
+            `${leaf}/index.ts imports a sibling leaf via '${specifier}' — this breaks the leaf-subpath tree-shake contract`,
           ).toBe(false);
         }
       }

@@ -36,6 +36,7 @@ export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'dropdown-item',
   'dropdown-label',
   'dropdown-separator',
+  'dropdown-group',
   'tree-item',
   'feed-event',
   'grid-list-item',

@@ -18,6 +18,7 @@ import {
   Accordion,
   AccordionItem,
   Dropdown,
+  DropdownGroup,
   DropdownItem,
   DropdownLabel,
   DropdownMenu,
@@ -61,12 +62,13 @@ describe('compound-namespace runtime references', () => {
     expect(Table.Row).toBe(TableRow);
   });
 
-  it('Dropdown exposes Trigger/Menu/Item/Label/Separator pointing at flat leaf exports', () => {
+  it('Dropdown exposes Trigger/Menu/Item/Label/Separator/Group pointing at flat leaf exports', () => {
     expect(Dropdown.Trigger).toBe(DropdownTrigger);
     expect(Dropdown.Menu).toBe(DropdownMenu);
     expect(Dropdown.Item).toBe(DropdownItem);
     expect(Dropdown.Label).toBe(DropdownLabel);
     expect(Dropdown.Separator).toBe(DropdownSeparator);
+    expect(Dropdown.Group).toBe(DropdownGroup);
   });
 
   it('Accordion exposes Item pointing at the flat AccordionItem export', () => {
@@ -102,6 +104,7 @@ describe('compound-namespace flat-export compatibility', () => {
     // accidental tree-shake reshuffling.
     const flatLeaves = [
       AccordionItem,
+      DropdownGroup,
       DropdownItem,
       DropdownLabel,
       DropdownMenu,
@@ -176,6 +179,9 @@ type _typeProbe_DropdownLabelMatchesFlat = Expect<
 type _typeProbe_DropdownSeparatorMatchesFlat = Expect<
   Same<typeof Dropdown.Separator, typeof DropdownSeparator>
 >;
+type _typeProbe_DropdownGroupMatchesFlat = Expect<
+  Same<typeof Dropdown.Group, typeof DropdownGroup>
+>;
 type _typeProbe_AccordionItemMatchesFlat = Expect<
   Same<typeof Accordion.Item, typeof AccordionItem>
 >;
@@ -211,6 +217,7 @@ type _typeProbeBundle = [
   _typeProbe_DropdownItemMatchesFlat,
   _typeProbe_DropdownLabelMatchesFlat,
   _typeProbe_DropdownSeparatorMatchesFlat,
+  _typeProbe_DropdownGroupMatchesFlat,
   _typeProbe_AccordionItemMatchesFlat,
   _typeProbe_TreeItemMatchesFlat,
   _typeProbe_FeedEventMatchesFlat,
@@ -222,6 +229,7 @@ type _typeProbeBundle = [
 
 // One synthetic value usage so the bundle alias cannot be dead-code-eliminated.
 const _typeProbeWitness: _typeProbeBundle = [
+  true,
   true,
   true,
   true,

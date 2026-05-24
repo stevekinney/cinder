@@ -65,5 +65,7 @@ This component does not declare any local CSS variables.
   [`dropdown-label`](../dropdown-label/README.md).
 - `Dropdown.Separator` — a visual divider; see
   [`dropdown-separator`](../dropdown-separator/README.md).
+- `Dropdown.Group` — accessible grouping for related items inside the menu; see
+  [`dropdown-group`](../dropdown-group/README.md).
 
 <!-- generated:subcomponents:end -->

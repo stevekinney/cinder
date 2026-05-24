@@ -24,8 +24,8 @@
     {
       "id": "with-label",
       "title": "With group labels",
-      "description": "DropdownGroup and Dropdown.Label expose accessible group boundaries for related menu actions.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  import { DropdownGroup } from 'cinder/dropdown-group';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <Dropdown.Trigger>Grouped menu</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <DropdownGroup labelledBy=\"dropdown-with-label-document\">\n      <Dropdown.Label id=\"dropdown-with-label-document\">Document</Dropdown.Label>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item>Move</Dropdown.Item>\n    </DropdownGroup>\n    <DropdownGroup labelledBy=\"dropdown-with-label-sharing\">\n      <Dropdown.Label id=\"dropdown-with-label-sharing\">Sharing</Dropdown.Label>\n      <Dropdown.Item>Copy link</Dropdown.Item>\n      <Dropdown.Item>Invite people</Dropdown.Item>\n    </DropdownGroup>\n  </Dropdown.Menu>\n</Dropdown>\n"
+      "description": "Dropdown.Group and Dropdown.Label expose accessible group boundaries for related menu actions.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <Dropdown.Trigger>Grouped menu</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-document\">\n      <Dropdown.Label id=\"dropdown-with-label-document\">Document</Dropdown.Label>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item>Move</Dropdown.Item>\n    </Dropdown.Group>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-sharing\">\n      <Dropdown.Label id=\"dropdown-with-label-sharing\">Sharing</Dropdown.Label>\n      <Dropdown.Item>Copy link</Dropdown.Item>\n      <Dropdown.Item>Invite people</Dropdown.Item>\n    </Dropdown.Group>\n  </Dropdown.Menu>\n</Dropdown>\n"
     },
     {
       "id": "with-separator",
