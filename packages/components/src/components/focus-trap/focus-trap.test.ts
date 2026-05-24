@@ -42,10 +42,6 @@ const fallbackFocusChildren = createRawSnippet(() => ({
   render: () => '<div data-testid="fallback-target" tabindex="-1">Fallback</div>',
 }));
 
-const programmaticFallbackFocusChildren = createRawSnippet(() => ({
-  render: () => '<div data-testid="fallback-target" tabindex="-1">Fallback</div>',
-}));
-
 beforeEach(() => {
   document.body.replaceChildren();
 });
@@ -137,19 +133,6 @@ describe('FocusTrap', () => {
       props: {
         fallbackFocus: '[data-testid="fallback-target"]',
         children: fallbackFocusChildren,
-      },
-    });
-
-    await tick();
-
-    expect(document.activeElement).toBe(getByTestId('fallback-target'));
-  });
-
-  test('allows explicit fallbackFocus targets with tabindex=-1', async () => {
-    const { getByTestId } = render(FocusTrap, {
-      props: {
-        fallbackFocus: '[data-testid="fallback-target"]',
-        children: programmaticFallbackFocusChildren,
       },
     });
 
