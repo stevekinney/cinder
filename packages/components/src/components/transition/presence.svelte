@@ -22,6 +22,9 @@
   let hasInitialized = false;
   let exitGeneration = 0;
   let exitTimer: ReturnType<typeof setTimeout> | null = null;
+  let enterFrame: ReturnType<typeof requestAnimationFrame> | null = null;
+  let exitFrame: ReturnType<typeof requestAnimationFrame> | null = null;
+  let exitCompletionFrame: ReturnType<typeof requestAnimationFrame> | null = null;
   let exitStart = 0;
   let requiredElapsed = 0;
 
@@ -32,12 +35,27 @@
     }
   }
 
+  function clearAnimationFrame(frame: ReturnType<typeof requestAnimationFrame> | null) {
+    if (frame) cancelAnimationFrame(frame);
+  }
+
+  function clearScheduledFrames() {
+    clearAnimationFrame(enterFrame);
+    clearAnimationFrame(exitFrame);
+    clearAnimationFrame(exitCompletionFrame);
+    enterFrame = null;
+    exitFrame = null;
+    exitCompletionFrame = null;
+  }
+
+  function cleanupLifecycle() {
+    exitGeneration += 1;
+    clearExitTimer();
+    clearScheduledFrames();
+  }
+
   function completeExit(generation: number) {
-    if (generation !== exitGeneration) return;
-    // Invalidate the generation so any pending rAF/timeout/transitionend callbacks for this exit
-    // fail their `generation !== exitGeneration` guard. With `forceMount`, the wrapper stays in the
-    // DOM after exit, so a late `transitionend` could otherwise pass the stale-zero timing check
-    // and re-enter `completeExit` — firing `onExitComplete` twice.
+    if (generation !== exitGeneration || presenceState !== 'exiting') return;
     exitGeneration += 1;
     clearExitTimer();
     presenceState = 'exited';
@@ -49,7 +67,8 @@
   }
 
   function scheduleEntered(generation: number) {
-    requestAnimationFrame(() => {
+    enterFrame = requestAnimationFrame(() => {
+      enterFrame = null;
       if (generation !== exitGeneration || !present) return;
       presenceState = 'entered';
       visibilityState = 'open';
@@ -83,7 +102,7 @@
       visibilityState = 'open';
       presenceState = 'entering';
       scheduleEntered(exitGeneration);
-      return;
+      return cleanupLifecycle;
     }
 
     // Read presenceState / isMounted untracked: reading them tracked would make this effect
@@ -98,13 +117,13 @@
     // `$effect.pre` block above has already set the correct attributes.
     if (currentPresenceState === 'exited') {
       visibilityState = 'closed';
-      return;
+      return cleanupLifecycle;
     }
 
     if (!currentIsMounted) {
       presenceState = forceMount ? 'exited' : currentPresenceState;
       visibilityState = 'closed';
-      return;
+      return cleanupLifecycle;
     }
 
     exitGeneration += 1;
@@ -112,18 +131,24 @@
     visibilityState = 'closed';
     presenceState = 'exiting';
 
-    requestAnimationFrame(() => {
+    exitFrame = requestAnimationFrame(() => {
+      exitFrame = null;
       if (generation !== exitGeneration || !wrapper) return;
       requiredElapsed = getPresenceExitDuration(wrapper);
       exitStart = performance.now();
 
       if (requiredElapsed === 0) {
-        requestAnimationFrame(() => completeExit(generation));
+        exitCompletionFrame = requestAnimationFrame(() => {
+          exitCompletionFrame = null;
+          completeExit(generation);
+        });
         return;
       }
 
       exitTimer = setTimeout(() => completeExit(generation), requiredElapsed + 34);
     });
+
+    return cleanupLifecycle;
   });
 </script>
 
