@@ -323,6 +323,24 @@ describe('KanbanBoard', () => {
     });
   });
 
+  test('column handle click lifts and drops the active column', async () => {
+    const { container, onchange } = renderBoard();
+    const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
+
+    await fireEvent.click(handle);
+    expect(handle.getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    await fireEvent.click(handle);
+
+    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onchange.mock.calls[0][1]).toEqual({
+      type: 'column',
+      columnKey: 'todo',
+      fromIndex: 0,
+      toIndex: 1,
+    });
+  });
+
   test('column keyboard reorder cancels on Tab without moving focus prevention', async () => {
     const { container, onchange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;

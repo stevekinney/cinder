@@ -79,7 +79,7 @@
 
   const instructionsId = useId('cinder-kanban-board-instructions');
   const columnInstructionsId = useId('cinder-kanban-board-column-instructions');
-  let rootElement = $state<HTMLElement | null>(null);
+  let columnsElement = $state<HTMLElement | null>(null);
   let cardTarget = $state<CardMoveTarget | null>(null);
   let pointerColumnIndex = $state<number | null>(null);
   let columnLiftedKey = $state<string | number | null>(null);
@@ -173,9 +173,10 @@
   }
 
   function locatePointerTarget(pointerX: number, pointerY: number): CardMoveTarget | null {
-    if (!rootElement) return null;
-    const columnElements = Array.from(
-      rootElement.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+    if (!columnsElement) return null;
+    const columnElements = Array.from(columnsElement.children).filter(
+      (element): element is HTMLElement =>
+        element instanceof HTMLElement && element.classList.contains('cinder-kanban-board__column'),
     );
     const columnIndex = columnElements.findIndex((element) => {
       const rect = element.getBoundingClientRect();
@@ -189,11 +190,15 @@
     if (columnIndex < 0 || columns[columnIndex]?.collapsed) return null;
     const columnElement = columnElements[columnIndex];
     if (!columnElement) return null;
-    const rows = Array.from(
-      columnElement.querySelectorAll<HTMLElement>(
-        ':scope .cinder-kanban-board__cards > [data-sortable-row]',
-      ),
-    ).filter((row) => row.dataset['key'] !== String(cardController.liftedKey));
+    const cardList = columnElement.querySelector<HTMLElement>(
+      ':scope > .cinder-kanban-board__cards',
+    );
+    const rows = Array.from(cardList?.children ?? []).filter(
+      (row): row is HTMLElement =>
+        row instanceof HTMLElement &&
+        row.hasAttribute('data-sortable-row') &&
+        !row.classList.contains('cinder-sortable-item--lifted'),
+    );
     const insertionIndex = rows.filter((row) => {
       const rect = row.getBoundingClientRect();
       return rect.top + rect.height / 2 < pointerY;
@@ -308,6 +313,32 @@
     onchange(result.nextColumns, result.change);
   }
 
+  function liftColumn(column: KanbanBoardColumn<Card>, columnIndex: number): void {
+    columnLiftedKey = column.id;
+    columnTargetIndex = columnIndex;
+    announcer.announce(
+      `${column.title} column lifted, position ${columnIndex + 1} of ${columns.length}.`,
+    );
+  }
+
+  function dropColumn(column: KanbanBoardColumn<Card>, targetIndex: number): void {
+    const result = moveKanbanColumn(columns, column.id, targetIndex);
+    columnLiftedKey = null;
+    columnTargetIndex = null;
+    if (result) onchange(result.nextColumns, result.change);
+  }
+
+  function handleColumnClick(column: KanbanBoardColumn<Card>, columnIndex: number): void {
+    if (!reorderColumns || invalidKeys) return;
+    if (columnLiftedKey === null) {
+      liftColumn(column, columnIndex);
+      return;
+    }
+    if (columnLiftedKey === column.id) {
+      dropColumn(column, columnTargetIndex ?? columnIndex);
+    }
+  }
+
   function handleColumnKeydown(
     event: KeyboardEvent,
     column: KanbanBoardColumn<Card>,
@@ -317,11 +348,7 @@
     if (columnLiftedKey === null) {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
-        columnLiftedKey = column.id;
-        columnTargetIndex = columnIndex;
-        announcer.announce(
-          `${column.title} column lifted, position ${columnIndex + 1} of ${columns.length}.`,
-        );
+        liftColumn(column, columnIndex);
       }
       return;
     }
@@ -342,10 +369,7 @@
     }
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
-      const result = moveKanbanColumn(columns, column.id, currentTarget);
-      columnLiftedKey = null;
-      columnTargetIndex = null;
-      if (result) onchange(result.nextColumns, result.change);
+      dropColumn(column, currentTarget);
       return;
     }
     const nextIndex =
@@ -369,7 +393,6 @@
 </script>
 
 <section
-  bind:this={rootElement}
   class={cn('cinder-kanban-board', className)}
   aria-label={label}
   data-cinder-invalid-keys={invalidKeys ? '' : undefined}
@@ -382,7 +405,7 @@
     cancel.
   </p>
 
-  <div class="cinder-kanban-board__columns" role="list">
+  <div bind:this={columnsElement} class="cinder-kanban-board__columns" role="list">
     {#each visualColumns as column, columnIndex (invalidKeys ? `${column.id}-${columnIndex}` : column.id)}
       {@const columnContext = makeColumnContext(column, columnIndex)}
       <section
@@ -400,6 +423,7 @@
               aria-pressed={columnLiftedKey === column.id}
               aria-describedby={columnInstructionsId}
               disabled={invalidKeys}
+              onclick={() => handleColumnClick(column, columnIndex)}
               onkeydown={(event) => handleColumnKeydown(event, column, columnIndex)}
             >
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
