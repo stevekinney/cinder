@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: AvatarGroup } = await import('./avatar-group.svelte');
 const { AvatarGroup: RootAvatarGroup } = await import('../../index.ts');
 
@@ -149,22 +149,76 @@ describe('AvatarGroup', () => {
     ).toBe('0');
   });
 
+  test('uses the lowest overflow stack value when the first avatar is on top', () => {
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators,
+      maxVisible: 3,
+      zOrder: 'first-on-top',
+    });
+
+    expect(
+      container
+        .querySelector<HTMLElement>('.cinder-avatar-group__overflow')
+        ?.style.getPropertyValue('--cinder-avatar-group-index'),
+    ).toBe('0');
+  });
+
   test('wires each named avatar trigger to a tooltip with the collaborator name', async () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
     await waitFor(() => {
-      for (const trigger of container.querySelectorAll<HTMLElement>(
-        '.cinder-avatar-group__trigger',
-      )) {
-        const describedBy = trigger.getAttribute('aria-describedby');
-        const label = trigger.getAttribute('aria-label') ?? undefined;
-        expect(label).toBeTruthy();
-        expect(describedBy).toBeTruthy();
-        const tooltip = container.querySelector<HTMLElement>(`#${describedBy}`);
+      const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
+      const tooltips = container.querySelectorAll<HTMLElement>('[role="tooltip"]');
+
+      expect(triggers).toHaveLength(2);
+      expect(tooltips).toHaveLength(2);
+      triggers.forEach((trigger, index) => {
+        const tooltip = tooltips[index];
         expect(tooltip?.getAttribute('role')).toBe('tooltip');
-        expect(tooltip?.textContent?.trim()).toBe(label);
-      }
+        expect(tooltip?.textContent?.trim()).toBeTruthy();
+        expect(trigger.hasAttribute('aria-label')).toBe(false);
+        expect(trigger.hasAttribute('aria-describedby')).toBe(false);
+      });
     });
+  });
+
+  test('shows a named avatar tooltip on focus and hides it on Escape', async () => {
+    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 1) });
+
+    const trigger = container.querySelector<HTMLElement>('.cinder-avatar-group__trigger');
+    expect(trigger).not.toBeNull();
+    trigger?.focus();
+    await fireEvent.focusIn(trigger!);
+
+    await waitFor(() => {
+      const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+      expect(tooltip?.getAttribute('aria-hidden')).toBe('false');
+    });
+
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+      expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
+  test('raises the focused item above overlapped siblings', async () => {
+    const css = await Bun.file(new URL('./avatar-group.css', import.meta.url)).text();
+
+    expect(css).toContain('.cinder-avatar-group__item:focus-within');
+    expect(css).toContain('z-index: calc(var(--cinder-avatar-group-index, 0) + 100);');
+  });
+
+  test('malformed runtime items without a name render without a tooltip', () => {
+    const { container } = render(AvatarGroup, {
+      avatars: [{ id: 'missing-name' } as unknown as (typeof collaborators)[number]],
+    });
+
+    const trigger = container.querySelector<HTMLElement>('.cinder-avatar-group__trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.hasAttribute('tabindex')).toBe(false);
+    expect(trigger?.hasAttribute('aria-label')).toBe(false);
+    expect(container.querySelector('[role="tooltip"]')).toBeNull();
   });
 
   test('keeps tooltip nodes inside listitems and only listitems directly under the list', () => {

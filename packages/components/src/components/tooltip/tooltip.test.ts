@@ -57,6 +57,21 @@ describe('Tooltip', () => {
     expect(trigger?.getAttribute('aria-describedby')).toBe(tooltip?.getAttribute('id'));
   });
 
+  test('describe=false keeps tooltip text visual without wiring aria-describedby', () => {
+    const { container } = render(Tooltip, {
+      props: {
+        text: 'Visual-only tooltip',
+        describe: false,
+        children: triggerSnippet,
+      },
+    });
+
+    const trigger = container.querySelector<HTMLElement>('button');
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(trigger?.hasAttribute('aria-describedby')).toBe(false);
+    expect(tooltip?.textContent?.trim()).toBe('Visual-only tooltip');
+  });
+
   test('tooltip becomes visible on focusin (aria-hidden="false")', async () => {
     const { container } = render(Tooltip, {
       props: {

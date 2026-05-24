@@ -20,6 +20,32 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
+        properties: {
+          value: {
+            type: 'string',
+            description: 'Submitted value.',
+          },
+          label: {
+            type: 'string',
+            description: 'Visible label (primary line).',
+          },
+          description: {
+            type: 'string',
+            description:
+              'Optional secondary description rendered beneath the label inside the option.',
+          },
+          avatar: {
+            type: 'string',
+            description:
+              "Optional avatar image URL rendered to the left of the label.\nThe avatar is decorative — its alt text is empty because the\noption's accessible name already includes the label.",
+          },
+          disabled: {
+            type: 'boolean',
+            description: 'When true, the option is non-selectable.',
+          },
+        },
+        required: ['label', 'value'],
+        additionalProperties: false,
       },
       description: 'Full set of options to filter.',
     },

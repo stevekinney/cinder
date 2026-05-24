@@ -97,4 +97,28 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     expect(Object.keys(properties)).not.toContain('onclick');
     expect(Object.keys(properties)).not.toContain('form');
   });
+
+  test('array props preserve simple object item contracts', () => {
+    const { properties, required } = generate('object-array', 'object-array');
+    expect(required).toContain('items');
+    expect(properties['items']).toEqual({
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable item identifier.',
+          },
+          label: {
+            type: 'string',
+            description: 'Visible item label.',
+          },
+        },
+        required: ['label'],
+        additionalProperties: false,
+      },
+      description: 'Items to render.',
+    });
+  });
 });

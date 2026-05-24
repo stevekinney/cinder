@@ -19,5 +19,5 @@
 
 <div class="example-preview-row">
   <AvatarGroup {avatars} maxVisible={3} overflowLabel="Three hidden collaborators" />
-  <AvatarGroup {avatars} maxVisible={0} overflowLabel="All collaborators hidden" />
+  <AvatarGroup {avatars} maxVisible={0} overflowLabel="Six hidden collaborators" />
 </div>

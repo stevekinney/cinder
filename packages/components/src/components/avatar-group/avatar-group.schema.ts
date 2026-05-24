@@ -8,6 +8,22 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable identifier recommended for dynamic collaborator lists.',
+          },
+          name: {
+            type: 'string',
+            description: 'Display name used for initials, tooltip text, and accessible naming.',
+          },
+          src: {
+            type: 'string',
+            description: 'Optional avatar image source.',
+          },
+        },
+        required: ['name'],
+        additionalProperties: false,
       },
       description: 'Collaborators to render in the stack.',
     },
@@ -40,17 +56,13 @@ const schema = {
       type: 'string',
       description: 'Accessible label for the overflow indicator.',
     },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-avatar-group`.',
+    },
   },
   additionalProperties: false,
   required: ['avatars'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-      },
-    ],
-  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

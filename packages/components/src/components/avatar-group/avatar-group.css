@@ -21,6 +21,10 @@
   flex: 0 0 auto;
 }
 
+.cinder-avatar-group__item:focus-within {
+  z-index: calc(var(--cinder-avatar-group-index, 0) + 100);
+}
+
 .cinder-avatar-group__item + .cinder-avatar-group__item {
   margin-inline-start: calc(var(--cinder-avatar-group-overlap) * -1);
 }

@@ -13,7 +13,7 @@
       "id": "overflow",
       "title": "Overflow count",
       "description": "Limit visible avatars and summarize hidden collaborators with a count.",
-      "code": "<script lang=\"ts\">\n  import { AvatarGroup } from 'cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n    { id: 'dorothy', name: 'Dorothy Vaughan' },\n    { id: 'mary', name: 'Mary Jackson' },\n    { id: 'annie', name: 'Annie Easley' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} maxVisible={3} overflowLabel=\"Three hidden collaborators\" />\n  <AvatarGroup {avatars} maxVisible={0} overflowLabel=\"All collaborators hidden\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { AvatarGroup } from 'cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n    { id: 'dorothy', name: 'Dorothy Vaughan' },\n    { id: 'mary', name: 'Mary Jackson' },\n    { id: 'annie', name: 'Annie Easley' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} maxVisible={3} overflowLabel=\"Three hidden collaborators\" />\n  <AvatarGroup {avatars} maxVisible={0} overflowLabel=\"Six hidden collaborators\" />\n</div>\n"
     },
     {
       "id": "overlap-and-order",

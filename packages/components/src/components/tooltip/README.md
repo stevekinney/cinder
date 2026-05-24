@@ -16,12 +16,13 @@ A Tooltip component. Replace this sentence with a one-line purpose statement onc
 
 <!-- generated:props:start -->
 
-| Prop        | Type                                           | Required | Default | Description         |
-| ----------- | ---------------------------------------------- | -------- | ------- | ------------------- |
-| `class`     | `string`                                       | no       | —       |                     |
-| `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       |                     |
-| `text`      | `string`                                       | yes      | —       |                     |
-| `children`  | `(opaque)`                                     | —        | —       | function-or-snippet |
+| Prop        | Type                                           | Required | Default | Description                                                       |
+| ----------- | ---------------------------------------------- | -------- | ------- | ----------------------------------------------------------------- |
+| `class`     | `string`                                       | no       | —       |                                                                   |
+| `describe`  | `boolean`                                      | no       | —       | Whether to wire tooltip text to the trigger via aria-describedby. |
+| `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       |                                                                   |
+| `text`      | `string`                                       | yes      | —       |                                                                   |
+| `children`  | `(opaque)`                                     | —        | —       | function-or-snippet                                               |
 
 <!-- generated:props:end -->
 

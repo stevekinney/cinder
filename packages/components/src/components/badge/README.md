@@ -2,6 +2,8 @@
 
 A small inline label for status, category, or count display.
 
+Use Badge for attached counts, statuses, and compact annotations; use `Chip mode="display"` when the item is an issue label or tag.
+
 ## Usage
 
 ```svelte

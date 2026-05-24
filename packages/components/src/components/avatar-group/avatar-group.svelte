@@ -3,7 +3,7 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Overlapping collaborator avatar stack built on the Avatar primitive with keyboard-discoverable names and overflow count.
+   * @purpose Overlapping collaborator avatar stack built on the Avatar primitive with focusable names and overflow count.
    * @tag identity
    * @tag collaboration
    * @useWhen Showing who is present, assigned, or collaborating in a compact surface.
@@ -52,13 +52,13 @@
   const visibleAvatars = $derived(
     avatars.slice(0, visibleCount).map((avatar, index) => ({
       avatar,
-      key: avatar.id ?? `${avatar.name}:${index}`,
-      trimmedName: avatar.name.trim(),
+      key: avatar.id ?? `${avatar.name ?? ''}:${index}`,
+      trimmedName: (avatar.name ?? '').trim(),
       stackIndex: getVisibleStackIndex(index, visibleCount, zOrder),
     })),
   );
 
-  const overflowStackIndex = $derived(visibleCount === 0 ? 0 : visibleCount + 1);
+  const overflowStackIndex = $derived(getOverflowStackIndex(visibleCount, zOrder));
 
   function normalizeMaxVisible(value: number): number {
     if (!Number.isFinite(value)) return defaultMaxVisible;
@@ -72,6 +72,15 @@
   ): number {
     if (order === 'first-on-top') return count - index;
     return index + 1;
+  }
+
+  function getOverflowStackIndex(
+    count: number,
+    order: NonNullable<AvatarGroupProps['zOrder']>,
+  ): number {
+    if (count === 0) return 0;
+    if (order === 'first-on-top') return 0;
+    return count + 1;
   }
 
   function avatarSourceProps(src: string | undefined): { src?: string } {
@@ -95,10 +104,10 @@
       style={`--cinder-avatar-group-index: ${item.stackIndex}`}
     >
       {#if item.trimmedName}
-        <Tooltip text={item.trimmedName}>
+        <Tooltip text={item.trimmedName} describe={false}>
           <!-- Focusable tooltip disclosure target; not an actionable control. -->
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <span class="cinder-avatar-group__trigger" tabindex="0" aria-label={item.trimmedName}>
+          <span class="cinder-avatar-group__trigger" tabindex="0">
             <Avatar
               {...avatarSourceProps(item.avatar.src)}
               name={item.trimmedName}

@@ -8,6 +8,23 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description:
+              'Stable identity for keyed rendering. Falls back to `term` when omitted.\nProvide an explicit `id` when the list may contain duplicate terms.',
+          },
+          term: {
+            type: 'string',
+            description: 'The label rendered inside `<dt>`.',
+          },
+          definition: {
+            type: 'string',
+            description: 'The value rendered inside `<dd>`.',
+          },
+        },
+        required: ['definition', 'term'],
+        additionalProperties: false,
       },
     },
     variant: {

@@ -19,10 +19,106 @@
     },
     "change": {
       "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The change magnitude as a display string, e.g. \"4.75%\", \"+$120\", \"12\"."
+        },
+        "direction": {
+          "enum": ["up", "down", "neutral"],
+          "description": "Direction of change — drives icon + color."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional visible description, e.g. \"from last month\". Rendered aria-hidden."
+        },
+        "ariaLabel": {
+          "type": "string",
+          "description": "Optional fully-worded accessible label for the change indicator.\nWhen omitted, a phrase is synthesized from `direction` + `value` (+ optional `description`).\nWhen provided, used verbatim — the caller owns the full wording."
+        }
+      },
+      "required": ["direction", "value"],
+      "additionalProperties": false,
       "description": "Optional change indicator with direction and accessible wording."
     },
     "valueFormatOptions": {
       "type": "object",
+      "properties": {
+        "localeMatcher": {
+          "enum": ["lookup", "best fit"]
+        },
+        "style": {
+          "enum": ["decimal", "percent", "currency", "unit"]
+        },
+        "currency": {
+          "type": "string"
+        },
+        "currencyDisplay": {
+          "enum": ["symbol", "code", "name", "narrowSymbol"]
+        },
+        "useGrouping": {
+          "enum": [false, true, "min2", "auto", "always", "true", "false"]
+        },
+        "minimumIntegerDigits": {
+          "type": "number"
+        },
+        "minimumFractionDigits": {
+          "type": "number"
+        },
+        "maximumFractionDigits": {
+          "type": "number"
+        },
+        "minimumSignificantDigits": {
+          "type": "number"
+        },
+        "maximumSignificantDigits": {
+          "type": "number"
+        },
+        "numberingSystem": {
+          "type": "string"
+        },
+        "compactDisplay": {
+          "enum": ["short", "long"]
+        },
+        "notation": {
+          "enum": ["standard", "scientific", "engineering", "compact"]
+        },
+        "signDisplay": {
+          "enum": ["auto", "always", "never", "exceptZero", "negative"]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "unitDisplay": {
+          "enum": ["short", "long", "narrow"]
+        },
+        "currencySign": {
+          "enum": ["standard", "accounting"]
+        },
+        "roundingPriority": {
+          "enum": ["auto", "morePrecision", "lessPrecision"]
+        },
+        "roundingIncrement": {
+          "enum": [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000]
+        },
+        "roundingMode": {
+          "enum": [
+            "ceil",
+            "floor",
+            "expand",
+            "trunc",
+            "halfCeil",
+            "halfFloor",
+            "halfExpand",
+            "halfTrunc",
+            "halfEven"
+          ]
+        },
+        "trailingZeroDisplay": {
+          "enum": ["auto", "stripIfInteger"]
+        }
+      },
+      "additionalProperties": false,
       "description": "Intl.NumberFormat options applied only when `value` is a number."
     },
     "valueLocale": {

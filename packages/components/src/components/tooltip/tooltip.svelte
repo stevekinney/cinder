@@ -20,7 +20,13 @@
   import { cn } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
 
-  let { text, placement = 'top', class: className, children }: TooltipProps = $props();
+  let {
+    text,
+    placement = 'top',
+    describe = true,
+    class: className,
+    children,
+  }: TooltipProps = $props();
 
   const tooltipId = useId('cinder-tooltip');
 
@@ -87,6 +93,7 @@
   onfocusout={handleFocusOut}
   data-cinder-placement={placement}
   {@attach (el) => {
+    if (!describe) return;
     const focusable = el.querySelector<HTMLElement>(
       'button, a, [tabindex]:not([tabindex="-1"]), input, select, textarea',
     );

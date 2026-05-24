@@ -97,6 +97,13 @@ function formatType(prop: PropertySchema): string {
   if (prop.type === 'array' && prop.items) {
     return `${formatType(prop.items)}[]`;
   }
+  if (prop.type === 'object' && prop.properties) {
+    const requiredSet = new Set(prop.required ?? []);
+    const entries = Object.entries(prop.properties)
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([name, child]) => `${name}${requiredSet.has(name) ? '' : '?'}: ${formatType(child)}`);
+    return `{ ${entries.join('; ')} }`;
+  }
   if (prop.type) return '`' + prop.type + '`';
   return '`unknown`';
 }

@@ -12,6 +12,16 @@ const schema = {
       anyOf: [
         {
           type: 'object',
+          properties: {
+            x: {
+              type: 'number',
+            },
+            y: {
+              type: 'number',
+            },
+          },
+          required: ['x', 'y'],
+          additionalProperties: false,
         },
         {
           type: 'null',

@@ -1,6 +1,8 @@
 # Chip
 
-A Chip component. Replace this sentence with a one-line purpose statement once the migration settles.
+Compact token for issue labels, free-form tags, applied filters, selected entities, and removable or toggleable metadata.
+
+Use `Chip mode="display"` for issue labels and tags; use Badge for attached counts, statuses, and compact annotations.
 
 ## Usage
 

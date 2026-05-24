@@ -196,7 +196,7 @@
       "exportName": "AvatarGroup",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Overlapping collaborator avatar stack built on the Avatar primitive with keyboard-discoverable names and overflow count.",
+      "purpose": "Overlapping collaborator avatar stack built on the Avatar primitive with focusable names and overflow count.",
       "tags": ["identity", "collaboration"],
       "useWhen": [
         "Showing who is present, assigned, or collaborating in a compact surface.",
