@@ -197,6 +197,48 @@ describe('Presence', () => {
       globalThis.getComputedStyle = originalGetComputedStyle;
     }
   });
+
+  test('does not call onExitComplete after unmounting during exit', async () => {
+    const originalGetComputedStyle = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        transitionDuration: '1ms',
+        transitionDelay: '0ms',
+        animationDuration: '',
+        animationDelay: '',
+        animationIterationCount: '',
+      }) as CSSStyleDeclaration) as typeof getComputedStyle;
+
+    let exitCount = 0;
+    const { rerender, unmount } = render(Presence, {
+      props: {
+        present: true,
+        children: transitionChildren,
+        onExitComplete: () => {
+          exitCount += 1;
+        },
+      },
+    });
+
+    try {
+      await tick();
+      await rerender({
+        present: false,
+        children: transitionChildren,
+        onExitComplete: () => {
+          exitCount += 1;
+        },
+      });
+
+      unmount();
+      await waitForAnimationFrame();
+      await wait(50);
+
+      expect(exitCount).toBe(0);
+    } finally {
+      globalThis.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });
 
 describe('Transition', () => {
