@@ -11,7 +11,7 @@ Use `Chip mode="display"` for issue labels and tags; use Badge for attached coun
   import Chip from 'cinder/chip';
 </script>
 
-<Chip />
+<Chip label="frontend" mode="display" variant="info" />
 ```
 
 ## Props

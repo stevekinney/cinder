@@ -1,6 +1,6 @@
 # Tooltip
 
-A Tooltip component. Replace this sentence with a one-line purpose statement once the migration settles.
+Hover-and-focus triggered hint for terse controls, anchored to a focusable child element.
 
 ## Usage
 
@@ -9,7 +9,9 @@ A Tooltip component. Replace this sentence with a one-line purpose statement onc
   import Tooltip from 'cinder/tooltip';
 </script>
 
-<Tooltip />
+<Tooltip text="Refresh data" describe={false}>
+  <button type="button" aria-label="Refresh data">R</button>
+</Tooltip>
 ```
 
 ## Props
