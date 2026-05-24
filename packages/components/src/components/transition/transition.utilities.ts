@@ -12,7 +12,7 @@ function parseCommaList(value: string): number[] {
 
 function pickCyclicValue(values: number[], index: number): number {
   if (values.length === 0) return 0;
-  return values[Math.min(index, values.length - 1)] ?? 0;
+  return values[index % values.length] ?? 0;
 }
 
 function parseIterationCount(value: string): number[] {

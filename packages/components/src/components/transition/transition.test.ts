@@ -8,6 +8,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { Presence, Transition } = await import('./index.ts');
+const { getPresenceExitDuration } = await import('./transition.utilities.ts');
 
 const transitionChildren = createRawSnippet(() => ({
   render: () => '<div data-testid="presence-child">Transition child</div>',
@@ -104,6 +105,22 @@ describe('Presence', () => {
     expect(container.querySelector('[data-cinder-state]')).not.toBeNull();
   });
 
+  test('ignores transitionend from a canceled exit while entering again', async () => {
+    const { container, rerender } = render(Presence, {
+      props: { present: true, children: transitionChildren },
+    });
+
+    await tick();
+    await rerender({ present: false, children: transitionChildren });
+    await rerender({ present: true, children: transitionChildren });
+
+    const wrapper = container.querySelector('[data-cinder-state]') as HTMLDivElement;
+    wrapper.dispatchEvent(new Event('transitionend', { bubbles: true }));
+
+    expect(container.querySelector('[data-cinder-state]')).toBe(wrapper);
+    expect(wrapper.dataset['cinderState']).toBe('open');
+  });
+
   test('unmounts after a zero-duration exit and calls onExitComplete', async () => {
     let exitCount = 0;
     const { container, rerender } = render(Presence, {
@@ -148,5 +165,27 @@ describe('Transition', () => {
     await tick();
 
     expect(getByTestId('presence-child')).not.toBeNull();
+  });
+});
+
+describe('getPresenceExitDuration', () => {
+  test('cycles transition lists instead of clamping them', () => {
+    const originalGetComputedStyle = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        transitionDuration: '100ms, 1s',
+        transitionDelay: '0ms, 200ms, 300ms',
+        animationDuration: '',
+        animationDelay: '',
+        animationIterationCount: '',
+      }) as CSSStyleDeclaration) as typeof getComputedStyle;
+
+    const node = document.createElement('div');
+
+    try {
+      expect(getPresenceExitDuration(node)).toBe(1200);
+    } finally {
+      globalThis.getComputedStyle = originalGetComputedStyle;
+    }
   });
 });

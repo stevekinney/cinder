@@ -53,6 +53,7 @@
     // Defensive: once an exit completes, Svelte may tear the wrapper down to `undefined` before a
     // late bubbling event arrives. `event.target !== undefined` is always true, so without this
     // guard a child's `transitionend` could fall through to `completeExit` and double-fire.
+    if (presenceState !== 'exiting') return;
     if (!wrapper || event.target !== wrapper) return;
     if (performance.now() - exitStart < requiredElapsed) return;
     completeExit(exitGeneration);
