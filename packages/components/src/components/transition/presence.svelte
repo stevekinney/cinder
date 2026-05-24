@@ -50,7 +50,10 @@
   }
 
   function handleExitEvent(event: TransitionEvent | AnimationEvent) {
-    if (event.target !== wrapper) return;
+    // Defensive: once an exit completes, Svelte may tear the wrapper down to `undefined` before a
+    // late bubbling event arrives. `event.target !== undefined` is always true, so without this
+    // guard a child's `transitionend` could fall through to `completeExit` and double-fire.
+    if (!wrapper || event.target !== wrapper) return;
     if (performance.now() - exitStart < requiredElapsed) return;
     completeExit(exitGeneration);
   }
@@ -72,6 +75,15 @@
       visibilityState = 'open';
       presenceState = 'entering';
       scheduleEntered(exitGeneration);
+      return;
+    }
+
+    // The first run with `present={false}` is the initial render. `forceMount` may have placed the
+    // wrapper in the DOM, but the plan requires the initial state to be `closed`/`exited` — not
+    // `exiting` followed by an `onExitComplete`. Skip the exit-scheduling branch on first run; the
+    // `$effect.pre` block above has already set the correct attributes.
+    if (presenceState === 'exited') {
+      visibilityState = 'closed';
       return;
     }
 

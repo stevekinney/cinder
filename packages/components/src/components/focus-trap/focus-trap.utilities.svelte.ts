@@ -104,7 +104,6 @@ function isTopTrap(id: symbol): boolean {
 
 export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTMLElement> {
   const trapId = Symbol('focus-trap');
-  let capturedFocus: HTMLElement | null = null;
 
   return (node) => {
     const isActive = () => readOption(options.active ?? true);
@@ -112,6 +111,8 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     const initialFocus = options.initialFocus ?? null;
     const fallbackFocus = options.fallbackFocus ?? null;
 
+    let activated = false;
+    let capturedFocus: HTMLElement | null = null;
     let restoreRootFocusability = () => {};
 
     function focusTrapTarget() {
@@ -137,7 +138,33 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
       node.focus();
     }
 
+    function activate() {
+      if (activated) return;
+      activated = true;
+      capturedFocus =
+        document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+          ? document.activeElement
+          : null;
+      pushTrap({ id: trapId, node });
+      queueMicrotask(focusTrapTarget);
+    }
+
+    function deactivate() {
+      if (!activated) return;
+      activated = false;
+      restoreRootFocusability();
+      restoreRootFocusability = () => {};
+      removeTrap(trapId);
+      if (restoreFocus) {
+        restoreFocusTo(capturedFocus);
+      }
+      capturedFocus = null;
+    }
+
     function handleKeydown(event: KeyboardEvent) {
+      // Use the live `isActive()` value so a trap deactivated reactively stops intercepting Tab
+      // immediately, even if the cleanup branch below has not yet fired (which only runs on
+      // unmount, not on prop changes).
       if (!isActive() || !isTopTrap(trapId) || event.key !== 'Tab') return;
 
       const tabbable = getTabbableElements(node);
@@ -169,28 +196,12 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     node.addEventListener('keydown', handleKeydown);
 
     if (isActive()) {
-      capturedFocus =
-        document.activeElement instanceof HTMLElement && document.activeElement !== document.body
-          ? document.activeElement
-          : null;
-      pushTrap({ id: trapId, node });
-      queueMicrotask(focusTrapTarget);
-    } else {
-      removeTrap(trapId);
+      activate();
     }
 
     return () => {
       node.removeEventListener('keydown', handleKeydown);
-      restoreRootFocusability();
-      removeTrap(trapId);
-
-      if (isActive() && restoreFocus) {
-        restoreFocusTo(capturedFocus);
-      }
-
-      if (isActive()) {
-        capturedFocus = null;
-      }
+      deactivate();
     };
   };
 }

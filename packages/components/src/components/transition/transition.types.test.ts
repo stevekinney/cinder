@@ -1,11 +1,10 @@
 import { expect, test } from 'bun:test';
-import type { ComponentProps, Snippet } from 'svelte';
+import { createRawSnippet } from 'svelte';
 import { fade, fly } from 'svelte/transition';
 
-import Transition from './transition.svelte';
-import type { TransitionProps } from './transition.types.ts';
+import type { TransitionFunction, TransitionProps } from './transition.types.ts';
 
-const typedSnippet = undefined as unknown as Snippet;
+const typedSnippet = createRawSnippet(() => ({ render: () => '<span>Content</span>' }));
 
 const fadeProps: TransitionProps<Parameters<typeof fade>[1]> = {
   show: true,
@@ -21,15 +20,14 @@ const flyProps: TransitionProps<Parameters<typeof fly>[1]> = {
   transitionParameters: { x: 8, duration: 150 },
 };
 
-const componentProps: ComponentProps<typeof Transition> = {
-  show: true,
-  children: typedSnippet,
-  transition: (_node: Element, _parameters: unknown) => ({ duration: 150 }),
-  transitionParameters: { x: 8, duration: 150 },
-};
+// Proves a consumer can type their own `(node, parameters)` transition as TransitionFunction
+// without being forced to accept the internal `options` third argument.
+const customTransition: TransitionFunction<{ scale: number }> = (_node, _parameters) => ({
+  duration: 200,
+});
 
 test('TransitionProps accepts built-in Svelte transition functions', () => {
   expect(fadeProps.transition).toBe(fade);
   expect(flyProps.transition).toBe(fly);
-  expect(componentProps['transition']).toBeDefined();
+  expect(customTransition).toBeDefined();
 });

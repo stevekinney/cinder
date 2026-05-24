@@ -18,7 +18,7 @@
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { FocusTrapProps } from './focus-trap.types.ts';
-  import { createFocusTrap } from './focus-trap.utilities.ts';
+  import { createFocusTrap } from './focus-trap.utilities.svelte.ts';
 
   let {
     active = true,

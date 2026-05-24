@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { FocusTargetInput, FocusTrapOptions } from './focus-trap.utilities.ts';
+import type { FocusTargetInput, FocusTrapOptions } from './focus-trap.utilities.svelte.ts';
 
 export type FocusTrapProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
   children: Snippet;

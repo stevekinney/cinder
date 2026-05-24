@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { PortalAttachmentOptions, PortalTargetInput } from './portal.utilities.ts';
+import type { PortalAttachmentOptions, PortalTargetInput } from './portal.utilities.svelte.ts';
 
 export type PortalProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
   children: Snippet;

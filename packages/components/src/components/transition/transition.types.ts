@@ -2,10 +2,16 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import type { TransitionConfig } from 'svelte/transition';
 
+/**
+ * Public type for a Svelte-compatible transition function. The third `options` argument matches
+ * what Svelte's compiler passes internally and is optional so that built-in transitions like
+ * `fade` and `fly` — which take only `(node, parameters)` — are assignable to this type, and so
+ * consumers writing their own transitions are not forced to accept an unused third argument.
+ */
 export type TransitionFunction<TransitionParameters = undefined> = (
   node: Element,
   parameters: TransitionParameters,
-  options: { direction: 'in' | 'out' | 'both' },
+  options?: { direction: 'in' | 'out' | 'both' },
 ) => TransitionConfig;
 
 export type PresenceProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {

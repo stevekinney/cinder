@@ -25,7 +25,7 @@
     show,
     children,
     transition: transitionFunction,
-    transitionParameters,
+    transitionParameters = undefined as TransitionParameters,
     class: className,
     ...rest
   }: TransitionProps<TransitionParameters> = $props();

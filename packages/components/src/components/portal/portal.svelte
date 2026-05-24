@@ -18,7 +18,7 @@
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { PortalProps } from './portal.types.ts';
-  import { createPortalAttachment, resolvePortalTarget } from './portal.utilities.ts';
+  import { createPortalAttachment, resolvePortalTarget } from './portal.utilities.svelte.ts';
 
   let {
     target = null,
