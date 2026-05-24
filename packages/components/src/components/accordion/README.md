@@ -4,21 +4,24 @@ A vertically stacked set of disclosure regions. The `Accordion` parent owns expa
 
 ## Usage
 
+`Accordion` is a compound component. Import the parent and compose
+`Accordion.Item` via the namespace API.
+
 ```svelte
 <script lang="ts">
-  import Accordion from 'cinder/accordion';
-  import AccordionItem from 'cinder/accordion-item';
+  import { Accordion } from 'cinder/accordion';
 
   let expandedIds = $state<string[]>([]);
 </script>
 
 <Accordion bind:expandedIds multiple>
-  <AccordionItem id="one" title="One">First panel content.</AccordionItem>
-  <AccordionItem id="two" title="Two">Second panel content.</AccordionItem>
+  <Accordion.Item id="one" title="One">First panel content.</Accordion.Item>
+  <Accordion.Item id="two" title="Two">Second panel content.</Accordion.Item>
 </Accordion>
 ```
 
-`AccordionItem` is a separate top-level public export (`cinder/accordion-item`).
+The leaf remains importable individually for à-la-carte builds — see
+`cinder/accordion-item`.
 
 ## Props
 
@@ -43,5 +46,7 @@ This component does not declare any local CSS variables.
 
 <!-- generated:subcomponents:start -->
 
-- `AccordionItem` — child disclosure panel; receives the accordion context via Svelte's context API.
+- `Accordion.Item` — child disclosure panel; receives the accordion context via
+  Svelte's context API. See [`accordion-item`](../accordion-item/README.md).
+
 <!-- generated:subcomponents:end -->

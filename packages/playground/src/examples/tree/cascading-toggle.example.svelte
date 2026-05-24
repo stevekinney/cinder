@@ -6,7 +6,6 @@
 
 <script lang="ts">
   import { Tree } from 'cinder/tree';
-  import { TreeItem } from 'cinder/tree-item';
 
   let selectedIds = $state<string[]>([]);
   let expandedIds = $state<string[]>(['docs']);
@@ -20,11 +19,11 @@
   bind:selectedIds
   bind:expandedIds
 >
-  <TreeItem id="docs" label="docs" branch selectionScopeIds={['docs', 'guides', 'api']}>
-    <TreeItem id="guides" label="guides" />
-    <TreeItem id="api" label="api-reference.md" />
-  </TreeItem>
-  <TreeItem id="changelog" label="CHANGELOG.md" />
+  <Tree.Item id="docs" label="docs" branch selectionScopeIds={['docs', 'guides', 'api']}>
+    <Tree.Item id="guides" label="guides" />
+    <Tree.Item id="api" label="api-reference.md" />
+  </Tree.Item>
+  <Tree.Item id="changelog" label="CHANGELOG.md" />
 </Tree>
 
 <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--cinder-text-muted);">

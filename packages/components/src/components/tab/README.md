@@ -4,13 +4,11 @@ A Tab component. Replace this sentence with a one-line purpose statement once th
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import Tab from 'cinder/tab';
-</script>
-
-<Tab />
-```
+`Tab` is a compose-only leaf of [`Tabs`](../tabs/README.md).
+The idiomatic API is `Tabs.Trigger`, reached through the parent
+namespace — see the [tabs README](../tabs/README.md#usage) for the composed
+snippet. The flat `cinder/tab` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

@@ -7,11 +7,6 @@
 <script lang="ts">
   import { Table } from 'cinder/table';
   import type { TableSort } from 'cinder/table';
-  import { TableBody } from 'cinder/table-body';
-  import { TableCell } from 'cinder/table-cell';
-  import { TableHeader } from 'cinder/table-header';
-  import { TableHeaderCell } from 'cinder/table-header-cell';
-  import { TableRow } from 'cinder/table-row';
   let sort: TableSort | undefined = $state(undefined);
 
   const people = [
@@ -44,21 +39,21 @@
   style="max-height: 250px; overflow-y: auto; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md);"
 >
   <Table caption="Contributors" stickyHeader bind:sort>
-    <TableHeader>
-      <TableRow>
-        <TableHeaderCell column="name" sortable>Name</TableHeaderCell>
-        <TableHeaderCell column="role" sortable>Role</TableHeaderCell>
-        <TableHeaderCell column="commits" sortable>Commits</TableHeaderCell>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
+    <Table.Header>
+      <Table.Row>
+        <Table.HeaderCell column="name" sortable>Name</Table.HeaderCell>
+        <Table.HeaderCell column="role" sortable>Role</Table.HeaderCell>
+        <Table.HeaderCell column="commits" sortable>Commits</Table.HeaderCell>
+      </Table.Row>
+    </Table.Header>
+    <Table.Body>
       {#each sorted as person (person.name)}
-        <TableRow>
-          <TableCell>{person.name}</TableCell>
-          <TableCell>{person.role}</TableCell>
-          <TableCell align="right">{person.commits}</TableCell>
-        </TableRow>
+        <Table.Row>
+          <Table.Cell>{person.name}</Table.Cell>
+          <Table.Cell>{person.role}</Table.Cell>
+          <Table.Cell align="right">{person.commits}</Table.Cell>
+        </Table.Row>
       {/each}
-    </TableBody>
+    </Table.Body>
   </Table>
 </div>

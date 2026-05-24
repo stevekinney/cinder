@@ -4,13 +4,23 @@ A StatGroup component. Replace this sentence with a one-line purpose statement o
 
 ## Usage
 
+`StatGroup` is a compound component. Import the parent and compose
+`StatGroup.Stat` via the namespace API.
+
 ```svelte
 <script lang="ts">
-  import StatGroup from 'cinder/stat-group';
+  import { StatGroup } from 'cinder/stat-group';
 </script>
 
-<StatGroup />
+<StatGroup label="This quarter" columns={3}>
+  <StatGroup.Stat label="Monthly revenue" value="$48,250" />
+  <StatGroup.Stat label="Active users" value={1289} />
+  <StatGroup.Stat label="Churn" value="2.1%" />
+</StatGroup>
 ```
+
+The leaf remains importable individually for à-la-carte builds — see
+`cinder/stat`.
 
 ## Props
 
@@ -38,6 +48,7 @@ This component does not declare any local CSS variables.
 
 <!-- generated:subcomponents:start -->
 
-None.
+- `StatGroup.Stat` — a single metric with optional change indicator; see
+  [`stat`](../stat/README.md).
 
 <!-- generated:subcomponents:end -->

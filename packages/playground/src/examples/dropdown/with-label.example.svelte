@@ -1,30 +1,26 @@
 <script lang="ts" module>
   export const title = 'With group labels';
   export const description =
-    'DropdownGroup and DropdownLabel expose accessible group boundaries for related menu actions.';
+    'DropdownGroup and Dropdown.Label expose accessible group boundaries for related menu actions.';
 </script>
 
 <script lang="ts">
   import { Dropdown } from 'cinder/dropdown';
   import { DropdownGroup } from 'cinder/dropdown-group';
-  import { DropdownItem } from 'cinder/dropdown-item';
-  import { DropdownLabel } from 'cinder/dropdown-label';
-  import { DropdownMenu } from 'cinder/dropdown-menu';
-  import { DropdownTrigger } from 'cinder/dropdown-trigger';
 </script>
 
 <Dropdown id="dropdown-with-label">
-  <DropdownTrigger>Grouped menu</DropdownTrigger>
-  <DropdownMenu>
+  <Dropdown.Trigger>Grouped menu</Dropdown.Trigger>
+  <Dropdown.Menu>
     <DropdownGroup labelledBy="dropdown-with-label-document">
-      <DropdownLabel id="dropdown-with-label-document">Document</DropdownLabel>
-      <DropdownItem>Rename</DropdownItem>
-      <DropdownItem>Move</DropdownItem>
+      <Dropdown.Label id="dropdown-with-label-document">Document</Dropdown.Label>
+      <Dropdown.Item>Rename</Dropdown.Item>
+      <Dropdown.Item>Move</Dropdown.Item>
     </DropdownGroup>
     <DropdownGroup labelledBy="dropdown-with-label-sharing">
-      <DropdownLabel id="dropdown-with-label-sharing">Sharing</DropdownLabel>
-      <DropdownItem>Copy link</DropdownItem>
-      <DropdownItem>Invite people</DropdownItem>
+      <Dropdown.Label id="dropdown-with-label-sharing">Sharing</Dropdown.Label>
+      <Dropdown.Item>Copy link</Dropdown.Item>
+      <Dropdown.Item>Invite people</Dropdown.Item>
     </DropdownGroup>
-  </DropdownMenu>
+  </Dropdown.Menu>
 </Dropdown>

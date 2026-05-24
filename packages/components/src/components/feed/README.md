@@ -4,13 +4,29 @@ A Feed component. Replace this sentence with a one-line purpose statement once t
 
 ## Usage
 
+`Feed` is a compound component. Import the parent and compose `Feed.Event` via
+the namespace API.
+
 ```svelte
 <script lang="ts">
-  import Feed from 'cinder/feed';
+  import { Feed } from 'cinder/feed';
 </script>
 
-<Feed />
+<Feed aria-label="Project activity">
+  <Feed.Event datetime="2025-05-12T15:30:00Z">
+    {#snippet icon()}
+      <span aria-hidden="true">★</span>
+    {/snippet}
+    {#snippet timestamp()}2m ago{/snippet}
+    {#snippet content()}
+      <p>Ada Lovelace starred the repository.</p>
+    {/snippet}
+  </Feed.Event>
+</Feed>
 ```
+
+The leaf remains importable individually for à-la-carte builds — see
+`cinder/feed-event`.
 
 ## Props
 
@@ -36,6 +52,7 @@ This component does not declare any local CSS variables.
 
 <!-- generated:subcomponents:start -->
 
-None.
+- `Feed.Event` — a dated event entry with `icon` or `minimal` variant; see
+  [`feed-event`](../feed-event/README.md).
 
 <!-- generated:subcomponents:end -->

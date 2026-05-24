@@ -4,13 +4,27 @@ A GridList component. Replace this sentence with a one-line purpose statement on
 
 ## Usage
 
+`GridList` is a compound component. Import the parent and compose
+`GridList.Item` via the namespace API.
+
 ```svelte
 <script lang="ts">
-  import GridList from 'cinder/grid-list';
+  import { GridList } from 'cinder/grid-list';
 </script>
 
-<GridList />
+<GridList columns="14rem" aria-label="Projects">
+  <GridList.Item>
+    {#snippet title()}<strong>Phoenix</strong>{/snippet}
+    {#snippet subtitle()}<span>Reactive runtime experiments.</span>{/snippet}
+  </GridList.Item>
+  <GridList.Item href="/projects/atlas">
+    {#snippet title()}Atlas{/snippet}
+  </GridList.Item>
+</GridList>
 ```
+
+The leaf remains importable individually for à-la-carte builds — see
+`cinder/grid-list-item`.
 
 ## Props
 
@@ -35,6 +49,7 @@ A GridList component. Replace this sentence with a one-line purpose statement on
 
 <!-- generated:subcomponents:start -->
 
-None.
+- `GridList.Item` — a card-style grid cell with optional stretched-link
+  behavior; see [`grid-list-item`](../grid-list-item/README.md).
 
 <!-- generated:subcomponents:end -->

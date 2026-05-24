@@ -4,13 +4,11 @@ A TabPanel component. Replace this sentence with a one-line purpose statement on
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TabPanel from 'cinder/tab-panel';
-</script>
-
-<TabPanel />
-```
+`TabPanel` is a compose-only leaf of [`Tabs`](../tabs/README.md).
+The idiomatic API is `Tabs.Panel`, reached through the parent
+namespace — see the [tabs README](../tabs/README.md#usage) for the composed
+snippet. The flat `cinder/tab-panel` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

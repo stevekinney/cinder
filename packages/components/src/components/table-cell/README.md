@@ -4,13 +4,11 @@ A TableCell component. Replace this sentence with a one-line purpose statement o
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TableCell from 'cinder/table-cell';
-</script>
-
-<TableCell />
-```
+`TableCell` is a compose-only leaf of [`Table`](../table/README.md).
+The idiomatic API is `Table.Cell`, reached through the parent
+namespace — see the [table README](../table/README.md#usage) for the composed
+snippet. The flat `cinder/table-cell` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

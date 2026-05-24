@@ -13,6 +13,38 @@ const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
 
 /**
+ * Compose-only leaf components. These public components exist as real
+ * directories and are exported flat from `cinder`, but they have no meaningful
+ * standalone usage — they are always rendered inside a parent compound
+ * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
+ * `StatGroup`, `SideNavigation`). They are excluded from the playground
+ * sidebar so a single parent entry covers the family, but they remain in
+ * `discoverComponents()` so direct `/c/<leaf>` routing still works.
+ */
+export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
+  'accordion-item',
+  'tab-list',
+  'tab',
+  'tab-panel',
+  'table-body',
+  'table-cell',
+  'table-header',
+  'table-header-cell',
+  'table-row',
+  'dropdown-trigger',
+  'dropdown-menu',
+  'dropdown-item',
+  'dropdown-label',
+  'dropdown-separator',
+  'tree-item',
+  'feed-event',
+  'grid-list-item',
+  'stat',
+  'side-navigation-group',
+  'side-navigation-item',
+]);
+
+/**
  * Returns a sorted array of component kebab names. Discovers both the legacy
  * flat layout (`packages/components/src/components/<name>.svelte`) and the
  * per-directory migrated layout (`packages/components/src/components/<name>/<name>.svelte`).
@@ -75,11 +107,15 @@ export async function discoverAll(): Promise<Array<{ name: string; exampleCount:
 
 /**
  * Components that should appear in the playground sidebar — those with at least
- * one `.example.svelte` file. Compose-only subcomponents (e.g. `accordion-item`,
- * `dropdown-label`, `label`, `radio`, `tab`) intentionally have no example folder and are
- * therefore absent from the sidebar without any name-based blacklist.
+ * one `.example.svelte` file, minus any compose-only leaf listed in
+ * `COMPOSE_ONLY_COMPONENTS`. Compose-only subcomponents are demonstrated on
+ * their parent's page (for example, `Tabs.List` is shown in the `tabs` entry),
+ * so they would only add noise to the sidebar.
  */
 export async function discoverSidebarComponents(): Promise<string[]> {
   const all = await discoverAll();
-  return all.filter(({ exampleCount }) => exampleCount > 0).map(({ name }) => name);
+  return all
+    .filter(({ exampleCount }) => exampleCount > 0)
+    .map(({ name }) => name)
+    .filter((name) => !COMPOSE_ONLY_COMPONENTS.has(name));
 }

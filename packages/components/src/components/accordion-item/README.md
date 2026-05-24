@@ -4,18 +4,14 @@ A single expandable panel inside an `Accordion`. Reads the accordion context to 
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import Accordion from 'cinder/accordion';
-  import AccordionItem from 'cinder/accordion-item';
-</script>
+`AccordionItem` is a compose-only leaf of [`Accordion`](../accordion/README.md).
+The idiomatic API is `Accordion.Item`, reached through the parent namespace —
+see the [Accordion README](../accordion/README.md#usage) for the composed
+snippet. The flat `cinder/accordion-item` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
-<Accordion expandedIds={[]}>
-  <AccordionItem id="settings" title="Settings">Panel body.</AccordionItem>
-</Accordion>
-```
-
-`AccordionItem` throws if used outside an `Accordion` — the context lookup is required.
+`AccordionItem` throws if used outside an `Accordion` — the context lookup is
+required.
 
 ## Props
 

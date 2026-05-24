@@ -4,13 +4,11 @@ A GridListItem component. Replace this sentence with a one-line purpose statemen
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import GridListItem from 'cinder/grid-list-item';
-</script>
-
-<GridListItem />
-```
+`GridListItem` is a compose-only leaf of [`GridList`](../grid-list/README.md).
+The idiomatic API is `GridList.Item`, reached through the parent
+namespace — see the [grid-list README](../grid-list/README.md#usage) for the composed
+snippet. The flat `cinder/grid-list-item` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

@@ -879,6 +879,10 @@
     "./feed/styles": {
       "default": "./dist/components/feed/feed.css"
     },
+    "./feed/examples": {
+      "import": "./src/components/feed/feed.examples.json",
+      "default": "./src/components/feed/feed.examples.json"
+    },
     "./feed-event": {
       "types": "./dist/components/feed-event/index.d.ts",
       "svelte": "./src/components/feed-event/index.ts",
@@ -986,6 +990,10 @@
     },
     "./grid-list/styles": {
       "default": "./dist/components/grid-list/grid-list.css"
+    },
+    "./grid-list/examples": {
+      "import": "./src/components/grid-list/grid-list.examples.json",
+      "default": "./src/components/grid-list/grid-list.examples.json"
     },
     "./grid-list-item": {
       "types": "./dist/components/grid-list-item/index.d.ts",
@@ -1678,6 +1686,10 @@
     "./side-navigation/styles": {
       "default": "./dist/components/side-navigation/side-navigation.css"
     },
+    "./side-navigation/examples": {
+      "import": "./src/components/side-navigation/side-navigation.examples.json",
+      "default": "./src/components/side-navigation/side-navigation.examples.json"
+    },
     "./side-navigation-group": {
       "types": "./dist/components/side-navigation-group/index.d.ts",
       "svelte": "./src/components/side-navigation-group/index.ts",
@@ -1902,6 +1914,10 @@
     },
     "./stat-group/styles": {
       "default": "./dist/components/stat-group/stat-group.css"
+    },
+    "./stat-group/examples": {
+      "import": "./src/components/stat-group/stat-group.examples.json",
+      "default": "./src/components/stat-group/stat-group.examples.json"
     },
     "./status-dot": {
       "types": "./dist/components/status-dot/index.d.ts",

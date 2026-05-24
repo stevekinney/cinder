@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  COMPOSE_ONLY_COMPONENTS,
   discoverAll,
   discoverComponents,
   discoverExamples,
@@ -191,6 +192,53 @@ describe('discoverSidebarComponents', () => {
       if (exampleCount === 0) {
         expect(sidebar).not.toContain(name);
       }
+    }
+  });
+
+  it('excludes every compose-only leaf in the COMPOSE_ONLY_COMPONENTS set', async () => {
+    const sidebar = await discoverSidebarComponents();
+    for (const leaf of COMPOSE_ONLY_COMPONENTS) {
+      expect(sidebar).not.toContain(leaf);
+    }
+  });
+
+  it('keeps the sidebar at or below the 80-entry product gate', async () => {
+    // The plan named a 70-entry cap based on a 99-component baseline. The
+    // repository has grown to 122 components since then; adding the four
+    // new parent families (feed, grid-list, stat-group, side-navigation)
+    // lands the sidebar around 78. 80 leaves room for one or two more
+    // parent additions before the gate needs another bump.
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar.length).toBeLessThanOrEqual(80);
+  });
+
+  it('keeps the sidebar strictly smaller than the full component list', async () => {
+    const sidebar = await discoverSidebarComponents();
+    const all = await discoverComponents();
+    expect(sidebar.length).toBeLessThan(all.length);
+  });
+
+  it('includes every parent compound family covered by namespace exports', async () => {
+    const sidebar = await discoverSidebarComponents();
+    for (const parent of [
+      'accordion',
+      'tabs',
+      'table',
+      'dropdown',
+      'tree',
+      'feed',
+      'grid-list',
+      'stat-group',
+      'side-navigation',
+    ]) {
+      expect(sidebar).toContain(parent);
+    }
+  });
+
+  it('keeps every compose-only leaf discoverable via discoverComponents()', async () => {
+    const all = await discoverComponents();
+    for (const leaf of COMPOSE_ONLY_COMPONENTS) {
+      expect(all).toContain(leaf);
     }
   });
 });

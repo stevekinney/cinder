@@ -4,13 +4,11 @@ A TableHeader component. Replace this sentence with a one-line purpose statement
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TableHeader from 'cinder/table-header';
-</script>
-
-<TableHeader />
-```
+`TableHeader` is a compose-only leaf of [`Table`](../table/README.md).
+The idiomatic API is `Table.Header`, reached through the parent
+namespace — see the [table README](../table/README.md#usage) for the composed
+snippet. The flat `cinder/table-header` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

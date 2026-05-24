@@ -4,13 +4,11 @@ A TabList component. Replace this sentence with a one-line purpose statement onc
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TabList from 'cinder/tab-list';
-</script>
-
-<TabList />
-```
+`TabList` is a compose-only leaf of [`Tabs`](../tabs/README.md).
+The idiomatic API is `Tabs.List`, reached through the parent
+namespace — see the [tabs README](../tabs/README.md#usage) for the composed
+snippet. The flat `cinder/tab-list` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

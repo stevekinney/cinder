@@ -4,13 +4,11 @@ A TableHeaderCell component. Replace this sentence with a one-line purpose state
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import TableHeaderCell from 'cinder/table-header-cell';
-</script>
-
-<TableHeaderCell />
-```
+`TableHeaderCell` is a compose-only leaf of [`Table`](../table/README.md).
+The idiomatic API is `Table.HeaderCell`, reached through the parent
+namespace — see the [table README](../table/README.md#usage) for the composed
+snippet. The flat `cinder/table-header-cell` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

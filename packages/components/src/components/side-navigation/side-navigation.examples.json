@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "side-navigation",
+  "import": "cinder/side-navigation",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic side navigation",
+      "description": "A grouped sidebar nav. Uses the SideNavigation namespace API: SideNavigation.Group wraps a collapsible section and SideNavigation.Item renders each link.",
+      "code": "<script lang=\"ts\">\n  import { SideNavigation } from 'cinder/side-navigation';\n</script>\n\n<SideNavigation ariaLabel=\"Workspace\">\n  <SideNavigation.Item href=\"/dashboard\">Dashboard</SideNavigation.Item>\n  <SideNavigation.Group label=\"Projects\">\n    <SideNavigation.Item href=\"/projects/phoenix\" active>Phoenix</SideNavigation.Item>\n    <SideNavigation.Item href=\"/projects/atlas\">Atlas</SideNavigation.Item>\n    <SideNavigation.Item href=\"/projects/beacon\">Beacon</SideNavigation.Item>\n  </SideNavigation.Group>\n  <SideNavigation.Group label=\"Settings\">\n    <SideNavigation.Item href=\"/settings/team\">Team</SideNavigation.Item>\n    <SideNavigation.Item href=\"/settings/billing\">Billing</SideNavigation.Item>\n  </SideNavigation.Group>\n</SideNavigation>\n"
+    }
+  ]
+}

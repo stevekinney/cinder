@@ -4,13 +4,11 @@ A DropdownMenu component. Replace this sentence with a one-line purpose statemen
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import DropdownMenu from 'cinder/dropdown-menu';
-</script>
-
-<DropdownMenu />
-```
+`DropdownMenu` is a compose-only leaf of [`Dropdown`](../dropdown/README.md).
+The idiomatic API is `Dropdown.Menu`, reached through the parent
+namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed
+snippet. The flat `cinder/dropdown-menu` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 

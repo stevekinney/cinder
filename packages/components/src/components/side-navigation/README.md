@@ -4,13 +4,25 @@ A SideNavigation component. Replace this sentence with a one-line purpose statem
 
 ## Usage
 
+`SideNavigation` is a compound component. Import the parent and compose
+`SideNavigation.Group` and `SideNavigation.Item` via the namespace API.
+
 ```svelte
 <script lang="ts">
-  import SideNavigation from 'cinder/side-navigation';
+  import { SideNavigation } from 'cinder/side-navigation';
 </script>
 
-<SideNavigation />
+<SideNavigation ariaLabel="Workspace">
+  <SideNavigation.Item href="/dashboard">Dashboard</SideNavigation.Item>
+  <SideNavigation.Group label="Projects">
+    <SideNavigation.Item href="/projects/phoenix" active>Phoenix</SideNavigation.Item>
+    <SideNavigation.Item href="/projects/atlas">Atlas</SideNavigation.Item>
+  </SideNavigation.Group>
+</SideNavigation>
 ```
+
+The leaves remain importable individually for à-la-carte builds — see
+`cinder/side-navigation-group` and `cinder/side-navigation-item`.
 
 ## Props
 
@@ -36,6 +48,9 @@ This component does not declare any local CSS variables.
 
 <!-- generated:subcomponents:start -->
 
-None.
+- `SideNavigation.Group` — a collapsible labelled section; see
+  [`side-navigation-group`](../side-navigation-group/README.md).
+- `SideNavigation.Item` — a navigation link or button rendered inside the
+  sidebar list; see [`side-navigation-item`](../side-navigation-item/README.md).
 
 <!-- generated:subcomponents:end -->

@@ -4,13 +4,11 @@ A SideNavigationItem component. Replace this sentence with a one-line purpose st
 
 ## Usage
 
-```svelte
-<script lang="ts">
-  import SideNavigationItem from 'cinder/side-navigation-item';
-</script>
-
-<SideNavigationItem />
-```
+`SideNavigationItem` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md).
+The idiomatic API is `SideNavigation.Item`, reached through the parent
+namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed
+snippet. The flat `cinder/side-navigation-item` subpath remains exported for
+à-la-carte builds that import the leaf directly.
 
 ## Props
 
