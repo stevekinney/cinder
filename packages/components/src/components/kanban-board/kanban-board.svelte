@@ -255,6 +255,7 @@
     },
     move(toIndex, itemLabel, _total) {
       if (!cardTarget) return;
+      const previousTarget = cardTarget;
       const targetColumnIndex = pointerColumnIndex ?? cardTarget.columnIndex;
       const column = columns[targetColumnIndex];
       if (!column || column.collapsed) return;
@@ -269,8 +270,11 @@
       const cardIndex = Math.max(0, Math.min(toIndex, maxCardIndex));
       cardTarget = { columnIndex: targetColumnIndex, cardIndex };
       const destinationTotal = getDestinationTotal(cardTarget, cardController.liftedKey);
-      cardController.move(cardIndex, itemLabel, destinationTotal);
-      announceTarget(itemLabel);
+      const targetChanged =
+        previousTarget.columnIndex !== cardTarget.columnIndex ||
+        previousTarget.cardIndex !== cardTarget.cardIndex;
+      cardController.move(cardIndex, itemLabel, destinationTotal, { announce: false });
+      if (targetChanged) announceTarget(itemLabel);
       pointerColumnIndex = null;
     },
     getPointerTarget({ pointerX, pointerY }) {
@@ -298,11 +302,24 @@
         cardIndex: Math.max(0, Math.min(cardTarget.cardIndex, nextColumn.cards.length)),
       };
       const destinationTotal = getDestinationTotal(cardTarget, cardController.liftedKey);
-      cardController.move(cardTarget.cardIndex, itemLabel, destinationTotal);
+      cardController.move(cardTarget.cardIndex, itemLabel, destinationTotal, { announce: false });
       announceTarget(itemLabel);
       return true;
     },
   });
+
+  function cancelCardLift(itemLabel?: string): void {
+    cardController.cancel(itemLabel);
+    cardTarget = null;
+    pointerColumnIndex = null;
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent): void {
+    if (cardController.phase === 'lifted' && event.key === 'Escape') {
+      event.preventDefault();
+      cancelCardLift();
+    }
+  }
 
   function toggleColumn(column: KanbanBoardColumn<Card>): void {
     const result = toggleKanbanColumn(columns, column.id);
@@ -391,6 +408,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={handleWindowKeydown} />
 
 <section
   class={cn('cinder-kanban-board', className)}

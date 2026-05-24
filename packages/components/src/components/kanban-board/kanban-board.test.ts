@@ -272,6 +272,50 @@ describe('KanbanBoard', () => {
     });
   });
 
+  test('pointer drag does not repeat move announcements when the target is unchanged', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnnouncement();
+    const liftedAnnouncement = container.querySelector('[role="alert"]')?.textContent;
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+    await waitForAnnouncement();
+
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(liftedAnnouncement);
+  });
+
+  test('window Escape cancels a lifted card after focus leaves the handle', async () => {
+    const { container, onchange } = renderBoard();
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await tick();
+    expect(handle.getAttribute('aria-pressed')).toBe('true');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitForAnnouncement();
+
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    expect(onchange).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
+  });
+
   test('announces no destination when lateral movement is blocked', async () => {
     const columns = makeColumns();
     columns[1] = { ...columns[1], collapsed: true };

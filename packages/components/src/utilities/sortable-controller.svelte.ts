@@ -95,12 +95,20 @@ export class SortableController<Item> {
     this.#announce(this.#announcements.lifted(itemLabel, fromIndex + 1, total));
   }
 
-  move(toIndex: number, itemLabel: string, total: number): void {
-    if (this.phase !== 'lifted') return;
+  move(
+    toIndex: number,
+    itemLabel: string,
+    total: number,
+    options: { announce?: boolean } = {},
+  ): boolean {
+    if (this.phase !== 'lifted') return false;
     const clamped = Math.max(0, Math.min(total - 1, toIndex));
-    if (clamped === this.liftedTo) return;
+    if (clamped === this.liftedTo) return false;
     this.liftedTo = clamped;
-    this.#announce(this.#announcements.moved(itemLabel, clamped + 1, total));
+    if (options.announce !== false) {
+      this.#announce(this.#announcements.moved(itemLabel, clamped + 1, total));
+    }
+    return true;
   }
 
   /**
