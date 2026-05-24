@@ -17,20 +17,7 @@
     "options": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "disabled": {
-            "type": "boolean"
-          }
-        },
-        "required": ["label", "value"],
-        "additionalProperties": false
+        "type": "object"
       },
       "description": "Options to render as `<option>` children."
     },

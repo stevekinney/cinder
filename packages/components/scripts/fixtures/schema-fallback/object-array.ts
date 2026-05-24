@@ -1,3 +1,6 @@
+/**
+ * @schemaObject
+ */
 export type ObjectArrayItem = {
   /** Stable item identifier. */
   id?: string;

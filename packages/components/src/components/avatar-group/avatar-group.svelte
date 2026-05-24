@@ -45,14 +45,15 @@
   const hiddenCount = $derived(Math.max(0, avatars.length - visibleCount));
   const hasOverflow = $derived(hiddenCount > 0);
   const computedOverflowLabel = $derived(overflowLabel ?? `${hiddenCount} more collaborators`);
+  const normalizedOverlap = $derived(normalizeOverlap(overlap));
   const rootStyle = $derived(
-    [style, `--cinder-avatar-group-overlap: ${overlap}`].filter(Boolean).join('; '),
+    [style, `--cinder-avatar-group-overlap: ${normalizedOverlap}`].filter(Boolean).join('; '),
   );
 
   const visibleAvatars = $derived(
     avatars.slice(0, visibleCount).map((avatar, index) => ({
       avatar,
-      key: avatar.id ?? `${avatar.name ?? ''}:${index}`,
+      key: `${avatar.id ?? avatar.name ?? ''}:${index}`,
       trimmedName: (avatar.name ?? '').trim(),
       stackIndex: getVisibleStackIndex(index, visibleCount, zOrder),
     })),
@@ -63,6 +64,14 @@
   function normalizeMaxVisible(value: number): number {
     if (!Number.isFinite(value)) return defaultMaxVisible;
     return Math.max(0, Math.floor(value));
+  }
+
+  function normalizeOverlap(value: string): string {
+    const trimmed = value.trim();
+    if (/^(?:0|(?:\d*\.)?\d+(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%))$/.test(trimmed)) {
+      return trimmed;
+    }
+    return '0.75rem';
   }
 
   function getVisibleStackIndex(
@@ -107,7 +116,7 @@
         <Tooltip text={item.trimmedName} describe={false}>
           <!-- Focusable tooltip disclosure target; not an actionable control. -->
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <span class="cinder-avatar-group__trigger" tabindex="0">
+          <span class="cinder-avatar-group__trigger" tabindex="0" aria-label={item.trimmedName}>
             <Avatar
               {...avatarSourceProps(item.avatar.src)}
               name={item.trimmedName}

@@ -9,17 +9,7 @@
     "position": {
       "anyOf": [
         {
-          "type": "object",
-          "properties": {
-            "x": {
-              "type": "number"
-            },
-            "y": {
-              "type": "number"
-            }
-          },
-          "required": ["x", "y"],
-          "additionalProperties": false
+          "type": "object"
         },
         {
           "type": "null"

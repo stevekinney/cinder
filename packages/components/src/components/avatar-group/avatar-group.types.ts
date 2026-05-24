@@ -5,6 +5,9 @@ type AvatarGroupRootAttributes = Omit<HTMLAttributes<HTMLDivElement>, 'children'
 
 export type AvatarGroupZOrder = 'first-on-top' | 'last-on-top';
 
+/**
+ * @schemaObject
+ */
 export type AvatarGroupItem = {
   /** Stable identifier recommended for dynamic collaborator lists. */
   id?: string;

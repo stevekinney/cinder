@@ -51,38 +51,6 @@ const schema = {
     },
     placeholderDecoration: {
       type: 'object',
-      properties: {
-        candidates: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              path: {
-                type: 'string',
-                description: 'Dot-separated property path (e.g., "input.x")',
-              },
-              description: {
-                type: 'string',
-                description: 'Schema description, if present',
-              },
-              valueKind: {
-                enum: ['string', 'number', 'boolean', 'object', 'array', 'unknown'],
-                description: 'Inferred value kind from the schema type field',
-              },
-            },
-            required: ['description', 'path', 'valueKind'],
-            additionalProperties: false,
-          },
-          description: 'Known candidates used for validation',
-        },
-        invalidClassName: {
-          type: 'string',
-          description:
-            "CSS class applied to invalid tokens (default: 'template-placeholder-invalid')",
-        },
-      },
-      required: ['candidates'],
-      additionalProperties: false,
       description:
         'Placeholder decoration configuration (DEP-583).\nWhen provided, decorates invalid {{…}} tokens with CSS class and data attributes.',
     },

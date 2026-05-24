@@ -20,19 +20,6 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
-        properties: {
-          value: {
-            type: 'string',
-          },
-          label: {
-            type: 'string',
-          },
-          disabled: {
-            type: 'boolean',
-          },
-        },
-        required: ['label', 'value'],
-        additionalProperties: false,
       },
       description: 'Options to render as `<option>` children.',
     },

@@ -6,18 +6,6 @@ const schema = {
   properties: {
     sort: {
       type: 'object',
-      properties: {
-        column: {
-          type: 'string',
-          description: 'Column key currently sorted by.',
-        },
-        direction: {
-          enum: ['ascending', 'descending'],
-          description: 'Direction of the active sort.',
-        },
-      },
-      required: ['column', 'direction'],
-      additionalProperties: false,
       description:
         'Bound sort state. When the user activates a sortable header, this prop\nis updated to reflect the new column / direction.\n\nPass `undefined` initially when no column is sorted; the component will\nnever write back `undefined` itself (sort always toggles to a column).',
     },

@@ -8,22 +8,6 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Stable identifier used as the keyed-each key. Must be unique.',
-          },
-          label: {
-            type: 'string',
-            description: 'Visible label for the step.',
-          },
-          description: {
-            type: 'string',
-            description: 'Optional secondary text shown beneath the label.',
-          },
-        },
-        required: ['id', 'label'],
-        additionalProperties: false,
       },
       description: 'Ordered list of step entries from first to last.',
     },

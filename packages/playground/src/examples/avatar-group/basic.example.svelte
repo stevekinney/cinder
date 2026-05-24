@@ -1,7 +1,6 @@
 <script lang="ts" module>
   export const title = 'Collaborator stack';
-  export const description =
-    'A compact stack of visible collaborators with keyboard-discoverable names.';
+  export const description = 'A compact stack of visible collaborators with focusable names.';
 </script>
 
 <script lang="ts">

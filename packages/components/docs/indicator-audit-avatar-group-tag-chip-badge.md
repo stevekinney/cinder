@@ -22,4 +22,4 @@ Tag does not need a third public primitive in this branch. The existing Chip alr
 | Selected entities   | `Chip`                                          | You need a person image stack; use AvatarGroup.                        |
 | Removable tags      | `Chip mode="removable"`                         | The tag is a static display label; use display-mode Chip.              |
 
-AvatarGroup remains a separate component because overlapping collaborator identity stacks have layout, overflow, tooltip, and focus-discovery behavior that Avatar alone does not own.
+AvatarGroup remains a separate component because overlapping collaborator identity stacks have layout, overflow, tooltip, and keyboard focus behavior that Avatar alone does not own.

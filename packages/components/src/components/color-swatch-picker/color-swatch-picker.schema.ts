@@ -16,24 +16,6 @@ const schema = {
       type: 'array',
       items: {
         type: 'object',
-        properties: {
-          color: {
-            type: 'string',
-            description: 'CSS color string rendered as the swatch background.',
-          },
-          name: {
-            type: 'string',
-            description:
-              'Optional human label. When omitted, the `color` string is the accessible name.',
-          },
-          disabled: {
-            type: 'boolean',
-            description:
-              'Disables this individual swatch. Skipped during keyboard navigation; not selectable.',
-          },
-        },
-        required: ['color'],
-        additionalProperties: false,
       },
       description: 'Palette to render.',
     },

@@ -82,6 +82,32 @@ describe('AvatarGroup', () => {
     expect(tooltips[0]?.id).not.toBe(tooltips[1]?.id);
   });
 
+  test('renders duplicate ids as distinct keyed items', async () => {
+    const { container, rerender } = render(AvatarGroup, {
+      avatars: [
+        { id: 'duplicate', name: 'Alex Kim' },
+        { id: 'duplicate', name: 'Blair Chen' },
+      ],
+    });
+
+    expect(container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger')).toHaveLength(
+      2,
+    );
+
+    await rerender({
+      avatars: [
+        { id: 'duplicate', name: 'Casey Jones' },
+        { id: 'duplicate', name: 'Devon Lee' },
+      ],
+    });
+
+    expect(
+      Array.from(container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger')).map(
+        (trigger) => trigger.getAttribute('aria-label'),
+      ),
+    ).toEqual(['Casey Jones', 'Devon Lee']);
+  });
+
   test('forwards size and shape to the root and child avatars', () => {
     const { container } = render(AvatarGroup, {
       avatars: collaborators.slice(0, 2),
@@ -107,6 +133,17 @@ describe('AvatarGroup', () => {
     const root = container.querySelector<HTMLElement>('.cinder-avatar-group');
     expect(root?.getAttribute('style')).toContain('--cinder-avatar-group-overlap: 0.75rem');
     expect(root?.getAttribute('style')).toContain('color: red');
+  });
+
+  test('falls back to default overlap for invalid custom-property values', () => {
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 2),
+      overlap: '1rem; color: red',
+    });
+
+    const root = container.querySelector<HTMLElement>('.cinder-avatar-group');
+    expect(root?.getAttribute('style')).toContain('--cinder-avatar-group-overlap: 0.75rem');
+    expect(root?.getAttribute('style')).not.toContain('color: red');
   });
 
   test('computes deterministic first-on-top and last-on-top z-index values', async () => {
@@ -175,8 +212,9 @@ describe('AvatarGroup', () => {
       triggers.forEach((trigger, index) => {
         const tooltip = tooltips[index];
         expect(tooltip?.getAttribute('role')).toBe('tooltip');
-        expect(tooltip?.textContent?.trim()).toBeTruthy();
-        expect(trigger.hasAttribute('aria-label')).toBe(false);
+        const tooltipText = tooltip?.textContent?.trim() ?? null;
+        expect(tooltipText).toBeTruthy();
+        expect(trigger.getAttribute('aria-label')).toBe(tooltipText);
         expect(trigger.hasAttribute('aria-describedby')).toBe(false);
       });
     });

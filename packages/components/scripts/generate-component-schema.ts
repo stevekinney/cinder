@@ -275,6 +275,7 @@ function convertSingleType(type: Type, depth: number): ConvertResult {
 
     const properties = type.getProperties();
     if (properties.length === 0) return { kind: 'ok', schema: { type: 'object' } };
+    if (!hasSchemaObjectTag(type)) return { kind: 'ok', schema: { type: 'object' } };
 
     const objectProperties: Record<string, PropertySchema> = {};
     const required: string[] = [];
@@ -314,6 +315,27 @@ function literalValue(type: Type): string | number | boolean {
 
 function booleanLiteralValue(type: Type): boolean {
   return (type.compilerType as { intrinsicName?: string }).intrinsicName === 'true';
+}
+
+function hasSchemaObjectTag(type: Type): boolean {
+  const symbol = type.getAliasSymbol() ?? type.getSymbol();
+  if (!symbol) return false;
+
+  for (const declaration of symbol.getDeclarations()) {
+    if (!('getJsDocs' in declaration)) continue;
+    const docs = (
+      declaration as {
+        getJsDocs(): Array<{
+          getTags(): Array<{ getTagName(): string }>;
+        }>;
+      }
+    ).getJsDocs();
+    if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === 'schemaObject'))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
