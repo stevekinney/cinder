@@ -13,6 +13,7 @@
   "rules": {
     "declaration-property-value-disallowed-list": {
       "/.*/": [
+        "/color-mix\\([\\s\\S]*?var\\(\\s*--cinder-(info|success|warning|danger)\\s*(?:[,\\)])/",
         "/var\\(\\s*--cinder-(?:color-(?:text|text-muted|surface|border|border-subtle|foreground|foreground-muted|success|danger)|font-size-[a-z0-9-]+|line-height-[a-z0-9-]+|accent-subtle|accent-foreground|focus-ring)(?:\\s*[,)])/"
       ]
     },

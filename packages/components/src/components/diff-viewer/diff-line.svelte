@@ -241,7 +241,7 @@
 
   /* Added lines (DEP-47: underline provides non-color indicator for a11y) */
   .diff-line-added .diff-text {
-    background: color-mix(in oklch, var(--cinder-success), transparent 78%);
+    background: var(--cinder-color-success-bg);
     text-decoration: underline;
     text-decoration-color: var(--cinder-success);
     text-decoration-thickness: 2px;
@@ -249,18 +249,18 @@
   }
 
   .diff-line-added .diff-gutter {
-    background: color-mix(in oklch, var(--cinder-success), transparent 60%);
-    color: var(--cinder-success);
+    background: var(--cinder-color-success-border);
+    color: var(--cinder-color-success-fg);
   }
 
   /* Removed lines */
   .diff-line-removed .diff-text {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 78%);
+    background: var(--cinder-color-danger-bg);
   }
 
   .diff-line-removed .diff-gutter {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 60%);
-    color: var(--cinder-danger);
+    background: var(--cinder-color-danger-border);
+    color: var(--cinder-color-danger-fg);
   }
 
   .diff-line-removed del {
@@ -293,7 +293,7 @@
   }
 
   .word-removed {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 60%);
+    background: var(--cinder-color-danger-border);
     text-decoration: line-through;
     border-radius: 2px;
     padding: 0 1px;
@@ -301,7 +301,7 @@
 
   /* DEP-47: underline provides non-color indicator for a11y */
   .word-added {
-    background: color-mix(in oklch, var(--cinder-success), transparent 60%);
+    background: var(--cinder-color-success-border);
     text-decoration: underline;
     text-decoration-color: var(--cinder-success);
     text-decoration-thickness: 2px;

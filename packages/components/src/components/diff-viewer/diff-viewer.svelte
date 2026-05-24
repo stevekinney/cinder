@@ -431,9 +431,9 @@
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-warning);
-    background: color-mix(in oklch, var(--cinder-warning), transparent 90%);
-    border-bottom: 1px solid color-mix(in oklch, var(--cinder-warning), transparent 70%);
+    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-color-warning-bg);
+    border-bottom: 1px solid var(--cinder-color-warning-border);
   }
 
   .compute-time {

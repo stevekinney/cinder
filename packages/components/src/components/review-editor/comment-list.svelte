@@ -304,9 +304,9 @@
     }
 
     .comment-action-danger:hover {
-      color: var(--cinder-danger);
-      background: color-mix(in oklch, var(--cinder-danger), transparent 90%);
-      border-color: var(--cinder-danger);
+      color: var(--cinder-color-danger-fg);
+      background: var(--cinder-color-danger-bg);
+      border-color: var(--cinder-color-danger-border);
     }
   }
 

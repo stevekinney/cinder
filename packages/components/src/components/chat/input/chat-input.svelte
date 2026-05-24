@@ -837,14 +837,14 @@
 
   /* Stop button variant - danger-tinted to signal urgency during streaming */
   .chat-input-send[data-stop] {
-    background: color-mix(in oklch, var(--cinder-danger), transparent 85%);
-    color: var(--cinder-danger);
-    border: 1px solid color-mix(in oklch, var(--cinder-danger), transparent 60%);
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+    border: 1px solid var(--cinder-color-danger-border);
   }
 
   @media (hover: hover) {
     .chat-input-send[data-stop]:hover {
-      background: color-mix(in oklch, var(--cinder-danger), transparent 75%);
+      background: var(--cinder-color-danger-border);
       border-color: var(--cinder-danger);
     }
   }

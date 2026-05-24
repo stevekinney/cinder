@@ -27,20 +27,17 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
   return element as T;
 }
 
-function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
-  return q<HTMLInputElement>(container, `#${id}`);
+function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
+  const result = render(ColorFieldFormFixture, { target: document.body, props });
+  const form = document.body.querySelector('form:last-of-type');
+  if (!(form instanceof HTMLFormElement)) {
+    throw new Error('Expected ColorFieldFormFixture to render a form');
+  }
+  return { ...result, container: form };
 }
 
-function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
-  const result = render(ColorFieldFormFixture, { props });
-  const form = result.container.querySelector('form');
-  if (!(form instanceof HTMLElement)) {
-    throw new Error('ColorField form fixture did not render a <form> element.');
-  }
-  return {
-    ...result,
-    container: form,
-  };
+function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
+  return q<HTMLInputElement>(container, `#${id}`);
 }
 
 async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
@@ -643,7 +640,7 @@ describe('ColorField — Enter-clear sync regression', () => {
       hiddenAtSubmit = mirror?.value;
       onsubmit(event);
     };
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       defaultValue: '#ff0000',
@@ -662,7 +659,7 @@ describe('ColorField — Enter-clear sync regression', () => {
 
 describe('ColorField — reset honors formats gate', () => {
   test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
-    const { container } = render(ColorFieldFormFixture, {
+    const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       formats: ['hex'],
@@ -673,7 +670,7 @@ describe('ColorField — reset honors formats gate', () => {
     expect(input.value).toBe('');
     await typeAndBlur(input, '#abcdef');
     expect(input.value).toBe('#abcdef');
-    const form = q<HTMLFormElement>(container, 'form');
+    const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     // After reset: defaultValue still fails formats gate; field clears.
