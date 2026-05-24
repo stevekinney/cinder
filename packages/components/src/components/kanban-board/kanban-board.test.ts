@@ -316,6 +316,51 @@ describe('KanbanBoard', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
   });
 
+  test('column handles do not lift while a card is lifted', async () => {
+    const { container, onchange } = renderBoard();
+    const cardHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    const columnHandle = container.querySelector(
+      '[aria-label="Reorder To do column"]',
+    ) as HTMLElement;
+
+    await fireEvent.keyDown(cardHandle, { key: ' ' });
+    await fireEvent.click(columnHandle);
+
+    expect(cardHandle.getAttribute('aria-pressed')).toBe('true');
+    expect(columnHandle.getAttribute('aria-pressed')).toBe('false');
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  test('drop cancels when the target column collapses while a card is lifted', async () => {
+    const onchange = mock();
+    const columns = makeColumns();
+    const props = {
+      columns,
+      getCardKey,
+      getCardLabel,
+      onchange,
+      label: 'Work board',
+      card: cardSnippet(),
+    };
+    const { container, rerender } = render(KanbanBoard as any, { props });
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    await rerender({
+      ...props,
+      columns: columns.map((column) =>
+        column.id === 'doing' ? { ...column, collapsed: true } : column,
+      ),
+    });
+    const movedHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    await fireEvent.keyDown(movedHandle, { key: ' ' });
+    await waitForAnnouncement();
+
+    expect(onchange).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('move cancelled');
+  });
+
   test('announces no destination when lateral movement is blocked', async () => {
     const columns = makeColumns();
     columns[1] = { ...columns[1], collapsed: true };

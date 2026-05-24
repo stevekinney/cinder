@@ -230,8 +230,12 @@
     },
     commitDrop(itemKey, itemLabel) {
       if (invalidKeys || !cardTarget) {
-        cardController.cancel(itemLabel);
-        cardTarget = null;
+        cancelCardLift(itemLabel);
+        return;
+      }
+      const destinationColumn = columns[cardTarget.columnIndex];
+      if (!destinationColumn || destinationColumn.collapsed) {
+        cancelCardLift(itemLabel);
         return;
       }
       const dropTotal = getDestinationTotal(cardTarget, itemKey);
@@ -331,6 +335,7 @@
   }
 
   function liftColumn(column: KanbanBoardColumn<Card>, columnIndex: number): void {
+    if (cardController.phase === 'lifted') return;
     columnLiftedKey = column.id;
     columnTargetIndex = columnIndex;
     announcer.announce(
@@ -346,7 +351,7 @@
   }
 
   function handleColumnClick(column: KanbanBoardColumn<Card>, columnIndex: number): void {
-    if (!reorderColumns || invalidKeys) return;
+    if (!reorderColumns || invalidKeys || cardController.phase === 'lifted') return;
     if (columnLiftedKey === null) {
       liftColumn(column, columnIndex);
       return;
@@ -361,7 +366,7 @@
     column: KanbanBoardColumn<Card>,
     columnIndex: number,
   ): void {
-    if (!reorderColumns || invalidKeys) return;
+    if (!reorderColumns || invalidKeys || cardController.phase === 'lifted') return;
     if (columnLiftedKey === null) {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
