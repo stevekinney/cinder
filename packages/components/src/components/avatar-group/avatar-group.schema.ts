@@ -34,7 +34,8 @@ const schema = {
     },
     overlap: {
       type: 'string',
-      description: 'Positive CSS length for the amount each item overlaps its predecessor.',
+      description:
+        'Non-negative CSS length token for the amount each item overlaps its predecessor.',
       default: '0.75rem',
     },
     zOrder: {

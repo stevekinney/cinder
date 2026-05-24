@@ -46,6 +46,7 @@
   const hasOverflow = $derived(hiddenCount > 0);
   const computedOverflowLabel = $derived(overflowLabel ?? `${hiddenCount} more collaborators`);
   const normalizedOverlap = $derived(normalizeOverlap(overlap));
+  const identityCounts = $derived(countAvatarIdentities(avatars));
   const rootStyle = $derived(
     [style, `--cinder-avatar-group-overlap: ${normalizedOverlap}`].filter(Boolean).join('; '),
   );
@@ -53,7 +54,7 @@
   const visibleAvatars = $derived(
     avatars.slice(0, visibleCount).map((avatar, index) => ({
       avatar,
-      key: `${avatar.id ?? avatar.name ?? ''}:${index}`,
+      key: getAvatarKey(avatar, index, identityCounts),
       trimmedName: (avatar.name ?? '').trim(),
       stackIndex: getVisibleStackIndex(index, visibleCount, zOrder),
     })),
@@ -72,6 +73,24 @@
       return trimmed;
     }
     return '0.75rem';
+  }
+
+  function countAvatarIdentities(items: AvatarGroupProps['avatars']): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const avatar of items) {
+      const identity = avatar.id ?? avatar.name ?? '';
+      counts.set(identity, (counts.get(identity) ?? 0) + 1);
+    }
+    return counts;
+  }
+
+  function getAvatarKey(
+    avatar: AvatarGroupProps['avatars'][number],
+    index: number,
+    counts: Map<string, number>,
+  ): string {
+    const identity = avatar.id ?? avatar.name ?? '';
+    return counts.get(identity) === 1 ? identity : `${identity}:${index}`;
   }
 
   function getVisibleStackIndex(

@@ -108,6 +108,28 @@ describe('AvatarGroup', () => {
     ).toEqual(['Casey Jones', 'Devon Lee']);
   });
 
+  test('preserves node identity when uniquely keyed avatars reorder', async () => {
+    const { container, rerender } = render(AvatarGroup, {
+      avatars: [
+        { id: 'ada', name: 'Ada Lovelace' },
+        { id: 'grace', name: 'Grace Hopper' },
+      ],
+    });
+
+    const adaTrigger = container.querySelector<HTMLElement>('[aria-label="Ada Lovelace"]');
+    const graceTrigger = container.querySelector<HTMLElement>('[aria-label="Grace Hopper"]');
+
+    await rerender({
+      avatars: [
+        { id: 'grace', name: 'Grace Hopper' },
+        { id: 'ada', name: 'Ada Lovelace' },
+      ],
+    });
+
+    expect(container.querySelector<HTMLElement>('[aria-label="Ada Lovelace"]')).toBe(adaTrigger);
+    expect(container.querySelector<HTMLElement>('[aria-label="Grace Hopper"]')).toBe(graceTrigger);
+  });
+
   test('forwards size and shape to the root and child avatars', () => {
     const { container } = render(AvatarGroup, {
       avatars: collaborators.slice(0, 2),

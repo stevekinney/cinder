@@ -26,7 +26,7 @@ export type AvatarGroupProps = AvatarGroupRootAttributes & {
    */
   maxVisible?: number;
   /**
-   * Positive CSS length for the amount each item overlaps its predecessor.
+   * Non-negative CSS length token for the amount each item overlaps its predecessor.
    * @default "0.75rem"
    */
   overlap?: string;
@@ -61,7 +61,7 @@ export interface AvatarGroupSchemaProps {
    */
   maxVisible?: number;
   /**
-   * Positive CSS length for the amount each item overlaps its predecessor.
+   * Non-negative CSS length token for the amount each item overlaps its predecessor.
    * @default "0.75rem"
    */
   overlap?: string;
