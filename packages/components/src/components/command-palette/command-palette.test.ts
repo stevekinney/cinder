@@ -702,7 +702,10 @@ describe('CommandPalette — visual contract', () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?box-shadow:\s*inset 0 0 0 var\(--cinder-ring-width\) var\(--cinder-ring-color\);/,
+      /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
+    );
+    expect(css).not.toMatch(
+      /\.cinder-command-palette__search:focus-within\s*\{[^}]*(?:box-shadow|outline)\s*:/,
     );
     expect(css).toMatch(
       /\.cinder-command-palette__listbox\s*\{[\s\S]*?padding:\s*var\(--cinder-space-2\)\s*0;/,
