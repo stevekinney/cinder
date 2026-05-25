@@ -28,10 +28,10 @@ A Popover component. Replace this sentence with a one-line purpose statement onc
 | `placement`       | `"top"` \| `"bottom"` \| `"left"` \| `"right"` \| `"top-start"` \| `"top-end"` \| `"bottom-start"` \| `"bottom-end"` | no       | —       | Anchor placement. Default `'bottom-start'`.                               |
 | `role`            | `"dialog"` \| `"group"` \| `"listbox"`                                                                               | no       | —       | ARIA role for the panel. Default `'dialog'`.                              |
 | `showArrow`       | `boolean`                                                                                                            | no       | —       | Render a directional arrow on the panel. Default `false`.                 |
-| `triggerRef`      | `object` \| `null`                                                                                                   | no       | —       | Explicit anchor element. Wins over the snippet-resolved focusable.        |
 | `wireTriggerAria` | `boolean`                                                                                                            | no       | —       | Whether Popover owns trigger ARIA wiring. Default `true`.                 |
 | `children`        | `(opaque)`                                                                                                           | —        | —       | function-or-snippet                                                       |
 | `trigger`         | `(opaque)`                                                                                                           | —        | —       | function-or-snippet                                                       |
+| `triggerRef`      | `(opaque)`                                                                                                           | —        | —       | unknown-shape                                                             |
 
 <!-- generated:props:end -->
 

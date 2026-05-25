@@ -22,17 +22,6 @@ const schema = {
       description:
         "Bindable search query. Mutated by the input's oninput handler.\nExposed to the items snippet so consumers can filter.\nNote: query is NOT reset on close — consumers who want a fresh query on\neach open should reset it in their `onclose` callback.",
     },
-    triggerRef: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description: 'Element to restore focus to on close. Falls back to `captureFocus()`.',
-    },
     class: {
       type: 'string',
       description: 'Class merged onto the palette panel.',
@@ -57,6 +46,10 @@ const schema = {
       {
         name: 'onclose',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'triggerRef',
+        reason: 'unknown-shape',
       },
     ],
   },

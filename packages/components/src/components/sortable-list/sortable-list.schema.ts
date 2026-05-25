@@ -4,10 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    announcements: {
-      type: 'object',
-      description: 'Optional overrides for announcement strings.',
-    },
     label: {
       type: 'string',
       description: 'Accessible name for the list (applied as aria-label on the list root).',
@@ -19,6 +15,10 @@ const schema = {
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
+      {
+        name: 'announcements',
+        reason: 'unknown-shape',
+      },
       {
         name: 'children',
         reason: 'function-or-snippet',

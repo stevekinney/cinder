@@ -1,0 +1,59 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    label: {
+      type: 'string',
+    },
+    collapsible: {
+      type: 'boolean',
+    },
+    reorderColumns: {
+      type: 'boolean',
+    },
+    class: {
+      type: 'string',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'card',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'columnActions',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'columnHeader',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'columns',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'emptyColumn',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'getCardKey',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'getCardLabel',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

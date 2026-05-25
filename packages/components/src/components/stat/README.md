@@ -16,13 +16,13 @@ snippet. The flat `cinder/stat` subpath remains exported for
 
 | Prop                 | Type                 | Required | Default | Description                                                                   |
 | -------------------- | -------------------- | -------- | ------- | ----------------------------------------------------------------------------- |
-| `change`             | `object`             | no       | —       | Optional change indicator with direction and accessible wording.              |
 | `class`              | `string`             | no       | —       | Additional class names merged with `.cinder-stat`.                            |
 | `label`              | `string`             | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                    |
 | `value`              | `string` \| `number` | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber. |
-| `valueFormatOptions` | `object`             | no       | —       | Intl.NumberFormat options applied only when `value` is a number.              |
 | `valueLocale`        | `string`             | no       | —       | Locale forwarded to formatNumber (defaults to en-US).                         |
+| `change`             | `(opaque)`           | —        | —       | unknown-shape                                                                 |
 | `icon`               | `(opaque)`           | —        | —       | function-or-snippet                                                           |
+| `valueFormatOptions` | `(opaque)`           | —        | —       | unknown-shape                                                                 |
 
 <!-- generated:props:end -->
 

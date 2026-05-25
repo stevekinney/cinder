@@ -31,17 +31,6 @@ const schema = {
       description:
         'When true, the confirm button uses variant="danger". The cancel button still\nreceives default focus regardless — color is never the sole destructive signal.',
     },
-    triggerRef: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description: 'Forwarded to <Modal>; focus is restored here on close.',
-    },
     class: {
       type: 'string',
       description:
@@ -59,6 +48,10 @@ const schema = {
       {
         name: 'onconfirm',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'triggerRef',
+        reason: 'unknown-shape',
       },
     ],
   },

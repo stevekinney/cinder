@@ -4,13 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    steps: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Ordered list of step entries from first to last.',
-    },
     currentStep: {
       type: 'number',
       description:
@@ -35,7 +28,15 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['currentStep', 'steps'],
+  required: ['currentStep'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'steps',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

@@ -7,9 +7,6 @@ const schema = {
     id: {
       type: 'string',
     },
-    conversation: {
-      type: 'object',
-    },
     isAtBottom: {
       type: 'boolean',
     },
@@ -60,9 +57,13 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['conversation', 'id'],
+  required: ['id'],
   metadata: {
     unsupportedProps: [
+      {
+        name: 'conversation',
+        reason: 'unknown-shape',
+      },
       {
         name: 'empty',
         reason: 'function-or-snippet',

@@ -25,18 +25,6 @@ const schema = {
       type: 'string',
       description: 'Additional class names merged with `.cinder-drawer`.',
     },
-    triggerRef: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description:
-        'Optional reference to the element that opened the drawer. When supplied,\nfocus returns to this element on close. When omitted, focus restores to\nthe element that held focus before the drawer opened.',
-    },
     ariaLabelledBy: {
       type: 'string',
       description:
@@ -58,6 +46,10 @@ const schema = {
       {
         name: 'header',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'triggerRef',
+        reason: 'unknown-shape',
       },
     ],
   },

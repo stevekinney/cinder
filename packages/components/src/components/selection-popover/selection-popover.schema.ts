@@ -8,17 +8,6 @@ const schema = {
       type: 'string',
       description: 'Unique identifier for the popover.',
     },
-    position: {
-      anyOf: [
-        {
-          type: 'object',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description: 'Viewport-relative position for the popover.',
-    },
     open: {
       type: 'boolean',
       description: 'Whether the popover is visible.',
@@ -29,7 +18,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id', 'position'],
+  required: ['id'],
   metadata: {
     unsupportedProps: [
       {
@@ -47,6 +36,10 @@ const schema = {
       {
         name: 'onexpand',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'position',
+        reason: 'unknown-shape',
       },
     ],
   },
