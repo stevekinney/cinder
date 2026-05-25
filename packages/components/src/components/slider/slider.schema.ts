@@ -57,34 +57,22 @@ const schema = {
     mode: {
       enum: ['single', 'range'],
     },
-    value: {
-      anyOf: [
-        {
-          type: 'number',
-        },
-        {
-          type: 'object',
-        },
-      ],
-    },
-    defaultValue: {
-      anyOf: [
-        {
-          type: 'number',
-        },
-        {
-          type: 'object',
-        },
-      ],
-    },
   },
   additionalProperties: false,
   required: ['label'],
   metadata: {
     unsupportedProps: [
       {
+        name: 'defaultValue',
+        reason: 'unknown-shape',
+      },
+      {
         name: 'onchange',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'value',
+        reason: 'unknown-shape',
       },
       {
         name: 'valueText',

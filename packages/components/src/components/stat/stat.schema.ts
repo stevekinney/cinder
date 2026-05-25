@@ -19,14 +19,6 @@ const schema = {
       ],
       description: 'The statistic. Strings rendered verbatim; numbers formatted via formatNumber.',
     },
-    change: {
-      type: 'object',
-      description: 'Optional change indicator with direction and accessible wording.',
-    },
-    valueFormatOptions: {
-      type: 'object',
-      description: 'Intl.NumberFormat options applied only when `value` is a number.',
-    },
     valueLocale: {
       type: 'string',
       description: 'Locale forwarded to formatNumber (defaults to en-US).',
@@ -41,8 +33,16 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'change',
+        reason: 'unknown-shape',
+      },
+      {
         name: 'icon',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'valueFormatOptions',
+        reason: 'unknown-shape',
       },
     ],
   },

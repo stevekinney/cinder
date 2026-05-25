@@ -38,7 +38,6 @@ announces results, and can render consumer-driven upload progress rows.
 | ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------ |
 | `accept`     | `string`   | no       | —       | Native file accept filter.                                                     |
 | `disabled`   | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                            |
-| `files`      | `object`[] | no       | —       | Consumer-driven file rows, including upload progress and error states.         |
 | `id`         | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`. |
 | `maxSize`    | `number`   | no       | —       | Maximum allowed file size in bytes.                                            |
 | `multiple`   | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                     |
@@ -46,6 +45,7 @@ announces results, and can render consumer-driven upload progress rows.
 | `class`      | `(opaque)` | —        | —       | unknown-shape                                                                  |
 | `dragActive` | `(opaque)` | —        | —       | function-or-snippet                                                            |
 | `fileList`   | `(opaque)` | —        | —       | function-or-snippet                                                            |
+| `files`      | `(opaque)` | —        | —       | unknown-shape                                                                  |
 | `idle`       | `(opaque)` | —        | —       | function-or-snippet                                                            |
 | `onchange`   | `(opaque)` | —        | —       | function-or-snippet                                                            |
 | `onreject`   | `(opaque)` | —        | —       | function-or-snippet                                                            |

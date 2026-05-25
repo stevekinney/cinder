@@ -12,13 +12,6 @@ const schema = {
       type: 'string',
       description: 'Initial selected color for uncontrolled use. Ignored when `value` is set.',
     },
-    colors: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-      description: 'Palette to render.',
-    },
     shape: {
       enum: ['circle', 'square'],
       description: "Visual shape of each swatch. Default `'circle'`.",
@@ -47,9 +40,13 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['colors', 'label'],
+  required: ['label'],
   metadata: {
     unsupportedProps: [
+      {
+        name: 'colors',
+        reason: 'unknown-shape',
+      },
       {
         name: 'indicator',
         reason: 'function-or-snippet',

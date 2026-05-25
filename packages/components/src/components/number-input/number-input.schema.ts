@@ -42,9 +42,6 @@ const schema = {
     step: {
       type: 'number',
     },
-    format: {
-      type: 'object',
-    },
     locale: {
       type: 'string',
     },
@@ -67,6 +64,10 @@ const schema = {
     unsupportedProps: [
       {
         name: 'class',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'format',
         reason: 'unknown-shape',
       },
       {

@@ -262,6 +262,18 @@ export type {
   JsonSchemaValue,
 } from './components/json-schema-editor/index.ts';
 
+export { default as KanbanBoard } from './components/kanban-board/index.ts';
+export type {
+  KanbanBoardCardContext,
+  KanbanBoardCardMoveChange,
+  KanbanBoardChange,
+  KanbanBoardCollapseChange,
+  KanbanBoardColumn,
+  KanbanBoardColumnContext,
+  KanbanBoardColumnMoveChange,
+  KanbanBoardProps,
+} from './components/kanban-board/index.ts';
+
 export { default as Kbd } from './components/kbd/index.ts';
 export type { KbdProps } from './components/kbd/index.ts';
 

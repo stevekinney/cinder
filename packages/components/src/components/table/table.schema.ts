@@ -4,11 +4,6 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    sort: {
-      type: 'object',
-      description:
-        'Bound sort state. When the user activates a sortable header, this prop\nis updated to reflect the new column / direction.\n\nPass `undefined` initially when no column is sorted; the component will\nnever write back `undefined` itself (sort always toggles to a column).',
-    },
     caption: {
       type: 'string',
       description: 'Visual caption rendered as a `<caption>` element.',
@@ -38,6 +33,10 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'sort',
+        reason: 'unknown-shape',
       },
     ],
   },

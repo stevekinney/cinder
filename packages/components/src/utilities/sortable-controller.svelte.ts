@@ -33,6 +33,19 @@ export type SortableContextValue = {
   cancel: (itemLabel: string) => void;
   lift: (key: string | number, fromIndex: number, itemLabel: string, total: number) => void;
   move: (toIndex: number, itemLabel: string, total: number) => void;
+  getPointerTarget?: (input: {
+    activeKey: string | number;
+    pointerX: number;
+    pointerY: number;
+    itemLabel: string;
+  }) => { index: number; total: number } | null;
+  handleLiftedKeydown?: (input: {
+    event: KeyboardEvent;
+    itemKey: string | number;
+    itemLabel: string;
+    index: number;
+    total: number;
+  }) => boolean;
 };
 
 export const [getSortableContext, setSortableContext] = createContext<SortableContextValue>();
@@ -82,12 +95,20 @@ export class SortableController<Item> {
     this.#announce(this.#announcements.lifted(itemLabel, fromIndex + 1, total));
   }
 
-  move(toIndex: number, itemLabel: string, total: number): void {
-    if (this.phase !== 'lifted') return;
+  move(
+    toIndex: number,
+    itemLabel: string,
+    total: number,
+    options: { announce?: boolean } = {},
+  ): boolean {
+    if (this.phase !== 'lifted') return false;
     const clamped = Math.max(0, Math.min(total - 1, toIndex));
-    if (clamped === this.liftedTo) return;
+    if (clamped === this.liftedTo) return false;
     this.liftedTo = clamped;
-    this.#announce(this.#announcements.moved(itemLabel, clamped + 1, total));
+    if (options.announce !== false) {
+      this.#announce(this.#announcements.moved(itemLabel, clamped + 1, total));
+    }
+    return true;
   }
 
   /**
@@ -118,6 +139,14 @@ export class SortableController<Item> {
 
     const nextItems = reorder(items, fromIndex, toIndex);
     return { nextItems, change: { itemKey, fromIndex, toIndex } };
+  }
+
+  completeDrop(itemLabel: string, total: number): void {
+    if (this.phase !== 'lifted') return;
+    const boundedTotal = Math.max(1, total);
+    const position = Math.max(1, Math.min(this.liftedTo + 1, boundedTotal));
+    this.#announce(this.#announcements.dropped(itemLabel, position, boundedTotal));
+    this.#reset();
   }
 
   cancel(itemLabel?: string): void {

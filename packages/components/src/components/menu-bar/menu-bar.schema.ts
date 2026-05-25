@@ -7,12 +7,6 @@ const schema = {
     id: {
       type: 'string',
     },
-    menus: {
-      type: 'array',
-      items: {
-        type: 'object',
-      },
-    },
     label: {
       type: 'string',
     },
@@ -24,7 +18,14 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['menus'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'menus',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

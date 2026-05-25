@@ -27,18 +27,6 @@ const schema = {
       },
       description: 'Initial tags for uncontrolled usage. Ignored after mount.',
     },
-    delimiter: {
-      anyOf: [
-        {
-          type: 'string',
-        },
-        {
-          type: 'object',
-        },
-      ],
-      description:
-        'Key that commits the current input into a tag. Enter always commits separately.',
-    },
     allowDuplicates: {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
@@ -144,6 +132,10 @@ const schema = {
     unsupportedProps: [
       {
         name: 'autocomplete',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'delimiter',
         reason: 'unknown-shape',
       },
       {

@@ -33,6 +33,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'copy-button',
   'dropdown',
   'input',
+  'kanban-board',
   'line-chart',
   'modal',
   'navigation-item',

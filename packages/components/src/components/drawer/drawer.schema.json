@@ -22,17 +22,6 @@
       "type": "string",
       "description": "Additional class names merged with `.cinder-drawer`."
     },
-    "triggerRef": {
-      "anyOf": [
-        {
-          "type": "object"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "description": "Optional reference to the element that opened the drawer. When supplied,\nfocus returns to this element on close. When omitted, focus restores to\nthe element that held focus before the drawer opened."
-    },
     "ariaLabelledBy": {
       "type": "string",
       "description": "Optional id of an element that names the drawer. When supplied, drawer\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledBy` pointing to that heading's id so the\nvisible and accessible names stay in sync."
@@ -53,6 +42,10 @@
       {
         "name": "header",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "triggerRef",
+        "reason": "unknown-shape"
       }
     ]
   }

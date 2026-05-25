@@ -272,9 +272,9 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     return { kind: 'unsupported', reason: 'generic-type-parameter' };
   }
 
-  // Object: model simple structural object types. This is intentionally shallow
-  // and conservative: unsupported member shapes fall back to a plain object
-  // instead of emitting a misleading partial contract.
+  // Object: model simple structural object types only when explicitly allowed.
+  // Unsupported member shapes make the whole prop unsupported instead of emitting
+  // an opaque object schema that downstream consumers would treat as permissive.
   if (type.isObject()) {
     const stringIndex = type.getStringIndexType();
     if (stringIndex) {
@@ -293,7 +293,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
         isNamedSchemaObjectType(type)
       )
     ) {
-      return { kind: 'ok', schema: { type: 'object' } };
+      return { kind: 'unsupported', reason: 'unknown-shape' };
     }
 
     const properties: Record<string, PropertySchema> = {};
@@ -301,7 +301,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
 
     for (const property of type.getProperties()) {
       const propertyType = getPropType(property);
-      if (!propertyType) return { kind: 'ok', schema: { type: 'object' } };
+      if (!propertyType) return { kind: 'unsupported', reason: 'unknown-shape' };
       const converted = convertType(
         propertyType,
         depth + 1,
@@ -309,7 +309,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
           hasJsDocTag(property, 'schemaObject') ||
           hasSchemaObjectTagDeep(propertyType),
       );
-      if (converted.kind === 'unsupported') return { kind: 'ok', schema: { type: 'object' } };
+      if (converted.kind === 'unsupported') return converted;
 
       const schemaEntry: PropertySchema = { ...converted.schema };
       const description = readJsDocDescription(property);

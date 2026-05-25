@@ -50,6 +50,7 @@
 @import '../components/input/input.css';
 @import './components/json-highlight.css';
 @import '../components/json-schema-editor/json-schema-editor.css';
+@import '../components/kanban-board/kanban-board.css';
 @import '../components/kbd/kbd.css';
 @import '../components/label/label.css';
 @import '../components/line-chart/line-chart.css';
