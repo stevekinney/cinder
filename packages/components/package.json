@@ -111,6 +111,27 @@
       "import": "./src/components/alert/alert.examples.json",
       "default": "./src/components/alert/alert.examples.json"
     },
+    "./area-chart": {
+      "types": "./dist/components/area-chart/index.d.ts",
+      "svelte": "./src/components/area-chart/index.ts",
+      "node": "./dist/server/components/area-chart/index.js",
+      "default": "./dist/components/area-chart/index.js"
+    },
+    "./area-chart/schema": {
+      "types": "./dist/components/area-chart/area-chart.schema.d.ts",
+      "svelte": "./src/components/area-chart/area-chart.schema.ts"
+    },
+    "./area-chart/variables": {
+      "types": "./dist/components/area-chart/area-chart.variables.d.ts",
+      "svelte": "./src/components/area-chart/area-chart.variables.ts"
+    },
+    "./area-chart/styles": {
+      "default": "./dist/components/area-chart/area-chart.css"
+    },
+    "./area-chart/examples": {
+      "import": "./src/components/area-chart/area-chart.examples.json",
+      "default": "./src/components/area-chart/area-chart.examples.json"
+    },
     "./aspect-ratio": {
       "types": "./dist/components/aspect-ratio/index.d.ts",
       "svelte": "./src/components/aspect-ratio/index.ts",
@@ -232,6 +253,27 @@
     },
     "./banner/styles": {
       "default": "./dist/components/banner/banner.css"
+    },
+    "./bar-chart": {
+      "types": "./dist/components/bar-chart/index.d.ts",
+      "svelte": "./src/components/bar-chart/index.ts",
+      "node": "./dist/server/components/bar-chart/index.js",
+      "default": "./dist/components/bar-chart/index.js"
+    },
+    "./bar-chart/schema": {
+      "types": "./dist/components/bar-chart/bar-chart.schema.d.ts",
+      "svelte": "./src/components/bar-chart/bar-chart.schema.ts"
+    },
+    "./bar-chart/variables": {
+      "types": "./dist/components/bar-chart/bar-chart.variables.d.ts",
+      "svelte": "./src/components/bar-chart/bar-chart.variables.ts"
+    },
+    "./bar-chart/styles": {
+      "default": "./dist/components/bar-chart/bar-chart.css"
+    },
+    "./bar-chart/examples": {
+      "import": "./src/components/bar-chart/bar-chart.examples.json",
+      "default": "./src/components/bar-chart/bar-chart.examples.json"
     },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
@@ -1172,6 +1214,27 @@
     },
     "./label/styles": {
       "default": "./dist/components/label/label.css"
+    },
+    "./line-chart": {
+      "types": "./dist/components/line-chart/index.d.ts",
+      "svelte": "./src/components/line-chart/index.ts",
+      "node": "./dist/server/components/line-chart/index.js",
+      "default": "./dist/components/line-chart/index.js"
+    },
+    "./line-chart/schema": {
+      "types": "./dist/components/line-chart/line-chart.schema.d.ts",
+      "svelte": "./src/components/line-chart/line-chart.schema.ts"
+    },
+    "./line-chart/variables": {
+      "types": "./dist/components/line-chart/line-chart.variables.d.ts",
+      "svelte": "./src/components/line-chart/line-chart.variables.ts"
+    },
+    "./line-chart/styles": {
+      "default": "./dist/components/line-chart/line-chart.css"
+    },
+    "./line-chart/examples": {
+      "import": "./src/components/line-chart/line-chart.examples.json",
+      "default": "./src/components/line-chart/line-chart.examples.json"
     },
     "./load-more": {
       "types": "./dist/components/load-more/index.d.ts",

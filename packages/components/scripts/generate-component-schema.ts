@@ -42,7 +42,7 @@ export interface PropertySchema {
   items?: PropertySchema;
   properties?: Record<string, PropertySchema>;
   required?: string[];
-  additionalProperties?: boolean;
+  additionalProperties?: boolean | PropertySchema;
   anyOf?: PropertySchema[];
   description?: string;
   default?: unknown;
@@ -148,7 +148,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
     const converted = convertType(
       propType,
       0,
-      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTag(propType),
+      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
     );
     if (converted.kind === 'unsupported') {
       unsupportedProps.push({ name: propName, reason: converted.reason });
@@ -256,7 +256,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     const inner = convertType(
       element,
       depth + 1,
-      expandObjectShapes || hasSchemaObjectTag(element),
+      expandObjectShapes || hasSchemaObjectTagDeep(element),
     );
     if (inner.kind === 'unsupported') return inner;
     return { kind: 'ok', schema: { type: 'array', items: inner.schema } };
@@ -280,10 +280,19 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     if (stringIndex) {
       const inner = convertType(stringIndex, depth + 1, expandObjectShapes);
       if (inner.kind === 'unsupported') return inner;
-      return { kind: 'unsupported', reason: 'index-signature' };
+      return { kind: 'ok', schema: { type: 'object', additionalProperties: inner.schema } };
     }
 
-    if (depth > 2 || !expandObjectShapes || !isDeclaredInActiveTypesFile(type)) {
+    if (
+      depth > 3 ||
+      !expandObjectShapes ||
+      !(
+        isDeclaredInActiveTypesFile(type) ||
+        isDeclaredInComponentTypesFile(type) ||
+        hasSchemaObjectTagDeep(type) ||
+        isNamedSchemaObjectType(type)
+      )
+    ) {
       return { kind: 'unsupported', reason: 'unknown-shape' };
     }
 
@@ -293,7 +302,13 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     for (const property of type.getProperties()) {
       const propertyType = getPropType(property);
       if (!propertyType) return { kind: 'unsupported', reason: 'unknown-shape' };
-      const converted = convertType(propertyType, depth + 1, expandObjectShapes);
+      const converted = convertType(
+        propertyType,
+        depth + 1,
+        expandObjectShapes ||
+          hasJsDocTag(property, 'schemaObject') ||
+          hasSchemaObjectTagDeep(propertyType),
+      );
       if (converted.kind === 'unsupported') return converted;
 
       const schemaEntry: PropertySchema = { ...converted.schema };
@@ -335,6 +350,20 @@ function isDeclaredInActiveTypesFile(type: Type): boolean {
   );
 }
 
+function isDeclaredInComponentTypesFile(type: Type): boolean {
+  const declarations = [
+    ...(type.getAliasSymbol()?.getDeclarations() ?? []),
+    ...(type.getSymbol()?.getDeclarations() ?? []),
+  ];
+
+  return declarations.some((declaration) => {
+    const filePath = declaration.getSourceFile().getFilePath();
+    return (
+      filePath.includes('/packages/components/src/components/') && filePath.endsWith('.types.ts')
+    );
+  });
+}
+
 function literalValue(type: Type): string | number | boolean {
   if (type.isStringLiteral()) return type.getLiteralValueOrThrow() as string;
   if (type.isNumberLiteral()) return type.getLiteralValueOrThrow() as number;
@@ -350,7 +379,14 @@ function hasSchemaObjectTag(type: Type): boolean {
   const symbol = type.getAliasSymbol() ?? type.getSymbol();
   if (!symbol) return false;
 
-  for (const declaration of symbol.getDeclarations()) {
+  let declarations: ReturnType<MorphSymbol['getDeclarations']>;
+  try {
+    declarations = symbol.getDeclarations();
+  } catch {
+    return false;
+  }
+
+  for (const declaration of declarations) {
     if (!('getJsDocs' in declaration)) continue;
     const docs = (
       declaration as {
@@ -365,6 +401,37 @@ function hasSchemaObjectTag(type: Type): boolean {
   }
 
   return false;
+}
+
+function hasSchemaObjectTagDeep(type: Type, seen = new Set<string>(), depth = 0): boolean {
+  if (depth > 4) return false;
+  const key = [
+    type.getAliasSymbol()?.getName(),
+    type.getSymbol()?.getName(),
+    type.getText(undefined, 0).slice(0, 240),
+  ].join('|');
+  if (seen.has(key)) return false;
+  seen.add(key);
+
+  if (hasSchemaObjectTag(type)) return true;
+  if (type.isUnion()) {
+    return type
+      .getUnionTypes()
+      .some((part) => !part.isUndefined() && hasSchemaObjectTagDeep(part, seen, depth + 1));
+  }
+  if (type.isArray())
+    return hasSchemaObjectTagDeep(type.getArrayElementTypeOrThrow(), seen, depth + 1);
+  return false;
+}
+
+function isNamedSchemaObjectType(type: Type): boolean {
+  const names = [
+    type.getAliasSymbol()?.getName(),
+    type.getSymbol()?.getName(),
+    type.getText(),
+  ].filter(Boolean);
+
+  return names.some((name) => /(?:Schema|SchemaConfiguration|SchemaPoint)/.test(name ?? ''));
 }
 
 /**

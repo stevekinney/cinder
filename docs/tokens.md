@@ -213,6 +213,21 @@ Used by the `ScrollArea` component and any consumer that opts into themed native
 | `--cinder-scrollbar-thumb`       | `light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))` |
 | `--cinder-scrollbar-thumb-hover` | `light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))` |
 
+## Chart series
+
+Categorical chart colors for LineChart, BarChart, AreaChart, and consumers that need to keep custom chart marks aligned with cinder's default series palette.
+
+| Token                     | Default                                                |
+| ------------------------- | ------------------------------------------------------ |
+| `--cinder-chart-series-1` | `light-dark(oklch(48% 0.17 255), oklch(72% 0.13 255))` |
+| `--cinder-chart-series-2` | `light-dark(oklch(51% 0.16 145), oklch(74% 0.14 145))` |
+| `--cinder-chart-series-3` | `light-dark(oklch(55% 0.18 35), oklch(76% 0.13 35))`   |
+| `--cinder-chart-series-4` | `light-dark(oklch(50% 0.15 315), oklch(73% 0.13 315))` |
+| `--cinder-chart-series-5` | `light-dark(oklch(47% 0.14 205), oklch(71% 0.12 205))` |
+| `--cinder-chart-series-6` | `light-dark(oklch(53% 0.15 85), oklch(75% 0.13 85))`   |
+| `--cinder-chart-series-7` | `light-dark(oklch(46% 0.13 15), oklch(72% 0.12 15))`   |
+| `--cinder-chart-series-8` | `light-dark(oklch(49% 0.13 280), oklch(72% 0.12 280))` |
+
 ## Focus ring
 
 The ring tokens drive the focus-visible outline used across interactive primitives. See [`focus-ring-policy.md`](./focus-ring-policy.md) for when components are expected to render the ring vs. when they delegate to the user agent.

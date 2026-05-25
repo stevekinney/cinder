@@ -1,0 +1,122 @@
+.cinder-line-chart {
+  display: grid;
+  gap: var(--cinder-space-3);
+  color: var(--cinder-text);
+}
+
+.cinder-line-chart__description {
+  margin: 0;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+}
+
+.cinder-line-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-2);
+}
+
+.cinder-line-chart__legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1);
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface);
+  color: var(--cinder-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  padding: var(--cinder-space-1) var(--cinder-space-2);
+}
+
+.cinder-line-chart__legend button[aria-pressed='false'] {
+  opacity: 0.55;
+}
+
+.cinder-line-chart__legend span {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border-radius: var(--cinder-radius-full);
+  /* background is set inline from the resolved series color via `style:background` */
+}
+
+.cinder-line-chart__viewport {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.cinder-line-chart svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.cinder-line-chart__gridline {
+  stroke: var(--cinder-border-muted);
+  stroke-width: 1;
+}
+
+.cinder-line-chart__line {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cinder-line-chart__crosshair {
+  stroke: var(--cinder-text-muted);
+  stroke-dasharray: 4 4;
+}
+
+.cinder-line-chart__hit-surface {
+  fill: transparent;
+}
+
+.cinder-line-chart__focus-target {
+  fill: transparent;
+  outline: none;
+  pointer-events: none;
+}
+
+/*
+ * SVG focus indicator: drop-shadow filter renders an outline-equivalent ring
+ * around the focused circle that stays visible on any background. Stroke alone
+ * was invisible against transparent fills.
+ */
+.cinder-line-chart__focus-target:focus-visible {
+  stroke: var(--cinder-accent);
+  stroke-width: var(--cinder-ring-width);
+  filter: drop-shadow(0 0 var(--cinder-ring-width) var(--cinder-ring-color));
+}
+
+.cinder-line-chart__tick-label {
+  fill: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+}
+
+.cinder-line-chart__state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--cinder-text-muted);
+  background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+  z-index: 1;
+}
+
+.cinder-line-chart__tooltip {
+  position: absolute;
+  transform: translate(0.5rem, -50%);
+  display: grid;
+  gap: 0.125rem;
+  max-inline-size: 16rem;
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface-raised);
+  box-shadow: var(--cinder-shadow-md);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-sm);
+  padding: var(--cinder-space-2);
+  pointer-events: none;
+}

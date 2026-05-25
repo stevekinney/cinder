@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "bar-chart",
+  "import": "cinder/bar-chart",
+  "examples": [
+    {
+      "id": "horizontal-grouped",
+      "title": "Horizontal incidents",
+      "description": "A horizontal grouped bar chart for incident counts by severity.",
+      "code": "<script lang=\"ts\">\n  import { BarChart } from 'cinder/bar-chart';\n\n  const data = [\n    { severity: 'Critical', current: 8, previous: 10 },\n    { severity: 'High', current: 18, previous: 22 },\n    { severity: 'Medium', current: 41, previous: 39 },\n  ];\n  const series = [\n    { id: 'current', label: 'Current', valueKey: 'current' },\n    { id: 'previous', label: 'Previous', valueKey: 'previous' },\n  ];\n</script>\n\n<BarChart\n  label=\"Incidents by severity\"\n  {data}\n  categoryKey=\"severity\"\n  {series}\n  orientation=\"horizontal\"\n/>\n"
+    },
+    {
+      "id": "vertical-grouped",
+      "title": "Grouped plan usage",
+      "description": "A vertical grouped bar chart comparing usage by plan.",
+      "code": "<script lang=\"ts\">\n  import { BarChart } from 'cinder/bar-chart';\n\n  const data = [\n    { plan: 'Starter', active: 120, invited: 42 },\n    { plan: 'Team', active: 210, invited: 76 },\n    { plan: 'Enterprise', active: 92, invited: 28 },\n  ];\n  const series = [\n    { id: 'active', label: 'Active users', valueKey: 'active' },\n    { id: 'invited', label: 'Invited users', valueKey: 'invited' },\n  ];\n</script>\n\n<BarChart label=\"Plan usage\" {data} categoryKey=\"plan\" {series} dataTableVisibility=\"visible\" />\n"
+    },
+    {
+      "id": "vertical-stacked",
+      "title": "Stacked ticket volume",
+      "description": "A vertical stacked bar chart showing open and resolved support tickets.",
+      "code": "<script lang=\"ts\">\n  import { BarChart } from 'cinder/bar-chart';\n\n  const data = [\n    { week: 'Week 1', open: 34, resolved: 70 },\n    { week: 'Week 2', open: 29, resolved: 84 },\n    { week: 'Week 3', open: 41, resolved: 78 },\n  ];\n  const series = [\n    { id: 'open', label: 'Open', valueKey: 'open' },\n    { id: 'resolved', label: 'Resolved', valueKey: 'resolved' },\n  ];\n</script>\n\n<BarChart label=\"Support ticket volume\" {data} categoryKey=\"week\" {series} mode=\"stacked\" />\n"
+    }
+  ]
+}

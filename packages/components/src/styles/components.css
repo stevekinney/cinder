@@ -7,12 +7,14 @@
 @import '../components/accordion-item/accordion-item.css';
 @import '../components/accordion/accordion.css';
 @import '../components/alert/alert.css';
+@import '../components/area-chart/area-chart.css';
 @import '../components/autocomplete/autocomplete.css';
 @import '../components/aspect-ratio/aspect-ratio.css';
 @import '../components/avatar/avatar.css';
 @import '../components/avatar-group/avatar-group.css';
 @import '../components/badge/badge.css';
 @import '../components/banner/banner.css';
+@import '../components/bar-chart/bar-chart.css';
 @import '../components/breadcrumbs/breadcrumbs.css';
 @import '../components/button/button.css';
 @import '../components/button-group/button-group.css';
@@ -51,6 +53,7 @@
 @import '../components/kanban-board/kanban-board.css';
 @import '../components/kbd/kbd.css';
 @import '../components/label/label.css';
+@import '../components/line-chart/line-chart.css';
 @import '../components/load-more/load-more.css';
 @import '../components/menu-bar/menu-bar.css';
 @import '../components/modal/modal.css';
