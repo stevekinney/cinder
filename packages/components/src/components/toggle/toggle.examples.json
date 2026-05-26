@@ -12,8 +12,14 @@
     {
       "id": "group",
       "title": "Multiple switches",
-      "description": "Several independent on/off settings inside a fieldset/legend, each with a visible <label for> tied to its switch.",
-      "code": "<script lang=\"ts\">\n  import { FormSection } from 'cinder/form-section';\n  import { Toggle } from 'cinder/toggle';\n\n  let emailNotifications = $state(true);\n  let darkMode = $state(false);\n  let autoSave = $state(true);\n</script>\n\n<FormSection as=\"fieldset\" heading=\"Account preferences\" columns={1}>\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-email\" bind:checked={emailNotifications} label=\"Email notifications\" />\n    <label for=\"pref-email\">Email notifications</label>\n  </div>\n\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-dark\" bind:checked={darkMode} label=\"Dark mode\" />\n    <label for=\"pref-dark\">Dark mode</label>\n  </div>\n\n  <div style=\"display: flex; align-items: center; gap: 0.75rem;\">\n    <Toggle id=\"pref-autosave\" bind:checked={autoSave} label=\"Auto-save drafts\" />\n    <label for=\"pref-autosave\">Auto-save drafts</label>\n  </div>\n</FormSection>\n"
+      "description": "Several independent on/off settings inside a fieldset. Each Toggle renders its own visible label, so no external <label for> wrapper is needed.",
+      "code": "<script lang=\"ts\">\n  import { FormSection } from 'cinder/form-section';\n  import { Toggle } from 'cinder/toggle';\n\n  let emailNotifications = $state(true);\n  let darkMode = $state(false);\n  let autoSave = $state(true);\n</script>\n\n<FormSection as=\"fieldset\" heading=\"Account preferences\" columns={1}>\n  <Toggle id=\"pref-email\" bind:checked={emailNotifications} label=\"Email notifications\" />\n  <Toggle id=\"pref-dark\" bind:checked={darkMode} label=\"Dark mode\" />\n  <Toggle id=\"pref-autosave\" bind:checked={autoSave} label=\"Auto-save drafts\" />\n</FormSection>\n"
+    },
+    {
+      "id": "hide-label",
+      "title": "Icon-only / inline row",
+      "description": "In a toolbar or table row where the meaning is already clear from context, hideLabel removes the visible text while keeping it as the accessible name.",
+      "code": "<script lang=\"ts\">\n  import { Toggle } from 'cinder/toggle';\n\n  let wordWrap = $state(true);\n  let minimap = $state(false);\n</script>\n\n<div role=\"toolbar\" aria-label=\"Editor options\" style=\"display: flex; align-items: center; gap: 1rem;\">\n  <Toggle id=\"opt-wrap\" bind:checked={wordWrap} label=\"Word wrap\" hideLabel />\n  <Toggle id=\"opt-minimap\" bind:checked={minimap} label=\"Minimap\" hideLabel />\n</div>\n"
     }
   ]
 }

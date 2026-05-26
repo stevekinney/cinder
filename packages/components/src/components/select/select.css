@@ -41,7 +41,7 @@
   line-height: var(--cinder-leading-normal);
   color: var(--cinder-text);
 
-  background-color: var(--cinder-surface);
+  background-color: var(--cinder-surface-raised);
 
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-md);
@@ -79,7 +79,6 @@
   border-color: var(--cinder-border-muted);
   color: var(--cinder-text-disabled);
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
 /* Empty guard — visual indicator when no options are available */

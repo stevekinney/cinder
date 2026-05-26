@@ -7,7 +7,7 @@ const schema = {
     id: {
       type: 'string',
       description:
-        'Native id placed on the `<button>` so an external `<label for="…">` can reference it.',
+        'Native id placed on the `<button>` so the rendered `<label for="…">` can reference it.',
     },
     checked: {
       type: 'boolean',
@@ -15,15 +15,21 @@ const schema = {
     },
     label: {
       type: 'string',
-      description: 'Visible accessible name placed on `aria-label`. Required.',
+      description:
+        'Visible label text. Always the accessible name, even when `hideLabel` is set. Required.',
     },
     disabled: {
       type: 'boolean',
       description: 'Prevents interaction when true. Sets `disabled` attribute.',
     },
+    hideLabel: {
+      type: 'boolean',
+      description:
+        'Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts.',
+    },
     class: {
       type: 'string',
-      description: 'Additional class names merged with `.cinder-toggle`.',
+      description: 'Additional class names merged with `.cinder-toggle` on the switch button.',
     },
   },
   additionalProperties: false,
