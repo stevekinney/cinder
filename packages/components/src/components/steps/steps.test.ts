@@ -210,6 +210,19 @@ describe('Steps — interactive step items', () => {
     expect(clicked).toBe(1);
   });
 
+  test('empty-string href still renders an <a> (presence, not truthiness)', () => {
+    const steps = [
+      { id: 'a', label: 'Empty', href: '', onclick: () => {} },
+      { id: 'b', label: 'Next' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    expect(anchor).not.toBeNull();
+    expect(anchor.getAttribute('href')).toBe('');
+    // Must NOT fall through to the button arm just because href is falsy.
+    expect(container.querySelector('button.cinder-steps__interactive')).toBeNull();
+  });
+
   test('plain step renders neither <a> nor <button>', () => {
     const steps = [{ id: 'a', label: 'Plain' }];
     const { container } = render(Steps, { steps, currentStep: 0 });

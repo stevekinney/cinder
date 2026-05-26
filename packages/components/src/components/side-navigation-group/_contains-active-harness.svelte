@@ -9,15 +9,19 @@
   let {
     firstActive = false,
     secondActive = false,
+    showSecond = true,
   }: {
     firstActive?: boolean;
     secondActive?: boolean;
+    showSecond?: boolean;
   } = $props();
 </script>
 
 <ul>
   <SideNavigationGroup label="Settings">
     <SideNavigationItem href="/one" active={firstActive}>One</SideNavigationItem>
-    <SideNavigationItem href="/two" active={secondActive}>Two</SideNavigationItem>
+    {#if showSecond}
+      <SideNavigationItem href="/two" active={secondActive}>Two</SideNavigationItem>
+    {/if}
   </SideNavigationGroup>
 </ul>

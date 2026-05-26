@@ -65,8 +65,12 @@
 .cinder-breadcrumbs__current {
   color: var(--cinder-text);
   font-weight: var(--cinder-font-medium);
-  /* The current crumb is the priority; it ellipsizes only as a last resort
-     (when it alone exceeds the container). */
+  /* The current crumb is the priority: its non-shrinking item (see
+     `:last-child`) makes ancestors yield first. But it must never hard-clip
+     against the container edge — `max-width: 100%` plus `min-width: 0` bound it
+     to the available width so its own ellipsis engages as a last resort when it
+     alone exceeds the container. */
+  min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

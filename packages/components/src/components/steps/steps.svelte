@@ -51,7 +51,8 @@
       {@const state = stepStates[index]}
       {@const isCurrent = state === 'current'}
       {@const isComplete = state === 'complete'}
-      {@const isInteractive = Boolean(step.href || step.onclick)}
+      {@const hasHref = step.href !== undefined}
+      {@const isInteractive = hasHref || step.onclick !== undefined}
       <li
         class="cinder-steps__item"
         data-cinder-state={state}
@@ -64,7 +65,7 @@
             <span class="cinder-steps__index">{index + 1}</span>
           {/if}
         </span>
-        {#if step.href}
+        {#if hasHref}
           <a
             class="cinder-steps__interactive cinder-steps__body"
             href={step.href}

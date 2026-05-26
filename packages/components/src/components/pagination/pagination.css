@@ -122,6 +122,15 @@
   opacity: 0.4;
 }
 
+/* opacity is ignored under forced colors, so signal the disabled boundary with
+   the GrayText system color instead. */
+@media (forced-colors: active) {
+  .cinder-pagination__step:disabled {
+    color: GrayText;
+    opacity: 1;
+  }
+}
+
 /* ----------------------------------------
  * Ellipsis
  * ---------------------------------------- */

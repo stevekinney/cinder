@@ -349,15 +349,48 @@ describe('SideNavigationGroup — contains-active', () => {
     expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
   });
 
-  test('contains-active label uses bold weight via CSS hook', () => {
+  test('contains-active attribute and label element are both present (CSS hook target)', () => {
+    // happy-dom cannot resolve computed styles, so this asserts the DOM hooks
+    // the CSS targets exist together — not the computed weight itself (the bold
+    // treatment is verified visually).
     const { container } = render(ContainsActiveHarness, {
       props: { firstActive: true },
     });
-    // The styling hook is the attribute on the group root plus the label
-    // class; assert both are present (CSS selector target).
     const root = groupRoot(container);
     expect(root.hasAttribute('data-cinder-contains-active')).toBe(true);
     expect(root.querySelector('.cinder-side-navigation-group__label')).not.toBeNull();
+  });
+
+  test('unmounting the only active child clears the attribute (unregister decrements)', async () => {
+    const { container, rerender } = render(ContainsActiveHarness, {
+      props: { firstActive: false, secondActive: true, showSecond: true },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+
+    // Unmount the active item — its cleanup must unregister and drop the count
+    // to zero, clearing the attribute.
+    await rerender({ firstActive: false, secondActive: true, showSecond: false });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
+  });
+
+  test('unmounting one of two active children keeps the attribute (count stays > 0)', async () => {
+    const { container, rerender } = render(ContainsActiveHarness, {
+      props: { firstActive: true, secondActive: true, showSecond: true },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+
+    // Unmount one active item; the other active item keeps the count at 1.
+    await rerender({ firstActive: true, secondActive: true, showSecond: false });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+  });
+
+  test('item mounting with active=true reports immediately (no reactive lag)', () => {
+    // Regression for the initial-mount race: the attribute must be present on
+    // first render, not only after a subsequent reactive cycle.
+    const { container } = render(ContainsActiveHarness, {
+      props: { firstActive: true },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
   });
 
   test('item outside a group does not throw (optional context)', () => {

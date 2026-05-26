@@ -38,6 +38,9 @@
   // undefined and these effects are no-ops.
   const group = tryGetSideNavigationGroupContext();
   let handle: SideNavigationGroupRegistration | undefined;
+  // One-time registration: no reactive reads, so it runs exactly once at mount
+  // and cleans up once at unmount. Keeping it free of `active` avoids coupling
+  // registration to the group's counter writes (which would loop).
   $effect(() => {
     if (!group) return;
     handle = group.register();
@@ -46,6 +49,9 @@
       handle = undefined;
     };
   });
+  // Ongoing active reporting. Runs on mount (reporting the initial state) and on
+  // every `active` change. `handle` is populated by the registration effect,
+  // which Svelte runs first (declaration order) in the same mount flush.
   $effect(() => {
     handle?.setActive(active);
   });
