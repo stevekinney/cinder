@@ -78,8 +78,6 @@ toast.dismiss(id);
 
 Auto-generated ids (`cinder-toast-N`) are instance-local: stable for the lifetime of the mounted region and reset when it unmounts. Use them transiently within the current session, or pass a stable `options.id` when you need cross-render deduplication.
 
-## Action buttons
-
 ## Decorative icons
 
 Pass `icon` to show a leading visual marker next to the message. The icon is decorative (`aria-hidden="true"`), so do not rely on it as the only status signal.
