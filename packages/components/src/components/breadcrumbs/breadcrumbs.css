@@ -23,16 +23,20 @@
   display: inline-flex;
   align-items: center;
   gap: var(--cinder-space-2);
-  /* Ancestor crumbs shrink (and ellipsize) before the current crumb. */
+  /* Ancestor crumbs shrink hard (high factor) so they absorb the overflow and
+     ellipsize first. */
   min-width: 0;
-  flex-shrink: 1;
+  flex-shrink: 100;
 }
 
-/* The last item holds the current crumb. It does not shrink relative to the
-   ancestor links, so they absorb the shrink first; the current crumb's own
-   ellipsis (above) only engages when it alone overflows the container. */
+/* The last item holds the current crumb. It still shrinks — so a lone long
+   current crumb ellipsizes against the container instead of hard-clipping —
+   but with a far lower factor than the ancestors, so they always yield first.
+   Plain flex cannot express strict source-order priority; the lopsided shrink
+   factors approximate "current crumb is the priority" while guaranteeing it can
+   never overflow the container without its own ellipsis engaging. */
 .cinder-breadcrumbs__item:last-child {
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .cinder-breadcrumbs__link {
