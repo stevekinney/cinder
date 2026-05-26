@@ -179,6 +179,24 @@ describe('overflowFade', () => {
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
   });
 
+  test('updates when existing descendant content resizes without a mutation', () => {
+    const node = document.createElement('div');
+    const child = document.createElement('div');
+    node.appendChild(child);
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+
+    overflowFade()(node);
+    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(node);
+    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(child);
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(false);
+
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 150 });
+    FakeResizeObserver.instances[0]?.trigger();
+    flushAnimationFrames();
+
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+  });
+
   test('clears stale state and exits when ResizeObserver is unavailable', () => {
     const node = document.createElement('div');
     node.setAttribute('data-cinder-overflows', '');

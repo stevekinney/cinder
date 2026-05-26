@@ -105,9 +105,11 @@
 }
 
 .cinder-modal__close:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
+  /* Use `outline` rather than `box-shadow` so the focus ring is not clipped
+     by the panel's `overflow: hidden`. Outline renders outside the box model
+     and is unaffected by ancestor clipping (WCAG 2.4.11 / 2.4.12). */
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);
-  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {

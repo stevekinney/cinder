@@ -93,10 +93,34 @@ export function overflowFade(): Attachment<HTMLElement> {
     };
 
     const resizeObserver = new ResizeObserver(scheduleUpdate);
-    resizeObserver.observe(node);
+    const observedElements = new Set<Element>();
+    const observeElement = (element: Element) => {
+      if (observedElements.has(element)) return;
+      resizeObserver.observe(element);
+      observedElements.add(element);
+    };
+    const syncObservedElements = () => {
+      const currentElements = new Set<Element>([node, ...node.querySelectorAll('*')]);
+      for (const element of observedElements) {
+        if (!currentElements.has(element)) {
+          resizeObserver.unobserve(element);
+          observedElements.delete(element);
+        }
+      }
+      for (const element of currentElements) {
+        observeElement(element);
+      }
+    };
+
+    syncObservedElements();
 
     const mutationObserver =
-      typeof MutationObserver === 'undefined' ? null : new MutationObserver(scheduleUpdate);
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            syncObservedElements();
+            scheduleUpdate();
+          });
 
     mutationObserver?.observe(node, {
       childList: true,
@@ -112,6 +136,7 @@ export function overflowFade(): Attachment<HTMLElement> {
     return () => {
       if (frame) cancelFrame(frame);
       resizeObserver.disconnect();
+      observedElements.clear();
       mutationObserver?.disconnect();
       node.removeEventListener('scroll', scheduleUpdate);
     };

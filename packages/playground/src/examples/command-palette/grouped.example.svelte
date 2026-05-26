@@ -11,6 +11,9 @@
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let lastSelected = $state('');
+  const instanceId = crypto.randomUUID();
+  const recentFilesLabelId = `${instanceId}-recent-files-label`;
+  const actionsLabelId = `${instanceId}-actions-label`;
 
   const recentItems = [
     { id: 'roadmap', label: 'Roadmap' },
@@ -48,8 +51,8 @@
 <CommandPalette bind:open label="Grouped command palette" {triggerRef}>
   {#snippet items()}
     <li role="presentation" class="cinder-command-group">
-      <span id="recent-files-label" class="cinder-command-group__label">Recent files</span>
-      <ul role="group" aria-labelledby="recent-files-label">
+      <span id={recentFilesLabelId} class="cinder-command-group__label">Recent files</span>
+      <ul role="group" aria-labelledby={recentFilesLabelId}>
         {#each recentItems as item (item.id)}
           <CommandItem value={item.id} onselect={() => select(item.label)}>
             {item.label}
@@ -59,8 +62,8 @@
     </li>
 
     <li role="presentation" class="cinder-command-group">
-      <span id="actions-label" class="cinder-command-group__label">Actions</span>
-      <ul role="group" aria-labelledby="actions-label">
+      <span id={actionsLabelId} class="cinder-command-group__label">Actions</span>
+      <ul role="group" aria-labelledby={actionsLabelId}>
         {#each actions as action (action.id)}
           <CommandItem
             value={action.id}

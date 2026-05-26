@@ -4,6 +4,12 @@ import { createRawSnippet } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import {
+  flushOverflowFadeAnimationFrames,
+  installOverflowFadeTestEnvironment,
+  OverflowFadeResizeObserver,
+  setScrollMeasurements,
+} from '../../test/overflow-fade-test-helpers.ts';
 
 setupHappyDom();
 
@@ -638,6 +644,29 @@ describe('Sheet', () => {
     });
     const body = container.querySelector('.cinder-sheet__body');
     expect(body?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('overflow fade attachment marks and clears the sheet body', () => {
+    const cleanupOverflowFade = installOverflowFadeTestEnvironment();
+    try {
+      const { container } = render(Sheet, {
+        props: { open: true, title: 'Test', children: textSnippet('Sheet body content') },
+      });
+      const body = container.querySelector('.cinder-sheet__body') as HTMLElement;
+      expect(body).not.toBeNull();
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 0 });
+      OverflowFadeResizeObserver.instances[0]?.trigger();
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(true);
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 60 });
+      body.dispatchEvent(new Event('scroll'));
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(false);
+    } finally {
+      cleanupOverflowFade();
+    }
   });
 
   test('close button has aria-label="Close sheet"', () => {

@@ -4,6 +4,12 @@ import { createRawSnippet } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import {
+  flushOverflowFadeAnimationFrames,
+  installOverflowFadeTestEnvironment,
+  OverflowFadeResizeObserver,
+  setScrollMeasurements,
+} from '../../test/overflow-fade-test-helpers.ts';
 
 setupHappyDom();
 
@@ -649,6 +655,29 @@ describe('Drawer', () => {
     });
     const body = container.querySelector('.cinder-drawer__body');
     expect(body?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('overflow fade attachment marks and clears the drawer body', () => {
+    const cleanupOverflowFade = installOverflowFadeTestEnvironment();
+    try {
+      const { container } = render(Drawer, {
+        props: { open: true, title: 'Test', children: textSnippet('Drawer body content') },
+      });
+      const body = container.querySelector('.cinder-drawer__body') as HTMLElement;
+      expect(body).not.toBeNull();
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 0 });
+      OverflowFadeResizeObserver.instances[0]?.trigger();
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(true);
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 60 });
+      body.dispatchEvent(new Event('scroll'));
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(false);
+    } finally {
+      cleanupOverflowFade();
+    }
   });
 
   // ---- Additional: close button has correct aria-label ----
