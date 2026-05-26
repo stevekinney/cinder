@@ -40,6 +40,8 @@
 }
 
 .cinder-breadcrumbs__link {
+  min-width: 0;
+  flex: 1 1 auto;
   color: var(--cinder-text-muted);
   text-decoration: none;
   border-radius: var(--cinder-radius-sm);

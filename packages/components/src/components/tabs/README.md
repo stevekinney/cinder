@@ -37,6 +37,10 @@ dots. Render the library `Badge` inside it for idiomatic styling — there is no
 separate badge class to learn:
 
 ```svelte
+<script lang="ts">
+  import { Badge } from 'cinder/badge';
+</script>
+
 <Tabs.Trigger value="inbox">
   Inbox
   {#snippet trailing()}
