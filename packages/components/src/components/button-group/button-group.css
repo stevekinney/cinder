@@ -86,7 +86,17 @@
 /* Zero the seam-facing border on the button so the pseudo-element line is the
  * only thing between two buttons. Uses -color: transparent (not border-width: 0)
  * to preserve box geometry so the radius-flattening rules and heights are
- * unaffected. */
+ * unaffected.
+ *
+ * The two-arm `:is(.cinder-button, button)` selector intentionally mirrors the
+ * radius-flattening rules below: a grouped item is contractually a `<Button>`,
+ * a toggle `<button>`, or a `<Dropdown>` whose trigger is a button (see
+ * button-group.a11y.md — the group is a visual container for button-shaped
+ * actions, never a form input). So the seam and the transparent border land on
+ * the same elements that already get their corners flattened; if a future
+ * non-button item type is supported, update both rule sets together. The
+ * `:not([role='menu'] *):not([role='menuitem'])` guard keeps a split-button's
+ * dropdown menu items from being touched. */
 .cinder-button-group[data-cinder-orientation='horizontal']
   > [data-cinder-button-group-item]:not(:first-child)
   :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),

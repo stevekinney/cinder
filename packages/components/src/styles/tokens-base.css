@@ -88,8 +88,8 @@
   --cinder-font-mono:
     ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --cinder-text-xs: 0.75rem;
   --cinder-text-2xs: 0.6875rem;
+  --cinder-text-xs: 0.75rem;
   --cinder-text-sm: 0.8125rem;
   --cinder-text-base: 0.875rem;
   --cinder-text-md: 0.9375rem; /* 15px — button ladder step between base and lg */
