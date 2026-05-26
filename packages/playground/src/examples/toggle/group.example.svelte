@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Multiple switches';
   export const description =
-    'Several independent on/off settings inside a fieldset/legend, each with a visible <label for> tied to its switch.';
+    'Several independent on/off settings inside a fieldset. Each Toggle renders its own visible label, so no external <label for> wrapper is needed.';
 </script>
 
 <script lang="ts">
@@ -14,18 +14,7 @@
 </script>
 
 <FormSection as="fieldset" heading="Account preferences" columns={1}>
-  <div style="display: flex; align-items: center; gap: 0.75rem;">
-    <Toggle id="pref-email" bind:checked={emailNotifications} label="Email notifications" />
-    <label for="pref-email">Email notifications</label>
-  </div>
-
-  <div style="display: flex; align-items: center; gap: 0.75rem;">
-    <Toggle id="pref-dark" bind:checked={darkMode} label="Dark mode" />
-    <label for="pref-dark">Dark mode</label>
-  </div>
-
-  <div style="display: flex; align-items: center; gap: 0.75rem;">
-    <Toggle id="pref-autosave" bind:checked={autoSave} label="Auto-save drafts" />
-    <label for="pref-autosave">Auto-save drafts</label>
-  </div>
+  <Toggle id="pref-email" bind:checked={emailNotifications} label="Email notifications" />
+  <Toggle id="pref-dark" bind:checked={darkMode} label="Dark mode" />
+  <Toggle id="pref-autosave" bind:checked={autoSave} label="Auto-save drafts" />
 </FormSection>

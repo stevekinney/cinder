@@ -8,13 +8,13 @@ For command-style toggle buttons such as bold, italic, mute, or selected toolbar
 
 ## ARIA Roles and Attributes
 
-| Attribute      | Value                          | Purpose                                                              |
-| -------------- | ------------------------------ | -------------------------------------------------------------------- |
-| `type`         | `"button"`                     | Prevents form submission; ensures native keyboard activation.        |
-| `role`         | `"switch"`                     | Communicates switch semantics to assistive technology.               |
-| `aria-checked` | `"true"` \| `"false"`          | Communicates whether the switch is on or off.                        |
-| `aria-label`   | value of the `label` prop      | Provides a concise accessible name when no visible label is present. |
-| `disabled`     | present (when `disabled=true`) | Prevents pointer and keyboard activation and removes from tab order. |
+| Attribute         | Value                          | Purpose                                                                      |
+| ----------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| `type`            | `"button"`                     | Prevents form submission; ensures native keyboard activation.                |
+| `role`            | `"switch"`                     | Communicates switch semantics to assistive technology.                       |
+| `aria-checked`    | `"true"` \| `"false"`          | Communicates whether the switch is on or off.                                |
+| `aria-labelledby` | id of the rendered label span  | Names the switch from the always-present visible (or visually-hidden) label. |
+| `disabled`        | present (when `disabled=true`) | Prevents pointer and keyboard activation and removes from tab order.         |
 
 The native `disabled` attribute is sufficient for the underlying `<button>` element. It removes the element from the tab order, prevents activation, and is announced as "dimmed" or "unavailable" by screen readers. `aria-disabled` is intentionally omitted to avoid duplicate disabled-state announcements.
 
@@ -36,9 +36,9 @@ No custom `onkeydown` handler is needed. The native `<button>` element fires `cl
 
 ## External Label Association
 
-The `id` prop is placed on the `<button>` element. Because `aria-label` is present, it takes precedence over an external `<label for="...">` in accessible-name computation. If you need visible adjacent text, render it next to the switch and keep the `label` prop stable.
+The component renders its own label as a `<span id="${id}-label">` next to the switch, and the `<button>` references it via `aria-labelledby`. The label is always present (visually hidden via `hideLabel` when needed), so it is the single source of the accessible name — `aria-label` is not used.
 
-Do not wrap the switch button in a `<label>`. Label activation forwards clicks to its labeled control and can create double-toggle behavior for a nested interactive button.
+The label is a `<span>` with its own `onclick`, not a native `<label for>`. A native `<label for>` targeting the switch button would forward a synthetic click to it and, combined with the button's own `onclick`, double-toggle in some engines. The span's click handler calls the same disabled-guarded `toggle()`, so clicking the label toggles the switch once and is a no-op when disabled. Keyboard users operate the switch button directly (it owns the tab order and Enter/Space activation).
 
 ## Migration from `pressed`
 
