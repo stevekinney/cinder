@@ -58,6 +58,7 @@
   let cancelPendingClose: (() => void) | null = null;
 
   const reducedMotion = useReducedMotion();
+  const bodyOverflowFade = overflowFade();
 
   function acquireScrollLock(): void {
     if (releaseScrollLock) return;
@@ -274,7 +275,7 @@
           bind:this={bodyElement}
           class="cinder-drawer__body"
           tabindex="-1"
-          {@attach overflowFade()}
+          {@attach bodyOverflowFade}
         >
           {@render children()}
         </div>

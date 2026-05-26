@@ -80,6 +80,7 @@
   }
 
   const titleId = useId('cinder-modal-title');
+  const bodyOverflowFade = overflowFade();
 
   $effect(() => {
     mounted = true;
@@ -188,7 +189,7 @@
           bind:this={bodyElement}
           class="cinder-modal__body"
           tabindex="-1"
-          {@attach overflowFade()}
+          {@attach bodyOverflowFade}
         >
           {@render children()}
         </div>
