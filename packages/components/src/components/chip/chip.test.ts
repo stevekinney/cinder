@@ -287,14 +287,21 @@ describe('Chip pressed-state foreground tokens', () => {
   ] as const)(
     'pressed %s chip uses the contrast token, not the soft tint',
     (variant, contrastToken, softTint) => {
+      // Selector attribute order matters for this regex: [aria-pressed] then
+      // [data-cinder-variant]. The `[^}]*` body match assumes flat rules (no
+      // nesting), which holds for these pressed-state declarations.
       const block = css.match(
         new RegExp(
           `\\.cinder-chip\\[aria-pressed='true'\\]\\[data-cinder-variant='${variant}'\\]\\s*\\{[^}]*\\}`,
         ),
       )?.[0];
       expect(block).toBeDefined();
-      expect(block).toContain(`color: var(${contrastToken})`);
-      expect(block).not.toContain(softTint);
+      // Pin the assertion to the `color:` declaration specifically, so a stray
+      // mention of the banned token in a comment or another property can't
+      // produce a false pass/fail.
+      const colorDeclaration = block?.match(/\bcolor:\s*[^;]+;/)?.[0];
+      expect(colorDeclaration).toBe(`color: var(${contrastToken});`);
+      expect(colorDeclaration).not.toContain(softTint);
     },
   );
 });

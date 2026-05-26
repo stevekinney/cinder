@@ -89,6 +89,20 @@ describe('EmptyState rendering', () => {
     expect(container.querySelector('.cinder-empty-state-title')?.tagName).toBe('H6');
   });
 
+  test('clamps headingLevel=0 up to h1', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Clamped', headingLevel: 0 as never },
+    });
+    expect(container.querySelector('.cinder-empty-state-title')?.tagName).toBe('H1');
+  });
+
+  test('falls back to h3 for a non-numeric headingLevel', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Clamped', headingLevel: NaN as never },
+    });
+    expect(container.querySelector('.cinder-empty-state-title')?.tagName).toBe('H3');
+  });
+
   test('applies class prop to root element', () => {
     const { container } = render(EmptyState, {
       props: { title: 'Empty', class: 'my-custom-class' },
