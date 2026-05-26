@@ -64,12 +64,6 @@
     return variant === 'info' || variant === 'success';
   }
 
-  function findStack(id: string): ToastItem[] | null {
-    if (politeStack.some((t) => t.id === id)) return politeStack;
-    if (assertiveStack.some((t) => t.id === id)) return assertiveStack;
-    return null;
-  }
-
   function show(message: string, options: ToastOptions = {}): string {
     const id = options.id ?? `cinder-toast-${++nextId}`;
     const variant = options.variant ?? 'info';
@@ -152,9 +146,6 @@
     // doesn't leak timers that fire later and try to mutate disposed state.
     for (const id of timers.keys()) clearTimer(id);
   });
-  // Reference findStack so the linter doesn't drop it; reserved for future
-  // diagnostics that need to know which region holds a given toast.
-  void findStack;
 </script>
 
 {#if children}
