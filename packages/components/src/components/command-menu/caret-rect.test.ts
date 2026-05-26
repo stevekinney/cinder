@@ -68,4 +68,29 @@ describe('getCaretRect', () => {
       HTMLSpanElement.prototype.getBoundingClientRect = originalMarkerRect;
     }
   });
+
+  test('mirrors border styles so copied border widths affect wrapping', () => {
+    const textarea = createTextarea('/alpha beta gamma');
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.borderStyle = 'solid';
+    textarea.style.borderWidth = '12px';
+    let mirror: HTMLDivElement | undefined;
+    const originalAppend = document.body.append.bind(document.body);
+    const appendSpy = mock((node: Node) => {
+      if (node instanceof HTMLDivElement) mirror = node;
+      originalAppend(node);
+    });
+    document.body.append = appendSpy;
+
+    try {
+      getCaretRect(textarea, textarea.value.length);
+      if (!mirror) throw new Error('Expected caret mirror to be captured.');
+      expect(mirror.style.getPropertyValue('border-top-style')).toBe('solid');
+      expect(mirror.style.getPropertyValue('border-left-style')).toBe('solid');
+      expect(mirror.style.getPropertyValue('border-top-width')).toBe('12px');
+      expect(mirror.style.getPropertyValue('border-left-width')).toBe('12px');
+    } finally {
+      document.body.append = originalAppend;
+    }
+  });
 });
