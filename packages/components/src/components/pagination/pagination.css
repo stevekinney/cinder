@@ -119,6 +119,7 @@
   color: var(--cinder-text-disabled, var(--cinder-text-muted));
   cursor: not-allowed;
   pointer-events: none;
+  opacity: 0.4;
 }
 
 /* ----------------------------------------
@@ -129,9 +130,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  padding: var(--cinder-space-1) var(--cinder-space-2);
+  padding: 0 var(--cinder-space-1);
   color: var(--cinder-text-muted);
   font-size: var(--cinder-text-sm);
   user-select: none;

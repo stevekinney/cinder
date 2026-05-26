@@ -54,7 +54,11 @@
   grid-row: 1;
   align-self: center;
   height: 1px;
-  width: 100%;
+  /* Shorten the painted line by the leading gap and push it clear of the
+     marker, so the total inline footprint of the cell is unchanged (no
+     overshoot into the next marker). */
+  width: calc(100% - var(--cinder-space-2));
+  margin-inline-start: var(--cinder-space-2);
 }
 
 .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
@@ -160,6 +164,49 @@
   padding-top: var(--cinder-space-2);
 }
 
+/* ----------------------------------------
+ * Interactive body — an <a>/<button> occupying the body cell. Resets native
+ * chrome so both elements render identically to the static body, then layers
+ * a focus ring. The element keeps .cinder-steps__body, so the body's flex
+ * layout (position/display/gap) is reused with zero duplication.
+ * ---------------------------------------- */
+
+.cinder-steps__interactive {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+  inline-size: 100%;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Restore the body's top padding cleared by the reset above. Same specificity
+   plus the body class, declared after, so it wins. */
+.cinder-steps__interactive.cinder-steps__body {
+  padding-top: var(--cinder-space-2);
+}
+
+.cinder-steps__interactive {
+  border-radius: var(--cinder-radius-sm);
+}
+
+.cinder-steps__interactive:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+@media (forced-colors: active) {
+  .cinder-steps__interactive:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: 3px;
+  }
+}
+
 .cinder-steps__label {
   font-size: var(--cinder-text-sm);
   font-weight: var(--cinder-font-normal);
@@ -186,7 +233,9 @@
  * ---------------------------------------- */
 
 .cinder-steps__connector {
-  background: var(--cinder-border);
+  /* border-muted reads clearly in dark mode where plain --cinder-border is
+     near-invisible against --cinder-surface. */
+  background: var(--cinder-border-muted);
 }
 
 .cinder-steps__connector[data-cinder-state='complete'] {

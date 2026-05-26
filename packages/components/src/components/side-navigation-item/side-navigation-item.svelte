@@ -19,8 +19,36 @@
   import type { SideNavigationItemProps } from './side-navigation-item.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import NavigationItem from '../navigation-item/navigation-item.svelte';
+  import {
+    tryGetSideNavigationGroupContext,
+    type SideNavigationGroupRegistration,
+  } from '../_internal/side-navigation-group-context.ts';
 
-  let { listItemClass, ...navigationItemProps }: SideNavigationItemProps = $props();
+  const props: SideNavigationItemProps = $props();
+  const active = $derived(props.active ?? false);
+  const listItemClass = $derived(props.listItemClass);
+  // Forward everything except listItemClass to NavigationItem.
+  const navigationItemProps = $derived.by(() => {
+    const { listItemClass: _omit, ...rest } = props;
+    return rest;
+  });
+
+  // When this item sits inside a SideNavigationGroup, report its active state
+  // so the group can light up its trigger. Outside a group the context is
+  // undefined and these effects are no-ops.
+  const group = tryGetSideNavigationGroupContext();
+  let handle: SideNavigationGroupRegistration | undefined;
+  $effect(() => {
+    if (!group) return;
+    handle = group.register();
+    return () => {
+      handle?.unregister();
+      handle = undefined;
+    };
+  });
+  $effect(() => {
+    handle?.setActive(active);
+  });
 </script>
 
 <li class={classNames('cinder-side-navigation__item', listItemClass)}>

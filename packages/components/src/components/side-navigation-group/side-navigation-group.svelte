@@ -19,6 +19,10 @@
   import type { SideNavigationGroupProps } from './side-navigation-group.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
+  import {
+    setSideNavigationGroupContext,
+    type SideNavigationGroupRegistration,
+  } from '../_internal/side-navigation-group-context.ts';
 
   let {
     label,
@@ -48,6 +52,30 @@
     if (disabled) return;
     expanded = !expanded;
   }
+
+  // Bubble active state from descendant items up to the trigger. The group is
+  // "contains-active" when any registered child reports itself active.
+  let activeCount = $state(0);
+  const containsActive = $derived(activeCount > 0);
+
+  function register(): SideNavigationGroupRegistration {
+    let wasActive = false;
+    let unregistered = false;
+    return {
+      setActive(active: boolean) {
+        if (unregistered || active === wasActive) return;
+        wasActive = active;
+        activeCount += active ? 1 : -1;
+      },
+      unregister() {
+        if (unregistered) return; // idempotent — never double-decrement
+        unregistered = true;
+        if (wasActive) activeCount -= 1;
+      },
+    };
+  }
+
+  setSideNavigationGroupContext({ register });
 </script>
 
 <li
@@ -55,6 +83,7 @@
   {id}
   class={classNames('cinder-side-navigation-group', className)}
   data-cinder-expanded={expanded ? '' : undefined}
+  data-cinder-contains-active={containsActive ? '' : undefined}
 >
   <button
     type="button"

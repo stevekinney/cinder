@@ -299,3 +299,72 @@ describe('SideNavigationGroup', () => {
     expect(container.querySelector('.cinder-navigation-item')).not.toBeNull();
   });
 });
+
+const { default: ContainsActiveHarness } = await import('./_contains-active-harness.svelte');
+
+function groupRoot(container: HTMLElement): HTMLElement {
+  return container.querySelector('li.cinder-side-navigation-group') as HTMLElement;
+}
+
+describe('SideNavigationGroup — contains-active', () => {
+  test('group with one active child item sets data-cinder-contains-active', () => {
+    const { container } = render(ContainsActiveHarness, {
+      props: { firstActive: true },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+  });
+
+  test('group with no active child does not set the attribute', () => {
+    const { container } = render(ContainsActiveHarness, {
+      props: {},
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
+  });
+
+  test("toggling a child's active prop adds then removes the attribute", async () => {
+    const { container, rerender } = render(ContainsActiveHarness, {
+      props: { firstActive: false },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
+
+    await rerender({ firstActive: true });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+
+    await rerender({ firstActive: false });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
+  });
+
+  test('attribute persists while any child active, clears only at zero', async () => {
+    const { container, rerender } = render(ContainsActiveHarness, {
+      props: { firstActive: true, secondActive: true },
+    });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+
+    // One goes inactive — still contains an active child.
+    await rerender({ firstActive: true, secondActive: false });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
+
+    // Both inactive — clears.
+    await rerender({ firstActive: false, secondActive: false });
+    expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(false);
+  });
+
+  test('contains-active label uses bold weight via CSS hook', () => {
+    const { container } = render(ContainsActiveHarness, {
+      props: { firstActive: true },
+    });
+    // The styling hook is the attribute on the group root plus the label
+    // class; assert both are present (CSS selector target).
+    const root = groupRoot(container);
+    expect(root.hasAttribute('data-cinder-contains-active')).toBe(true);
+    expect(root.querySelector('.cinder-side-navigation-group__label')).not.toBeNull();
+  });
+
+  test('item outside a group does not throw (optional context)', () => {
+    expect(() => {
+      render(SideNavigationItem, {
+        props: { href: '/solo', active: true, children: textSnippet('Solo') },
+      });
+    }).not.toThrow();
+  });
+});
