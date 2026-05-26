@@ -19,7 +19,7 @@
       "id": "hide-label",
       "title": "Icon-only / inline row",
       "description": "In a toolbar or table row where the meaning is already clear from context, hideLabel removes the visible text while keeping it as the accessible name.",
-      "code": "<script lang=\"ts\">\n  import { Toggle } from 'cinder/toggle';\n\n  let wordWrap = $state(true);\n  let minimap = $state(false);\n</script>\n\n<div role=\"toolbar\" aria-label=\"Editor options\" style=\"display: flex; align-items: center; gap: 1rem;\">\n  <Toggle id=\"opt-wrap\" bind:checked={wordWrap} label=\"Word wrap\" hideLabel />\n  <Toggle id=\"opt-minimap\" bind:checked={minimap} label=\"Minimap\" hideLabel />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Toggle } from 'cinder/toggle';\n\n  let wordWrap = $state(true);\n  let minimap = $state(false);\n</script>\n\n<div\n  role=\"toolbar\"\n  aria-label=\"Editor options\"\n  style=\"display: flex; align-items: center; gap: 1rem;\"\n>\n  <Toggle id=\"opt-wrap\" bind:checked={wordWrap} label=\"Word wrap\" hideLabel />\n  <Toggle id=\"opt-minimap\" bind:checked={minimap} label=\"Minimap\" hideLabel />\n</div>\n"
     }
   ]
 }

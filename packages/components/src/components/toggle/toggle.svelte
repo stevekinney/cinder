@@ -50,13 +50,22 @@
   >
     <span aria-hidden="true" class="cinder-toggle__thumb"></span>
   </button>
-  <label
+  <!--
+    The label is a <span> (not a <label for>) named via aria-labelledby. A native
+    <label for> targeting the <button> would forward a synthetic click to it,
+    which — combined with the button's own onclick — double-toggles in some
+    engines. aria-labelledby supplies the accessible name, and the span's own
+    onclick gives click-to-toggle. toggle() is disabled-guarded, so clicking the
+    label of a disabled toggle is a no-op.
+  -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <span
     id={labelId}
-    for={id}
     class="cinder-toggle-field__label"
     data-hidden={hideLabel || undefined}
     data-disabled={disabled || undefined}
+    onclick={toggle}
   >
     {label}
-  </label>
+  </span>
 </span>

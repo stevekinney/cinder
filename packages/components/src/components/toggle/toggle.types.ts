@@ -14,7 +14,7 @@
  * never removes the accessible name.
  */
 export type ToggleProps = {
-  /** Native id placed on the `<button>` so the rendered `<label for="…">` can reference it. */
+  /** Native id placed on the `<button>`; the rendered label uses `aria-labelledby` to name it (label id is derived as `${id}-label`). */
   id: string;
   /** Whether the toggle is currently checked. Bindable — defaults to false. */
   checked?: boolean;

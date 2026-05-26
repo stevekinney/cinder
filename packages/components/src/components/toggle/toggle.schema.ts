@@ -7,7 +7,7 @@ const schema = {
     id: {
       type: 'string',
       description:
-        'Native id placed on the `<button>` so the rendered `<label for="…">` can reference it.',
+        'Native id placed on the `<button>`; the rendered label uses `aria-labelledby` to name it (label id is derived as `${id}-label`).',
     },
     checked: {
       type: 'boolean',
