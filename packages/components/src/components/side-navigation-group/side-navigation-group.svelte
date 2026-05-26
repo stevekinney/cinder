@@ -21,6 +21,7 @@
   import { useId } from '../../utilities/use-id.ts';
   import {
     setSideNavigationGroupContext,
+    tryGetSideNavigationGroupContext,
     type SideNavigationGroupRegistration,
   } from '../_internal/side-navigation-group-context.ts';
 
@@ -74,6 +75,22 @@
       },
     };
   }
+
+  const parentGroup = tryGetSideNavigationGroupContext();
+  let parentHandle: SideNavigationGroupRegistration | undefined;
+
+  $effect(() => {
+    if (!parentGroup) return;
+    parentHandle = parentGroup.register();
+    return () => {
+      parentHandle?.unregister();
+      parentHandle = undefined;
+    };
+  });
+
+  $effect(() => {
+    parentHandle?.setActive(containsActive);
+  });
 
   setSideNavigationGroupContext({ register });
 </script>

@@ -10,10 +10,14 @@
     firstActive = false,
     secondActive = false,
     showSecond = true,
+    nestedActive = false,
+    showNested = false,
   }: {
     firstActive?: boolean;
     secondActive?: boolean;
     showSecond?: boolean;
+    nestedActive?: boolean;
+    showNested?: boolean;
   } = $props();
 </script>
 
@@ -22,6 +26,11 @@
     <SideNavigationItem href="/one" active={firstActive}>One</SideNavigationItem>
     {#if showSecond}
       <SideNavigationItem href="/two" active={secondActive}>Two</SideNavigationItem>
+    {/if}
+    {#if showNested}
+      <SideNavigationGroup label="Nested">
+        <SideNavigationItem href="/nested" active={nestedActive}>Nested</SideNavigationItem>
+      </SideNavigationGroup>
     {/if}
   </SideNavigationGroup>
 </ul>

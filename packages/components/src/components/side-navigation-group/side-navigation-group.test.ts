@@ -393,6 +393,16 @@ describe('SideNavigationGroup — contains-active', () => {
     expect(groupRoot(container).hasAttribute('data-cinder-contains-active')).toBe(true);
   });
 
+  test('nested active child reports through every ancestor group', () => {
+    const { container } = render(ContainsActiveHarness, {
+      props: { showNested: true, nestedActive: true },
+    });
+    const groups = container.querySelectorAll('li.cinder-side-navigation-group');
+    expect(groups.length).toBe(2);
+    expect(groups[0]?.hasAttribute('data-cinder-contains-active')).toBe(true);
+    expect(groups[1]?.hasAttribute('data-cinder-contains-active')).toBe(true);
+  });
+
   test('item outside a group does not throw (optional context)', () => {
     expect(() => {
       render(SideNavigationItem, {
