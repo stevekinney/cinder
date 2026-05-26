@@ -37,6 +37,7 @@ test.describe('dropdown trigger caret', () => {
         borderBottomWidth: computedStyle.borderBottomWidth,
         borderLeftWidth: computedStyle.borderLeftWidth,
         rotate: computedStyle.rotate,
+        transform: computedStyle.transform,
         translate: computedStyle.translate,
       };
     });
@@ -55,27 +56,21 @@ test.describe('dropdown trigger caret', () => {
     expect(caretDetails.borderBottomWidth).toBe('0px');
     expect(caretDetails.borderLeftWidth).toBe('0px');
     expect(['none', '0deg']).toContain(caretDetails.rotate);
+    expect(caretDetails.transform).toBe('none');
     expect(['none', '0px']).toContain(caretDetails.translate);
 
     const centerDifference = await trigger.evaluate((element) => {
-      const textNode = Array.from(element.childNodes).find(
-        (node): node is Text => node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '',
-      );
       const caretElement = element.querySelector<SVGSVGElement>('.cinder-dropdown-trigger__caret');
-      if (!textNode || !caretElement) {
-        throw new Error('Dropdown trigger label text or caret is missing.');
+      if (!caretElement) {
+        throw new Error('Dropdown trigger caret is missing.');
       }
 
-      const range = document.createRange();
-      range.selectNodeContents(textNode);
-      const textBox = range.getBoundingClientRect();
-      range.detach();
-
+      const triggerBox = element.getBoundingClientRect();
       const caretBox = caretElement.getBoundingClientRect();
-      const textCenter = textBox.top + textBox.height / 2;
+      const triggerCenter = triggerBox.top + triggerBox.height / 2;
       const caretCenter = caretBox.top + caretBox.height / 2;
 
-      return Math.abs(textCenter - caretCenter);
+      return Math.abs(triggerCenter - caretCenter);
     });
 
     expect(centerDifference).toBeLessThanOrEqual(2);

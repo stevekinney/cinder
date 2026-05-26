@@ -236,6 +236,7 @@ describe('Dropdown', () => {
       'border-bottom',
       'rotate',
       'translate',
+      'transform',
     ]) {
       expectNoDeclaration(caretBlock, propertyName);
     }
