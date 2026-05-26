@@ -247,7 +247,6 @@
     }
 
     const stop = autoUpdate(virtualElement, panel, updatePosition);
-    updatePosition();
 
     return () => {
       cancelled = true;
