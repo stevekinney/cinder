@@ -308,7 +308,7 @@ describe('CommandPalette — slots', () => {
 // ── Context guard ──────────────────────────────────────────────────────────
 
 describe('CommandItem — context guard', () => {
-  test('throws when rendered without a CommandPalette parent', () => {
+  test('throws when rendered without a command list parent', () => {
     expect(() => {
       render(CommandItem, {
         props: {
@@ -317,7 +317,7 @@ describe('CommandItem — context guard', () => {
           children: textSnippet('Item'),
         },
       });
-    }).toThrow('CommandItem must be used within a CommandPalette.');
+    }).toThrow('CommandItem must be used within a CommandPalette or CommandMenu.');
   });
 });
 

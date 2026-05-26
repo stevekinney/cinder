@@ -1,0 +1,77 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    open: {
+      type: 'boolean',
+      description: 'Open state. Bindable. Default `false`.',
+    },
+    caretIndex: {
+      type: 'number',
+      description: 'Caret offset within the anchor value.',
+    },
+    query: {
+      type: 'string',
+      description: "Query text after the trigger character. Bindable. Default `''`.",
+    },
+    placement: {
+      enum: [
+        'top',
+        'bottom',
+        'left',
+        'right',
+        'top-start',
+        'top-end',
+        'bottom-start',
+        'bottom-end',
+      ],
+      description: "Caret-relative placement. Default `'bottom-start'`.",
+    },
+    offset: {
+      type: 'number',
+      description: 'Distance in px between the caret and menu. Default `6`.',
+    },
+    label: {
+      type: 'string',
+      description: "Accessible listbox label. Default `'Commands'`.",
+    },
+    class: {
+      type: 'string',
+      description: 'Class merged with `.cinder-command-menu`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['caretIndex'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'anchor',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'empty',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'items',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'ondismiss',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onselect',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onstatechange',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

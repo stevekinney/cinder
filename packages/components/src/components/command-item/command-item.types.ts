@@ -2,8 +2,11 @@ import type { Snippet } from 'svelte';
 export type CommandItemProps = {
   /** Submitted value; surfaced through the registration record. */
   value: string;
-  /** Invoked on Enter or click. */
-  onselect: () => void;
+  /**
+   * Invoked when the item is activated inside CommandPalette.
+   * CommandMenu owns selection through its menu-level onselect callback.
+   */
+  onselect?: () => void;
   /** When true, the item is skipped by arrow keys and cannot be activated. */
   disabled?: boolean;
   /** Optional secondary text shown below the main label. */
