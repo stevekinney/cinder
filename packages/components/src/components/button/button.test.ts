@@ -183,8 +183,15 @@ describe('Button sizes — xl', () => {
     expect(readButtonHeightToken('xl')).toBe(2.5);
   });
 
-  test('xl font size matches the shared button text size', () => {
-    expect(readTokenSource()).toContain('--cinder-button-font-size-xl: var(--cinder-text-sm);');
+  test('font-size ladder: lg=md-token, xl=lg-token, md stays sm', () => {
+    const source = readTokenSource();
+    expect(source).toContain('--cinder-button-font-size-md: var(--cinder-text-sm);');
+    expect(source).toContain('--cinder-button-font-size-lg: var(--cinder-text-md);');
+    expect(source).toContain('--cinder-button-font-size-xl: var(--cinder-text-lg);');
+  });
+
+  test('text scale defines the md step at 15px', () => {
+    expect(readTokenSource()).toContain('--cinder-text-md: 0.9375rem;');
   });
 });
 

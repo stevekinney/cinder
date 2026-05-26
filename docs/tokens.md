@@ -73,6 +73,7 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 | `--cinder-text-xs`          | `0.75rem`                                                                                        |
 | `--cinder-text-sm`          | `0.8125rem`                                                                                      |
 | `--cinder-text-base`        | `0.875rem`                                                                                       |
+| `--cinder-text-md`          | `0.9375rem`                                                                                      |
 | `--cinder-text-lg`          | `1rem`                                                                                           |
 | `--cinder-text-xl`          | `1.125rem`                                                                                       |
 | `--cinder-text-2xl`         | `1.25rem`                                                                                        |
@@ -324,7 +325,7 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | `--cinder-button-padding-x-lg` | `var(--cinder-space-3)`   |
 | `--cinder-button-padding-y-lg` | `var(--cinder-space-2)`   |
 | `--cinder-button-height-lg`    | `2.25rem`                 |
-| `--cinder-button-font-size-lg` | `var(--cinder-text-sm)`   |
+| `--cinder-button-font-size-lg` | `var(--cinder-text-md)`   |
 | `--cinder-button-radius-lg`    | `var(--cinder-radius-md)` |
 
 ### Size: xl
@@ -334,5 +335,5 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | `--cinder-button-padding-x-xl` | `var(--cinder-space-3-5)` |
 | `--cinder-button-padding-y-xl` | `var(--cinder-space-2-5)` |
 | `--cinder-button-height-xl`    | `2.5rem`                  |
-| `--cinder-button-font-size-xl` | `var(--cinder-text-sm)`   |
+| `--cinder-button-font-size-xl` | `var(--cinder-text-lg)`   |
 | `--cinder-button-radius-xl`    | `var(--cinder-radius-md)` |

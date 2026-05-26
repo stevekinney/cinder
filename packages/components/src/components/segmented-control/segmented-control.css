@@ -203,6 +203,15 @@
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
     color: var(--cinder-text);
   }
+
+  /* Selected/pressed segments get hover feedback too, so they don't read as
+   * disabled. Darken the accent fill via the theme-aware accent-hover token
+   * while keeping the selected contrast color (inherited from the resting
+   * selected/pressed rules). */
+  .cinder-segmented-control-option[data-cinder-selected]:hover:not(:disabled),
+  .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled) {
+    background: var(--cinder-accent-hover);
+  }
 }
 
 /* ── Focus ──────────────────────────────────────────────────────────────── */

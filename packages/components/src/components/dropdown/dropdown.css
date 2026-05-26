@@ -156,6 +156,7 @@
 }
 
 .cinder-dropdown-item[data-cinder-variant='danger'] {
+  --_cinder-dropdown-item-ring: var(--cinder-danger);
   color: var(--cinder-danger);
 }
 

@@ -231,4 +231,32 @@ describe('ButtonGroup', () => {
       /\.cinder-button-group[\s\S]*?>\s*\.cinder-dropdown\[data-cinder-button-group-item\][\s\S]*?>\s*\.cinder-dropdown-trigger\s*\{[\s\S]*?min-block-size:\s*100%;/,
     );
   });
+
+  test('seams use a pseudo-element line, not negative-margin overlap', async () => {
+    const css = await Bun.file(new URL('./button-group.css', import.meta.url)).text();
+
+    // Negative-margin seams are gone.
+    expect(css).not.toContain('margin-inline-start: -1px');
+    expect(css).not.toContain('margin-block-start: -1px');
+
+    // A seam ::before exists on non-first items with the border color at z-index 1.
+    expect(css).toMatch(
+      /\[data-cinder-button-group-item\]:not\(:first-child\)::before\s*\{[\s\S]*?z-index:\s*1;[\s\S]*?background:\s*var\(--cinder-border\);/,
+    );
+
+    // The seam is suppressed only on the FOCUSED participant, never on hover.
+    expect(css).toMatch(
+      /\[data-cinder-button-group-item\]:focus-within:not\(:first-child\)::before\s*\{[\s\S]*?opacity:\s*0;/,
+    );
+    expect(css).not.toMatch(/:hover[^{};]*::before\s*\{[^}]*opacity:\s*0;/);
+
+    // The seam-facing border is zeroed via transparent color.
+    expect(css).toContain('border-inline-start-color: transparent;');
+    expect(css).toContain('border-block-start-color: transparent;');
+
+    // Forced-colors remaps the seam to CanvasText with no border restore.
+    expect(css).toMatch(
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?::before\s*\{[\s\S]*?background:\s*CanvasText;/,
+    );
+  });
 });
