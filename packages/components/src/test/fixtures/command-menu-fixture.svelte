@@ -46,6 +46,9 @@
   Empty query
 </button>
 <button type="button" data-testid="close" onclick={() => (open = false)}>Close</button>
+<button type="button" data-testid="advance-caret" onclick={() => (caretIndex += 1)}>
+  Advance caret
+</button>
 <button type="button" data-testid="outside">Outside</button>
 
 <CommandMenu

@@ -224,11 +224,12 @@
     }
 
     const panel = listElement;
+    const currentCaretIndex = caretIndex;
     let cancelled = false;
     let generation = 0;
     const virtualElement: VirtualElement = {
       getBoundingClientRect() {
-        return getCaretRect(anchor, caretIndex) ?? anchor.getBoundingClientRect();
+        return getCaretRect(anchor, currentCaretIndex) ?? anchor.getBoundingClientRect();
       },
     };
     const middleware = [offsetMw(offset), flip(), shift({ padding: 8 })];

@@ -87,6 +87,18 @@ describe('CommandMenu', () => {
     expect(offsetSpy).toHaveBeenCalledWith(6);
   });
 
+  test('repositions when the caret index changes', async () => {
+    const { getByTestId } = render(CommandMenuFixture);
+    await waitFor(() => expect(autoUpdateSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+
+    await fireEvent.click(getByTestId('advance-caret'));
+
+    await waitFor(() => expect(autoUpdateTeardown).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(autoUpdateSpy).toHaveBeenCalledTimes(2));
+    expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
+  });
+
   test('keyboard navigation skips disabled items and selects through the menu callback', async () => {
     const selected: Array<{ value: string; query: string }> = [];
     render(CommandMenuFixture, {
