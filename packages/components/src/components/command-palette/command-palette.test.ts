@@ -704,6 +704,12 @@ describe('CommandPalette — visual contract', () => {
     expect(css).toMatch(
       /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
     );
+    expect(css).toMatch(
+      /\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
+    );
+    expect(css).toMatch(
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid ButtonText;/,
+    );
     expect(css).not.toMatch(
       /\.cinder-command-palette__search:focus-within\s*\{[^}]*(?:box-shadow|outline)\s*:/,
     );
