@@ -285,7 +285,7 @@
 
   .diff-line-modified .diff-gutter {
     background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 60%);
-    color: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
   }
 
   .word-changes {
@@ -317,7 +317,7 @@
 
   .diff-line-modified-final .diff-gutter {
     background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 65%);
-    color: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
   }
 
   /* Modified in original view (highlight subtly) */
@@ -327,6 +327,6 @@
 
   .diff-line-modified-original .diff-gutter {
     background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 65%);
-    color: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
   }
 </style>
