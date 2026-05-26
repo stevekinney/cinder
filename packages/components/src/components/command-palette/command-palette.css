@@ -26,12 +26,12 @@
 }
 
 .cinder-command-palette::backdrop {
-  background: color-mix(in oklch, var(--cinder-text) 30%, transparent);
+  background: var(--cinder-overlay-backdrop);
 }
 
 @supports (backdrop-filter: blur(1px)) {
   .cinder-command-palette::backdrop {
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(var(--cinder-overlay-blur));
   }
 }
 
@@ -123,6 +123,32 @@
   color: var(--cinder-text-muted);
   font-size: var(--cinder-text-sm);
   flex-shrink: 0;
+}
+
+/* ----------------------------------------
+ * Consumer-rendered groups
+ * ---------------------------------------- */
+
+.cinder-command-group {
+  margin: 0;
+  padding-block: var(--cinder-space-1);
+  list-style: none;
+}
+
+.cinder-command-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cinder-command-group__label {
+  display: block;
+  padding: var(--cinder-space-1-5) var(--cinder-space-5);
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-xs);
+  font-weight: var(--cinder-font-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ----------------------------------------

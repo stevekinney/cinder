@@ -21,8 +21,8 @@
 }
 
 .cinder-sheet::backdrop {
-  background-color: color-mix(in oklch, var(--cinder-text) 40%, transparent);
-  backdrop-filter: blur(2px);
+  background-color: var(--cinder-overlay-backdrop);
+  backdrop-filter: blur(var(--cinder-overlay-blur));
   transition: background-color var(--cinder-duration-normal) var(--cinder-ease-standard);
 }
 
@@ -37,10 +37,11 @@
   bottom: 0;
   width: 100%;
   max-height: 90dvh;
-  background: var(--cinder-surface);
+  background: var(--cinder-surface-raised);
   border-block-start: 1px solid var(--cinder-border);
   border-start-start-radius: var(--cinder-radius-lg);
   border-start-end-radius: var(--cinder-radius-lg);
+  box-shadow: var(--cinder-shadow-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -142,9 +143,19 @@
   scrollbar-gutter: stable;
 }
 
+.cinder-sheet__body[data-cinder-overflows] {
+  mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+}
+
 /* Suppress the focus ring only for programmatic (mouse / open-effect) focus —
  * if the body container ever becomes keyboard-reachable, indication is preserved. */
 .cinder-sheet__body:focus:not(:focus-visible) {
+  /* cinder-focus-ring-owner: parent */
   outline: none;
 }
 
