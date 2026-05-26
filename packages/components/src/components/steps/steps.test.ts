@@ -304,4 +304,12 @@ describe('Steps — interactive step items', () => {
     expect(container.querySelector('.cinder-steps__interactive')).toBeNull();
     expect(container.querySelector('li[aria-current="step"]')).not.toBeNull();
   });
+
+  test('vertical interactive step bodies preserve static bottom spacing', async () => {
+    const css = await Bun.file(new URL('./steps.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-steps\[data-cinder-orientation='vertical'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*padding-bottom:\s*var\(--cinder-space-4\);/m,
+    );
+  });
 });

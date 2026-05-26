@@ -186,10 +186,14 @@
   border-radius: var(--cinder-radius-sm);
 }
 
-/* Restore the body's top padding cleared by the reset above. Same specificity
-   plus the body class, declared after, so it wins. */
+/* Restore body padding cleared by the reset above. Interactive steps must match
+   static step spacing in both orientations. */
 .cinder-steps__interactive.cinder-steps__body {
   padding-top: var(--cinder-space-2);
+}
+
+.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__interactive.cinder-steps__body {
+  padding-bottom: var(--cinder-space-4);
 }
 
 .cinder-steps__interactive:focus-visible {
