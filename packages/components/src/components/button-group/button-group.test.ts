@@ -250,9 +250,12 @@ describe('ButtonGroup', () => {
     );
     expect(css).not.toMatch(/:hover[^{};]*::before\s*\{[^}]*opacity:\s*0;/);
 
-    // The seam-facing border is zeroed via transparent color.
+    // BOTH borders meeting at a junction are zeroed (start on non-first, end on
+    // non-last) so bordered variants don't render a doubled 2px divider.
     expect(css).toContain('border-inline-start-color: transparent;');
+    expect(css).toContain('border-inline-end-color: transparent;');
     expect(css).toContain('border-block-start-color: transparent;');
+    expect(css).toContain('border-block-end-color: transparent;');
 
     // Forced-colors remaps the seam to CanvasText with no border restore.
     expect(css).toMatch(
