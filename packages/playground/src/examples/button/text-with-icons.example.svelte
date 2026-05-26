@@ -49,7 +49,7 @@
     {/snippet}
   </Button>
 
-  <Button variant="ghost" label="Share">
+  <Button variant="ghost" label="Share" data-testid="button-ghost-text-share">
     {#snippet leadingIcon()}
       <svg
         xmlns="http://www.w3.org/2000/svg"
