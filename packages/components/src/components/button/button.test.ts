@@ -392,6 +392,29 @@ describe('Button icon-only ghost CSS contract', () => {
     expectColorMixBackgroundHasFallback(ghostDangerBlock);
   });
 
+  test('loading icon-only ghost-danger preserves resting chrome', () => {
+    const source = readButtonSource();
+
+    const transparentLoadingBlock = readCssRuleBlock(
+      source,
+      ".cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading]",
+    );
+    expectDeclaration(transparentLoadingBlock, 'background', 'transparent');
+    expectDeclaration(transparentLoadingBlock, 'border-color', 'transparent');
+
+    const iconOnlyLoadingBlock = readCssRuleBlock(
+      source,
+      ".cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading]",
+    );
+    expectDeclaration(iconOnlyLoadingBlock, 'background', 'var(--cinder-color-danger-bg)');
+    expectDeclaration(iconOnlyLoadingBlock, 'border-color', 'var(--cinder-color-danger-border)');
+    expectColorMixBackgroundHasFallback(iconOnlyLoadingBlock);
+
+    expect(source.indexOf(iconOnlyLoadingBlock)).toBeGreaterThan(
+      source.indexOf(transparentLoadingBlock),
+    );
+  });
+
   test('forced-colors icon-only ghost variants use system button colors', () => {
     const source = readButtonSource();
 
