@@ -20,8 +20,8 @@
 
 /* Backdrop — native <dialog>::backdrop is controlled by the UA */
 .cinder-modal::backdrop {
-  background: color-mix(in oklch, var(--cinder-text) 40%, transparent);
-  backdrop-filter: blur(2px);
+  background: var(--cinder-overlay-backdrop);
+  backdrop-filter: blur(var(--cinder-overlay-blur));
 }
 
 /* ----------------------------------------
@@ -32,9 +32,11 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--cinder-surface);
+  background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-xl);
+  box-shadow: var(--cinder-shadow-lg);
+  max-height: inherit;
   overflow: hidden;
 }
 
@@ -103,11 +105,9 @@
 }
 
 .cinder-modal__close:focus-visible {
-  /* Use `outline` rather than `box-shadow` so the focus ring is not clipped
-     by the panel's `overflow: hidden`. Outline renders outside the box model
-     and is unaffected by ancestor clipping (WCAG 2.4.11 / 2.4.12). */
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline: var(--cinder-ring-width) solid transparent;
   outline-offset: var(--cinder-ring-offset);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {
@@ -136,6 +136,15 @@
      no autofocus target. The ring is hidden because focus arrived
      programmatically — pressing Tab forward will move into real content. */
   outline: none;
+}
+
+.cinder-modal__body[data-cinder-overflows] {
+  mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
 }
 
 /* ----------------------------------------

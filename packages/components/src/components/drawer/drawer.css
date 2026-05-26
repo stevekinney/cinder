@@ -20,8 +20,8 @@
 }
 
 .cinder-drawer::backdrop {
-  background-color: color-mix(in oklch, var(--cinder-text) 40%, transparent);
-  backdrop-filter: blur(2px);
+  background-color: var(--cinder-overlay-backdrop);
+  backdrop-filter: blur(var(--cinder-overlay-blur));
   transition: background-color var(--cinder-duration-normal) var(--cinder-ease-standard);
 }
 
@@ -35,7 +35,8 @@
   bottom: 0;
   height: 100%;
   max-width: 100vw;
-  background: var(--cinder-surface);
+  background: var(--cinder-surface-raised);
+  box-shadow: var(--cinder-shadow-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -117,8 +118,9 @@
 }
 
 .cinder-drawer__close:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline: var(--cinder-ring-width) solid transparent;
   outline-offset: var(--cinder-ring-offset);
+  box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
 @media (forced-colors: active) {
@@ -140,6 +142,15 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   outline: none;
+}
+
+.cinder-drawer__body[data-cinder-overflows] {
+  mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
 }
 
 .cinder-drawer__footer {

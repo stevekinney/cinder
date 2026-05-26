@@ -19,6 +19,7 @@
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
@@ -183,7 +184,12 @@
           <h2 id={titleId} class="cinder-modal__title">{title}</h2>
         </div>
 
-        <div bind:this={bodyElement} class="cinder-modal__body" tabindex="-1">
+        <div
+          bind:this={bodyElement}
+          class="cinder-modal__body"
+          tabindex="-1"
+          {@attach overflowFade()}
+        >
           {@render children()}
         </div>
 
