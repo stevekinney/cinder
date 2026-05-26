@@ -11,7 +11,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--cinder-space-1);
+  gap: var(--cinder-space-2);
   min-block-size: var(--cinder-button-height-md);
   padding-block: var(--cinder-button-padding-y-md);
   padding-inline: var(--cinder-button-padding-x-md);
@@ -51,15 +51,11 @@
 }
 
 .cinder-dropdown-trigger__caret {
-  display: inline-block;
+  display: block;
   flex: none;
-  inline-size: 0.5em;
-  block-size: 0.5em;
-  border-inline-end: 2px solid currentColor;
-  border-block-end: 2px solid currentColor;
+  inline-size: 0.75em;
+  block-size: 0.75em;
   opacity: 0.65;
-  rotate: 45deg;
-  translate: 0 -0.125em;
 }
 
 /* ----------------------------------------

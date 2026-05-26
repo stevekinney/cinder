@@ -32,6 +32,31 @@ function textSnippet(text: string) {
   }));
 }
 
+function extractDeclarationBlock(css: string, selector: string): string {
+  const selectorStart = css.indexOf(`${selector} {`);
+  if (selectorStart === -1) {
+    throw new Error(`Could not find selector: ${selector}`);
+  }
+
+  const blockStart = css.indexOf('{', selectorStart);
+  let depth = 0;
+
+  for (let index = blockStart; index < css.length; index += 1) {
+    const character = css[index];
+    if (character === '{') depth += 1;
+    if (character === '}') depth -= 1;
+    if (depth === 0) {
+      return css.slice(blockStart + 1, index);
+    }
+  }
+
+  throw new Error(`Could not find closing brace for selector: ${selector}`);
+}
+
+function expectNoDeclaration(block: string, propertyName: string): void {
+  expect(block).not.toMatch(new RegExp(`(^|\\n)\\s*${propertyName}\\s*:`));
+}
+
 describe('Dropdown', () => {
   test('trigger renders', () => {
     const { container } = render(Dropdown, {
@@ -166,13 +191,55 @@ describe('Dropdown', () => {
 
     const caret = container.querySelector('.trigger .cinder-dropdown-trigger__caret');
     expect(caret).not.toBeNull();
+    expect(caret?.tagName.toLowerCase()).toBe('svg');
     expect(caret?.getAttribute('aria-hidden')).toBe('true');
+    expect(caret?.getAttribute('focusable')).toBe('false');
+    expect(caret?.getAttribute('stroke')).toBe('currentColor');
+    expect(caret?.getAttribute('stroke-width')).toBe('2');
+    expect(caret?.getAttribute('viewBox')).toBe('0 0 20 20');
+
+    const paths = caret?.querySelectorAll('path');
+    expect(paths).toHaveLength(1);
+    expect(paths?.[0]?.getAttribute('d')).toBe('M6 8l4 4 4-4');
   });
 
   test('compound trigger can suppress the automatic caret', () => {
     const { container } = render(DropdownTriggerNoCaretFixture);
 
     expect(container.querySelector('.trigger .cinder-dropdown-trigger__caret')).toBeNull();
+  });
+
+  test('compound trigger caret CSS uses SVG sizing and system spacing', async () => {
+    const dropdownCss = await Bun.file(new URL('./dropdown.css', import.meta.url)).text();
+    const navigationItemCss = await Bun.file(
+      new URL('../navigation-item/navigation-item.css', import.meta.url),
+    ).text();
+
+    const triggerBlock = extractDeclarationBlock(dropdownCss, '.cinder-dropdown-trigger');
+    const caretBlock = extractDeclarationBlock(dropdownCss, '.cinder-dropdown-trigger__caret');
+    const navigationItemBlock = extractDeclarationBlock(
+      navigationItemCss,
+      '.cinder-navigation-item',
+    );
+
+    expect(triggerBlock).toContain('gap: var(--cinder-space-2);');
+    expect(navigationItemBlock).toContain('gap: var(--cinder-space-2);');
+    expect(caretBlock).toContain('inline-size: 0.75em;');
+    expect(caretBlock).toContain('block-size: 0.75em;');
+
+    for (const propertyName of [
+      'border-inline-end',
+      'border-block-end',
+      'border-left',
+      'border-right',
+      'border-top',
+      'border-bottom',
+      'rotate',
+      'translate',
+      'transform',
+    ]) {
+      expectNoDeclaration(caretBlock, propertyName);
+    }
   });
 
   test('compound menu renders labels, separators, and items', async () => {
