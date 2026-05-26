@@ -85,6 +85,15 @@
  * Menu panel
  * ---------------------------------------- */
 
+.cinder-dropdown__menu,
+.cinder-dropdown-menu {
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+  color: var(--cinder-text);
+  box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
+}
+
 .cinder-dropdown__menu {
   position: absolute;
   z-index: var(--cinder-z-dropdown, 40);
@@ -92,14 +101,6 @@
   padding: var(--cinder-space-1) 0;
   overflow: hidden;
 
-  border-radius: var(--cinder-radius-lg);
-  border: 1px solid var(--cinder-border);
-  background: var(--cinder-surface);
-  box-shadow:
-    0 4px 6px -1px color-mix(in oklch, var(--cinder-text) 8%, transparent),
-    0 2px 4px -2px color-mix(in oklch, var(--cinder-text) 6%, transparent);
-
-  color: var(--cinder-text);
   font-size: var(--cinder-text-sm);
   line-height: var(--cinder-leading-normal);
 }
@@ -114,11 +115,6 @@
   margin: 0;
   padding: var(--cinder-space-1);
   overflow-y: auto;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface-raised);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
   outline: none;
 }
 
