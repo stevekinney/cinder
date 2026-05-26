@@ -6,6 +6,18 @@ export type StepItem = {
   label: string;
   /** Optional secondary text shown beneath the label. */
   description?: string;
+  /**
+   * When set, the step body renders as a link (`<a>`) to this href. The marker
+   * and connector stay decorative; only the body (label + description) is the
+   * interactive target.
+   */
+  href?: string;
+  /**
+   * When set, the step body renders as a button invoking this callback. When
+   * combined with `href`, the body renders as a link that also runs the
+   * callback on click (the consumer decides whether to `preventDefault`).
+   */
+  onclick?: (event: MouseEvent) => void;
 };
 export type StepsProps = {
   /** Ordered list of step entries from first to last. */

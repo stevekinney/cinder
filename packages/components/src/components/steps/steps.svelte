@@ -51,10 +51,12 @@
       {@const state = stepStates[index]}
       {@const isCurrent = state === 'current'}
       {@const isComplete = state === 'complete'}
+      {@const hasHref = step.href !== undefined}
+      {@const isInteractive = hasHref || step.onclick !== undefined}
       <li
         class="cinder-steps__item"
         data-cinder-state={state}
-        {...isCurrent ? { 'aria-current': 'step' } : {}}
+        aria-current={isCurrent && !isInteractive ? 'step' : undefined}
       >
         <span class="cinder-steps__marker" aria-hidden="true">
           {#if isComplete}
@@ -63,16 +65,50 @@
             <span class="cinder-steps__index">{index + 1}</span>
           {/if}
         </span>
-        <span class="cinder-steps__body">
-          {#if isComplete}
-            <span class="cinder-steps__sr-only">{completedLabel}</span>
-            <span class="cinder-steps__sr-only-separator"> </span>
-          {/if}
-          <span class="cinder-steps__label">{step.label}</span>
-          {#if step.description}
-            <span class="cinder-steps__description">{step.description}</span>
-          {/if}
-        </span>
+        {#if hasHref}
+          <a
+            class="cinder-steps__interactive cinder-steps__body"
+            href={step.href}
+            onclick={step.onclick}
+            aria-current={isCurrent ? 'step' : undefined}
+          >
+            {#if isComplete}
+              <span class="cinder-steps__sr-only">{completedLabel}</span>
+              <span class="cinder-steps__sr-only-separator"> </span>
+            {/if}
+            <span class="cinder-steps__label">{step.label}</span>
+            {#if step.description}
+              <span class="cinder-steps__description">{step.description}</span>
+            {/if}
+          </a>
+        {:else if step.onclick}
+          <button
+            type="button"
+            class="cinder-steps__interactive cinder-steps__body"
+            onclick={step.onclick}
+            aria-current={isCurrent ? 'step' : undefined}
+          >
+            {#if isComplete}
+              <span class="cinder-steps__sr-only">{completedLabel}</span>
+              <span class="cinder-steps__sr-only-separator"> </span>
+            {/if}
+            <span class="cinder-steps__label">{step.label}</span>
+            {#if step.description}
+              <span class="cinder-steps__description">{step.description}</span>
+            {/if}
+          </button>
+        {:else}
+          <span class="cinder-steps__body">
+            {#if isComplete}
+              <span class="cinder-steps__sr-only">{completedLabel}</span>
+              <span class="cinder-steps__sr-only-separator"> </span>
+            {/if}
+            <span class="cinder-steps__label">{step.label}</span>
+            {#if step.description}
+              <span class="cinder-steps__description">{step.description}</span>
+            {/if}
+          </span>
+        {/if}
         {#if index < steps.length - 1}
           <span
             class="cinder-steps__connector"
