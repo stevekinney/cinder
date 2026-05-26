@@ -22,6 +22,10 @@
     box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
 }
 
+/* Mode is expressed through internal affordances, never through a separate
+ * chip-root surface. Display, resting toggle, and removable roots share this
+ * same surface contract. */
+
 button.cinder-chip {
   font: inherit;
   cursor: pointer;
@@ -120,11 +124,14 @@ button.cinder-chip {
  * ---------------------------------------- */
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='neutral'] {
-  background: var(--cinder-text);
-  color: var(--cinder-surface-inset);
-  border-color: var(--cinder-text);
+  background: var(--cinder-surface-pressed);
+  color: var(--cinder-text);
+  border-color: var(--cinder-border-strong);
 }
 
+/* Neutral pressed state is a restrained selection shift on the shared chip
+ * surface, not a full inversion. Status pressed recipes remain intentionally
+ * separate until their readable-foreground cleanup lands. */
 .cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
   background: var(--cinder-success, #059669);
   color: var(--cinder-color-success-bg);
@@ -219,6 +226,7 @@ button.cinder-chip:disabled {
   cursor: pointer;
   border-radius: var(--cinder-radius-full);
   font: inherit;
+  margin-inline-start: var(--cinder-space-0-5);
   appearance: none;
   /* Anchor the WCAG 2.5.5 hit-area pseudo-element. */
   position: relative;
@@ -236,13 +244,9 @@ button.cinder-chip:disabled {
   transform: translateY(-50%);
 }
 
-/* Same overlay technique as the chip-body hover above. */
 @media (hover: hover) {
   .cinder-chip__remove:hover:not(:disabled) {
-    background-image: linear-gradient(
-      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
-      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
-    );
+    background-color: var(--cinder-surface-hover);
   }
 }
 
