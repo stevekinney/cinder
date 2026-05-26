@@ -21,6 +21,8 @@ export function detectTrigger({
   if (!isSingleNonWhitespaceCodePoint(triggerChar)) return null;
 
   const caretIndex = Math.max(0, Math.min(selectionEnd, text.length));
+  if (caretIndex === 0) return null;
+
   const triggerStart = text.lastIndexOf(triggerChar, caretIndex - 1);
   if (triggerStart < 0) return null;
 

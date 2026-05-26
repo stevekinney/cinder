@@ -21,6 +21,10 @@ describe('detectTrigger', () => {
     });
   });
 
+  test('does not detect the trigger when the caret is before it', () => {
+    expect(detectTrigger({ text: '/', selectionStart: 0, selectionEnd: 0 })).toBeNull();
+  });
+
   test('ignores paths and urls', () => {
     expect(detectTrigger({ text: 'foo/bar', selectionStart: 7, selectionEnd: 7 })).toBeNull();
     expect(detectTrigger({ text: 'http://x', selectionStart: 8, selectionEnd: 8 })).toBeNull();
