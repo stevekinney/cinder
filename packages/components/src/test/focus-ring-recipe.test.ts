@@ -157,6 +157,7 @@ describe('number-input stepper — self-owned inset focus ring', () => {
   test('paints an inset ring (not the shared outer-ring recipe)', () => {
     const root = parse(numberInputCss);
     const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
     const boxShadow = declValue(rules[0]!, 'box-shadow');
     expect(boxShadow).toBeDefined();
     expect(boxShadow).toContain('inset');
@@ -169,6 +170,7 @@ describe('number-input stepper — self-owned inset focus ring', () => {
   test('shows the surface-hover background affordance', () => {
     const root = parse(numberInputCss);
     const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
     expect(declValue(rules[0]!, 'background')).toBe('var(--cinder-surface-hover)');
   });
 
