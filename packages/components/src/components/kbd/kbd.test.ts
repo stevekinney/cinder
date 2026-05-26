@@ -9,6 +9,8 @@ const { render } = await import('@testing-library/svelte');
 const { createRawSnippet } = await import('svelte');
 const { default: Kbd } = await import('./kbd.svelte');
 
+const kbdCss = await Bun.file(new URL('./kbd.css', import.meta.url)).text();
+
 function snippet(text: string) {
   return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
 }
@@ -47,5 +49,10 @@ describe('Kbd', () => {
   test('applies size as a data attribute', () => {
     const { container } = render(Kbd, { label: 'K', size: 'sm' });
     expect(container.querySelector('kbd')?.getAttribute('data-cinder-size')).toBe('sm');
+  });
+
+  test('uses the sans font token for readable shortcut labels', () => {
+    expect(kbdCss).toContain('font-family: var(--cinder-font-sans);');
+    expect(kbdCss).not.toContain('font-family: var(--cinder-font-mono);');
   });
 });

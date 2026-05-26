@@ -54,6 +54,7 @@ Import the hook from the package root — there is no `cinder/use-toast` subpath
 | `duration`    | `number`                                                      | region's `defaultDuration` (`5000`)     | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                                      |
 | `dismissible` | `boolean`                                                     | `true`                                  | When `true`, renders the X button.                                                                                                          |
 | `id`          | `string`                                                      | `cinder-toast-${n}` (auto-incrementing) | Pass a stable id to deduplicate — calling `show` again with the same id replaces the existing toast instead of stacking a duplicate.        |
+| `icon`        | `Snippet`                                                     | —                                       | Renders a decorative leading icon before the message. The icon is `aria-hidden`; keep the status meaning in the message text and variant.   |
 | `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                                       | Renders a button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true` (defaults to `false`). |
 
 ## Variant routing (polite vs assertive)
@@ -76,6 +77,25 @@ toast.dismiss(id);
 ```
 
 Auto-generated ids (`cinder-toast-N`) are instance-local: stable for the lifetime of the mounted region and reset when it unmounts. Use them transiently within the current session, or pass a stable `options.id` when you need cross-render deduplication.
+
+## Action buttons
+
+## Decorative icons
+
+Pass `icon` to show a leading visual marker next to the message. The icon is decorative (`aria-hidden="true"`), so do not rely on it as the only status signal.
+
+```svelte
+{#snippet savedIcon()}
+  <CheckIcon />
+{/snippet}
+```
+
+```ts
+toast.show('Settings saved.', {
+  variant: 'success',
+  icon: savedIcon,
+});
+```
 
 ## Action buttons
 

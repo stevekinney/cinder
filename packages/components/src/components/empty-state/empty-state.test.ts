@@ -12,6 +12,8 @@ const { render } = await import('@testing-library/svelte');
 const { createRawSnippet } = await import('svelte');
 const { default: EmptyState } = await import('./empty-state.svelte');
 
+const emptyStateCss = await Bun.file(new URL('./empty-state.css', import.meta.url)).text();
+
 describe('EmptyState rendering', () => {
   test('renders with required title prop', () => {
     const { container } = render(EmptyState, { props: { title: 'No results' } });
@@ -124,5 +126,12 @@ describe('EmptyState rendering', () => {
     } finally {
       console.error = originalError;
     }
+  });
+
+  test('icon uses subtle text rather than disabled text', () => {
+    const iconRule = emptyStateCss.match(/\.cinder-empty-state-icon\s*\{[^}]*\}/)?.[0];
+
+    expect(iconRule).toContain('color: var(--cinder-text-subtle);');
+    expect(iconRule).not.toContain('var(--cinder-text-disabled)');
   });
 });
