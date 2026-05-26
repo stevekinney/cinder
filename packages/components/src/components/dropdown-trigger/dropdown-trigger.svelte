@@ -81,6 +81,18 @@
     {@render children()}
   {/if}
   {#if showCaret}
-    <span class="cinder-dropdown-trigger__caret" aria-hidden="true"></span>
+    <svg
+      class="cinder-dropdown-trigger__caret"
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M6 8l4 4 4-4" />
+    </svg>
   {/if}
 </button>
