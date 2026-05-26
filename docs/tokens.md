@@ -171,17 +171,20 @@ The brand color and its derivatives. `hover` and `active` are computed from `--c
 
 Single-value status tokens for solid fills like badges and dot indicators. For soft-tinted surfaces (Alert, Toast, Callout) use the semantic triples below instead.
 
-| Token                      | Default                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `--cinder-info`            | `light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245))` |
-| `--cinder-success`         | `light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145))` |
-| `--cinder-warning`         | `light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75))`   |
-| `--cinder-danger`          | `light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25))`   |
-| `--cinder-danger-contrast` | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
-| `--cinder-danger-hover`    | `oklch(from var(--cinder-danger) calc(l - 0.08) c h)`  |
-| `--cinder-danger-active`   | `oklch(from var(--cinder-danger) calc(l - 0.15) c h)`  |
+| Token                       | Default                                                |
+| --------------------------- | ------------------------------------------------------ |
+| `--cinder-info`             | `light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245))` |
+| `--cinder-success`          | `light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145))` |
+| `--cinder-warning`          | `light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75))`   |
+| `--cinder-danger`           | `light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25))`   |
+| `--cinder-danger-contrast`  | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
+| `--cinder-danger-hover`     | `oklch(from var(--cinder-danger) calc(l - 0.08) c h)`  |
+| `--cinder-danger-active`    | `oklch(from var(--cinder-danger) calc(l - 0.15) c h)`  |
+| `--cinder-success-contrast` | `light-dark(oklch(100% 0 0), oklch(15% 0.03 145))`     |
+| `--cinder-warning-contrast` | `light-dark(oklch(100% 0 0), oklch(20% 0.04 75))`      |
+| `--cinder-info-contrast`    | `light-dark(oklch(100% 0 0), oklch(15% 0.03 245))`     |
 
-`--cinder-danger-contrast` exists because dark-mode `--cinder-danger` sits around 72% lightness and pure white fails WCAG AA against it.
+The `*-contrast` tokens are the foreground color for text and icons placed on a solid status fill (e.g. a pressed semantic chip). In light mode the accents are dark enough for white text; in dark mode they sit at high lightness, so a dark same-hue color wins. All clear WCAG AA (≥4.5:1) against their paired accent.
 
 ## Status — semantic triples
 

@@ -19,7 +19,22 @@
   import type { EmptyStateProps } from './empty-state.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { title, description, class: className, icon, action }: EmptyStateProps = $props();
+  let {
+    title,
+    description,
+    class: className,
+    headingLevel = 3,
+    icon,
+    action,
+  }: EmptyStateProps = $props();
+
+  // Coerce + clamp at runtime: a consumer can pass 0, 7, NaN, or a non-numeric
+  // value despite the TS literal union, and <h0>/<hNaN> is invalid markup.
+  const safeLevel = $derived.by(() => {
+    const n = Math.trunc(Number(headingLevel));
+    return Number.isFinite(n) ? Math.min(6, Math.max(1, n)) : 3;
+  });
+  const tag = $derived(`h${safeLevel}`);
 </script>
 
 <div class={classNames('cinder-empty-state', className)}>
@@ -28,7 +43,7 @@
       {@render icon()}
     </div>
   {/if}
-  <h3 class="cinder-empty-state-title">{title}</h3>
+  <svelte:element this={tag} class="cinder-empty-state-title">{title}</svelte:element>
   {#if description}
     <p class="cinder-empty-state-description">{description}</p>
   {/if}

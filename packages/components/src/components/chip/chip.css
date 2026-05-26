@@ -126,27 +126,27 @@ button.cinder-chip {
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
-  background: var(--cinder-success, #059669);
-  color: var(--cinder-color-success-bg);
-  border-color: var(--cinder-success, #059669);
+  background: var(--cinder-success);
+  color: var(--cinder-success-contrast);
+  border-color: var(--cinder-success);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='warning'] {
-  background: var(--cinder-warning, #d97706);
-  color: var(--cinder-color-warning-bg);
-  border-color: var(--cinder-warning, #d97706);
+  background: var(--cinder-warning);
+  color: var(--cinder-warning-contrast);
+  border-color: var(--cinder-warning);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='danger'] {
-  background: var(--cinder-danger, #dc2626);
-  color: var(--cinder-color-danger-bg);
-  border-color: var(--cinder-danger, #dc2626);
+  background: var(--cinder-danger);
+  color: var(--cinder-danger-contrast);
+  border-color: var(--cinder-danger);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='info'] {
-  background: var(--cinder-info, #2563eb);
-  color: var(--cinder-color-info-bg);
-  border-color: var(--cinder-info, #2563eb);
+  background: var(--cinder-info);
+  color: var(--cinder-info-contrast);
+  border-color: var(--cinder-info);
 }
 
 .cinder-chip[aria-pressed='true'][data-cinder-variant='accent'] {

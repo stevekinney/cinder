@@ -81,6 +81,7 @@
       variant,
       duration,
       dismissible,
+      ...(options.icon ? { icon: options.icon } : {}),
       ...(options.action ? { action: options.action } : {}),
     };
 
@@ -179,6 +180,9 @@
           data-cinder-variant={toast.variant}
           data-cinder-toast-id={toast.id}
         >
+          {#if toast.icon}
+            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+          {/if}
           <div class="cinder-toast__message">{toast.message}</div>
           {#if toast.action}
             <button
@@ -220,6 +224,9 @@
           data-cinder-variant={toast.variant}
           data-cinder-toast-id={toast.id}
         >
+          {#if toast.icon}
+            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+          {/if}
           <div class="cinder-toast__message">{toast.message}</div>
           {#if toast.action}
             <button

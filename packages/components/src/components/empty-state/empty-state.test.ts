@@ -66,6 +66,29 @@ describe('EmptyState rendering', () => {
     expect(actionContainer?.querySelector('button')?.textContent).toBe('Add item');
   });
 
+  test('defaults the title to an h3', () => {
+    const { container } = render(EmptyState, { props: { title: 'Default level' } });
+    const heading = container.querySelector('.cinder-empty-state-title');
+    expect(heading?.tagName).toBe('H3');
+  });
+
+  test('headingLevel overrides the title tag', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Custom level', headingLevel: 2 },
+    });
+    const heading = container.querySelector('.cinder-empty-state-title');
+    expect(heading?.tagName).toBe('H2');
+    expect(heading?.textContent?.trim()).toBe('Custom level');
+  });
+
+  test('clamps an out-of-range headingLevel back to a valid tag', () => {
+    const { container } = render(EmptyState, {
+      // 7 is outside the union but reachable at runtime; should clamp to h6.
+      props: { title: 'Clamped', headingLevel: 7 as never },
+    });
+    expect(container.querySelector('.cinder-empty-state-title')?.tagName).toBe('H6');
+  });
+
   test('applies class prop to root element', () => {
     const { container } = render(EmptyState, {
       props: { title: 'Empty', class: 'my-custom-class' },
