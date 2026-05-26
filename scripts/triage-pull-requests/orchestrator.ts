@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { Deps } from './dependencies';
-import { checkReadiness, isMergeReady, classifyMergeFailure } from './readiness';
 import type { Readiness } from './readiness';
+import { checkReadiness, classifyMergeFailure, isMergeReady } from './readiness';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,13 +71,20 @@ async function listOpenPRs(
   deps: Deps,
 ): Promise<SnapshotPR[]> {
   const result = await deps.run([
-    'gh', 'api', '-X', 'GET',
+    'gh',
+    'api',
+    '-X',
+    'GET',
     `repos/${owner}/${name}/pulls`,
-    '-f', 'state=open',
-    '-f', 'sort=created',
-    '-f', 'direction=asc',
+    '-f',
+    'state=open',
+    '-f',
+    'sort=created',
+    '-f',
+    'direction=asc',
     '--paginate',
-    '--jq', '.[] | {number, title, headRefName: .head.ref, headRefOid: .head.sha, createdAt: .created_at, isDraft: .draft}',
+    '--jq',
+    '.[] | {number, title, headRefName: .head.ref, headRefOid: .head.sha, createdAt: .created_at, isDraft: .draft}',
   ]);
 
   if (result.exitCode !== 0) {
@@ -182,17 +189,12 @@ async function resolveWorktreeConflict(
   }
   const entries = parseWorktreeList(listResult.stdout);
   const cwd = process.cwd();
-  const conflicting = entries.filter(
-    (entry) => entry.branch === headRefName && entry.path !== cwd,
-  );
+  const conflicting = entries.filter((entry) => entry.branch === headRefName && entry.path !== cwd);
   if (conflicting.length === 0) {
     return { outcome: 'ok' };
   }
   for (const entry of conflicting) {
-    deps.log(
-      'WARN',
-      `Removing stale worktree at ${entry.path} (holds branch ${headRefName})`,
-    );
+    deps.log('WARN', `Removing stale worktree at ${entry.path} (holds branch ${headRefName})`);
     const remove = await deps.run(['git', 'worktree', 'remove', '--force', entry.path]);
     if (remove.exitCode !== 0) {
       const detail = remove.stderr.trim() || `exit ${remove.exitCode}`;
@@ -282,9 +284,7 @@ async function addressLoop(
     if (refCheck.exitCode !== 0) {
       return softSkipWithRecovery('local-branch-no-upstream', deps);
     }
-    const unpushedResult = await deps.run([
-      'git', 'rev-list', `${remoteRef}..HEAD`, '--count',
-    ]);
+    const unpushedResult = await deps.run(['git', 'rev-list', `${remoteRef}..HEAD`, '--count']);
     const unpushed = parseInt(unpushedResult.stdout.trim(), 10);
     if (unpushed > 0) {
       return softSkipWithRecovery('unpushed-local-commits', deps);
@@ -304,10 +304,7 @@ async function addressLoop(
       return { outcome: 'ready', readiness };
     }
 
-    deps.log(
-      'WARN',
-      `PR #${pr.number} not ready after attempt ${attempt}/${options.maxAttempts}`,
-    );
+    deps.log('WARN', `PR #${pr.number} not ready after attempt ${attempt}/${options.maxAttempts}`);
   }
 
   return softSkipWithRecovery('cap-out', deps);
@@ -339,10 +336,7 @@ async function mergePR(
     return softSkipWithRecovery('lost-readiness', deps);
   }
 
-  const mergeArgs = [
-    'gh', 'pr', 'merge', String(pr.number),
-    '--squash', '--delete-branch',
-  ];
+  const mergeArgs = ['gh', 'pr', 'merge', String(pr.number), '--squash', '--delete-branch'];
   if (context.supportsMatchHeadCommit) {
     mergeArgs.push('--match-head-commit', finalReadiness.headRefOid);
   }
@@ -393,9 +387,14 @@ async function mergePR(
   try {
     mergeCommitSha = (
       await deps.runOk([
-        'gh', 'pr', 'view', String(pr.number),
-        '--json', 'mergeCommit',
-        '--jq', '.mergeCommit.oid',
+        'gh',
+        'pr',
+        'view',
+        String(pr.number),
+        '--json',
+        'mergeCommit',
+        '--jq',
+        '.mergeCommit.oid',
       ])
     ).trim();
   } catch {
@@ -509,9 +508,7 @@ export async function runTriage(options: TriageOptions, deps: Deps): Promise<num
     const localSha = (await deps.run(['git', 'rev-parse', 'HEAD'])).stdout.trim();
     const remoteSha = (await deps.run(['git', 'rev-parse', 'origin/main'])).stdout.trim();
     if (localSha !== remoteSha) {
-      const countResult = await deps.run([
-        'git', 'rev-list', 'HEAD..origin/main', '--count',
-      ]);
+      const countResult = await deps.run(['git', 'rev-list', 'HEAD..origin/main', '--count']);
       const count = countResult.stdout.trim();
       deps.log('INFO', `Local main is ${count} commit(s) behind origin/main.`);
     }
@@ -715,9 +712,7 @@ export async function runTriage(options: TriageOptions, deps: Deps): Promise<num
   const remainingPending = skippedByReason.get('ci-pending')?.length ?? 0;
   const hasFailures =
     hardStopReason !== null ||
-    [...skippedByReason.entries()].some(
-      ([reason, nums]) => reason !== 'draft' && nums.length > 0,
-    );
+    [...skippedByReason.entries()].some(([reason, nums]) => reason !== 'draft' && nums.length > 0);
 
   const exitCode = hasFailures ? 1 : 0;
 

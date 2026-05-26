@@ -1,0 +1,43 @@
+<script lang="ts" module>
+  export const title = 'Overflowing drawer';
+  export const description = 'A side drawer with a scrollable body.';
+</script>
+
+<script lang="ts">
+  import { Button } from 'cinder/button';
+  import { Drawer } from 'cinder/drawer';
+
+  let open = $state(false);
+  let triggerRef: HTMLElement | null = $state(null);
+
+  const filters = Array.from({ length: 30 }, (_, index) => ({
+    id: `filter-${index + 1}`,
+    label: `Filter group ${index + 1}`,
+  }));
+</script>
+
+<Button
+  label="Open drawer"
+  onclick={(event) => {
+    triggerRef = event.currentTarget as HTMLElement;
+    open = true;
+  }}
+/>
+
+<Drawer bind:open title="Filters" {triggerRef}>
+  <div style="display: grid; gap: 0.75rem;">
+    {#each filters as filter (filter.id)}
+      <label
+        style="display: flex; align-items: center; gap: 0.5rem; color: var(--cinder-text-muted);"
+      >
+        <input type="checkbox" />
+        {filter.label}
+      </label>
+    {/each}
+  </div>
+
+  {#snippet footer()}
+    <Button variant="secondary" label="Cancel" onclick={() => (open = false)} />
+    <Button label="Apply" onclick={() => (open = false)} />
+  {/snippet}
+</Drawer>
