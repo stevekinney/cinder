@@ -16,7 +16,7 @@ const schema = {
     variant: {
       enum: ['horizontal', 'mobile', 'vertical'],
       description:
-        "Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.\n\n- `'horizontal'`: top-rounded radius, accent bottom-border active indicator.\n  Used inside `NavigationBar` and similar horizontal tab-bar contexts.\n- `'mobile'`: stacked full-width layout below the mobile breakpoint.\n- `'vertical'`: symmetric radius, accent inline-start border active indicator.\n  Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or\n  standalone sidebar footers — anywhere a vertical, non-tombstone focus ring\n  is required.",
+        "Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.\n\n- `'horizontal'`: top-rounded radius, accent bottom-border active indicator.\n  Used inside `NavigationBar` and similar horizontal tab-bar contexts.\n- `'mobile'`: stacked full-width layout below the mobile breakpoint.\n- `'vertical'`: square row geometry, neutral selected surface, and accent inline-start border active indicator.\n  Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or\n  standalone sidebar footers where flush sidebar edges are required.",
     },
   },
   additionalProperties: false,
