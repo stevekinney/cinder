@@ -16,11 +16,18 @@ const { default: Badge } = await import('./badge.svelte');
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
 
+const badgeCss = await Bun.file(new URL('./badge.css', import.meta.url)).text();
+
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<span>${text}</span>`,
   }));
+}
+
+function cssRule(selector: string): string {
+  const escapedSelector = selector.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return badgeCss.match(new RegExp(`${escapedSelector}\\s*\\{[^}]*\\}`))?.[0] ?? '';
 }
 
 describe('Badge', () => {
@@ -65,5 +72,15 @@ describe('Badge', () => {
       children: textSnippet('hello badge'),
     });
     expect(container.querySelector('.cinder-badge')?.textContent).toContain('hello badge');
+  });
+
+  test('xs and sm sizes stay mechanically differentiated for count badges', () => {
+    const xsRule = cssRule(".cinder-badge[data-cinder-size='xs']");
+    const smRule = cssRule(".cinder-badge[data-cinder-size='sm']");
+
+    expect(xsRule).toContain('font-size: 0.625rem');
+    expect(xsRule).toContain('line-height: 0.875rem');
+    expect(smRule).toContain('font-size: var(--cinder-text-2xs');
+    expect(smRule).toContain('line-height: 1rem');
   });
 });

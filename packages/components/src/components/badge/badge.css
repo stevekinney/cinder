@@ -25,7 +25,7 @@
  * ---------------------------------------- */
 
 .cinder-badge[data-cinder-size='xs'] {
-  font-size: var(--cinder-text-2xs, 0.625rem);
+  font-size: 0.625rem; /* 10px — smaller than 2xs (11px) for icon-button count badges */
   padding: 0 var(--cinder-space-1);
   line-height: 0.875rem;
 }

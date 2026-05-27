@@ -204,12 +204,12 @@ describe('discoverSidebarComponents', () => {
 
   it('keeps the sidebar at or below the 87-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
-    // repository has grown to 122 components since then; adding the four
-    // new parent families (feed, grid-list, stat-group, side-navigation)
-    // lands the sidebar around 78. The three chart families (line, bar,
-    // area) bumped it to 82. Overlay and navigation examples brought it to
-    // 86, and Selectable, CommandPalette, and CommandMenu now place the
-    // current focused-entry gate at 87, still smaller than the full list.
+    // repository has grown well past that since then; adding the four new
+    // parent families (feed, grid-list, stat-group, side-navigation) landed
+    // the sidebar around 78. The three chart families (line, bar, area)
+    // bumped it to 82, and the P5 input and form audit brought it to 86.
+    // The CommandMenu family adds one more deduped sidebar entry, placing
+    // the current product gate at 87 — still smaller than the full list.
     const sidebar = await discoverSidebarComponents();
     expect(sidebar.length).toBeLessThanOrEqual(87);
   });

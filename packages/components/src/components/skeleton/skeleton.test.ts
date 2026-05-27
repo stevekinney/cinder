@@ -11,6 +11,8 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: Skeleton } = await import('./skeleton.svelte');
 
+const skeletonCss = await Bun.file(new URL('./skeleton.css', import.meta.url)).text();
+
 describe('Skeleton', () => {
   test('renders without errors', () => {
     const { container } = render(Skeleton);
@@ -58,5 +60,20 @@ describe('Skeleton', () => {
     } finally {
       console.error = originalError;
     }
+  });
+
+  test('shimmer uses a small oklch relative lift instead of srgb white mix', () => {
+    expect(skeletonCss).toContain('oklch(from var(--cinder-surface-inset) calc(l + 0.06) c h) 50%');
+    expect(skeletonCss).not.toContain('color-mix(in srgb');
+    expect(skeletonCss).not.toContain('white 40%');
+  });
+
+  test('reduced motion falls back to the inset surface token', () => {
+    const reducedMotionBlock = skeletonCss.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-skeleton\s*\{[\s\S]*?\}\s*\}/,
+    )?.[0];
+
+    expect(reducedMotionBlock).toContain('animation: none');
+    expect(reducedMotionBlock).toContain('background: var(--cinder-surface-inset);');
   });
 });

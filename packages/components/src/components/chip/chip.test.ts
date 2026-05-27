@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
+import { readFileSync } from 'node:fs';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -9,12 +11,35 @@ const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Chip } = await import('./chip.svelte');
 const { createRawSnippet } = await import('svelte');
 
+const chipCss = await Bun.file(new URL('./chip.css', import.meta.url)).text();
+
 afterEach(() => cleanup());
 
 function iconSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<svg><title>${text}</title></svg>`,
   }));
+}
+
+function appendChipStyles() {
+  const style = document.createElement('style');
+  style.textContent = chipCss;
+  document.head.append(style);
+  return () => style.remove();
+}
+
+function rootSurface(chip: Element) {
+  const style = getComputedStyle(chip);
+  return {
+    backgroundColor: style.backgroundColor,
+    borderColor: style.borderColor,
+    borderRadius: style.borderRadius,
+  };
+}
+
+function cssRuleBody(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return chipCss.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? '';
 }
 
 describe('Chip', () => {
@@ -135,7 +160,29 @@ describe('Chip', () => {
     expect(chip?.getAttribute('data-cinder-mode')).toBe('removable');
     const removeBtn = chip?.querySelector('button.cinder-chip__remove');
     expect(removeBtn).not.toBeNull();
+    expect(removeBtn?.getAttribute('type')).toBe('button');
     expect(removeBtn?.getAttribute('aria-label')).toBe('Remove JavaScript');
+  });
+
+  test('all modes share the same root class without mode-specific surface classes', () => {
+    const display = render(Chip, { label: 'Display chip' });
+    const toggle = render(Chip, { mode: 'toggle', label: 'Toggle chip', pressed: false });
+    const removable = render(Chip, { mode: 'removable', label: 'Removable chip' });
+
+    const chips = [display.container, toggle.container, removable.container].map((container) => {
+      const chip = container.querySelector('.cinder-chip');
+      expect(chip).not.toBeNull();
+      return chip as Element;
+    });
+    expect(chips).toHaveLength(3);
+    expect(chips.map((chip) => chip.getAttribute('data-cinder-mode'))).toEqual([
+      'display',
+      'toggle',
+      'removable',
+    ]);
+    expect(chips.every((chip) => chip.classList.contains('cinder-chip'))).toBe(true);
+    expect(chips.flatMap((chip) => Array.from(chip.classList))).not.toContain('cinder-chip--mode');
+    expect(chips.map((chip) => chip.tagName.toLowerCase())).toEqual(['span', 'button', 'span']);
   });
 
   test('removable mode click calls onremove', async () => {
@@ -153,6 +200,13 @@ describe('Chip', () => {
     });
     const removeBtn = container.querySelector('button.cinder-chip__remove');
     expect(removeBtn?.getAttribute('aria-label')).toBe('Dismiss JavaScript tag');
+  });
+
+  test('removable mode hides the remove glyph from assistive technology', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
+    const removeGlyph = container.querySelector('button.cinder-chip__remove span');
+    expect(removeGlyph?.textContent).toBe('×');
+    expect(removeGlyph?.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('removable mode with empty label renders aria-label "Remove "', () => {
@@ -268,4 +322,75 @@ describe('Chip', () => {
     const chip = container.querySelector('.cinder-chip');
     expect(chip?.hasAttribute('data-cinder-density')).toBe(false);
   });
+
+  test('resting display, toggle, and removable roots share the same computed surface', () => {
+    const removeChipStyles = appendChipStyles();
+    try {
+      const display = render(Chip, { label: 'Display chip' });
+      const toggle = render(Chip, { mode: 'toggle', label: 'Toggle chip', pressed: false });
+      const removable = render(Chip, { mode: 'removable', label: 'Removable chip' });
+
+      const chips = [display.container, toggle.container, removable.container].map((container) => {
+        const chip = container.querySelector('.cinder-chip');
+        expect(chip).not.toBeNull();
+        return chip as Element;
+      });
+      const surfaces = chips.map(rootSurface);
+
+      expect(surfaces[1]).toEqual(surfaces[0]);
+      expect(surfaces[2]).toEqual(surfaces[0]);
+    } finally {
+      removeChipStyles();
+    }
+  });
+
+  test('neutral pressed toggle stays on the shared selected-surface recipe', () => {
+    const body = cssRuleBody(".cinder-chip[aria-pressed='true'][data-cinder-variant='neutral']");
+    expect(body).toContain('background: var(--cinder-surface-pressed)');
+    expect(body).toContain('color: var(--cinder-text)');
+    expect(body).toContain('border-color: var(--cinder-border-strong)');
+    expect(body).not.toContain('background: var(--cinder-text)');
+    expect(body).not.toContain('color: var(--cinder-surface-inset)');
+  });
+
+  test('remove button hover uses a circular hover surface without overriding variant color', () => {
+    const body = cssRuleBody('.cinder-chip__remove:hover:not(:disabled)');
+    expect(body).toContain('background-color: var(--cinder-surface-hover)');
+    expect(body).not.toContain('color: var(--cinder-text)');
+    expect(chipCss).toContain('border-radius: var(--cinder-radius-full)');
+  });
+});
+
+// Source-level guard: pressed semantic chips must pair the solid accent
+// background with its readable *-contrast foreground token, never the soft
+// `*-bg` tint that rendered unreadable. Asserting `aria-pressed` alone would
+// not catch a foreground regression, so we read the stylesheet directly.
+describe('Chip pressed-state foreground tokens', () => {
+  const css = readFileSync(new URL('./chip.css', import.meta.url), 'utf8');
+
+  test.each([
+    ['success', '--cinder-success-contrast', '--cinder-color-success-bg'],
+    ['warning', '--cinder-warning-contrast', '--cinder-color-warning-bg'],
+    ['danger', '--cinder-danger-contrast', '--cinder-color-danger-bg'],
+    ['info', '--cinder-info-contrast', '--cinder-color-info-bg'],
+  ] as const)(
+    'pressed %s chip uses the contrast token, not the soft tint',
+    (variant, contrastToken, softTint) => {
+      // Selector attribute order matters for this regex: [aria-pressed] then
+      // [data-cinder-variant]. The `[^}]*` body match assumes flat rules (no
+      // nesting), which holds for these pressed-state declarations.
+      const block = css.match(
+        new RegExp(
+          `\\.cinder-chip\\[aria-pressed='true'\\]\\[data-cinder-variant='${variant}'\\]\\s*\\{[^}]*\\}`,
+        ),
+      )?.[0];
+      expect(block).toBeDefined();
+      // Pin the assertion to the `color:` declaration specifically, so a stray
+      // mention of the banned token in a comment or another property can't
+      // produce a false pass/fail.
+      const colorDeclaration = block?.match(/\bcolor:\s*[^;]+;/)?.[0];
+      expect(colorDeclaration).toBe(`color: var(${contrastToken});`);
+      expect(colorDeclaration).not.toContain(softTint);
+    },
+  );
 });

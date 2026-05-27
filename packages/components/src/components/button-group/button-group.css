@@ -42,16 +42,106 @@
   z-index: 1;
 }
 
-/* ── Border collapse via negative margin ──────────────────────────────── */
+/* ── Border collapse via seam on the group-item pseudo-element ────────── */
+/* Negative-margin overlap let a transparent-bordered variant (primary/danger)
+ * notch the shared hairline against a bordered one (secondary). Instead each
+ * non-first item paints one deterministic 1px seam on its inner edge via a
+ * ::before pseudo-element owned by the group. Drawn on the item wrapper, not
+ * the button, so it never competes with the button's focus-ring box-shadow and
+ * never doubles with the button's own border. */
+.cinder-button-group > [data-cinder-button-group-item]:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  background: var(--cinder-border);
+  pointer-events: none;
+}
 
 .cinder-button-group[data-cinder-orientation='horizontal']
-  > [data-cinder-button-group-item]:not(:first-child) {
-  margin-inline-start: -1px;
+  > [data-cinder-button-group-item]:not(:first-child)::before {
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 1px;
 }
 
 .cinder-button-group[data-cinder-orientation='vertical']
-  > [data-cinder-button-group-item]:not(:first-child) {
-  margin-block-start: -1px;
+  > [data-cinder-button-group-item]:not(:first-child)::before {
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 1px;
+}
+
+/* On the FOCUSED participant only, drop its own seam so the focus ring is never
+ * overpainted by a 1px line. Scoped to :focus-within — NOT :hover — because only
+ * focus paints a ring that needs protecting; hovering must keep the seam visible
+ * (hover has no ring, so suppressing it there would simply erase the junction
+ * line). The focused item is also lifted to z-index:1 by the existing
+ * :where(:hover,:focus-within) rule above, so its ring additionally paints over
+ * the neighbor item's seam. Net: a focused button shows a clean, unclipped ring;
+ * every resting AND hovered junction keeps its seam. */
+.cinder-button-group > [data-cinder-button-group-item]:focus-within:not(:first-child)::before {
+  opacity: 0;
+}
+
+/* Zero BOTH borders that meet at each junction so the pseudo-element line is the
+ * only thing between two buttons. Uses -color: transparent (not border-width: 0)
+ * to preserve box geometry so the radius-flattening rules and heights are
+ * unaffected.
+ *
+ * Both sides matter: with the negative-margin overlap gone, adjacent buttons no
+ * longer share a hairline, so a bordered variant (e.g. secondary) would render
+ * its own end border AND the next item's seam — a doubled 2px divider. Each
+ * non-first item drops its seam-facing START border, and each non-last item
+ * drops its seam-facing END border, leaving exactly the one `::before` seam.
+ *
+ * The two-arm `:is(.cinder-button, button)` selector intentionally mirrors the
+ * radius-flattening rules below: a grouped item is contractually a `<Button>`,
+ * a toggle `<button>`, or a `<Dropdown>` whose trigger is a button (see
+ * button-group.a11y.md — the group is a visual container for button-shaped
+ * actions, never a form input). So the seam and the transparent borders land on
+ * the same elements that already get their corners flattened; if a future
+ * non-button item type is supported, update both rule sets together. The
+ * `:not([role='menu'] *):not([role='menuitem'])` guard keeps a split-button's
+ * dropdown menu items from being touched. */
+.cinder-button-group[data-cinder-orientation='horizontal']
+  > [data-cinder-button-group-item]:not(:first-child)
+  :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
+.cinder-button-group[data-cinder-orientation='horizontal']
+  > [data-cinder-button-group-item]:is(.cinder-button, button):not(:first-child) {
+  border-inline-start-color: transparent;
+}
+
+.cinder-button-group[data-cinder-orientation='horizontal']
+  > [data-cinder-button-group-item]:not(:last-child)
+  :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
+.cinder-button-group[data-cinder-orientation='horizontal']
+  > [data-cinder-button-group-item]:is(.cinder-button, button):not(:last-child) {
+  border-inline-end-color: transparent;
+}
+
+.cinder-button-group[data-cinder-orientation='vertical']
+  > [data-cinder-button-group-item]:not(:first-child)
+  :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
+.cinder-button-group[data-cinder-orientation='vertical']
+  > [data-cinder-button-group-item]:is(.cinder-button, button):not(:first-child) {
+  border-block-start-color: transparent;
+}
+
+.cinder-button-group[data-cinder-orientation='vertical']
+  > [data-cinder-button-group-item]:not(:last-child)
+  :is(.cinder-button, button):not([role='menu'] *):not([role='menuitem']),
+.cinder-button-group[data-cinder-orientation='vertical']
+  > [data-cinder-button-group-item]:is(.cinder-button, button):not(:last-child) {
+  border-block-end-color: transparent;
+}
+
+/* Forced colors: the pseudo-element background may not map to a system color,
+ * so remap to CanvasText. The seam-facing border stays transparent (not
+ * restored) so exactly one separator renders — the pseudo-element line. */
+@media (forced-colors: active) {
+  .cinder-button-group > [data-cinder-button-group-item]:not(:first-child)::before {
+    background: CanvasText;
+  }
 }
 
 /* ── Border-radius flattening ─────────────────────────────────────────── */
