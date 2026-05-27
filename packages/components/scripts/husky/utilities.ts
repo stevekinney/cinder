@@ -132,6 +132,7 @@ export async function withGateLock<T>(
   const startedAt = Date.now();
   let waitingMessagePrinted = false;
   let lockAcquired = false;
+  let interruptedSignal: NodeJS.Signals | null = null;
 
   const release = () => {
     if (!lockAcquired) return;
@@ -140,10 +141,7 @@ export async function withGateLock<T>(
   };
 
   const handleSignal = (signal: NodeJS.Signals) => {
-    process.off('SIGINT', handleSigint);
-    process.off('SIGTERM', handleSigterm);
-    release();
-    resendSignal(signal);
+    interruptedSignal ??= signal;
   };
   const handleSigint = () => handleSignal('SIGINT');
   const handleSigterm = () => handleSignal('SIGTERM');
@@ -165,6 +163,7 @@ export async function withGateLock<T>(
         process.off('SIGINT', handleSigint);
         process.off('SIGTERM', handleSigterm);
         release();
+        if (interruptedSignal !== null) resendSignal(interruptedSignal);
       }
     } catch (caught) {
       await handle?.close();

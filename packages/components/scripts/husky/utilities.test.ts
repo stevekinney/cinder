@@ -363,14 +363,17 @@ describe('withGateLock', () => {
   });
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    it(`removes the lock before re-sending ${signal}`, async () => {
+    it(`keeps the lock until the protected function finishes after ${signal}`, async () => {
       await withTemporaryLockPath(async (lockPath) => {
         let receivedSignal: NodeJS.Signals | undefined;
+        let continuedAfterSignal = false;
         await expect(
           withGateLock(
             async () => {
               expect(await Bun.file(lockPath).exists()).toBe(true);
               process.emit(signal);
+              expect(await Bun.file(lockPath).exists()).toBe(true);
+              continuedAfterSignal = true;
               throw new SignalIntercepted(signal);
             },
             {
@@ -383,6 +386,7 @@ describe('withGateLock', () => {
           ),
         ).rejects.toThrow(SignalIntercepted);
 
+        expect(continuedAfterSignal).toBe(true);
         expect(receivedSignal).toBe(signal);
         expect(await Bun.file(lockPath).exists()).toBe(false);
       });
