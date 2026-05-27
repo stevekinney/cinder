@@ -7,6 +7,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, waitFor } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: Wrapper } = await import('../../test/fixtures/toast-fixture.svelte');
 
 afterEach(() => {
@@ -174,6 +175,69 @@ describe('useToast api', () => {
       expect(text).toContain('B');
       expect(text).toContain('C');
     });
+  });
+  test('renders the icon snippet before the message when provided', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    const icon = createRawSnippet(() => ({
+      render: () => `<svg data-testid="toast-icon" aria-hidden="true"></svg>`,
+    }));
+    api!.show('With icon', { icon, duration: 0 });
+    await waitFor(() => {
+      const iconWrapper = container.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      expect(iconWrapper?.getAttribute('aria-hidden')).toBe('true');
+      expect(iconWrapper?.querySelector('[data-testid="toast-icon"]')).not.toBeNull();
+      // The icon must precede the message in DOM order.
+      const toast = container.querySelector('.cinder-toast');
+      const children = [...(toast?.children ?? [])];
+      const iconIndex = children.findIndex((el) => el.classList.contains('cinder-toast__icon'));
+      const messageIndex = children.findIndex((el) =>
+        el.classList.contains('cinder-toast__message'),
+      );
+      expect(iconIndex).toBeGreaterThanOrEqual(0);
+      expect(iconIndex).toBeLessThan(messageIndex);
+    });
+  });
+
+  test('renders the icon in the assertive region for warning/danger variants', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    const icon = createRawSnippet(() => ({
+      render: () => `<svg data-testid="assertive-icon" aria-hidden="true"></svg>`,
+    }));
+    api!.show('Heads up', { icon, variant: 'warning', duration: 0 });
+    await waitFor(() => {
+      const assertive = container.querySelector('[role="alert"]');
+      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      expect(iconWrapper?.querySelector('[data-testid="assertive-icon"]')).not.toBeNull();
+    });
+  });
+
+  test('omits the icon wrapper when no icon is provided', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('No icon', { duration: 0 });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('No icon');
+    });
+    expect(container.querySelector('.cinder-toast__icon')).toBeNull();
   });
 });
 

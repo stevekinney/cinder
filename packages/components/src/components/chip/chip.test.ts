@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
+import { readFileSync } from 'node:fs';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -357,4 +359,38 @@ describe('Chip', () => {
     expect(body).not.toContain('color: var(--cinder-text)');
     expect(chipCss).toContain('border-radius: var(--cinder-radius-full)');
   });
+});
+
+// Source-level guard: pressed semantic chips must pair the solid accent
+// background with its readable *-contrast foreground token, never the soft
+// `*-bg` tint that rendered unreadable. Asserting `aria-pressed` alone would
+// not catch a foreground regression, so we read the stylesheet directly.
+describe('Chip pressed-state foreground tokens', () => {
+  const css = readFileSync(new URL('./chip.css', import.meta.url), 'utf8');
+
+  test.each([
+    ['success', '--cinder-success-contrast', '--cinder-color-success-bg'],
+    ['warning', '--cinder-warning-contrast', '--cinder-color-warning-bg'],
+    ['danger', '--cinder-danger-contrast', '--cinder-color-danger-bg'],
+    ['info', '--cinder-info-contrast', '--cinder-color-info-bg'],
+  ] as const)(
+    'pressed %s chip uses the contrast token, not the soft tint',
+    (variant, contrastToken, softTint) => {
+      // Selector attribute order matters for this regex: [aria-pressed] then
+      // [data-cinder-variant]. The `[^}]*` body match assumes flat rules (no
+      // nesting), which holds for these pressed-state declarations.
+      const block = css.match(
+        new RegExp(
+          `\\.cinder-chip\\[aria-pressed='true'\\]\\[data-cinder-variant='${variant}'\\]\\s*\\{[^}]*\\}`,
+        ),
+      )?.[0];
+      expect(block).toBeDefined();
+      // Pin the assertion to the `color:` declaration specifically, so a stray
+      // mention of the banned token in a comment or another property can't
+      // produce a false pass/fail.
+      const colorDeclaration = block?.match(/\bcolor:\s*[^;]+;/)?.[0];
+      expect(colorDeclaration).toBe(`color: var(${contrastToken});`);
+      expect(colorDeclaration).not.toContain(softTint);
+    },
+  );
 });
