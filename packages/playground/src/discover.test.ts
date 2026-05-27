@@ -207,8 +207,9 @@ describe('discoverSidebarComponents', () => {
     // repository has grown to 122 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
     // lands the sidebar around 78. The three chart families (line, bar,
-    // area) bumped it to 82, and the data-display examples brought it to
-    // 86. Keep this gate explicit so future additions make the product
+    // area) bumped it to 82. Overlay, navigation, and data-display examples
+    // now place it at 86, which is still smaller than the full component
+    // list. Keep this gate explicit so future additions make the product
     // tradeoff visible.
     const sidebar = await discoverSidebarComponents();
     expect(sidebar.length).toBeLessThanOrEqual(86);
