@@ -494,7 +494,8 @@ describe('useToast api', () => {
     expect(container.querySelector('.cinder-toast')).toBeNull();
   });
 
-  test('unmounted regions ignore late promise settlement', async () => {
+  test('unmounting the region prevents late promise settlement timers', async () => {
+    useDeterministicTimers();
     let api: ToastApi | null = null;
     const tracked = createDeferred<string>();
     const { container, unmount } = render(Wrapper, {
@@ -504,20 +505,20 @@ describe('useToast api', () => {
     });
     await waitFor(() => expect(api).not.toBeNull());
     api!.promise(tracked.promise, {
-      loading: 'Loading after unmount',
-      success: 'Resolved after unmount',
-      error: 'Failed after unmount',
-      duration: 0,
+      loading: 'Saving',
+      success: 'Saved',
+      error: 'Failed',
+      duration: 100,
     });
-    await waitFor(() => {
-      expect(container.textContent).toContain('Loading after unmount');
-    });
+    await waitFor(() => expect(container.textContent).toContain('Saving'));
 
     unmount();
-    tracked.resolve('late');
+    expect(jest.getTimerCount()).toBe(0);
+    tracked.resolve('done');
     await tick();
 
-    expect(container.textContent).not.toContain('Resolved after unmount');
+    expect(jest.getTimerCount()).toBe(0);
+    expect(document.body.textContent ?? '').not.toContain('Saved');
   });
 
   test('action fires once and dismisses by default even when not otherwise dismissible', async () => {

@@ -93,9 +93,9 @@
   let nextId = 0;
   let isPointerInsideRegion = false;
   let isFocusInsideRegion = false;
+  let destroyed = false;
   let releaseFocusedToastEscape: (() => void) | null = null;
   let returnFocusElement: HTMLElement | null = null;
-  let destroyed = false;
   let generationCounter = 0;
 
   function isPolite(variant: ToastVariant): boolean {
@@ -145,6 +145,7 @@
   }
 
   function show(message: string, options: ToastOptions = {}): string {
+    if (destroyed) return options.id ?? `cinder-toast-${++nextId}`;
     return upsertToast(message, options).id;
   }
 
@@ -572,6 +573,8 @@
     for (const id of timers.keys()) clearTimer(id);
     for (const id of removalTimers.keys()) clearRemovalTimer(id);
     generations.clear();
+    politeStack = [];
+    assertiveStack = [];
     releaseToastEscapeHandler();
   });
 </script>
@@ -579,6 +582,60 @@
 {#if children}
   {@render children()}
 {/if}
+
+{#snippet toastItem(toast: InternalToastItem, index: number)}
+  <div
+    class="cinder-toast-shell"
+    style={`--cinder-toast-stack-index: ${index};`}
+    data-cinder-presence={toast.leaving ? 'exiting' : 'entered'}
+  >
+    <div
+      class="cinder-toast"
+      role="group"
+      aria-label="Notification"
+      data-cinder-variant={toast.variant}
+      data-cinder-toast-id={toast.id}
+      data-cinder-pending={toast.pending ? 'true' : undefined}
+      data-cinder-leaving={toast.leaving ? 'true' : undefined}
+      data-cinder-swiping={toast.swiping ? 'true' : undefined}
+      style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
+      {@attach createToastInteractions(toast)}
+    >
+      {#if toast.icon}
+        <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+      {/if}
+      {#if toast.pending}
+        <span class="cinder-toast__spinner" aria-hidden="true"></span>
+      {/if}
+      <div class="cinder-toast__message">{toast.message}</div>
+      {#if toast.action}
+        <button
+          type="button"
+          class="cinder-toast__action"
+          disabled={toast.leaving}
+          onclick={() => handleActionClick(toast)}
+        >
+          {toast.action.label}
+        </button>
+      {/if}
+      {#if toast.dismissible}
+        <button
+          type="button"
+          class="cinder-toast__dismiss"
+          aria-label="Dismiss notification"
+          disabled={toast.leaving}
+          onclick={() => beginDismiss(toast.id, 'dismiss-button')}
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+            />
+          </svg>
+        </button>
+      {/if}
+    </div>
+  </div>
+{/snippet}
 
 {#if hydrated}
   <div
@@ -599,57 +656,7 @@
       class="cinder-toast-region__channel"
     >
       {#each politeStack as toast, index (`${toast.id}:${toast.generation}`)}
-        <div
-          class="cinder-toast-shell"
-          style={`--cinder-toast-stack-index: ${index};`}
-          data-cinder-presence={toast.leaving ? 'exiting' : 'entered'}
-        >
-          <div
-            class="cinder-toast"
-            role="group"
-            aria-label="Notification"
-            data-cinder-variant={toast.variant}
-            data-cinder-toast-id={toast.id}
-            data-cinder-pending={toast.pending ? 'true' : undefined}
-            data-cinder-leaving={toast.leaving ? 'true' : undefined}
-            data-cinder-swiping={toast.swiping ? 'true' : undefined}
-            style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
-            {@attach createToastInteractions(toast)}
-          >
-            {#if toast.icon}
-              <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
-            {/if}
-            {#if toast.pending}
-              <span class="cinder-toast__spinner" aria-hidden="true"></span>
-            {/if}
-            <div class="cinder-toast__message">{toast.message}</div>
-            {#if toast.action}
-              <button
-                type="button"
-                class="cinder-toast__action"
-                disabled={toast.leaving}
-                onclick={() => handleActionClick(toast)}
-              >
-                {toast.action.label}
-              </button>
-            {/if}
-            {#if toast.dismissible}
-              <button
-                type="button"
-                class="cinder-toast__dismiss"
-                aria-label="Dismiss notification"
-                disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'dismiss-button')}
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                  />
-                </svg>
-              </button>
-            {/if}
-          </div>
-        </div>
+        {@render toastItem(toast, index)}
       {/each}
     </div>
     <div
@@ -661,57 +668,7 @@
       data-cinder-stack="assertive"
     >
       {#each assertiveStack as toast, index (`${toast.id}:${toast.generation}`)}
-        <div
-          class="cinder-toast-shell"
-          style={`--cinder-toast-stack-index: ${index};`}
-          data-cinder-presence={toast.leaving ? 'exiting' : 'entered'}
-        >
-          <div
-            class="cinder-toast"
-            role="group"
-            aria-label="Notification"
-            data-cinder-variant={toast.variant}
-            data-cinder-toast-id={toast.id}
-            data-cinder-pending={toast.pending ? 'true' : undefined}
-            data-cinder-leaving={toast.leaving ? 'true' : undefined}
-            data-cinder-swiping={toast.swiping ? 'true' : undefined}
-            style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
-            {@attach createToastInteractions(toast)}
-          >
-            {#if toast.icon}
-              <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
-            {/if}
-            {#if toast.pending}
-              <span class="cinder-toast__spinner" aria-hidden="true"></span>
-            {/if}
-            <div class="cinder-toast__message">{toast.message}</div>
-            {#if toast.action}
-              <button
-                type="button"
-                class="cinder-toast__action"
-                disabled={toast.leaving}
-                onclick={() => handleActionClick(toast)}
-              >
-                {toast.action.label}
-              </button>
-            {/if}
-            {#if toast.dismissible}
-              <button
-                type="button"
-                class="cinder-toast__dismiss"
-                aria-label="Dismiss notification"
-                disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'dismiss-button')}
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                  />
-                </svg>
-              </button>
-            {/if}
-          </div>
-        </div>
+        {@render toastItem(toast, index)}
       {/each}
     </div>
   </div>
