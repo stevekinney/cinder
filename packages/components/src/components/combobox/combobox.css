@@ -61,6 +61,7 @@
 .cinder-combobox__input:disabled {
   background: var(--cinder-surface-inset);
   color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
   cursor: not-allowed;
 }
 
@@ -75,9 +76,7 @@
   background: var(--cinder-surface-raised);
   border: 1px solid var(--cinder-border);
   border-radius: var(--cinder-radius-md);
-  box-shadow:
-    0 1px 2px oklch(0% 0 0 / 0.04),
-    0 8px 24px oklch(0% 0 0 / 0.12);
+  box-shadow: var(--cinder-shadow-md);
   max-height: 16rem;
   overflow-y: auto;
   z-index: var(--cinder-z-popover);

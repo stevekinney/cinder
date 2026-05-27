@@ -2069,6 +2069,10 @@
     "./steps/styles": {
       "default": "./dist/components/steps/steps.css"
     },
+    "./steps/examples": {
+      "import": "./src/components/steps/steps.examples.json",
+      "default": "./src/components/steps/steps.examples.json"
+    },
     "./surface": {
       "types": "./dist/components/surface/index.d.ts",
       "svelte": "./src/components/surface/index.ts",
