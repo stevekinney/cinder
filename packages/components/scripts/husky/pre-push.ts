@@ -97,7 +97,11 @@ async function runJob(job: Job): Promise<JobResult> {
  */
 async function runJobs(jobs: readonly Job[]): Promise<boolean> {
   if (jobs.length === 0) return true;
-  const concurrency = Math.min(navigator.hardwareConcurrency, 4);
+  // Clamp to at least 1: if `navigator.hardwareConcurrency` is ever undefined,
+  // `Math.min(undefined, 4)` is NaN, no workers would start, and every job would
+  // be silently treated as passing — a false green. `?? 1` and `Math.max(1, …)`
+  // prevent that.
+  const concurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
   const results: JobResult[] = [];
   let nextIndex = 0;
   const workers: Promise<void>[] = [];
@@ -107,7 +111,17 @@ async function runJobs(jobs: readonly Job[]): Promise<boolean> {
         while (true) {
           const index = nextIndex++;
           if (index >= jobs.length) return;
-          results[index] = await runJob(jobs[index]!);
+          const job = jobs[index];
+          if (job === undefined) return; // unreachable given the guard above
+          try {
+            results[index] = await runJob(job);
+          } catch (cause) {
+            // `$.nothrow()` means runJob normally won't throw, but a spawn
+            // failure (missing binary, OOM) could. Record it as a failed job
+            // rather than crashing the whole pool with an unhandled rejection.
+            const reason = cause instanceof Error ? cause.message : String(cause);
+            results[index] = { job, exitCode: 1, stdout: '', stderr: reason };
+          }
         }
       })(),
     );
@@ -123,10 +137,20 @@ async function runJobs(jobs: readonly Job[]): Promise<boolean> {
   return failures.length === 0;
 }
 
-/** Print the deterministic, sorted job-plan block the verification asserts against. */
+/**
+ * Print the deterministic job-plan block the verification asserts against,
+ * ordered by execution phase (lint → typecheck → test) then package name so the
+ * printed order matches the order jobs actually run.
+ */
 function printJobPlan(jobs: readonly Job[]): void {
   info('Planned validation jobs:');
-  const lines = jobs.map((job) => `  ${job.packageName} ${job.script}`).toSorted();
+  const phaseRank = (script: Script) => SCRIPTS.indexOf(script);
+  const lines = jobs
+    .toSorted(
+      (a, b) =>
+        phaseRank(a.script) - phaseRank(b.script) || a.packageName.localeCompare(b.packageName),
+    )
+    .map((job) => `  ${job.packageName} ${job.script}`);
   for (const line of lines) console.log(line);
 }
 
@@ -188,7 +212,12 @@ header('Pre-push: scoped lint + typecheck + test (push range)');
 type Plan =
   | { readonly kind: 'skip'; readonly message: string }
   | { readonly kind: 'full' }
-  | { readonly kind: 'scoped'; readonly jobs: Job[]; readonly stylelintFiles: string[] };
+  | {
+      readonly kind: 'scoped';
+      readonly jobs: readonly Job[];
+      readonly stylelintFiles: readonly string[];
+      readonly workspaceCount: number;
+    };
 
 /** Warn with a reason, then run the full suite and exit. */
 async function failSafe(reason: string): Promise<never> {
@@ -276,12 +305,12 @@ async function derivePlan(
     if (pkg.hasTest) jobs.push({ packageName: name, script: 'test' });
   }
 
-  const touchedDirs = touched.map((pkg) => pkg.dir.replace(/\/$/, ''));
-  const stylelintFiles = cssLike.filter((path) =>
-    touchedDirs.some((dir) => path === dir || path.startsWith(`${dir}/`)),
-  );
-
-  return { kind: 'scoped', jobs, stylelintFiles };
+  // Stylelint runs over *every* changed existing CSS/Svelte file in the range,
+  // not just those under a touched package. Restricting to touched-package dirs
+  // would leave a hole: a changed `.css` outside the detected packages (or a
+  // root-level style file) would silently skip stylelint. Per-file stylelint is
+  // cheap, so linting the full changed set closes that gap.
+  return { kind: 'scoped', jobs, stylelintFiles: cssLike, workspaceCount: workspace.length };
 }
 
 /**
@@ -290,14 +319,21 @@ async function derivePlan(
  * a typecheck failure surfaces before long downstream test runs. Exits the
  * process directly.
  */
-async function runScoped(jobs: readonly Job[], stylelintFiles: readonly string[]): Promise<never> {
+async function runScoped(
+  jobs: readonly Job[],
+  stylelintFiles: readonly string[],
+  workspaceCount: number,
+): Promise<never> {
   printJobPlan(jobs);
+  const scopedPackages = new Set(jobs.map((job) => job.packageName)).size;
 
   let ok = true;
   for (const script of SCRIPTS) {
     const phaseJobs = jobs.filter((job) => job.script === script);
 
     if (script === 'lint') {
+      const targets = [...phaseJobs.map((job) => job.packageName), 'stylelint'];
+      info(`Running lint (${targets.join(', ')})…`);
       const lintOk = await runJobs(phaseJobs);
       const stylelintOk = await runStylelint(stylelintFiles);
       ok = lintOk && stylelintOk && ok;
@@ -322,7 +358,9 @@ async function runScoped(jobs: readonly Job[], stylelintFiles: readonly string[]
     process.exit(1);
   }
 
-  success('Pre-push validation passed (scoped)');
+  success(
+    `Pre-push validation passed (scoped — ${scopedPackages} of ${workspaceCount} packages validated)`,
+  );
   process.exit(0);
 }
 
@@ -336,6 +374,6 @@ switch (plan.kind) {
     await runFull();
     break;
   case 'scoped':
-    await runScoped(plan.jobs, plan.stylelintFiles);
+    await runScoped(plan.jobs, plan.stylelintFiles, plan.workspaceCount);
     break;
 }

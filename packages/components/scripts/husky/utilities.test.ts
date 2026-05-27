@@ -7,6 +7,7 @@ import {
   getTouchedPackages,
   hasRootConfigurationChanges,
   isIgnorableDoc,
+  isNewBranch,
   isSourceFile,
   isUnderWorkspace,
   loadWorkspacePackages,
@@ -292,6 +293,20 @@ describe('expandToDependents', () => {
       '@cinder/nonexistent',
     ]);
   });
+
+  it('returns an empty set when no packages are touched', () => {
+    expect(sorted(expandToDependents(graphPackages, []))).toEqual([]);
+  });
+});
+
+describe('isNewBranch', () => {
+  it('is true when the remote sha is all zeros', () => {
+    expect(isNewBranch({ localSha: 'a'.repeat(40), remoteSha: '0'.repeat(40) })).toBe(true);
+  });
+
+  it('is false when the remote sha is a real sha', () => {
+    expect(isNewBranch({ localSha: 'a'.repeat(40), remoteSha: 'b'.repeat(40) })).toBe(false);
+  });
 });
 
 describe('parsePushRefs', () => {
@@ -352,6 +367,10 @@ describe('parsePushRefs', () => {
 
   it('throws on a non-sha-shaped local id', () => {
     expect(() => parsePushRefs('refs/heads/x not-a-sha refs/heads/x ' + B)).toThrow();
+  });
+
+  it('throws on a non-sha-shaped remote id that is not all-zeros', () => {
+    expect(() => parsePushRefs(`refs/heads/x ${A} refs/heads/x not-a-sha`)).toThrow();
   });
 });
 
@@ -433,6 +452,19 @@ describe('changedFilesForRange', () => {
     const files = await changedFilesForRange([{ localSha: A, remoteSha: B }], git);
     expect(sorted(files)).toEqual(['packages/diff/a.ts', 'packages/markdown/b.ts']);
   });
+
+  it('returns an empty set and never shells out when given no updates', async () => {
+    let called = false;
+    const git = fakeGit({
+      diffNames: async () => {
+        called = true;
+        return [];
+      },
+    });
+    const files = await changedFilesForRange([], git);
+    expect([...files]).toEqual([]);
+    expect(called).toBe(false);
+  });
 });
 
 describe('changedCssLikeFiles', () => {
@@ -496,9 +528,25 @@ describe('changedCssLikeFiles', () => {
     expect(await changedCssLikeFiles([update], git, exists)).toEqual(['packages/components/a.css']);
   });
 
+  it('handles a type-change (T) status the same as a modification', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['T\tpackages/components/a.css'],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/a.css',
+    ]);
+  });
+
   it('throws on an unrecognized diff status (→ caller falls back to full)', async () => {
     const git = fakeGit({
       diffNameStatus: async () => ['X\tpackages/components/weird.css'],
+    });
+    await expect(changedCssLikeFiles([update], git, allExist)).rejects.toThrow();
+  });
+
+  it('throws when a known status is missing its path (→ caller falls back to full)', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['R100\tpackages/components/old.css'], // no destination
     });
     await expect(changedCssLikeFiles([update], git, allExist)).rejects.toThrow();
   });
@@ -537,6 +585,11 @@ describe('isIgnorableDoc', () => {
       isIgnorableDoc('packages/markdown/test/fixtures/README-edge-case.md', graphPackages),
     ).toBe(false);
     expect(isIgnorableDoc('packages/diff/fixtures/data.yaml', graphPackages)).toBe(false);
+  });
+
+  it('does NOT ignore a non-doc root-level file', () => {
+    expect(isIgnorableDoc('bun.lock', graphPackages)).toBe(false);
+    expect(isIgnorableDoc('package.json', graphPackages)).toBe(false);
   });
 });
 

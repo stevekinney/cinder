@@ -348,13 +348,20 @@ export type GitRunner = {
   diffNameStatus(range: string): Promise<string[]>;
 };
 
-/** The default branch a new-branch push is compared against. */
-const DEFAULT_BASE_REF = 'origin/main';
+/**
+ * The default branch a new-branch push is compared against. Overridable via
+ * `CINDER_PUSH_BASE_REF` for repositories that branch from something other than
+ * `origin/main` (release branches, a differently named remote, stacked
+ * branches). If the configured ref can't be resolved, `rangeForUpdate` throws
+ * and the caller fails safe to the full suite — so a wrong value is slow, never
+ * unsound.
+ */
+export const pushBaseRef = (): string => Bun.env['CINDER_PUSH_BASE_REF'] ?? 'origin/main';
 
 /**
  * Resolve the `<base>..<localSha>` range to diff for a single ref update.
  *
- * - New branch: base is `merge-base origin/main <localSha>`.
+ * - New branch: base is `merge-base <pushBaseRef()> <localSha>`.
  * - Fast-forward update: base is the existing `remoteSha` (two-dot diff).
  * - Non-fast-forward (rebase/force-push): base is
  *   `merge-base <remoteSha> <localSha>` so a rewritten branch still diffs from
@@ -365,7 +372,7 @@ const DEFAULT_BASE_REF = 'origin/main';
  */
 async function rangeForUpdate(update: PushRefUpdate, git: GitRunner): Promise<string> {
   if (isNewBranch(update)) {
-    const base = await git.mergeBase(DEFAULT_BASE_REF, update.localSha);
+    const base = await git.mergeBase(pushBaseRef(), update.localSha);
     return `${base}..${update.localSha}`;
   }
   if (await git.isAncestor(update.remoteSha, update.localSha)) {
@@ -420,13 +427,20 @@ export async function changedCssLikeFiles(
       if (code === 'D') continue; // deleted — nothing to lint
       let path: string | undefined;
       if (code === 'A' || code === 'M' || code === 'T') {
-        path = fields[1];
+        path = fields[1]; // single path
       } else if (code === 'R' || code === 'C') {
         path = fields[2]; // rename/copy → destination
       } else {
+        // Anything else (including unmerged `U`) is unexpected here — throw so
+        // the caller fails safe to the full suite rather than silently mis-scope.
         throw new Error(`Unrecognized diff status '${status}' in: ${line}`);
       }
-      if (path !== undefined && CSS_LIKE_PATTERN.test(path)) candidates.add(path);
+      if (path === undefined || path.length === 0) {
+        // A known status with a missing path means the diff output is malformed;
+        // dropping it would silently lose stylelint coverage, so fail safe.
+        throw new Error(`Diff status '${status}' missing its path in: ${line}`);
+      }
+      if (CSS_LIKE_PATTERN.test(path)) candidates.add(path);
     }
   }
 
