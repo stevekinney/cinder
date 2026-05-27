@@ -198,6 +198,27 @@ describe('withGateLock', () => {
     });
   });
 
+  it('does not retry when the protected function throws an EEXIST-coded error', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      const error = new Error('gate callback failed') as NodeJS.ErrnoException;
+      error.code = 'EEXIST';
+      let attempts = 0;
+
+      await expect(
+        withGateLock(
+          async () => {
+            attempts += 1;
+            throw error;
+          },
+          { lockPath, retryMilliseconds: 1, waitMilliseconds: 5 },
+        ),
+      ).rejects.toThrow('gate callback failed');
+
+      expect(attempts).toBe(1);
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
   it('does not remove a lock that was replaced before cleanup', async () => {
     await withTemporaryLockPath(async (lockPath) => {
       await withGateLock(

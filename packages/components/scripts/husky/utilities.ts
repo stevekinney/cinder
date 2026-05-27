@@ -149,6 +149,7 @@ export async function withGateLock<T>(
   while (true) {
     await mkdir(dirname(lockPath), { recursive: true });
     let handle: Awaited<ReturnType<typeof open>> | null = null;
+    let enteredRun = false;
     try {
       handle = await open(lockPath, 'wx');
       await handle.writeFile(JSON.stringify(createGateLockFile(token), null, 2) + '\n');
@@ -158,6 +159,7 @@ export async function withGateLock<T>(
       process.once('SIGINT', handleSigint);
       process.once('SIGTERM', handleSigterm);
       try {
+        enteredRun = true;
         return await run();
       } finally {
         process.off('SIGINT', handleSigint);
@@ -167,6 +169,7 @@ export async function withGateLock<T>(
       }
     } catch (caught) {
       await handle?.close();
+      if (enteredRun) throw caught;
       const errorCode = (caught as NodeJS.ErrnoException).code;
       if (errorCode !== 'EEXIST') throw caught;
 
