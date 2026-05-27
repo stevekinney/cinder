@@ -114,6 +114,15 @@
  * inline-start stripe) now belongs exclusively to Callout. Alert keeps its
  * soft variant background tint and variant text color — only the colored frame
  * is gone. Do not reintroduce any border-affecting declaration here.
+ *
+ * Accessibility (WCAG 1.4.1): with the border neutralized, the variant's
+ * background tint and text color are hue-only signals. The non-color channel
+ * that conveys status is the alert's own text content (e.g. "Failed to connect
+ * to the server.") together with `role="alert"`, plus the optional `icon`
+ * slot. The pre-P7 colored border was itself sub-3:1 against the tinted
+ * background (see the Batch-D audit), so it was never a reliable non-color
+ * cue; removing it does not regress 1.4.1. Authors should pass meaningful
+ * message text (and an icon where practical) rather than relying on tint.
  * ---------------------------------------- */
 
 .cinder-alert[data-cinder-variant='info'] {

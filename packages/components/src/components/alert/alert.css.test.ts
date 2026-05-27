@@ -36,12 +36,14 @@ const alertCss = loadCss('./alert.css');
 const root = parse(alertCss);
 
 /**
- * Every property that affects a border side's width or color. A variant rule
- * containing any of these would reintroduce a colored frame (or a stripe), so
- * the acceptance test requires the set to be empty in each variant rule.
- * `border-style` is excluded only because style alone can't recreate a colored
- * frame — but it is harmless and not present; `border-radius` is not a border
- * width/color property and is allowed.
+ * Every property that can paint or size a border edge — shorthands, longhands,
+ * physical sides, logical sides, and the `border-image` family (which can draw
+ * a colored frame or stripe without touching `border-color`/`border-width` at
+ * all). A variant rule containing any of these would reintroduce status-colored
+ * chrome, so the acceptance test requires the set to be empty in each variant.
+ * `border-style` is included as belt-and-suspenders even though style alone
+ * can't recreate a colored frame; `border-radius` is not a border width/color
+ * property and is intentionally absent.
  */
 const BORDER_AFFECTING = new Set([
   'border',
@@ -78,6 +80,12 @@ const BORDER_AFFECTING = new Set([
   'border-block-end-width',
   'border-block-start-color',
   'border-block-end-color',
+  'border-image',
+  'border-image-source',
+  'border-image-slice',
+  'border-image-width',
+  'border-image-outset',
+  'border-image-repeat',
 ]);
 
 function findRules(selector: string): Rule[] {
@@ -92,7 +100,9 @@ function findRules(selector: string): Rule[] {
 }
 
 function findRule(selector: string): Rule {
-  return findRules(selector)[0];
+  const [first] = findRules(selector);
+  if (!first) throw new Error(`rule not found: ${selector}`);
+  return first;
 }
 
 const VARIANTS = ['info', 'success', 'warning', 'error'];
@@ -100,13 +110,17 @@ const VARIANTS = ['info', 'success', 'warning', 'error'];
 describe('alert chrome reduction — border-equals-base', () => {
   test('base rule declares exactly border: 1px solid var(--cinder-border)', () => {
     // The base selector appears in two rules (one declares the scoped
-    // --cinder-alert-info token, the other the box). Fold across both.
+    // --cinder-alert-info token, the other the box). Exactly one of them must
+    // declare `border`, and it must be the neutral base border.
     let border: string | undefined;
+    let count = 0;
     for (const rule of findRules('.cinder-alert')) {
       rule.walkDecls('border', (decl) => {
         border = decl.value;
+        count += 1;
       });
     }
+    expect(count).toBe(1);
     expect(border).toBe('1px solid var(--cinder-border)');
   });
 
