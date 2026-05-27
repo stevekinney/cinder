@@ -7,10 +7,12 @@ import {
   getTouchedPackages,
   header,
   info,
+  installHookProcessCleanup,
   isContinuousIntegration,
   loadWorkspacePackages,
   REPO_ROOT,
   rootConfigStaged,
+  runHookCommand,
   success,
   warning,
 } from './utilities.ts';
@@ -19,6 +21,8 @@ if (isContinuousIntegration()) {
   info('Skipping hook in CI');
   process.exit(0);
 }
+
+installHookProcessCleanup();
 
 header('Pre-commit checks');
 
@@ -38,10 +42,14 @@ if (stagedForLockCheck.includes('package.json')) {
     info('bun.lock unchanged; continuing');
   } else {
     info('Dependencies changed, installing…');
-    try {
-      await $`bun install`.cwd(REPO_ROOT);
+    const installResult = await runHookCommand('bun', ['install'], {
+      cwd: REPO_ROOT,
+      stderr: 'inherit',
+      stdout: 'inherit',
+    });
+    if (installResult.exitCode === 0) {
       success('Dependencies installed');
-    } catch {
+    } else {
       warning('bun install failed; run it manually');
     }
     // bun install may regenerate bun.lock even when the staged copy looked
@@ -58,10 +66,14 @@ if (stagedForLockCheck.includes('package.json')) {
 // 2) Run lint-staged FIRST so formatters write to disk before typecheck/test
 // observe the source.
 info('Running lint-staged…');
-try {
-  await $`bunx lint-staged`.cwd(REPO_ROOT);
+const lintStagedResult = await runHookCommand('bunx', ['lint-staged'], {
+  cwd: REPO_ROOT,
+  stderr: 'inherit',
+  stdout: 'inherit',
+});
+if (lintStagedResult.exitCode === 0) {
   success('lint-staged passed');
-} catch {
+} else {
   error('lint-staged failed');
   process.exit(1);
 }
@@ -75,7 +87,12 @@ if (rootConfigStaged(staged)) {
   let escalationOk = true;
   try {
     info('Running workspace typecheck…');
-    await $`bun run typecheck`.cwd(REPO_ROOT);
+    const typecheckResult = await runHookCommand('bun', ['run', 'typecheck'], {
+      cwd: REPO_ROOT,
+      stderr: 'inherit',
+      stdout: 'inherit',
+    });
+    if (typecheckResult.exitCode !== 0) throw new Error('typecheck failed');
     success('typecheck passed');
   } catch {
     error('typecheck failed');
@@ -83,7 +100,12 @@ if (rootConfigStaged(staged)) {
   }
   try {
     info('Running workspace test…');
-    await $`bun run test`.cwd(REPO_ROOT);
+    const testResult = await runHookCommand('bun', ['run', 'test'], {
+      cwd: REPO_ROOT,
+      stderr: 'inherit',
+      stdout: 'inherit',
+    });
+    if (testResult.exitCode !== 0) throw new Error('test failed');
     success('test passed');
   } catch {
     error('test failed');
@@ -151,17 +173,18 @@ const elapsed = () => Date.now() - start;
  */
 async function runJob(job: Job): Promise<JobResult> {
   console.log(`[start ${job.packageName} ${job.script}] T+${elapsed()}ms`);
-  const result = await $`bun run --filter=${job.packageName} ${job.script}`
-    .cwd(REPO_ROOT)
-    .nothrow()
-    .quiet();
+  const result = await runHookCommand('bun', ['run', `--filter=${job.packageName}`, job.script], {
+    cwd: REPO_ROOT,
+    stderr: 'pipe',
+    stdout: 'pipe',
+  });
   const exitCode = result.exitCode;
   console.log(`[done ${job.packageName} ${job.script}] T+${elapsed()}ms (exit ${exitCode})`);
   return {
     job,
     exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
+    stdout: result.stdout,
+    stderr: result.stderr,
   };
 }
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
-import { $ } from 'bun';
-
 import {
   error,
   header,
   info,
+  installHookProcessCleanup,
   isContinuousIntegration,
   REPO_ROOT,
+  runHookCommand,
   success,
   warning,
   withGateLock,
@@ -16,6 +16,8 @@ if (isContinuousIntegration()) {
   info('Skipping hook in CI');
   process.exit(0);
 }
+
+installHookProcessCleanup();
 
 header('Pre-push: lint + typecheck + test (working tree)');
 warning('Validates the current working tree, not the exact commit range being pushed.');
@@ -31,10 +33,14 @@ try {
     let passed = true;
     for (const script of ['lint', 'typecheck', 'test'] as const) {
       info(`Running ${script}…`);
-      try {
-        await $`bun run ${script}`.cwd(REPO_ROOT);
+      const result = await runHookCommand('bun', ['run', script], {
+        cwd: REPO_ROOT,
+        stderr: 'inherit',
+        stdout: 'inherit',
+      });
+      if (result.exitCode === 0) {
         success(`${script} passed`);
-      } catch {
+      } else {
         error(`${script} failed`);
         passed = false;
       }
