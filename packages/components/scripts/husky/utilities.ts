@@ -2,7 +2,7 @@ import { $ } from 'bun';
 import chalk from 'chalk';
 import { capitalCase } from 'change-case';
 import { readFileSync, rmSync } from 'node:fs';
-import { mkdir, open, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,11 +35,14 @@ type GateLockFile = {
 type GateLockOptions = {
   readonly isProcessAlive?: (pid: number) => boolean;
   readonly lockPath?: string;
+  readonly malformedLockGraceMilliseconds?: number;
   readonly retryMilliseconds?: number;
+  readonly resendSignal?: (signal: NodeJS.Signals) => void;
   readonly waitMilliseconds?: number;
 };
 
 const DEFAULT_GATE_LOCK_PATH = join(REPO_ROOT, 'tmp', 'pre-push-gate.lock');
+const DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS = 30_000;
 const DEFAULT_GATE_LOCK_RETRY_MILLISECONDS = 1_000;
 const DEFAULT_GATE_LOCK_WAIT_MILLISECONDS = 5 * 60 * 1_000;
 
@@ -56,8 +59,10 @@ function defaultIsProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (caught) {
+    const errorCode = (caught as NodeJS.ErrnoException).code;
+    if (errorCode === 'ESRCH') return false;
+    return true;
   }
 }
 
@@ -93,6 +98,11 @@ async function readGateLock(lockPath: string): Promise<GateLockFile | null> {
   }
 }
 
+async function lockAgeMilliseconds(lockPath: string): Promise<number> {
+  const fileStats = await stat(lockPath);
+  return Date.now() - fileStats.mtimeMs;
+}
+
 function releaseGateLockSync(lockPath: string, token: string) {
   try {
     const lock = parseGateLock(readFileSync(lockPath, 'utf8'));
@@ -111,9 +121,12 @@ export async function withGateLock<T>(
   options: GateLockOptions = {},
 ): Promise<T> {
   const lockPath = options.lockPath ?? DEFAULT_GATE_LOCK_PATH;
+  const malformedLockGraceMilliseconds =
+    options.malformedLockGraceMilliseconds ?? DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS;
   const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
   const waitMilliseconds = options.waitMilliseconds ?? DEFAULT_GATE_LOCK_WAIT_MILLISECONDS;
   const isProcessAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const startedAt = Date.now();
   let waitingMessagePrinted = false;
@@ -126,11 +139,13 @@ export async function withGateLock<T>(
   };
 
   const handleSignal = (signal: NodeJS.Signals) => {
-    process.off('SIGINT', handleSignal);
-    process.off('SIGTERM', handleSignal);
+    process.off('SIGINT', handleSigint);
+    process.off('SIGTERM', handleSigterm);
     release();
-    process.kill(process.pid, signal);
+    resendSignal(signal);
   };
+  const handleSigint = () => handleSignal('SIGINT');
+  const handleSigterm = () => handleSignal('SIGTERM');
 
   while (true) {
     await mkdir(dirname(lockPath), { recursive: true });
@@ -138,14 +153,16 @@ export async function withGateLock<T>(
     try {
       handle = await open(lockPath, 'wx');
       await handle.writeFile(JSON.stringify(createGateLockFile(token), null, 2) + '\n');
+      await handle.close();
+      handle = null;
       lockAcquired = true;
-      process.once('SIGINT', handleSignal);
-      process.once('SIGTERM', handleSignal);
+      process.once('SIGINT', handleSigint);
+      process.once('SIGTERM', handleSigterm);
       try {
         return await run();
       } finally {
-        process.off('SIGINT', handleSignal);
-        process.off('SIGTERM', handleSignal);
+        process.off('SIGINT', handleSigint);
+        process.off('SIGTERM', handleSigterm);
         release();
       }
     } catch (caught) {
@@ -154,7 +171,28 @@ export async function withGateLock<T>(
       if (errorCode !== 'EEXIST') throw caught;
 
       const existingLock = await readGateLock(lockPath);
-      if (existingLock === null || !isProcessAlive(existingLock.pid)) {
+      if (existingLock === null) {
+        const existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
+        if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
+          warning('Removing stale malformed pre-push gate lock.');
+          await rm(lockPath, { force: true });
+          continue;
+        }
+        if (!waitingMessagePrinted) {
+          warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
+          waitingMessagePrinted = true;
+        }
+        if (Date.now() - startedAt >= waitMilliseconds) {
+          throw new Error(
+            `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
+            { cause: caught },
+          );
+        }
+        await Bun.sleep(retryMilliseconds);
+        continue;
+      }
+
+      if (!isProcessAlive(existingLock.pid)) {
         warning('Removing stale pre-push gate lock.');
         await rm(lockPath, { force: true });
         continue;

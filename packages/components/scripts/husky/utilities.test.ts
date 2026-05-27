@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -150,6 +151,8 @@ describe('loadWorkspacePackages', () => {
 });
 
 describe('withGateLock', () => {
+  class SignalIntercepted extends Error {}
+
   async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
     const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
     try {
@@ -192,6 +195,30 @@ describe('withGateLock', () => {
       ).rejects.toThrow('gate failed');
 
       expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('does not remove a lock that was replaced before cleanup', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await withGateLock(
+        async () => {
+          await writeFile(
+            lockPath,
+            JSON.stringify({
+              createdAt: new Date().toISOString(),
+              pid: process.pid,
+              repositoryRoot: 'replacement',
+              token: 'replacement-token',
+            }),
+          );
+        },
+        { lockPath },
+      );
+
+      expect(JSON.parse(await readFile(lockPath, 'utf8'))).toMatchObject({
+        repositoryRoot: 'replacement',
+        token: 'replacement-token',
+      });
     });
   });
 
@@ -256,6 +283,37 @@ describe('withGateLock', () => {
     });
   });
 
+  it('does not immediately reclaim a newly malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('malformed lock');
+
+      expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('reclaims an old malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      const result = await withGateLock(async () => 'reclaimed malformed lock', {
+        lockPath,
+        malformedLockGraceMilliseconds: -1,
+      });
+
+      expect(result).toBe('reclaimed malformed lock');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
   it('reclaims a stale lock whose process is no longer alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
       await writeFile(
@@ -277,4 +335,31 @@ describe('withGateLock', () => {
       expect(await Bun.file(lockPath).exists()).toBe(false);
     });
   });
+
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    it(`removes the lock before re-sending ${signal}`, async () => {
+      await withTemporaryLockPath(async (lockPath) => {
+        let receivedSignal: NodeJS.Signals | undefined;
+        await expect(
+          withGateLock(
+            async () => {
+              expect(await Bun.file(lockPath).exists()).toBe(true);
+              process.emit(signal);
+              throw new SignalIntercepted(signal);
+            },
+            {
+              lockPath,
+              resendSignal: (signalToResend) => {
+                receivedSignal = signalToResend;
+                expect(existsSync(lockPath)).toBe(false);
+              },
+            },
+          ),
+        ).rejects.toThrow(SignalIntercepted);
+
+        expect(receivedSignal).toBe(signal);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      });
+    });
+  }
 });
