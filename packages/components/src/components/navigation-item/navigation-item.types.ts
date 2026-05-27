@@ -9,10 +9,9 @@ type CommonArm = {
    * - `'horizontal'`: top-rounded radius, accent bottom-border active indicator.
    *   Used inside `NavigationBar` and similar horizontal tab-bar contexts.
    * - `'mobile'`: stacked full-width layout below the mobile breakpoint.
-   * - `'vertical'`: symmetric radius, accent inline-start border active indicator.
+   * - `'vertical'`: square row geometry, neutral selected surface, and accent inline-start border active indicator.
    *   Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or
-   *   standalone sidebar footers — anywhere a vertical, non-tombstone focus ring
-   *   is required.
+   *   standalone sidebar footers where flush sidebar edges are required.
    */
   variant?: 'horizontal' | 'mobile' | 'vertical';
   children: Snippet;

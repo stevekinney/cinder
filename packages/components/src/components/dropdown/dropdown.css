@@ -37,12 +37,27 @@
       var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
 }
 
+.cinder-button-group
+  > .cinder-dropdown[data-cinder-button-group-item]
+  > .cinder-dropdown-trigger:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: inset 0 0 0 var(--cinder-ring-width)
+    var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
+}
+
 @media (forced-colors: active) {
   /* box-shadow is suppressed in Windows High Contrast Mode, so paint a
    * solid outline that respects ButtonText for visible focus. */
   .cinder-dropdown-trigger:focus-visible {
     outline: var(--cinder-ring-width) solid ButtonText;
     outline-offset: 3px;
+  }
+
+  .cinder-button-group
+    > .cinder-dropdown[data-cinder-button-group-item]
+    > .cinder-dropdown-trigger:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+    outline-offset: calc(var(--cinder-ring-width) * -1);
   }
 }
 
@@ -148,6 +163,7 @@
 }
 
 .cinder-dropdown-item[data-cinder-variant='danger'] {
+  --_cinder-dropdown-item-ring: var(--cinder-danger);
   color: var(--cinder-danger);
 }
 
