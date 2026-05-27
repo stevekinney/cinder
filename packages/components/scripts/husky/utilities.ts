@@ -1,7 +1,8 @@
 import { $ } from 'bun';
 import chalk from 'chalk';
 import { capitalCase } from 'change-case';
-import { readdir } from 'node:fs/promises';
+import { readFileSync, rmSync } from 'node:fs';
+import { mkdir, open, readdir, readFile, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,6 +24,160 @@ export const info = (msg: string) => console.log(chalk.cyan(msg));
 export const success = (msg: string) => console.log(chalk.green(msg));
 export const warning = (msg: string) => console.log(chalk.yellow(msg));
 export const error = (msg: string) => console.error(chalk.red(msg));
+
+type GateLockFile = {
+  readonly createdAt: string;
+  readonly pid: number;
+  readonly repositoryRoot: string;
+  readonly token: string;
+};
+
+type GateLockOptions = {
+  readonly isProcessAlive?: (pid: number) => boolean;
+  readonly lockPath?: string;
+  readonly retryMilliseconds?: number;
+  readonly waitMilliseconds?: number;
+};
+
+const DEFAULT_GATE_LOCK_PATH = join(REPO_ROOT, 'tmp', 'pre-push-gate.lock');
+const DEFAULT_GATE_LOCK_RETRY_MILLISECONDS = 1_000;
+const DEFAULT_GATE_LOCK_WAIT_MILLISECONDS = 5 * 60 * 1_000;
+
+function createGateLockFile(token: string): GateLockFile {
+  return {
+    createdAt: new Date().toISOString(),
+    pid: process.pid,
+    repositoryRoot: REPO_ROOT,
+    token,
+  };
+}
+
+function defaultIsProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseGateLock(raw: string): GateLockFile | null {
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== 'object' || value === null) return null;
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record['createdAt'] !== 'string' ||
+      typeof record['pid'] !== 'number' ||
+      typeof record['repositoryRoot'] !== 'string' ||
+      typeof record['token'] !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      createdAt: record['createdAt'],
+      pid: record['pid'],
+      repositoryRoot: record['repositoryRoot'],
+      token: record['token'],
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function readGateLock(lockPath: string): Promise<GateLockFile | null> {
+  try {
+    return parseGateLock(await readFile(lockPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function releaseGateLockSync(lockPath: string, token: string) {
+  try {
+    const lock = parseGateLock(readFileSync(lockPath, 'utf8'));
+    if (lock?.token === token) rmSync(lockPath, { force: true });
+  } catch {
+    // Best-effort cleanup: the lock may already have been removed.
+  }
+}
+
+/**
+ * Run a hook gate under a repository-local lock so duplicate pushes do not
+ * stack full workspace validations on top of one another.
+ */
+export async function withGateLock<T>(
+  run: () => Promise<T>,
+  options: GateLockOptions = {},
+): Promise<T> {
+  const lockPath = options.lockPath ?? DEFAULT_GATE_LOCK_PATH;
+  const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
+  const waitMilliseconds = options.waitMilliseconds ?? DEFAULT_GATE_LOCK_WAIT_MILLISECONDS;
+  const isProcessAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const startedAt = Date.now();
+  let waitingMessagePrinted = false;
+  let lockAcquired = false;
+
+  const release = () => {
+    if (!lockAcquired) return;
+    releaseGateLockSync(lockPath, token);
+    lockAcquired = false;
+  };
+
+  const handleSignal = (signal: NodeJS.Signals) => {
+    process.off('SIGINT', handleSignal);
+    process.off('SIGTERM', handleSignal);
+    release();
+    process.kill(process.pid, signal);
+  };
+
+  while (true) {
+    await mkdir(dirname(lockPath), { recursive: true });
+    let handle: Awaited<ReturnType<typeof open>> | null = null;
+    try {
+      handle = await open(lockPath, 'wx');
+      await handle.writeFile(JSON.stringify(createGateLockFile(token), null, 2) + '\n');
+      lockAcquired = true;
+      process.once('SIGINT', handleSignal);
+      process.once('SIGTERM', handleSignal);
+      try {
+        return await run();
+      } finally {
+        process.off('SIGINT', handleSignal);
+        process.off('SIGTERM', handleSignal);
+        release();
+      }
+    } catch (caught) {
+      await handle?.close();
+      const errorCode = (caught as NodeJS.ErrnoException).code;
+      if (errorCode !== 'EEXIST') throw caught;
+
+      const existingLock = await readGateLock(lockPath);
+      if (existingLock === null || !isProcessAlive(existingLock.pid)) {
+        warning('Removing stale pre-push gate lock.');
+        await rm(lockPath, { force: true });
+        continue;
+      }
+
+      if (!waitingMessagePrinted) {
+        warning(
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…`,
+        );
+        waitingMessagePrinted = true;
+      }
+
+      if (Date.now() - startedAt >= waitMilliseconds) {
+        throw new Error(
+          `Another pre-push gate is already running (pid ${existingLock.pid}); waited ${waitMilliseconds}ms for ${lockPath}.`,
+          { cause: caught },
+        );
+      }
+
+      await Bun.sleep(retryMilliseconds);
+    }
+  }
+}
 
 export async function getStagedFiles(): Promise<string[]> {
   const out = await $`git diff --cached --name-only`.text();

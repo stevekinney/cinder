@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'bun:test';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   getTouchedPackages,
   isSourceFile,
   loadWorkspacePackages,
   rootConfigStaged,
+  withGateLock,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -142,5 +146,135 @@ describe('loadWorkspacePackages', () => {
       expect(typeof pkg.hasTypecheck).toBe('boolean');
       expect(typeof pkg.hasTest).toBe('boolean');
     }
+  });
+});
+
+describe('withGateLock', () => {
+  async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
+    try {
+      return await test(join(directory, 'pre-push-gate.lock'));
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  }
+
+  it('creates a lock while the protected function runs and removes it after success', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      let lockContents = '';
+
+      const result = await withGateLock(
+        async () => {
+          lockContents = await readFile(lockPath, 'utf8');
+          return 'passed';
+        },
+        { lockPath },
+      );
+
+      expect(result).toBe('passed');
+      expect(JSON.parse(lockContents)).toMatchObject({
+        pid: process.pid,
+        repositoryRoot: expect.any(String),
+      });
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('removes the lock when the protected function throws', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await expect(
+        withGateLock(
+          async () => {
+            throw new Error('gate failed');
+          },
+          { lockPath },
+        ),
+      ).rejects.toThrow('gate failed');
+
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('waits for the active gate to finish before entering a second gate', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      let releaseFirstGate!: () => void;
+      const firstGateReleased = new Promise<void>((resolve) => {
+        releaseFirstGate = resolve;
+      });
+      const entries: string[] = [];
+
+      const firstGate = withGateLock(
+        async () => {
+          entries.push('first');
+          await firstGateReleased;
+        },
+        { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
+      );
+
+      while (!(await Bun.file(lockPath).exists())) {
+        await Bun.sleep(1);
+      }
+
+      const secondGate = withGateLock(
+        async () => {
+          entries.push('second');
+        },
+        { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
+      );
+
+      await Bun.sleep(5);
+      expect(entries).toEqual(['first']);
+
+      releaseFirstGate();
+      await Promise.all([firstGate, secondGate]);
+
+      expect(entries).toEqual(['first', 'second']);
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('fails after the bounded wait when a live gate keeps the lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 123,
+          repositoryRoot: 'other-checkout',
+          token: 'still-running',
+        }),
+      );
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          isProcessAlive: () => true,
+          lockPath,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('Another pre-push gate is already running');
+    });
+  });
+
+  it('reclaims a stale lock whose process is no longer alive', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 999_999,
+          repositoryRoot: 'old-checkout',
+          token: 'stale',
+        }),
+      );
+
+      const result = await withGateLock(async () => 'reclaimed', {
+        isProcessAlive: () => false,
+        lockPath,
+      });
+
+      expect(result).toBe('reclaimed');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
   });
 });

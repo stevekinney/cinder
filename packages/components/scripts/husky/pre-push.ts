@@ -9,6 +9,7 @@ import {
   REPO_ROOT,
   success,
   warning,
+  withGateLock,
 } from './utilities.ts';
 
 if (isContinuousIntegration()) {
@@ -19,22 +20,25 @@ if (isContinuousIntegration()) {
 header('Pre-push: lint + typecheck + test (working tree)');
 warning('Validates the current working tree, not the exact commit range being pushed.');
 
-// Run lint, typecheck, and test — the three workspace-wide correctness gates.
-// `bun run validate` is intentionally excluded: it builds consumer fixtures
-// (sveltekit-consumer, node-consumer) that require release-ready builds and
-// may fail due to fixture-specific dependency constraints unrelated to code
-// changes. Those checks belong in CI, not the pre-push gate.
-let ok = true;
-for (const script of ['lint', 'typecheck', 'test'] as const) {
-  info(`Running ${script}…`);
-  try {
-    await $`bun run ${script}`.cwd(REPO_ROOT);
-    success(`${script} passed`);
-  } catch {
-    error(`${script} failed`);
-    ok = false;
+const ok = await withGateLock(async () => {
+  // Run lint, typecheck, and test — the three workspace-wide correctness gates.
+  // `bun run validate` is intentionally excluded: it builds consumer fixtures
+  // (sveltekit-consumer, node-consumer) that require release-ready builds and
+  // may fail due to fixture-specific dependency constraints unrelated to code
+  // changes. Those checks belong in CI, not the pre-push gate.
+  let passed = true;
+  for (const script of ['lint', 'typecheck', 'test'] as const) {
+    info(`Running ${script}…`);
+    try {
+      await $`bun run ${script}`.cwd(REPO_ROOT);
+      success(`${script} passed`);
+    } catch {
+      error(`${script} failed`);
+      passed = false;
+    }
   }
-}
+  return passed;
+});
 
 if (!ok) {
   error('Pre-push validation failed.');
