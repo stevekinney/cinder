@@ -346,6 +346,7 @@
     const reducedMotion = prefersReducedMotion();
     if (element && shell && !reducedMotion) {
       shell.style.setProperty('--cinder-toast-height', `${shell.offsetHeight}px`);
+      void shell.offsetHeight;
     }
 
     const focusNeedsMove = element?.contains(document.activeElement) ?? false;
