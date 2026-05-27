@@ -13,6 +13,8 @@ export type TableHeaderCellProps = {
   sortable?: boolean;
   /** When set, hint to assistive tech that the column groups multiple rows. */
   scope?: 'col' | 'colgroup';
+  /** Horizontal alignment for the header cell content. Defaults to `'left'`. */
+  align?: 'left' | 'center' | 'right';
   /** Additional class names merged with `.cinder-table__header-cell`. */
   class?: string;
   /** Cell content (column label). */

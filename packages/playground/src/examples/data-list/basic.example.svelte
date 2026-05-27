@@ -4,7 +4,9 @@
 </script>
 
 <script lang="ts">
+  import { Cluster } from 'cinder/cluster';
   import { DataList } from 'cinder/data-list';
+
   const users = [
     { name: 'Alice Chen', role: 'Engineer' },
     { name: 'Bob Osei', role: 'Designer' },
@@ -14,9 +16,9 @@
 
 <DataList items={users}>
   {#snippet children(user)}
-    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+    <Cluster justify="space-between">
       <strong>{user.name}</strong>
       <span style="color: var(--cinder-text-muted);">{user.role}</span>
-    </div>
+    </Cluster>
   {/snippet}
 </DataList>
