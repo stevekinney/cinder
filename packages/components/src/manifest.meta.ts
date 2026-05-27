@@ -88,10 +88,10 @@ export type StatusLevel = keyof typeof statusLevels;
  * All values are kebab-case component ids matching `manifest.components[].id`.
  */
 export const overlapFamilies = {
-  overlay: ['modal', 'drawer', 'sheet', 'popover'],
+  overlay: ['modal', 'drawer', 'sheet', 'popover', 'alert-dialog'],
   notice: ['banner', 'alert', 'callout'],
   selection: ['toggle', 'checkbox', 'segmented-control'],
-  hover: ['tooltip', 'popover'],
+  hover: ['tooltip', 'popover', 'hover-card'],
   tabs: ['tabs', 'segmented-control'],
 } as const satisfies Record<string, readonly string[]>;
 

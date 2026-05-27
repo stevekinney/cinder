@@ -16,6 +16,22 @@
       ]
     },
     {
+      "id": "alertdialog-description",
+      "severity": "error",
+      "description": "Modal role=\"alertdialog\" requires describedById so assistive technology receives both the urgent condition and required action",
+      "kind": "requires",
+      "when": {
+        "prop": "role",
+        "equals": "alertdialog"
+      },
+      "of": [
+        {
+          "prop": "describedById",
+          "nonEmpty": true
+        }
+      ]
+    },
+    {
       "id": "described-by-non-empty",
       "severity": "error",
       "description": "describedById must be a non-empty string id when provided — passing an empty string emits aria-describedby=\"\" which is invalid",
@@ -43,6 +59,10 @@
         "code": "<Modal title=\"Settings\" describedById=\"settings-desc\" bind:open={isOpen}>\n  <p id=\"settings-desc\">Adjust your account preferences below.</p>\n</Modal>"
       },
       {
+        "title": "Alert dialog role with a description",
+        "code": "<Modal role=\"alertdialog\" title=\"Session expired\" describedById=\"session-desc\" bind:open={isOpen}>\n  <p id=\"session-desc\">Sign in again before continuing.</p>\n</Modal>"
+      },
+      {
         "title": "Modal without describedById (omit entirely when not needed)",
         "code": "<Modal title=\"Upload file\" bind:open={isOpen}>\n  <FileUpload />\n</Modal>"
       }
@@ -57,6 +77,11 @@
         "title": "Modal with empty-string describedById",
         "code": "<Modal title=\"Settings\" describedById=\"\" bind:open={isOpen}><p>Content</p></Modal>",
         "violates": "described-by-non-empty"
+      },
+      {
+        "title": "Alert dialog role without a description",
+        "code": "<Modal role=\"alertdialog\" title=\"Session expired\" bind:open={isOpen}><p>Sign in again.</p></Modal>",
+        "violates": "alertdialog-description"
       }
     ]
   }

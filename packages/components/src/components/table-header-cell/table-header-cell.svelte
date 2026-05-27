@@ -26,6 +26,7 @@
     column,
     sortable = false,
     scope = 'col',
+    align = 'left',
     class: className,
     children,
   }: TableHeaderCellProps = $props();
@@ -55,6 +56,7 @@
 <th
   {scope}
   class={cn('cinder-table__header-cell', className)}
+  data-cinder-align={align}
   data-cinder-sortable={sortable || undefined}
   aria-sort={ariaSort}
 >
@@ -66,6 +68,19 @@
         aria-hidden="true"
         data-cinder-direction={ariaSort}
       >
+        <svg
+          viewBox="0 0 16 16"
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline class="cinder-table__sort-chevron-up" points="4 7 8 4 12 7" />
+          <polyline class="cinder-table__sort-chevron-down" points="4 9 8 12 12 9" />
+        </svg>
       </span>
     </button>
   {:else}

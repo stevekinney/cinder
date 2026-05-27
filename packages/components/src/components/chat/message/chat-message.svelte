@@ -291,7 +291,7 @@
         {#if showDefaultActions && textContent}
           <button
             type="button"
-            class="chat-message-copy"
+            class="chat-message-action-button chat-message-copy"
             class:chat-message-copy-success={copyState === 'copied'}
             onclick={handleCopy}
             aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
@@ -306,7 +306,7 @@
         {#if canEdit}
           <button
             type="button"
-            class="chat-message-edit-button"
+            class="chat-message-action-button chat-message-edit-button"
             onclick={startEditing}
             aria-label="Edit message"
           >
@@ -709,8 +709,8 @@
     .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
     .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;
-      left: 0;
-      right: auto;
+      inset-inline-start: 0;
+      inset-inline-end: auto;
       transform: none;
       padding-inline: 0;
       margin-top: var(--cinder-space-1);
@@ -725,36 +725,53 @@
     }
   }
 
-  /* Copy button — small icon-only affordance. The icon size comes from the
-   * `icon-xs` class on the SVG (defined in styles/utilities.css). */
-  .chat-message-copy {
+  /* Shared base for the built-in copy and edit action buttons — small
+   * icon-only affordances. The icon size comes from the `icon-xs` class on the
+   * SVG (defined in styles/utilities.css). A transparent border reserves layout
+   * space so the touch-context border swap below does not shift the icon. */
+  .chat-message-action-button {
     display: grid;
     place-items: center;
+    box-sizing: border-box;
     min-width: var(--cinder-touch-target-min);
     min-height: var(--cinder-touch-target-min);
     padding: 0;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     border-radius: var(--cinder-radius-sm);
     color: var(--cinder-text-muted);
     cursor: pointer;
     transition:
       color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   @media (hover: hover) {
-    .chat-message-copy:hover {
+    .chat-message-action-button:hover {
       color: var(--cinder-text);
       background: var(--cinder-surface-hover);
     }
   }
 
-  .chat-message-copy:focus-visible {
+  .chat-message-action-button:focus-visible {
     outline: 2px solid var(--cinder-ring-color);
     outline-offset: 2px;
   }
 
+  /* Touch devices: without hover discoverability, bare icons read as
+   * decoration. Give the action buttons a resting surface + border so they look
+   * tappable. Placed after the base rule so it wins at equal specificity; the
+   * transparent base border reserves the space, so this only swaps color — no
+   * layout shift. */
+  @media (hover: none) or (pointer: coarse) {
+    .chat-message-action-button {
+      background: var(--cinder-surface-raised);
+      border-color: var(--cinder-border);
+    }
+  }
+
+  /* Copy success state overrides the shared color. */
   .chat-message-copy-success {
     color: var(--cinder-success);
   }
@@ -764,35 +781,6 @@
       color: var(--cinder-color-success-fg);
       background: var(--cinder-color-success-bg);
     }
-  }
-
-  /* Edit button (icon action button, visually identical to copy button) */
-  .chat-message-edit-button {
-    display: grid;
-    place-items: center;
-    min-width: var(--cinder-touch-target-min);
-    min-height: var(--cinder-touch-target-min);
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: var(--cinder-radius-sm);
-    color: var(--cinder-text-muted);
-    cursor: pointer;
-    transition:
-      color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      background var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
-  @media (hover: hover) {
-    .chat-message-edit-button:hover {
-      color: var(--cinder-text);
-      background: var(--cinder-surface-hover);
-    }
-  }
-
-  .chat-message-edit-button:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
   }
 
   /* Edit mode */

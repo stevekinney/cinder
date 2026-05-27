@@ -102,7 +102,7 @@ describe('PageLayout rendering', () => {
 });
 
 describe('PageLayout breadcrumbs slot', () => {
-  test('breadcrumbs snippet renders below the sticky header and above the content', () => {
+  test('breadcrumbs snippet renders inside the sticky header before the title row', () => {
     const breadcrumbs = createRawSnippet(() => ({
       render: () => '<nav aria-label="Breadcrumb">Home</nav>',
     }));
@@ -113,17 +113,19 @@ describe('PageLayout breadcrumbs slot', () => {
 
     const breadcrumbsEl = container.querySelector('.cinder-page-layout-breadcrumbs');
     const header = container.querySelector('.cinder-page-layout-header');
+    const headerRow = container.querySelector('.cinder-page-layout-header-row');
     const content = container.querySelector('.cinder-page-layout-content');
     expect(breadcrumbsEl).not.toBeNull();
     expect(header).not.toBeNull();
+    expect(headerRow).not.toBeNull();
     expect(content).not.toBeNull();
-    // breadcrumbs must be outside (after) the sticky header and before content
-    const afterHeader =
-      header!.compareDocumentPosition(breadcrumbsEl!) & Node.DOCUMENT_POSITION_FOLLOWING;
-    const beforeContent =
-      breadcrumbsEl!.compareDocumentPosition(content!) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(afterHeader).toBeTruthy();
-    expect(beforeContent).toBeTruthy();
+    expect(header?.contains(breadcrumbsEl)).toBe(true);
+    expect(
+      breadcrumbsEl!.compareDocumentPosition(headerRow!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      header!.compareDocumentPosition(content!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test('breadcrumbs slot is absent when not provided', () => {
@@ -249,7 +251,7 @@ describe('PageLayout actions row CSS', () => {
 });
 
 describe('PageLayout DOM order', () => {
-  test('DOM order is header → breadcrumbs → content', () => {
+  test('DOM order is breadcrumbs → header row inside header, then content', () => {
     const breadcrumbs = createRawSnippet(() => ({
       render: () => '<nav>Breadcrumbs</nav>',
     }));
@@ -260,20 +262,19 @@ describe('PageLayout DOM order', () => {
 
     const header = container.querySelector('.cinder-page-layout-header')!;
     const breadcrumbsEl = container.querySelector('.cinder-page-layout-breadcrumbs')!;
+    const headerRow = container.querySelector('.cinder-page-layout-header-row')!;
     const content = container.querySelector('.cinder-page-layout-content')!;
 
     expect(header).not.toBeNull();
     expect(breadcrumbsEl).not.toBeNull();
+    expect(headerRow).not.toBeNull();
     expect(content).not.toBeNull();
 
-    // sticky header precedes breadcrumbs (breadcrumbs outside the banner landmark)
+    expect(header.contains(breadcrumbsEl)).toBe(true);
     expect(
-      header.compareDocumentPosition(breadcrumbsEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+      breadcrumbsEl.compareDocumentPosition(headerRow) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    // breadcrumbs precedes page content
-    expect(
-      breadcrumbsEl.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(header.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
@@ -323,14 +324,13 @@ describe('PageLayout integration: all slots simultaneously', () => {
     // Default .cinder-page-layout-title class must not appear when title is a snippet
     expect(container.querySelector('.cinder-page-layout-title')).toBeNull();
 
-    // Document order: avatar → title → meta → actions (inside header) → breadcrumbs → content
-    // Breadcrumbs sits outside the sticky <header>, between it and the page content.
+    // Document order: breadcrumbs → avatar → title → meta → actions (inside header) → content.
     const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(breadcrumbsEl.compareDocumentPosition(avatarEl) & FOLLOWING).toBeTruthy();
     expect(avatarEl.compareDocumentPosition(customTitle) & FOLLOWING).toBeTruthy();
     expect(customTitle.compareDocumentPosition(metaEl) & FOLLOWING).toBeTruthy();
     expect(metaEl.compareDocumentPosition(actionsEl) & FOLLOWING).toBeTruthy();
-    expect(actionsEl.compareDocumentPosition(breadcrumbsEl) & FOLLOWING).toBeTruthy();
-    expect(breadcrumbsEl.compareDocumentPosition(contentEl) & FOLLOWING).toBeTruthy();
+    expect(actionsEl.compareDocumentPosition(contentEl) & FOLLOWING).toBeTruthy();
   });
 });
 

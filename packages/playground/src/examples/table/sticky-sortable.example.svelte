@@ -43,7 +43,7 @@
       <Table.Row>
         <Table.HeaderCell column="name" sortable>Name</Table.HeaderCell>
         <Table.HeaderCell column="role" sortable>Role</Table.HeaderCell>
-        <Table.HeaderCell column="commits" sortable>Commits</Table.HeaderCell>
+        <Table.HeaderCell column="commits" sortable align="right">Commits</Table.HeaderCell>
       </Table.Row>
     </Table.Header>
     <Table.Body>

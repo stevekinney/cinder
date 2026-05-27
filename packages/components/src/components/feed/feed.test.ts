@@ -24,7 +24,7 @@ function textSnippet(text: string) {
 function itemSnippet(labels: string[]) {
   return createRawSnippet(() => ({
     render: () =>
-      `<span data-items="${labels.join(',')}">${labels.map((l) => `<span class="item">${l}</span>`).join('')}</span>`,
+      `<li class="cinder-feed-event"><div class="cinder-feed-event-rail"></div><div class="cinder-feed-event-body">${labels.map((label) => `<span class="item">${label}</span>`).join('')}</div></li>`,
     setup: () => {},
   }));
 }
@@ -150,5 +150,31 @@ describe('Feed', () => {
     });
     const root = container.querySelector('.cinder-feed');
     expect(root?.textContent).toContain('hello world');
+  });
+
+  test('feed events render rail elements inside list items', () => {
+    const { container } = render(Feed, {
+      props: { 'aria-label': 'Feed', children: itemSnippet(['alpha', 'beta']) },
+    });
+    const events = container.querySelectorAll('.cinder-feed-event');
+    expect(events.length).toBe(1);
+    for (const event of events) {
+      expect(event.querySelector('.cinder-feed-event-rail')).not.toBeNull();
+    }
+  });
+
+  test('connector geometry derives from a shared rail-size token', async () => {
+    const css = await Bun.file(new URL('./feed.css', import.meta.url)).text();
+    const eventBlock = css.match(/\.cinder-feed-event\s*\{[^}]*\}/)?.[0] ?? '';
+    const railBlock = css.match(/\.cinder-feed-event-rail\s*\{[^}]*\}/)?.[0] ?? '';
+    const connectorBlock = css.match(/\.cinder-feed-event::after\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(eventBlock).toContain('--cinder-feed-rail-size: var(--cinder-space-6)');
+    expect(railBlock).toContain('inline-size: var(--cinder-feed-rail-size)');
+    expect(railBlock).toContain('block-size: var(--cinder-feed-rail-size)');
+    expect(connectorBlock).toContain('inset-block-start: var(--cinder-feed-rail-size)');
+    expect(connectorBlock).toContain('inset-inline-start: calc(var(--cinder-feed-rail-size) / 2)');
+    expect(connectorBlock).not.toContain('inset-block-start: var(--cinder-space-6)');
+    expect(connectorBlock).not.toContain('inset-inline-start: calc(var(--cinder-space-6) / 2)');
   });
 });

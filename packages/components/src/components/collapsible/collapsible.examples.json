@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "collapsible",
+  "import": "cinder/collapsible",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Uncontrolled disclosure",
+      "description": "Without bind:open the component owns its toggle state.",
+      "code": "<script lang=\"ts\">\n  import { Collapsible } from 'cinder/collapsible';\n</script>\n\n<Collapsible trigger=\"Shipping details\">\n  <p>Orders ship within two business days. Tracking is emailed on dispatch.</p>\n</Collapsible>\n"
+    },
+    {
+      "id": "controlled",
+      "title": "Controlled with bind:open",
+      "description": "An external control drives open state via two-way binding.",
+      "code": "<script lang=\"ts\">\n  import { Collapsible } from 'cinder/collapsible';\n\n  let open = $state(false);\n</script>\n\n<button type=\"button\" onclick={() => (open = !open)}>\n  {open ? 'Hide' : 'Show'} from outside\n</button>\n\n<Collapsible bind:open trigger=\"Controlled panel\">\n  <p>This panel's open state is shared with the external button above.</p>\n</Collapsible>\n"
+    },
+    {
+      "id": "state-aware-trigger",
+      "title": "State-aware trigger label",
+      "description": "A snippet trigger receives { open, disabled } so the label can react to state.",
+      "code": "<script lang=\"ts\">\n  import { Collapsible } from 'cinder/collapsible';\n</script>\n\n<Collapsible>\n  {#snippet trigger({ open })}\n    {open ? 'Hide advanced options' : 'Show advanced options'}\n  {/snippet}\n  <p>Advanced configuration lives here.</p>\n</Collapsible>\n"
+    }
+  ]
+}

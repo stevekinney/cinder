@@ -22,6 +22,7 @@ import {
   REPO_ROOT,
   success,
   warning,
+  withGateLock,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -157,14 +158,15 @@ function printJobPlan(jobs: readonly Job[]): void {
 /**
  * The current full-suite behavior: run the root `lint`/`typecheck`/`test`
  * scripts (which fan out to every package). Used by the root-config escalation
- * and every fail-safe path. Exits the process directly.
+ * and every fail-safe path. Returns `true` on success; the caller maps the
+ * result to an exit code under the gate lock.
  *
  * Stylelint is covered here too: the root `lint` script ends with
  * `&& stylelint "packages/**\/src/**\/*.{css,svelte}"`, so the full path lints
  * styles across the workspace. Only the scoped path needs the separate,
  * file-list `runStylelint`.
  */
-async function runFull(): Promise<never> {
+async function runFull(): Promise<boolean> {
   info('Planned validation jobs (full suite):');
   for (const script of SCRIPTS) console.log(`  <root> ${script}`);
   let ok = true;
@@ -183,10 +185,10 @@ async function runFull(): Promise<never> {
     error(
       'Run `bun run lint && bun run typecheck && bun run test`, fix the failures, and push again.',
     );
-    process.exit(1);
+    return false;
   }
   success('Pre-push validation passed (full suite)');
-  process.exit(0);
+  return true;
 }
 
 /** Run stylelint over an explicit, existing file list. Returns success. */
@@ -225,18 +227,17 @@ type Plan =
       readonly summary: string;
     };
 
-/** Warn with a reason, then run the full suite and exit. */
-async function failSafe(reason: string): Promise<never> {
+/** Warn with a reason and fall back to the full suite. */
+function failSafe(reason: string): Plan {
   warning(`${reason}; running full suite`);
-  return runFull();
+  return { kind: 'full' };
 }
 
 /**
  * Derive what to validate from the push range. Everything that decides *scope*
- * lives here so any failure fails safe to the full suite — `failSafe`/`runFull`
- * never return, so a thrown derivation error can never let an untested change
- * through. The actual gate executions happen in the caller, where a non-zero
- * exit is a real failure to surface, not a derivation error to escalate.
+ * lives here so any failure fails safe to the full suite — a thrown derivation
+ * error can never let an untested change through. The caller runs the chosen
+ * plan under the gate lock and maps the result to an exit code.
  */
 async function derivePlan(
   stdinText: string,
@@ -252,8 +253,7 @@ async function derivePlan(
 
   if (parsed.updates.length === 0) {
     if (parsed.deletionCount > 0) {
-      success('Only branch deletions pushed; nothing to validate');
-      process.exit(0);
+      return { kind: 'skip', message: 'Only branch deletions pushed; nothing to validate' };
     }
     return failSafe('No push refs on stdin (or hook run by hand without piped refs)');
   }
@@ -324,14 +324,14 @@ async function derivePlan(
 /**
  * Run the scoped plan: print the job plan, then run phases in order
  * (lint → typecheck → test), parallel within a phase and sequential across, so
- * a typecheck failure surfaces before long downstream test runs. Exits the
- * process directly.
+ * a typecheck failure surfaces before long downstream test runs. Returns `true`
+ * on success; the caller maps the result to an exit code under the gate lock.
  */
 async function runScoped(
   jobs: readonly Job[],
   stylelintFiles: readonly string[],
   summary: string,
-): Promise<never> {
+): Promise<boolean> {
   printJobPlan(jobs);
 
   let ok = true;
@@ -365,23 +365,31 @@ async function runScoped(
   if (!ok) {
     error('Pre-push validation failed (scoped).');
     error('Fix the failures above and push again.');
-    process.exit(1);
+    return false;
   }
 
   success(`Pre-push validation passed (scoped — ${summary})`);
-  process.exit(0);
+  return true;
 }
 
 const plan = await derivePlan(await Bun.stdin.text(), await loadWorkspacePackages());
 
-switch (plan.kind) {
-  case 'skip':
-    success(plan.message);
-    process.exit(0);
-  case 'full':
-    await runFull();
-    break;
-  case 'scoped':
-    await runScoped(plan.jobs, plan.stylelintFiles, plan.summary);
-    break;
+// A deletion-only / no-source push does no gate work, so it needs no lock.
+if (plan.kind === 'skip') {
+  success(plan.message);
+  process.exit(0);
 }
+
+// Serialize the actual gate execution under a repository-local lock so
+// concurrent pushes don't stack validations on top of one another.
+let ok = false;
+try {
+  ok = await withGateLock(() =>
+    plan.kind === 'full' ? runFull() : runScoped(plan.jobs, plan.stylelintFiles, plan.summary),
+  );
+} catch (caught) {
+  error(caught instanceof Error ? caught.message : String(caught));
+  process.exit(1);
+}
+
+process.exit(ok ? 0 : 1);
