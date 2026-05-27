@@ -92,11 +92,9 @@ button.cinder-navigation-item {
 /* ----------------------------------------
  * Vertical variant — sidebar / vertical-tab contexts
  *
- * Symmetric border-radius (not the top-rounded/bottom-square horizontal
- * shape) so the focus-ring box-shadow does not paint a tombstone in
- * vertical contexts. The inline-start border is the active indicator and
- * is reserved at all times so toggling active state never shifts the
- * label.
+ * Square row geometry for flush sidebar edges. The inline-start border is the
+ * active indicator and is reserved at all times so toggling active state never
+ * shifts the label.
  * ---------------------------------------- */
 
 .cinder-navigation-item[data-variant='vertical'] {
@@ -104,14 +102,14 @@ button.cinder-navigation-item {
   inline-size: 100%;
   justify-content: flex-start;
   border-bottom: none;
-  border-radius: var(--cinder-radius-sm);
+  border-radius: 0;
   border-inline-start: 2px solid transparent;
 }
 
 .cinder-navigation-item[data-variant='vertical'][data-active='true'] {
   border-bottom-color: transparent;
   border-inline-start-color: var(--cinder-accent);
-  background-color: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+  background-color: var(--cinder-surface-inset);
 }
 
 /* ----------------------------------------

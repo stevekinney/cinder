@@ -321,7 +321,7 @@ describe('vertical navigation-item geometry lives on the item', () => {
     const root = parse(navigationItemCss);
     const rule = findRule(root, ".cinder-navigation-item[data-variant='vertical']");
     expect(rule).toBeDefined();
-    expect(declValue(rule!, 'border-radius')).toBe('var(--cinder-radius-sm)');
+    expect(declValue(rule!, 'border-radius')).toBe('0');
     expect(declValue(rule!, 'border-bottom')).toBe('none');
   });
 
@@ -332,7 +332,9 @@ describe('vertical navigation-item geometry lives on the item', () => {
       ".cinder-navigation-item[data-variant='vertical'][data-active='true']",
     );
     expect(rule).toBeDefined();
+    expect(declValue(rule!, 'background-color')).toBe('var(--cinder-surface-inset)');
     expect(declValue(rule!, 'border-inline-start-color')).toBe('var(--cinder-accent)');
+    expect(rule!.toString()).not.toContain('color-mix(');
   });
 
   test('side-navigation.css no longer contains ancestor overrides for navigation-item', () => {

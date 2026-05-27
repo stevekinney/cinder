@@ -68,7 +68,7 @@
   --cinder-status-dot-color: var(--cinder-danger);
 }
 
-.cinder-status-dot[data-cinder-status='building'] {
+.cinder-status-dot[data-cinder-status='pending'] {
   --cinder-status-dot-color: var(--cinder-info);
 }
 
