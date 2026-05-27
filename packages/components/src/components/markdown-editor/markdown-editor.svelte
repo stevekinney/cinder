@@ -334,17 +334,25 @@
           return {
             ...(view.dom instanceof HTMLElement ? { contextElement: view.dom } : {}),
             getBoundingClientRect: () => {
-              const coords = view.coordsAtPos(view.state.selection.from);
-              return {
-                x: coords.left,
-                y: coords.top,
-                width: coords.right - coords.left,
-                height: coords.bottom - coords.top,
-                top: coords.top,
-                right: coords.right,
-                bottom: coords.bottom,
-                left: coords.left,
-              };
+              // autoUpdate calls this on every scroll/resize. coordsAtPos can
+              // throw if the position is no longer resolvable after a state
+              // change — fall back to the editor's own rect so Floating UI keeps
+              // a valid anchor instead of rejecting the position update.
+              try {
+                const coords = view.coordsAtPos(view.state.selection.from);
+                return {
+                  x: coords.left,
+                  y: coords.top,
+                  width: coords.right - coords.left,
+                  height: coords.bottom - coords.top,
+                  top: coords.top,
+                  right: coords.right,
+                  bottom: coords.bottom,
+                  left: coords.left,
+                };
+              } catch {
+                return view.dom.getBoundingClientRect();
+              }
             },
           };
         }
@@ -450,7 +458,10 @@
     },
     onLinkShortcut: () => {
       // Mod-k pressed - open link popover with a virtual element anchor
-      // derived from the current ProseMirror selection position.
+      // derived from the current ProseMirror selection position. Capture the
+      // current link range (as handleLinkClick does) so a subsequent Remove
+      // acts on the right link rather than a stale/null range.
+      capturedLinkRange = lastKnownLinkRange;
       linkPopoverAnchorElement = resolveLinkPopoverAnchor();
       linkPopoverOpen = true;
     },
