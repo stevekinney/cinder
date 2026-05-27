@@ -155,10 +155,11 @@ describe('useToast api', () => {
 
   test('pre-hydration toast calls are side-effect free', async () => {
     let api: ToastApi | null = null;
+    const earlyRejectingPromise = Promise.reject(new Error('pre-hydration rejection'));
     const { container } = render(Wrapper, {
       onInitialize: (initialApi: ToastApi) => {
         initialApi.show('Too early', { duration: 1 });
-        initialApi.promise(Promise.resolve('late'), {
+        initialApi.promise(earlyRejectingPromise, {
           loading: 'Loading too early',
           success: 'Resolved too early',
           error: 'Failed too early',

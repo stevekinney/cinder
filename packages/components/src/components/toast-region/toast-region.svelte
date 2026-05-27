@@ -422,7 +422,10 @@
     } & Pick<ToastOptions, 'id' | 'duration' | 'dismissible' | 'action'>,
   ): string {
     const id = getNextToastId(options);
-    if (!canMutateToasts()) return id;
+    if (!canMutateToasts()) {
+      promiseToTrack.then(undefined, () => {});
+      return id;
+    }
     const loadingOptions: InternalShowOptions = {
       id,
       duration: 0,
