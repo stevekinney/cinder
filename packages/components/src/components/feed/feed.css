@@ -12,6 +12,8 @@
 }
 
 .cinder-feed-event {
+  --cinder-feed-rail-size: var(--cinder-space-6);
+
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -24,8 +26,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  inline-size: var(--cinder-space-6);
-  block-size: var(--cinder-space-6);
+  inline-size: var(--cinder-feed-rail-size);
+  block-size: var(--cinder-feed-rail-size);
   border-radius: var(--cinder-radius-full);
   background: var(--cinder-surface-muted);
   color: var(--cinder-text-muted);
@@ -57,9 +59,9 @@
 .cinder-feed-event::after {
   content: '';
   position: absolute;
-  inset-block-start: var(--cinder-space-6);
+  inset-block-start: var(--cinder-feed-rail-size);
   inset-block-end: calc(-1 * var(--cinder-space-4));
-  inset-inline-start: calc(var(--cinder-space-6) / 2);
+  inset-inline-start: calc(var(--cinder-feed-rail-size) / 2);
   inline-size: 1px;
   background: var(--cinder-border-muted);
   transform: translateX(-50%);

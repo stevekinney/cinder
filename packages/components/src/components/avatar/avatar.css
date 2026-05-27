@@ -68,5 +68,6 @@
 .cinder-avatar__placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, var(--cinder-surface-inset) 0%, var(--cinder-surface) 100%);
+  background: var(--cinder-surface-inset);
+  border: 1px solid var(--cinder-border-muted);
 }

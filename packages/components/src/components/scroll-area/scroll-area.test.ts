@@ -217,6 +217,7 @@ describe('ScrollArea scrollbar tokens', () => {
     expect(source).toMatch(/scrollbar-color:\s*var\(--cinder-scrollbar-thumb\)/);
     expect(source).toMatch(/::-webkit-scrollbar-thumb/);
     expect(source).toMatch(/var\(--cinder-scrollbar-track\)/);
+    expect(source).not.toContain('scrollbar-gutter: stable');
   });
 
   test('forced-colors fallback uses standardized system colors', async () => {
