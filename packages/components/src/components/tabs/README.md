@@ -30,6 +30,30 @@ leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 The leaves remain importable individually for à-la-carte builds — see
 `cinder/tab`, `cinder/tab-list`, and `cinder/tab-panel`.
 
+## Trailing badges and counts
+
+Each `Tabs.Trigger` accepts a `trailing` snippet for badges, counts, or status
+dots. Render the library `Badge` inside it for idiomatic styling — there is no
+separate badge class to learn:
+
+```svelte
+<script lang="ts">
+  import { Badge } from 'cinder/badge';
+</script>
+
+<Tabs.Trigger value="inbox">
+  Inbox
+  {#snippet trailing()}
+    <Badge>3</Badge>
+  {/snippet}
+</Tabs.Trigger>
+```
+
+The `trailing` wrapper is `aria-hidden`, so its content is omitted from the
+tab's accessible name. Any count that carries meaning must therefore also live
+in the tab's visible `children` (the accessible name) — never rely on the
+trailing badge alone to convey it.
+
 ## Props
 
 <!-- generated:props:start -->

@@ -112,5 +112,4 @@ describe('focus capture/restore', () => {
     }
     expect(captureFocus()).toBeNull();
   });
-
 });

@@ -1,0 +1,5 @@
+.cinder-confirm-dialog__description {
+  margin: 0;
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+}

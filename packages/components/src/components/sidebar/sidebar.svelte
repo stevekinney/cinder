@@ -19,10 +19,7 @@
   import type { SidebarProps } from './sidebar.types.ts';
   import { MediaQuery } from 'svelte/reactivity';
 
-  import {
-    setSidebarContext,
-    type SidebarContextValue,
-  } from '../../_internal/sidebar-context.ts';
+  import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Drawer from '../drawer/drawer.svelte';
 

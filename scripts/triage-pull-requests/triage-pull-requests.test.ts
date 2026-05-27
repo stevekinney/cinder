@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { checkReadiness, isMergeReady, classifyMergeFailure } from './readiness';
-import type { Readiness } from './readiness';
-import { runTriage } from './orchestrator';
-import type { TriageOptions } from './orchestrator';
+import { describe, expect, it } from 'bun:test';
 import type { Deps, RunResult, StreamResult } from './dependencies';
+import type { TriageOptions } from './orchestrator';
+import { runTriage } from './orchestrator';
+import type { Readiness } from './readiness';
+import { checkReadiness, classifyMergeFailure, isMergeReady } from './readiness';
 
 // ---------------------------------------------------------------------------
 // Fake deps factory
@@ -36,7 +36,9 @@ type FakeCommand = {
   result: RunResult | StreamResult;
 };
 
-function fakeDeps(commands: FakeCommand[]): Deps & { written: Map<string, string>; logged: Array<[string, string]> } {
+function fakeDeps(
+  commands: FakeCommand[],
+): Deps & { written: Map<string, string>; logged: Array<[string, string]> } {
   const written = new Map<string, string>();
   const logged: Array<[string, string]> = [];
 
@@ -67,18 +69,26 @@ function fakeDeps(commands: FakeCommand[]): Deps & { written: Map<string, string
       }
       return makeStreamResult({ exitCode: 0 });
     },
-    log: (level, message) => { logged.push([level, message]); },
+    log: (level, message) => {
+      logged.push([level, message]);
+    },
     now: () => new Date('2024-01-01T00:00:00.000Z'),
     sleep: async () => {},
-    writeFile: async (path, content) => { written.set(path, content); },
+    writeFile: async (path, content) => {
+      written.set(path, content);
+    },
   };
 }
 
-const argsInclude = (...parts: string[]) =>
-  (args: string[]) => parts.every((p) => args.includes(p));
+const argsInclude =
+  (...parts: string[]) =>
+  (args: string[]) =>
+    parts.every((p) => args.includes(p));
 
-const argsStartWith = (...parts: string[]) =>
-  (args: string[]) => parts.every((p, i) => args[i] === p);
+const argsStartWith =
+  (...parts: string[]) =>
+  (args: string[]) =>
+    parts.every((p, i) => args[i] === p);
 
 // ---------------------------------------------------------------------------
 // Default options
@@ -214,7 +224,9 @@ describe('checkReadiness — CI aggregation', () => {
       { match: argsInclude('gh', 'pr', 'view'), result: { stdout: restView } },
       // First graphql call: the mergeability query has 'mergeable' in args.
       {
-        match: (args) => args.includes('gh') && args.includes('graphql') &&
+        match: (args) =>
+          args.includes('gh') &&
+          args.includes('graphql') &&
           args.some((a) => a.includes('mergeable')),
         result: { stdout: graphqlMergeability },
       },
@@ -391,11 +403,15 @@ describe('classifyMergeFailure', () => {
   });
 
   it('classifies branch protection', () => {
-    expect(classifyMergeFailure('error: branch protection rule prevents merge')).toBe('branch-protection');
+    expect(classifyMergeFailure('error: branch protection rule prevents merge')).toBe(
+      'branch-protection',
+    );
   });
 
   it('classifies required reviews', () => {
-    expect(classifyMergeFailure('review required before merge is allowed')).toBe('required-reviews-missing');
+    expect(classifyMergeFailure('review required before merge is allowed')).toBe(
+      'required-reviews-missing',
+    );
   });
 
   it('classifies permissions', () => {
@@ -414,11 +430,32 @@ describe('classifyMergeFailure', () => {
 describe('PR listing / NDJSON parsing', () => {
   it('parses two-page NDJSON response into sorted snapshot', async () => {
     const page1 = [
-      { number: 1, title: 'PR 1', headRefName: 'feat/1', headRefOid: 'aaa', createdAt: '2024-01-01T00:00:00Z', isDraft: false },
-      { number: 2, title: 'PR 2', headRefName: 'feat/2', headRefOid: 'bbb', createdAt: '2024-01-02T00:00:00Z', isDraft: false },
+      {
+        number: 1,
+        title: 'PR 1',
+        headRefName: 'feat/1',
+        headRefOid: 'aaa',
+        createdAt: '2024-01-01T00:00:00Z',
+        isDraft: false,
+      },
+      {
+        number: 2,
+        title: 'PR 2',
+        headRefName: 'feat/2',
+        headRefOid: 'bbb',
+        createdAt: '2024-01-02T00:00:00Z',
+        isDraft: false,
+      },
     ];
     const page2 = [
-      { number: 3, title: 'PR 3', headRefName: 'feat/3', headRefOid: 'ccc', createdAt: '2024-01-03T00:00:00Z', isDraft: false },
+      {
+        number: 3,
+        title: 'PR 3',
+        headRefName: 'feat/3',
+        headRefOid: 'ccc',
+        createdAt: '2024-01-03T00:00:00Z',
+        isDraft: false,
+      },
     ];
     const ndjson = [...page1, ...page2].map((p) => JSON.stringify(p)).join('\n') + '\n'; // trailing newline
 
@@ -426,13 +463,18 @@ describe('PR listing / NDJSON parsing', () => {
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('repos/owner/repo/pulls'), result: { stdout: ndjson } },
     ]);
 
     const logs: string[] = [];
-    deps.log = (level, msg) => { logs.push(`${level}: ${msg}`); };
+    deps.log = (level, msg) => {
+      logs.push(`${level}: ${msg}`);
+    };
 
     await runTriage({ ...defaultOptions }, deps);
 
@@ -457,13 +499,18 @@ describe('PR listing / NDJSON parsing', () => {
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('repos/owner/repo/pulls'), result: { stdout: ndjson } },
     ]);
 
     const logs: string[] = [];
-    deps.log = (level, msg) => { logs.push(`${level}: ${msg}`); };
+    deps.log = (level, msg) => {
+      logs.push(`${level}: ${msg}`);
+    };
 
     await runTriage({ ...defaultOptions, queueLimit: 3 }, deps);
 
@@ -472,20 +519,32 @@ describe('PR listing / NDJSON parsing', () => {
   });
 
   it('tolerates empty trailing lines in NDJSON', async () => {
-    const pr = { number: 1, title: 'PR', headRefName: 'feat/1', headRefOid: 'aaa', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 1,
+      title: 'PR',
+      headRefName: 'feat/1',
+      headRefOid: 'aaa',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr) + '\n\n\n'; // multiple trailing newlines
 
     const deps = fakeDeps([
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('repos/owner/repo/pulls'), result: { stdout: ndjson } },
     ]);
 
     const logs: string[] = [];
-    deps.log = (level, msg) => { logs.push(msg); };
+    deps.log = (level, msg) => {
+      logs.push(msg);
+    };
 
     // Should not throw
     await runTriage({ ...defaultOptions }, deps);
@@ -504,7 +563,10 @@ describe('runTriage — dry-run', () => {
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', 'HEAD'), result: { stdout: 'abc\n' } },
       { match: argsInclude('git', 'rev-parse', 'origin/main'), result: { stdout: 'abc\n' } },
@@ -543,20 +605,36 @@ describe('runTriage — dry-run', () => {
 
 describe('runTriage — --limit and exit codes', () => {
   const draftPR = {
-    number: 1, title: 'Draft', headRefName: 'feat/draft', headRefOid: 'ddd',
-    createdAt: '2024-01-01T00:00:00Z', isDraft: true,
+    number: 1,
+    title: 'Draft',
+    headRefName: 'feat/draft',
+    headRefOid: 'ddd',
+    createdAt: '2024-01-01T00:00:00Z',
+    isDraft: true,
   };
   const normalPR = {
-    number: 2, title: 'Real PR', headRefName: 'feat/real', headRefOid: 'eee',
-    createdAt: '2024-01-02T00:00:00Z', isDraft: false,
+    number: 2,
+    title: 'Real PR',
+    headRefName: 'feat/real',
+    headRefOid: 'eee',
+    createdAt: '2024-01-02T00:00:00Z',
+    isDraft: false,
   };
   const normalPR2 = {
-    number: 3, title: 'Second PR', headRefName: 'feat/second', headRefOid: 'fff',
-    createdAt: '2024-01-03T00:00:00Z', isDraft: false,
+    number: 3,
+    title: 'Second PR',
+    headRefName: 'feat/second',
+    headRefOid: 'fff',
+    createdAt: '2024-01-03T00:00:00Z',
+    isDraft: false,
   };
 
   it('--limit 1 on 1 merged + 9 unattempted exits 0 (not 1)', async () => {
-    const allPRs = [normalPR, normalPR2, { ...normalPR2, number: 4, headRefOid: 'g4', createdAt: '2024-01-04T00:00:00Z' }];
+    const allPRs = [
+      normalPR,
+      normalPR2,
+      { ...normalPR2, number: 4, headRefOid: 'g4', createdAt: '2024-01-04T00:00:00Z' },
+    ];
     const ndjson = allPRs.map((p) => JSON.stringify(p)).join('\n');
 
     const readyPrView = JSON.stringify({
@@ -567,14 +645,28 @@ describe('runTriage — --limit and exit codes', () => {
       headRefOid: normalPR.headRefOid,
       isDraft: false,
     });
-    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    const graphql = JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
+    });
 
     const deps = fakeDeps([
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: '--match-head-commit' } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: '--match-head-commit' },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
       { match: argsInclude('mkdir'), result: { stdout: '' } },
@@ -582,7 +674,10 @@ describe('runTriage — --limit and exit codes', () => {
       { match: argsInclude('gh', 'pr', 'view'), result: { stdout: readyPrView } },
       { match: argsInclude('gh', 'api', 'graphql'), result: { stdout: graphql } },
       { match: argsInclude('gh', 'pr', 'merge'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'pr', 'view', '2', '--json', 'mergeCommit'), result: { stdout: '"sha-merged"\n' } },
+      {
+        match: argsInclude('gh', 'pr', 'view', '2', '--json', 'mergeCommit'),
+        result: { stdout: '"sha-merged"\n' },
+      },
       { match: argsInclude('git', 'checkout', 'main'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull'), result: { stdout: '' } },
     ]);
@@ -601,14 +696,28 @@ describe('runTriage — --limit and exit codes', () => {
       headRefOid: normalPR.headRefOid,
       isDraft: false,
     });
-    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    const graphql = JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
+    });
 
     const deps = fakeDeps([
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: '--match-head-commit' } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: '--match-head-commit' },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
       { match: argsInclude('mkdir'), result: { stdout: '' } },
@@ -639,7 +748,14 @@ describe('runTriage — --limit and exit codes', () => {
 
 describe('runTriage — --retry-pending', () => {
   it('does not retry ci-pending PRs when --retry-pending=false', async () => {
-    const pr = { number: 5, title: 'Slow CI', headRefName: 'feat/slow', headRefOid: 'slowsha', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 5,
+      title: 'Slow CI',
+      headRefName: 'feat/slow',
+      headRefOid: 'slowsha',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr);
 
     const pendingView = JSON.stringify({
@@ -650,14 +766,25 @@ describe('runTriage — --retry-pending', () => {
       headRefOid: pr.headRefOid,
       isDraft: false,
     });
-    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    const graphql = JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
+    });
 
     let viewCallCount = 0;
     const deps = fakeDeps([
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', 'HEAD'), result: { stdout: 'abc\n' } },
       { match: argsInclude('git', 'rev-parse', 'origin/main'), result: { stdout: 'abc\n' } },
@@ -672,7 +799,10 @@ describe('runTriage — --retry-pending', () => {
         { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
         { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
         { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-        { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
+        {
+          match: argsInclude('gh', 'repo', 'view'),
+          result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+        },
         { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
         { match: argsInclude('git', 'rev-parse', 'HEAD'), result: { stdout: 'abc\n' } },
         { match: argsInclude('git', 'rev-parse', 'origin/main'), result: { stdout: 'abc\n' } },
@@ -699,8 +829,14 @@ describe('runTriage — preflight', () => {
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: 'Usage: gh pr merge [flags]' } }, // no --match-head-commit
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: 'Usage: gh pr merge [flags]' },
+      }, // no --match-head-commit
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
     ]);
 
@@ -714,15 +850,24 @@ describe('runTriage — preflight', () => {
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: 'Usage: gh pr merge [flags]' } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: 'Usage: gh pr merge [flags]' },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
       { match: argsInclude('mkdir'), result: { stdout: '' } },
       { match: argsInclude('repos/owner/repo/pulls'), result: { stdout: ndjson } },
     ]);
 
-    const code = await runTriage({ ...defaultOptions, execute: true, unsafeNoHeadMatch: true }, deps);
+    const code = await runTriage(
+      { ...defaultOptions, execute: true, unsafeNoHeadMatch: true },
+      deps,
+    );
     expect(code).toBe(0);
   });
 });
@@ -733,7 +878,14 @@ describe('runTriage — preflight', () => {
 
 describe('runTriage — local-branch-no-upstream', () => {
   it('soft-skips when remote ref is missing after checkout', async () => {
-    const pr = { number: 10, title: 'Fork PR', headRefName: 'feat/fork', headRefOid: 'fork1', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 10,
+      title: 'Fork PR',
+      headRefName: 'feat/fork',
+      headRefOid: 'fork1',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr);
 
     const needsWorkView = JSON.stringify({
@@ -744,14 +896,28 @@ describe('runTriage — local-branch-no-upstream', () => {
       headRefOid: pr.headRefOid,
       isDraft: false,
     });
-    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    const graphql = JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
+    });
 
     const deps = fakeDeps([
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: '--match-head-commit' } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: '--match-head-commit' },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
       { match: argsInclude('mkdir'), result: { stdout: '' } },
@@ -759,9 +925,15 @@ describe('runTriage — local-branch-no-upstream', () => {
       { match: argsInclude('gh', 'pr', 'view'), result: { stdout: needsWorkView } },
       { match: argsInclude('gh', 'api', 'graphql'), result: { stdout: graphql } },
       { match: argsInclude('gh', 'pr', 'checkout'), result: { stdout: '' } },
-      { match: (args) => args.includes('rev-parse') && args.includes('HEAD'), result: { stdout: 'fork1\n' } },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('HEAD'),
+        result: { stdout: 'fork1\n' },
+      },
       // Missing remote ref — rev-parse --verify returns exit 1
-      { match: (args) => args.includes('rev-parse') && args.includes('--verify'), result: { exitCode: 1, stdout: '' } },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('--verify'),
+        result: { exitCode: 1, stdout: '' },
+      },
       { match: argsInclude('git', 'checkout', 'main'), result: { stdout: '' } },
     ]);
 
@@ -770,7 +942,10 @@ describe('runTriage — local-branch-no-upstream', () => {
 
     const code = await runTriage({ ...defaultOptions, execute: true }, deps);
     expect(code).toBe(1); // had a skip
-    const skippedLog = logs.find(([, msg]) => msg.toLowerCase().includes('no-upstream') || msg.toLowerCase().includes('summary'));
+    const skippedLog = logs.find(
+      ([, msg]) =>
+        msg.toLowerCase().includes('no-upstream') || msg.toLowerCase().includes('summary'),
+    );
     // Just verify it didn't hard-crash
     expect(code).toBe(1);
   });
@@ -790,13 +965,27 @@ describe('runTriage — worktree conflict', () => {
       headRefOid: pr.headRefOid,
       isDraft: false,
     });
-    const graphql = JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } } });
+    const graphql = JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
+    });
     return [
       { match: argsInclude('gh', 'auth'), result: { stdout: '' } },
       { match: argsInclude('git', 'rev-parse', '--abbrev-ref'), result: { stdout: 'main\n' } },
       { match: argsInclude('git', 'status', '--porcelain'), result: { stdout: '' } },
-      { match: argsInclude('gh', 'repo', 'view'), result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) } },
-      { match: argsInclude('gh', 'pr', 'merge', '--help'), result: { stdout: '--match-head-commit' } },
+      {
+        match: argsInclude('gh', 'repo', 'view'),
+        result: { stdout: JSON.stringify({ nameWithOwner: 'owner/repo' }) },
+      },
+      {
+        match: argsInclude('gh', 'pr', 'merge', '--help'),
+        result: { stdout: '--match-head-commit' },
+      },
       { match: argsInclude('git', 'fetch'), result: { stdout: '' } },
       { match: argsInclude('git', 'pull', '--ff-only'), result: { stdout: '' } },
       { match: argsInclude('mkdir'), result: { stdout: '' } },
@@ -808,7 +997,14 @@ describe('runTriage — worktree conflict', () => {
   };
 
   it('removes a stale worktree holding the PR branch and continues', async () => {
-    const pr = { number: 20, title: 'Stale-WT', headRefName: 'feat/blocked', headRefOid: 'wt1', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 20,
+      title: 'Stale-WT',
+      headRefName: 'feat/blocked',
+      headRefOid: 'wt1',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr);
     const porcelain = [
       `worktree ${process.cwd()}`,
@@ -847,10 +1043,16 @@ describe('runTriage — worktree conflict', () => {
         },
         result: { stdout: '' },
       },
-      { match: (args) => args.includes('rev-parse') && args.includes('HEAD'), result: { stdout: 'wt1\n' } },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('HEAD'),
+        result: { stdout: 'wt1\n' },
+      },
       // No remote ref — soft-skip after the checkout. The point of this test is the
       // pre-checkout cleanup, so we accept any later soft-skip.
-      { match: (args) => args.includes('rev-parse') && args.includes('--verify'), result: { exitCode: 1, stdout: '' } },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('--verify'),
+        result: { exitCode: 1, stdout: '' },
+      },
     ]);
 
     const code = await runTriage({ ...defaultOptions, execute: true }, deps);
@@ -858,12 +1060,21 @@ describe('runTriage — worktree conflict', () => {
     expect(removeCalls.length).toBe(1);
     expect(removeCalls[0]).toContain('/tmp/stale-wt');
     expect(checkoutCalls.length).toBeGreaterThan(0); // checkout still happened
-    const warned = deps.logged.find(([level, msg]) => level === 'WARN' && msg.includes('/tmp/stale-wt'));
+    const warned = deps.logged.find(
+      ([level, msg]) => level === 'WARN' && msg.includes('/tmp/stale-wt'),
+    );
     expect(warned).toBeDefined();
   });
 
   it('does not remove the current worktree even if it holds the PR branch', async () => {
-    const pr = { number: 21, title: 'Self-WT', headRefName: 'feat/self', headRefOid: 'wt2', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 21,
+      title: 'Self-WT',
+      headRefName: 'feat/self',
+      headRefOid: 'wt2',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr);
     const porcelain = [
       `worktree ${process.cwd()}`,
@@ -889,8 +1100,14 @@ describe('runTriage — worktree conflict', () => {
         result: { stdout: '' },
       },
       { match: argsInclude('gh', 'pr', 'checkout'), result: { stdout: '' } },
-      { match: (args) => args.includes('rev-parse') && args.includes('HEAD'), result: { stdout: 'wt2\n' } },
-      { match: (args) => args.includes('rev-parse') && args.includes('--verify'), result: { exitCode: 1, stdout: '' } },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('HEAD'),
+        result: { stdout: 'wt2\n' },
+      },
+      {
+        match: (args) => args.includes('rev-parse') && args.includes('--verify'),
+        result: { exitCode: 1, stdout: '' },
+      },
     ]);
 
     await runTriage({ ...defaultOptions, execute: true }, deps);
@@ -898,7 +1115,14 @@ describe('runTriage — worktree conflict', () => {
   });
 
   it('soft-skips when conflicting worktree cannot be removed', async () => {
-    const pr = { number: 22, title: 'Locked-WT', headRefName: 'feat/locked', headRefOid: 'wt3', createdAt: '2024-01-01T00:00:00Z', isDraft: false };
+    const pr = {
+      number: 22,
+      title: 'Locked-WT',
+      headRefName: 'feat/locked',
+      headRefOid: 'wt3',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
+    };
     const ndjson = JSON.stringify(pr);
     const porcelain = [
       `worktree ${process.cwd()}`,

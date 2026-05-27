@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { parseArgs } from 'node:util';
-import { runTriage } from './triage-pull-requests/orchestrator';
 import { realDeps } from './triage-pull-requests/dependencies';
+import { runTriage } from './triage-pull-requests/orchestrator';
 
 if (import.meta.main) {
   const { values } = parseArgs({

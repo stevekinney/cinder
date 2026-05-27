@@ -25,11 +25,102 @@ const triggerSnippet = createRawSnippet(() => ({
   setup: () => {},
 }));
 
+const dropdownSurfaceProperties = [
+  'borderTopWidth',
+  'borderTopStyle',
+  'borderTopColor',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+  'backgroundColor',
+  'color',
+  'boxShadow',
+] as const;
+
+const deterministicDropdownTokens = `
+:root {
+  --cinder-border: rgb(44 56 72);
+  --cinder-radius-md: 8px;
+  --cinder-shadow-lg: 0 10px 15px rgb(2 6 23 / 0.18);
+  --cinder-surface-raised: rgb(242 246 251);
+  --cinder-text: rgb(17 24 39);
+}
+`;
+
+const expectedDropdownSurfaceStyles = {
+  borderTopWidth: '1px',
+  borderTopStyle: 'solid',
+  borderTopColor: 'rgb(44 56 72)',
+  borderTopLeftRadius: '8px',
+  borderTopRightRadius: '8px',
+  borderBottomLeftRadius: '8px',
+  borderBottomRightRadius: '8px',
+  backgroundColor: 'rgb(242 246 251)',
+  color: 'rgb(17 24 39)',
+  boxShadow: '0 10px 15px rgb(2 6 23 / 0.18)',
+} satisfies Record<(typeof dropdownSurfaceProperties)[number], string>;
+
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<span>${text}</span>`,
     setup: () => {},
   }));
+}
+
+function extractDeclarationBlock(css: string, selector: string): string {
+  const selectorStart = css.indexOf(`${selector} {`);
+  if (selectorStart === -1) {
+    throw new Error(`Could not find selector: ${selector}`);
+  }
+
+  const blockStart = css.indexOf('{', selectorStart);
+  let depth = 0;
+
+  for (let index = blockStart; index < css.length; index += 1) {
+    const character = css[index];
+    if (character === '{') depth += 1;
+    if (character === '}') depth -= 1;
+    if (depth === 0) {
+      return css.slice(blockStart + 1, index);
+    }
+  }
+
+  throw new Error(`Could not find closing brace for selector: ${selector}`);
+}
+
+function expectNoDeclaration(block: string, propertyName: string): void {
+  expect(block).not.toMatch(new RegExp(`(^|\\n)\\s*${propertyName}\\s*:`));
+}
+
+async function readDropdownCss(): Promise<string> {
+  return await Bun.file(new URL('./dropdown.css', import.meta.url)).text();
+}
+
+async function injectDropdownCss(): Promise<() => void> {
+  const [tokens, dropdownCss] = await Promise.all([
+    Bun.file(new URL('../../styles/tokens-base.css', import.meta.url)).text(),
+    readDropdownCss(),
+  ]);
+
+  const style = document.createElement('style');
+  style.textContent = `${tokens}\n${deterministicDropdownTokens}\n${dropdownCss}`;
+  document.head.appendChild(style);
+
+  return () => style.remove();
+}
+
+function readSurfaceStyles(element: HTMLElement) {
+  const computedStyle = getComputedStyle(element);
+  return Object.fromEntries(
+    dropdownSurfaceProperties.map((property) => [property, computedStyle[property]]),
+  ) as Record<(typeof dropdownSurfaceProperties)[number], string>;
+}
+
+function expectDropdownSurfaceRecipe(styles: ReturnType<typeof readSurfaceStyles>): void {
+  for (const property of dropdownSurfaceProperties) {
+    expect(styles[property]).toBe(expectedDropdownSurfaceStyles[property]);
+  }
 }
 
 describe('Dropdown', () => {
@@ -166,13 +257,55 @@ describe('Dropdown', () => {
 
     const caret = container.querySelector('.trigger .cinder-dropdown-trigger__caret');
     expect(caret).not.toBeNull();
+    expect(caret?.tagName.toLowerCase()).toBe('svg');
     expect(caret?.getAttribute('aria-hidden')).toBe('true');
+    expect(caret?.getAttribute('focusable')).toBe('false');
+    expect(caret?.getAttribute('stroke')).toBe('currentColor');
+    expect(caret?.getAttribute('stroke-width')).toBe('2');
+    expect(caret?.getAttribute('viewBox')).toBe('0 0 20 20');
+
+    const paths = caret?.querySelectorAll('path');
+    expect(paths).toHaveLength(1);
+    expect(paths?.[0]?.getAttribute('d')).toBe('M6 8l4 4 4-4');
   });
 
   test('compound trigger can suppress the automatic caret', () => {
     const { container } = render(DropdownTriggerNoCaretFixture);
 
     expect(container.querySelector('.trigger .cinder-dropdown-trigger__caret')).toBeNull();
+  });
+
+  test('compound trigger caret CSS uses SVG sizing and system spacing', async () => {
+    const dropdownCss = await Bun.file(new URL('./dropdown.css', import.meta.url)).text();
+    const navigationItemCss = await Bun.file(
+      new URL('../navigation-item/navigation-item.css', import.meta.url),
+    ).text();
+
+    const triggerBlock = extractDeclarationBlock(dropdownCss, '.cinder-dropdown-trigger');
+    const caretBlock = extractDeclarationBlock(dropdownCss, '.cinder-dropdown-trigger__caret');
+    const navigationItemBlock = extractDeclarationBlock(
+      navigationItemCss,
+      '.cinder-navigation-item',
+    );
+
+    expect(triggerBlock).toContain('gap: var(--cinder-space-2);');
+    expect(navigationItemBlock).toContain('gap: var(--cinder-space-2);');
+    expect(caretBlock).toContain('inline-size: 0.75em;');
+    expect(caretBlock).toContain('block-size: 0.75em;');
+
+    for (const propertyName of [
+      'border-inline-end',
+      'border-block-end',
+      'border-left',
+      'border-right',
+      'border-top',
+      'border-bottom',
+      'rotate',
+      'translate',
+      'transform',
+    ]) {
+      expectNoDeclaration(caretBlock, propertyName);
+    }
   });
 
   test('compound menu renders labels, separators, and items', async () => {
@@ -352,5 +485,66 @@ describe('Dropdown', () => {
     });
     const triggerWrapper = container.querySelector('.cinder-dropdown__trigger');
     expect(triggerWrapper?.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  test('placement and component menus compute the same surface styles', async () => {
+    const removeStyles = await injectDropdownCss();
+    let legacyContainer: HTMLElement | null = null;
+    let componentContainer: HTMLElement | null = null;
+
+    try {
+      const legacyDropdown = render(Dropdown, {
+        props: {
+          open: true,
+          trigger: triggerSnippet,
+          children: textSnippet('Placement API item'),
+        },
+      });
+      legacyContainer = legacyDropdown.container;
+
+      const placementMenu = legacyDropdown.container.querySelector(
+        '.cinder-dropdown__menu',
+      ) as HTMLElement;
+      expect(placementMenu).not.toBeNull();
+      document.body.appendChild(legacyDropdown.container);
+
+      const placementStyles = readSurfaceStyles(placementMenu);
+      expectDropdownSurfaceRecipe(placementStyles);
+
+      const componentDropdown = render(DropdownCompoundFixture);
+      componentContainer = componentDropdown.container;
+      document.body.appendChild(componentDropdown.container);
+      await fireEvent.click(componentDropdown.container.querySelector('.trigger') as HTMLElement);
+
+      const componentMenu = componentDropdown.container.querySelector(
+        '.cinder-dropdown-menu',
+      ) as HTMLElement;
+      expect(componentMenu).not.toBeNull();
+
+      const componentStyles = readSurfaceStyles(componentMenu);
+
+      // The real token sheet is loaded first, then these tests provide
+      // deterministic token values because happy-dom does not compute
+      // light-dark() colors into longhands. That keeps this as a rendered
+      // regression guard instead of a hollow equality check.
+      expectDropdownSurfaceRecipe(componentStyles);
+
+      for (const property of dropdownSurfaceProperties) {
+        expect(componentStyles[property]).toBe(placementStyles[property]);
+      }
+    } finally {
+      legacyContainer?.remove();
+      componentContainer?.remove();
+      removeStyles();
+    }
+  });
+
+  test('both menu selectors share one declared surface recipe', async () => {
+    const css = await readDropdownCss();
+    expect(css).toMatch(/\.cinder-dropdown__menu,\s*\.cinder-dropdown-menu\s*\{/);
+    expect(css).toContain('background: var(--cinder-surface-raised);');
+    expect(css).toContain('box-shadow: var(--cinder-shadow-lg');
+    expect(css).not.toContain('border-radius: var(--cinder-radius-lg);');
+    expect(css).not.toContain('color-mix(in oklch, var(--cinder-text) 8%');
   });
 });

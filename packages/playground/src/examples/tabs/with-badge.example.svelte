@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import { Tabs } from 'cinder/tabs';
+  import { Badge } from 'cinder/badge';
 
   let active = $state('inbox');
 </script>
@@ -15,13 +16,13 @@
     <Tabs.Trigger value="inbox">
       Inbox
       {#snippet trailing()}
-        <span>3</span>
+        <Badge>3</Badge>
       {/snippet}
     </Tabs.Trigger>
     <Tabs.Trigger value="drafts">
       Drafts
       {#snippet trailing()}
-        <span>12</span>
+        <Badge>12</Badge>
       {/snippet}
     </Tabs.Trigger>
     <Tabs.Trigger value="archive">Archive</Tabs.Trigger>
