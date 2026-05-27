@@ -241,3 +241,89 @@
   color: var(--cinder-accent-contrast);
   box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
 }
+
+/* ── Tablist variant (single mode only) ─────────────────────────────────────
+ * See docs/decisions/segmented-control-tablist-variant.md. The tablist variant
+ * carries tab semantics for externally owned panels, so it must read as a
+ * tab strip rather than the default filled-pill radiogroup. All rules here are
+ * scoped to single-selection roots so the invalid `selectionMode="multiple"` +
+ * `variant="tablist"` combination keeps the radiogroup/multiple pill visuals;
+ * visual isolation of that combination is proven in the Playwright regression.
+ *
+ * These rules come after the base selected/pressed/separator declarations so
+ * the tablist treatment deliberately wins, and each override matches or
+ * exceeds the specificity of the base selector it replaces without broadening
+ * to non-tablist roots.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* Strip the surface-inset container chrome: no background, no enclosing border,
+ * no inset padding. Layout, sizing, density, and full-width behavior are
+ * unaffected because they key off other selectors. */
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'] {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* Suppress the connected-bar separators between attached tablist options. The
+ * base separator and its vertical variant both render via the option
+ * ::before; neutralize them here for tablists only. */
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']:not(
+    [data-cinder-detached]
+  )
+  .cinder-segmented-control-option:not(:first-child)::before {
+  content: none;
+}
+
+/* Selected tab: accent text, no filled background, no selected shadow. The
+ * underline-style indicator (below) carries the selected affordance instead.
+ * `box-shadow: none` is scoped to the non-focused state so it strips the
+ * filled-pill drop shadow without clobbering the focus-visible ring (which is
+ * also painted via box-shadow at equal specificity and would otherwise lose to
+ * this later-declared rule when the selected tab is keyboard-focused). */
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+  .cinder-segmented-control-option[data-cinder-selected] {
+  background: transparent;
+  color: var(--cinder-accent);
+}
+
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+  .cinder-segmented-control-option[data-cinder-selected]:not(:focus-visible) {
+  box-shadow: none;
+}
+
+/* Selected hover must not restore the filled pill — keep the selected tab's
+ * transparent background and accent text. Unselected hover keeps the base
+ * accent-tint treatment from the base hover rule. */
+@media (hover: hover) {
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+    .cinder-segmented-control-option[data-cinder-selected]:hover {
+    background: transparent;
+    color: var(--cinder-accent);
+  }
+}
+
+/* Accent indicator on the selected tab edge. The option is already
+ * position: relative (base rule), so the absolutely positioned ::after anchors
+ * to it without changing layout. Horizontal tablists place the indicator on the
+ * block-end edge spanning the inline axis; the vertical override below moves it
+ * to the inline-start edge spanning the block axis. */
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+  .cinder-segmented-control-option[data-cinder-selected]::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 2px;
+  background: var(--cinder-accent);
+  border-radius: var(--cinder-radius-full, 999px);
+}
+
+/* Vertical tablist indicator: inline-start edge, spanning the block axis. */
+.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'][data-cinder-orientation='vertical']
+  .cinder-segmented-control-option[data-cinder-selected]::after {
+  inset-inline: 0 auto;
+  inset-block: 0;
+  inline-size: 2px;
+  block-size: auto;
+}

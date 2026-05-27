@@ -674,6 +674,171 @@ describe('SegmentedControl — variants', () => {
   });
 });
 
+// ── Tablist variant ──────────────────────────────────────────────────────────
+
+describe('SegmentedControl — tablist variant', () => {
+  // These tests pin the accessibility guardrails from
+  // docs/decisions/segmented-control-tablist-variant.md. They assert the
+  // existing semantics are correct so the visual CSS does not advertise tab
+  // behavior the interaction model fails to satisfy.
+  //
+  // `SegmentedControlController.handleKeydown` intentionally moves focus AND
+  // updates value together in single mode (the C6 roving contract), so each
+  // arrow press fires `onchange` exactly once. "Exactly once" is asserted as a
+  // post-setup callback-count delta: snapshot the count after render, press one
+  // key, assert the delta is 1, then assert the resulting selected tab.
+
+  const tablistOptions: readonly Option[] = [
+    { value: 'editor', label: 'Editor', controls: 'editor-panel' },
+    { value: 'diff', label: 'Diff', controls: 'diff-panel' },
+    { value: 'summary', label: 'Summary', controls: 'summary-panel' },
+  ];
+
+  test('horizontal tablist exposes role="tablist" and aria-orientation="horizontal"', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'review-view',
+        value: 'editor',
+        label: 'Review view',
+        variant: 'tablist',
+        options: tablistOptions,
+      },
+    });
+
+    const tablist = screen.getByRole('tablist', { name: 'Review view' });
+    expect(tablist).not.toBeNull();
+    expect(tablist.getAttribute('aria-orientation')).toBe('horizontal');
+    const root = container.querySelector('.cinder-segmented-control');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('tablist');
+    expect(root?.getAttribute('data-cinder-selection-mode')).toBe('single');
+  });
+
+  test('preserves aria-selected and aria-controls on each tab', () => {
+    render(Fixture, {
+      props: {
+        id: 'review-view',
+        value: 'editor',
+        label: 'Review view',
+        variant: 'tablist',
+        options: tablistOptions,
+      },
+    });
+
+    const editor = screen.getByRole('tab', { name: 'Editor' });
+    const diff = screen.getByRole('tab', { name: 'Diff' });
+    expect(editor.getAttribute('aria-selected')).toBe('true');
+    expect(editor.getAttribute('aria-controls')).toBe('editor-panel');
+    expect(diff.getAttribute('aria-selected')).toBe('false');
+    expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
+  });
+
+  test('horizontal tablist moves the active tab with ArrowRight / ArrowLeft (exactly once per press)', async () => {
+    let selected: string | undefined = 'editor';
+    let changeCount = 0;
+    render(Fixture, {
+      props: {
+        id: 'review-view',
+        get value() {
+          return selected;
+        },
+        set value(next: string | undefined) {
+          selected = next;
+        },
+        label: 'Review view',
+        variant: 'tablist',
+        options: tablistOptions,
+        onchange: () => {
+          changeCount += 1;
+        },
+      },
+    });
+
+    // Assert on the bound value (the controller's output), matching the
+    // existing single-mode arrow-navigation tests. The fixture drives the DOM
+    // from its own $bindable, so the externally controlled getter/setter used
+    // here observes the controller's selection without re-rendering the DOM;
+    // initial-render aria-selected wiring is covered by a separate test.
+    const tablist = screen.getByRole('tablist');
+    const countBeforeRight = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    expect(changeCount - countBeforeRight).toBe(1);
+    expect(selected).toBe('diff');
+
+    const countBeforeLeft = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(changeCount - countBeforeLeft).toBe(1);
+    expect(selected).toBe('editor');
+  });
+
+  test('vertical tablist exposes aria-orientation="vertical" and moves with ArrowDown / ArrowUp (exactly once per press)', async () => {
+    let selected: string | undefined = 'editor';
+    let changeCount = 0;
+    render(Fixture, {
+      props: {
+        id: 'review-view',
+        get value() {
+          return selected;
+        },
+        set value(next: string | undefined) {
+          selected = next;
+        },
+        label: 'Review view',
+        variant: 'tablist',
+        orientation: 'vertical',
+        options: tablistOptions,
+        onchange: () => {
+          changeCount += 1;
+        },
+      },
+    });
+
+    const tablist = screen.getByRole('tablist');
+    expect(tablist.getAttribute('aria-orientation')).toBe('vertical');
+
+    const countBeforeDown = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowDown' });
+    expect(changeCount - countBeforeDown).toBe(1);
+    expect(selected).toBe('diff');
+
+    const countBeforeUp = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowUp' });
+    expect(changeCount - countBeforeUp).toBe(1);
+    expect(selected).toBe('editor');
+  });
+
+  test('invalid selectionMode="multiple" + variant="tablist" falls back to role="group" with pressed semantics', () => {
+    const set = new SvelteSet<string>(['editor']);
+    const { container } = render(Fixture, {
+      props: {
+        id: 'review-view',
+        label: 'Review view',
+        variant: 'tablist',
+        selectionMode: 'multiple',
+        value: set,
+        options: tablistOptions,
+      },
+    });
+
+    // Multiple-selection mode wins the role derivation regardless of variant:
+    // the control renders role="group" with aria-pressed children, never
+    // role="tab". Visual isolation of the raw
+    // data-cinder-variant="tablist" + data-cinder-selection-mode="multiple"
+    // attribute combination is proven in the Playwright regression, because the
+    // tablist CSS is scoped to single-selection roots.
+    expect(screen.getByRole('group', { name: 'Review view' })).not.toBeNull();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('tab')).toBeNull();
+
+    const root = container.querySelector('.cinder-segmented-control');
+    expect(root?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
+
+    const buttons = screen.getAllByRole('button');
+    const editor = buttons.find((button) => button.textContent?.trim() === 'Editor');
+    expect(editor?.getAttribute('aria-pressed')).toBe('true');
+    expect(editor?.getAttribute('aria-selected')).toBeNull();
+  });
+});
+
 // ── Child-API regression (DOM order, dynamic add/remove) ─────────────────────
 
 describe('SegmentedControl — child API regression', () => {
