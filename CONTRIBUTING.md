@@ -52,6 +52,20 @@ When `left`/`right` carries semantic placement (e.g. `data-placement="left"` sel
 - Component browser tests live in `packages/testing` and run under Playwright (`bun run test:browser`).
 - Every fix should land with a regression test.
 
+## Main Branch Health
+
+After `.github/workflows/main-green.yaml` lands on `main`, `main-green / workspace-gates` is the central default-branch signal for the same workspace gates developers run locally:
+
+```bash
+bun run lint
+bun run typecheck
+bun run test
+```
+
+If a local pre-push failure looks unrelated to your branch, check the latest `main-green / workspace-gates` run on `main` before spending time isolating your diff. A red `main-green` run means the failure is already present on the default branch; a green `main-green` run means you should keep debugging your branch.
+
+This workflow runs on pushes to `main`, on a daily schedule, and by manual dispatch. It is a default-branch monitor, not a pull-request required check: this repository currently reports `Branch not protected` for `main`, and `main-green / workspace-gates` should not be configured as a required pull-request status unless a future change adds a `pull_request` trigger. To roll this monitor back, revert `.github/workflows/main-green.yaml` and this section.
+
 ## Commits and pull requests
 
 - Conventional commit prefixes (`feat`, `fix`, `refactor`, `docs`, `chore`).
