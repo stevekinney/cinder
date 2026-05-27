@@ -166,6 +166,16 @@ describe('DescriptionList', () => {
     expect(css).toMatch(/\.cinder-description-list[^{]*dd[^{]*\{[^}]*margin:\s*0/);
   });
 
+  test('default variant row dividers are scoped away from striped rows', async () => {
+    const css = await Bun.file(`${import.meta.dir}/description-list.css`).text();
+    expect(css).toMatch(
+      /\.cinder-description-list\[data-cinder-variant='default'\][\s\S]*?\.cinder-description-list__row:not\(:first-child\)[\s\S]*?border-block-start:\s*1px solid var\(--cinder-border-muted\)/,
+    );
+    expect(css).not.toMatch(
+      /\.cinder-description-list\[data-cinder-variant='striped'\][\s\S]*?border-block-start/,
+    );
+  });
+
   test('<dl> content model: only row divs as direct children, each with exactly dt then dd', () => {
     const { container } = render(DescriptionList, { items: sampleItems });
     const dl = container.querySelector('.cinder-description-list')!;

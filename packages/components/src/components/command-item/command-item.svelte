@@ -3,14 +3,14 @@
    * @cinder
    * @category action
    * @status stable
-   * @purpose Single selectable row inside a command-palette that registers itself with the parent and invokes its onselect handler when chosen.
+   * @purpose Single selectable row inside a command palette or inline command menu that registers itself with the parent command list.
    * @tag action
    * @tag command
-   * @useWhen Declaring an individual command, action, or result row inside a command-palette.
+   * @useWhen Declaring an individual command, action, or result row inside a command-palette or command-menu.
    * @useWhen Composing a custom palette layout via children rather than the items prop.
-   * @avoidWhen Used outside a command-palette ancestor — the component throws at construction.
+   * @avoidWhen Used outside a command-palette or command-menu ancestor — the component throws at construction.
    * @avoidWhen Rendering a generic dropdown choice — use dropdown-item instead.
-   * @related command-palette, dropdown-item
+   * @related command-palette, command-menu, dropdown-item
    */
   export type { CommandItemProps } from './command-item.types.ts';
 </script>
@@ -22,17 +22,18 @@
 
   import { cn } from '../../utilities/class-names.ts';
   import {
-    getCommandPaletteContext,
-    hasCommandPaletteContext,
-  } from '../_internal/command-palette-context.ts';
+    getCommandListContext,
+    hasCommandListContext,
+  } from '../_internal/command-list-context.ts';
 
-  if (!hasCommandPaletteContext()) {
-    throw new Error('CommandItem must be used within a CommandPalette.');
+  if (!hasCommandListContext()) {
+    throw new Error('CommandItem must be used within a CommandPalette or CommandMenu.');
   }
 
   let {
     value,
-    onselect,
+    onselect = () => {},
+    selectionMode = 'item',
     disabled = false,
     description,
     leading,
@@ -41,7 +42,10 @@
     class: className,
   }: CommandItemProps = $props();
 
-  const palette = getCommandPaletteContext();
+  const commandList = getCommandListContext();
+  // Type-level mode marker: CommandPalette items own activation, while
+  // CommandMenu items can opt into parent-owned activation.
+  void selectionMode;
 
   // Stable id assigned by the palette on registration.
   let itemId = $state<string | null>(null);
@@ -55,7 +59,7 @@
     // call mutates the palette's $state registrations list, which feeds derived
     // values the attachment indirectly depends on — producing an update cycle.
     return untrack(() => {
-      const { id, unregister } = palette.register(
+      const { id, unregister } = commandList.register(
         {
           getValue: () => value,
           getOnselect: () => onselect,
@@ -71,11 +75,11 @@
     });
   };
 
-  const isActive = $derived(itemId !== null && palette.activeItemId === itemId);
+  const isActive = $derived(itemId !== null && commandList.activeItemId === itemId);
 
   function handlePointerEnter() {
     if (!disabled && itemId !== null) {
-      palette.setActiveById(itemId);
+      commandList.setActiveById(itemId);
     }
   }
 
@@ -85,8 +89,8 @@
   }
 
   function handleClick() {
-    if (!disabled) {
-      onselect();
+    if (!disabled && itemId !== null) {
+      commandList.activateItemById(itemId);
     }
   }
 </script>

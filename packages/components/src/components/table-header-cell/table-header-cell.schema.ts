@@ -18,6 +18,10 @@ const schema = {
       enum: ['col', 'colgroup'],
       description: 'When set, hint to assistive tech that the column groups multiple rows.',
     },
+    align: {
+      enum: ['left', 'center', 'right'],
+      description: "Horizontal alignment for the header cell content. Defaults to `'left'`.",
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-table__header-cell`.',

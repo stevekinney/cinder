@@ -14,7 +14,6 @@
    * bleed into an ancestor scroller (rubber-band on iOS, page-scroll on
    * desktop). Matches the modal / command-palette body convention. */
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
 
   /* Firefox scrollbar theming. */
   scrollbar-width: thin;

@@ -110,6 +110,14 @@
   position: relative;
 }
 
+.cinder-table__header-cell[data-cinder-align='center'] .cinder-table__sort-button {
+  justify-content: center;
+}
+
+.cinder-table__header-cell[data-cinder-align='right'] .cinder-table__sort-button {
+  justify-content: flex-end;
+}
+
 .cinder-table__sort-button:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
   box-shadow: var(--_cinder-focus-ring-shadow);
@@ -118,32 +126,18 @@
 }
 
 .cinder-table__sort-indicator {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-inline-start: 0.25rem solid transparent;
-  border-inline-end: 0.25rem solid transparent;
-  /* Full-strength text color satisfies WCAG 1.4.11 (≥3:1) */
+  display: inline-flex;
+  color: var(--cinder-text-subtle);
+}
+
+.cinder-table__sort-indicator[data-cinder-direction='ascending'],
+.cinder-table__sort-indicator[data-cinder-direction='descending'] {
   color: var(--cinder-text);
 }
 
-.cinder-table__sort-indicator[data-cinder-direction='ascending'] {
-  border-bottom: 0.375rem solid currentColor;
-  border-top: 0;
-}
-
-.cinder-table__sort-indicator[data-cinder-direction='descending'] {
-  border-top: 0.375rem solid currentColor;
-  border-bottom: 0;
-}
-
-.cinder-table__sort-indicator[data-cinder-direction='none'] {
-  /* Render the neutral indicator via two stacked triangles. Using a CSS gradient
-   * keeps the markup simple. */
-  border-bottom: 0.25rem solid currentColor;
-  border-top: 0.25rem solid currentColor;
-  height: 0;
-  width: 0;
+.cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,
+.cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up {
+  opacity: 0.3;
 }
 
 /* ----------------------------------------
@@ -173,4 +167,12 @@
 .cinder-table__cell[data-cinder-align='right'] {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.cinder-table__header-cell[data-cinder-align='center'] {
+  text-align: center;
+}
+
+.cinder-table__header-cell[data-cinder-align='right'] {
+  text-align: right;
 }
