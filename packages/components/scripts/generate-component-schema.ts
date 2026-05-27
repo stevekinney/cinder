@@ -633,10 +633,7 @@ function renderSchemaModule(schema: ComponentSchemaOutput, depthToSrc: number): 
   const relativePath = '../'.repeat(depthToSrc) + 'schema-types';
   const literal = JSON.stringify(schema, null, 2);
   if (schema.allOf) {
-    const escapedLiteral = literal
-      .replaceAll('\\', '\\\\')
-      .replaceAll('`', '\\`')
-      .replaceAll('${', '\\${');
+    const escapedLiteral = literal.replaceAll('`', '\\`').replaceAll('${', '\\${');
     return [
       `import type { ComponentSchema } from '${relativePath}';`,
       ``,
