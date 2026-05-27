@@ -175,3 +175,141 @@ describe('Steps', () => {
     expect(betaAfterReorder).toBe(betaNode);
   });
 });
+
+describe('Steps — interactive step items', () => {
+  test('href step renders the body as an <a> whose name contains label + description', () => {
+    const steps = [
+      { id: 'a', label: 'Account', description: 'Sign in', href: '/account' },
+      { id: 'b', label: 'Review' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 1 });
+    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    expect(anchor).not.toBeNull();
+    expect(anchor.getAttribute('href')).toBe('/account');
+    expect(anchor.tagName).toBe('A');
+    expect(anchor.textContent).toContain('Account');
+    expect(anchor.textContent).toContain('Sign in');
+    // Marker stays a separate non-interactive sibling (not inside the anchor).
+    const li = anchor.closest('li') as HTMLElement;
+    const marker = li.querySelector('.cinder-steps__marker') as HTMLElement;
+    expect(marker).not.toBeNull();
+    expect(anchor.contains(marker)).toBe(false);
+  });
+
+  test('onclick step renders a <button type="button"> and clicking invokes the callback', async () => {
+    let clicked = 0;
+    const steps = [
+      { id: 'a', label: 'Activate', onclick: () => (clicked += 1) },
+      { id: 'b', label: 'Review' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    const button = container.querySelector('button.cinder-steps__interactive') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.getAttribute('type')).toBe('button');
+    button.click();
+    expect(clicked).toBe(1);
+  });
+
+  test('empty-string href still renders an <a> (presence, not truthiness)', () => {
+    const steps = [
+      { id: 'a', label: 'Empty', href: '', onclick: () => {} },
+      { id: 'b', label: 'Next' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    expect(anchor).not.toBeNull();
+    expect(anchor.getAttribute('href')).toBe('');
+    // Must NOT fall through to the button arm just because href is falsy.
+    expect(container.querySelector('button.cinder-steps__interactive')).toBeNull();
+  });
+
+  test('plain step renders neither <a> nor <button>', () => {
+    const steps = [{ id: 'a', label: 'Plain' }];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    expect(container.querySelector('.cinder-steps__interactive')).toBeNull();
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.querySelector('button')).toBeNull();
+    expect(container.querySelector('span.cinder-steps__body')).not.toBeNull();
+  });
+
+  test('href + onclick together renders an <a> and still invokes the callback', () => {
+    let clicked = 0;
+    const steps = [
+      { id: 'a', label: 'Go', href: '/go', onclick: () => (clicked += 1) },
+      { id: 'b', label: 'Next' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    expect(anchor).not.toBeNull();
+    expect(container.querySelector('button.cinder-steps__interactive')).toBeNull();
+    anchor.click();
+    expect(clicked).toBe(1);
+  });
+
+  test('interactive current step carries aria-current on the interactive element, not the li', () => {
+    const steps = [
+      { id: 'a', label: 'Done', href: '/done' },
+      { id: 'b', label: 'Current', href: '/current' },
+      { id: 'c', label: 'Next', href: '/next' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 1 });
+    const current = Array.from(container.querySelectorAll('[aria-current="step"]'));
+    expect(current.length).toBe(1);
+    expect(current[0]?.classList.contains('cinder-steps__interactive')).toBe(true);
+    expect(current[0]?.tagName).toBe('A');
+    // The owning li must NOT also carry aria-current.
+    expect(current[0]?.closest('li')?.hasAttribute('aria-current')).toBe(false);
+  });
+
+  test('static current step keeps aria-current on the li', () => {
+    const steps = [
+      { id: 'a', label: 'One' },
+      { id: 'b', label: 'Two' },
+    ];
+    const { container } = render(Steps, { steps, currentStep: 0 });
+    const current = Array.from(container.querySelectorAll('[aria-current="step"]'));
+    expect(current.length).toBe(1);
+    expect(current[0]?.tagName).toBe('LI');
+  });
+
+  test('element switching: static → button → link → static, with aria-current following', async () => {
+    const base = { id: 'a', label: 'Switcher' };
+    const second = { id: 'b', label: 'Second' };
+    const { container, rerender } = render(Steps, {
+      steps: [base, second],
+      currentStep: 0,
+    });
+
+    // static
+    expect(container.querySelector('.cinder-steps__interactive')).toBeNull();
+    expect(container.querySelector('li[aria-current="step"]')).not.toBeNull();
+
+    // → button (add onclick)
+    await rerender({ steps: [{ ...base, onclick: () => {} }, second], currentStep: 0 });
+    let interactive = container.querySelector('.cinder-steps__interactive');
+    expect(interactive?.tagName).toBe('BUTTON');
+    expect(container.querySelector('a.cinder-steps__interactive')).toBeNull();
+    expect(interactive?.getAttribute('aria-current')).toBe('step');
+    expect(interactive?.closest('li')?.hasAttribute('aria-current')).toBe(false);
+
+    // → link (add href)
+    await rerender({ steps: [{ ...base, href: '/x' }, second], currentStep: 0 });
+    interactive = container.querySelector('.cinder-steps__interactive');
+    expect(interactive?.tagName).toBe('A');
+    expect(container.querySelector('button.cinder-steps__interactive')).toBeNull();
+    expect(interactive?.getAttribute('aria-current')).toBe('step');
+
+    // → static (remove both)
+    await rerender({ steps: [base, second], currentStep: 0 });
+    expect(container.querySelector('.cinder-steps__interactive')).toBeNull();
+    expect(container.querySelector('li[aria-current="step"]')).not.toBeNull();
+  });
+
+  test('vertical interactive step bodies preserve static bottom spacing', async () => {
+    const css = await Bun.file(new URL('./steps.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-steps\[data-cinder-orientation='vertical'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*padding-bottom:\s*var\(--cinder-space-4\);/m,
+    );
+  });
+});

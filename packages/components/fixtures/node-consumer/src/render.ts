@@ -104,11 +104,11 @@ process.stdout.write('<!-- useHistory imported OK -->\n');
 // or non-undefined value comes back — full behavior is covered by the
 // upstream packages' own test suites. Imports are restricted to SSR-safe
 // modules so this fixture stays runnable under Node 22 without a DOM.
+import { computeLineDiff as computeLineDiffViaDiff } from 'cinder/diff/line-diff';
 import { computeLineDiff } from 'cinder/markdown/diff/line-diff';
 import { renderMarkdown } from 'cinder/markdown/rendering';
 import { isSafeUrl } from 'cinder/markdown/utilities/safe-url';
 import { sortKeys } from 'cinder/markdown/utilities/sort-keys';
-import { computeLineDiff as computeLineDiffViaDiff } from 'cinder/diff/line-diff';
 
 const upstreamProbes: Array<{ name: string; value: unknown }> = [
   { name: 'cinder/markdown/diff/line-diff#computeLineDiff', value: computeLineDiff },

@@ -29,6 +29,7 @@ function loadCss(relativePath: string): string {
 
 const copyButtonCss = loadCss('../components/copy-button/copy-button.css');
 const dropdownCss = loadCss('../components/dropdown/dropdown.css');
+const commandPaletteCss = loadCss('../components/command-palette/command-palette.css');
 const navigationItemCss = loadCss('../components/navigation-item/navigation-item.css');
 const numberInputCss = loadCss('../components/number-input/number-input.css');
 const selectionPopoverCss = loadCss('../components/selection-popover/selection-popover.css');
@@ -109,6 +110,11 @@ const recipes: Array<{
   forcedColorsSelector?: string;
 }> = [
   {
+    name: 'command-palette search input',
+    css: commandPaletteCss,
+    selector: '.cinder-command-palette__input:focus-visible',
+  },
+  {
     name: 'slider thumb',
     css: sliderCss,
     selector: '.cinder-slider__thumb:focus-visible',
@@ -127,11 +133,6 @@ const recipes: Array<{
     name: 'standalone copy button',
     css: copyButtonCss,
     selector: '.cinder-copy-button:focus-visible',
-  },
-  {
-    name: 'number-input stepper',
-    css: numberInputCss,
-    selector: '.cinder-number-input__stepper:focus-visible',
   },
   {
     name: 'selection-popover cancel action',
@@ -173,6 +174,52 @@ describe('focus-visible recipe — transparent outline placeholder', () => {
       expect(outline).not.toContain('transparent');
     });
   }
+});
+
+describe('number-input stepper — self-owned inset focus ring', () => {
+  // The number-input stepper intentionally diverges from the shared outer-ring
+  // recipe: the outer .cinder-number-input:focus-within already paints the
+  // outer ring, so the stepper paints an INSET ring (so the focused stepper is
+  // individually identifiable) rather than the shared --_cinder-focus-ring-shadow
+  // outer ring. It still keeps the transparent-outline placeholder for the
+  // forced-colors channel and a forced-colors outline fallback.
+  const SELECTOR = '.cinder-number-input__stepper:focus-visible';
+
+  test('keeps the transparent-outline placeholder', () => {
+    const root = parse(numberInputCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  });
+
+  test('paints an inset ring (not the shared outer-ring recipe)', () => {
+    const root = parse(numberInputCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const boxShadow = declValue(rules[0]!, 'box-shadow');
+    expect(boxShadow).toBeDefined();
+    expect(boxShadow).toContain('inset');
+    expect(boxShadow).toContain('var(--cinder-ring-color)');
+    // It must NOT use the shared outer-ring token — that would re-introduce the
+    // doubled ring this recipe was changed to avoid.
+    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+  });
+
+  test('shows the surface-hover background affordance', () => {
+    const root = parse(numberInputCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'background')).toBe('var(--cinder-surface-hover)');
+  });
+
+  test('has a forced-colors fallback that repaints the outline', () => {
+    const root = parse(numberInputCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const outline = declValue(rules[0]!, 'outline');
+    expect(outline).toBeDefined();
+    expect(outline).not.toContain('transparent');
+  });
 });
 
 describe('selection-popover floating-button focus-visible', () => {

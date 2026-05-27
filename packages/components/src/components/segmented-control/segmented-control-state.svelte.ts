@@ -204,10 +204,9 @@ export class SegmentedControlController {
     const focusedSegment =
       typeof document === 'undefined'
         ? null
-        : segments.find((segment) => segment.node === document.activeElement) ?? null;
+        : (segments.find((segment) => segment.node === document.activeElement) ?? null);
     const value = this.#options.getValue();
-    const currentValue =
-      focusedSegment?.value ?? (typeof value === 'string' ? value : null);
+    const currentValue = focusedSegment?.value ?? (typeof value === 'string' ? value : null);
 
     const currentIndex =
       currentValue === null

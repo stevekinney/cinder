@@ -9,11 +9,7 @@ export type MergeStateStatus =
   | 'UNKNOWN'
   | 'UNSTABLE';
 
-export type ReviewDecision =
-  | 'APPROVED'
-  | 'CHANGES_REQUESTED'
-  | 'REVIEW_REQUIRED'
-  | null;
+export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
 
 export type Readiness = {
   ciPassing: boolean;
@@ -108,11 +104,17 @@ async function countUnresolvedThreads(
 
   for (;;) {
     const args = [
-      'gh', 'api', 'graphql',
-      '-F', `owner=${owner}`,
-      '-F', `name=${name}`,
-      '-F', `number=${prNumber}`,
-      '-f', `query=${THREAD_QUERY}`,
+      'gh',
+      'api',
+      'graphql',
+      '-F',
+      `owner=${owner}`,
+      '-F',
+      `name=${name}`,
+      '-F',
+      `number=${prNumber}`,
+      '-f',
+      `query=${THREAD_QUERY}`,
     ];
     if (cursor !== null) {
       args.push('-F', `cursor=${cursor}`);
@@ -185,11 +187,17 @@ async function fetchMergeabilityFromGraphQL(
 ): Promise<MergeabilityResult | null> {
   for (let attempt = 0; attempt < Math.max(1, pollAttempts); attempt++) {
     const result = await deps.run([
-      'gh', 'api', 'graphql',
-      '-F', `owner=${owner}`,
-      '-F', `name=${name}`,
-      '-F', `number=${prNumber}`,
-      '-f', `query=${MERGEABILITY_QUERY}`,
+      'gh',
+      'api',
+      'graphql',
+      '-F',
+      `owner=${owner}`,
+      '-F',
+      `name=${name}`,
+      '-F',
+      `number=${prNumber}`,
+      '-f',
+      `query=${MERGEABILITY_QUERY}`,
     ]);
     if (result.exitCode !== 0) return null;
     try {
@@ -226,8 +234,12 @@ export async function checkReadiness(
 ): Promise<Readiness> {
   const fetchState = async () => {
     const raw = await deps.runOk([
-      'gh', 'pr', 'view', String(prNumber),
-      '--json', 'statusCheckRollup,mergeable,mergeStateStatus,reviewDecision,headRefOid,isDraft',
+      'gh',
+      'pr',
+      'view',
+      String(prNumber),
+      '--json',
+      'statusCheckRollup,mergeable,mergeStateStatus,reviewDecision,headRefOid,isDraft',
     ]);
     return JSON.parse(raw) as {
       statusCheckRollup: CheckEntry[];
@@ -254,8 +266,12 @@ export async function checkReadiness(
   let mergeStateStatus = state.mergeStateStatus;
   if (mergeable === 'UNKNOWN' || mergeStateStatus === 'UNKNOWN') {
     const fallback = await fetchMergeabilityFromGraphQL(
-      prNumber, owner, name, deps,
-      Math.max(2, pollAttempts), Math.max(2_000, pollIntervalMs),
+      prNumber,
+      owner,
+      name,
+      deps,
+      Math.max(2, pollAttempts),
+      Math.max(2_000, pollIntervalMs),
     );
     if (fallback !== null) {
       mergeable = fallback.mergeable;
@@ -263,8 +279,7 @@ export async function checkReadiness(
     }
   }
 
-  const hasConflicts =
-    mergeable === 'CONFLICTING' || mergeStateStatus === 'DIRTY';
+  const hasConflicts = mergeable === 'CONFLICTING' || mergeStateStatus === 'DIRTY';
 
   const unresolvedThreads = await countUnresolvedThreads(prNumber, owner, name, deps);
 
