@@ -5,12 +5,12 @@ import {
   error,
   getStagedFiles,
   getTouchedPackages,
+  hasRootConfigurationChanges,
   header,
   info,
   isContinuousIntegration,
   loadWorkspacePackages,
   REPO_ROOT,
-  rootConfigStaged,
   success,
   warning,
 } from './utilities.ts';
@@ -70,7 +70,7 @@ try {
 const staged = await getStagedFiles();
 
 // 4) Root config escalation → full workspace validate.
-if (rootConfigStaged(staged)) {
+if (hasRootConfigurationChanges(staged)) {
   warning('Root config file staged; escalating to full workspace typecheck + test');
   let escalationOk = true;
   try {
