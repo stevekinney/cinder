@@ -9,12 +9,35 @@ const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Chip } = await import('./chip.svelte');
 const { createRawSnippet } = await import('svelte');
 
+const chipCss = await Bun.file(new URL('./chip.css', import.meta.url)).text();
+
 afterEach(() => cleanup());
 
 function iconSnippet(text: string) {
   return createRawSnippet(() => ({
     render: () => `<svg><title>${text}</title></svg>`,
   }));
+}
+
+function appendChipStyles() {
+  const style = document.createElement('style');
+  style.textContent = chipCss;
+  document.head.append(style);
+  return () => style.remove();
+}
+
+function rootSurface(chip: Element) {
+  const style = getComputedStyle(chip);
+  return {
+    backgroundColor: style.backgroundColor,
+    borderColor: style.borderColor,
+    borderRadius: style.borderRadius,
+  };
+}
+
+function cssRuleBody(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return chipCss.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? '';
 }
 
 describe('Chip', () => {
@@ -135,7 +158,29 @@ describe('Chip', () => {
     expect(chip?.getAttribute('data-cinder-mode')).toBe('removable');
     const removeBtn = chip?.querySelector('button.cinder-chip__remove');
     expect(removeBtn).not.toBeNull();
+    expect(removeBtn?.getAttribute('type')).toBe('button');
     expect(removeBtn?.getAttribute('aria-label')).toBe('Remove JavaScript');
+  });
+
+  test('all modes share the same root class without mode-specific surface classes', () => {
+    const display = render(Chip, { label: 'Display chip' });
+    const toggle = render(Chip, { mode: 'toggle', label: 'Toggle chip', pressed: false });
+    const removable = render(Chip, { mode: 'removable', label: 'Removable chip' });
+
+    const chips = [display.container, toggle.container, removable.container].map((container) => {
+      const chip = container.querySelector('.cinder-chip');
+      expect(chip).not.toBeNull();
+      return chip as Element;
+    });
+    expect(chips).toHaveLength(3);
+    expect(chips.map((chip) => chip.getAttribute('data-cinder-mode'))).toEqual([
+      'display',
+      'toggle',
+      'removable',
+    ]);
+    expect(chips.every((chip) => chip.classList.contains('cinder-chip'))).toBe(true);
+    expect(chips.flatMap((chip) => Array.from(chip.classList))).not.toContain('cinder-chip--mode');
+    expect(chips.map((chip) => chip.tagName.toLowerCase())).toEqual(['span', 'button', 'span']);
   });
 
   test('removable mode click calls onremove', async () => {
@@ -153,6 +198,13 @@ describe('Chip', () => {
     });
     const removeBtn = container.querySelector('button.cinder-chip__remove');
     expect(removeBtn?.getAttribute('aria-label')).toBe('Dismiss JavaScript tag');
+  });
+
+  test('removable mode hides the remove glyph from assistive technology', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
+    const removeGlyph = container.querySelector('button.cinder-chip__remove span');
+    expect(removeGlyph?.textContent).toBe('×');
+    expect(removeGlyph?.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('removable mode with empty label renders aria-label "Remove "', () => {
@@ -267,5 +319,42 @@ describe('Chip', () => {
     const { container } = render(Chip, { label: 'Tag' });
     const chip = container.querySelector('.cinder-chip');
     expect(chip?.hasAttribute('data-cinder-density')).toBe(false);
+  });
+
+  test('resting display, toggle, and removable roots share the same computed surface', () => {
+    const removeChipStyles = appendChipStyles();
+    try {
+      const display = render(Chip, { label: 'Display chip' });
+      const toggle = render(Chip, { mode: 'toggle', label: 'Toggle chip', pressed: false });
+      const removable = render(Chip, { mode: 'removable', label: 'Removable chip' });
+
+      const chips = [display.container, toggle.container, removable.container].map((container) => {
+        const chip = container.querySelector('.cinder-chip');
+        expect(chip).not.toBeNull();
+        return chip as Element;
+      });
+      const surfaces = chips.map(rootSurface);
+
+      expect(surfaces[1]).toEqual(surfaces[0]);
+      expect(surfaces[2]).toEqual(surfaces[0]);
+    } finally {
+      removeChipStyles();
+    }
+  });
+
+  test('neutral pressed toggle stays on the shared selected-surface recipe', () => {
+    const body = cssRuleBody(".cinder-chip[aria-pressed='true'][data-cinder-variant='neutral']");
+    expect(body).toContain('background: var(--cinder-surface-pressed)');
+    expect(body).toContain('color: var(--cinder-text)');
+    expect(body).toContain('border-color: var(--cinder-border-strong)');
+    expect(body).not.toContain('background: var(--cinder-text)');
+    expect(body).not.toContain('color: var(--cinder-surface-inset)');
+  });
+
+  test('remove button hover uses a circular hover surface without overriding variant color', () => {
+    const body = cssRuleBody('.cinder-chip__remove:hover:not(:disabled)');
+    expect(body).toContain('background-color: var(--cinder-surface-hover)');
+    expect(body).not.toContain('color: var(--cinder-text)');
+    expect(chipCss).toContain('border-radius: var(--cinder-radius-full)');
   });
 });
