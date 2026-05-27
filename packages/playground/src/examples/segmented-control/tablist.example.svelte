@@ -30,7 +30,11 @@
       label="Review view"
     >
       {#each views as view (view.value)}
-        <Segment value={view.value} controls="segmented-tablist-{view.value}-panel">
+        <Segment
+          id="segmented-tablist-{view.value}-tab"
+          value={view.value}
+          controls="segmented-tablist-{view.value}-panel"
+        >
           {view.label}
         </Segment>
       {/each}
@@ -40,6 +44,7 @@
       <div
         id="segmented-tablist-{view.value}-panel"
         role="tabpanel"
+        aria-labelledby="segmented-tablist-{view.value}-tab"
         hidden={horizontalValue !== view.value}
         style="color: var(--cinder-text-muted);"
       >
@@ -58,7 +63,11 @@
       label="Review view (vertical)"
     >
       {#each views as view (view.value)}
-        <Segment value={view.value} controls="segmented-tablist-v-{view.value}-panel">
+        <Segment
+          id="segmented-tablist-v-{view.value}-tab"
+          value={view.value}
+          controls="segmented-tablist-v-{view.value}-panel"
+        >
           {view.label}
         </Segment>
       {/each}
@@ -68,6 +77,7 @@
       <div
         id="segmented-tablist-v-{view.value}-panel"
         role="tabpanel"
+        aria-labelledby="segmented-tablist-v-{view.value}-tab"
         hidden={verticalValue !== view.value}
         style="color: var(--cinder-text-muted);"
       >
