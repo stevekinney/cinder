@@ -53,6 +53,7 @@
   type DismissReason =
     | 'action'
     | 'dismissAll'
+    | 'dismissButton'
     | 'keyboard'
     | 'overflow'
     | 'programmatic'
@@ -330,7 +331,14 @@
   }
 
   function moveFocusAfterDismiss(id: string, reason: DismissReason): void {
-    if (reason === 'timer' || reason === 'overflow') return;
+    if (
+      reason === 'timer' ||
+      reason === 'overflow' ||
+      reason === 'programmatic' ||
+      reason === 'dismissAll'
+    ) {
+      return;
+    }
     queueMicrotask(() => {
       const candidates = [...(regionElement?.querySelectorAll<HTMLElement>('.cinder-toast') ?? [])]
         .filter((element) => element.dataset['cinderToastId'] !== id)
@@ -522,7 +530,6 @@
     class={cn('cinder-toast-region', className)}
     role="presentation"
     data-cinder-position={position}
-    data-cinder-stack="polite"
     onpointerenter={() => setRegionPointerInside(true)}
     onpointerleave={() => setRegionPointerInside(false)}
     onfocusin={handleRegionFocusIn}
@@ -575,7 +582,7 @@
                 class="cinder-toast__dismiss"
                 aria-label="Dismiss notification"
                 disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'programmatic')}
+                onclick={() => beginDismiss(toast.id, 'dismissButton')}
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path
@@ -636,7 +643,7 @@
                 class="cinder-toast__dismiss"
                 aria-label="Dismiss notification"
                 disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'programmatic')}
+                onclick={() => beginDismiss(toast.id, 'dismissButton')}
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path

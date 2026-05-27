@@ -91,7 +91,6 @@
   font-size: var(--cinder-text-sm);
   color: var(--cinder-text);
   touch-action: pan-y;
-  user-select: none;
   transform: translateX(var(--cinder-toast-swipe-x, 0))
     translateY(calc(var(--cinder-toast-stack-index, 0) * -2px));
   transition:

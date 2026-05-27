@@ -589,6 +589,31 @@ describe('useToast api', () => {
     expect(container.textContent).toContain('Second');
   });
 
+  test('programmatic dismissal does not move focus from the active element', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    const id = api!.show('Programmatic', { duration: 0 });
+    const dismissButton = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__dismiss');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+
+    dismissButton.focus();
+    api!.dismiss(id);
+    await tick();
+
+    expect(document.activeElement).toBe(dismissButton);
+    await advanceDeterministicTimers(220);
+    expect(container.textContent).not.toContain('Programmatic');
+  });
+
   test('Escape on a non-dismissible toast bubbles and does not dismiss', async () => {
     let api: ToastApi | null = null;
     let bubbled = false;
