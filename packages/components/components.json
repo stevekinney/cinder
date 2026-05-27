@@ -676,6 +676,31 @@
       }
     },
     {
+      "name": "Collapsible",
+      "id": "collapsible",
+      "import": "cinder/collapsible",
+      "exportName": "Collapsible",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Single-panel disclosure that toggles one region with an animated height.",
+      "tags": ["disclosure", "collapsible"],
+      "useWhen": [
+        "Hiding a single optional region behind a labeled trigger.",
+        "You need controlled or uncontrolled show/hide with an accessible toggle."
+      ],
+      "avoidWhen": [
+        "Coordinating multiple sections where opening one may close others — use accordion."
+      ],
+      "related": ["accordion", "accordion-item", "transition"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/collapsible/schema",
+        "variables": "cinder/collapsible/variables",
+        "examples": "cinder/collapsible/examples"
+      }
+    },
+    {
       "name": "ColorField",
       "id": "color-field",
       "import": "cinder/color-field",
@@ -901,6 +926,31 @@
       "artifacts": {
         "schema": "cinder/experimental/connection-indicator/schema",
         "variables": "cinder/experimental/connection-indicator/variables"
+      }
+    },
+    {
+      "name": "Container",
+      "id": "container",
+      "import": "cinder/container",
+      "exportName": "Container",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Centered content-width wrapper for the narrow-column reading pattern, capping inline size at a configurable width token.",
+      "tags": ["layout"],
+      "useWhen": [
+        "Centering article or long-form content in a readable, max-width-capped column.",
+        "Constraining a section of a page to a named content width without app-shell chrome."
+      ],
+      "avoidWhen": [
+        "Building an app shell with header, breadcrumbs, or action regions — use page-layout instead."
+      ],
+      "related": ["page-layout", "cluster", "stack", "aspect-ratio"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/container/schema",
+        "variables": "cinder/container/variables",
+        "examples": "cinder/container/examples"
       }
     },
     {

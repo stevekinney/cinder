@@ -12,6 +12,7 @@ import {
   success,
   summarizeFailures,
   warning,
+  withGateLock,
   writePrePushLog,
 } from './utilities.ts';
 
@@ -67,35 +68,50 @@ async function runGate(script: GateScript): Promise<{ exitCode: number; output: 
   return { exitCode, output: chunks.join('') || stdout + stderr };
 }
 
-// Run lint, typecheck, and test — the three workspace-wide correctness gates.
-// `bun run validate` is intentionally excluded: it builds consumer fixtures
-// (sveltekit-consumer, node-consumer) that require release-ready builds and
-// may fail due to fixture-specific dependency constraints unrelated to code
-// changes. Those checks belong in CI, not the pre-push gate.
-let ok = true;
-const failures: GateFailure[] = [];
+let ok = false;
+let failures: GateFailure[] = [];
 let completeOutput = '';
-for (const script of ['lint', 'typecheck', 'test'] as const satisfies readonly GateScript[]) {
-  info(`Running ${script}…`);
-  let result: { exitCode: number; output: string };
-  try {
-    result = await runGate(script);
-  } catch (caught) {
-    const message = caught instanceof Error ? caught.message : String(caught);
-    result = { exitCode: 1, output: `pre-push gate command failed: ${message}` };
-  }
-  completeOutput += `\n\n===== ${script} =====\n\n${result.output}`;
-  if (result.exitCode === 0) {
-    success(`${script} passed`);
-  } else {
-    error(`${script} failed`);
-    failures.push({
-      script,
-      scope: inferFailureScope(result.output),
-      lines: summarizeFailures(result.output),
-    });
-    ok = false;
-  }
+
+try {
+  const result = await withGateLock(async () => {
+    // Run lint, typecheck, and test — the three workspace-wide correctness gates.
+    // `bun run validate` is intentionally excluded: it builds consumer fixtures
+    // (sveltekit-consumer, node-consumer) that require release-ready builds and
+    // may fail due to fixture-specific dependency constraints unrelated to code
+    // changes. Those checks belong in CI, not the pre-push gate.
+    let passed = true;
+    const gateFailures: GateFailure[] = [];
+    let output = '';
+    for (const script of ['lint', 'typecheck', 'test'] as const satisfies readonly GateScript[]) {
+      info(`Running ${script}…`);
+      let gateResult: { exitCode: number; output: string };
+      try {
+        gateResult = await runGate(script);
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : String(caught);
+        gateResult = { exitCode: 1, output: `pre-push gate command failed: ${message}` };
+      }
+      output += `\n\n===== ${script} =====\n\n${gateResult.output}`;
+      if (gateResult.exitCode === 0) {
+        success(`${script} passed`);
+      } else {
+        error(`${script} failed`);
+        gateFailures.push({
+          script,
+          scope: inferFailureScope(gateResult.output),
+          lines: summarizeFailures(gateResult.output),
+        });
+        passed = false;
+      }
+    }
+    return { passed, gateFailures, output };
+  });
+  ok = result.passed;
+  failures = result.gateFailures;
+  completeOutput = result.output;
+} catch (caught) {
+  error(caught instanceof Error ? caught.message : String(caught));
+  process.exit(1);
 }
 
 if (!ok) {

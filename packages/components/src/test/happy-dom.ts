@@ -58,6 +58,70 @@ function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
   };
 }
 
+/**
+ * Stub Animation returned by the `Element.prototype.animate` shim below. Settles
+ * on the next microtask so that Svelte's transition lifecycle — which assigns
+ * `onfinish` synchronously after calling `animate()` — completes once.
+ *
+ * It honors `cancel()`: a cancelled animation never fires `onfinish`. This
+ * matters because Svelte cancels the in-flight animation when a transition is
+ * interrupted (a rapid open→close→open). A stub that fired `onfinish`
+ * regardless would let a stale, cancelled transition resolve after it was torn
+ * down — masking real interruption bugs and producing cross-suite flakiness.
+ *
+ * `playState` is reported as `'finished'`, which is correct for the CSS-driven
+ * transitions (`slide`, `fade`) this stub supports: Svelte reads keyframes from
+ * the `css` hook and never enters its `tick`-based `loop()`, so it never reads
+ * `playState` for those. Do NOT rely on this stub to test `tick`-based
+ * transitions — Svelte's loop guard (`playState !== 'running'`) would exit on
+ * the first frame and the tick callback would never run.
+ */
+function stubbedAnimate(): unknown {
+  let settled = false;
+  const animation: Record<string, unknown> = {
+    currentTime: 0,
+    playState: 'finished',
+    effect: null,
+    onfinish: null,
+    cancel() {
+      // A cancelled animation never fires onfinish.
+      settled = true;
+    },
+    finish() {
+      // Spec: finish() settles synchronously and fires onfinish. Run it once.
+      fire();
+    },
+  };
+  // Fire onfinish at most once, and never after cancel()/finish() already settled.
+  function fire(): void {
+    if (settled) return;
+    settled = true;
+    const handler = animation['onfinish'];
+    if (typeof handler === 'function') {
+      (handler as () => void).call(animation);
+    }
+  }
+  queueMicrotask(fire);
+  return animation;
+}
+
+/**
+ * happy-dom does not implement the Web Animations API (`Element.prototype.animate`),
+ * which Svelte 5's JS-driven transition functions (`slide`, `fade`, `fly`, …) call to
+ * coordinate enter/exit. Without it, mounting any component that uses `transition:fn`
+ * throws `element.animate is not a function`. Install a minimal stub that settles
+ * immediately — duration/easing are irrelevant in a non-painting DOM; assertions care
+ * about presence/absence after the transition resolves, not animation frames.
+ */
+function stubWebAnimationsApi(happyWindow: Window): void {
+  const elementCtor = Reflect.get(happyWindow, 'Element') as unknown;
+  if (typeof elementCtor !== 'function') return;
+  const proto = Reflect.get(elementCtor, 'prototype') as Record<string, unknown> | undefined;
+  if (!proto || typeof proto['animate'] === 'function') return;
+
+  proto['animate'] = stubbedAnimate;
+}
+
 export function setupHappyDom(): void {
   if (installed) return;
   const happyWindow = new Window();
@@ -78,6 +142,7 @@ export function setupHappyDom(): void {
   Object.defineProperty(target, 'window', { value: happyWindow, configurable: true });
 
   alignElementRemoveWithChildNodeSpec(happyWindow);
+  stubWebAnimationsApi(happyWindow);
 
   installed = true;
 }

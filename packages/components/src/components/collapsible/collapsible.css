@@ -1,0 +1,114 @@
+/* ========================================
+ * COLLAPSIBLE
+ * ======================================== */
+
+.cinder-collapsible {
+  display: block;
+}
+
+/* ----------------------------------------
+ * Trigger button
+ * ---------------------------------------- */
+
+.cinder-collapsible__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  inline-size: 100%;
+  padding: var(--cinder-space-4) var(--cinder-space-5);
+
+  font-size: var(--cinder-text-base);
+  font-weight: var(--cinder-font-medium);
+  line-height: var(--cinder-leading-snug);
+  color: var(--cinder-text);
+  text-align: start;
+
+  background: transparent;
+  border: none;
+  border-radius: var(--cinder-radius-md);
+  cursor: pointer;
+
+  transition:
+    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+    color var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+/* Sticky-hover suppression on touch. */
+@media (hover: hover) {
+  .cinder-collapsible__trigger:hover:not(:disabled) {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.cinder-collapsible__trigger:active:not(:disabled) {
+  background: var(--cinder-surface-pressed);
+}
+
+.cinder-collapsible__trigger:focus-visible {
+  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+  outline-offset: var(--cinder-ring-offset);
+}
+
+@media (forced-colors: active) {
+  .cinder-collapsible__trigger:focus-visible {
+    outline: var(--cinder-ring-width) solid ButtonText;
+  }
+}
+
+.cinder-collapsible__trigger:disabled {
+  cursor: not-allowed;
+  color: var(--cinder-text-disabled);
+  opacity: 0.6;
+}
+
+/* ----------------------------------------
+ * Label text
+ * ---------------------------------------- */
+
+.cinder-collapsible__label {
+  flex: 1;
+}
+
+/* ----------------------------------------
+ * Chevron icon
+ * ---------------------------------------- */
+
+.cinder-collapsible__chevron {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--cinder-text-muted);
+
+  transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-collapsible[data-cinder-expanded] .cinder-collapsible__chevron {
+  transform: rotate(180deg);
+}
+
+.cinder-collapsible[data-cinder-disabled] .cinder-collapsible__chevron {
+  opacity: 0.4;
+}
+
+/* ----------------------------------------
+ * Panel
+ * ---------------------------------------- */
+
+.cinder-collapsible__panel-inner {
+  padding: var(--cinder-space-4) var(--cinder-space-5) var(--cinder-space-5);
+  font-size: var(--cinder-text-base);
+  line-height: var(--cinder-leading-normal);
+  color: var(--cinder-text-muted);
+}
+
+/* ----------------------------------------
+ * Reduced motion — skip chevron rotation animation
+ * (the slide transition duration is collapsed in the component)
+ * ---------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cinder-collapsible__chevron {
+    transition: none;
+  }
+}
