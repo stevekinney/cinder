@@ -4,10 +4,11 @@ import type {
   ToastApi,
   ToastItem,
   ToastOptions,
+  ToastPosition,
   ToastVariant,
 } from '../../_internal/toast-context.ts';
 
-export type { ToastApi, ToastItem, ToastOptions, ToastVariant };
+export type { ToastApi, ToastItem, ToastOptions, ToastPosition, ToastVariant };
 
 /** Props for the ToastRegion component. */
 export type ToastRegionProps = {
@@ -15,6 +16,8 @@ export type ToastRegionProps = {
   maxStack?: number;
   /** Default auto-dismiss duration in ms. Default 5000. Set to 0 for sticky. */
   defaultDuration?: number;
+  /** Viewport anchor for both live-region channels. Default `bottom-right`. */
+  position?: ToastPosition;
   /** Additional class names merged with `.cinder-toast-region`. */
   class?: string;
   /**

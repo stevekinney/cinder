@@ -14,6 +14,7 @@
     onReady?: (api: ToastApi) => void;
     maxStack?: number;
     defaultDuration?: number;
+    position?: import('../../_internal/toast-context.ts').ToastPosition;
   };
 </script>
 
@@ -21,10 +22,15 @@
   import ToastRegion from '../../components/toast-region/toast-region.svelte';
   import ToastProbe from './toast-probe.svelte';
 
-  let { onReady, maxStack = 5, defaultDuration = 5000 }: ToastFixtureProps = $props();
+  let {
+    onReady,
+    maxStack = 5,
+    defaultDuration = 5000,
+    position = 'bottom-right',
+  }: ToastFixtureProps = $props();
 </script>
 
-<ToastRegion {maxStack} {defaultDuration}>
+<ToastRegion {maxStack} {defaultDuration} {position}>
   {#if onReady !== undefined}
     <ToastProbe {onReady} />
   {/if}

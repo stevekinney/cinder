@@ -28,6 +28,7 @@
 
 import { rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { hydrate, type Component } from 'svelte';
 import { compile } from 'svelte/compiler';
@@ -70,6 +71,13 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     css: 'external',
     dev: false,
   });
+  const serverSvelteEntry = pathToFileURL(
+    join(process.cwd(), 'node_modules/svelte/src/index-server.js'),
+  ).href;
+  const serverCode = compiled.js.code.replaceAll(
+    "from 'svelte';",
+    `from ${JSON.stringify(serverSvelteEntry)};`,
+  );
 
   // Write the compiled SSR module to a tmp file. We can't use a Blob URL or
   // a `data:` URL because the SSR module imports `svelte/internal/server`,
@@ -85,7 +93,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   const sourceDir = dirname(sourcePath);
   const ssrFileName = `.cinder-ssr-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`;
   const file = join(sourceDir, ssrFileName);
-  await writeFile(file, compiled.js.code, 'utf-8');
+  await writeFile(file, serverCode, 'utf-8');
 
   // The SSR module's default export is a server-only render function whose
   // shape (`($$renderer, $$props) => void`) doesn't match the public
@@ -95,7 +103,17 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   const ssrModule = (await import(file)) as { default: unknown };
 
   const { render } = (await import('svelte/server')) as typeof import('svelte/server');
-  const { body: ssrHtml } = render(ssrModule.default as Component<Props>, { props });
+  const originalDocument = globalThis.document;
+  const originalWindow = globalThis.window;
+  globalThis.document = undefined as unknown as Document;
+  globalThis.window = undefined as unknown as Window & typeof globalThis;
+  let ssrHtml = '';
+  try {
+    ssrHtml = render(ssrModule.default as Component<Props>, { props }).body;
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.window = originalWindow;
+  }
 
   const container = document.createElement('div');
   container.innerHTML = ssrHtml;

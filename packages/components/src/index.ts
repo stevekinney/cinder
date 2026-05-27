@@ -581,6 +581,7 @@ export type {
   ToastApi,
   ToastItem,
   ToastOptions,
+  ToastPosition,
   ToastRegionProps,
   ToastVariant,
 } from './components/toast-region/index.ts';

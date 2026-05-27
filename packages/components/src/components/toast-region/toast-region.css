@@ -7,8 +7,6 @@
 
 .cinder-toast-region {
   position: fixed;
-  bottom: var(--cinder-space-4);
-  right: var(--cinder-space-4);
   display: flex;
   flex-direction: column;
   gap: var(--cinder-space-2);
@@ -19,10 +17,55 @@
    * side-by-side visually but route to different SR-announcement queues. */
 }
 
+.cinder-toast-region[data-cinder-position^='top'] {
+  top: var(--cinder-space-4);
+}
+
+.cinder-toast-region[data-cinder-position^='bottom'] {
+  bottom: var(--cinder-space-4);
+}
+
+.cinder-toast-region[data-cinder-position$='left'] {
+  left: var(--cinder-space-4);
+  align-items: flex-start;
+}
+
+.cinder-toast-region[data-cinder-position$='center'] {
+  left: 50%;
+  align-items: center;
+  transform: translateX(-50%);
+}
+
+.cinder-toast-region[data-cinder-position$='right'] {
+  right: var(--cinder-space-4);
+  align-items: flex-end;
+}
+
 .cinder-toast-region__channel {
   display: flex;
   flex-direction: column;
   gap: var(--cinder-space-2);
+}
+
+.cinder-toast-region[data-cinder-position^='top'] .cinder-toast-region__channel {
+  flex-direction: column-reverse;
+}
+
+.cinder-toast-shell {
+  display: block;
+  max-height: var(--cinder-toast-height, none);
+  opacity: 1;
+  transition:
+    max-height var(--cinder-duration-fast) var(--cinder-ease-standard),
+    opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+    margin-block var(--cinder-duration-fast) var(--cinder-ease-standard);
+}
+
+.cinder-toast-shell[data-cinder-presence='exiting'] {
+  max-height: 0;
+  opacity: 0;
+  margin-block: 0;
+  overflow: hidden;
 }
 
 /* ----------------------------------------
@@ -47,6 +90,13 @@
     0 4px 12px oklch(0% 0 0 / 0.08);
   font-size: var(--cinder-text-sm);
   color: var(--cinder-text);
+  touch-action: pan-y;
+  user-select: none;
+  transform: translateX(var(--cinder-toast-swipe-x, 0))
+    translateY(calc(var(--cinder-toast-stack-index, 0) * -2px));
+  transition:
+    transform var(--cinder-duration-fast) var(--cinder-ease-standard),
+    opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   /* Smooth in/out at default speed; reduced-motion zeroes the duration via
    * the global motion tokens. */
   animation: cinder-toast-in var(--cinder-duration-fast) var(--cinder-ease-decelerate);
@@ -54,18 +104,25 @@
 
 @keyframes cinder-toast-in {
   from {
-    transform: translateY(8px);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
     opacity: 1;
   }
 }
 
+@keyframes cinder-toast-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .cinder-toast {
+  .cinder-toast-shell,
+  .cinder-toast,
+  .cinder-toast__spinner {
     animation: none;
+    transition-duration: 0ms;
   }
 }
 
@@ -109,6 +166,18 @@
   flex-shrink: 0;
   line-height: 0;
   color: var(--_cinder-toast-accent, var(--cinder-text-muted));
+}
+
+.cinder-toast__spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--cinder-spinner-size-sm, 1rem);
+  height: var(--cinder-spinner-size-sm, 1rem);
+  border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  color: var(--_cinder-toast-accent, var(--cinder-text-muted));
+  animation: cinder-toast-spinner-spin var(--cinder-duration-spin) linear infinite;
 }
 
 .cinder-toast__message {

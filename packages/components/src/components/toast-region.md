@@ -22,12 +22,13 @@ Wrap the app inside the region so route components (descendants) can call `useTo
 
 ## `<ToastRegion>` props
 
-| Prop              | Type      | Default | Description                                                                                                                                                                                                                                                                                                              |
-| ----------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `maxStack`        | `number`  | `5`     | Maximum simultaneous toasts in **each** region (polite and assertive each hold up to this many). Overflow drops the oldest.                                                                                                                                                                                              |
-| `defaultDuration` | `number`  | `5000`  | Auto-dismiss duration in milliseconds. `0` makes a toast sticky. Overridable per-call via `ToastOptions.duration`.                                                                                                                                                                                                       |
-| `class`           | `string`  | —       | Additional class names merged with `.cinder-toast-region`.                                                                                                                                                                                                                                                               |
-| `children`        | `Snippet` | —       | Optional snippet rendered inside the region. Supply it when callers need access to this region's `useToast()` context — either via `{@const toast = useToast()}` inside the snippet, or in any descendant component rendered through `{@render children()}`. Callers outside the region's subtree cannot dispatch to it. |
+| Prop              | Type                                                                                              | Default          | Description                                                                                                                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `maxStack`        | `number`                                                                                          | `5`              | Maximum simultaneous toasts in **each** region (polite and assertive each hold up to this many). Overflow drops the oldest.                                                                                                                                                                                              |
+| `defaultDuration` | `number`                                                                                          | `5000`           | Auto-dismiss duration in milliseconds. `0` makes a toast sticky. Overridable per-call via `ToastOptions.duration`.                                                                                                                                                                                                       |
+| `position`        | `'top-left' \| 'top-center' \| 'top-right' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | `'bottom-right'` | Viewport anchor for both live-region channels.                                                                                                                                                                                                                                                                           |
+| `class`           | `string`                                                                                          | —                | Additional class names merged with `.cinder-toast-region`.                                                                                                                                                                                                                                                               |
+| `children`        | `Snippet`                                                                                         | —                | Optional snippet rendered inside the region. Supply it when callers need access to this region's `useToast()` context — either via `{@const toast = useToast()}` inside the snippet, or in any descendant component rendered through `{@render children()}`. Callers outside the region's subtree cannot dispatch to it. |
 
 The `ToastRegionProps` type is re-exported from the package root for wrapper components.
 
@@ -48,14 +49,14 @@ Import the hook from the package root — there is no `cinder/use-toast` subpath
 
 ## `ToastOptions`
 
-| Field         | Type                                                          | Default                                 | Description                                                                                                                                 |
-| ------------- | ------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                                | Drives visual treatment **and** live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive)).                          |
-| `duration`    | `number`                                                      | region's `defaultDuration` (`5000`)     | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                                      |
-| `dismissible` | `boolean`                                                     | `true`                                  | When `true`, renders the X button.                                                                                                          |
-| `id`          | `string`                                                      | `cinder-toast-${n}` (auto-incrementing) | Pass a stable id to deduplicate — calling `show` again with the same id replaces the existing toast instead of stacking a duplicate.        |
-| `icon`        | `Snippet`                                                     | —                                       | Renders a decorative leading icon before the message. The icon is `aria-hidden`; keep the status meaning in the message text and variant.   |
-| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                                       | Renders a button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true` (defaults to `false`). |
+| Field         | Type                                                          | Default                                 | Description                                                                                                                                                       |
+| ------------- | ------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `variant`     | `'info' \| 'success' \| 'warning' \| 'danger'`                | `'info'`                                | Drives visual treatment **and** live-region routing (see [Variant routing](#variant-routing-polite-vs-assertive)).                                                |
+| `duration`    | `number`                                                      | region's `defaultDuration` (`5000`)     | Auto-dismiss after N ms. `0` keeps the toast until dismissed manually.                                                                                            |
+| `dismissible` | `boolean`                                                     | `true`                                  | When `true`, enables user dismissal affordances: X button, Escape, and swipe. Programmatic dismissal, overflow, and action default-dismiss still work when false. |
+| `id`          | `string`                                                      | `cinder-toast-${n}` (auto-incrementing) | Pass a stable id to deduplicate — calling `show` again with the same id replaces the existing toast instead of stacking a duplicate.                              |
+| `icon`        | `Snippet`                                                     | —                                       | Renders a decorative leading icon before the message. The icon is `aria-hidden`; keep the status meaning in the message text and variant.                         |
+| `action`      | `{ label: string; onAction: () => void; keepOpen?: boolean }` | —                                       | Renders a button after the message. Clicking invokes `onAction` then dismisses the toast unless `keepOpen` is `true` (defaults to `false`).                       |
 
 ## Variant routing (polite vs assertive)
 
@@ -77,6 +78,21 @@ toast.dismiss(id);
 ```
 
 Auto-generated ids (`cinder-toast-N`) are instance-local: stable for the lifetime of the mounted region and reset when it unmounts. Use them transiently within the current session, or pass a stable `options.id` when you need cross-render deduplication.
+
+## Promise toasts
+
+Use `toast.promise()` when one operation needs a sticky loading notification that turns into success or error output.
+
+```ts
+toast.promise(saveSettings(), {
+  id: 'settings-save',
+  loading: 'Saving settings...',
+  success: 'Settings saved.',
+  error: (error) => (error instanceof Error ? error.message : 'Save failed.'),
+});
+```
+
+The loading phase is sticky and polite. Success stays polite; errors move to the assertive `danger` channel. If the loading toast is dismissed or replaced before the promise settles, the late settlement is ignored.
 
 ## Decorative icons
 
@@ -137,9 +153,11 @@ By default the toast dismisses immediately after `onAction` fires. Set `keepOpen
 
 ## Dismiss patterns
 
-There are four ways a toast leaves the screen:
+There are six ways a toast leaves the screen:
 
 - **User-driven** via the X button (when `dismissible: true`, the default).
+- **Keyboard-driven** via Escape while focus is inside a dismissible toast.
+- **Gesture-driven** via horizontal swipe when `dismissible: true`.
 - **Auto-dismiss** after `duration` ms (when `duration > 0`).
 - **Targeted programmatic** via `toast.dismiss(id)`. No-op if the id is not active.
 - **Clear-all** via `toast.dismissAll()`. Clears polite **and** assertive stacks together.
@@ -149,6 +167,19 @@ toast.dismiss(id); // remove a specific toast
 toast.dismissAll(); // clear everything in this region
 ```
 
-## Roadmap
+Hovering or focusing the region pauses active auto-dismiss timers. Timers resume when both pointer and focus leave, so keyboard users can reach action and dismiss buttons without the toast expiring mid-interaction.
 
-- **No `placement` prop yet.** Visual position is owned by `.cinder-toast-region` styling. A prop-driven placement API is on the roadmap.
+## Feature coverage
+
+| Feature                 | Status                                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Stacked toasts          | Present: each live-region channel keeps its own bounded stack.                                 |
+| Stagger / offset        | Present: stack index is exposed as `--cinder-toast-stack-index` for visual depth.              |
+| Swipe-to-dismiss        | Present for pointer input when `dismissible` is true.                                          |
+| Action button           | Present via `ToastOptions.action`; default dismisses after action.                             |
+| Pause-on-hover/focus    | Present across the whole region.                                                               |
+| Position variants       | Present via `position` prop, six viewport anchors.                                             |
+| Promise/loading variant | Present via `toast.promise()`, with late-settlement guards.                                    |
+| ARIA live regions       | Present and preserved as split polite/assertive channels.                                      |
+| Keyboard dismiss        | Present via Escape for dismissible toasts.                                                     |
+| Focus return            | Present for focused user dismissals; focus moves to the next toast control or `document.body`. |

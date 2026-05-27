@@ -12,6 +12,10 @@ const schema = {
       type: 'number',
       description: 'Default auto-dismiss duration in ms. Default 5000. Set to 0 for sticky.',
     },
+    position: {
+      enum: ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+      description: 'Viewport anchor for both live-region channels. Default `bottom-right`.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-toast-region`.',

@@ -1,31 +1,100 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
+import { afterEach, describe, expect, jest, test } from 'bun:test';
+
+import { _resetEscapeStack, pushEscapeHandler } from '../../_internal/overlay.ts';
 import type { ToastApi } from '../../_internal/toast-context.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render, waitFor } = await import('@testing-library/svelte');
-const { createRawSnippet } = await import('svelte');
+const { fireEvent } = await import('@testing-library/dom');
+const { createRawSnippet, tick } = await import('svelte');
 const { default: Wrapper } = await import('../../test/fixtures/toast-fixture.svelte');
 
+const TOAST_REGION_SOURCE = join(import.meta.dir, 'toast-region.svelte');
+const REPOSITORY_ROOT = join(import.meta.dir, '../../../../../');
+
+let mockedPerformanceNow = 0;
+
+function useDeterministicTimers(now = 0): void {
+  mockedPerformanceNow = now;
+  jest.useFakeTimers({ now });
+  jest.spyOn(performance, 'now').mockImplementation(() => mockedPerformanceNow);
+}
+
+async function advanceDeterministicTimers(milliseconds: number): Promise<void> {
+  mockedPerformanceNow += milliseconds;
+  jest.advanceTimersByTime(milliseconds);
+  await tick();
+}
+
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  reject: (reason?: unknown) => void;
+  resolve: (value: T | PromiseLike<T>) => void;
+} {
+  let resolveDeferred: (value: T | PromiseLike<T>) => void = () => {};
+  let rejectDeferred: (reason?: unknown) => void = () => {};
+  const promise = new Promise<T>((resolve, reject) => {
+    resolveDeferred = resolve;
+    rejectDeferred = reject;
+  });
+  return { promise, reject: rejectDeferred, resolve: resolveDeferred };
+}
+
 afterEach(() => {
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
+  jest.restoreAllMocks();
+  _resetEscapeStack();
   // Clean up any toast region nodes left in the body between tests.
   document.body.innerHTML = '';
 });
 
 describe('ToastRegion structure', () => {
-  test('renders nothing on the server (gated by hydrated state)', async () => {
-    // Initial render under happy-dom — but the $effect runs synchronously
-    // during the testing-library render cycle, so by the time we read the
-    // DOM it's already hydrated. Instead, verify the live regions exist
-    // post-hydration.
-    const { container } = render(Wrapper, {});
-    await waitFor(() => {
-      expect(container.querySelector('[role="status"]')).not.toBeNull();
-      expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  test('omits live-region DOM on the server', () => {
+    const script = `
+      import { rm, writeFile } from 'node:fs/promises';
+      import { dirname, join } from 'node:path';
+      import { pathToFileURL } from 'node:url';
+      import { compile } from 'svelte/compiler';
+      const sourcePath = ${JSON.stringify(TOAST_REGION_SOURCE)};
+      const source = await Bun.file(sourcePath).text();
+      const compiled = compile(source, { filename: sourcePath, generate: 'server', css: 'external', dev: false });
+      const serverSvelteEntry = pathToFileURL(join(process.cwd(), 'node_modules/svelte/src/index-server.js')).href;
+      const serverCode = compiled.js.code.replaceAll("from 'svelte';", \`from \${JSON.stringify(serverSvelteEntry)};\`);
+      const file = join(dirname(sourcePath), \`.cinder-ssr-test-\${process.pid}-\${Date.now()}.mjs\`);
+      await writeFile(file, serverCode, 'utf-8');
+      try {
+        const { createRawSnippet } = await import('svelte');
+        const { render } = await import('svelte/server');
+        const module = await import(pathToFileURL(file).href);
+        const children = createRawSnippet(() => ({
+          render: () => '<span data-ssr-child>SSR child</span>',
+        }));
+        process.stdout.write(render(module.default, { props: { children } }).body);
+      } finally {
+        await rm(file, { force: true });
+      }
+    `;
+    const result = Bun.spawnSync({
+      cmd: ['bun', '-e', script],
+      cwd: REPOSITORY_ROOT,
+      stdout: 'pipe',
+      stderr: 'pipe',
     });
+    const stderr = new TextDecoder().decode(result.stderr);
+    const ssrHtml = new TextDecoder().decode(result.stdout);
+
+    expect(result.exitCode, stderr).toBe(0);
+    expect(ssrHtml).toContain('data-ssr-child');
+    expect(ssrHtml).toContain('SSR child');
+    expect(ssrHtml).not.toContain('role="status"');
+    expect(ssrHtml).not.toContain('role="alert"');
   });
 
   test('renders polite region with role=status, aria-live=polite', async () => {
@@ -49,6 +118,15 @@ describe('ToastRegion structure', () => {
 });
 
 describe('useToast api', () => {
+  test('stamps the selected viewport position', async () => {
+    const { container } = render(Wrapper, { position: 'top-center' });
+    await waitFor(() => {
+      expect(
+        container.querySelector('.cinder-toast-region')?.getAttribute('data-cinder-position'),
+      ).toBe('top-center');
+    });
+  });
+
   test('show(message) routes info variant to the polite region', async () => {
     let api: ToastApi | null = null;
     const { container } = render(Wrapper, {
@@ -156,6 +234,25 @@ describe('useToast api', () => {
     });
   });
 
+  test('same-id replacement moves a toast across live-region channels', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Working', { id: 'shared', variant: 'info', duration: 0 });
+    api!.show('Failed', { id: 'shared', variant: 'danger', duration: 0 });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent ?? '').not.toContain(
+        'Working',
+      );
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain('Failed');
+      expect(container.querySelectorAll('[data-cinder-toast-id="shared"]').length).toBe(1);
+    });
+  });
+
   test('maxStack drops the oldest when exceeded', async () => {
     let api: ToastApi | null = null;
     const { container } = render(Wrapper, {
@@ -174,6 +271,29 @@ describe('useToast api', () => {
       expect(text).not.toContain('A');
       expect(text).toContain('B');
       expect(text).toContain('C');
+    });
+  });
+
+  test('maxStack overflow is scoped to the overflowing live-region channel', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      maxStack: 2,
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Danger A', { variant: 'danger', duration: 0 });
+    api!.show('Info A', { duration: 0 });
+    api!.show('Info B', { duration: 0 });
+    api!.show('Info C', { duration: 0 });
+    await waitFor(() => {
+      const politeText = container.querySelector('[role="status"]')?.textContent ?? '';
+      const assertiveText = container.querySelector('[role="alert"]')?.textContent ?? '';
+      expect(politeText).not.toContain('Info A');
+      expect(politeText).toContain('Info B');
+      expect(politeText).toContain('Info C');
+      expect(assertiveText).toContain('Danger A');
     });
   });
   test('renders the icon snippet before the message when provided', async () => {
@@ -238,6 +358,390 @@ describe('useToast api', () => {
       expect(container.querySelector('[role="status"]')?.textContent).toContain('No icon');
     });
     expect(container.querySelector('.cinder-toast__icon')).toBeNull();
+  });
+
+  test('promise replaces loading with success and keeps the polite route', async () => {
+    let api: ToastApi | null = null;
+    const tracked = createDeferred<string>();
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.promise(tracked.promise, {
+      id: 'save',
+      loading: 'Saving',
+      success: (value) => `Saved ${value}`,
+      error: 'Failed',
+      duration: 0,
+    });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('Saving');
+      expect(container.querySelector('[data-cinder-pending="true"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-pending="true"] [role="status"]')).toBeNull();
+      expect(container.querySelector('.cinder-toast__spinner')?.getAttribute('aria-hidden')).toBe(
+        'true',
+      );
+    });
+    tracked.resolve('draft');
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('Saved draft');
+      expect(container.querySelector('[data-cinder-pending="true"]')).toBeNull();
+    });
+  });
+
+  test('promise rejection moves from polite loading to assertive danger', async () => {
+    let api: ToastApi | null = null;
+    const tracked = createDeferred<string>();
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.promise(tracked.promise, {
+      id: 'save',
+      loading: 'Saving',
+      success: 'Saved',
+      error: (error) => (error instanceof Error ? error.message : 'Failed'),
+      duration: 0,
+    });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('Saving');
+      expect(container.querySelector('[role="alert"]')?.textContent ?? '').not.toContain('Saving');
+      expect(container.querySelector('[data-cinder-pending="true"]')).not.toBeNull();
+    });
+    tracked.reject(new Error('Nope'));
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent ?? '').not.toContain('Saving');
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain('Nope');
+      expect(container.querySelector('[data-cinder-pending="true"]')).toBeNull();
+    });
+  });
+
+  test('dismissing a pending promise prevents late settlement from resurrecting it', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    const tracked = createDeferred<string>();
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    const id = api!.promise(tracked.promise, {
+      loading: 'Saving',
+      success: 'Saved',
+      error: 'Failed',
+      duration: 0,
+    });
+    await tick();
+    api!.dismiss(id);
+    tracked.resolve('late');
+    await tick();
+    expect(container.textContent).not.toContain('Saved');
+    await advanceDeterministicTimers(220);
+    expect(container.querySelector('.cinder-toast')).toBeNull();
+  });
+
+  test('action fires once and dismisses by default even when not otherwise dismissible', async () => {
+    let api: ToastApi | null = null;
+    let actionCount = 0;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Undoable', {
+      duration: 0,
+      dismissible: false,
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          actionCount += 1;
+        },
+      },
+    });
+    const action = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__action');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    action.click();
+    expect(actionCount).toBe(1);
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-toast')).toBeNull();
+    });
+  });
+
+  test('action cannot fire again while the toast is leaving', async () => {
+    let api: ToastApi | null = null;
+    let actionCount = 0;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Undoable', {
+      duration: 0,
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          actionCount += 1;
+        },
+      },
+    });
+    const action = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__action');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    action.click();
+    action.click();
+    await tick();
+
+    expect(actionCount).toBe(1);
+    expect(action.disabled).toBe(true);
+  });
+
+  test('keepOpen action remains visible after firing', async () => {
+    let api: ToastApi | null = null;
+    let actionCount = 0;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Pause sync', {
+      duration: 0,
+      action: {
+        label: 'Pause',
+        keepOpen: true,
+        onAction: () => {
+          actionCount += 1;
+        },
+      },
+    });
+    const action = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__action');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    action.click();
+    expect(actionCount).toBe(1);
+    expect(container.querySelector('.cinder-toast')?.textContent).toContain('Pause sync');
+  });
+
+  test('Escape dismisses a focused dismissible toast and does not bubble', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    let bubbled = false;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    container.addEventListener('keydown', () => {
+      bubbled = true;
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Keyboard', { duration: 0 });
+    const dismissButton = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__dismiss');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    dismissButton.focus();
+    await fireEvent.keyDown(dismissButton, { key: 'Escape' });
+    expect(bubbled).toBe(false);
+    await advanceDeterministicTimers(220);
+    expect(container.querySelector('.cinder-toast')).toBeNull();
+  });
+
+  test('dismissing a focused toast moves focus to the next toast control', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('First', { duration: 0 });
+    api!.show('Second', { duration: 0 });
+    const dismissButtons = await waitFor(() => {
+      const buttons = [...container.querySelectorAll<HTMLButtonElement>('.cinder-toast__dismiss')];
+      expect(buttons.length).toBe(2);
+      return buttons;
+    });
+
+    dismissButtons[0]!.focus();
+    await fireEvent.keyDown(dismissButtons[0]!, { key: 'Escape' });
+    await tick();
+
+    expect(document.activeElement).toBe(dismissButtons[1]!);
+    await advanceDeterministicTimers(220);
+    expect(container.textContent).not.toContain('First');
+    expect(container.textContent).toContain('Second');
+  });
+
+  test('Escape on a non-dismissible toast bubbles and does not dismiss', async () => {
+    let api: ToastApi | null = null;
+    let bubbled = false;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    container.addEventListener('keydown', () => {
+      bubbled = true;
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Sticky', { duration: 0, dismissible: false });
+    const toast = await waitFor(() => {
+      const element = container.querySelector<HTMLElement>('.cinder-toast');
+      expect(element).not.toBeNull();
+      return element!;
+    });
+    await fireEvent.keyDown(toast, { key: 'Escape' });
+    expect(bubbled).toBe(true);
+    expect(container.querySelector('.cinder-toast')?.textContent).toContain('Sticky');
+  });
+
+  test('focused toast owns Escape ahead of parent overlay handlers', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    let parentOverlayEscapes = 0;
+    pushEscapeHandler(() => {
+      parentOverlayEscapes += 1;
+    });
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Nested toast', { duration: 0 });
+    const dismissButton = await waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('.cinder-toast__dismiss');
+      expect(button).not.toBeNull();
+      return button!;
+    });
+
+    dismissButton.focus();
+    await fireEvent.focusIn(dismissButton);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await tick();
+
+    expect(parentOverlayEscapes).toBe(0);
+    await advanceDeterministicTimers(220);
+    expect(container.textContent).not.toContain('Nested toast');
+  });
+
+  test('pointer swipe past threshold dismisses the toast', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.show('Swipe me', { duration: 0 });
+    const toast = await waitFor(() => {
+      const element = container.querySelector<HTMLElement>('.cinder-toast');
+      expect(element).not.toBeNull();
+      return element!;
+    });
+    await fireEvent.pointerDown(toast, { pointerId: 1, clientX: 0 });
+    await fireEvent.pointerMove(toast, { pointerId: 1, clientX: 96 });
+    expect(toast.getAttribute('style')).toContain('--cinder-toast-swipe-x: 96px');
+    await fireEvent.pointerUp(toast, { pointerId: 1, clientX: 96 });
+    await advanceDeterministicTimers(220);
+    expect(container.querySelector('.cinder-toast')).toBeNull();
+  });
+
+  test('hover pauses auto-dismiss until the pointer leaves', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    useDeterministicTimers();
+    api!.show('Paused', { duration: 40 });
+    await tick();
+    const region = container.querySelector<HTMLElement>('.cinder-toast-region')!;
+    await fireEvent.pointerEnter(region);
+    await advanceDeterministicTimers(70);
+    expect(container.querySelector('.cinder-toast')?.textContent).toContain('Paused');
+    await fireEvent.pointerLeave(region);
+    await advanceDeterministicTimers(39);
+    expect(container.querySelector('.cinder-toast')?.textContent).toContain('Paused');
+    await advanceDeterministicTimers(1);
+    await advanceDeterministicTimers(220);
+    expect(container.textContent).not.toContain('Paused');
+  });
+
+  test('focus inside the region pauses auto-dismiss until focus leaves', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    useDeterministicTimers();
+    api!.show('Focused', { duration: 40 });
+    await tick();
+    const dismissButton = container.querySelector<HTMLButtonElement>('.cinder-toast__dismiss')!;
+
+    dismissButton.focus();
+    await fireEvent.focusIn(dismissButton);
+    await advanceDeterministicTimers(80);
+    expect(container.querySelector('.cinder-toast')?.textContent).toContain('Focused');
+
+    await fireEvent.focusOut(dismissButton, { relatedTarget: document.body });
+    await advanceDeterministicTimers(40);
+    await advanceDeterministicTimers(220);
+    expect(container.textContent).not.toContain('Focused');
+  });
+
+  test('toast DOM lookups are scoped to each ToastRegion instance', async () => {
+    let firstApi: ToastApi | null = null;
+    let secondApi: ToastApi | null = null;
+    const first = render(Wrapper, {
+      onReady: (api: ToastApi) => {
+        firstApi = api;
+      },
+    });
+    const second = render(Wrapper, {
+      onReady: (api: ToastApi) => {
+        secondApi = api;
+      },
+    });
+    await waitFor(() => {
+      expect(firstApi).not.toBeNull();
+      expect(secondApi).not.toBeNull();
+    });
+
+    firstApi!.show('First region', { id: 'shared-id', duration: 0 });
+    secondApi!.show('Second region', { id: 'shared-id', duration: 0 });
+    await waitFor(() => {
+      expect(first.container.textContent).toContain('First region');
+      expect(second.container.textContent).toContain('Second region');
+    });
+
+    secondApi!.dismiss('shared-id');
+    await waitFor(() => {
+      expect(first.container.textContent).toContain('First region');
+      expect(second.container.textContent).not.toContain('Second region');
+    });
   });
 });
 

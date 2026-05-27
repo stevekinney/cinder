@@ -1,6 +1,6 @@
 # ToastRegion
 
-A ToastRegion component. Replace this sentence with a one-line purpose statement once the migration settles.
+ToastRegion provides live toast notifications and a `useToast()` controller for descendants.
 
 ## Usage
 
@@ -16,12 +16,13 @@ A ToastRegion component. Replace this sentence with a one-line purpose statement
 
 <!-- generated:props:start -->
 
-| Prop              | Type       | Required | Default | Description                                                             |
-| ----------------- | ---------- | -------- | ------- | ----------------------------------------------------------------------- |
-| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-toast-region`.              |
-| `defaultDuration` | `number`   | no       | —       | Default auto-dismiss duration in ms. Default 5000. Set to 0 for sticky. |
-| `maxStack`        | `number`   | no       | —       | Maximum simultaneous toasts in each region. Default 5.                  |
-| `children`        | `(opaque)` | —        | —       | function-or-snippet                                                     |
+| Prop              | Type                                                                                                        | Required | Default | Description                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------- |
+| `class`           | `string`                                                                                                    | no       | —       | Additional class names merged with `.cinder-toast-region`.              |
+| `defaultDuration` | `number`                                                                                                    | no       | —       | Default auto-dismiss duration in ms. Default 5000. Set to 0 for sticky. |
+| `maxStack`        | `number`                                                                                                    | no       | —       | Maximum simultaneous toasts in each region. Default 5.                  |
+| `position`        | `"top-left"` \| `"top-center"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-center"` \| `"bottom-right"` | no       | —       | Viewport anchor for both live-region channels. Default `bottom-right`.  |
+| `children`        | `(opaque)`                                                                                                  | —        | —       | function-or-snippet                                                     |
 
 <!-- generated:props:end -->
 
