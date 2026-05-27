@@ -41,6 +41,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
@@ -74,6 +75,22 @@
       commentCount === 1 ? 'comment' : 'comments'
     })`,
   );
+
+  // Live announcer for comment count changes.
+  let previousCommentCount = $state<number | null>(null);
+  let liveAnnouncementText = $state('');
+
+  $effect(() => {
+    // Do not announce on initial render — only on subsequent changes.
+    if (previousCommentCount === null) {
+      previousCommentCount = commentCount;
+      return;
+    }
+    if (commentCount !== previousCommentCount) {
+      previousCommentCount = commentCount;
+      liveAnnouncementText = `${commentCount} ${commentCount === 1 ? 'comment' : 'comments'}`;
+    }
+  });
 </script>
 
 <div
@@ -152,24 +169,30 @@
       </Button>
     {/if}
 
-    <Button
-      variant="ghost"
-      size="sm"
-      class="comments-toggle"
-      onclick={onSidebarToggle}
-      aria-expanded={sidebarOpen}
-      aria-controls="{id}-sidebar"
-      aria-label={commentsToggleLabel}
-      title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
-    >
-      <MessageSquare class="icon-sm" />
-      <span class="comments-count">{commentCount}</span>
-    </Button>
+    <div class="comments-toggle-wrapper">
+      <Button
+        variant="ghost"
+        size="sm"
+        onclick={onSidebarToggle}
+        aria-expanded={sidebarOpen}
+        aria-controls="{id}-sidebar"
+        aria-label={commentsToggleLabel}
+        title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
+      >
+        <MessageSquare class="icon-sm" />
+        <Badge aria-hidden="true" size="sm" variant="neutral">{commentCount}</Badge>
+      </Button>
+    </div>
 
     {#if trailing}
       {@render trailing()}
     {/if}
   </div>
+</div>
+
+<!-- Polite live announcer for comment count changes. Empty on initial render. -->
+<div role="status" aria-live="polite" aria-atomic="true" class="comments-count-announcer sr-only">
+  {liveAnnouncementText}
 </div>
 
 <style>
@@ -218,16 +241,8 @@
    * aligned without requiring per-instance height overrides below.
    * ========================================================================= */
 
-  /* Comments toggle button with count */
-  :global(.comments-toggle) {
+  /* Comments toggle button with badge — locally scoped via the wrapper. */
+  .comments-toggle-wrapper :global(.cinder-button) {
     gap: var(--cinder-space-1);
-  }
-
-  .comments-count {
-    font-size: var(--cinder-text-xs);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text-muted);
-    min-width: 1rem;
-    text-align: center;
   }
 </style>

@@ -14,6 +14,12 @@
     hasSelection?: boolean;
     /** Additional CSS class */
     class?: string;
+    /**
+     * Anchor element for Floating UI positioning.
+     * Pass an HTMLElement (toolbar button) or a VirtualElement (ProseMirror selection coords).
+     * When null/undefined the popover falls back to its previous fixed-center positioning.
+     */
+    anchorElement?: HTMLElement | import('@floating-ui/dom').VirtualElement | null;
     /** Called when popover should close */
     onclose?: () => void;
     /** Called when link should be inserted */
@@ -24,6 +30,15 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  import {
+    computePosition,
+    autoUpdate,
+    flip,
+    shift,
+    offset as offsetMiddleware,
+  } from '@floating-ui/dom';
+  import type { VirtualElement } from '@floating-ui/dom';
   import { classNames } from '../../../utilities/class-names.ts';
   import { createFocusTrap } from '../../focus-trap/index.ts';
   import { createClickOutside } from '../../../utilities/attachments.ts';
@@ -38,10 +53,55 @@
     initialText = '',
     hasSelection = false,
     class: className,
+    anchorElement = null,
     onclose,
     oninsert,
     onremove,
   }: LinkPopoverProps = $props();
+
+  // Floating UI positioning state
+  let popoverElement = $state<HTMLDivElement | null>(null);
+  let positionReady = $state(false);
+  let positionStyle = $state('');
+
+  // Positioning effect: runs autoUpdate when anchorElement and popoverElement are available.
+  // Cleaned up on unmount or anchor change.
+  $effect(() => {
+    const anchor = anchorElement as HTMLElement | VirtualElement | null;
+    const panel = popoverElement;
+
+    if (!anchor || !panel) {
+      positionReady = false;
+      positionStyle = '';
+      return;
+    }
+
+    let cancelled = false;
+
+    const stop = autoUpdate(anchor, panel, async () => {
+      if (cancelled) return;
+      const result = await computePosition(anchor, panel, {
+        placement: 'bottom-start',
+        strategy: 'fixed',
+        middleware: [offsetMiddleware(8), flip(), shift({ padding: 8 })],
+      });
+      if (cancelled) return;
+      positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
+      positionReady = true;
+    });
+
+    return () => {
+      cancelled = true;
+      stop();
+      positionReady = false;
+      positionStyle = '';
+    };
+  });
+
+  onDestroy(() => {
+    positionReady = false;
+    positionStyle = '';
+  });
 
   // Form state (reset by $effect when popover opens)
   let url = $state('');
@@ -148,12 +208,16 @@
 </script>
 
 <div
+  bind:this={popoverElement}
   {id}
   role="dialog"
   aria-modal="true"
   aria-labelledby={`${id}-title`}
   tabindex="-1"
   class={classNames('link-popover', className)}
+  style={anchorElement ? positionStyle : undefined}
+  data-position-ready={anchorElement ? positionReady : undefined}
+  aria-hidden={anchorElement && !positionReady ? 'true' : undefined}
   {@attach createFocusTrap()}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
@@ -211,10 +275,10 @@
 <style>
   .link-popover {
     position: fixed;
-    /* Center horizontally and position near top of viewport */
-    left: 50%;
-    top: 20%;
-    transform: translateX(-50%);
+    /* Positioned by Floating UI when anchorElement is provided (inline style).
+     * Visibility is hidden until the first position compute completes so that
+     * focus is never visibly misplaced. */
+    visibility: hidden;
     z-index: var(--cinder-z-dropdown);
     display: flex;
     flex-direction: column;
@@ -225,6 +289,20 @@
     border-radius: var(--cinder-radius-lg);
     box-shadow: var(--cinder-shadow-lg);
     overflow: hidden;
+  }
+
+  .link-popover[data-position-ready='true'] {
+    visibility: visible;
+  }
+
+  /* When no anchor element is provided (standalone usage without Floating UI),
+   * center horizontally via auto inline margins and inset from the top — no
+   * hardcoded percentage offsets or transforms. */
+  .link-popover:not([data-position-ready]) {
+    inset-block-start: 20vh;
+    inset-inline: 0;
+    margin-inline: auto;
+    visibility: visible;
   }
 
   .link-popover-header {
@@ -251,8 +329,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--cinder-touch-target-min, 44px);
+    height: var(--cinder-touch-target-min, 44px);
     flex-shrink: 0;
     color: var(--cinder-text-muted);
     background: transparent;

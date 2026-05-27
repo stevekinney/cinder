@@ -92,6 +92,7 @@
     toolbarActions,
     toolbarLeading,
     snapshotMode = false,
+    'aria-describedby': ariaDescribedby,
     ...rest
   }: MarkdownEditorProps = $props();
 
@@ -248,6 +249,9 @@
 
   // Link popover state
   let linkPopoverOpen = $state(false);
+  let linkPopoverAnchorElement = $state<
+    HTMLElement | import('@floating-ui/dom').VirtualElement | null
+  >(null);
 
   // Derive link popover props based on current selection
   const linkPopoverMode = $derived.by((): LinkPopoverMode => {
@@ -302,14 +306,62 @@
   // Store the link range when popover opens (captured from the last known value)
   let capturedLinkRange = $state<[number, number] | null>(null);
 
-  function handleLinkClick() {
+  /**
+   * Resolve the best available anchor for the link popover when opened via keyboard shortcut.
+   * Priority:
+   * 1. Floating UI VirtualElement built from ProseMirror coordsAtPos (WYSIWYG mode)
+   * 2. editor view.dom bounding rect fallback
+   * 3. source textarea bounding rect fallback
+   * 4. markdown-editor wrapper bounding rect fallback
+   */
+  function resolveLinkPopoverAnchor():
+    | import('@floating-ui/dom').VirtualElement
+    | HTMLElement
+    | null {
+    if (editorState?.view) {
+      try {
+        const view = editorState.view;
+        const from = view.state.selection.from;
+        const coords = view.coordsAtPos(from);
+        if (coords && coords.top > 0) {
+          const rect: DOMRect = {
+            x: coords.left,
+            y: coords.top,
+            width: coords.right - coords.left,
+            height: coords.bottom - coords.top,
+            top: coords.top,
+            right: coords.right,
+            bottom: coords.bottom,
+            left: coords.left,
+            toJSON() {
+              return this;
+            },
+          };
+          return {
+            getBoundingClientRect: () => rect,
+          };
+        }
+      } catch {
+        // Fall through to view.dom fallback
+      }
+      const viewDom = editorState.view.dom;
+      if (viewDom instanceof HTMLElement) return viewDom;
+    }
+
+    if (wrapperElement) return wrapperElement;
+    return null;
+  }
+
+  function handleLinkClick(triggerElement: HTMLElement) {
     // Use the last known link range (updated reactively before focus changes)
     capturedLinkRange = lastKnownLinkRange;
+    linkPopoverAnchorElement = triggerElement;
     linkPopoverOpen = true;
   }
 
   function handleLinkPopoverClose() {
     linkPopoverOpen = false;
+    linkPopoverAnchorElement = null;
     // Refocus the editor after closing
     editorState?.focus();
   }
@@ -333,6 +385,7 @@
     }
 
     linkPopoverOpen = false;
+    linkPopoverAnchorElement = null;
     editorState?.focus();
   }
 
@@ -342,6 +395,7 @@
     removeLink(editorContext, capturedLinkRange ?? undefined);
     linkPopoverOpen = false;
     capturedLinkRange = null;
+    linkPopoverAnchorElement = null;
     editorState?.focus();
   }
 
@@ -388,7 +442,9 @@
       onSelectionChange?.(selection);
     },
     onLinkShortcut: () => {
-      // Mod-k pressed - open link popover
+      // Mod-k pressed - open link popover with a virtual element anchor
+      // derived from the current ProseMirror selection position.
+      linkPopoverAnchorElement = resolveLinkPopoverAnchor();
       linkPopoverOpen = true;
     },
     // DEP-47: Comment shortcut (Ctrl-Alt-c)
@@ -409,6 +465,7 @@
 
     // Prevent stale editor context when switching modes.
     linkPopoverOpen = false;
+    linkPopoverAnchorElement = null;
 
     if (nextMode === 'source') {
       // Flush pending WYSIWYG edits and canonicalize before showing raw markdown.
@@ -485,6 +542,20 @@
     // Close link popover when editor becomes readonly (toolbar disappears but popover might stay)
     if (readonly) {
       linkPopoverOpen = false;
+      linkPopoverAnchorElement = null;
+    }
+  });
+
+  // Forward aria-describedby to the ProseMirror view.dom when in WYSIWYG mode.
+  // The textarea binding handles the source mode surface via the template.
+  $effect(() => {
+    const viewDom = editorState?.view?.dom;
+    if (!viewDom) return;
+
+    if (ariaDescribedby) {
+      viewDom.setAttribute('aria-describedby', ariaDescribedby);
+    } else {
+      viewDom.removeAttribute('aria-describedby');
     }
   });
 
@@ -543,6 +614,7 @@
   data-mode={mode}
   data-has-toolbar={toolbarVisible || undefined}
   data-snapshot-mode={snapshotMode || undefined}
+  aria-describedby={ariaDescribedby}
   {...rest}
 >
   {#if toolbarVisible}
@@ -620,6 +692,7 @@
         {placeholder}
         readonly={readonly || undefined}
         aria-label={label}
+        aria-describedby={ariaDescribedby}
       ></textarea>
     {/if}
   {:else}
@@ -633,6 +706,7 @@
       initialUrl={linkPopoverInitialUrl}
       initialText={linkPopoverInitialText}
       hasSelection={linkPopoverHasSelection}
+      anchorElement={linkPopoverAnchorElement}
       onclose={handleLinkPopoverClose}
       oninsert={handleLinkInsert}
       onremove={handleLinkRemove}
