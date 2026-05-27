@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   getTouchedPackages,
   isSourceFile,
   loadWorkspacePackages,
   rootConfigStaged,
+  withGateLock,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -143,4 +148,269 @@ describe('loadWorkspacePackages', () => {
       expect(typeof pkg.hasTest).toBe('boolean');
     }
   });
+});
+
+describe('withGateLock', () => {
+  class SignalIntercepted extends Error {}
+
+  async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
+    try {
+      return await test(join(directory, 'pre-push-gate.lock'));
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  }
+
+  it('creates a lock while the protected function runs and removes it after success', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      let lockContents = '';
+
+      const result = await withGateLock(
+        async () => {
+          lockContents = await readFile(lockPath, 'utf8');
+          return 'passed';
+        },
+        { lockPath },
+      );
+
+      expect(result).toBe('passed');
+      expect(JSON.parse(lockContents)).toMatchObject({
+        pid: process.pid,
+        repositoryRoot: expect.any(String),
+      });
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('removes the lock when the protected function throws', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await expect(
+        withGateLock(
+          async () => {
+            throw new Error('gate failed');
+          },
+          { lockPath },
+        ),
+      ).rejects.toThrow('gate failed');
+
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('does not retry when the protected function throws an EEXIST-coded error', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      const error = new Error('gate callback failed') as NodeJS.ErrnoException;
+      error.code = 'EEXIST';
+      let attempts = 0;
+
+      await expect(
+        withGateLock(
+          async () => {
+            attempts += 1;
+            throw error;
+          },
+          { lockPath, retryMilliseconds: 1, waitMilliseconds: 5 },
+        ),
+      ).rejects.toThrow('gate callback failed');
+
+      expect(attempts).toBe(1);
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('does not remove a lock that was replaced before cleanup', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await withGateLock(
+        async () => {
+          await writeFile(
+            lockPath,
+            JSON.stringify({
+              createdAt: new Date().toISOString(),
+              pid: process.pid,
+              repositoryRoot: 'replacement',
+              token: 'replacement-token',
+            }),
+          );
+        },
+        { lockPath },
+      );
+
+      expect(JSON.parse(await readFile(lockPath, 'utf8'))).toMatchObject({
+        repositoryRoot: 'replacement',
+        token: 'replacement-token',
+      });
+    });
+  });
+
+  it('waits for the active gate to finish before entering a second gate', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      let releaseFirstGate!: () => void;
+      const firstGateReleased = new Promise<void>((resolve) => {
+        releaseFirstGate = resolve;
+      });
+      let markFirstGateStarted!: () => void;
+      const firstGateStarted = new Promise<void>((resolve) => {
+        markFirstGateStarted = resolve;
+      });
+      const entries: string[] = [];
+
+      const firstGate = withGateLock(
+        async () => {
+          entries.push('first');
+          markFirstGateStarted();
+          await firstGateReleased;
+        },
+        { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
+      );
+
+      await firstGateStarted;
+
+      const secondGate = withGateLock(
+        async () => {
+          entries.push('second');
+        },
+        { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
+      );
+
+      try {
+        await Bun.sleep(5);
+        expect(entries).toEqual(['first']);
+
+        releaseFirstGate();
+        await Promise.all([firstGate, secondGate]);
+
+        expect(entries).toEqual(['first', 'second']);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      } finally {
+        releaseFirstGate();
+        await firstGate;
+      }
+    });
+  });
+
+  it('fails after the bounded wait when a live gate keeps the lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 123,
+          repositoryRoot: 'other-checkout',
+          token: 'still-running',
+        }),
+      );
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          isProcessAlive: () => true,
+          lockPath,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('Another pre-push gate is already running');
+    });
+  });
+
+  it('does not immediately reclaim a newly malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('malformed lock');
+
+      expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('retries when the lock disappears before malformed-lock age can be checked', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      const result = await withGateLock(async () => 'retried after disappeared lock', {
+        beforeMalformedLockStat: async () => {
+          await rm(lockPath, { force: true });
+        },
+        lockPath,
+        retryMilliseconds: 1,
+        waitMilliseconds: 100,
+      });
+
+      expect(result).toBe('retried after disappeared lock');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('reclaims an old malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      const result = await withGateLock(async () => 'reclaimed malformed lock', {
+        lockPath,
+        malformedLockGraceMilliseconds: -1,
+      });
+
+      expect(result).toBe('reclaimed malformed lock');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  it('reclaims a stale lock whose process is no longer alive', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 999_999,
+          repositoryRoot: 'old-checkout',
+          token: 'stale',
+        }),
+      );
+
+      const result = await withGateLock(async () => 'reclaimed', {
+        isProcessAlive: () => false,
+        lockPath,
+      });
+
+      expect(result).toBe('reclaimed');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
+    });
+  });
+
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    it(`keeps the lock until the protected function finishes after ${signal}`, async () => {
+      await withTemporaryLockPath(async (lockPath) => {
+        let receivedSignal: NodeJS.Signals | undefined;
+        let continuedAfterSignal = false;
+        await expect(
+          withGateLock(
+            async () => {
+              expect(await Bun.file(lockPath).exists()).toBe(true);
+              process.emit(signal);
+              expect(await Bun.file(lockPath).exists()).toBe(true);
+              continuedAfterSignal = true;
+              throw new SignalIntercepted(signal);
+            },
+            {
+              lockPath,
+              resendSignal: (signalToResend) => {
+                receivedSignal = signalToResend;
+                expect(existsSync(lockPath)).toBe(false);
+              },
+            },
+          ),
+        ).rejects.toThrow(SignalIntercepted);
+
+        expect(continuedAfterSignal).toBe(true);
+        expect(receivedSignal).toBe(signal);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      });
+    });
+  }
 });
