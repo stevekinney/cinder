@@ -445,6 +445,33 @@ describe('useToast api', () => {
     expect(container.querySelector('.cinder-toast')).toBeNull();
   });
 
+  test('unmounting the region prevents late promise settlement timers', async () => {
+    useDeterministicTimers();
+    let api: ToastApi | null = null;
+    const tracked = createDeferred<string>();
+    const { container, unmount } = render(Wrapper, {
+      onReady: (a: ToastApi) => {
+        api = a;
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+    api!.promise(tracked.promise, {
+      loading: 'Saving',
+      success: 'Saved',
+      error: 'Failed',
+      duration: 100,
+    });
+    await waitFor(() => expect(container.textContent).toContain('Saving'));
+
+    unmount();
+    expect(jest.getTimerCount()).toBe(0);
+    tracked.resolve('done');
+    await tick();
+
+    expect(jest.getTimerCount()).toBe(0);
+    expect(document.body.textContent ?? '').not.toContain('Saved');
+  });
+
   test('action fires once and dismisses by default even when not otherwise dismissible', async () => {
     let api: ToastApi | null = null;
     let actionCount = 0;

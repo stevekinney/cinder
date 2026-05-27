@@ -91,6 +91,7 @@
   let nextId = 0;
   let isPointerInsideRegion = false;
   let isFocusInsideRegion = false;
+  let destroyed = false;
   let releaseFocusedToastEscape: (() => void) | null = null;
 
   function isPolite(variant: ToastVariant): boolean {
@@ -136,6 +137,7 @@
   }
 
   function show(message: string, options: ToastOptions = {}): string {
+    if (destroyed) return options.id ?? `cinder-toast-${++nextId}`;
     return upsertToast(message, options).id;
   }
 
@@ -378,7 +380,8 @@
     if (options.dismissible !== undefined) loadingOptions.dismissible = options.dismissible;
     const pendingToast = upsertToast(options.loading, loadingOptions);
     const generation = pendingToast.generation;
-    const isCurrentPromiseToast = () => generations.get(id) === generation && findToast(id);
+    const isCurrentPromiseToast = () =>
+      !destroyed && generations.get(id) === generation && findToast(id);
 
     promiseToTrack.then(
       (value) => {
@@ -512,10 +515,14 @@
   setContext<ToastApi>(TOAST_CONTEXT_KEY, { show, dismiss, dismissAll, promise });
 
   onDestroy(() => {
+    destroyed = true;
     // Tear down timers so unmounting the region (e.g., during route change)
     // doesn't leak timers that fire later and try to mutate disposed state.
     for (const id of timers.keys()) clearTimer(id);
     for (const id of removalTimers.keys()) clearRemovalTimer(id);
+    generations.clear();
+    politeStack = [];
+    assertiveStack = [];
     releaseToastEscapeHandler();
   });
 </script>
