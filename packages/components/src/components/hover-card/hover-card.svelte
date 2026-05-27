@@ -154,6 +154,7 @@
 
   function handleTriggerFocusIn() {
     focusInsideTrigger = true;
+    if (suppressTriggerOpenUntilLeave) return;
     scheduleOpen(0);
   }
 
@@ -162,7 +163,10 @@
     focusInsideTrigger =
       nextTarget instanceof Node &&
       Boolean(triggerWrapper?.contains(nextTarget) || cardElement?.contains(nextTarget));
-    if (!focusInsideTrigger) scheduleClose();
+    if (!focusInsideTrigger) {
+      suppressTriggerOpenUntilLeave = false;
+      scheduleClose();
+    }
   }
 
   function handleCardFocusIn() {

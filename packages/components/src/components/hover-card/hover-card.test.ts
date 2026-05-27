@@ -215,6 +215,71 @@ describe('HoverCard', () => {
     expect(queryHoverCard()).toBeNull();
   });
 
+  test('controlled external close suppresses focus reopen while the pointer never left the trigger', async () => {
+    const onopenchange = mock((_open: boolean) => {});
+    const { container, rerender } = render(HoverCard, {
+      props: {
+        open: true,
+        openDelay: 0,
+        onopenchange,
+        trigger: triggerSnippet,
+        children: textSnippet('Preview'),
+      },
+    });
+    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+
+    await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+    await fireEvent.mouseEnter(wrapper);
+    await rerender({
+      open: false,
+      openDelay: 0,
+      onopenchange,
+      trigger: triggerSnippet,
+      children: textSnippet('Preview'),
+    });
+    await waitFor(() => expect(queryHoverCard()).toBeNull());
+
+    onopenchange.mockClear();
+    await fireEvent.focusIn(wrapper);
+    await Bun.sleep(5);
+
+    expect(onopenchange).not.toHaveBeenCalledWith(true);
+    expect(queryHoverCard()).toBeNull();
+  });
+
+  test('focus reopens the hover card after the pointer leaves following a controlled close', async () => {
+    const onopenchange = mock((_open: boolean) => {});
+    const { container, rerender } = render(HoverCard, {
+      props: {
+        open: true,
+        openDelay: 0,
+        onopenchange,
+        trigger: triggerSnippet,
+        children: textSnippet('Preview'),
+      },
+    });
+    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+
+    await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+    await fireEvent.mouseEnter(wrapper);
+    await rerender({
+      open: false,
+      openDelay: 0,
+      onopenchange,
+      trigger: triggerSnippet,
+      children: textSnippet('Preview'),
+    });
+    await waitFor(() => expect(queryHoverCard()).toBeNull());
+
+    // Tabbing away clears the suppress flag so keyboard users are never trapped.
+    await fireEvent.focusOut(wrapper, { relatedTarget: document.body });
+    onopenchange.mockClear();
+    await fireEvent.focusIn(wrapper);
+    await Bun.sleep(5);
+
+    expect(queryHoverCard()).not.toBeNull();
+  });
+
   test('hover card stays open when the pointer moves from trigger to card before close delay', async () => {
     const { container } = render(HoverCard, {
       props: {
