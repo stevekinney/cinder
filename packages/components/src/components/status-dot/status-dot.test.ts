@@ -9,7 +9,7 @@ const { render } = await import('@testing-library/svelte');
 const { within } = await import('@testing-library/dom');
 const { default: StatusDot } = await import('./status-dot.svelte');
 
-const ALL_STATUSES = ['online', 'offline', 'warning', 'error', 'building', 'neutral'] as const;
+const ALL_STATUSES = ['online', 'offline', 'warning', 'error', 'pending', 'neutral'] as const;
 
 describe('StatusDot rendering', () => {
   test('renders the root with cinder-status-dot class', () => {
@@ -146,7 +146,7 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
 
   test('consumer-supplied aria-label overrides the automatic fallback', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'building', 'aria-label': 'Deployment in progress' },
+      props: { status: 'pending', 'aria-label': 'Deployment in progress' },
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'Deployment in progress',

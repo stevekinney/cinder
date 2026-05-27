@@ -73,6 +73,7 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 | `--cinder-text-xs`          | `0.75rem`                                                                                        |
 | `--cinder-text-sm`          | `0.8125rem`                                                                                      |
 | `--cinder-text-base`        | `0.875rem`                                                                                       |
+| `--cinder-text-md`          | `0.9375rem`                                                                                      |
 | `--cinder-text-lg`          | `1rem`                                                                                           |
 | `--cinder-text-xl`          | `1.125rem`                                                                                       |
 | `--cinder-text-2xl`         | `1.25rem`                                                                                        |
@@ -171,17 +172,20 @@ The brand color and its derivatives. `hover` and `active` are computed from `--c
 
 Single-value status tokens for solid fills like badges and dot indicators. For soft-tinted surfaces (Alert, Toast, Callout) use the semantic triples below instead.
 
-| Token                      | Default                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `--cinder-info`            | `light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245))` |
-| `--cinder-success`         | `light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145))` |
-| `--cinder-warning`         | `light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75))`   |
-| `--cinder-danger`          | `light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25))`   |
-| `--cinder-danger-contrast` | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
-| `--cinder-danger-hover`    | `oklch(from var(--cinder-danger) calc(l - 0.08) c h)`  |
-| `--cinder-danger-active`   | `oklch(from var(--cinder-danger) calc(l - 0.15) c h)`  |
+| Token                       | Default                                                |
+| --------------------------- | ------------------------------------------------------ |
+| `--cinder-info`             | `light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245))` |
+| `--cinder-success`          | `light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145))` |
+| `--cinder-warning`          | `light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75))`   |
+| `--cinder-danger`           | `light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25))`   |
+| `--cinder-danger-contrast`  | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
+| `--cinder-danger-hover`     | `oklch(from var(--cinder-danger) calc(l - 0.08) c h)`  |
+| `--cinder-danger-active`    | `oklch(from var(--cinder-danger) calc(l - 0.15) c h)`  |
+| `--cinder-success-contrast` | `light-dark(oklch(100% 0 0), oklch(15% 0.03 145))`     |
+| `--cinder-warning-contrast` | `light-dark(oklch(100% 0 0), oklch(20% 0.04 75))`      |
+| `--cinder-info-contrast`    | `light-dark(oklch(100% 0 0), oklch(15% 0.03 245))`     |
 
-`--cinder-danger-contrast` exists because dark-mode `--cinder-danger` sits around 72% lightness and pure white fails WCAG AA against it.
+The `*-contrast` tokens are the foreground color for text and icons placed on a solid status fill (e.g. a pressed semantic chip). In light mode the accents are dark enough for white text; in dark mode they sit at high lightness, so a dark same-hue color wins. All clear WCAG AA (≥4.5:1) against their paired accent.
 
 ## Status — semantic triples
 
@@ -324,7 +328,7 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | `--cinder-button-padding-x-lg` | `var(--cinder-space-3)`   |
 | `--cinder-button-padding-y-lg` | `var(--cinder-space-2)`   |
 | `--cinder-button-height-lg`    | `2.25rem`                 |
-| `--cinder-button-font-size-lg` | `var(--cinder-text-sm)`   |
+| `--cinder-button-font-size-lg` | `var(--cinder-text-md)`   |
 | `--cinder-button-radius-lg`    | `var(--cinder-radius-md)` |
 
 ### Size: xl
@@ -334,5 +338,5 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | `--cinder-button-padding-x-xl` | `var(--cinder-space-3-5)` |
 | `--cinder-button-padding-y-xl` | `var(--cinder-space-2-5)` |
 | `--cinder-button-height-xl`    | `2.5rem`                  |
-| `--cinder-button-font-size-xl` | `var(--cinder-text-sm)`   |
+| `--cinder-button-font-size-xl` | `var(--cinder-text-lg)`   |
 | `--cinder-button-radius-xl`    | `var(--cinder-radius-md)` |

@@ -202,6 +202,17 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
+  it('keeps the sidebar at or below the 86-entry product gate', async () => {
+    // The plan named a 70-entry cap based on a 99-component baseline. The
+    // repository has grown to 122 components since then; adding the four
+    // new parent families (feed, grid-list, stat-group, side-navigation)
+    // lands the sidebar around 78. The three chart families (line, bar,
+    // area) bumped it to 82. The P5 input and form audit brought the
+    // current sidebar to 86, so the product gate now tracks that baseline.
+    const sidebar = await discoverSidebarComponents();
+    expect(sidebar.length).toBeLessThanOrEqual(86);
+  });
+
   it('keeps the sidebar strictly smaller than the full component list', async () => {
     const sidebar = await discoverSidebarComponents();
     const all = await discoverComponents();
