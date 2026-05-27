@@ -212,7 +212,7 @@
   style={anchorElement ? positionStyle : undefined}
   data-position-ready={anchorElement ? positionReady : undefined}
   inert={anchorElement && !positionReady ? true : undefined}
-  {@attach createFocusTrap()}
+  {@attach createFocusTrap({ active: () => !anchorElement || positionReady })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >

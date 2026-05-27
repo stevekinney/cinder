@@ -322,21 +322,30 @@
       try {
         const view = editorState.view;
         const from = view.state.selection.from;
-        const coords = view.coordsAtPos(from);
-        if (coords && coords.top > 0) {
-          // Floating UI's VirtualElement only needs getBoundingClientRect to
-          // return a rect-shaped object — no DOMRect instance or toJSON needed.
+        // Probe once up front so an unusable position falls through to the
+        // view.dom fallback below.
+        const probe = view.coordsAtPos(from);
+        if (probe && probe.top > 0) {
+          // Recompute coords live inside getBoundingClientRect so Floating UI's
+          // autoUpdate tracks the selection through scroll/layout changes rather
+          // than freezing the open-time rectangle. contextElement lets Floating
+          // UI resolve the correct scroll ancestors. Only needs a rect-shaped
+          // object — no DOMRect instance or toJSON.
           return {
-            getBoundingClientRect: () => ({
-              x: coords.left,
-              y: coords.top,
-              width: coords.right - coords.left,
-              height: coords.bottom - coords.top,
-              top: coords.top,
-              right: coords.right,
-              bottom: coords.bottom,
-              left: coords.left,
-            }),
+            ...(view.dom instanceof HTMLElement ? { contextElement: view.dom } : {}),
+            getBoundingClientRect: () => {
+              const coords = view.coordsAtPos(view.state.selection.from);
+              return {
+                x: coords.left,
+                y: coords.top,
+                width: coords.right - coords.left,
+                height: coords.bottom - coords.top,
+                top: coords.top,
+                right: coords.right,
+                bottom: coords.bottom,
+                left: coords.left,
+              };
+            },
           };
         }
       } catch {
