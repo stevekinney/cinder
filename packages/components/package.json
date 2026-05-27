@@ -534,6 +534,27 @@
       "import": "./src/components/code-block/code-block.examples.json",
       "default": "./src/components/code-block/code-block.examples.json"
     },
+    "./collapsible": {
+      "types": "./dist/components/collapsible/index.d.ts",
+      "svelte": "./src/components/collapsible/index.ts",
+      "node": "./dist/server/components/collapsible/index.js",
+      "default": "./dist/components/collapsible/index.js"
+    },
+    "./collapsible/schema": {
+      "types": "./dist/components/collapsible/collapsible.schema.d.ts",
+      "svelte": "./src/components/collapsible/collapsible.schema.ts"
+    },
+    "./collapsible/variables": {
+      "types": "./dist/components/collapsible/collapsible.variables.d.ts",
+      "svelte": "./src/components/collapsible/collapsible.variables.ts"
+    },
+    "./collapsible/styles": {
+      "default": "./dist/components/collapsible/collapsible.css"
+    },
+    "./collapsible/examples": {
+      "import": "./src/components/collapsible/collapsible.examples.json",
+      "default": "./src/components/collapsible/collapsible.examples.json"
+    },
     "./color-field": {
       "types": "./dist/components/color-field/index.d.ts",
       "svelte": "./src/components/color-field/index.ts",
@@ -686,6 +707,27 @@
     "./confirm-dialog/examples": {
       "import": "./src/components/confirm-dialog/confirm-dialog.examples.json",
       "default": "./src/components/confirm-dialog/confirm-dialog.examples.json"
+    },
+    "./container": {
+      "types": "./dist/components/container/index.d.ts",
+      "svelte": "./src/components/container/index.ts",
+      "node": "./dist/server/components/container/index.js",
+      "default": "./dist/components/container/index.js"
+    },
+    "./container/schema": {
+      "types": "./dist/components/container/container.schema.d.ts",
+      "svelte": "./src/components/container/container.schema.ts"
+    },
+    "./container/variables": {
+      "types": "./dist/components/container/container.variables.d.ts",
+      "svelte": "./src/components/container/container.variables.ts"
+    },
+    "./container/styles": {
+      "default": "./dist/components/container/container.css"
+    },
+    "./container/examples": {
+      "import": "./src/components/container/container.examples.json",
+      "default": "./src/components/container/container.examples.json"
     },
     "./copy-button": {
       "types": "./dist/components/copy-button/index.d.ts",

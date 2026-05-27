@@ -1,0 +1,73 @@
+# Collapsible
+
+Single-panel show/hide disclosure — the single-item counterpart to Accordion. A labeled trigger toggles one region, animating its height open and closed via the Transition primitive.
+
+## Usage
+
+Uncontrolled — the component owns its state:
+
+```svelte
+<script lang="ts">
+  import Collapsible from 'cinder/collapsible';
+</script>
+
+<Collapsible trigger="Shipping details">
+  <p>Orders ship within two business days.</p>
+</Collapsible>
+```
+
+Controlled — the parent owns the state with `bind:open`:
+
+```svelte
+<script lang="ts">
+  import Collapsible from 'cinder/collapsible';
+
+  let open = $state(false);
+</script>
+
+<Collapsible bind:open trigger="Controlled panel">
+  <p>Open state is shared with the parent.</p>
+</Collapsible>
+```
+
+### State model
+
+Without `bind:open`, `open` is the initial local value and the component manages subsequent toggles; pass `open={true}` to render initially open. With `bind:open`, the parent owns the state. `onToggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
+
+The `trigger` prop is either a string or a snippet receiving `{ open, disabled }`, letting the label react to state (for example, swapping "Show" and "Hide").
+
+## Accessibility
+
+- The trigger is a native `<button type="button">`, so Enter and Space activation and tab order come from the browser. `disabled` uses the real attribute, removing it from the tab order.
+- The trigger carries `aria-expanded` and `aria-controls`; the panel is a `role="region"` labeled by the trigger via `aria-labelledby`.
+- The panel is removed from the DOM when closed (standard disclosure behavior), so `aria-controls` resolves only while open.
+- Height animation collapses to zero duration under `prefers-reduced-motion: reduce`, and the chevron rotation transition is disabled in CSS.
+
+For multiple coordinated sections, use [`Accordion`](../accordion/README.md) instead.
+
+## Props
+
+<!-- generated:props:start -->
+
+| Prop       | Type      | Required | Default | Description                                                                         |
+| ---------- | --------- | -------- | ------- | ----------------------------------------------------------------------------------- |
+| `class`    | `string`  | no       | —       | Additional classes merged onto the root element.                                    |
+| `disabled` | `boolean` | no       | `false` | When true, the trigger cannot be toggled.                                           |
+| `idBase`   | `string`  | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.    |
+| `open`     | `boolean` | no       | `false` | Bindable open state. Without binding, the initial value the component then manages. |
+| `trigger`  | `string`  | yes      | —       | Trigger label text.                                                                 |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+
+<!-- generated:variables:end -->
+
+## Subcomponents
+
+<!-- generated:subcomponents:start -->
+<!-- generated:subcomponents:end -->

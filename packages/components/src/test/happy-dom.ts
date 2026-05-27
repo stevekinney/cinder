@@ -58,6 +58,46 @@ function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
   };
 }
 
+/**
+ * Stub Animation returned by the `Element.prototype.animate` shim below. Settles
+ * on the next microtask so that Svelte's transition lifecycle — which assigns
+ * `onfinish` synchronously after calling `animate()` — completes once.
+ */
+function stubbedAnimate(): unknown {
+  const animation: Record<string, unknown> = {
+    currentTime: 0,
+    playState: 'finished',
+    effect: null,
+    onfinish: null,
+    cancel() {},
+    finish() {},
+  };
+  queueMicrotask(() => {
+    const handler = animation['onfinish'];
+    if (typeof handler === 'function') {
+      (handler as () => void).call(animation);
+    }
+  });
+  return animation;
+}
+
+/**
+ * happy-dom does not implement the Web Animations API (`Element.prototype.animate`),
+ * which Svelte 5's JS-driven transition functions (`slide`, `fade`, `fly`, …) call to
+ * coordinate enter/exit. Without it, mounting any component that uses `transition:fn`
+ * throws `element.animate is not a function`. Install a minimal stub that settles
+ * immediately — duration/easing are irrelevant in a non-painting DOM; assertions care
+ * about presence/absence after the transition resolves, not animation frames.
+ */
+function stubWebAnimationsApi(happyWindow: Window): void {
+  const elementCtor = Reflect.get(happyWindow, 'Element') as unknown;
+  if (typeof elementCtor !== 'function') return;
+  const proto = Reflect.get(elementCtor, 'prototype') as Record<string, unknown> | undefined;
+  if (!proto || typeof proto['animate'] === 'function') return;
+
+  proto['animate'] = stubbedAnimate;
+}
+
 export function setupHappyDom(): void {
   if (installed) return;
   const happyWindow = new Window();
@@ -78,6 +118,7 @@ export function setupHappyDom(): void {
   Object.defineProperty(target, 'window', { value: happyWindow, configurable: true });
 
   alignElementRemoveWithChildNodeSpec(happyWindow);
+  stubWebAnimationsApi(happyWindow);
 
   installed = true;
 }

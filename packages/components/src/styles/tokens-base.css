@@ -126,6 +126,14 @@
    * can override per scope.
    */
   --cinder-content-width: 72rem;
+  /**
+   * Named content-width scale for the Container primitive. `prose` caps line
+   * length at a readable measure; `narrow`/`wide` bracket the default for
+   * tighter or roomier centered columns.
+   */
+  --cinder-content-width-prose: 65ch;
+  --cinder-content-width-narrow: 40rem;
+  --cinder-content-width-wide: 90rem;
 
   /* ========================================
    * MOTION

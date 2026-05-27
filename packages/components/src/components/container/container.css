@@ -1,0 +1,34 @@
+/* ========================================
+ * CONTAINER
+ * ======================================== */
+
+.cinder-container {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 100%;
+  max-inline-size: var(--cinder-content-width);
+}
+
+.cinder-container[data-cinder-centered] {
+  margin-inline: auto;
+}
+
+.cinder-container[data-cinder-padded] {
+  padding-inline: var(--cinder-space-5);
+}
+
+.cinder-container[data-cinder-max-width='prose'] {
+  max-inline-size: var(--cinder-content-width-prose);
+}
+
+.cinder-container[data-cinder-max-width='narrow'] {
+  max-inline-size: var(--cinder-content-width-narrow);
+}
+
+.cinder-container[data-cinder-max-width='wide'] {
+  max-inline-size: var(--cinder-content-width-wide);
+}
+
+.cinder-container[data-cinder-max-width='full'] {
+  max-inline-size: none;
+}
