@@ -371,7 +371,6 @@
 
   .cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
     background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
   }
 
   .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:hover:not(:disabled):not(
