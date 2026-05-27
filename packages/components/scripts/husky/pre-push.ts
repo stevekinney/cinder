@@ -8,10 +8,11 @@ import {
   changedFilesForRange,
   error,
   expandToDependents,
+  formatFailureSummary,
   getTouchedPackages,
-  type GitRunner,
   hasRootConfigurationChanges,
   header,
+  inferFailureScope,
   info,
   installHookProcessCleanup,
   isContinuousIntegration,
@@ -23,8 +24,12 @@ import {
   REPO_ROOT,
   runHookCommand,
   success,
+  summarizeFailures,
   warning,
   withGateLock,
+  writePrePushLog,
+  type GateFailure,
+  type GitRunner,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -104,11 +109,23 @@ async function runJob(job: Job): Promise<JobResult> {
 }
 
 /**
- * Run a batch of jobs through a small async pool, then report any failures.
- * Returns `true` when every job in the batch succeeded.
+ * The outcome of running a batch of jobs: whether all passed, a per-failed-job
+ * summary (for the failure digest), and the concatenated captured output (for
+ * the full log written on failure).
  */
-async function runJobs(jobs: readonly Job[]): Promise<boolean> {
-  if (jobs.length === 0) return true;
+type BatchOutcome = {
+  readonly ok: boolean;
+  readonly failures: readonly GateFailure[];
+  readonly output: string;
+};
+
+/**
+ * Run a batch of jobs through a small async pool, print any failures inline,
+ * and return a {@link BatchOutcome} so the caller can render a digest and write
+ * the full log.
+ */
+async function runJobs(jobs: readonly Job[]): Promise<BatchOutcome> {
+  if (jobs.length === 0) return { ok: true, failures: [], output: '' };
   // Clamp to at least 1: if `navigator.hardwareConcurrency` is ever undefined,
   // `Math.min(undefined, 4)` is NaN, no workers would start, and every job would
   // be silently treated as passing — a false green. `?? 1` and `Math.max(1, …)`
@@ -140,13 +157,39 @@ async function runJobs(jobs: readonly Job[]): Promise<boolean> {
   }
   await Promise.all(workers);
 
-  const failures = results.filter((r) => r.exitCode !== 0);
-  for (const failure of failures) {
+  let output = '';
+  for (const result of results) {
+    output += `\n\n===== ${result.job.packageName} ${result.job.script} =====\n\n${result.stdout}${result.stderr}`;
+  }
+
+  const failedResults = results.filter((r) => r.exitCode !== 0);
+  for (const failure of failedResults) {
     error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
     if (failure.stdout.trim().length > 0) console.log(failure.stdout);
     if (failure.stderr.trim().length > 0) console.error(failure.stderr);
   }
-  return failures.length === 0;
+
+  // Build a per-failure digest (reusing the shared summarizer) so the caller can
+  // print a concise summary alongside the full log path. `script` is the gate
+  // kind; the failing package name goes in `scope` so the digest reads e.g.
+  // "test failed in cinder".
+  const failures = failedResults.map((failure): GateFailure => {
+    const combined = `${failure.stdout}\n${failure.stderr}`;
+    const inferred = inferFailureScope(combined);
+    // `inferFailureScope` returns 'workspace' when it can't pin a package; in the
+    // scoped hook we always know the package, so prefer that.
+    const scope =
+      inferred === 'workspace'
+        ? failure.job.packageName
+        : `${failure.job.packageName} (${inferred})`;
+    return {
+      script: failure.job.script,
+      scope,
+      lines: summarizeFailures(combined),
+    };
+  });
+
+  return { ok: failedResults.length === 0, failures, output };
 }
 
 /**
@@ -181,21 +224,37 @@ async function runFull(): Promise<boolean> {
   info('Planned validation jobs (full suite):');
   for (const script of SCRIPTS) console.log(`  <root> ${script}`);
   let ok = true;
+  const failures: GateFailure[] = [];
+  let fullOutput = '';
   for (const script of SCRIPTS) {
     info(`Running ${script}…`);
+    // Capture output so a failure can be summarized and logged like the scoped
+    // path; the captured streams are still echoed to the terminal.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
-      stderr: 'inherit',
-      stdout: 'inherit',
+      stderr: 'pipe',
+      stdout: 'pipe',
     });
+    if (result.stdout.length > 0) await Bun.write(Bun.stdout, result.stdout);
+    if (result.stderr.length > 0) await Bun.write(Bun.stderr, result.stderr);
+    fullOutput += `\n\n===== ${script} =====\n\n${result.stdout}${result.stderr}`;
     if (result.exitCode === 0) {
       success(`${script} passed`);
     } else {
       error(`${script} failed`);
+      const combined = `${result.stdout}\n${result.stderr}`;
+      failures.push({
+        script,
+        scope: inferFailureScope(combined),
+        lines: summarizeFailures(combined),
+      });
       ok = false;
     }
   }
   if (!ok) {
+    const logPath = await writePrePushLog(fullOutput);
+    for (const line of formatFailureSummary(failures)) error(line);
+    error(`Full pre-push output: ${logPath}`);
     error('Pre-push validation failed.');
     error(
       'Run `bun run lint && bun run typecheck && bun run test`, fix the failures, and push again.',
@@ -354,6 +413,8 @@ async function runScoped(
   printJobPlan(jobs);
 
   let ok = true;
+  const allFailures: GateFailure[] = [];
+  let fullOutput = '';
   for (const script of SCRIPTS) {
     const phaseJobs = jobs.filter((job) => job.script === script);
 
@@ -363,16 +424,23 @@ async function runScoped(
         ...(stylelintFiles.length > 0 ? ['stylelint'] : []),
       ];
       info(`Running lint (${targets.join(', ')})…`);
-      const lintOk = await runJobs(phaseJobs);
+      const lint = await runJobs(phaseJobs);
       const stylelintOk = await runStylelint(stylelintFiles);
-      ok = lintOk && stylelintOk && ok;
+      fullOutput += lint.output;
+      allFailures.push(...lint.failures);
+      if (!stylelintOk) {
+        allFailures.push({ script: 'lint', scope: 'stylelint', lines: [] });
+      }
+      ok = lint.ok && stylelintOk && ok;
       continue;
     }
 
     if (phaseJobs.length === 0) continue;
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
-    const phaseOk = await runJobs(phaseJobs);
-    ok = phaseOk && ok;
+    const phase = await runJobs(phaseJobs);
+    fullOutput += phase.output;
+    allFailures.push(...phase.failures);
+    ok = phase.ok && ok;
 
     if (!ok && script === 'typecheck') {
       // Don't spend minutes on tests when typecheck already failed.
@@ -382,6 +450,9 @@ async function runScoped(
   }
 
   if (!ok) {
+    const logPath = await writePrePushLog(fullOutput);
+    for (const line of formatFailureSummary(allFailures)) error(line);
+    error(`Full pre-push output: ${logPath}`);
     error('Pre-push validation failed (scoped).');
     error('Fix the failures above and push again.');
     return false;
@@ -400,8 +471,11 @@ if (plan.kind === 'skip') {
 }
 
 // Serialize the actual gate execution under a repository-local lock so
-// concurrent pushes don't stack validations on top of one another.
+// concurrent pushes don't stack validations on top of one another. The chosen
+// runner (`runFull`/`runScoped`) renders its own failure digest and writes the
+// full log before returning, so the dispatch only maps success to an exit code.
 let ok = false;
+
 try {
   ok = await withGateLock(() =>
     plan.kind === 'full' ? runFull() : runScoped(plan.jobs, plan.stylelintFiles, plan.summary),

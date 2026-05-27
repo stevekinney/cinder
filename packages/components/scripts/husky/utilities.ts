@@ -25,6 +25,122 @@ export const success = (msg: string) => console.log(chalk.green(msg));
 export const warning = (msg: string) => console.log(chalk.yellow(msg));
 export const error = (msg: string) => console.error(chalk.red(msg));
 
+export type GateScript = 'lint' | 'typecheck' | 'test';
+
+export type GateFailure = {
+  readonly script: GateScript;
+  readonly scope: string;
+  readonly lines: readonly string[];
+};
+
+const FAILURE_MARKERS: readonly RegExp[] = [
+  /^x\s+\S/,
+  /^\(fail\)\s+/,
+  /\berror TS\d+:/,
+  /^\S.*:\d+:\d+\s+error\s+/,
+  /^\d+:\d+\s+.+\s{2,}[a-z-]+$/,
+  /^\d+:\d+\s+[^\w\s]\s+/,
+];
+
+const FILE_PATH_LINE = /^(?:\.?\/)?[\w@./-]+\.[\w-]+$/;
+const LINE_COLUMN_DIAGNOSTIC = /^\d+:\d+\s+/;
+const LOCATION_DIAGNOSTIC = /:\d+:\d+$/;
+const CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC = /:\d+:\d+\s+/;
+const TRUNCATED_FAILURES_LINE = /^\.\.\.and (?<count>\d+) more failure lines$/;
+
+function parseWorkspaceOutputLine(line: string): {
+  readonly scope: string | null;
+  readonly message: string;
+} {
+  const match = /^(?<scope>(?:@[\w-]+\/)?[\w-]+)\s+(?:lint|typecheck|test):\s*(?<message>.*)$/.exec(
+    line,
+  );
+  return {
+    scope: match?.groups?.['scope'] ?? null,
+    message: match?.groups?.['message'] ?? line,
+  };
+}
+
+function normalizeOutputLines(output: string): string[] {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export function summarizeFailures(output: string, maxLines = 5): string[] {
+  const lines = normalizeOutputLines(output).map((line) => parseWorkspaceOutputLine(line).message);
+  let currentPath: string | null = null;
+  const contextualLines = lines.map((line) => {
+    if (FILE_PATH_LINE.test(line)) {
+      currentPath = line;
+      return line;
+    }
+
+    const oxlintLocation = /^,-\[(?<location>[^\]]+)\]$/.exec(line);
+    if (oxlintLocation?.groups?.['location']) {
+      return oxlintLocation.groups['location'];
+    }
+
+    if (currentPath && LINE_COLUMN_DIAGNOSTIC.test(line)) {
+      return `${currentPath}:${line}`;
+    }
+
+    return line;
+  });
+  const matched = contextualLines.filter(
+    (line) =>
+      FAILURE_MARKERS.some((marker) => marker.test(line)) ||
+      LOCATION_DIAGNOSTIC.test(line) ||
+      CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC.test(line),
+  );
+  const summary = matched.length > 0 ? matched : lines.slice(-maxLines);
+  if (summary.length <= maxLines) return summary;
+
+  return [...summary.slice(0, maxLines), `...and ${summary.length - maxLines} more failure lines`];
+}
+
+export function inferFailureScope(output: string): string {
+  const scopes = new Set<string>();
+  for (const line of normalizeOutputLines(output)) {
+    const parsed = parseWorkspaceOutputLine(line);
+    if (parsed.scope && FAILURE_MARKERS.some((marker) => marker.test(parsed.message))) {
+      scopes.add(parsed.scope);
+    }
+  }
+
+  if (scopes.size === 1) return [...scopes][0] ?? 'workspace';
+  if (scopes.size > 1) return 'multiple packages';
+  return 'workspace';
+}
+
+export function formatFailureSummary(failures: readonly GateFailure[]): string[] {
+  const lines = ['PRE-PUSH FAILED'];
+  for (const failure of failures) {
+    const omittedCount = failure.lines.reduce((count, line) => {
+      const match = TRUNCATED_FAILURES_LINE.exec(line);
+      return count + Number(match?.groups?.['count'] ?? 0);
+    }, 0);
+    const count =
+      failure.lines.filter((line) => !TRUNCATED_FAILURES_LINE.test(line)).length + omittedCount;
+    const noun = count === 1 ? 'failure' : 'failures';
+    lines.push(`  ${failure.script} -> ${failure.scope}: ${count} ${noun}`);
+    for (const line of failure.lines) {
+      lines.push(`    ${line}`);
+    }
+  }
+  return lines;
+}
+
+export async function writePrePushLog(output: string, now = new Date()): Promise<string> {
+  const tmpDir = join(REPO_ROOT, 'tmp');
+  await mkdir(tmpDir, { recursive: true });
+  const timestamp = now.toISOString().replaceAll(':', '-').replaceAll('.', '-');
+  const logPath = join(tmpDir, `pre-push-${timestamp}.log`);
+  await Bun.write(logPath, output);
+  return logPath;
+}
+
 type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
 type CleanupSignal = HookSignal | 'SIGKILL';
 

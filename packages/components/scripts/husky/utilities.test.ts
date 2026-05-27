@@ -10,8 +10,10 @@ import {
   cleanupForHookSignal,
   cleanupHookProcesses,
   expandToDependents,
+  formatFailureSummary,
   getTouchedPackages,
   hasRootConfigurationChanges,
+  inferFailureScope,
   isIgnorableDoc,
   isNewBranch,
   isSourceFile,
@@ -19,6 +21,7 @@ import {
   loadWorkspacePackages,
   parsePushRefs,
   runHookCommand,
+  summarizeFailures,
   withGateLock,
   type GitRunner,
   type PushRefUpdate,
@@ -912,6 +915,149 @@ describe('scoped job derivation (real workspace)', () => {
     expect(jobs).toContain('@cinder/commentary lint');
     expect(jobs).toContain('cinder typecheck');
     expect(jobs).toContain('@cinder/playground test');
+  });
+});
+
+describe('summarizeFailures', () => {
+  it('extracts Bun test failure markers', () => {
+    const summary = summarizeFailures(`
+      102 pass
+      (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate [12.00ms]
+      Expected: <= 85
+    `);
+
+    expect(summary).toEqual([
+      '(fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate [12.00ms]',
+    ]);
+  });
+
+  it('removes Bun workspace prefixes from failure details', () => {
+    const summary = summarizeFailures(`
+      cinder test: (fail) Button > renders disabled state [4.00ms]
+    `);
+
+    expect(summary).toEqual(['(fail) Button > renders disabled state [4.00ms]']);
+  });
+
+  it('extracts TypeScript diagnostics', () => {
+    const summary = summarizeFailures(`
+      packages/components/src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.
+      Found 1 error.
+    `);
+
+    expect(summary).toEqual([
+      "packages/components/src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.",
+    ]);
+  });
+
+  it('extracts linter diagnostics', () => {
+    const summary = summarizeFailures(`
+      packages/components/src/button.css
+        10:3  ✖  Unexpected unknown property "colour"  property-no-unknown
+      1 problem (1 error, 0 warnings)
+    `);
+
+    expect(summary).toEqual([
+      'packages/components/src/button.css:10:3  ✖  Unexpected unknown property "colour"  property-no-unknown',
+    ]);
+  });
+
+  it('extracts Oxlint formatter diagnostics', () => {
+    const summary = summarizeFailures(`
+      x Unexpected token
+      ,-[tmp/review-fixtures/unused.ts:1:11]
+      1 | const x = ;
+      :           ^
+      \`----
+      Found 0 warnings and 1 error.
+    `);
+
+    expect(summary).toEqual(['x Unexpected token', 'tmp/review-fixtures/unused.ts:1:11']);
+  });
+
+  it('falls back to the last non-empty output lines', () => {
+    const summary = summarizeFailures(`
+      starting gate
+      something went wrong
+      no known marker
+    `);
+
+    expect(summary).toEqual(['starting gate', 'something went wrong', 'no known marker']);
+  });
+
+  it('limits long summaries', () => {
+    const summary = summarizeFailures(
+      `
+        (fail) first
+        (fail) second
+        (fail) third
+        (fail) fourth
+      `,
+      2,
+    );
+
+    expect(summary).toEqual(['(fail) first', '(fail) second', '...and 2 more failure lines']);
+  });
+});
+
+describe('inferFailureScope', () => {
+  it('names the package when Bun prefixes failure output', () => {
+    const scope = inferFailureScope(`
+      cinder test: (fail) Button > renders disabled state [4.00ms]
+    `);
+
+    expect(scope).toBe('cinder');
+  });
+
+  it('falls back to workspace when no package prefix is present', () => {
+    expect(inferFailureScope('(fail) root suite')).toBe('workspace');
+  });
+
+  it('reports multiple packages when several package-prefixed failures appear', () => {
+    const scope = inferFailureScope(`
+      cinder test: (fail) Button > renders disabled state [4.00ms]
+      @cinder/playground test: (fail) discoverSidebarComponents > caps entries [12.00ms]
+    `);
+
+    expect(scope).toBe('multiple packages');
+  });
+});
+
+describe('formatFailureSummary', () => {
+  it('names the failing gate, scope, and concise details', () => {
+    const summary = formatFailureSummary([
+      {
+        script: 'test',
+        scope: 'workspace',
+        lines: [
+          '(fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
+        ],
+      },
+    ]);
+
+    expect(summary).toEqual([
+      'PRE-PUSH FAILED',
+      '  test -> workspace: 1 failure',
+      '    (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
+    ]);
+  });
+
+  it('counts omitted failure lines without counting the truncation line as a failure', () => {
+    const summary = formatFailureSummary([
+      {
+        script: 'test',
+        scope: 'workspace',
+        lines: ['(fail) first', '(fail) second', '...and 2 more failure lines'],
+      },
+    ]);
+
+    expect(summary).toEqual([
+      'PRE-PUSH FAILED',
+      '  test -> workspace: 4 failures',
+      '    (fail) first',
+      '    (fail) second',
+      '    ...and 2 more failure lines',
+    ]);
   });
 });
 
