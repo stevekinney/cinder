@@ -298,7 +298,7 @@ async function colorAlpha(page: Page, color: string): Promise<number> {
     canvas.width = 1;
     canvas.height = 1;
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('2d canvas context unavailable');
+    if (!context) throw new Error(`2d canvas context unavailable resolving color: ${value}`);
     // Clear to fully transparent, then paint the candidate color. If the color
     // is itself transparent the sampled alpha stays 0.
     context.clearRect(0, 0, 1, 1);
@@ -410,12 +410,17 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
           .trim();
         // Resolve the authored accent token to a computed rgb() by painting it
         // onto a probe element, so both sides of the color comparison are
-        // browser-normalized.
+        // browser-normalized. getComputedStyle needs the probe in the document,
+        // so use try/finally to guarantee removal even if a read throws.
         const probe = document.createElement('span');
         probe.style.color = accent;
         document.body.append(probe);
-        const resolvedAccent = getComputedStyle(probe).color;
-        probe.remove();
+        let resolvedAccent: string;
+        try {
+          resolvedAccent = getComputedStyle(probe).color;
+        } finally {
+          probe.remove();
+        }
         return {
           content: after.content,
           position: after.position,
@@ -451,8 +456,12 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
         const probe = document.createElement('span');
         probe.style.color = accent;
         document.body.append(probe);
-        const resolvedAccent = getComputedStyle(probe).color;
-        probe.remove();
+        let resolvedAccent: string;
+        try {
+          resolvedAccent = getComputedStyle(probe).color;
+        } finally {
+          probe.remove();
+        }
         return {
           content: after.content,
           position: after.position,
@@ -472,22 +481,29 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
     expect(await colorAlpha(page, indicator.background)).toBeGreaterThan(0);
   });
 
-  test('focus-visible ring is preserved and not clipped by the tablist root', async ({ page }) => {
-    // Tab into the tablist so the selected tab engages :focus-visible. Roving
-    // tabindex puts tabindex=0 on the selected ("editor") tab.
-    await page.evaluate(() => {
-      document.body.focus();
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    });
+  test('focus-visible ring survives on the selected tab and is the ring, not the pill shadow', async ({
+    page,
+  }) => {
+    // The selected ("editor") tab carries tabindex=0 under roving tabindex.
+    // Focus it directly — this is a focus-ring style test, not a focus-order
+    // test, so a direct .focus() is the right tool (no fragile Tab-count loop).
     const focusTarget = page.locator(
-      `${HORIZONTAL_TABLIST} .cinder-segmented-control-option[tabindex="0"]`,
+      `${HORIZONTAL_TABLIST} .cinder-segmented-control-option[tabindex="0"][data-cinder-selected]`,
     );
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-      await page.keyboard.press('Tab');
-      const landed = await focusTarget.evaluate((element) => element === document.activeElement);
-      if (landed) break;
-    }
+    await focusTarget.focus();
+    // Programmatic .focus() does not engage :focus-visible in Chromium; a
+    // keyboard interaction does. ArrowLeft wraps focus to the last tab, then
+    // ArrowRight returns to "editor" — net tab unchanged, but now keyboard-
+    // focused so :focus-visible applies.
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowRight');
     await expect(focusTarget).toBeFocused();
+
+    // Resolve the base ring shadow from a keyboard-focused NON-tablist option
+    // on the same page, so the expected value is browser-computed (the ring
+    // tokens serialize identically everywhere). The tablist selected+focused
+    // tab must paint this exact ring — not the single-layer filled-pill drop
+    // shadow, which a bare `!== 'none'` check would falsely accept.
     const focus = await focusTarget.evaluate((element) => {
       const styles = getComputedStyle(element as HTMLElement);
       return {
@@ -496,9 +512,34 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
       };
     });
     expect(focus.matchesFocusVisible).toBe(true);
-    // The focus-visible rule paints a box-shadow ring; assert it is present
-    // (the base focus-visible contract is unchanged by the tablist CSS).
     expect(focus.boxShadow).not.toBe('none');
+
+    // The ring is a two-layer box-shadow (offset layer + ring layer); the pill
+    // drop shadow is a single layer. Count top-level layers by the comma that
+    // separates them — computed colors use space-separated channels
+    // (`rgb(r g b / a)` / `oklch(...)`) so the only commas are layer
+    // separators. ≥2 layers proves the ring survived rather than the pill
+    // shadow winning.
+    const layerCount = focus.boxShadow.split(/,(?![^(]*\))/).length;
+    expect(layerCount).toBeGreaterThanOrEqual(2);
+
+    // And it must be the ring color, not the pill's translucent black drop
+    // shadow. Resolve --cinder-ring-color through the browser and assert the
+    // computed box-shadow contains it.
+    const ringColor = await focusTarget.evaluate((element) => {
+      const token = getComputedStyle(element as HTMLElement)
+        .getPropertyValue('--cinder-ring-color')
+        .trim();
+      const probe = document.createElement('span');
+      probe.style.color = token;
+      document.body.append(probe);
+      try {
+        return getComputedStyle(probe).color;
+      } finally {
+        probe.remove();
+      }
+    });
+    expect(focus.boxShadow).toContain(ringColor);
   });
 
   // ── Non-regression: radiogroup and multiple variants stay filled-pill ──────

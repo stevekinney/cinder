@@ -726,10 +726,13 @@ describe('SegmentedControl — tablist variant', () => {
 
     const editor = screen.getByRole('tab', { name: 'Editor' });
     const diff = screen.getByRole('tab', { name: 'Diff' });
+    const summary = screen.getByRole('tab', { name: 'Summary' });
     expect(editor.getAttribute('aria-selected')).toBe('true');
     expect(editor.getAttribute('aria-controls')).toBe('editor-panel');
     expect(diff.getAttribute('aria-selected')).toBe('false');
     expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
+    // Cover the last tab too, so a dropped/last-only aria-controls regression is caught.
+    expect(summary.getAttribute('aria-controls')).toBe('summary-panel');
   });
 
   test('horizontal tablist moves the active tab with ArrowRight / ArrowLeft (exactly once per press)', async () => {
@@ -768,6 +771,19 @@ describe('SegmentedControl — tablist variant', () => {
     await fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
     expect(changeCount - countBeforeLeft).toBe(1);
     expect(selected).toBe('editor');
+
+    // Wrap-around: ArrowLeft from the first tab wraps to the last, and
+    // ArrowRight from the last wraps back to the first — each firing onchange
+    // exactly once.
+    const countBeforeWrapStart = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(changeCount - countBeforeWrapStart).toBe(1);
+    expect(selected).toBe('summary');
+
+    const countBeforeWrapEnd = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    expect(changeCount - countBeforeWrapEnd).toBe(1);
+    expect(selected).toBe('editor');
   });
 
   test('vertical tablist exposes aria-orientation="vertical" and moves with ArrowDown / ArrowUp (exactly once per press)', async () => {
@@ -804,6 +820,18 @@ describe('SegmentedControl — tablist variant', () => {
     await fireEvent.keyDown(tablist, { key: 'ArrowUp' });
     expect(changeCount - countBeforeUp).toBe(1);
     expect(selected).toBe('editor');
+
+    // Wrap-around on the vertical axis: ArrowUp from the first tab wraps to the
+    // last, ArrowDown from the last wraps back to the first.
+    const countBeforeWrapStart = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowUp' });
+    expect(changeCount - countBeforeWrapStart).toBe(1);
+    expect(selected).toBe('summary');
+
+    const countBeforeWrapEnd = changeCount;
+    await fireEvent.keyDown(tablist, { key: 'ArrowDown' });
+    expect(changeCount - countBeforeWrapEnd).toBe(1);
+    expect(selected).toBe('editor');
   });
 
   test('invalid selectionMode="multiple" + variant="tablist" falls back to role="group" with pressed semantics', () => {
@@ -832,10 +860,34 @@ describe('SegmentedControl — tablist variant', () => {
     const root = container.querySelector('.cinder-segmented-control');
     expect(root?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
 
-    const buttons = screen.getAllByRole('button');
-    const editor = buttons.find((button) => button.textContent?.trim() === 'Editor');
-    expect(editor?.getAttribute('aria-pressed')).toBe('true');
-    expect(editor?.getAttribute('aria-selected')).toBeNull();
+    const editor = screen.getByRole('button', { name: 'Editor' });
+    expect(editor.getAttribute('aria-pressed')).toBe('true');
+    expect(editor.getAttribute('aria-selected')).toBeNull();
+  });
+
+  test('detached tablist reflects data-cinder-detached so separator suppression stays scoped', () => {
+    // The tablist separator-suppression CSS is scoped to
+    // `:not([data-cinder-detached])`, so a detached tablist keeps the base
+    // detached treatment (per-option borders, no connected-bar separators to
+    // suppress). Pin the DOM contract that the suppression selector keys off:
+    // a detached tablist still exposes both data attributes, so the
+    // `:not([data-cinder-detached])` guard correctly excludes it.
+    const { container } = render(Fixture, {
+      props: {
+        id: 'review-view',
+        value: 'editor',
+        label: 'Review view',
+        variant: 'tablist',
+        detached: true,
+        options: tablistOptions,
+      },
+    });
+
+    const root = container.querySelector('.cinder-segmented-control');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('tablist');
+    expect(root?.getAttribute('data-cinder-detached')).toBe('');
+    // Still a real tablist semantically.
+    expect(screen.getByRole('tablist', { name: 'Review view' })).not.toBeNull();
   });
 });
 
