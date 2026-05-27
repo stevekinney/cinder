@@ -44,8 +44,7 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-feed-rail-size`
 <!-- generated:variables:end -->
 
 ## Subcomponents
