@@ -33,12 +33,18 @@ export type GateFailure = {
 };
 
 const FAILURE_MARKERS: readonly RegExp[] = [
+  /^x\s+\S/,
   /^\(fail\)\s+/,
   /\berror TS\d+:/,
   /^\S.*:\d+:\d+\s+error\s+/,
   /^\d+:\d+\s+.+\s{2,}[a-z-]+$/,
   /^\d+:\d+\s+[^\w\s]\s+/,
 ];
+
+const FILE_PATH_LINE = /^(?:\.?\/)?[\w@./-]+\.[\w-]+$/;
+const LINE_COLUMN_DIAGNOSTIC = /^\d+:\d+\s+/;
+const LOCATION_DIAGNOSTIC = /:\d+:\d+$/;
+const CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC = /:\d+:\d+\s+/;
 
 function parseWorkspaceOutputLine(line: string): {
   readonly scope: string | null;
@@ -62,7 +68,30 @@ function normalizeOutputLines(output: string): string[] {
 
 export function summarizeFailures(output: string, maxLines = 5): string[] {
   const lines = normalizeOutputLines(output).map((line) => parseWorkspaceOutputLine(line).message);
-  const matched = lines.filter((line) => FAILURE_MARKERS.some((marker) => marker.test(line)));
+  let currentPath: string | null = null;
+  const contextualLines = lines.map((line) => {
+    if (FILE_PATH_LINE.test(line)) {
+      currentPath = line;
+      return line;
+    }
+
+    const oxlintLocation = /^,-\[(?<location>[^\]]+)\]$/.exec(line);
+    if (oxlintLocation?.groups?.['location']) {
+      return oxlintLocation.groups['location'];
+    }
+
+    if (currentPath && LINE_COLUMN_DIAGNOSTIC.test(line)) {
+      return `${currentPath}:${line}`;
+    }
+
+    return line;
+  });
+  const matched = contextualLines.filter(
+    (line) =>
+      FAILURE_MARKERS.some((marker) => marker.test(line)) ||
+      LOCATION_DIAGNOSTIC.test(line) ||
+      CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC.test(line),
+  );
   const summary = matched.length > 0 ? matched : lines.slice(-maxLines);
   if (summary.length <= maxLines) return summary;
 
@@ -87,7 +116,7 @@ export function formatFailureSummary(failures: readonly GateFailure[]): string[]
   const lines = ['PRE-PUSH FAILED'];
   for (const failure of failures) {
     const count = failure.lines.length;
-    const noun = count === 1 ? 'failing' : 'failures';
+    const noun = count === 1 ? 'failure' : 'failures';
     lines.push(`  ${failure.script} -> ${failure.scope}: ${count} ${noun}`);
     for (const line of failure.lines) {
       lines.push(`    ${line}`);

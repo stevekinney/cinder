@@ -26,6 +26,7 @@ warning('Validates the current working tree, not the exact commit range being pu
 async function forwardAndCapture(
   stream: ReadableStream<Uint8Array> | null,
   destination: typeof Bun.stdout | typeof Bun.stderr,
+  chunks: string[],
 ): Promise<string> {
   if (!stream) return '';
 
@@ -36,15 +37,20 @@ async function forwardAndCapture(
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    output += decoder.decode(value, { stream: true });
+    const chunk = decoder.decode(value, { stream: true });
+    output += chunk;
+    chunks.push(chunk);
     await Bun.write(destination, value);
   }
 
-  output += decoder.decode();
+  const finalChunk = decoder.decode();
+  output += finalChunk;
+  if (finalChunk) chunks.push(finalChunk);
   return output;
 }
 
 async function runGate(script: GateScript): Promise<{ exitCode: number; output: string }> {
+  const chunks: string[] = [];
   const subprocess = Bun.spawn(['bun', 'run', script], {
     cwd: REPO_ROOT,
     stdin: 'inherit',
@@ -53,12 +59,12 @@ async function runGate(script: GateScript): Promise<{ exitCode: number; output: 
   });
 
   const [stdout, stderr, exitCode] = await Promise.all([
-    forwardAndCapture(subprocess.stdout, Bun.stdout),
-    forwardAndCapture(subprocess.stderr, Bun.stderr),
+    forwardAndCapture(subprocess.stdout, Bun.stdout, chunks),
+    forwardAndCapture(subprocess.stderr, Bun.stderr, chunks),
     subprocess.exited,
   ]);
 
-  return { exitCode, output: stdout + stderr };
+  return { exitCode, output: chunks.join('') || stdout + stderr };
 }
 
 // Run lint, typecheck, and test — the three workspace-wide correctness gates.
@@ -71,7 +77,13 @@ const failures: GateFailure[] = [];
 let completeOutput = '';
 for (const script of ['lint', 'typecheck', 'test'] as const satisfies readonly GateScript[]) {
   info(`Running ${script}…`);
-  const result = await runGate(script);
+  let result: { exitCode: number; output: string };
+  try {
+    result = await runGate(script);
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    result = { exitCode: 1, output: `pre-push gate command failed: ${message}` };
+  }
   completeOutput += `\n\n===== ${script} =====\n\n${result.output}`;
   if (result.exitCode === 0) {
     success(`${script} passed`);

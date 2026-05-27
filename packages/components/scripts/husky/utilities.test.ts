@@ -187,7 +187,22 @@ describe('summarizeFailures', () => {
       1 problem (1 error, 0 warnings)
     `);
 
-    expect(summary).toEqual(['10:3  ✖  Unexpected unknown property "colour"  property-no-unknown']);
+    expect(summary).toEqual([
+      'packages/components/src/button.css:10:3  ✖  Unexpected unknown property "colour"  property-no-unknown',
+    ]);
+  });
+
+  it('extracts Oxlint formatter diagnostics', () => {
+    const summary = summarizeFailures(`
+      x Unexpected token
+      ,-[tmp/review-fixtures/unused.ts:1:11]
+      1 | const x = ;
+      :           ^
+      \`----
+      Found 0 warnings and 1 error.
+    `);
+
+    expect(summary).toEqual(['x Unexpected token', 'tmp/review-fixtures/unused.ts:1:11']);
   });
 
   it('falls back to the last non-empty output lines', () => {
@@ -252,7 +267,7 @@ describe('formatFailureSummary', () => {
 
     expect(summary).toEqual([
       'PRE-PUSH FAILED',
-      '  test -> workspace: 1 failing',
+      '  test -> workspace: 1 failure',
       '    (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
     ]);
   });
