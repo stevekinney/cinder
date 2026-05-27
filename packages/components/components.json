@@ -808,22 +808,48 @@
       "exportName": "CommandItem",
       "category": "action",
       "status": "stable",
-      "purpose": "Single selectable row inside a command-palette that registers itself with the parent and invokes its onselect handler when chosen.",
+      "purpose": "Single selectable row inside a command palette or inline command menu that registers itself with the parent command list.",
       "tags": ["action", "command"],
       "useWhen": [
-        "Declaring an individual command, action, or result row inside a command-palette.",
+        "Declaring an individual command, action, or result row inside a command-palette or command-menu.",
         "Composing a custom palette layout via children rather than the items prop."
       ],
       "avoidWhen": [
-        "Used outside a command-palette ancestor — the component throws at construction.",
+        "Used outside a command-palette or command-menu ancestor — the component throws at construction.",
         "Rendering a generic dropdown choice — use dropdown-item instead."
       ],
-      "related": ["command-palette", "dropdown-item"],
+      "related": ["command-palette", "command-menu", "dropdown-item"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
         "schema": "cinder/command-item/schema",
         "variables": "cinder/command-item/variables"
+      }
+    },
+    {
+      "name": "CommandMenu",
+      "id": "command-menu",
+      "import": "cinder/command-menu",
+      "exportName": "CommandMenu",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Inline caret-anchored slash-command list for textareas and single-line text inputs.",
+      "tags": ["overlay", "command"],
+      "useWhen": [
+        "Showing a contextual command list at the caret while a user types in a textarea or input.",
+        "Building slash-command insertion flows where the host owns text replacement."
+      ],
+      "avoidWhen": [
+        "Exposing a global app launcher — use command-palette instead.",
+        "Selecting from a static form option list — use combobox instead."
+      ],
+      "related": ["command-palette", "command-item", "popover", "combobox"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/command-menu/schema",
+        "variables": "cinder/command-menu/variables",
+        "examples": "cinder/command-menu/examples"
       }
     },
     {

@@ -645,6 +645,27 @@
       "types": "./dist/components/command-item/command-item.variables.d.ts",
       "svelte": "./src/components/command-item/command-item.variables.ts"
     },
+    "./command-menu": {
+      "types": "./dist/components/command-menu/index.d.ts",
+      "svelte": "./src/components/command-menu/index.ts",
+      "node": "./dist/server/components/command-menu/index.js",
+      "default": "./dist/components/command-menu/index.js"
+    },
+    "./command-menu/schema": {
+      "types": "./dist/components/command-menu/command-menu.schema.d.ts",
+      "svelte": "./src/components/command-menu/command-menu.schema.ts"
+    },
+    "./command-menu/variables": {
+      "types": "./dist/components/command-menu/command-menu.variables.d.ts",
+      "svelte": "./src/components/command-menu/command-menu.variables.ts"
+    },
+    "./command-menu/styles": {
+      "default": "./dist/components/command-menu/command-menu.css"
+    },
+    "./command-menu/examples": {
+      "import": "./src/components/command-menu/command-menu.examples.json",
+      "default": "./src/components/command-menu/command-menu.examples.json"
+    },
     "./command-palette": {
       "types": "./dist/components/command-palette/index.d.ts",
       "svelte": "./src/components/command-palette/index.ts",

@@ -139,6 +139,14 @@ export type { ComboboxOption, ComboboxProps } from './components/combobox/index.
 export { default as CommandItem } from './components/command-item/index.ts';
 export type { CommandItemProps } from './components/command-item/index.ts';
 
+export { default as CommandMenu, detectTrigger } from './components/command-menu/index.ts';
+export type {
+  CommandMenuProps,
+  CommandMenuSelection,
+  CommandMenuState,
+  CommandMenuTriggerMatch,
+} from './components/command-menu/index.ts';
+
 export { default as CommandPalette } from './components/command-palette/index.ts';
 export type { CommandPaletteProps } from './components/command-palette/index.ts';
 
