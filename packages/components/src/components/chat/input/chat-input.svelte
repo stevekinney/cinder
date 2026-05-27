@@ -154,6 +154,7 @@
   // Derived state
   const errorId = $derived(`${id}-error`);
   const hintId = $derived(`${id}-hint`);
+  const shortcutDescriptionId = $derived(`${id}-shortcut-description`);
   const isWhitespaceOnly = $derived(value.trim().length === 0);
   const hasPendingAttachments = $derived(
     attachments.some((a) => a.status === 'pending' || a.status === 'uploading'),
@@ -497,6 +498,7 @@
       showToolbar={false}
       showModeToggle={false}
       class="chat-input-editor"
+      aria-describedby={shortcutDescriptionId}
     />
   </div>
 
@@ -527,7 +529,11 @@
         </Button>
       {/if}
 
-      <span id={hintId} class="chat-input-hint">
+      <!-- Visually hidden shortcut description: always in the accessibility tree even when hint is container-queried away -->
+      <span id={shortcutDescriptionId} class="sr-only"
+        >Press Enter to send, Shift+Enter for newline</span
+      >
+      <span id={hintId} class="chat-input-hint" aria-hidden="true">
         <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
       </span>
     </div>
@@ -555,7 +561,7 @@
           class="chat-input-send"
           disabled={!canSubmit}
           aria-label={sending ? 'Sending message' : 'Send message'}
-          aria-describedby={hintId}
+          aria-describedby={shortcutDescriptionId}
         >
           {#if sending}
             <svg
@@ -781,6 +787,7 @@
     padding: 0 var(--cinder-space-1);
     font-family: inherit;
     font-size: var(--cinder-text-xs);
+    color: var(--cinder-text);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
