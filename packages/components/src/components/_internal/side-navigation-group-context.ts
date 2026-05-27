@@ -3,7 +3,7 @@
  *
  * Kept under `_internal/` so the context handles are reachable by both
  * components without being part of the package's public surface, matching the
- * convention established by `_internal/command-palette-context.ts`.
+ * convention established by `_internal/command-list-context.ts`.
  *
  * Unlike the command-palette context, this one is *optional*: a
  * `SideNavigationItem` may live directly in a flat `SideNavigation` with no
