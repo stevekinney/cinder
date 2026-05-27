@@ -659,6 +659,13 @@
       "types": "./dist/components/confirm-dialog/confirm-dialog.variables.d.ts",
       "svelte": "./src/components/confirm-dialog/confirm-dialog.variables.ts"
     },
+    "./confirm-dialog/styles": {
+      "default": "./dist/components/confirm-dialog/confirm-dialog.css"
+    },
+    "./confirm-dialog/examples": {
+      "import": "./src/components/confirm-dialog/confirm-dialog.examples.json",
+      "default": "./src/components/confirm-dialog/confirm-dialog.examples.json"
+    },
     "./copy-button": {
       "types": "./dist/components/copy-button/index.d.ts",
       "svelte": "./src/components/copy-button/index.ts",
@@ -1774,6 +1781,10 @@
     "./sheet/styles": {
       "default": "./dist/components/sheet/sheet.css"
     },
+    "./sheet/examples": {
+      "import": "./src/components/sheet/sheet.examples.json",
+      "default": "./src/components/sheet/sheet.examples.json"
+    },
     "./side-navigation": {
       "types": "./dist/components/side-navigation/index.d.ts",
       "svelte": "./src/components/side-navigation/index.ts",
@@ -2057,6 +2068,10 @@
     },
     "./steps/styles": {
       "default": "./dist/components/steps/steps.css"
+    },
+    "./steps/examples": {
+      "import": "./src/components/steps/steps.examples.json",
+      "default": "./src/components/steps/steps.examples.json"
     },
     "./surface": {
       "types": "./dist/components/surface/index.d.ts",

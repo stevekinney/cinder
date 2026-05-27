@@ -8,7 +8,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, screen } = await import('@testing-library/svelte');
 const { default: Toggle } = await import('./toggle.svelte');
 
 describe('Toggle — static rendering', () => {
@@ -52,12 +52,24 @@ describe('Toggle — static rendering', () => {
     expect(button?.getAttribute('aria-checked')).toBe('true');
   });
 
-  test('label prop becomes aria-label on the button', () => {
-    const { container } = render(Toggle, {
+  test('label prop becomes the accessible name of the switch (via the rendered label)', () => {
+    render(Toggle, {
       props: { id: 't4', checked: false, label: 'Enable notifications' },
     });
+    // getByRole throws if the accessible name does not resolve, so reaching the
+    // assertion already proves the name; assert on the element to avoid a vacuous check.
+    expect(screen.getByRole('switch', { name: 'Enable notifications' }).tagName).toBe('BUTTON');
+  });
+
+  test('switch is named via aria-labelledby pointing at the rendered label element, not aria-label', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't4b', checked: false, label: 'Enable notifications' },
+    });
     const button = container.querySelector('button');
-    expect(button?.getAttribute('aria-label')).toBe('Enable notifications');
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(button?.hasAttribute('aria-label')).toBe(false);
+    expect(label?.getAttribute('id')).toBe('t4b-label');
+    expect(button?.getAttribute('aria-labelledby')).toBe('t4b-label');
   });
 
   test('id prop is set on the button element', () => {
@@ -176,5 +188,70 @@ describe('Toggle — interactive behaviour', () => {
 
     // Should not throw.
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
+  });
+});
+
+describe('Toggle — rendered label', () => {
+  test('clicking the label flips checked (label onclick calls toggle)', async () => {
+    const { container } = render(Toggle, {
+      props: { id: 't17', checked: false, label: 'Dark mode' },
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    const label = container.querySelector('.cinder-toggle-field__label') as HTMLElement;
+    await fireEvent.click(label);
+    expect(button.getAttribute('aria-checked')).toBe('true');
+  });
+
+  test('clicking the label of a disabled toggle does not flip checked', async () => {
+    const { container } = render(Toggle, {
+      props: { id: 't18', checked: false, label: 'Dark mode', disabled: true },
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    const label = container.querySelector('.cinder-toggle-field__label') as HTMLElement;
+    await fireEvent.click(label);
+    expect(button.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('disabled sets data-disabled on the label', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't19', checked: false, label: 'Dark mode', disabled: true },
+    });
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(label?.hasAttribute('data-disabled')).toBe(true);
+  });
+
+  test('enabled toggle label has no data-disabled', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't20', checked: false, label: 'Dark mode' },
+    });
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(label?.hasAttribute('data-disabled')).toBe(false);
+  });
+});
+
+describe('Toggle — hideLabel', () => {
+  test('accessible name is preserved when hideLabel is set', () => {
+    render(Toggle, {
+      props: { id: 't21', checked: false, label: 'Mute', hideLabel: true },
+    });
+    // A broken hidden recipe, detached reference, or duplicate id would fail this query
+    // (getByRole throws on miss). Assert on the element to avoid a vacuous null check.
+    expect(screen.getByRole('switch', { name: 'Mute' }).tagName).toBe('BUTTON');
+  });
+
+  test('hideLabel sets data-hidden on the label so it is removed from layout flow', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't22', checked: false, label: 'Mute', hideLabel: true },
+    });
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(label?.hasAttribute('data-hidden')).toBe(true);
+  });
+
+  test('default render does not set data-hidden', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't23', checked: false, label: 'Mute' },
+    });
+    const label = container.querySelector('.cinder-toggle-field__label');
+    expect(label?.hasAttribute('data-hidden')).toBe(false);
   });
 });

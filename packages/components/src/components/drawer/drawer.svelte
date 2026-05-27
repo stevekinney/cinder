@@ -21,6 +21,7 @@
 
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
+  import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
@@ -57,6 +58,7 @@
   let cancelPendingClose: (() => void) | null = null;
 
   const reducedMotion = useReducedMotion();
+  const bodyOverflowFade = overflowFade();
 
   function acquireScrollLock(): void {
     if (releaseScrollLock) return;
@@ -269,7 +271,12 @@
           {@render closeButton()}
         </header>
 
-        <div bind:this={bodyElement} class="cinder-drawer__body" tabindex="-1">
+        <div
+          bind:this={bodyElement}
+          class="cinder-drawer__body"
+          tabindex="-1"
+          {@attach bodyOverflowFade}
+        >
           {@render children()}
         </div>
 

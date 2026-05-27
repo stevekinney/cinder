@@ -357,5 +357,7 @@ describe('component conventions', () => {
     if (errors.length > 0) {
       throw new Error(`Convention violations found:\n${errors.map((e) => `  • ${e}`).join('\n')}`);
     }
-  }, 15_000);
+    // Parses every public .svelte file; raise the timeout so CPU contention
+    // (parallel CI / multi-worktree) does not flake this whole-tree scan.
+  }, 60_000);
 });

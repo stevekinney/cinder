@@ -845,10 +845,11 @@
       ],
       "related": ["modal", "drawer", "sheet"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/confirm-dialog/schema",
-        "variables": "cinder/confirm-dialog/variables"
+        "variables": "cinder/confirm-dialog/variables",
+        "examples": "cinder/confirm-dialog/examples"
       }
     },
     {
@@ -2397,10 +2398,11 @@
       ],
       "related": ["modal", "drawer", "popover"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/sheet/schema",
-        "variables": "cinder/sheet/variables"
+        "variables": "cinder/sheet/variables",
+        "examples": "cinder/sheet/examples"
       }
     },
     {
@@ -2781,10 +2783,11 @@
       ],
       "related": ["tabs", "breadcrumbs", "pagination"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/steps/schema",
-        "variables": "cinder/steps/variables"
+        "variables": "cinder/steps/variables",
+        "examples": "cinder/steps/examples"
       }
     },
     {

@@ -31,6 +31,7 @@
 @import '../components/color-swatch-picker/color-swatch-picker.css';
 @import '../components/combobox/combobox.css';
 @import '../components/command-palette/command-palette.css';
+@import '../components/confirm-dialog/confirm-dialog.css';
 @import '../components/copy-button/copy-button.css';
 @import '../components/data-list/data-list.css';
 @import '../components/description-list/description-list.css';

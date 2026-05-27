@@ -20,9 +20,9 @@
 
 .cinder-textarea-label {
   display: block;
-  font-size: var(--cinder-text-sm);
+  font-size: var(--cinder-text-xs);
   font-weight: var(--cinder-font-medium);
-  line-height: var(--cinder-leading-normal);
+  line-height: 1;
   color: var(--cinder-text);
 }
 
@@ -63,13 +63,8 @@
   }
 }
 
-.cinder-textarea:focus {
-  outline: none;
-}
-
 .cinder-textarea:focus-visible {
   outline: var(--cinder-ring-width) solid transparent;
-  border-color: var(--cinder-accent);
   box-shadow: var(--_cinder-focus-ring-shadow);
 }
 
@@ -106,7 +101,6 @@
   background: var(--cinder-surface-inset);
   color: var(--cinder-text-disabled);
   border-color: var(--cinder-border-muted);
-  opacity: 0.6;
 }
 
 /* ----------------------------------------
