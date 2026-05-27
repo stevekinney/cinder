@@ -111,6 +111,27 @@
       "import": "./src/components/alert/alert.examples.json",
       "default": "./src/components/alert/alert.examples.json"
     },
+    "./alert-dialog": {
+      "types": "./dist/components/alert-dialog/index.d.ts",
+      "svelte": "./src/components/alert-dialog/index.ts",
+      "node": "./dist/server/components/alert-dialog/index.js",
+      "default": "./dist/components/alert-dialog/index.js"
+    },
+    "./alert-dialog/schema": {
+      "types": "./dist/components/alert-dialog/alert-dialog.schema.d.ts",
+      "svelte": "./src/components/alert-dialog/alert-dialog.schema.ts"
+    },
+    "./alert-dialog/variables": {
+      "types": "./dist/components/alert-dialog/alert-dialog.variables.d.ts",
+      "svelte": "./src/components/alert-dialog/alert-dialog.variables.ts"
+    },
+    "./alert-dialog/styles": {
+      "default": "./dist/components/alert-dialog/alert-dialog.css"
+    },
+    "./alert-dialog/examples": {
+      "import": "./src/components/alert-dialog/alert-dialog.examples.json",
+      "default": "./src/components/alert-dialog/alert-dialog.examples.json"
+    },
     "./area-chart": {
       "types": "./dist/components/area-chart/index.d.ts",
       "svelte": "./src/components/area-chart/index.ts",
@@ -729,6 +750,41 @@
       "import": "./src/components/container/container.examples.json",
       "default": "./src/components/container/container.examples.json"
     },
+    "./context-menu": {
+      "types": "./dist/components/context-menu/index.d.ts",
+      "svelte": "./src/components/context-menu/index.ts",
+      "node": "./dist/server/components/context-menu/index.js",
+      "default": "./dist/components/context-menu/index.js"
+    },
+    "./context-menu/schema": {
+      "types": "./dist/components/context-menu/context-menu.schema.d.ts",
+      "svelte": "./src/components/context-menu/context-menu.schema.ts"
+    },
+    "./context-menu/variables": {
+      "types": "./dist/components/context-menu/context-menu.variables.d.ts",
+      "svelte": "./src/components/context-menu/context-menu.variables.ts"
+    },
+    "./context-menu/styles": {
+      "default": "./dist/components/context-menu/context-menu.css"
+    },
+    "./context-menu/examples": {
+      "import": "./src/components/context-menu/context-menu.examples.json",
+      "default": "./src/components/context-menu/context-menu.examples.json"
+    },
+    "./context-menu-trigger": {
+      "types": "./dist/components/context-menu-trigger/index.d.ts",
+      "svelte": "./src/components/context-menu-trigger/index.ts",
+      "node": "./dist/server/components/context-menu-trigger/index.js",
+      "default": "./dist/components/context-menu-trigger/index.js"
+    },
+    "./context-menu-trigger/schema": {
+      "types": "./dist/components/context-menu-trigger/context-menu-trigger.schema.d.ts",
+      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.schema.ts"
+    },
+    "./context-menu-trigger/variables": {
+      "types": "./dist/components/context-menu-trigger/context-menu-trigger.variables.d.ts",
+      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.variables.ts"
+    },
     "./copy-button": {
       "types": "./dist/components/copy-button/index.d.ts",
       "svelte": "./src/components/copy-button/index.ts",
@@ -1141,6 +1197,27 @@
     "./grid-list-item/variables": {
       "types": "./dist/components/grid-list-item/grid-list-item.variables.d.ts",
       "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts"
+    },
+    "./hover-card": {
+      "types": "./dist/components/hover-card/index.d.ts",
+      "svelte": "./src/components/hover-card/index.ts",
+      "node": "./dist/server/components/hover-card/index.js",
+      "default": "./dist/components/hover-card/index.js"
+    },
+    "./hover-card/schema": {
+      "types": "./dist/components/hover-card/hover-card.schema.d.ts",
+      "svelte": "./src/components/hover-card/hover-card.schema.ts"
+    },
+    "./hover-card/variables": {
+      "types": "./dist/components/hover-card/hover-card.variables.d.ts",
+      "svelte": "./src/components/hover-card/hover-card.variables.ts"
+    },
+    "./hover-card/styles": {
+      "default": "./dist/components/hover-card/hover-card.css"
+    },
+    "./hover-card/examples": {
+      "import": "./src/components/hover-card/hover-card.examples.json",
+      "default": "./src/components/hover-card/hover-card.examples.json"
     },
     "./image": {
       "types": "./dist/components/image/index.d.ts",

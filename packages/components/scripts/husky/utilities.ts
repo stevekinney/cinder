@@ -141,6 +141,230 @@ export async function writePrePushLog(output: string, now = new Date()): Promise
   return logPath;
 }
 
+type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
+type CleanupSignal = HookSignal | 'SIGKILL';
+
+const SIGNAL_EXIT_CODES: Record<HookSignal, number> = {
+  SIGHUP: 129,
+  SIGINT: 130,
+  SIGTERM: 143,
+};
+
+const activeHookProcessGroups = new Set<number>();
+let cleanupHandlersInstalled = false;
+let signalCleanupStarted = false;
+let hookSignalCleanupPromise: Promise<void> | undefined;
+
+export type HookCommandResult = {
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+};
+
+export type HookCommandOptions = {
+  readonly cwd?: string;
+  readonly environment?: Record<string, string | undefined>;
+  readonly signal?: AbortSignal;
+  readonly stdout?: 'inherit' | 'pipe';
+  readonly stderr?: 'inherit' | 'pipe';
+};
+
+type HookSignalCleanupOptions = {
+  readonly exitAfterCleanup?: boolean;
+};
+
+function errorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
+}
+
+function readStreamText(stream: unknown): Promise<string> {
+  return stream instanceof ReadableStream ? new Response(stream).text() : Promise.resolve('');
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isProcessGroupAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch {
+    return isProcessAlive(pid);
+  }
+}
+
+function signalProcessGroup(pid: number, signal: CleanupSignal): void {
+  try {
+    process.kill(-pid, signal);
+    return;
+  } catch {
+    // If the process-group signal fails, fall back to the direct child. This
+    // keeps cleanup best-effort without hiding the primary process-group path.
+  }
+
+  try {
+    process.kill(pid, signal);
+  } catch {
+    // Process already exited.
+  }
+}
+
+function drainActiveProcessGroups(): number[] {
+  const pids = [...activeHookProcessGroups];
+  activeHookProcessGroups.clear();
+  return pids;
+}
+
+export function cleanupHookProcessesImmediately(signal: CleanupSignal = 'SIGTERM'): void {
+  for (const pid of drainActiveProcessGroups()) {
+    signalProcessGroup(pid, signal);
+  }
+}
+
+export async function cleanupHookProcesses(signal: CleanupSignal = 'SIGTERM'): Promise<void> {
+  const pids = drainActiveProcessGroups();
+  await cleanupProcessGroups(pids, signal);
+}
+
+async function cleanupProcessGroups(pids: readonly number[], signal: CleanupSignal): Promise<void> {
+  for (const pid of pids) {
+    signalProcessGroup(pid, signal);
+  }
+
+  await Bun.sleep(250);
+
+  for (const pid of pids) {
+    if (isProcessGroupAlive(pid)) {
+      signalProcessGroup(pid, 'SIGKILL');
+    }
+  }
+}
+
+export async function cleanupForHookSignal(
+  signal: HookSignal,
+  options: HookSignalCleanupOptions = {},
+): Promise<void> {
+  if (signalCleanupStarted) return;
+  signalCleanupStarted = true;
+  hookSignalCleanupPromise = cleanupHookProcesses(signal);
+  await hookSignalCleanupPromise;
+  if (options.exitAfterCleanup ?? true) {
+    process.exit(SIGNAL_EXIT_CODES[signal]);
+  }
+}
+
+export function installHookProcessCleanup(): void {
+  if (cleanupHandlersInstalled) return;
+  cleanupHandlersInstalled = true;
+
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+    process.on(signal, () => {
+      void cleanupForHookSignal(signal);
+    });
+  }
+
+  process.on('exit', () => {
+    cleanupHookProcessesImmediately('SIGTERM');
+  });
+}
+
+export async function runHookCommand(
+  command: string,
+  args: readonly string[],
+  options: HookCommandOptions = {},
+): Promise<HookCommandResult> {
+  const stdout = options.stdout ?? 'inherit';
+  const stderr = options.stderr ?? 'inherit';
+  let aborted = false;
+  let abortCleanup: Promise<void> | undefined;
+  let notifyAbort: () => void = () => {};
+  const abortObserved = new Promise<void>((resolve) => {
+    notifyAbort = resolve;
+  });
+
+  let subprocess: ReturnType<typeof Bun.spawn>;
+  try {
+    subprocess = Bun.spawn([command, ...args], {
+      detached: true,
+      env: { ...Bun.env, ...options.environment },
+      stderr,
+      stdin: 'ignore',
+      stdout,
+      ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    });
+  } catch (spawnError) {
+    const message = errorMessage(spawnError);
+    if (stderr === 'inherit') {
+      error(message);
+    }
+    return {
+      exitCode: 1,
+      stderr: message,
+      stdout: '',
+    };
+  }
+
+  activeHookProcessGroups.add(subprocess.pid);
+
+  const abort = () => {
+    aborted = true;
+    abortCleanup ??= cleanupProcessGroups([subprocess.pid], 'SIGTERM');
+    notifyAbort();
+  };
+
+  options.signal?.addEventListener('abort', abort, { once: true });
+
+  try {
+    if (options.signal?.aborted) {
+      abort();
+    }
+
+    const stdoutText = stdout === 'pipe' ? readStreamText(subprocess.stdout) : Promise.resolve('');
+    const stderrText = stderr === 'pipe' ? readStreamText(subprocess.stderr) : Promise.resolve('');
+
+    const exitCodePromise = (async () => {
+      const result = await Promise.race([
+        subprocess.exited.then((exitCode) => ({ exitCode, type: 'exit' as const })),
+        abortObserved.then(() => ({ exitCode: 130, type: 'abort' as const })),
+      ]);
+
+      if (result.type === 'abort' || aborted) {
+        await abortCleanup;
+        return 130;
+      }
+
+      return result.exitCode ?? 1;
+    })();
+
+    const [exitCode, capturedStdout, capturedStderr] = await Promise.all([
+      exitCodePromise,
+      stdoutText,
+      stderrText,
+    ]);
+
+    return {
+      exitCode: aborted ? 130 : exitCode,
+      stderr: capturedStderr,
+      stdout: capturedStdout,
+    };
+  } finally {
+    options.signal?.removeEventListener('abort', abort);
+    if (aborted) {
+      await abortCleanup;
+    }
+    if (hookSignalCleanupPromise) {
+      await hookSignalCleanupPromise;
+    }
+    activeHookProcessGroups.delete(subprocess.pid);
+  }
+}
+
 type GateLockFile = {
   readonly createdAt: string;
   readonly pid: number;

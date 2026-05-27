@@ -58,6 +58,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
+  import Badge from '../badge/badge.svelte';
   import Tab from '../tab/tab.svelte';
   import TabList from '../tab-list/tab-list.svelte';
   import TabPanel from '../tab-panel/tab-panel.svelte';
@@ -200,7 +201,14 @@
     <TabList label="Editor view">
       <Tab value="form">Form</Tab>
       <Tab value="json">JSON</Tab>
-      <Tab value="diff">Diff{state.hasChanges ? ' •' : ''}</Tab>
+      <Tab value="diff">
+        Diff{#if state.hasChanges}<span class="cinder-sr-only">, has changes</span>{/if}
+        {#snippet trailing()}
+          {#if state.hasChanges}
+            <Badge variant="neutral" aria-hidden="true">●</Badge>
+          {/if}
+        {/snippet}
+      </Tab>
     </TabList>
 
     <TabPanel value="form">

@@ -21,8 +21,8 @@
     canRedo?: boolean;
     /** Whether the toolbar is disabled */
     disabled?: boolean;
-    /** Callback to open link popover */
-    onLinkClick?: () => void;
+    /** Callback to open link popover, receives the triggering button element */
+    onLinkClick?: (triggerElement: HTMLElement) => void;
     /** Callback for undo button click */
     onUndo?: () => void;
     /** Callback for redo button click */
@@ -133,8 +133,11 @@
     if (editorContext) toggleStrikethrough(editorContext);
   }
 
-  function handleLink() {
-    onLinkClick?.();
+  function handleLink(event: MouseEvent) {
+    const triggerElement = event.currentTarget;
+    if (triggerElement instanceof HTMLElement) {
+      onLinkClick?.(triggerElement);
+    }
   }
 
   function handleBulletList() {

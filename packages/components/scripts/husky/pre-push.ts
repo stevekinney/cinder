@@ -7,6 +7,7 @@ import {
   header,
   inferFailureScope,
   info,
+  installHookProcessCleanup,
   isContinuousIntegration,
   REPO_ROOT,
   success,
@@ -20,6 +21,8 @@ if (isContinuousIntegration()) {
   info('Skipping hook in CI');
   process.exit(0);
 }
+
+installHookProcessCleanup();
 
 header('Pre-push: lint + typecheck + test (working tree)');
 warning('Validates the current working tree, not the exact commit range being pushed.');
