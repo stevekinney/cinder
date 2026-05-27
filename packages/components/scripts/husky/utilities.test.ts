@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'bun:test';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
+  cleanupForHookSignal,
+  cleanupHookProcesses,
   getTouchedPackages,
   isSourceFile,
   loadWorkspacePackages,
   rootConfigStaged,
+  runHookCommand,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -13,6 +19,240 @@ const fakePackages: readonly WorkspacePackage[] = [
   { name: '@cinder/markdown', dir: 'packages/markdown/', hasTypecheck: true, hasTest: true },
   { name: 'cinder', dir: 'packages/components/', hasTypecheck: true, hasTest: false },
 ];
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function killProcessGroup(pid: number): void {
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      // Process already exited.
+    }
+  }
+}
+
+async function waitForFile(path: string): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await Bun.file(path).exists()) return;
+    await Bun.sleep(20);
+  }
+  throw new Error(`Timed out waiting for ${path}`);
+}
+
+async function waitForProcessExit(pid: number): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (!isProcessAlive(pid)) return;
+    await Bun.sleep(20);
+  }
+  throw new Error(`Process ${pid} is still alive`);
+}
+
+describe('runHookCommand', () => {
+  it('captures output and returns a zero exit code for successful commands', async () => {
+    const result = await runHookCommand(
+      'bun',
+      ['-e', 'console.log("hook stdout"); console.error("hook stderr");'],
+      {
+        stderr: 'pipe',
+        stdout: 'pipe',
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('hook stdout');
+    expect(result.stderr).toContain('hook stderr');
+  });
+
+  it('returns non-zero failures without throwing', async () => {
+    const result = await runHookCommand(
+      'bun',
+      ['-e', 'console.error("bad gate"); process.exit(7);'],
+      {
+        stderr: 'pipe',
+        stdout: 'pipe',
+      },
+    );
+
+    expect(result.exitCode).toBe(7);
+    expect(result.stderr).toContain('bad gate');
+  });
+
+  it('kills descendant processes when aborted', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-hook-cleanup-'));
+    const pidFile = join(directory, 'child.pid');
+    const controller = new AbortController();
+    let childPid: number | undefined;
+
+    const parentScript = `
+      const child = Bun.spawn(["bun", "-e", "setInterval(() => {}, 1000)"], {
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      await Bun.write(Bun.env.CHILD_PID_FILE, String(child.pid));
+      setInterval(() => {}, 1000);
+    `;
+
+    try {
+      const command = runHookCommand('bun', ['-e', parentScript], {
+        environment: { CHILD_PID_FILE: pidFile },
+        signal: controller.signal,
+        stderr: 'pipe',
+        stdout: 'pipe',
+      });
+
+      await waitForFile(pidFile);
+      const childPidText = await readFile(pidFile, 'utf8');
+      childPid = Number(childPidText.trim());
+      expect(isProcessAlive(childPid)).toBe(true);
+
+      controller.abort();
+      const result = await command;
+
+      expect(result.exitCode).toBe(130);
+      await waitForProcessExit(childPid);
+    } finally {
+      if (childPid !== undefined) killProcessGroup(childPid);
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('escalates to SIGKILL when descendants ignore SIGTERM', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-hook-cleanup-stubborn-'));
+    const pidFile = join(directory, 'child.pid');
+    const controller = new AbortController();
+    let childPid: number | undefined;
+
+    const parentScript = `
+      const child = Bun.spawn([
+        "bun",
+        "-e",
+        "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)",
+      ], {
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      await Bun.write(Bun.env.CHILD_PID_FILE, String(child.pid));
+      setInterval(() => {}, 1000);
+    `;
+
+    try {
+      const command = runHookCommand('bun', ['-e', parentScript], {
+        environment: { CHILD_PID_FILE: pidFile },
+        signal: controller.signal,
+        stderr: 'pipe',
+        stdout: 'pipe',
+      });
+
+      await waitForFile(pidFile);
+      const childPidText = await readFile(pidFile, 'utf8');
+      childPid = Number(childPidText.trim());
+      expect(isProcessAlive(childPid)).toBe(true);
+
+      controller.abort();
+      const result = await command;
+
+      expect(result.exitCode).toBe(130);
+      await waitForProcessExit(childPid);
+    } finally {
+      if (childPid !== undefined) killProcessGroup(childPid);
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('escalates to SIGKILL when the direct child ignores SIGTERM', async () => {
+    const controller = new AbortController();
+
+    const command = runHookCommand(
+      'bun',
+      ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);"],
+      {
+        signal: controller.signal,
+        stderr: 'pipe',
+        stdout: 'pipe',
+      },
+    );
+
+    await Bun.sleep(20);
+    controller.abort();
+    const result = await command;
+
+    expect(result.exitCode).toBe(130);
+  });
+
+  it('waits for installed hook signal cleanup before returning', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-hook-signal-cleanup-'));
+    const pidFile = join(directory, 'child.pid');
+    let childPid: number | undefined;
+
+    const command = runHookCommand(
+      'bun',
+      [
+        '-e',
+        `
+          await Bun.write(Bun.env.CHILD_PID_FILE, String(process.pid));
+          process.on('SIGTERM', () => {});
+          setInterval(() => {}, 1000);
+        `,
+      ],
+      {
+        environment: { CHILD_PID_FILE: pidFile },
+        stderr: 'pipe',
+        stdout: 'pipe',
+      },
+    );
+
+    try {
+      await waitForFile(pidFile);
+      const childPidText = await readFile(pidFile, 'utf8');
+      childPid = Number(childPidText.trim());
+      expect(isProcessAlive(childPid)).toBe(true);
+
+      await cleanupForHookSignal('SIGTERM', { exitAfterCleanup: false });
+      const result = await command;
+
+      expect(result.exitCode).not.toBe(0);
+      await waitForProcessExit(childPid);
+    } finally {
+      if (childPid !== undefined) killProcessGroup(childPid);
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('does not clean up unrelated processes after a managed command exits', async () => {
+    const unrelated = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      detached: true,
+      stderr: 'ignore',
+      stdin: 'ignore',
+      stdout: 'ignore',
+    });
+
+    try {
+      const result = await runHookCommand('bun', ['-e', 'process.exit(0);'], {
+        stderr: 'pipe',
+        stdout: 'pipe',
+      });
+
+      expect(result.exitCode).toBe(0);
+      await cleanupHookProcesses();
+      expect(isProcessAlive(unrelated.pid)).toBe(true);
+    } finally {
+      killProcessGroup(unrelated.pid);
+      await unrelated.exited;
+    }
+  });
+});
 
 describe('isSourceFile', () => {
   it('treats supported extensions as source', () => {
