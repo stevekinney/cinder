@@ -207,8 +207,9 @@ describe('discoverSidebarComponents', () => {
     // repository has grown to 122 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
     // lands the sidebar around 78. The three chart families (line, bar,
-    // area) bumped it to 82. Selectable, CommandPalette, and CommandMenu
-    // now bring the current focused-entry gate to 87.
+    // area) bumped it to 82. Overlay and navigation examples brought it to
+    // 86, and Selectable, CommandPalette, and CommandMenu now place the
+    // current focused-entry gate at 87, still smaller than the full list.
     const sidebar = await discoverSidebarComponents();
     expect(sidebar.length).toBeLessThanOrEqual(87);
   });
