@@ -8,6 +8,8 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/table-fixture.svelte');
 
+const tableCss = await Bun.file(new URL('./table.css', import.meta.url)).text();
+
 const columns = [
   { key: 'name', label: 'Name', sortable: true },
   { key: 'age', label: 'Age', sortable: true },
@@ -56,6 +58,14 @@ describe('Table sort behavior', () => {
     const cells = Array.from(container.querySelectorAll('thead th'));
     expect(cells[0]?.querySelector('button')).not.toBeNull();
     expect(cells[1]?.querySelector('button')).not.toBeNull();
+  });
+
+  test('sortable header cells render a double-chevron SVG indicator', () => {
+    const { container } = render(Wrapper, { columns, rows });
+    const indicator = container.querySelector('.cinder-table__sort-indicator');
+    const chevrons = indicator?.querySelectorAll('svg polyline');
+    expect(indicator?.querySelector('svg')).not.toBeNull();
+    expect(chevrons?.length).toBe(2);
   });
 
   test('sortable header cells default to aria-sort="none"', () => {
@@ -481,9 +491,28 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     return undefined;
   }
 
-  function injectAndFind(cssText: string, selector: string): CSSStyleRule | undefined {
+  function findRuleContaining(
+    sheet: CSSStyleSheet,
+    ...selectorParts: string[]
+  ): CSSStyleRule | undefined {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (
+          rule instanceof CSSStyleRule &&
+          selectorParts.every((selectorPart) => rule.selectorText.includes(selectorPart))
+        ) {
+          return rule;
+        }
+      }
+    } catch {
+      // cross-origin or inaccessible sheet
+    }
+    return undefined;
+  }
+
+  function injectTableCssAndFind(selector: string): CSSStyleRule | undefined {
     const style = document.createElement('style');
-    style.textContent = cssText;
+    style.textContent = tableCss;
     document.head.appendChild(style);
     let rule: CSSStyleRule | undefined;
     try {
@@ -494,33 +523,53 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     return rule;
   }
 
-  // These tests verify that the CSS declarations in table.css are what the plan
-  // specifies. They inject the exact declaration and assert the property value
-  // via the CSSOM, confirming the declaration syntax is valid and parseable.
-  // For changes to these values to be caught, the CSS source file must be updated
-  // together with these tests — they serve as regression guards for the declared intent.
+  function injectTableCssAndFindContaining(...selectorParts: string[]): CSSStyleRule | undefined {
+    const style = document.createElement('style');
+    style.textContent = tableCss;
+    document.head.appendChild(style);
+    let rule: CSSStyleRule | undefined;
+    try {
+      rule = findRuleContaining(style.sheet as CSSStyleSheet, ...selectorParts);
+    } finally {
+      document.head.removeChild(style);
+    }
+    return rule;
+  }
 
-  test('.cinder-table__sort-indicator declares color: var(--cinder-text)', () => {
-    const rule = injectAndFind(
-      '.cinder-table__sort-indicator { color: var(--cinder-text); }',
-      '.cinder-table__sort-indicator',
+  test('.cinder-table__sort-indicator declares neutral color: var(--cinder-text-subtle)', () => {
+    const rule = injectTableCssAndFind('.cinder-table__sort-indicator');
+    expect(rule?.style.color).toBe('var(--cinder-text-subtle)');
+  });
+
+  test('active sort indicator declarations use full-strength text color', () => {
+    const rule = injectTableCssAndFindContaining(
+      ".cinder-table__sort-indicator[data-cinder-direction='ascending']",
+      ".cinder-table__sort-indicator[data-cinder-direction='descending']",
     );
     expect(rule?.style.color).toBe('var(--cinder-text)');
   });
 
   test('.cinder-table__sort-button declares position: relative', () => {
-    const rule = injectAndFind(
-      '.cinder-table__sort-button { position: relative; }',
-      '.cinder-table__sort-button',
-    );
+    const rule = injectTableCssAndFind('.cinder-table__sort-button');
     expect(rule?.style.position).toBe('relative');
   });
 
-  test('.cinder-table__sort-button:focus-visible declares z-index: 2', () => {
-    const rule = injectAndFind(
-      '.cinder-table__sort-button:focus-visible { z-index: 2; }',
-      '.cinder-table__sort-button:focus-visible',
+  test('right-aligned sortable headers justify the sort button content to the end', () => {
+    const rule = injectTableCssAndFind(
+      ".cinder-table__header-cell[data-cinder-align='right'] .cinder-table__sort-button",
     );
+    expect(rule?.style.justifyContent).toBe('flex-end');
+  });
+
+  test('center-aligned sortable headers center the sort button content', () => {
+    const rule = injectTableCssAndFind(
+      ".cinder-table__header-cell[data-cinder-align='center'] .cinder-table__sort-button",
+    );
+    expect(rule?.style.justifyContent).toBe('center');
+  });
+
+  test('.cinder-table__sort-button:focus-visible declares z-index: 2', () => {
+    const rule = injectTableCssAndFind('.cinder-table__sort-button:focus-visible');
     expect(rule?.style.zIndex).toBe('2');
   });
 });

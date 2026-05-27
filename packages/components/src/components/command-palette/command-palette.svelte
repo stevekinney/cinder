@@ -25,10 +25,10 @@
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
   import {
-    setCommandPaletteContext,
+    setCommandListContext,
     type CommandItemRegistrationInput,
-    type CommandPaletteContext,
-  } from '../_internal/command-palette-context.ts';
+    type CommandListContext,
+  } from '../_internal/command-list-context.ts';
 
   let {
     open = $bindable(false),
@@ -220,11 +220,7 @@
       activeItemId = ids[ids.length - 1] ?? null;
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      if (activeItemId === null) return;
-      const record = registrations.find((r) => r.id === activeItemId);
-      if (record && !record.getDisabled()) {
-        record.getOnselect()();
-      }
+      if (activeItemId !== null) context.activateItemById(activeItemId);
     }
   }
 
@@ -239,12 +235,9 @@
   });
 
   // ── Context ───────────────────────────────────────────────────────────────
-  const context: CommandPaletteContext = {
+  const context: CommandListContext = {
     get listboxId() {
       return listboxId;
-    },
-    get query() {
-      return query;
     },
     get activeItemId() {
       return activeItemId;
@@ -271,9 +264,15 @@
     setActiveById(id: string) {
       activeItemId = id;
     },
+    activateItemById(id: string) {
+      const record = registrations.find((r) => r.id === id);
+      if (record && !record.getDisabled()) {
+        record.getOnselect()();
+      }
+    },
   };
 
-  setCommandPaletteContext(context);
+  setCommandListContext(context);
 
   const showEmpty = $derived(mounted && registrationsReady && registrations.length === 0);
 </script>

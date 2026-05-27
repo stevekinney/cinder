@@ -20,6 +20,10 @@ const schema = {
       type: 'string',
       description: 'Class merged with `.cinder-command-item`.',
     },
+    selectionMode: {
+      enum: ['item', 'parent'],
+      description: 'The item owns activation. This is the default CommandPalette mode.',
+    },
   },
   additionalProperties: false,
   required: ['value'],

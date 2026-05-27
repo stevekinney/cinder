@@ -192,3 +192,12 @@ describe('Card', () => {
     ).toBe(true);
   });
 });
+
+describe('Card CSS contract', () => {
+  test('title uses the primary text token', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+    const titleBlock = css.match(/\.cinder-card__title\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(titleBlock).toContain('color: var(--cinder-text)');
+    expect(titleBlock).not.toContain('color: var(--cinder-text-muted)');
+  });
+});
