@@ -64,6 +64,7 @@
   let pointerInsideCard = false;
   let focusInsideTrigger = false;
   let focusInsideCard = false;
+  let suppressTriggerOpenUntilLeave = false;
   let openTimer: ReturnType<typeof setTimeout> | undefined;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -99,6 +100,14 @@
     return pointerInsideTrigger || pointerInsideCard || focusInsideTrigger || focusInsideCard;
   }
 
+  function clearInterest() {
+    suppressTriggerOpenUntilLeave ||= pointerInsideTrigger;
+    pointerInsideTrigger = false;
+    pointerInsideCard = false;
+    focusInsideTrigger = false;
+    focusInsideCard = false;
+  }
+
   function scheduleOpen(delay = openDelay) {
     clearTimers();
     openTimer = setTimeout(
@@ -122,11 +131,13 @@
   }
 
   function handleTriggerMouseEnter() {
+    if (suppressTriggerOpenUntilLeave) return;
     pointerInsideTrigger = true;
     scheduleOpen();
   }
 
   function handleTriggerMouseLeave() {
+    suppressTriggerOpenUntilLeave = false;
     pointerInsideTrigger = false;
     scheduleClose();
   }
@@ -182,6 +193,12 @@
     if (!open) return;
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
+  });
+
+  $effect(() => {
+    if (open) return;
+    clearTimers();
+    clearInterest();
   });
 
   $effect(() => {

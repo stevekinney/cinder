@@ -183,6 +183,38 @@ describe('HoverCard', () => {
     await waitFor(() => expect(queryHoverCard()).toBeNull());
   });
 
+  test('controlled external close clears hover interest before another trigger enter', async () => {
+    const onopenchange = mock((_open: boolean) => {});
+    const { container, rerender } = render(HoverCard, {
+      props: {
+        open: true,
+        openDelay: 0,
+        onopenchange,
+        trigger: triggerSnippet,
+        children: textSnippet('Preview'),
+      },
+    });
+    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+
+    await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+    await fireEvent.mouseEnter(wrapper);
+    await rerender({
+      open: false,
+      openDelay: 0,
+      onopenchange,
+      trigger: triggerSnippet,
+      children: textSnippet('Preview'),
+    });
+    await waitFor(() => expect(queryHoverCard()).toBeNull());
+
+    onopenchange.mockClear();
+    await fireEvent.mouseEnter(wrapper);
+    await Bun.sleep(5);
+
+    expect(onopenchange).not.toHaveBeenCalledWith(true);
+    expect(queryHoverCard()).toBeNull();
+  });
+
   test('hover card stays open when the pointer moves from trigger to card before close delay', async () => {
     const { container } = render(HoverCard, {
       props: {
