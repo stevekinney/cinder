@@ -18,7 +18,7 @@
 /* ----------------------------------------
  * Item wrapper <li> — reset list styles
  *
- * Vertical geometry (symmetric radius, inline-start active border) now lives
+ * Vertical geometry (square rows, inline-start active border) now lives
  * on `.cinder-navigation-item[data-variant='vertical']` in `navigation-item.css`.
  * `SideNavigationItem` forces `variant="vertical"` on its inner item, so no
  * ancestor-specificity overrides are needed here.

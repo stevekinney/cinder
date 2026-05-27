@@ -12,7 +12,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * Exported so host components (e.g. `stacked-list-item.svelte`) can type
  * their own `status` prop against this union rather than restating it.
  */
-export type StatusDotStatus = 'online' | 'offline' | 'warning' | 'error' | 'building' | 'neutral';
+export type StatusDotStatus = 'online' | 'offline' | 'warning' | 'error' | 'pending' | 'neutral';
 
 export type StatusDotSize = 'sm' | 'md';
 
