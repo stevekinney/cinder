@@ -22,6 +22,15 @@ export default defineConstraints({
       when: { prop: 'describedById', exists: true },
       of: [{ prop: 'describedById', nonEmpty: true }],
     },
+    {
+      id: 'alertdialog-description',
+      severity: 'error',
+      description:
+        'Modal role="alertdialog" requires describedById so assistive technology receives both the urgent condition and required action',
+      kind: 'requires',
+      when: { prop: 'role', equals: 'alertdialog' },
+      of: [{ prop: 'describedById', nonEmpty: true }],
+    },
   ],
   examples: {
     valid: [
@@ -32,6 +41,10 @@ export default defineConstraints({
       {
         title: 'Modal with describedById for a summary paragraph',
         code: '<Modal title="Settings" describedById="settings-desc" bind:open={isOpen}>\n  <p id="settings-desc">Adjust your account preferences below.</p>\n</Modal>',
+      },
+      {
+        title: 'Alert dialog role with a description',
+        code: '<Modal role="alertdialog" title="Session expired" describedById="session-desc" bind:open={isOpen}>\n  <p id="session-desc">Sign in again before continuing.</p>\n</Modal>',
       },
       {
         title: 'Modal without describedById (omit entirely when not needed)',
@@ -48,6 +61,11 @@ export default defineConstraints({
         title: 'Modal with empty-string describedById',
         code: '<Modal title="Settings" describedById="" bind:open={isOpen}><p>Content</p></Modal>',
         violates: 'described-by-non-empty',
+      },
+      {
+        title: 'Alert dialog role without a description',
+        code: '<Modal role="alertdialog" title="Session expired" bind:open={isOpen}><p>Sign in again.</p></Modal>',
+        violates: 'alertdialog-description',
       },
     ],
   },

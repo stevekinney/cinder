@@ -146,6 +146,19 @@ describe('Modal', () => {
     expect(closeButton?.getAttribute('aria-label')).toBe('Close dialog');
   });
 
+  test('showCloseButton=false omits the close button', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Sticky Modal',
+        showCloseButton: false,
+        children: emptySnippet,
+      },
+    });
+
+    expect(container.querySelector('.cinder-modal__close')).toBeNull();
+  });
+
   test('clicking the close button sets open to false', async () => {
     let openValue = true;
     const { container } = render(Modal, {
@@ -228,6 +241,20 @@ describe('Modal', () => {
     const dialog = container.querySelector('dialog');
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
     expect(dialog?.getAttribute('aria-labelledby')).not.toBeNull();
+  });
+
+  test('role prop can emit role="alertdialog"', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Session expired',
+        role: 'alertdialog',
+        describedById: 'session-description',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.getAttribute('role')).toBe('alertdialog');
   });
 
   test('applies custom class prop to root dialog element', () => {
@@ -679,5 +706,49 @@ describe('Modal', () => {
     await fireEvent.click(closeButton);
     // open flipped to false before the callback ran, so the throw doesn't leave dialog stuck
     expect(openValue).toBe(false);
+  });
+
+  test('dismissOnBackdropClick=false keeps backdrop clicks from closing', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Sticky modal',
+        dismissOnBackdropClick: false,
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent.click(dialog);
+    expect(openValue).toBe(true);
+  });
+
+  test('dismissOnEscape=false prevents native cancel dismissal', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Sticky modal',
+        dismissOnEscape: false,
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(true);
   });
 });

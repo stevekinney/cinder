@@ -7,6 +7,9 @@ export type { AccordionContext, AccordionProps } from './components/accordion/in
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 
+export { default as AlertDialog } from './components/alert-dialog/index.ts';
+export type { AlertDialogProps } from './components/alert-dialog/index.ts';
+
 export { default as AreaChart } from './components/area-chart/index.ts';
 export type { AreaChartProps, AreaChartSchemaProps } from './components/area-chart/index.ts';
 
@@ -142,6 +145,12 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
+export { default as ContextMenu } from './components/context-menu/index.ts';
+export type { ContextMenuProps } from './components/context-menu/index.ts';
+
+export { default as ContextMenuTrigger } from './components/context-menu-trigger/index.ts';
+export type { ContextMenuTriggerProps } from './components/context-menu-trigger/index.ts';
+
 export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
 
@@ -236,6 +245,9 @@ export type { GridListProps } from './components/grid-list/index.ts';
 
 export { default as GridListItem } from './components/grid-list-item/index.ts';
 export type { GridListItemProps } from './components/grid-list-item/index.ts';
+
+export { default as HoverCard } from './components/hover-card/index.ts';
+export type { HoverCardPlacement, HoverCardProps } from './components/hover-card/index.ts';
 
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';

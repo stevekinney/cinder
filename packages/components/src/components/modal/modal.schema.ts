@@ -1,46 +1,82 @@
 import type { ComponentSchema } from '../../schema-types';
 
-const schema = {
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  type: 'object',
-  properties: {
-    open: {
-      type: 'boolean',
+const schema = JSON.parse(String.raw`{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "open": {
+      "type": "boolean"
     },
-    title: {
-      type: 'string',
+    "title": {
+      "type": "string"
     },
-    class: {
-      type: 'string',
+    "dismissOnBackdropClick": {
+      "type": "boolean"
     },
-    describedById: {
-      type: 'string',
-      description:
-        'When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only.',
+    "dismissOnEscape": {
+      "type": "boolean"
     },
+    "showCloseButton": {
+      "type": "boolean"
+    },
+    "class": {
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "dialog",
+        "alertdialog"
+      ]
+    },
+    "describedById": {
+      "type": "string",
+      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only."
+    }
   },
-  additionalProperties: false,
-  required: ['open', 'title'],
-  metadata: {
-    unsupportedProps: [
+  "additionalProperties": false,
+  "required": [
+    "open",
+    "title"
+  ],
+  "metadata": {
+    "unsupportedProps": [
       {
-        name: 'children',
-        reason: 'function-or-snippet',
+        "name": "children",
+        "reason": "function-or-snippet"
       },
       {
-        name: 'footer',
-        reason: 'function-or-snippet',
+        "name": "footer",
+        "reason": "function-or-snippet"
       },
       {
-        name: 'ondismiss',
-        reason: 'function-or-snippet',
+        "name": "ondismiss",
+        "reason": "function-or-snippet"
       },
       {
-        name: 'triggerRef',
-        reason: 'unknown-shape',
-      },
-    ],
+        "name": "triggerRef",
+        "reason": "unknown-shape"
+      }
+    ]
   },
-} satisfies ComponentSchema;
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "alertdialog"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "then": {
+        "required": [
+          "describedById"
+        ]
+      }
+    }
+  ]
+}`) as ComponentSchema;
 
-export default schema as ComponentSchema;
+export default schema;

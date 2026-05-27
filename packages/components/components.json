@@ -57,10 +57,10 @@
     "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
   },
   "overlapFamilies": {
-    "overlay": ["modal", "drawer", "sheet", "popover"],
+    "overlay": ["modal", "drawer", "sheet", "popover", "alert-dialog"],
     "notice": ["banner", "alert", "callout"],
     "selection": ["toggle", "checkbox", "segmented-control"],
-    "hover": ["tooltip", "popover"],
+    "hover": ["tooltip", "popover", "hover-card"],
     "tabs": ["tabs", "segmented-control"]
   },
   "components": [
@@ -138,6 +138,32 @@
         "schema": "cinder/alert/schema",
         "variables": "cinder/alert/variables",
         "examples": "cinder/alert/examples"
+      }
+    },
+    {
+      "name": "AlertDialog",
+      "id": "alert-dialog",
+      "import": "cinder/alert-dialog",
+      "exportName": "AlertDialog",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.",
+      "tags": ["overlay", "dialog"],
+      "useWhen": [
+        "Requiring acknowledgement of a blocking warning before the user can continue.",
+        "Presenting a destructive or high-risk message that needs an explicit OK action."
+      ],
+      "avoidWhen": [
+        "Asking a reversible yes/no question — use confirm-dialog.",
+        "Collecting rich form input — compose modal instead."
+      ],
+      "related": ["modal", "confirm-dialog", "drawer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/alert-dialog/schema",
+        "variables": "cinder/alert-dialog/variables",
+        "examples": "cinder/alert-dialog/examples"
       }
     },
     {
@@ -878,6 +904,57 @@
       }
     },
     {
+      "name": "ContextMenu",
+      "id": "context-menu",
+      "import": "cinder/context-menu",
+      "exportName": "ContextMenu",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Right-click and long-press menu positioned at the user's pointer while reusing dropdown menu parts.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Providing contextual actions for a canvas, list row, file, or selected item.",
+        "Opening a menu from a pointer location instead of a visible dropdown trigger."
+      ],
+      "avoidWhen": [
+        "The menu should open from a button — use dropdown.",
+        "Showing arbitrary rich content rather than menu actions — use popover."
+      ],
+      "related": ["dropdown", "dropdown-menu", "dropdown-item"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/context-menu/schema",
+        "variables": "cinder/context-menu/variables",
+        "examples": "cinder/context-menu/examples"
+      }
+    },
+    {
+      "name": "ContextMenuTrigger",
+      "id": "context-menu-trigger",
+      "import": "cinder/context-menu-trigger",
+      "exportName": "ContextMenuTrigger",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Compose-only trigger region that opens a context-menu on right-click or touch long-press.",
+      "tags": ["overlay", "menu"],
+      "useWhen": [
+        "Wrapping the region that should own contextual actions inside ContextMenu.",
+        "Pairing pointer-positioned menu behavior with dropdown menu items."
+      ],
+      "avoidWhen": [
+        "Used outside context-menu — it requires the ContextMenu provider.",
+        "Opening a normal click menu from a visible button — use dropdown-trigger."
+      ],
+      "related": ["context-menu", "dropdown-trigger"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "cinder/context-menu-trigger/schema",
+        "variables": "cinder/context-menu-trigger/variables"
+      }
+    },
+    {
       "name": "CopyButton",
       "id": "copy-button",
       "import": "cinder/copy-button",
@@ -1460,6 +1537,32 @@
       "artifacts": {
         "schema": "cinder/grid-list-item/schema",
         "variables": "cinder/grid-list-item/variables"
+      }
+    },
+    {
+      "name": "HoverCard",
+      "id": "hover-card",
+      "import": "cinder/hover-card",
+      "exportName": "HoverCard",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Hover-and-focus triggered rich preview card for non-interactive contextual content.",
+      "tags": ["overlay", "hover"],
+      "useWhen": [
+        "Showing a profile, issue, or metadata preview that is richer than a tooltip but still read-only.",
+        "Revealing supplementary preview content on pointer hover or keyboard focus without moving focus."
+      ],
+      "avoidWhen": [
+        "The floating content contains focusable controls — use popover.",
+        "The trigger needs a short accessible description — use tooltip."
+      ],
+      "related": ["tooltip", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/hover-card/schema",
+        "variables": "cinder/hover-card/variables",
+        "examples": "cinder/hover-card/examples"
       }
     },
     {

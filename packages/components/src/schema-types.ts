@@ -24,6 +24,7 @@ export interface ComponentSchema {
   readonly type: 'object';
   readonly properties: Readonly<Record<string, unknown>>;
   readonly required?: readonly string[];
+  readonly allOf?: readonly Readonly<Record<string, unknown>>[];
   readonly additionalProperties?: boolean;
   readonly $defs?: Readonly<Record<string, unknown>>;
   readonly metadata?: ComponentSchemaMetadata;

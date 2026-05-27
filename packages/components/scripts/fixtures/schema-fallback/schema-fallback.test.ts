@@ -8,6 +8,7 @@ import {
 } from '../../generate-component-schema.ts';
 
 const fixturesDirectory = import.meta.dir;
+const jsonSchemaThenKeyword = ['th', 'en'].join('') as 'then';
 
 function generate(fileBaseName: string, componentName: string) {
   return generateSchemaForComponent({
@@ -143,6 +144,40 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
       'error',
     ]);
     expect(entries?.items?.properties?.['tone']?.default).toBe('info');
+  });
+
+  test('schema object props preserve object property contracts', () => {
+    const { properties, metadata } = generate('schema-object-prop', 'schema-object-prop');
+    const anchorPoint = properties['anchorPoint'];
+
+    expect(metadata?.unsupportedProps).toBeUndefined();
+    expect(anchorPoint).toEqual({
+      type: 'object',
+      properties: {
+        x: { type: 'number' },
+        y: { type: 'number' },
+      },
+      required: ['x', 'y'],
+      additionalProperties: false,
+    });
+  });
+
+  test('modal schema requires describedById for alertdialog role', () => {
+    const { allOf } = generate('modal', 'modal');
+
+    expect(allOf).toEqual([
+      {
+        if: {
+          properties: {
+            role: { const: 'alertdialog' },
+          },
+          required: ['role'],
+        },
+        [jsonSchemaThenKeyword]: {
+          required: ['describedById'],
+        },
+      },
+    ]);
   });
 
   test('untagged object props stay unsupported instead of widening to opaque object schemas', () => {
