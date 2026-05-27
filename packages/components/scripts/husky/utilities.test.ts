@@ -271,4 +271,22 @@ describe('formatFailureSummary', () => {
       '    (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
     ]);
   });
+
+  it('counts omitted failure lines without counting the truncation line as a failure', () => {
+    const summary = formatFailureSummary([
+      {
+        script: 'test',
+        scope: 'workspace',
+        lines: ['(fail) first', '(fail) second', '...and 2 more failure lines'],
+      },
+    ]);
+
+    expect(summary).toEqual([
+      'PRE-PUSH FAILED',
+      '  test -> workspace: 4 failures',
+      '    (fail) first',
+      '    (fail) second',
+      '    ...and 2 more failure lines',
+    ]);
+  });
 });

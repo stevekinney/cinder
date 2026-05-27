@@ -45,6 +45,7 @@ const FILE_PATH_LINE = /^(?:\.?\/)?[\w@./-]+\.[\w-]+$/;
 const LINE_COLUMN_DIAGNOSTIC = /^\d+:\d+\s+/;
 const LOCATION_DIAGNOSTIC = /:\d+:\d+$/;
 const CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC = /:\d+:\d+\s+/;
+const TRUNCATED_FAILURES_LINE = /^\.\.\.and (?<count>\d+) more failure lines$/;
 
 function parseWorkspaceOutputLine(line: string): {
   readonly scope: string | null;
@@ -115,7 +116,12 @@ export function inferFailureScope(output: string): string {
 export function formatFailureSummary(failures: readonly GateFailure[]): string[] {
   const lines = ['PRE-PUSH FAILED'];
   for (const failure of failures) {
-    const count = failure.lines.length;
+    const omittedCount = failure.lines.reduce((count, line) => {
+      const match = TRUNCATED_FAILURES_LINE.exec(line);
+      return count + Number(match?.groups?.['count'] ?? 0);
+    }, 0);
+    const count =
+      failure.lines.filter((line) => !TRUNCATED_FAILURES_LINE.test(line)).length + omittedCount;
     const noun = count === 1 ? 'failure' : 'failures';
     lines.push(`  ${failure.script} -> ${failure.scope}: ${count} ${noun}`);
     for (const line of failure.lines) {
