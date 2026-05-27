@@ -114,7 +114,7 @@
 >
   {#snippet items()}
     {#each filteredCommands as command (command.value)}
-      <CommandItem value={command.value}>{command.label}</CommandItem>
+      <CommandItem value={command.value} selectionMode="parent">{command.label}</CommandItem>
     {/each}
   {/snippet}
 </CommandMenu>

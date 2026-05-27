@@ -33,6 +33,7 @@
   let {
     value,
     onselect = () => {},
+    selectionMode = 'item',
     disabled = false,
     description,
     leading,
@@ -42,6 +43,9 @@
   }: CommandItemProps = $props();
 
   const commandList = getCommandListContext();
+  // Type-level mode marker: CommandPalette items own activation, while
+  // CommandMenu items can opt into parent-owned activation.
+  void selectionMode;
 
   // Stable id assigned by the palette on registration.
   let itemId = $state<string | null>(null);

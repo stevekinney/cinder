@@ -69,7 +69,7 @@
           {item.label}
         </CommandItem>
       {:else}
-        <CommandItem value={item.value} disabled={item.disabled === true}>
+        <CommandItem value={item.value} disabled={item.disabled === true} selectionMode="parent">
           {item.label}
         </CommandItem>
       {/if}

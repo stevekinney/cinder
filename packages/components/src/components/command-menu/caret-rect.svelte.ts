@@ -61,13 +61,13 @@ export function getCaretRect(
   const normalizedCaretIndex = Math.max(0, Math.min(caretIndex, field.value.length));
 
   mirror.setAttribute('data-cinder-command-menu-caret-mirror', '');
-  mirror.style.position = 'absolute';
+  mirror.style.position = 'fixed';
   mirror.style.visibility = 'hidden';
   mirror.style.pointerEvents = 'none';
   mirror.style.whiteSpace = field instanceof HTMLTextAreaElement ? 'pre-wrap' : 'pre';
   mirror.style.overflow = computedStyle.overflow;
-  mirror.style.left = `${fieldRect.left + window.scrollX}px`;
-  mirror.style.top = `${fieldRect.top + window.scrollY}px`;
+  mirror.style.left = `${fieldRect.left}px`;
+  mirror.style.top = `${fieldRect.top}px`;
 
   for (const property of MIRROR_STYLE_PROPERTIES) {
     mirror.style.setProperty(property, computedStyle.getPropertyValue(property));
