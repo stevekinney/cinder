@@ -158,6 +158,11 @@ function printJobPlan(jobs: readonly Job[]): void {
  * The current full-suite behavior: run the root `lint`/`typecheck`/`test`
  * scripts (which fan out to every package). Used by the root-config escalation
  * and every fail-safe path. Exits the process directly.
+ *
+ * Stylelint is covered here too: the root `lint` script ends with
+ * `&& stylelint "packages/**\/src/**\/*.{css,svelte}"`, so the full path lints
+ * styles across the workspace. Only the scoped path needs the separate,
+ * file-list `runStylelint`.
  */
 async function runFull(): Promise<never> {
   info('Planned validation jobs (full suite):');
@@ -216,7 +221,8 @@ type Plan =
       readonly kind: 'scoped';
       readonly jobs: readonly Job[];
       readonly stylelintFiles: readonly string[];
-      readonly workspaceCount: number;
+      /** Pre-rendered "N of M packages" summary for the success line. */
+      readonly summary: string;
     };
 
 /** Warn with a reason, then run the full suite and exit. */
@@ -310,7 +316,9 @@ async function derivePlan(
   // would leave a hole: a changed `.css` outside the detected packages (or a
   // root-level style file) would silently skip stylelint. Per-file stylelint is
   // cheap, so linting the full changed set closes that gap.
-  return { kind: 'scoped', jobs, stylelintFiles: cssLike, workspaceCount: workspace.length };
+  const scopedPackages = new Set(jobs.map((job) => job.packageName)).size;
+  const summary = `${scopedPackages} of ${workspace.length} packages validated`;
+  return { kind: 'scoped', jobs, stylelintFiles: cssLike, summary };
 }
 
 /**
@@ -322,17 +330,19 @@ async function derivePlan(
 async function runScoped(
   jobs: readonly Job[],
   stylelintFiles: readonly string[],
-  workspaceCount: number,
+  summary: string,
 ): Promise<never> {
   printJobPlan(jobs);
-  const scopedPackages = new Set(jobs.map((job) => job.packageName)).size;
 
   let ok = true;
   for (const script of SCRIPTS) {
     const phaseJobs = jobs.filter((job) => job.script === script);
 
     if (script === 'lint') {
-      const targets = [...phaseJobs.map((job) => job.packageName), 'stylelint'];
+      const targets = [
+        ...phaseJobs.map((job) => job.packageName),
+        ...(stylelintFiles.length > 0 ? ['stylelint'] : []),
+      ];
       info(`Running lint (${targets.join(', ')})…`);
       const lintOk = await runJobs(phaseJobs);
       const stylelintOk = await runStylelint(stylelintFiles);
@@ -358,9 +368,7 @@ async function runScoped(
     process.exit(1);
   }
 
-  success(
-    `Pre-push validation passed (scoped — ${scopedPackages} of ${workspaceCount} packages validated)`,
-  );
+  success(`Pre-push validation passed (scoped — ${summary})`);
   process.exit(0);
 }
 
@@ -374,6 +382,6 @@ switch (plan.kind) {
     await runFull();
     break;
   case 'scoped':
-    await runScoped(plan.jobs, plan.stylelintFiles, plan.workspaceCount);
+    await runScoped(plan.jobs, plan.stylelintFiles, plan.summary);
     break;
 }

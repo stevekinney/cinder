@@ -436,8 +436,10 @@ export async function changedCssLikeFiles(
         throw new Error(`Unrecognized diff status '${status}' in: ${line}`);
       }
       if (path === undefined || path.length === 0) {
-        // A known status with a missing path means the diff output is malformed;
-        // dropping it would silently lose stylelint coverage, so fail safe.
+        // A known status with a missing path means the diff output is malformed
+        // (e.g. an `R`/`C` line whose destination field never arrived, so
+        // `fields[2]` is undefined). Dropping it would silently lose stylelint
+        // coverage, so fail safe by throwing.
         throw new Error(`Diff status '${status}' missing its path in: ${line}`);
       }
       if (CSS_LIKE_PATTERN.test(path)) candidates.add(path);

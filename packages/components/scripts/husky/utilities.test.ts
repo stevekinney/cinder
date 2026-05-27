@@ -430,6 +430,26 @@ describe('changedFilesForRange', () => {
     expect(calls).toEqual([`origin/main|${A}`]);
   });
 
+  it('honors the CINDER_PUSH_BASE_REF override for a new branch', async () => {
+    const original = Bun.env['CINDER_PUSH_BASE_REF'];
+    Bun.env['CINDER_PUSH_BASE_REF'] = 'origin/release';
+    try {
+      const calls: string[] = [];
+      const git = fakeGit({
+        mergeBase: async (a, b) => {
+          calls.push(`${a}|${b}`);
+          return 'nb';
+        },
+        diffNames: async () => [],
+      });
+      await changedFilesForRange([{ localSha: A, remoteSha: ZERO }], git);
+      expect(calls).toEqual([`origin/release|${A}`]);
+    } finally {
+      if (original === undefined) delete Bun.env['CINDER_PUSH_BASE_REF'];
+      else Bun.env['CINDER_PUSH_BASE_REF'] = original;
+    }
+  });
+
   it('throws when merge-base fails (→ caller falls back to full)', async () => {
     const git = fakeGit({
       mergeBase: async () => {
