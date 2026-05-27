@@ -197,7 +197,12 @@
 </div>
 
 <!-- Polite live announcer for comment count changes. Empty on initial render. -->
-<div role="status" aria-live="polite" aria-atomic="true" class="comments-count-announcer sr-only">
+<div
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  class="comments-count-announcer cinder-sr-only"
+>
   {liveAnnouncementText}
 </div>
 

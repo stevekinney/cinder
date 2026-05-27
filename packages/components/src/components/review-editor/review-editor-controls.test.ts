@@ -123,6 +123,17 @@ describe('ReviewEditorControls — live announcer', () => {
     expect(announcer?.textContent?.trim()).toBe('');
   });
 
+  test('live announcer is visually hidden via the global cinder-sr-only utility', () => {
+    // Regression guard: a locally-undefined `.sr-only` class would render the
+    // announcer text visibly under Svelte's scoped styles. The announcer must
+    // use the global `.cinder-sr-only` utility (styles/utilities.css).
+    const { container } = render(ReviewEditorControls, {
+      props: { ...BASE_PROPS, commentCount: 3 },
+    });
+    const announcer = container.querySelector('[role="status"][aria-live="polite"]');
+    expect(announcer?.classList.contains('cinder-sr-only')).toBe(true);
+  });
+
   test('live announcer has aria-atomic="true"', () => {
     const { container } = render(ReviewEditorControls, {
       props: { ...BASE_PROPS, commentCount: 3 },
