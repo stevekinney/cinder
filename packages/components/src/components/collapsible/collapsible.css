@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--cinder-space-4);
-  width: 100%;
+  inline-size: 100%;
   padding: var(--cinder-space-4) var(--cinder-space-5);
 
   font-size: var(--cinder-text-base);

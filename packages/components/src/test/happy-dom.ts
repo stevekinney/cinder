@@ -77,24 +77,31 @@ function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
  * the first frame and the tick callback would never run.
  */
 function stubbedAnimate(): unknown {
-  let cancelled = false;
+  let settled = false;
   const animation: Record<string, unknown> = {
     currentTime: 0,
     playState: 'finished',
     effect: null,
     onfinish: null,
     cancel() {
-      cancelled = true;
+      // A cancelled animation never fires onfinish.
+      settled = true;
     },
-    finish() {},
+    finish() {
+      // Spec: finish() settles synchronously and fires onfinish. Run it once.
+      fire();
+    },
   };
-  queueMicrotask(() => {
-    if (cancelled) return;
+  // Fire onfinish at most once, and never after cancel()/finish() already settled.
+  function fire(): void {
+    if (settled) return;
+    settled = true;
     const handler = animation['onfinish'];
     if (typeof handler === 'function') {
       (handler as () => void).call(animation);
     }
-  });
+  }
+  queueMicrotask(fire);
   return animation;
 }
 

@@ -101,9 +101,11 @@ describe('Collapsible (controlled)', () => {
 
     await fireEvent.click(trigger(container));
     expect(onToggle).toHaveBeenLastCalledWith(true);
+    expect(panel(container)).not.toBeNull();
 
     await fireEvent.click(trigger(container));
     expect(onToggle).toHaveBeenLastCalledWith(false);
+    expect(panel(container)).toBeNull();
   });
 
   test('bind:open is two-way: trigger updates parent, parent updates panel', async () => {
