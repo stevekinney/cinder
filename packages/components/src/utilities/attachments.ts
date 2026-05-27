@@ -56,3 +56,89 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
     };
   };
 }
+
+/**
+ * Marks scroll containers that have more content below the visible area.
+ * Intended for overlay bodies that show a bottom mask fade while scrollable.
+ */
+export function overflowFade(): Attachment<HTMLElement> {
+  return (node) => {
+    if (typeof ResizeObserver === 'undefined') {
+      node.removeAttribute('data-cinder-overflows');
+      return;
+    }
+
+    const update = () => {
+      const overflows = node.scrollHeight - node.clientHeight > 1;
+      const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+      node.toggleAttribute('data-cinder-overflows', overflows && !atBottom);
+    };
+
+    const requestFrame =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame
+        : (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()));
+    const cancelFrame =
+      typeof cancelAnimationFrame === 'function'
+        ? cancelAnimationFrame
+        : (handle: number) => window.clearTimeout(handle);
+
+    let frame = 0;
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = requestFrame(() => {
+        frame = 0;
+        update();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    const observedElements = new Set<Element>();
+    const observeElement = (element: Element) => {
+      if (observedElements.has(element)) return;
+      resizeObserver.observe(element);
+      observedElements.add(element);
+    };
+    const syncObservedElements = () => {
+      const currentElements = new Set<Element>([node, ...node.querySelectorAll('*')]);
+      for (const element of observedElements) {
+        if (!currentElements.has(element)) {
+          resizeObserver.unobserve(element);
+          observedElements.delete(element);
+        }
+      }
+      for (const element of currentElements) {
+        observeElement(element);
+      }
+    };
+
+    syncObservedElements();
+
+    const mutationObserver =
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            syncObservedElements();
+            scheduleUpdate();
+          });
+
+    mutationObserver?.observe(node, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['hidden', 'class', 'style', 'aria-hidden'],
+    });
+
+    node.addEventListener('scroll', scheduleUpdate, { passive: true });
+    update();
+
+    return () => {
+      if (frame) cancelFrame(frame);
+      resizeObserver.disconnect();
+      observedElements.clear();
+      mutationObserver?.disconnect();
+      node.removeEventListener('scroll', scheduleUpdate);
+    };
+  };
+}

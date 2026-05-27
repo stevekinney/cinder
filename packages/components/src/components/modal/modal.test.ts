@@ -4,6 +4,12 @@ import { createRawSnippet } from 'svelte';
 
 import { _resetScrollLock } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import {
+  flushOverflowFadeAnimationFrames,
+  installOverflowFadeTestEnvironment,
+  OverflowFadeResizeObserver,
+  setScrollMeasurements,
+} from '../../test/overflow-fade-test-helpers.ts';
 
 setupHappyDom();
 
@@ -248,6 +254,33 @@ describe('Modal', () => {
     });
     const body = container.querySelector('.cinder-modal__body');
     expect(body?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('overflow fade attachment marks and clears the modal body', () => {
+    const cleanupOverflowFade = installOverflowFadeTestEnvironment();
+    try {
+      const { container } = render(Modal, {
+        props: {
+          open: true,
+          title: 'Test Modal',
+          children: textSnippet('Modal body content'),
+        },
+      });
+      const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+      expect(body).not.toBeNull();
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 0 });
+      OverflowFadeResizeObserver.instances[0]?.trigger();
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(true);
+
+      setScrollMeasurements(body, { clientHeight: 100, scrollHeight: 160, scrollTop: 60 });
+      body.dispatchEvent(new Event('scroll'));
+      flushOverflowFadeAnimationFrames();
+      expect(body.hasAttribute('data-cinder-overflows')).toBe(false);
+    } finally {
+      cleanupOverflowFade();
+    }
   });
 
   test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {

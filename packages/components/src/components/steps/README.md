@@ -12,6 +12,28 @@ A Steps component. Replace this sentence with a one-line purpose statement once 
 <Steps />
 ```
 
+## Interactive steps
+
+A step is static text by default. Give a `StepItem` an `href` or an `onclick`
+and its body (label + description) becomes a focusable control — an `<a>` for
+`href`, a `<button>` for `onclick`. The marker circle and the connector line
+stay decorative, so only the body region is clickable and the marker never
+joins the accessible name.
+
+```svelte
+const steps = [
+  { id: 'account', label: 'Account', href: '#account' },
+  { id: 'profile', label: 'Profile', onclick: () => goToProfile() },
+  { id: 'review', label: 'Review' }, // plain, non-interactive
+];
+```
+
+When a step has both `href` and `onclick`, it renders as a link and still runs
+the callback on click — the consumer decides whether to `preventDefault` (for
+SPA routing interception, analytics, or confirmation). For the current step,
+`aria-current="step"` moves onto the interactive element; static steps keep it
+on the list item.
+
 ## Props
 
 <!-- generated:props:start -->

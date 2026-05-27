@@ -46,10 +46,7 @@ describe('restoreFocusTo', () => {
   test('returns false when ownerDocument differs from document', () => {
     // Create an element in a different document context (e.g., parsed from
     // a DOMParser instance) so its ownerDocument is not the active document.
-    const otherDocument = new DOMParser().parseFromString(
-      '<button id="x">x</button>',
-      'text/html',
-    );
+    const otherDocument = new DOMParser().parseFromString('<button id="x">x</button>', 'text/html');
     const stranger = otherDocument.getElementById('x') as HTMLButtonElement;
     // Adopt it into the live document body so isConnected becomes true,
     // but keep ownerDocument pointing at the parsed document. Note: in

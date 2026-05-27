@@ -2684,7 +2684,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  log('ERROR', (error as Error).message);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    log('ERROR', (error as Error).message);
+    process.exit(1);
+  });
+}

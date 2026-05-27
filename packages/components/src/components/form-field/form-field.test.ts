@@ -9,9 +9,8 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: FormField } = await import('./form-field.svelte');
 const { default: FormFieldProbe } = await import('../../test/fixtures/form-field-probe.svelte');
-const { default: FormFieldContextProbe } = await import(
-  '../../test/fixtures/form-field-context-probe.svelte'
-);
+const { default: FormFieldContextProbe } =
+  await import('../../test/fixtures/form-field-context-probe.svelte');
 
 const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,

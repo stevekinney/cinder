@@ -7,16 +7,23 @@
  * (notifications enabled, dark mode, etc.). For a toggle button that
  * changes the state of something else without representing a binary
  * on/off (e.g. bold formatting), use Button with `aria-pressed`.
+ *
+ * The component renders its own label next to the switch, so consumers do not
+ * hand-roll an external one. `label` is always the accessible name (wired via
+ * `aria-labelledby`); `hideLabel` changes only the visual presentation and
+ * never removes the accessible name.
  */
 export type ToggleProps = {
-  /** Native id placed on the `<button>` so an external `<label for="…">` can reference it. */
+  /** Native id placed on the `<button>`; the rendered label uses `aria-labelledby` to name it (label id is derived as `${id}-label`). */
   id: string;
   /** Whether the toggle is currently checked. Bindable — defaults to false. */
   checked?: boolean;
-  /** Visible accessible name placed on `aria-label`. Required. */
+  /** Visible label text. Always the accessible name, even when `hideLabel` is set. Required. */
   label: string;
   /** Prevents interaction when true. Sets `disabled` attribute. */
   disabled?: boolean;
-  /** Additional class names merged with `.cinder-toggle`. */
+  /** Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts. */
+  hideLabel?: boolean;
+  /** Additional class names merged with `.cinder-toggle` on the switch button. */
   class?: string;
 };
