@@ -233,6 +233,22 @@ describe('ContextMenu', () => {
     await waitFor(() => expect(queryMenu()).toBeNull());
   });
 
+  test('outside pointerdown restores the captured focus instead of the focusable trigger wrapper', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const outside = container.querySelector('.context-menu-selection') as HTMLElement;
+    region.tabIndex = 0;
+    triggerButton.focus();
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await fireEvent.pointerDown(outside);
+
+    await waitFor(() => expect(queryMenu()).toBeNull());
+    expect(document.activeElement).toBe(triggerButton);
+  });
+
   test('keyboard context menu keys open at the focused target edge', async () => {
     const { container } = render(ContextMenuHarness);
     const button = container.querySelector('.context-menu-button') as HTMLButtonElement;

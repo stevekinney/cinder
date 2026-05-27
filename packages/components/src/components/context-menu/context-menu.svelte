@@ -111,7 +111,6 @@
     if (!(target instanceof Node)) return;
     if (menuElement?.contains(target) || triggerElement?.contains(target)) return;
     close();
-    focusTrigger();
   }
 
   setContext<DropdownContext>(DROPDOWN_CONTEXT, {
