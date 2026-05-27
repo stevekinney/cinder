@@ -118,6 +118,9 @@ export type { ClusterProps } from './components/cluster/index.ts';
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
 
+export { default as Collapsible } from './components/collapsible/index.ts';
+export type { CollapsibleProps, CollapsibleTriggerState } from './components/collapsible/index.ts';
+
 export { default as ColorField } from './components/color-field/index.ts';
 export type { ColorFieldFormat, ColorFieldProps } from './components/color-field/index.ts';
 
@@ -149,6 +152,13 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
+
+export { default as Container } from './components/container/index.ts';
+export type {
+  ContainerElement,
+  ContainerMaxWidth,
+  ContainerProps,
+} from './components/container/index.ts';
 
 export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
