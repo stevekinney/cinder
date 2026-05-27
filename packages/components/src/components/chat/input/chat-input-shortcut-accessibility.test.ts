@@ -68,9 +68,16 @@ describe('MarkdownEditor — aria-describedby forwarding', () => {
     expect(markdownEditorSource).toMatch(/\{\.\.\.rest\}/);
   });
 
-  test('passes aria-describedby explicitly to the wrapper element', () => {
-    // aria-describedby must be explicitly set on the wrapper div
-    expect(markdownEditorSource).toMatch(/aria-describedby=\{ariaDescribedby\}/);
+  test('does not put aria-describedby on the non-interactive wrapper div', () => {
+    // The wrapper div has no ARIA role and is not focusable, so carrying
+    // aria-describedby there is redundant with the focusable surfaces and risks
+    // double-announcement. The attribute belongs only on the textarea and the
+    // ProseMirror view.dom (asserted below).
+    const wrapperOpenTag = markdownEditorSource.match(
+      /<div\s+bind:this=\{wrapperElement\}[\s\S]*?>/,
+    );
+    expect(wrapperOpenTag).not.toBeNull();
+    expect(wrapperOpenTag?.[0]).not.toMatch(/aria-describedby/);
   });
 
   test('applies aria-describedby to the source textarea', () => {

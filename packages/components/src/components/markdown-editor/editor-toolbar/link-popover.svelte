@@ -30,7 +30,6 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte';
   import {
     computePosition,
     autoUpdate,
@@ -96,11 +95,6 @@
       positionReady = false;
       positionStyle = '';
     };
-  });
-
-  onDestroy(() => {
-    positionReady = false;
-    positionStyle = '';
   });
 
   // Form state (reset by $effect when popover opens)
@@ -217,7 +211,7 @@
   class={classNames('link-popover', className)}
   style={anchorElement ? positionStyle : undefined}
   data-position-ready={anchorElement ? positionReady : undefined}
-  aria-hidden={anchorElement && !positionReady ? 'true' : undefined}
+  inert={anchorElement && !positionReady ? true : undefined}
   {@attach createFocusTrap()}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}

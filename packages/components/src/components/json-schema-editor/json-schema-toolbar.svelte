@@ -59,22 +59,33 @@
     );
   }
 
+  // The set of enabled actions depends on these editor-state fields. Deriving a
+  // signature value makes the dependency explicit so the roving $effect re-runs
+  // whenever participation could change — rather than relying on `void` reads,
+  // which only track correctly when `editorState` happens to be a $state proxy.
+  const participationSignature = $derived(
+    `${editorState.canUndo}|${editorState.canRedo}|${editorState.hasChanges}|${editorState.readonly}|${editorState.copyValue}`,
+  );
+
   /**
-   * Apply roving tabindex: exactly one enabled button gets tabindex=0,
-   * all others get tabindex=-1. When the current rovingIndex goes out of
-   * range (e.g. the previously-roved button becomes disabled), reset to 0
-   * and optionally move DOM focus there if focus was inside the toolbar.
+   * Apply roving tabindex: exactly one enabled button gets tabindex=0, all
+   * others get tabindex=-1. When the current rovingIndex goes out of range
+   * (e.g. the previously-roved button becomes disabled), reset to the first
+   * enabled action and move DOM focus there only if focus was inside the
+   * toolbar.
    */
   $effect(() => {
-    // Track reactive state so Svelte re-runs this effect when it changes.
-    void editorState.canUndo;
-    void editorState.canRedo;
-    void editorState.hasChanges;
-    void editorState.readonly;
-    void editorState.copyValue;
+    // Reading the signature subscribes the effect to every state field that can
+    // change which actions are enabled.
+    void participationSignature;
 
     const buttons = getActionButtons();
-    if (buttons.length === 0) return;
+    if (buttons.length === 0) {
+      // No enabled actions: nothing to rove. Reset the index so a future
+      // re-enable starts from the first action rather than a stale offset.
+      rovingIndex = 0;
+      return;
+    }
 
     // Clamp the roving index to the current participant count.
     let activeIndex = rovingIndex;

@@ -80,6 +80,12 @@
   let previousCommentCount = $state<number | null>(null);
   let liveAnnouncementText = $state('');
 
+  // This effect writes to the same $state it reads (previousCommentCount), which
+  // would normally loop. It does not: each run sets previousCommentCount equal
+  // to commentCount, so the re-run triggered by that write hits the
+  // `commentCount === previousCommentCount` guard and exits without writing
+  // again. Keep that invariant if you edit this — only write when the values
+  // differ.
   $effect(() => {
     // Do not announce on initial render — only on subsequent changes.
     if (previousCommentCount === null) {

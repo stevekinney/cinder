@@ -324,21 +324,19 @@
         const from = view.state.selection.from;
         const coords = view.coordsAtPos(from);
         if (coords && coords.top > 0) {
-          const rect: DOMRect = {
-            x: coords.left,
-            y: coords.top,
-            width: coords.right - coords.left,
-            height: coords.bottom - coords.top,
-            top: coords.top,
-            right: coords.right,
-            bottom: coords.bottom,
-            left: coords.left,
-            toJSON() {
-              return this;
-            },
-          };
+          // Floating UI's VirtualElement only needs getBoundingClientRect to
+          // return a rect-shaped object — no DOMRect instance or toJSON needed.
           return {
-            getBoundingClientRect: () => rect,
+            getBoundingClientRect: () => ({
+              x: coords.left,
+              y: coords.top,
+              width: coords.right - coords.left,
+              height: coords.bottom - coords.top,
+              top: coords.top,
+              right: coords.right,
+              bottom: coords.bottom,
+              left: coords.left,
+            }),
           };
         }
       } catch {
@@ -614,7 +612,6 @@
   data-mode={mode}
   data-has-toolbar={toolbarVisible || undefined}
   data-snapshot-mode={snapshotMode || undefined}
-  aria-describedby={ariaDescribedby}
   {...rest}
 >
   {#if toolbarVisible}
