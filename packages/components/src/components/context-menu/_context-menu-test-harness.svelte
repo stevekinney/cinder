@@ -9,11 +9,20 @@
     longPressDelay = 500,
     open = false,
     anchorPoint,
+    triggerHandlers = {},
   }: {
     disabled?: boolean;
     longPressDelay?: number;
     open?: boolean;
     anchorPoint?: { x: number; y: number };
+    triggerHandlers?: {
+      onclick?: (event: MouseEvent) => void;
+      oncontextmenu?: (event: MouseEvent) => void;
+      onkeydown?: (event: KeyboardEvent) => void;
+      onpointerdown?: (event: PointerEvent) => void;
+      onpointermove?: (event: PointerEvent) => void;
+      onpointerup?: (event: PointerEvent) => void;
+    };
   } = $props();
 </script>
 
@@ -23,7 +32,7 @@
 {/snippet}
 
 <ContextMenu {disabled} {longPressDelay} {open} {anchorPoint}>
-  <ContextMenuTrigger class="context-menu-region">
+  <ContextMenuTrigger class="context-menu-region" {...triggerHandlers}>
     <button type="button" class="context-menu-button">File one.txt</button>
   </ContextMenuTrigger>
   <DropdownMenu>

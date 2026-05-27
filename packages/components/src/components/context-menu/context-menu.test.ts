@@ -64,6 +64,49 @@ describe('ContextMenu', () => {
     expect(computePositionSpy).toHaveBeenCalled();
   });
 
+  test('consumer trigger handlers do not replace core context-menu handlers', async () => {
+    const triggerContextMenu = mock(() => {});
+    const triggerPointerDown = mock(() => {});
+    const triggerPointerMove = mock(() => {});
+    const triggerPointerUp = mock(() => {});
+    const triggerKeyDown = mock(() => {});
+    const triggerClick = mock(() => {});
+    const { container } = render(ContextMenuHarness, {
+      props: {
+        longPressDelay: 0,
+        triggerHandlers: {
+          onclick: triggerClick,
+          oncontextmenu: triggerContextMenu,
+          onkeydown: triggerKeyDown,
+          onpointerdown: triggerPointerDown,
+          onpointermove: triggerPointerMove,
+          onpointerup: triggerPointerUp,
+        },
+      },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => {
+      expect(queryMenu()?.getAttribute('data-cinder-requested-x')).toBe('24');
+      expect(queryMenu()?.getAttribute('data-cinder-requested-y')).toBe('36');
+    });
+    expect(triggerContextMenu).toHaveBeenCalledTimes(1);
+
+    await fireEvent.click(region);
+    await fireEvent.keyDown(region, { key: 'Escape' });
+    await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
+    await fireEvent.pointerMove(region, { pointerType: 'touch', clientX: 15, clientY: 18 });
+    await fireEvent.pointerUp(region, { pointerType: 'touch' });
+
+    expect(triggerPointerDown).toHaveBeenCalledTimes(1);
+    expect(triggerPointerMove).toHaveBeenCalledTimes(1);
+    expect(triggerPointerUp).toHaveBeenCalledTimes(1);
+    expect(triggerClick).toHaveBeenCalledTimes(1);
+    expect(triggerKeyDown).toHaveBeenCalledTimes(1);
+  });
+
   test('right-clicking again while open repositions to the latest pointer coordinates', async () => {
     const { container } = render(ContextMenuHarness);
     const region = container.querySelector('.context-menu-region') as HTMLElement;

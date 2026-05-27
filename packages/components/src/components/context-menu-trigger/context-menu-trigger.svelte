@@ -29,7 +29,19 @@
     throw new Error('ContextMenu.Trigger must be used within a ContextMenu.');
   }
 
-  let { class: className, children, ...rest }: ContextMenuTriggerProps = $props();
+  let {
+    class: className,
+    children,
+    oncontextmenu,
+    onpointerdown,
+    onpointerup,
+    onpointercancel,
+    onpointerleave,
+    onpointermove,
+    onkeydown,
+    onclick,
+    ...rest
+  }: ContextMenuTriggerProps = $props();
 
   const registerTrigger =
     getContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER_TRIGGER);
@@ -41,6 +53,10 @@
   let startY = 0;
   let suppressClick = false;
   let suppressNextContextmenuUntil = 0;
+
+  type TriggerEvent<EventType extends Event> = EventType & {
+    currentTarget: EventTarget & HTMLDivElement;
+  };
 
   $effect(() => {
     registerTrigger(triggerElement);
@@ -54,19 +70,37 @@
     longPressTimer = undefined;
   }
 
+  function callTriggerHandler<EventType extends Event>(
+    handler: ((event: TriggerEvent<EventType>) => void) | null | undefined,
+    event: EventType,
+  ) {
+    handler?.(event as TriggerEvent<EventType>);
+  }
+
   function handleContextmenu(event: MouseEvent) {
-    if (context.disabled) return;
+    if (context.disabled) {
+      callTriggerHandler(oncontextmenu, event);
+      return;
+    }
     if (Date.now() < suppressNextContextmenuUntil) {
       event.preventDefault();
+      callTriggerHandler(oncontextmenu, event);
       return;
     }
     event.preventDefault();
     context.openAt(event.clientX, event.clientY);
+    callTriggerHandler(oncontextmenu, event);
   }
 
   function handlePointerdown(event: PointerEvent) {
-    if (context.disabled) return;
-    if (event.pointerType !== 'touch') return;
+    if (context.disabled) {
+      callTriggerHandler(onpointerdown, event);
+      return;
+    }
+    if (event.pointerType !== 'touch') {
+      callTriggerHandler(onpointerdown, event);
+      return;
+    }
     startX = event.clientX;
     startY = event.clientY;
     clearLongPress();
@@ -75,28 +109,55 @@
       suppressClick = true;
       context.openAt(startX, startY);
     }, context.longPressDelay);
+    callTriggerHandler(onpointerdown, event);
   }
 
   function handlePointermove(event: PointerEvent) {
     if (Math.hypot(event.clientX - startX, event.clientY - startY) > 10) {
       clearLongPress();
     }
+    callTriggerHandler(onpointermove, event);
   }
 
   function handleClick(event: MouseEvent) {
-    if (!suppressClick) return;
+    if (!suppressClick) {
+      callTriggerHandler(onclick, event);
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     suppressClick = false;
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (context.disabled) return;
-    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
+    if (context.disabled) {
+      callTriggerHandler(onkeydown, event);
+      return;
+    }
+    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) {
+      callTriggerHandler(onkeydown, event);
+      return;
+    }
     event.preventDefault();
     const target = event.target instanceof HTMLElement ? event.target : triggerElement;
     const rect = target?.getBoundingClientRect() ?? triggerElement?.getBoundingClientRect();
     context.openAt(rect?.left ?? 0, rect?.bottom ?? 0);
+    callTriggerHandler(onkeydown, event);
+  }
+
+  function handlePointerup(event: PointerEvent) {
+    clearLongPress();
+    callTriggerHandler(onpointerup, event);
+  }
+
+  function handlePointercancel(event: PointerEvent) {
+    clearLongPress();
+    callTriggerHandler(onpointercancel, event);
+  }
+
+  function handlePointerleave(event: PointerEvent) {
+    clearLongPress();
+    callTriggerHandler(onpointerleave, event);
   }
 </script>
 
@@ -105,9 +166,9 @@
   class={classNames('cinder-context-menu-trigger', className)}
   oncontextmenu={handleContextmenu}
   onpointerdown={handlePointerdown}
-  onpointerup={clearLongPress}
-  onpointercancel={clearLongPress}
-  onpointerleave={clearLongPress}
+  onpointerup={handlePointerup}
+  onpointercancel={handlePointercancel}
+  onpointerleave={handlePointerleave}
   onpointermove={handlePointermove}
   onkeydown={handleKeydown}
   onclick={handleClick}
