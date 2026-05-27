@@ -46,6 +46,9 @@
   Empty query
 </button>
 <button type="button" data-testid="close" onclick={() => (open = false)}>Close</button>
+<button type="button" data-testid="clear-anchor" onclick={() => (textareaElement = null)}>
+  Clear anchor
+</button>
 <button type="button" data-testid="advance-caret" onclick={() => (caretIndex += 1)}>
   Advance caret
 </button>

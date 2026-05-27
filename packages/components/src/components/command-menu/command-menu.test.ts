@@ -99,6 +99,21 @@ describe('CommandMenu', () => {
     expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
   });
 
+  test('captures the current anchor for lazy virtual element reads', async () => {
+    const { getByTestId } = render(CommandMenuFixture);
+    await waitFor(() => expect(autoUpdateSpy).toHaveBeenCalledTimes(1));
+    const firstCall = autoUpdateSpy.mock.calls[0] as
+      | [{ getBoundingClientRect: () => DOMRect }, HTMLElement, () => void]
+      | undefined;
+    expect(firstCall).toBeDefined();
+    const [reference] = firstCall!;
+
+    await fireEvent.click(getByTestId('clear-anchor'));
+    await settleCommandMenu();
+
+    expect(() => reference.getBoundingClientRect()).not.toThrow();
+  });
+
   test('keyboard navigation skips disabled items and selects through the menu callback', async () => {
     const selected: Array<{ value: string; query: string }> = [];
     render(CommandMenuFixture, {
