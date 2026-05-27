@@ -20,7 +20,7 @@ import type { StatusDotProps } from './status-dot.types.ts';
 // at the start of the migration. This anchors the public surface so future
 // refactors must explicitly update both the migrated type AND this snapshot.
 
-type SnapshotStatusDotStatus = 'online' | 'offline' | 'warning' | 'error' | 'building' | 'neutral';
+type SnapshotStatusDotStatus = 'online' | 'offline' | 'warning' | 'error' | 'pending' | 'neutral';
 
 type SnapshotStatusDotSize = 'sm' | 'md';
 

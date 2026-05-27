@@ -241,6 +241,18 @@
   border-color: transparent;
 }
 
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
+  background: var(--cinder-surface);
+  background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+  border-color: var(--cinder-border-muted);
+}
+
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
+  background: var(--cinder-color-danger-bg);
+  background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
+  border-color: var(--cinder-color-danger-border);
+}
+
 .cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
 .cinder-button[data-cinder-variant='ghost'][aria-disabled='true']:not([data-cinder-loading]) {
   background: transparent;
@@ -255,6 +267,12 @@
   border-color: transparent;
 }
 
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading] {
+  background: var(--cinder-color-danger-bg);
+  background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
+  border-color: var(--cinder-color-danger-border);
+}
+
 .cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
 .cinder-button[data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
     [data-cinder-loading]
@@ -262,6 +280,24 @@
   background: transparent;
   color: var(--cinder-danger);
   border-color: transparent;
+  opacity: 0.6;
+}
+
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:disabled:not(
+    [data-cinder-loading]
+  ),
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'][aria-disabled='true']:not(
+    [data-cinder-loading]
+  ),
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:disabled:not(
+    [data-cinder-loading]
+  ),
+.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
+    [data-cinder-loading]
+  ) {
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-disabled);
+  border-color: var(--cinder-border-muted);
   opacity: 0.6;
 }
 
@@ -335,6 +371,13 @@
 
   .cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
     background: var(--cinder-surface-hover);
+  }
+
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:hover:not(:disabled):not(
+      [aria-disabled='true']
+    ) {
+    background: var(--cinder-surface-hover);
+    border-color: var(--cinder-border);
     color: var(--cinder-text);
   }
 
@@ -342,6 +385,14 @@
       [aria-disabled='true']
     ) {
     background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+  }
+
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:hover:not(
+      :disabled
+    ):not([aria-disabled='true']) {
+    background: var(--cinder-color-danger-bg);
+    border-color: var(--cinder-color-danger-border);
     color: var(--cinder-color-danger-fg);
   }
 
@@ -392,4 +443,18 @@
   ) {
   background: var(--cinder-danger);
   color: var(--cinder-danger-contrast);
+}
+
+@media (forced-colors: active) {
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
+    background: ButtonFace;
+    border-color: ButtonBorder;
+    color: ButtonText;
+  }
+
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
+    background: ButtonFace;
+    border-color: ButtonBorder;
+    color: ButtonText;
+  }
 }

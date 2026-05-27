@@ -64,12 +64,6 @@
     return variant === 'info' || variant === 'success';
   }
 
-  function findStack(id: string): ToastItem[] | null {
-    if (politeStack.some((t) => t.id === id)) return politeStack;
-    if (assertiveStack.some((t) => t.id === id)) return assertiveStack;
-    return null;
-  }
-
   function show(message: string, options: ToastOptions = {}): string {
     const id = options.id ?? `cinder-toast-${++nextId}`;
     const variant = options.variant ?? 'info';
@@ -81,6 +75,7 @@
       variant,
       duration,
       dismissible,
+      ...(options.icon ? { icon: options.icon } : {}),
       ...(options.action ? { action: options.action } : {}),
     };
 
@@ -151,9 +146,6 @@
     // doesn't leak timers that fire later and try to mutate disposed state.
     for (const id of timers.keys()) clearTimer(id);
   });
-  // Reference findStack so the linter doesn't drop it; reserved for future
-  // diagnostics that need to know which region holds a given toast.
-  void findStack;
 </script>
 
 {#if children}
@@ -179,6 +171,9 @@
           data-cinder-variant={toast.variant}
           data-cinder-toast-id={toast.id}
         >
+          {#if toast.icon}
+            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+          {/if}
           <div class="cinder-toast__message">{toast.message}</div>
           {#if toast.action}
             <button
@@ -220,6 +215,9 @@
           data-cinder-variant={toast.variant}
           data-cinder-toast-id={toast.id}
         >
+          {#if toast.icon}
+            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+          {/if}
           <div class="cinder-toast__message">{toast.message}</div>
           {#if toast.action}
             <button

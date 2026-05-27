@@ -64,3 +64,5 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 - `danger`: high-emphasis destructive action.
 - `ghost`: low-emphasis, transparent background.
 - `ghost-danger`: low-emphasis destructive action.
+
+Icon-only `ghost` and `ghost-danger` buttons keep a subtle resting border/background because there is no visible text label to provide the clickable affordance.
