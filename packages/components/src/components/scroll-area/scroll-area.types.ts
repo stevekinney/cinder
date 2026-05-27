@@ -42,11 +42,10 @@ export type ScrollAreaProps = Omit<
    */
   ariaLabel?: string;
   /**
-   * Override the default focusable behavior. The component sets `tabindex="0"`
-   * by default so keyboard users can scroll the viewport with arrow keys.
-   * Pass `tabindex={-1}` to opt out when the scroll area wraps content that
-   * is guaranteed not to overflow, or when the container is focused
-   * programmatically rather than via tab order.
+   * Override the default focus behavior. The component sets `tabindex="0"`
+   * by default so keyboard users can reach the viewport for arrow-key
+   * scrolling. Pass `tabindex={-1}` when the viewport should be programmatically
+   * focusable without entering the tab order.
    */
   tabindex?: number;
   /** Element tag to render. Defaults to `'div'`. */

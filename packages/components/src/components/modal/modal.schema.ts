@@ -1,46 +1,7 @@
 import type { ComponentSchema } from '../../schema-types';
 
-const schema = {
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  type: 'object',
-  properties: {
-    open: {
-      type: 'boolean',
-    },
-    title: {
-      type: 'string',
-    },
-    class: {
-      type: 'string',
-    },
-    describedById: {
-      type: 'string',
-      description:
-        'When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only.',
-    },
-  },
-  additionalProperties: false,
-  required: ['open', 'title'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'children',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'footer',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'ondismiss',
-        reason: 'function-or-snippet',
-      },
-      {
-        name: 'triggerRef',
-        reason: 'unknown-shape',
-      },
-    ],
-  },
-} satisfies ComponentSchema;
+const schema = JSON.parse(
+  '{\n  "$schema": "https://json-schema.org/draft/2020-12/schema",\n  "type": "object",\n  "properties": {\n    "open": {\n      "type": "boolean"\n    },\n    "title": {\n      "type": "string"\n    },\n    "dismissOnBackdropClick": {\n      "type": "boolean"\n    },\n    "dismissOnEscape": {\n      "type": "boolean"\n    },\n    "showCloseButton": {\n      "type": "boolean"\n    },\n    "class": {\n      "type": "string"\n    },\n    "role": {\n      "enum": [\n        "dialog",\n        "alertdialog"\n      ]\n    },\n    "describedById": {\n      "type": "string",\n      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only."\n    }\n  },\n  "additionalProperties": false,\n  "required": [\n    "open",\n    "title"\n  ],\n  "metadata": {\n    "unsupportedProps": [\n      {\n        "name": "children",\n        "reason": "function-or-snippet"\n      },\n      {\n        "name": "footer",\n        "reason": "function-or-snippet"\n      },\n      {\n        "name": "ondismiss",\n        "reason": "function-or-snippet"\n      },\n      {\n        "name": "triggerRef",\n        "reason": "unknown-shape"\n      }\n    ]\n  },\n  "allOf": [\n    {\n      "if": {\n        "properties": {\n          "role": {\n            "const": "alertdialog"\n          }\n        },\n        "required": [\n          "role"\n        ]\n      },\n      "then": {\n        "required": [\n          "describedById"\n        ]\n      }\n    }\n  ]\n}',
+) as ComponentSchema;
 
-export default schema as ComponentSchema;
+export default schema;

@@ -16,6 +16,15 @@ export const valid: ComponentAttributes[] = [
 
   // Modal with all props
   { title: 'Edit profile', open: false, children: true, footer: true, describedById: 'edit-desc' },
+
+  // role="alertdialog" with a description source
+  {
+    title: 'Session expired',
+    role: 'alertdialog',
+    open: true,
+    children: true,
+    describedById: 'session-desc',
+  },
 ];
 
 /**
@@ -38,5 +47,11 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
   {
     attributes: { open: true, children: true },
     violates: 'accessible-title',
+  },
+
+  // violates: alertdialog-description — alertdialog role requires describedById
+  {
+    attributes: { title: 'Session expired', role: 'alertdialog', open: true, children: true },
+    violates: 'alertdialog-description',
   },
 ];

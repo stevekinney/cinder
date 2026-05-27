@@ -20,6 +20,11 @@
   padding-block: var(--cinder-space-3);
   padding-inline: var(--cinder-space-4);
   border: 1px solid var(--cinder-border);
+  /* Dominant directional stripe; the saturated color is set per variant via
+   * border-inline-start-color. Width is theme-independent, so the stripe is
+   * 4px in both light and dark. This is the cue that distinguishes Callout
+   * (static prose aside) from Alert (live-region notification, stripe-free). */
+  border-inline-start-width: 4px;
   border-radius: var(--cinder-radius-md);
   background: var(--cinder-surface);
   color: var(--cinder-text);
@@ -97,6 +102,12 @@
     oklch(from var(--cinder-info) 35% 0.12 h),
     oklch(from var(--cinder-info) 88% 0.12 h)
   );
+  /* Saturated stripe — declared after border-color so the inline-start edge
+   * resolves to this high-chroma rule rather than the soft border above. */
+  border-inline-start-color: light-dark(
+    oklch(from var(--cinder-info) 55% 0.13 h),
+    oklch(from var(--cinder-info) 70% 0.13 h)
+  );
 }
 
 /* ----------------------------------------
@@ -115,6 +126,10 @@
   color: light-dark(
     oklch(from var(--cinder-success) 35% 0.14 h),
     oklch(from var(--cinder-success) 88% 0.12 h)
+  );
+  border-inline-start-color: light-dark(
+    oklch(from var(--cinder-success) 55% 0.14 h),
+    oklch(from var(--cinder-success) 70% 0.14 h)
   );
 }
 
@@ -135,6 +150,10 @@
     oklch(from var(--cinder-warning) 35% 0.16 h),
     oklch(from var(--cinder-warning) 88% 0.14 h)
   );
+  border-inline-start-color: light-dark(
+    oklch(from var(--cinder-warning) 55% 0.16 h),
+    oklch(from var(--cinder-warning) 70% 0.16 h)
+  );
 }
 
 /* ----------------------------------------
@@ -154,6 +173,10 @@
     oklch(from var(--cinder-danger) 35% 0.18 h),
     oklch(from var(--cinder-danger) 88% 0.16 h)
   );
+  border-inline-start-color: light-dark(
+    oklch(from var(--cinder-danger) 55% 0.18 h),
+    oklch(from var(--cinder-danger) 70% 0.18 h)
+  );
 }
 
 /* ----------------------------------------
@@ -163,5 +186,10 @@
 @media (forced-colors: active) {
   .cinder-callout {
     border: 1px solid CanvasText;
+    /* Preserve the directional stripe when oklch color is unavailable: the
+     * 4px inline-start edge survives as the differentiating cue even though
+     * its color collapses to CanvasText along with the rest of the box. */
+    border-inline-start-width: 4px;
+    border-inline-start-color: CanvasText;
   }
 }

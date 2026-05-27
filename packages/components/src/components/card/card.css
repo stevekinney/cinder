@@ -36,7 +36,7 @@
 .cinder-card__title {
   font-size: var(--cinder-text-sm);
   font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text-muted);
+  color: var(--cinder-text);
   margin: 0;
 }
 

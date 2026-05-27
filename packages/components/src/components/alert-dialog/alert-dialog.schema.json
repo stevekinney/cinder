@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "open": {
+      "type": "boolean"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "acknowledgeLabel": {
+      "type": "string"
+    },
+    "cancelLabel": {
+      "type": "string"
+    },
+    "destructive": {
+      "type": "boolean"
+    },
+    "class": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["description", "open", "title"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onacknowledge",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "oncancel",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "triggerRef",
+        "reason": "unknown-shape"
+      }
+    ]
+  }
+}

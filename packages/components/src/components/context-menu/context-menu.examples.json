@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "context-menu",
+  "import": "cinder/context-menu",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic context menu",
+      "description": "A right-click menu positioned at the pointer using dropdown menu parts.",
+      "code": "<script lang=\"ts\">\n  import { ContextMenu } from 'cinder';\n</script>\n\n<ContextMenu>\n  <ContextMenu.Trigger>\n    <button type=\"button\">Right-click this region</button>\n  </ContextMenu.Trigger>\n\n  <ContextMenu.Menu>\n    <ContextMenu.Item onclick={() => {}}>Cut</ContextMenu.Item>\n    <ContextMenu.Item onclick={() => {}}>Copy</ContextMenu.Item>\n    <ContextMenu.Separator />\n    <ContextMenu.Item variant=\"danger\" onclick={() => {}}>Delete</ContextMenu.Item>\n  </ContextMenu.Menu>\n</ContextMenu>\n"
+    }
+  ]
+}
