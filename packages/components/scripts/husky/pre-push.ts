@@ -13,6 +13,7 @@ import {
   hasRootConfigurationChanges,
   header,
   info,
+  installHookProcessCleanup,
   isContinuousIntegration,
   isIgnorableDoc,
   isSourceFile,
@@ -20,6 +21,7 @@ import {
   loadWorkspacePackages,
   parsePushRefs,
   REPO_ROOT,
+  runHookCommand,
   success,
   warning,
   withGateLock,
@@ -30,6 +32,10 @@ if (isContinuousIntegration()) {
   info('Skipping hook in CI');
   process.exit(0);
 }
+
+// Install descendant-process cleanup so an interrupted push (Ctrl-C) doesn't
+// leave orphaned `bun run` children behind.
+installHookProcessCleanup();
 
 const SCRIPTS = ['lint', 'typecheck', 'test'] as const;
 type Script = (typeof SCRIPTS)[number];
@@ -78,17 +84,22 @@ const git: GitRunner = {
   },
 };
 
-/** Run one `bun run --filter` invocation, capturing output for later display. */
+/**
+ * Run one `bun run --filter` invocation, capturing output for later display.
+ * Routed through `runHookCommand` (not `$`) so an interrupted push tears down
+ * descendant processes instead of orphaning them.
+ */
 async function runJob(job: Job): Promise<JobResult> {
-  const result = await $`bun run --filter=${job.packageName} ${job.script}`
-    .cwd(REPO_ROOT)
-    .nothrow()
-    .quiet();
+  const result = await runHookCommand('bun', ['run', `--filter=${job.packageName}`, job.script], {
+    cwd: REPO_ROOT,
+    stderr: 'pipe',
+    stdout: 'pipe',
+  });
   return {
     job,
     exitCode: result.exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
+    stdout: result.stdout,
+    stderr: result.stderr,
   };
 }
 
@@ -172,10 +183,14 @@ async function runFull(): Promise<boolean> {
   let ok = true;
   for (const script of SCRIPTS) {
     info(`Running ${script}…`);
-    try {
-      await $`bun run ${script}`.cwd(REPO_ROOT);
+    const result = await runHookCommand('bun', ['run', script], {
+      cwd: REPO_ROOT,
+      stderr: 'inherit',
+      stdout: 'inherit',
+    });
+    if (result.exitCode === 0) {
       success(`${script} passed`);
-    } catch {
+    } else {
       error(`${script} failed`);
       ok = false;
     }
@@ -206,7 +221,11 @@ async function runStylelint(files: readonly string[]): Promise<boolean> {
   if (!existsSync(stylelintBin)) {
     throw new Error(`local stylelint binary not found at ${stylelintBin}`);
   }
-  const result = await $`${stylelintBin} ${files}`.cwd(REPO_ROOT).nothrow();
+  const result = await runHookCommand(stylelintBin, [...files], {
+    cwd: REPO_ROOT,
+    stderr: 'inherit',
+    stdout: 'inherit',
+  });
   if (result.exitCode !== 0) {
     error(`stylelint failed (exit ${result.exitCode})`);
     return false;
