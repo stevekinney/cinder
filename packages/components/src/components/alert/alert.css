@@ -101,13 +101,19 @@
  * Variant: info
  *
  * NOTE (CSS audit, Batch D): The four status variants below intentionally
- * keep the inline `oklch(from var(--cinder-{status}) …)` math instead of
- * switching to the `--cinder-color-{status}-{bg,fg,border}` triples in
- * tokens-base.css. The dark-theme triple background sits 8 oklch-L points
- * lighter than the surface synthesized here (28% L vs 20% L), which exceeds
- * the audit's 0.02 ΔL threshold, and the light-theme triple border is
- * borderline on WCAG 1.4.11. See docs/css-audit/status-triple-equivalence.md
- * for the full pre-flight table.
+ * keep the inline `oklch(from var(--cinder-{status}) …)` math for
+ * background-color and color instead of switching to the
+ * `--cinder-color-{status}-{bg,fg,border}` triples in tokens-base.css. The
+ * dark-theme triple background sits 8 oklch-L points lighter than the surface
+ * synthesized here (28% L vs 20% L), which exceeds the audit's 0.02 ΔL
+ * threshold. See docs/css-audit/status-triple-equivalence.md for the table.
+ *
+ * NOTE (P7): The variant `border-color` is intentionally removed so every
+ * variant inherits the base `border: 1px solid var(--cinder-border)`. P7 sheds
+ * Alert's persistent status-colored frame; the directional color cue (an
+ * inline-start stripe) now belongs exclusively to Callout. Alert keeps its
+ * soft variant background tint and variant text color — only the colored frame
+ * is gone. Do not reintroduce any border-affecting declaration here.
  * ---------------------------------------- */
 
 .cinder-alert[data-cinder-variant='info'] {
@@ -117,10 +123,10 @@
     oklch(from var(--cinder-alert-info) 96.5% 0.015 h),
     oklch(from var(--cinder-alert-info) 20% 0.03 h)
   );
-  border-color: light-dark(
-    oklch(from var(--cinder-alert-info) 85% 0.05 h),
-    oklch(from var(--cinder-alert-info) 35% 0.08 h)
-  );
+  /* border-color intentionally omitted: every Alert variant falls through to
+   * the base `border: 1px solid var(--cinder-border)`. P7 sheds the persistent
+   * status-colored frame so Alert reads as a flat tinted notification, leaving
+   * the directional color cue (the stripe) exclusively to Callout. */
   color: light-dark(
     oklch(from var(--cinder-alert-info) 35% 0.12 h),
     oklch(from var(--cinder-alert-info) 88% 0.12 h)
@@ -138,10 +144,7 @@
     oklch(from var(--cinder-success) 96.5% 0.015 h),
     oklch(from var(--cinder-success) 20% 0.03 h)
   );
-  border-color: light-dark(
-    oklch(from var(--cinder-success) 85% 0.05 h),
-    oklch(from var(--cinder-success) 35% 0.08 h)
-  );
+  /* border-color intentionally omitted — inherits var(--cinder-border). */
   color: light-dark(
     oklch(from var(--cinder-success) 35% 0.14 h),
     oklch(from var(--cinder-success) 88% 0.12 h)
@@ -159,10 +162,7 @@
     oklch(from var(--cinder-warning) 96.5% 0.015 h),
     oklch(from var(--cinder-warning) 20% 0.03 h)
   );
-  border-color: light-dark(
-    oklch(from var(--cinder-warning) 85% 0.05 h),
-    oklch(from var(--cinder-warning) 35% 0.08 h)
-  );
+  /* border-color intentionally omitted — inherits var(--cinder-border). */
   color: light-dark(
     oklch(from var(--cinder-warning) 35% 0.16 h),
     oklch(from var(--cinder-warning) 88% 0.14 h)
@@ -180,10 +180,7 @@
     oklch(from var(--cinder-danger) 96.5% 0.015 h),
     oklch(from var(--cinder-danger) 20% 0.03 h)
   );
-  border-color: light-dark(
-    oklch(from var(--cinder-danger) 85% 0.05 h),
-    oklch(from var(--cinder-danger) 35% 0.08 h)
-  );
+  /* border-color intentionally omitted — inherits var(--cinder-border). */
   color: light-dark(
     oklch(from var(--cinder-danger) 35% 0.18 h),
     oklch(from var(--cinder-danger) 88% 0.16 h)
