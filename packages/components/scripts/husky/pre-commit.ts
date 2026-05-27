@@ -5,13 +5,13 @@ import {
   error,
   getStagedFiles,
   getTouchedPackages,
+  hasRootConfigurationChanges,
   header,
   info,
   installHookProcessCleanup,
   isContinuousIntegration,
   loadWorkspacePackages,
   REPO_ROOT,
-  rootConfigStaged,
   runHookCommand,
   success,
   warning,
@@ -82,7 +82,7 @@ if (lintStagedResult.exitCode === 0) {
 const staged = await getStagedFiles();
 
 // 4) Root config escalation → full workspace validate.
-if (rootConfigStaged(staged)) {
+if (hasRootConfigurationChanges(staged)) {
   warning('Root config file staged; escalating to full workspace typecheck + test');
   let escalationOk = true;
   try {
