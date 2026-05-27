@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic data list",
       "description": "Renders each item using the parameterized children snippet.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  const users = [\n    { name: 'Alice Chen', role: 'Engineer' },\n    { name: 'Bob Osei', role: 'Designer' },\n    { name: 'Carol Mwangi', role: 'Product' },\n  ];\n</script>\n\n<DataList items={users}>\n  {#snippet children(user)}\n    <div style=\"display: flex; justify-content: space-between; padding: 0.5rem 0;\">\n      <strong>{user.name}</strong>\n      <span style=\"color: var(--cinder-text-muted);\">{user.role}</span>\n    </div>\n  {/snippet}\n</DataList>\n"
+      "code": "<script lang=\"ts\">\n  import { Cluster } from 'cinder/cluster';\n  import { DataList } from 'cinder/data-list';\n\n  const users = [\n    { name: 'Alice Chen', role: 'Engineer' },\n    { name: 'Bob Osei', role: 'Designer' },\n    { name: 'Carol Mwangi', role: 'Product' },\n  ];\n</script>\n\n<DataList items={users}>\n  {#snippet children(user)}\n    <Cluster justify=\"space-between\">\n      <strong>{user.name}</strong>\n      <span style=\"color: var(--cinder-text-muted);\">{user.role}</span>\n    </Cluster>\n  {/snippet}\n</DataList>\n"
     },
     {
       "id": "empty",

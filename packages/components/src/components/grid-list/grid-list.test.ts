@@ -88,4 +88,14 @@ describe('GridList', () => {
     const items = container.querySelectorAll('ul.cinder-grid-list li.probe');
     expect(items.length).toBe(1);
   });
+
+  test('linked items lift on hover via :has()', async () => {
+    const css = await Bun.file(new URL('./grid-list.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-grid-list__item:has\(\.cinder-grid-list__link:hover\)\s*\{[\s\S]*?box-shadow:\s*var\(--cinder-shadow-md\)/,
+    );
+    expect(css).toMatch(
+      /\.cinder-grid-list__item:has\(\.cinder-grid-list__link:hover\)\s*\{[\s\S]*?border-color:\s*var\(--cinder-border\)/,
+    );
+  });
 });

@@ -62,14 +62,17 @@
 
 .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--added {
   background: var(--cinder-color-success-bg);
+  color: var(--cinder-color-success-fg);
 }
 
 .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--removed {
   background: var(--cinder-color-danger-bg);
+  color: var(--cinder-color-danger-fg);
 }
 
 .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--modified {
   background: var(--cinder-color-warning-bg);
+  color: var(--cinder-color-warning-fg);
 }
 
 /* compact + density="toolbar": opt the compact stat pills into the shared
