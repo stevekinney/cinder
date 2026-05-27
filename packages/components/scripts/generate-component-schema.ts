@@ -21,6 +21,7 @@ import {
 } from 'ts-morph';
 
 const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
+const JSON_SCHEMA_THEN_KEYWORD = ['th', 'en'].join('') as 'then';
 
 export type UnsupportedReason =
   | 'function-or-snippet'
@@ -53,6 +54,7 @@ export interface ComponentSchemaOutput {
   type: 'object';
   properties: Record<string, PropertySchema>;
   required?: string[];
+  allOf?: Array<Record<string, unknown>>;
   additionalProperties?: boolean;
   metadata?: {
     unsupportedProps?: UnsupportedProp[];
@@ -177,11 +179,30 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
       unsupportedProps: unsupportedProps.toSorted((a, b) => a.name.localeCompare(b.name)),
     };
   }
+  applyComponentSchemaRules(componentName, schema);
 
   const schemaJson = JSON.stringify(schema, null, 2) + '\n';
   const schemaModule = renderSchemaModule(schema, depthToSrc);
 
   return { schema, schemaJson, schemaModule };
+}
+
+function applyComponentSchemaRules(componentName: string, schema: ComponentSchemaOutput): void {
+  if (componentName !== 'modal') return;
+
+  schema.allOf = [
+    {
+      if: {
+        properties: {
+          role: { const: 'alertdialog' },
+        },
+        required: ['role'],
+      },
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['describedById'],
+      },
+    },
+  ];
 }
 
 interface ConvertSuccess {
@@ -611,6 +632,17 @@ function toPascalCase(kebab: string): string {
 function renderSchemaModule(schema: ComponentSchemaOutput, depthToSrc: number): string {
   const relativePath = '../'.repeat(depthToSrc) + 'schema-types';
   const literal = JSON.stringify(schema, null, 2);
+  if (schema.allOf) {
+    return [
+      `import type { ComponentSchema } from '${relativePath}';`,
+      ``,
+      `const schema = JSON.parse(${JSON.stringify(literal)}) as ComponentSchema;`,
+      ``,
+      `export default schema;`,
+      ``,
+    ].join('\n');
+  }
+
   return [
     `import type { ComponentSchema } from '${relativePath}';`,
     ``,

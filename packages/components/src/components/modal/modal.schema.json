@@ -8,8 +8,20 @@
     "title": {
       "type": "string"
     },
+    "dismissOnBackdropClick": {
+      "type": "boolean"
+    },
+    "dismissOnEscape": {
+      "type": "boolean"
+    },
+    "showCloseButton": {
+      "type": "boolean"
+    },
     "class": {
       "type": "string"
+    },
+    "role": {
+      "enum": ["dialog", "alertdialog"]
     },
     "describedById": {
       "type": "string",
@@ -37,5 +49,20 @@
         "reason": "unknown-shape"
       }
     ]
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": {
+            "const": "alertdialog"
+          }
+        },
+        "required": ["role"]
+      },
+      "then": {
+        "required": ["describedById"]
+      }
+    }
+  ]
 }

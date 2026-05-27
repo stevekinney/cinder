@@ -296,19 +296,54 @@ export const CONTRACT: Record<string, ComponentContract> = {
   },
 
   modal: {
-    kind: 'literal',
-    props: {
-      open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
-      title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-      // triggerRef: optional escape-hatch for focus restoration; TSTypeReference to HTMLElement|null.
-      // Excluded from strict contract validation — it is a lifecycle prop, not a data prop.
-      // Phase 4 ts-morph will cover the full type check.
-    },
-    snippets: {
-      children: s0(false),
-      footer: s0(true),
-    },
+    kind: 'union',
+    // ModalProps is a discriminated union of named aliases so TypeScript can require
+    // describedById when role="alertdialog". The AST-only contract checker validates
+    // union arity here; the component schema constraints cover the accessibility rule.
+    arms: [
+      {
+        kind: 'literal',
+        props: {
+          open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
+          title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+          dismissOnBackdropClick: {
+            optional: true,
+            type_kind: 'TSBooleanKeyword',
+            default: L(true),
+          },
+          dismissOnEscape: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          showCloseButton: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          role: { optional: true, type_kind: 'TSLiteralType', default: L('dialog') },
+          describedById: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+        },
+        snippets: {
+          children: s0(false),
+          footer: s0(true),
+        },
+      },
+      {
+        kind: 'literal',
+        props: {
+          open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
+          title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+          dismissOnBackdropClick: {
+            optional: true,
+            type_kind: 'TSBooleanKeyword',
+            default: L(true),
+          },
+          dismissOnEscape: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          showCloseButton: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          role: { optional: false, type_kind: 'TSLiteralType', default: REQUIRED },
+          describedById: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
+        },
+        snippets: {
+          children: s0(false),
+          footer: s0(true),
+        },
+      },
+    ],
   },
 
   'menu-bar': {
