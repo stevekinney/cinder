@@ -33,6 +33,7 @@ type GateLockFile = {
 };
 
 type GateLockOptions = {
+  readonly beforeMalformedLockStat?: () => void | Promise<void>;
   readonly isProcessAlive?: (pid: number) => boolean;
   readonly lockPath?: string;
   readonly malformedLockGraceMilliseconds?: number;
@@ -172,7 +173,14 @@ export async function withGateLock<T>(
 
       const existingLock = await readGateLock(lockPath);
       if (existingLock === null) {
-        const existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
+        await options.beforeMalformedLockStat?.();
+        let existingLockAgeMilliseconds = 0;
+        try {
+          existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
+        } catch (caught) {
+          if ((caught as NodeJS.ErrnoException).code === 'ENOENT') continue;
+          throw caught;
+        }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
           warning('Removing stale malformed pre-push gate lock.');
           await rm(lockPath, { force: true });

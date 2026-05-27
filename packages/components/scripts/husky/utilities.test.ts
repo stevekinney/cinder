@@ -228,19 +228,22 @@ describe('withGateLock', () => {
       const firstGateReleased = new Promise<void>((resolve) => {
         releaseFirstGate = resolve;
       });
+      let markFirstGateStarted!: () => void;
+      const firstGateStarted = new Promise<void>((resolve) => {
+        markFirstGateStarted = resolve;
+      });
       const entries: string[] = [];
 
       const firstGate = withGateLock(
         async () => {
           entries.push('first');
+          markFirstGateStarted();
           await firstGateReleased;
         },
         { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
       );
 
-      while (!(await Bun.file(lockPath).exists())) {
-        await Bun.sleep(1);
-      }
+      await firstGateStarted;
 
       const secondGate = withGateLock(
         async () => {
@@ -249,14 +252,19 @@ describe('withGateLock', () => {
         { lockPath, retryMilliseconds: 1, waitMilliseconds: 100 },
       );
 
-      await Bun.sleep(5);
-      expect(entries).toEqual(['first']);
+      try {
+        await Bun.sleep(5);
+        expect(entries).toEqual(['first']);
 
-      releaseFirstGate();
-      await Promise.all([firstGate, secondGate]);
+        releaseFirstGate();
+        await Promise.all([firstGate, secondGate]);
 
-      expect(entries).toEqual(['first', 'second']);
-      expect(await Bun.file(lockPath).exists()).toBe(false);
+        expect(entries).toEqual(['first', 'second']);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      } finally {
+        releaseFirstGate();
+        await firstGate;
+      }
     });
   });
 
@@ -297,6 +305,24 @@ describe('withGateLock', () => {
       ).rejects.toThrow('malformed lock');
 
       expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('retries when the lock disappears before malformed-lock age can be checked', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+
+      const result = await withGateLock(async () => 'retried after disappeared lock', {
+        beforeMalformedLockStat: async () => {
+          await rm(lockPath, { force: true });
+        },
+        lockPath,
+        retryMilliseconds: 1,
+        waitMilliseconds: 100,
+      });
+
+      expect(result).toBe('retried after disappeared lock');
+      expect(await Bun.file(lockPath).exists()).toBe(false);
     });
   });
 
