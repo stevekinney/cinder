@@ -203,6 +203,23 @@
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
     color: var(--cinder-text);
   }
+
+  /* Selected/pressed segments get hover feedback too, so they don't read as
+   * disabled. Darken the accent fill via the theme-aware accent-hover token
+   * while keeping the selected contrast color (inherited from the resting
+   * selected/pressed rules). A selected-but-disabled segment stays focusable
+   * and is marked with aria-disabled="true" rather than the native disabled
+   * attribute (see segmented-control.a11y.md / the C6 selected-but-disabled
+   * contract), so guard on BOTH :not(:disabled) and :not([aria-disabled='true'])
+   * to keep hover chrome off disabled segments. */
+  .cinder-segmented-control-option[data-cinder-selected]:hover:not(:disabled):not(
+      [aria-disabled='true']
+    ),
+  .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled):not(
+      [aria-disabled='true']
+    ) {
+    background: var(--cinder-accent-hover);
+  }
 }
 
 /* ── Focus ──────────────────────────────────────────────────────────────── */

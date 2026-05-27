@@ -204,11 +204,11 @@ describe('discoverSidebarComponents', () => {
 
   it('keeps the sidebar at or below the 86-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
-    // repository has grown well past that since then; adding the four new
-    // parent families (feed, grid-list, stat-group, side-navigation) landed
-    // the sidebar around 78, the three chart families (line, bar, area)
-    // bumped it to 82, and kanban-board took it to 86. Bump the gate in step
-    // with sidebar growth — it is a noise ceiling, not a hard invariant.
+    // repository has grown to 122 components since then; adding the four
+    // new parent families (feed, grid-list, stat-group, side-navigation)
+    // lands the sidebar around 78. The three chart families (line, bar,
+    // area) bumped it to 82. The P5 input and form audit brought the
+    // current sidebar to 86, so the product gate now tracks that baseline.
     const sidebar = await discoverSidebarComponents();
     expect(sidebar.length).toBeLessThanOrEqual(86);
   });

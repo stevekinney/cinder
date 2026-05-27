@@ -9,6 +9,8 @@
  * single import path for downstream consumers.
  */
 
+import type { Snippet } from 'svelte';
+
 /** Symbol key for the toast Svelte context. */
 export const TOAST_CONTEXT_KEY = Symbol('cinder-toast');
 
@@ -26,6 +28,13 @@ export type ToastOptions = {
   /** Stable id for deduplication / programmatic dismiss. Auto-generated otherwise. */
   id?: string;
   /**
+   * Optional leading icon snippet, rendered before the message for visual
+   * parity with Alert/Banner/Callout. Decorative only (rendered
+   * `aria-hidden`); status meaning must still be conveyed by the message text
+   * and variant, never by the icon alone.
+   */
+  icon?: Snippet;
+  /**
    * Optional action paired with the message. Renders a button after the
    * message text and invokes `onAction` when clicked. The toast is dismissed
    * after the action runs unless `keepOpen` is true.
@@ -40,6 +49,7 @@ export type ToastItem = {
   variant: ToastVariant;
   duration: number;
   dismissible: boolean;
+  icon?: Snippet;
   action?: { label: string; onAction: () => void; keepOpen?: boolean };
 };
 
