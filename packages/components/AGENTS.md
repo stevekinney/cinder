@@ -67,9 +67,17 @@ bundled `cinder/highlighters/shiki` adapter:
 
 `shikiHighlighter()` accepts a `theme` (single string or
 `{ light, dark }` for CSS-variable-driven dual-theme mode) and an
-optional `langs` array to preload specific grammars. Shiki itself is
+optional `langs` array to preload specific grammars. [Shiki](https://shiki.style/)
+itself is
 lazy-imported on the first highlight call, so consumers that never
 mount this adapter ship zero Shiki bytes in their entry chunk.
+
+> [!WARNING]
+> Pass `theme` as `{ light, dark }` (the default) when highlighted code
+> should re-theme with cinder's light/dark switch. A single-string `theme`
+> bakes one palette into Shiki's inline `color:` styles, which CSS cannot
+> override per theme. That means the choice has to happen at highlight time in
+> `shikiHighlighter`, not later in cinder's stylesheet.
 
 `<CodeBlock>` rendered without an ancestor provider (or with a provider
 that supplies no `highlighter`) falls back to escaped plaintext — the

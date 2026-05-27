@@ -49,4 +49,17 @@ describe('DiffStatistics', () => {
     const status = container.querySelector('[role="status"]');
     expect(status?.hasAttribute('data-cinder-density')).toBe(false);
   });
+
+  test('compact status pills use matched foreground tokens', async () => {
+    const css = await Bun.file(new URL('./diff-statistics.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /data-cinder-variant='compact'[\s\S]*?__stat--added[\s\S]*?background:\s*var\(--cinder-color-success-bg\)[\s\S]*?color:\s*var\(--cinder-color-success-fg\)/,
+    );
+    expect(css).toMatch(
+      /data-cinder-variant='compact'[\s\S]*?__stat--removed[\s\S]*?background:\s*var\(--cinder-color-danger-bg\)[\s\S]*?color:\s*var\(--cinder-color-danger-fg\)/,
+    );
+    expect(css).toMatch(
+      /data-cinder-variant='compact'[\s\S]*?__stat--modified[\s\S]*?background:\s*var\(--cinder-color-warning-bg\)[\s\S]*?color:\s*var\(--cinder-color-warning-fg\)/,
+    );
+  });
 });

@@ -12,7 +12,7 @@
     <Table.Row>
       <Table.HeaderCell>Name</Table.HeaderCell>
       <Table.HeaderCell>Role</Table.HeaderCell>
-      <Table.HeaderCell>Commits</Table.HeaderCell>
+      <Table.HeaderCell align="right">Commits</Table.HeaderCell>
     </Table.Row>
   </Table.Header>
   <Table.Body>
