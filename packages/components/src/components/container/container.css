@@ -6,6 +6,10 @@
   box-sizing: border-box;
   display: block;
   inline-size: 100%;
+  /* Prevent overflow when composed inside a flex row or grid cell, whose
+   * default min-width:auto would otherwise let the container blow past its
+   * track. */
+  min-inline-size: 0;
   max-inline-size: var(--cinder-content-width);
 }
 

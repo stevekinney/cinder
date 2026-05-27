@@ -15,7 +15,7 @@ export type CollapsibleProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'c
    * @default false
    */
   open?: boolean;
-  /** Fired on every toggle with the next open state. */
+  /** Fired on every successful toggle with the next open state. Not called while disabled. */
   onToggle?: (open: boolean) => void;
   /**
    * When true, the trigger cannot be toggled.
@@ -31,8 +31,13 @@ export type CollapsibleProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'c
   class?: string;
 };
 
+/**
+ * Schema-generator surface. `trigger` is documented as a string only: the
+ * `Snippet` form of the runtime prop is a template-only construct that JSON
+ * Schema cannot represent, so schema-driven tooling sees the string variant.
+ */
 export interface CollapsibleSchemaProps {
-  /** Trigger label text. */
+  /** Trigger label text. (The snippet form is template-only; see the type above.) */
   trigger: string;
   /**
    * Bindable open state. Without binding, the initial value the component then

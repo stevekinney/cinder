@@ -107,7 +107,7 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 
 `--cinder-content-width` caps the inline size of primary page content. Used by [`PageLayout`](../packages/components/src/components/page-layout.svelte); consumers can override per scope.
 
-`--cinder-content-width-prose`, `--cinder-content-width-narrow`, and `--cinder-content-width-wide` are the named width scale selected by [`Container`](../packages/components/src/components/container/container.svelte)'s `maxWidth` prop; omitting `maxWidth` falls back to `--cinder-content-width`.
+`--cinder-content-width-prose`, `--cinder-content-width-narrow`, and `--cinder-content-width-wide` form the named width scale selected by [`Container`](../packages/components/src/components/container/container.svelte)'s `maxWidth` prop; omitting `maxWidth` falls back to `--cinder-content-width`. The `maxWidth="full"` keyword removes the cap entirely (`max-inline-size: none`) and maps to no token.
 
 ## Motion
 

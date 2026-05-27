@@ -1,11 +1,15 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
+
+beforeEach(() => {
+  document.body.replaceChildren();
+});
 const { default: Container } = await import('./container.svelte');
 const { createRawSnippet } = await import('svelte');
 

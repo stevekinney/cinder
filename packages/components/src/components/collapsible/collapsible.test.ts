@@ -1,13 +1,19 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
+
+beforeEach(() => {
+  document.body.replaceChildren();
+});
 const { default: Collapsible } = await import('./collapsible.svelte');
 const { default: BindableHarness } = await import('./collapsible-bindable-harness.svelte');
+const { default: SnippetTriggerHarness } =
+  await import('./collapsible-snippet-trigger-harness.svelte');
 const { createRawSnippet } = await import('svelte');
 
 function bodySnippet(text = 'panel body') {
@@ -66,6 +72,20 @@ describe('Collapsible (uncontrolled)', () => {
     await fireEvent.click(trigger(container));
 
     expect(panel(container)).toBeNull();
+  });
+
+  test('rapid open→close→open settles to the final state', async () => {
+    // Interrupting the slide transition cancels the in-flight animation. The
+    // panel's presence must reflect the last toggle, not a stale animation that
+    // resolved after being cancelled.
+    const { container } = render(Collapsible, { trigger: 'Toggle', children: bodySnippet() });
+
+    await fireEvent.click(trigger(container)); // open
+    await fireEvent.click(trigger(container)); // close
+    await fireEvent.click(trigger(container)); // open
+
+    expect(panel(container)).not.toBeNull();
+    expect(trigger(container).getAttribute('aria-expanded')).toBe('true');
   });
 });
 
@@ -131,7 +151,7 @@ describe('Collapsible trigger forms', () => {
     expect(trigger(container).textContent).toContain('Plain label');
   });
 
-  test('snippet trigger receives state and renders its content', () => {
+  test('snippet trigger renders its content', () => {
     const triggerSnippet = createRawSnippet(
       (state: () => { open: boolean; disabled: boolean }) => ({
         render: () => `<span>${state().open ? 'Hide' : 'Show'}</span>`,
@@ -144,6 +164,17 @@ describe('Collapsible trigger forms', () => {
     });
 
     expect(trigger(container).textContent).toContain('Show');
+  });
+
+  test('snippet trigger re-renders reactively on toggle', async () => {
+    // A real `{#snippet}` (not createRawSnippet, which renders once) is needed
+    // to prove the label reacts to the `{ open }` state it receives.
+    const { container } = render(SnippetTriggerHarness);
+
+    expect(trigger(container).textContent).toContain('Show');
+
+    await fireEvent.click(trigger(container));
+    expect(trigger(container).textContent).toContain('Hide');
   });
 });
 
@@ -162,6 +193,11 @@ describe('Collapsible keyboard semantics', () => {
 
     await fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
+
+    // No manual onkeydown handler exists: keydown alone must not toggle (a real
+    // browser activates via the synthesized click, which happy-dom omits). This
+    // guards against a future regression that adds a keydown-only toggle.
+    expect(panel(container)).toBeNull();
   });
 });
 

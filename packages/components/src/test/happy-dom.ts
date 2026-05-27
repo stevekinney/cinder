@@ -62,17 +62,34 @@ function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
  * Stub Animation returned by the `Element.prototype.animate` shim below. Settles
  * on the next microtask so that Svelte's transition lifecycle — which assigns
  * `onfinish` synchronously after calling `animate()` — completes once.
+ *
+ * It honors `cancel()`: a cancelled animation never fires `onfinish`. This
+ * matters because Svelte cancels the in-flight animation when a transition is
+ * interrupted (a rapid open→close→open). A stub that fired `onfinish`
+ * regardless would let a stale, cancelled transition resolve after it was torn
+ * down — masking real interruption bugs and producing cross-suite flakiness.
+ *
+ * `playState` is reported as `'finished'`, which is correct for the CSS-driven
+ * transitions (`slide`, `fade`) this stub supports: Svelte reads keyframes from
+ * the `css` hook and never enters its `tick`-based `loop()`, so it never reads
+ * `playState` for those. Do NOT rely on this stub to test `tick`-based
+ * transitions — Svelte's loop guard (`playState !== 'running'`) would exit on
+ * the first frame and the tick callback would never run.
  */
 function stubbedAnimate(): unknown {
+  let cancelled = false;
   const animation: Record<string, unknown> = {
     currentTime: 0,
     playState: 'finished',
     effect: null,
     onfinish: null,
-    cancel() {},
+    cancel() {
+      cancelled = true;
+    },
     finish() {},
   };
   queueMicrotask(() => {
+    if (cancelled) return;
     const handler = animation['onfinish'];
     if (typeof handler === 'function') {
       (handler as () => void).call(animation);

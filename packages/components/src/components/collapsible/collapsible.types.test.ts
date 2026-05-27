@@ -26,8 +26,18 @@ const componentAcceptsSnapshot: Assignable<
   SnapshotCollapsibleProps,
   ComponentProps<typeof Collapsible>
 > = true;
+// CollapsibleProps spreads HTMLAttributes<HTMLDivElement>, so a full backward
+// assignability check (real → snapshot) is intentionally false and omitted —
+// unlike AccordionItemProps, which is a plain object type. To still catch the
+// drift a one-directional snapshot misses (a newly *required* prop), assert the
+// component renders with only the snapshot's required fields supplied.
+const componentAcceptsMinimalRequired: Assignable<
+  { trigger: string; children: Snippet },
+  ComponentProps<typeof Collapsible>
+> = true;
 
-test('Collapsible public prop surface accepts the documented snapshot', () => {
+test('Collapsible public prop surface unchanged', () => {
   expect(aliasForward).toBe(true);
   expect(componentAcceptsSnapshot).toBe(true);
+  expect(componentAcceptsMinimalRequired).toBe(true);
 });

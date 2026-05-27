@@ -39,8 +39,8 @@ The `trigger` prop is either a string or a snippet receiving `{ open, disabled }
 ## Accessibility
 
 - The trigger is a native `<button type="button">`, so Enter and Space activation and tab order come from the browser. `disabled` uses the real attribute, removing it from the tab order.
-- The trigger carries `aria-expanded` and `aria-controls`; the panel is a `role="region"` labeled by the trigger via `aria-labelledby`.
-- The panel is removed from the DOM when closed (standard disclosure behavior), so `aria-controls` resolves only while open.
+- The trigger carries `aria-expanded`; the panel is a `role="region"` labeled by the trigger via `aria-labelledby`.
+- The panel is removed from the DOM when closed (standard disclosure behavior). `aria-controls` is emitted only while the panel exists, so it never references a missing element. Each open panel registers as a named `region` landmark — on a page with many open Collapsibles, weigh that against landmark-navigation noise.
 - Height animation collapses to zero duration under `prefers-reduced-motion: reduce`, and the chevron rotation transition is disabled in CSS.
 
 For multiple coordinated sections, use [`Accordion`](../accordion/README.md) instead.
@@ -55,7 +55,7 @@ For multiple coordinated sections, use [`Accordion`](../accordion/README.md) ins
 | `disabled` | `boolean` | no       | `false` | When true, the trigger cannot be toggled.                                           |
 | `idBase`   | `string`  | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.    |
 | `open`     | `boolean` | no       | `false` | Bindable open state. Without binding, the initial value the component then manages. |
-| `trigger`  | `string`  | yes      | —       | Trigger label text.                                                                 |
+| `trigger`  | `string`  | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)        |
 
 <!-- generated:props:end -->
 

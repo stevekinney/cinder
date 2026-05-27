@@ -66,7 +66,7 @@
     id={headerId}
     class="cinder-collapsible__trigger"
     aria-expanded={open}
-    aria-controls={panelId}
+    aria-controls={open ? panelId : undefined}
     {disabled}
     onclick={handleClick}
   >

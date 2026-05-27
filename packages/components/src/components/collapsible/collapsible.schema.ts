@@ -6,7 +6,7 @@ const schema = {
   properties: {
     trigger: {
       type: 'string',
-      description: 'Trigger label text.',
+      description: 'Trigger label text. (The snippet form is template-only; see the type above.)',
     },
     open: {
       type: 'boolean',
