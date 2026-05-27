@@ -12,6 +12,7 @@
    */
   export type ToastFixtureProps = {
     onReady?: (api: ToastApi) => void;
+    onInitialize?: (api: ToastApi) => void;
     maxStack?: number;
     defaultDuration?: number;
     position?: import('../../_internal/toast-context.ts').ToastPosition;
@@ -24,6 +25,7 @@
 
   let {
     onReady,
+    onInitialize,
     maxStack = 5,
     defaultDuration = 5000,
     position = 'bottom-right',
@@ -32,6 +34,6 @@
 
 <ToastRegion {maxStack} {defaultDuration} {position}>
   {#if onReady !== undefined}
-    <ToastProbe {onReady} />
+    <ToastProbe {onReady} {onInitialize} />
   {/if}
 </ToastRegion>

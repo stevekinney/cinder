@@ -24,7 +24,7 @@
     {
       "id": "keyboard",
       "title": "Keyboard dismiss",
-      "description": "Focus a toast control and press Escape to dismiss without closing a parent overlay.",
+      "description": "Focus a toast control and press Escape to dismiss the active notification.",
       "code": "<script lang=\"ts\">\n  import { useToast } from 'cinder';\n  import { Button } from 'cinder/button';\n  import { ToastRegion } from 'cinder/toast-region';\n</script>\n\n<ToastRegion>\n  {#snippet children()}\n    {@const toast = useToast()}\n    <Button\n      label=\"Show keyboard toast\"\n      onclick={() =>\n        toast.show('Tab to this toast, then press Escape.', {\n          duration: 0,\n          action: {\n            label: 'Action',\n            keepOpen: true,\n            onAction: () => {},\n          },\n        })}\n    />\n  {/snippet}\n</ToastRegion>\n"
     },
     {

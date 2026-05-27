@@ -32,6 +32,7 @@
   import type { Attachment } from 'svelte/attachments';
 
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { cn } from '../../utilities/class-names.ts';
   import type {
     ToastApi,
@@ -52,6 +53,7 @@
   type InternalShowOptions = ToastOptions & { pending?: boolean };
   type DismissReason =
     | 'action'
+    | 'dismiss-button'
     | 'dismissAll'
     | 'keyboard'
     | 'overflow'
@@ -69,6 +71,7 @@
     leaving?: boolean;
     generation: number;
     swipeX?: number;
+    swiping?: boolean;
   };
 
   // Hydration gate — toast live regions are client-only, but wrapped app
@@ -84,13 +87,16 @@
 
   // Track auto-dismiss timers so we can cancel on dismiss / unmount.
   const timers: Map<string, TimerRecord> = new Map();
-  const removalTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  const removalTimers: Map<string, () => void> = new Map();
   const generations: Map<string, number> = new Map();
   let regionElement: HTMLElement | null = $state(null);
   let nextId = 0;
   let isPointerInsideRegion = false;
   let isFocusInsideRegion = false;
   let releaseFocusedToastEscape: (() => void) | null = null;
+  let returnFocusElement: HTMLElement | null = null;
+  let destroyed = false;
+  let generationCounter = 0;
 
   function isPolite(variant: ToastVariant): boolean {
     return variant === 'info' || variant === 'success';
@@ -116,13 +122,17 @@
   }
 
   function nextGeneration(id: string): number {
-    const generation = (generations.get(id) ?? 0) + 1;
+    const generation = (generationCounter += 1);
     generations.set(id, generation);
     return generation;
   }
 
   function invalidateGeneration(id: string): void {
-    generations.set(id, (generations.get(id) ?? 0) + 1);
+    generations.set(id, (generationCounter += 1));
+  }
+
+  function clearGeneration(id: string): void {
+    generations.delete(id);
   }
 
   function removeFromBothStacks(id: string): void {
@@ -138,11 +148,37 @@
     return upsertToast(message, options).id;
   }
 
+  function canMutateToasts(): boolean {
+    return hydrated && typeof document !== 'undefined' && !destroyed;
+  }
+
+  function getNextToastId(options: Pick<ToastOptions, 'id'>): string {
+    if (options.id) return options.id;
+    if (!canMutateToasts()) return `cinder-toast-${nextId + 1}`;
+    nextId += 1;
+    return `cinder-toast-${nextId}`;
+  }
+
   function upsertToast(message: string, options: InternalShowOptions = {}): InternalToastItem {
-    const id = options.id ?? `cinder-toast-${++nextId}`;
+    const id = getNextToastId(options);
     const variant = options.variant ?? 'info';
     const duration = options.duration ?? defaultDuration;
     const dismissible = options.dismissible ?? true;
+    if (!canMutateToasts()) {
+      return {
+        id,
+        message,
+        variant,
+        duration,
+        dismissible,
+        generation: 0,
+        pending: options.pending ?? false,
+        leaving: false,
+        swiping: false,
+        ...(options.icon ? { icon: options.icon } : {}),
+        ...(options.action ? { action: options.action } : {}),
+      };
+    }
     clearTimer(id);
     clearRemovalTimer(id);
     removeFromBothStacks(id);
@@ -156,6 +192,7 @@
       generation: nextGeneration(id),
       pending: options.pending ?? false,
       leaving: false,
+      swiping: false,
       ...(options.icon ? { icon: options.icon } : {}),
       ...(options.action ? { action: options.action } : {}),
     };
@@ -181,10 +218,12 @@
   }
 
   function dismiss(id: string): void {
+    if (!canMutateToasts()) return;
     beginDismiss(id, 'programmatic');
   }
 
   function dismissAll(): void {
+    if (!canMutateToasts()) return;
     const ids = [...politeStack, ...assertiveStack]
       .filter((toast) => !toast.leaving)
       .map((toast) => toast.id);
@@ -200,9 +239,9 @@
   }
 
   function clearRemovalTimer(id: string): void {
-    const handle = removalTimers.get(id);
-    if (handle) {
-      clearTimeout(handle);
+    const cancelCompletion = removalTimers.get(id);
+    if (cancelCompletion) {
+      cancelCompletion();
       removalTimers.delete(id);
     }
   }
@@ -253,7 +292,15 @@
     }
   }
 
-  function handleRegionFocusIn(): void {
+  function handleRegionFocusIn(event: FocusEvent): void {
+    const previousTarget = event.relatedTarget;
+    if (
+      !isFocusInsideRegion &&
+      previousTarget instanceof HTMLElement &&
+      !regionElement?.contains(previousTarget)
+    ) {
+      returnFocusElement = previousTarget;
+    }
     isFocusInsideRegion = true;
     pauseAllTimers();
     synchronizeFocusedToastEscapeHandler();
@@ -294,30 +341,34 @@
     invalidateGeneration(id);
 
     const element = getToastElement(id);
-    if (element && !prefersReducedMotion()) {
-      const shell = element.closest<HTMLElement>('.cinder-toast-shell');
-      shell?.style.setProperty('--cinder-toast-height', `${shell.offsetHeight}px`);
+    const shell = element?.closest<HTMLElement>('.cinder-toast-shell');
+    const reducedMotion = prefersReducedMotion();
+    if (element && shell && !reducedMotion) {
+      shell.style.setProperty('--cinder-toast-height', `${shell.offsetHeight}px`);
     }
 
     const focusNeedsMove = element?.contains(document.activeElement) ?? false;
     item.leaving = true;
     item.swipeX = 0;
+    item.swiping = false;
     politeStack = [...politeStack];
     assertiveStack = [...assertiveStack];
 
     if (focusNeedsMove) moveFocusAfterDismiss(id, reason);
 
     const generation = item.generation;
-    if (prefersReducedMotion()) {
+    if (!shell) {
       queueMicrotask(() => reallyRemove(id, generation));
       return;
     }
 
     clearRemovalTimer(id);
-    removalTimers.set(
-      id,
-      setTimeout(() => reallyRemove(id, generation), 220),
-    );
+    const cancelCompletion = waitForTransitionCompletion({
+      element: shell,
+      reducedMotion,
+      onComplete: () => reallyRemove(id, generation),
+    });
+    removalTimers.set(id, cancelCompletion);
   }
 
   function reallyRemove(id: string, generation: number): void {
@@ -327,10 +378,18 @@
     clearTimer(id);
     clearRemovalTimer(id);
     removeFromBothStacks(id);
+    clearGeneration(id);
   }
 
   function moveFocusAfterDismiss(id: string, reason: DismissReason): void {
-    if (reason === 'timer' || reason === 'overflow') return;
+    if (
+      reason === 'timer' ||
+      reason === 'overflow' ||
+      reason === 'programmatic' ||
+      reason === 'dismissAll'
+    ) {
+      return;
+    }
     queueMicrotask(() => {
       const candidates = [...(regionElement?.querySelectorAll<HTMLElement>('.cinder-toast') ?? [])]
         .filter((element) => element.dataset['cinderToastId'] !== id)
@@ -338,7 +397,7 @@
       const nextControl = candidates
         .map((element) => element.querySelector<HTMLElement>('button:not([disabled])'))
         .find((element): element is HTMLElement => element !== null);
-      (nextControl ?? document.body).focus();
+      (nextControl ?? returnFocusElement ?? document.body).focus();
       synchronizeFocusedToastEscapeHandler();
     });
   }
@@ -360,7 +419,8 @@
       error: string | ((error: unknown) => string);
     } & Pick<ToastOptions, 'id' | 'duration' | 'dismissible' | 'action'>,
   ): string {
-    const id = options.id ?? `cinder-toast-${++nextId}`;
+    const id = getNextToastId(options);
+    if (!canMutateToasts()) return id;
     const loadingOptions: InternalShowOptions = {
       id,
       duration: 0,
@@ -370,7 +430,8 @@
     if (options.dismissible !== undefined) loadingOptions.dismissible = options.dismissible;
     const pendingToast = upsertToast(options.loading, loadingOptions);
     const generation = pendingToast.generation;
-    const isCurrentPromiseToast = () => generations.get(id) === generation && findToast(id);
+    const isCurrentPromiseToast = () =>
+      !destroyed && generations.get(id) === generation && findToast(id);
 
     promiseToTrack.then(
       (value) => {
@@ -444,6 +505,7 @@
     const item = findToast(id);
     if (!item || item.leaving) return;
     item.swipeX = swipeX;
+    item.swiping = swipeX !== 0;
     politeStack = [...politeStack];
     assertiveStack = [...assertiveStack];
   }
@@ -506,8 +568,10 @@
   onDestroy(() => {
     // Tear down timers so unmounting the region (e.g., during route change)
     // doesn't leak timers that fire later and try to mutate disposed state.
+    destroyed = true;
     for (const id of timers.keys()) clearTimer(id);
     for (const id of removalTimers.keys()) clearRemovalTimer(id);
+    generations.clear();
     releaseToastEscapeHandler();
   });
 </script>
@@ -522,7 +586,6 @@
     class={cn('cinder-toast-region', className)}
     role="presentation"
     data-cinder-position={position}
-    data-cinder-stack="polite"
     onpointerenter={() => setRegionPointerInside(true)}
     onpointerleave={() => setRegionPointerInside(false)}
     onfocusin={handleRegionFocusIn}
@@ -535,7 +598,7 @@
       aria-relevant="additions"
       class="cinder-toast-region__channel"
     >
-      {#each politeStack as toast, index (toast.id)}
+      {#each politeStack as toast, index (`${toast.id}:${toast.generation}`)}
         <div
           class="cinder-toast-shell"
           style={`--cinder-toast-stack-index: ${index};`}
@@ -549,6 +612,7 @@
             data-cinder-toast-id={toast.id}
             data-cinder-pending={toast.pending ? 'true' : undefined}
             data-cinder-leaving={toast.leaving ? 'true' : undefined}
+            data-cinder-swiping={toast.swiping ? 'true' : undefined}
             style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
             {@attach createToastInteractions(toast)}
           >
@@ -575,7 +639,7 @@
                 class="cinder-toast__dismiss"
                 aria-label="Dismiss notification"
                 disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'programmatic')}
+                onclick={() => beginDismiss(toast.id, 'dismiss-button')}
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path
@@ -596,7 +660,7 @@
       class="cinder-toast-region__channel"
       data-cinder-stack="assertive"
     >
-      {#each assertiveStack as toast, index (toast.id)}
+      {#each assertiveStack as toast, index (`${toast.id}:${toast.generation}`)}
         <div
           class="cinder-toast-shell"
           style={`--cinder-toast-stack-index: ${index};`}
@@ -610,6 +674,7 @@
             data-cinder-toast-id={toast.id}
             data-cinder-pending={toast.pending ? 'true' : undefined}
             data-cinder-leaving={toast.leaving ? 'true' : undefined}
+            data-cinder-swiping={toast.swiping ? 'true' : undefined}
             style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
             {@attach createToastInteractions(toast)}
           >
@@ -636,7 +701,7 @@
                 class="cinder-toast__dismiss"
                 aria-label="Dismiss notification"
                 disabled={toast.leaving}
-                onclick={() => beginDismiss(toast.id, 'programmatic')}
+                onclick={() => beginDismiss(toast.id, 'dismiss-button')}
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path

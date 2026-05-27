@@ -91,7 +91,6 @@
   font-size: var(--cinder-text-sm);
   color: var(--cinder-text);
   touch-action: pan-y;
-  user-select: none;
   transform: translateX(var(--cinder-toast-swipe-x, 0))
     translateY(calc(var(--cinder-toast-stack-index, 0) * -2px));
   transition:
@@ -100,6 +99,10 @@
   /* Smooth in/out at default speed; reduced-motion zeroes the duration via
    * the global motion tokens. */
   animation: cinder-toast-in var(--cinder-duration-fast) var(--cinder-ease-decelerate);
+}
+
+.cinder-toast[data-cinder-swiping='true'] {
+  user-select: none;
 }
 
 @keyframes cinder-toast-in {

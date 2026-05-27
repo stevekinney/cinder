@@ -9,17 +9,19 @@
    */
   export type ToastProbeProps = {
     onReady: (api: ToastApi) => void;
+    onInitialize?: ((api: ToastApi) => void) | undefined;
   };
 </script>
 
 <script lang="ts">
   import { useToast } from '../../utilities/use-toast.ts';
 
-  let { onReady }: ToastProbeProps = $props();
+  let { onReady, onInitialize }: ToastProbeProps = $props();
 
   // useToast() must run during this component's setup, when getContext walks
   // the parent chain and finds ToastRegion's context.
   const api = useToast();
+  onInitialize?.(api);
   // Hand the api to the test once mounted.
   $effect(() => {
     onReady(api);

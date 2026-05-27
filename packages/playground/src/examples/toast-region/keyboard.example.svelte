@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Keyboard dismiss';
   export const description =
-    'Focus a toast control and press Escape to dismiss without closing a parent overlay.';
+    'Focus a toast control and press Escape to dismiss the active notification.';
 </script>
 
 <script lang="ts">
