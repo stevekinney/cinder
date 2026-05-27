@@ -23,15 +23,16 @@ function generateSchema(fileBaseName: string, componentName: string) {
 }
 
 function parseSchemaModuleJson(schemaModule: string) {
-  const startMarker = 'JSON.parse(String.raw`';
-  const endMarker = '`) as ComponentSchema;';
+  const startMarker = 'JSON.parse(';
+  const endMarker = ') as ComponentSchema;';
   const start = schemaModule.indexOf(startMarker);
   const end = schemaModule.indexOf(endMarker);
 
   expect(start).not.toBe(-1);
   expect(end).not.toBe(-1);
 
-  return JSON.parse(schemaModule.slice(start + startMarker.length, end));
+  const jsonText = JSON.parse(schemaModule.slice(start + startMarker.length, end));
+  return JSON.parse(jsonText);
 }
 
 // Each test recompiles a TS project (beforeEach resets the schema cache), which
@@ -196,7 +197,7 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     ]);
   });
 
-  test('allOf schema modules preserve literal backslashes through String.raw rendering', () => {
+  test('allOf schema modules preserve special characters through JSON string rendering', () => {
     const { schema, schemaModule } = generate('modal', 'modal');
     const parsedSchemaModule = parseSchemaModuleJson(schemaModule);
 

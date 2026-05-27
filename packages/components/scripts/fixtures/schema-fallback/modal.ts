@@ -1,6 +1,6 @@
 export type ModalProps = {
   open: boolean;
-  /** Path examples must keep a single escaped backslash like C:\temp. */
+  /** Path examples must keep C:\temp, `code`, and ${value} text intact. */
   title: string;
   role?: 'dialog' | 'alertdialog';
   describedById?: string;
