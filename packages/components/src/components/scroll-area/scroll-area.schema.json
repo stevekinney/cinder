@@ -20,7 +20,7 @@
     },
     "tabindex": {
       "type": "number",
-      "description": "Override the default focusable behavior. The component sets `tabindex=\"0\"`\nby default so keyboard users can scroll the viewport with arrow keys.\nPass `tabindex={-1}` to opt out when the scroll area wraps content that\nis guaranteed not to overflow, or when the container is focused\nprogrammatically rather than via tab order."
+      "description": "Override the default focus behavior. The component sets `tabindex=\"0\"`\nby default so keyboard users can reach the viewport for arrow-key\nscrolling. Pass `tabindex={-1}` when the viewport should be programmatically\nfocusable without entering the tab order."
     },
     "as": {
       "enum": ["article", "aside", "div", "li", "main", "nav", "ol", "pre", "section", "ul"],

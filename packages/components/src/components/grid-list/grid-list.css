@@ -40,6 +40,13 @@
     border-color 150ms ease;
 }
 
+@media (hover: hover) {
+  .cinder-grid-list__item:has(.cinder-grid-list__link:hover) {
+    box-shadow: var(--cinder-shadow-md);
+    border-color: var(--cinder-border);
+  }
+}
+
 /* ----------------------------------------
  * Snippet wrappers — provide stable selectors and predictable layout.
  * All wrappers sit UNDER the stretched-link overlay except `.cinder-grid-list__actions`.
