@@ -21,6 +21,7 @@
     ToastApi,
     ToastItem,
     ToastOptions,
+    ToastPosition,
     ToastVariant,
     ToastRegionProps,
   } from './toast-region.types.ts';
@@ -28,7 +29,10 @@
 
 <script lang="ts">
   import { onDestroy, setContext } from 'svelte';
+  import type { Attachment } from 'svelte/attachments';
 
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { cn } from '../../utilities/class-names.ts';
   import type {
     ToastApi,
@@ -41,110 +45,541 @@
   let {
     maxStack = 5,
     defaultDuration = 5000,
+    position = 'bottom-right',
     class: className,
     children,
   }: ToastRegionProps = $props();
 
-  // Hydration gate — ToastRegion renders nothing on the server (per overlay
-  // policy: client-only state must not appear in SSR markup).
+  type InternalShowOptions = ToastOptions & { pending?: boolean };
+  type DismissReason =
+    | 'action'
+    | 'dismiss-button'
+    | 'dismissAll'
+    | 'keyboard'
+    | 'overflow'
+    | 'programmatic'
+    | 'swipe'
+    | 'timer';
+
+  type TimerRecord = {
+    handle: ReturnType<typeof setTimeout> | null;
+    remaining: number;
+    startedAt: number;
+  };
+  type InternalToastItem = ToastItem & {
+    pending?: boolean;
+    leaving?: boolean;
+    generation: number;
+    swipeX?: number;
+    swiping?: boolean;
+  };
+
+  // Hydration gate — toast live regions are client-only, but wrapped app
+  // content and the context provider still render during SSR.
   let hydrated = $state(false);
   $effect(() => {
     hydrated = true;
   });
 
   // Two regions, two stacks. Polite for info/success; assertive for warning/danger.
-  let politeStack: ToastItem[] = $state([]);
-  let assertiveStack: ToastItem[] = $state([]);
+  let politeStack: InternalToastItem[] = $state([]);
+  let assertiveStack: InternalToastItem[] = $state([]);
 
   // Track auto-dismiss timers so we can cancel on dismiss / unmount.
-  const timers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  const timers: Map<string, TimerRecord> = new Map();
+  const removalTimers: Map<string, () => void> = new Map();
+  const generations: Map<string, number> = new Map();
+  let regionElement: HTMLElement | null = $state(null);
   let nextId = 0;
+  let isPointerInsideRegion = false;
+  let isFocusInsideRegion = false;
+  let destroyed = false;
+  let releaseFocusedToastEscape: (() => void) | null = null;
+  let returnFocusElement: HTMLElement | null = null;
+  let generationCounter = 0;
 
   function isPolite(variant: ToastVariant): boolean {
     return variant === 'info' || variant === 'success';
   }
 
+  function getCurrentStack(variant: ToastVariant): InternalToastItem[] {
+    return isPolite(variant) ? politeStack : assertiveStack;
+  }
+
+  function setCurrentStack(variant: ToastVariant, stack: InternalToastItem[]): void {
+    if (isPolite(variant)) {
+      politeStack = stack;
+    } else {
+      assertiveStack = stack;
+    }
+  }
+
+  function findToast(id: string): InternalToastItem | undefined {
+    return (
+      politeStack.find((toast) => toast.id === id) ??
+      assertiveStack.find((toast) => toast.id === id)
+    );
+  }
+
+  function nextGeneration(id: string): number {
+    const generation = (generationCounter += 1);
+    generations.set(id, generation);
+    return generation;
+  }
+
+  function invalidateGeneration(id: string): void {
+    generations.set(id, (generationCounter += 1));
+  }
+
+  function clearGeneration(id: string): void {
+    generations.delete(id);
+  }
+
+  function removeFromBothStacks(id: string): void {
+    politeStack = politeStack.filter((toast) => toast.id !== id);
+    assertiveStack = assertiveStack.filter((toast) => toast.id !== id);
+  }
+
+  function shouldPauseTimers(): boolean {
+    return isPointerInsideRegion || isFocusInsideRegion;
+  }
+
   function show(message: string, options: ToastOptions = {}): string {
-    const id = options.id ?? `cinder-toast-${++nextId}`;
+    if (destroyed) return options.id ?? `cinder-toast-${++nextId}`;
+    return upsertToast(message, options).id;
+  }
+
+  function canMutateToasts(): boolean {
+    return hydrated && typeof document !== 'undefined' && !destroyed;
+  }
+
+  function getNextToastId(options: Pick<ToastOptions, 'id'>): string {
+    if (options.id) return options.id;
+    if (!canMutateToasts()) return `cinder-toast-${nextId + 1}`;
+    nextId += 1;
+    return `cinder-toast-${nextId}`;
+  }
+
+  function upsertToast(message: string, options: InternalShowOptions = {}): InternalToastItem {
+    const id = getNextToastId(options);
     const variant = options.variant ?? 'info';
     const duration = options.duration ?? defaultDuration;
     const dismissible = options.dismissible ?? true;
-    const item: ToastItem = {
+    if (!canMutateToasts()) {
+      return {
+        id,
+        message,
+        variant,
+        duration,
+        dismissible,
+        generation: 0,
+        pending: options.pending ?? false,
+        leaving: false,
+        swiping: false,
+        ...(options.icon ? { icon: options.icon } : {}),
+        ...(options.action ? { action: options.action } : {}),
+      };
+    }
+    clearTimer(id);
+    clearRemovalTimer(id);
+    removeFromBothStacks(id);
+
+    const item: InternalToastItem = {
       id,
       message,
       variant,
       duration,
       dismissible,
+      generation: nextGeneration(id),
+      pending: options.pending ?? false,
+      leaving: false,
+      swiping: false,
       ...(options.icon ? { icon: options.icon } : {}),
       ...(options.action ? { action: options.action } : {}),
     };
 
-    // Deduplication: if an id is already active, replace the existing entry.
-    const stack = isPolite(variant) ? politeStack : assertiveStack;
-    const existingIndex = stack.findIndex((t) => t.id === id);
-    if (existingIndex !== -1) {
-      stack[existingIndex] = item;
-    } else {
-      stack.push(item);
-      if (stack.length > maxStack) {
-        const dropped = stack.shift();
-        if (dropped) clearTimer(dropped.id);
-      }
-    }
+    setCurrentStack(variant, [...getCurrentStack(variant), item]);
 
-    if (isPolite(variant)) {
-      politeStack = [...stack];
-    } else {
-      assertiveStack = [...stack];
-    }
+    dismissOverflow(variant);
 
     if (duration > 0) {
-      clearTimer(id);
-      timers.set(
-        id,
-        setTimeout(() => {
-          dismiss(id);
-        }, duration),
-      );
+      armTimer(id, duration);
     }
 
-    return id;
+    return item;
+  }
+
+  function dismissOverflow(variant: ToastVariant): void {
+    const stack = getCurrentStack(variant);
+    const activeToasts = stack.filter((toast) => !toast.leaving);
+    if (activeToasts.length <= maxStack) return;
+
+    const oldest = activeToasts[0];
+    if (oldest) beginDismiss(oldest.id, 'overflow');
   }
 
   function dismiss(id: string): void {
-    clearTimer(id);
-    politeStack = politeStack.filter((t) => t.id !== id);
-    assertiveStack = assertiveStack.filter((t) => t.id !== id);
+    if (!canMutateToasts()) return;
+    beginDismiss(id, 'programmatic');
   }
 
   function dismissAll(): void {
-    for (const id of timers.keys()) clearTimer(id);
-    politeStack = [];
-    assertiveStack = [];
+    if (!canMutateToasts()) return;
+    const ids = [...politeStack, ...assertiveStack]
+      .filter((toast) => !toast.leaving)
+      .map((toast) => toast.id);
+    for (const id of ids) beginDismiss(id, 'dismissAll');
   }
 
   function clearTimer(id: string): void {
-    const handle = timers.get(id);
-    if (handle !== undefined) {
-      clearTimeout(handle);
+    const record = timers.get(id);
+    if (record) {
+      if (record.handle) clearTimeout(record.handle);
       timers.delete(id);
     }
   }
 
-  function handleActionClick(item: ToastItem): void {
-    if (!item.action) return;
-    item.action.onAction();
-    if (!item.action.keepOpen) {
-      dismiss(item.id);
+  function clearRemovalTimer(id: string): void {
+    const cancelCompletion = removalTimers.get(id);
+    if (cancelCompletion) {
+      cancelCompletion();
+      removalTimers.delete(id);
     }
   }
 
-  setContext<ToastApi>(TOAST_CONTEXT_KEY, { show, dismiss, dismissAll });
+  function armTimer(id: string, duration: number): void {
+    if (duration <= 0) return;
+    const record: TimerRecord = {
+      handle: null,
+      remaining: duration,
+      startedAt: performance.now(),
+    };
+    timers.set(id, record);
+    if (shouldPauseTimers()) {
+      record.handle = null;
+      return;
+    }
+    record.handle = setTimeout(() => beginDismiss(id, 'timer'), duration);
+  }
+
+  function pauseAllTimers(): void {
+    for (const record of timers.values()) {
+      if (!record.handle) continue;
+      clearTimeout(record.handle);
+      record.handle = null;
+      record.remaining = Math.max(0, record.remaining - (performance.now() - record.startedAt));
+    }
+  }
+
+  function resumeAllTimers(): void {
+    if (shouldPauseTimers()) return;
+    for (const [id, record] of timers.entries()) {
+      if (record.handle) continue;
+      if (record.remaining <= 0) {
+        beginDismiss(id, 'timer');
+        continue;
+      }
+      record.startedAt = performance.now();
+      record.handle = setTimeout(() => beginDismiss(id, 'timer'), record.remaining);
+    }
+  }
+
+  function setRegionPointerInside(nextValue: boolean): void {
+    isPointerInsideRegion = nextValue;
+    if (shouldPauseTimers()) {
+      pauseAllTimers();
+    } else {
+      resumeAllTimers();
+    }
+  }
+
+  function handleRegionFocusIn(event: FocusEvent): void {
+    const previousTarget = event.relatedTarget;
+    if (
+      !isFocusInsideRegion &&
+      previousTarget instanceof HTMLElement &&
+      !regionElement?.contains(previousTarget)
+    ) {
+      returnFocusElement = previousTarget;
+    }
+    isFocusInsideRegion = true;
+    pauseAllTimers();
+    synchronizeFocusedToastEscapeHandler();
+  }
+
+  function handleRegionFocusOut(event: FocusEvent): void {
+    const currentTarget = event.currentTarget;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && currentTarget instanceof Node) {
+      if (currentTarget.contains(nextTarget)) return;
+      isFocusInsideRegion = false;
+      releaseToastEscapeHandler();
+      resumeAllTimers();
+      return;
+    }
+
+    queueMicrotask(() => {
+      if (!(currentTarget instanceof Node)) return;
+      isFocusInsideRegion = currentTarget.contains(document.activeElement);
+      synchronizeFocusedToastEscapeHandler();
+      if (!isFocusInsideRegion) resumeAllTimers();
+    });
+  }
+
+  function getToastElement(id: string): HTMLElement | null {
+    return regionElement?.querySelector(`[data-cinder-toast-id="${CSS.escape(id)}"]`) ?? null;
+  }
+
+  function prefersReducedMotion(): boolean {
+    return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  }
+
+  function beginDismiss(id: string, reason: DismissReason): void {
+    const item = findToast(id);
+    if (!item || item.leaving) return;
+
+    clearTimer(id);
+    invalidateGeneration(id);
+
+    const element = getToastElement(id);
+    const shell = element?.closest<HTMLElement>('.cinder-toast-shell');
+    const reducedMotion = prefersReducedMotion();
+    if (element && shell && !reducedMotion) {
+      shell.style.setProperty('--cinder-toast-height', `${shell.offsetHeight}px`);
+      void shell.offsetHeight;
+    }
+
+    const focusNeedsMove = element?.contains(document.activeElement) ?? false;
+    item.leaving = true;
+    item.swipeX = 0;
+    item.swiping = false;
+    politeStack = [...politeStack];
+    assertiveStack = [...assertiveStack];
+
+    if (focusNeedsMove) moveFocusAfterDismiss(id, reason);
+
+    const generation = item.generation;
+    if (!shell) {
+      queueMicrotask(() => reallyRemove(id, generation));
+      return;
+    }
+
+    clearRemovalTimer(id);
+    const cancelCompletion = waitForTransitionCompletion({
+      element: shell,
+      reducedMotion,
+      onComplete: () => reallyRemove(id, generation),
+    });
+    removalTimers.set(id, cancelCompletion);
+  }
+
+  function reallyRemove(id: string, generation: number): void {
+    const item = findToast(id);
+    if (!item || item.generation !== generation) return;
+
+    clearTimer(id);
+    clearRemovalTimer(id);
+    removeFromBothStacks(id);
+    clearGeneration(id);
+  }
+
+  function moveFocusAfterDismiss(id: string, reason: DismissReason): void {
+    if (
+      reason === 'timer' ||
+      reason === 'overflow' ||
+      reason === 'programmatic' ||
+      reason === 'dismissAll'
+    ) {
+      return;
+    }
+    queueMicrotask(() => {
+      const candidates = [...(regionElement?.querySelectorAll<HTMLElement>('.cinder-toast') ?? [])]
+        .filter((element) => element.dataset['cinderToastId'] !== id)
+        .filter((element) => element.dataset['cinderLeaving'] !== 'true');
+      const nextControl = candidates
+        .map((element) => element.querySelector<HTMLElement>('button:not([disabled])'))
+        .find((element): element is HTMLElement => element !== null);
+      (nextControl ?? returnFocusElement ?? document.body).focus();
+      synchronizeFocusedToastEscapeHandler();
+    });
+  }
+
+  function handleActionClick(item: InternalToastItem): void {
+    if (item.leaving) return;
+    if (!item.action) return;
+    item.action.onAction();
+    if (!item.action.keepOpen) {
+      beginDismiss(item.id, 'action');
+    }
+  }
+
+  function promise<T>(
+    promiseToTrack: Promise<T>,
+    options: {
+      loading: string;
+      success: string | ((value: T) => string);
+      error: string | ((error: unknown) => string);
+    } & Pick<ToastOptions, 'id' | 'duration' | 'dismissible' | 'action'>,
+  ): string {
+    const id = getNextToastId(options);
+    if (!canMutateToasts()) {
+      promiseToTrack.then(undefined, () => {});
+      return id;
+    }
+    const loadingOptions: InternalShowOptions = {
+      id,
+      duration: 0,
+      variant: 'info',
+      pending: true,
+    };
+    if (options.dismissible !== undefined) loadingOptions.dismissible = options.dismissible;
+    const pendingToast = upsertToast(options.loading, loadingOptions);
+    const generation = pendingToast.generation;
+    const isCurrentPromiseToast = () =>
+      !destroyed && generations.get(id) === generation && findToast(id);
+
+    promiseToTrack.then(
+      (value) => {
+        if (!isCurrentPromiseToast()) return;
+        const message =
+          typeof options.success === 'function' ? options.success(value) : options.success;
+        const successOptions: InternalShowOptions = { id, variant: 'success' };
+        if (options.duration !== undefined) successOptions.duration = options.duration;
+        if (options.dismissible !== undefined) successOptions.dismissible = options.dismissible;
+        if (options.action !== undefined) successOptions.action = options.action;
+        upsertToast(message, successOptions);
+      },
+      (error) => {
+        if (!isCurrentPromiseToast()) return;
+        const message = typeof options.error === 'function' ? options.error(error) : options.error;
+        const errorOptions: InternalShowOptions = { id, variant: 'danger' };
+        if (options.duration !== undefined) errorOptions.duration = options.duration;
+        if (options.dismissible !== undefined) errorOptions.dismissible = options.dismissible;
+        if (options.action !== undefined) errorOptions.action = options.action;
+        upsertToast(message, errorOptions);
+      },
+    );
+
+    return id;
+  }
+
+  function handleToastKeydown(event: KeyboardEvent, item: InternalToastItem): void {
+    if (event.key !== 'Escape') return;
+    if (!item.dismissible) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    event.stopPropagation();
+    beginDismiss(item.id, 'keyboard');
+  }
+
+  function getFocusedToast(): InternalToastItem | undefined {
+    const activeElement = document.activeElement;
+    if (!(activeElement instanceof HTMLElement)) return undefined;
+    const toastElement = activeElement.closest<HTMLElement>('.cinder-toast');
+    const id = toastElement?.dataset['cinderToastId'];
+    if (!id) return undefined;
+    return findToast(id);
+  }
+
+  function releaseToastEscapeHandler(): void {
+    releaseFocusedToastEscape?.();
+    releaseFocusedToastEscape = null;
+  }
+
+  function synchronizeFocusedToastEscapeHandler(): void {
+    if (!isFocusInsideRegion) {
+      releaseToastEscapeHandler();
+      return;
+    }
+
+    const focusedToast = getFocusedToast();
+    if (!focusedToast?.dismissible || focusedToast.leaving) {
+      releaseToastEscapeHandler();
+      return;
+    }
+
+    if (releaseFocusedToastEscape) return;
+    releaseFocusedToastEscape = pushEscapeHandler(() => {
+      const toast = getFocusedToast();
+      if (!toast?.dismissible || toast.leaving) return;
+      beginDismiss(toast.id, 'keyboard');
+    });
+  }
+
+  function updateToastSwipe(id: string, swipeX: number): void {
+    const item = findToast(id);
+    if (!item || item.leaving) return;
+    item.swipeX = swipeX;
+    item.swiping = swipeX !== 0;
+    politeStack = [...politeStack];
+    assertiveStack = [...assertiveStack];
+  }
+
+  function createToastInteractions(item: InternalToastItem): Attachment<HTMLElement> {
+    let pointerId: number | null = null;
+    let startX = 0;
+
+    return (element) => {
+      function handlePointerDown(event: PointerEvent): void {
+        if (!item.dismissible || item.leaving) return;
+        pointerId = event.pointerId;
+        startX = event.clientX;
+        element.setPointerCapture?.(event.pointerId);
+      }
+
+      function handlePointerMove(event: PointerEvent): void {
+        if (pointerId !== event.pointerId) return;
+        updateToastSwipe(item.id, event.clientX - startX);
+      }
+
+      function handlePointerUp(event: PointerEvent): void {
+        if (pointerId !== event.pointerId) return;
+        const delta = event.clientX - startX;
+        pointerId = null;
+        if (Math.abs(delta) >= 80) {
+          beginDismiss(item.id, 'swipe');
+        } else {
+          updateToastSwipe(item.id, 0);
+        }
+      }
+
+      function handlePointerCancel(): void {
+        pointerId = null;
+        updateToastSwipe(item.id, 0);
+      }
+
+      function handleKeydown(event: KeyboardEvent): void {
+        handleToastKeydown(event, item);
+      }
+
+      element.addEventListener('keydown', handleKeydown);
+      element.addEventListener('pointerdown', handlePointerDown);
+      element.addEventListener('pointermove', handlePointerMove);
+      element.addEventListener('pointerup', handlePointerUp);
+      element.addEventListener('pointercancel', handlePointerCancel);
+
+      return () => {
+        element.removeEventListener('keydown', handleKeydown);
+        element.removeEventListener('pointerdown', handlePointerDown);
+        element.removeEventListener('pointermove', handlePointerMove);
+        element.removeEventListener('pointerup', handlePointerUp);
+        element.removeEventListener('pointercancel', handlePointerCancel);
+      };
+    };
+  }
+
+  setContext<ToastApi>(TOAST_CONTEXT_KEY, { show, dismiss, dismissAll, promise });
 
   onDestroy(() => {
     // Tear down timers so unmounting the region (e.g., during route change)
     // doesn't leak timers that fire later and try to mutate disposed state.
+    destroyed = true;
     for (const id of timers.keys()) clearTimer(id);
+    for (const id of removalTimers.keys()) clearRemovalTimer(id);
+    generations.clear();
+    politeStack = [];
+    assertiveStack = [];
+    releaseToastEscapeHandler();
   });
 </script>
 
@@ -152,11 +587,70 @@
   {@render children()}
 {/if}
 
+{#snippet toastItem(toast: InternalToastItem, index: number)}
+  <div
+    class="cinder-toast-shell"
+    style={`--cinder-toast-stack-index: ${index};`}
+    data-cinder-presence={toast.leaving ? 'exiting' : 'entered'}
+  >
+    <div
+      class="cinder-toast"
+      role="group"
+      aria-label="Notification"
+      data-cinder-variant={toast.variant}
+      data-cinder-toast-id={toast.id}
+      data-cinder-pending={toast.pending ? 'true' : undefined}
+      data-cinder-leaving={toast.leaving ? 'true' : undefined}
+      data-cinder-swiping={toast.swiping ? 'true' : undefined}
+      style={toast.swipeX ? `--cinder-toast-swipe-x: ${toast.swipeX}px;` : undefined}
+      {@attach createToastInteractions(toast)}
+    >
+      {#if toast.icon}
+        <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
+      {/if}
+      {#if toast.pending}
+        <span class="cinder-toast__spinner" aria-hidden="true"></span>
+      {/if}
+      <div class="cinder-toast__message">{toast.message}</div>
+      {#if toast.action}
+        <button
+          type="button"
+          class="cinder-toast__action"
+          disabled={toast.leaving}
+          onclick={() => handleActionClick(toast)}
+        >
+          {toast.action.label}
+        </button>
+      {/if}
+      {#if toast.dismissible}
+        <button
+          type="button"
+          class="cinder-toast__dismiss"
+          aria-label="Dismiss notification"
+          disabled={toast.leaving}
+          onclick={() => beginDismiss(toast.id, 'dismiss-button')}
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+            />
+          </svg>
+        </button>
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
 {#if hydrated}
   <div
+    bind:this={regionElement}
     class={cn('cinder-toast-region', className)}
-    aria-label="Notifications"
-    data-cinder-stack="polite"
+    role="presentation"
+    data-cinder-position={position}
+    onpointerenter={() => setRegionPointerInside(true)}
+    onpointerleave={() => setRegionPointerInside(false)}
+    onfocusin={handleRegionFocusIn}
+    onfocusout={handleRegionFocusOut}
   >
     <div
       role="status"
@@ -165,40 +659,8 @@
       aria-relevant="additions"
       class="cinder-toast-region__channel"
     >
-      {#each politeStack as toast (toast.id)}
-        <div
-          class="cinder-toast"
-          data-cinder-variant={toast.variant}
-          data-cinder-toast-id={toast.id}
-        >
-          {#if toast.icon}
-            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
-          {/if}
-          <div class="cinder-toast__message">{toast.message}</div>
-          {#if toast.action}
-            <button
-              type="button"
-              class="cinder-toast__action"
-              onclick={() => handleActionClick(toast)}
-            >
-              {toast.action.label}
-            </button>
-          {/if}
-          {#if toast.dismissible}
-            <button
-              type="button"
-              class="cinder-toast__dismiss"
-              aria-label="Dismiss notification"
-              onclick={() => dismiss(toast.id)}
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                />
-              </svg>
-            </button>
-          {/if}
-        </div>
+      {#each politeStack as toast, index (`${toast.id}:${toast.generation}`)}
+        {@render toastItem(toast, index)}
       {/each}
     </div>
     <div
@@ -209,40 +671,8 @@
       class="cinder-toast-region__channel"
       data-cinder-stack="assertive"
     >
-      {#each assertiveStack as toast (toast.id)}
-        <div
-          class="cinder-toast"
-          data-cinder-variant={toast.variant}
-          data-cinder-toast-id={toast.id}
-        >
-          {#if toast.icon}
-            <div class="cinder-toast__icon" aria-hidden="true">{@render toast.icon()}</div>
-          {/if}
-          <div class="cinder-toast__message">{toast.message}</div>
-          {#if toast.action}
-            <button
-              type="button"
-              class="cinder-toast__action"
-              onclick={() => handleActionClick(toast)}
-            >
-              {toast.action.label}
-            </button>
-          {/if}
-          {#if toast.dismissible}
-            <button
-              type="button"
-              class="cinder-toast__dismiss"
-              aria-label="Dismiss notification"
-              onclick={() => dismiss(toast.id)}
-            >
-              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-                />
-              </svg>
-            </button>
-          {/if}
-        </div>
+      {#each assertiveStack as toast, index (`${toast.id}:${toast.generation}`)}
+        {@render toastItem(toast, index)}
       {/each}
     </div>
   </div>

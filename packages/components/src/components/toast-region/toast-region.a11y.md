@@ -4,7 +4,7 @@ See [`./toast-region.md`](./toast-region.md) for the call-site usage guide (`use
 
 ## Pattern
 
-Two stacked aria-live regions per [WAI-ARIA Authoring Practices: Alert and Status](https://www.w3.org/WAI/ARIA/apg/patterns/alert/) plus the WCAG 2.x guidance on dynamic notifications. Cinder splits announcements by priority so high-urgency toasts interrupt while informational ones queue politely.
+Two stacked aria-live regions follow [WAI-ARIA Authoring Practices: Alert and Status](https://www.w3.org/WAI/ARIA/apg/patterns/alert/). They also align with [WCAG status message guidance](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html) for dynamic notifications. Cinder splits announcements by priority so high-urgency toasts interrupt while informational ones queue politely.
 
 ## Two regions, two priorities
 
@@ -21,15 +21,19 @@ State is owned by the `<ToastRegion />` instance via Svelte context — there is
 
 ## SSR
 
-The region renders nothing on the server. The internal `hydrated` gate flips to `true` on first client effect, after which the region paints. SSR markup is therefore guaranteed empty regardless of programmatic toast calls before mount (such calls are no-ops because no region context exists yet).
+Wrapped children render normally on the server, and the toast context is available to descendants during SSR. The fixed live-region overlay is the client-only part: the internal `hydrated` gate flips to `true` on first client effect, after which the polite and assertive channels mount.
 
 ## Stack policy
 
-Each region holds at most `maxStack` toasts (default 5). Overflow drops the oldest. Auto-dismiss timers expire after `defaultDuration` ms (default 5000); pass `duration: 0` to make a toast sticky.
+Each region holds at most `maxStack` non-leaving toasts (default 5). Overflow dismisses the oldest through the same exit path as a user dismissal. Auto-dismiss timers expire after `defaultDuration` ms (default 5000); pass `duration: 0` to make a toast sticky.
+
+Hovering or focusing the region pauses active auto-dismiss timers for the whole stack. This matters for keyboard users: once focus enters a toast action or dismiss button, the notification will not disappear while the user is reading or acting on it.
 
 ## Deduplication
 
-Calling `show(message, { id })` with an id that's already active replaces the existing entry instead of stacking a duplicate. Useful for retry-style toasts where you want to update the same notification rather than spam the user.
+Calling `show(message, { id })` with an id that's already active replaces the existing entry instead of stacking a duplicate. Replacement searches both live-region channels, so an `info` toast can become a `danger` toast without leaving an orphan in the polite region.
+
+`toast.promise()` uses the same id replacement path. Loading toasts are polite and sticky; rejected promises resolve into the assertive `danger` region. Late promise settlements are ignored if the loading toast was dismissed or superseded.
 
 ## Action button
 
@@ -37,11 +41,15 @@ When `options.action` is supplied, the toast renders an inline button after the 
 
 ## Dismiss
 
-Each toast has a dismiss button (`aria-label="Dismiss notification"`) unless `dismissible: false` was passed.
+Each toast has a dismiss button (`aria-label="Dismiss notification"`) unless `dismissible: false` was passed. Dismissible toasts also respond to Escape when focus is inside the toast and to horizontal swipe gestures. Escape stops propagation so a parent modal or overlay does not close at the same time.
+
+`dismissible: false` disables only user dismissal affordances. Programmatic `dismiss(id)`, `dismissAll()`, overflow, and action default-dismiss still remove the toast.
+
+When a focused toast is dismissed by a user action, focus moves to the next non-leaving toast control. If no toast control remains, focus moves to `document.body`. Auto-dismiss and overflow do not move focus.
 
 ## Reduced motion
 
-The slide-in animation is disabled under `prefers-reduced-motion: reduce` (the entire animation is skipped, not slowed). Toast appearance and dismissal are immediate.
+The slide-in and exit animations are disabled under `prefers-reduced-motion: reduce` (the entire animation is skipped, not slowed). Toast appearance and dismissal are immediate.
 
 ## Teardown
 

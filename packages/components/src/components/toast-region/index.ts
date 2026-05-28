@@ -6,6 +6,7 @@ export type {
   ToastApi,
   ToastItem,
   ToastOptions,
+  ToastPosition,
   ToastRegionProps,
   ToastVariant,
 } from './toast-region.types.ts';
