@@ -13,7 +13,6 @@
  */
 
 import { existsSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,7 +36,6 @@ import { generateSchemaForComponent } from './generate-component-schema.ts';
 
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const COMPONENTS_DIRECTORY = join(SCRIPT_DIRECTORY, '..', 'src', 'components');
-const TMP_DIRECTORY = join(SCRIPT_DIRECTORY, '..', 'tmp', 'promotion-check');
 
 // ---------------------------------------------------------------------------
 // Schema-exempt components (no .types.ts / schema generated)
@@ -87,7 +85,11 @@ function resolveComponentDirectory(componentName: string): {
   );
 }
 
-/** Emit a diagnostic line to stderr (visible even under --json). */
+/**
+ * Emit a progress line. Under --json it routes to stderr to keep the stdout
+ * JSON contract clean (stdout is exactly one JSON object); in human mode it
+ * writes to stdout alongside the report.
+ */
 function diagnostic(message: string, isJson: boolean): void {
   if (isJson) {
     process.stderr.write(message + '\n');
@@ -201,12 +203,9 @@ async function runPropNamesCheck(
     };
   }
 
-  // Drift check: regenerate into a temp path and compare.
-  const tempDirectory = join(TMP_DIRECTORY, componentName);
-  const tempSchemaPath = join(tempDirectory, `${componentName}.schema.json`);
-
-  await mkdir(tempDirectory, { recursive: true });
-
+  // Drift check: regenerate the schema in memory and compare against the
+  // committed file. The freshly generated schema is never written to disk —
+  // the comparison is purely in-memory, so this check never mutates anything.
   let freshSchemaJson: string;
   try {
     const typesFilePath = join(componentDirectory, `${componentName}.types.ts`);
@@ -226,7 +225,6 @@ async function runPropNamesCheck(
       ...prettierOptions,
       filepath: committedSchemaPath,
     });
-    await Bun.write(tempSchemaPath, freshSchemaJson);
   } catch (error: unknown) {
     return {
       result: {
@@ -320,12 +318,18 @@ if (import.meta.main) {
   const isJson = args.includes('--json');
   const componentName = args.find((a) => !a.startsWith('--'));
 
+  const unknownFlags = args.filter((a) => a.startsWith('--') && a !== '--json');
+  if (unknownFlags.length > 0) {
+    process.stderr.write(`Unknown flag(s): ${unknownFlags.join(', ')}\n`);
+    process.stderr.write('Usage: bun run components:promotion-check <component-name> [--json]\n');
+    process.exit(1);
+  }
+
   if (!componentName) {
     process.stderr.write('Usage: bun run components:promotion-check <component-name> [--json]\n');
     process.exit(1);
   }
 
-  let cleanupTemporaryFiles = false;
   try {
     // Resolve component directory.
     const { componentDirectory, isExperimental } = resolveComponentDirectory(componentName);
@@ -359,7 +363,6 @@ if (import.meta.main) {
     );
     const hydrationCheck = runHydrationCheck(componentName, componentDirectory);
 
-    cleanupTemporaryFiles = true;
     const { result: propNamesCheck, warnings } = await runPropNamesCheck(
       componentName,
       componentDirectory,
@@ -395,9 +398,5 @@ if (import.meta.main) {
   } catch (error: unknown) {
     process.stderr.write(`Error: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(1);
-  } finally {
-    if (cleanupTemporaryFiles && existsSync(TMP_DIRECTORY)) {
-      await rm(TMP_DIRECTORY, { recursive: true, force: true });
-    }
   }
 }
