@@ -12,6 +12,12 @@
 /** Package-name prefixes whose runtime exports touch browser globals. */
 export const PROTECTED_PREFIXES = ['@milkdown/', 'prosemirror-'] as const;
 
+/**
+ * The Milkdown prefix specifically. Editor test files use this directly
+ * because they legitimately import prosemirror-* at the source level.
+ */
+export const MILKDOWN_PREFIX = '@milkdown/' as const;
+
 /** Returns true if the given import specifier is from a protected package. */
 export function isProtectedSpecifier(specifier: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => specifier.startsWith(prefix));

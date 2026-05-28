@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { relative } from 'node:path';
 
-import { PROTECTED_PREFIXES } from '../../../scripts/ssr-import-boundary.ts';
+import { MILKDOWN_PREFIX } from '../../../scripts/ssr-import-boundary.ts';
 
 // Editor source files legitimately import from prosemirror-* (they ARE the browser-side layer),
-// so this test uses only the @milkdown/ prefix from PROTECTED_PREFIXES. The constraint here is
-// that @milkdown/kit/ bundles must stay lazy (no static value imports in non-test files).
-const milkdownPrefix = PROTECTED_PREFIXES.find((p) => p.startsWith('@milkdown/'))!;
-const escapedPrefix = milkdownPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// so this test uses MILKDOWN_PREFIX only. The constraint here is that @milkdown/kit/ bundles
+// must stay lazy (no static value imports in non-test files).
+const escapedPrefix = MILKDOWN_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RUNTIME_MILKDOWN_IMPORT_PATTERN = new RegExp(
   `import\\s+(?!type\\b)[\\s\\S]*?\\s+from\\s+['"]${escapedPrefix}`,
   'g',
