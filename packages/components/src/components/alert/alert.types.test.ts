@@ -15,14 +15,20 @@ import type { HTMLAttributes } from 'svelte/elements';
 import Alert from './alert.svelte';
 import type { AlertProps } from './alert.types.ts';
 
-// --- Snapshot of the pre-migration AlertProps shape ----------------------------------
-// Copied verbatim from the original module-script types in `src/components/alert.svelte`
-// at the start of the migration. This anchors the public surface so future
-// refactors must explicitly update both the migrated type AND this snapshot.
+// --- Snapshot of the intended AlertProps shape ---------------------------------------
+// Anchors the public surface so future refactors must explicitly update both the
+// type AND this snapshot. Per design decision P6-C2, Alert owns a non-overridable
+// `role="alert"` live region, so `role`, `aria-live`, `aria-atomic`, and
+// `aria-relevant` are intentionally omitted from the surface (and scrubbed at
+// runtime). The snapshot mirrors that omit set so the assertions verify the
+// reduced surface rather than pinning the pre-P6-C2 shape.
 
 type _SnapshotAlertVariant = 'info' | 'success' | 'warning' | 'error';
 
-type SnapshotAlertProps = HTMLAttributes<HTMLDivElement> & {
+type SnapshotAlertProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'role' | 'aria-live' | 'aria-atomic' | 'aria-relevant'
+> & {
   variant?: _SnapshotAlertVariant;
   dismissible?: boolean;
   onDismiss?: () => void;

@@ -164,11 +164,12 @@ describe('Alert rendering', () => {
 
   test('role="alert" is non-overridable — a consumer role="status" does not downgrade it', () => {
     // P6-C2 locks Alert as the live-region notification: the role must stay
-    // "alert" and must never become "status" (or any other live-region role). A
-    // consumer can pass role via the inherited HTMLAttributes surface, so the
-    // component scrubs it from rest and spreads filtered rest before role="alert".
+    // "alert" and must never become "status" (or any other live-region role).
+    // `role` is omitted from AlertProps, but a consumer can still escape the type
+    // (`as never`), so the component scrubs it from rest and spreads the filtered
+    // rest before role="alert".
     const { container } = render(Alert, {
-      props: { role: 'status', children: emptySnippet },
+      props: { role: 'status', children: emptySnippet } as never,
     });
     const root = container.querySelector('.cinder-alert');
     expect(root?.getAttribute('role')).toBe('alert');
@@ -178,8 +179,10 @@ describe('Alert rendering', () => {
   test('a consumer-supplied aria-live is stripped so it cannot fight the implicit assertive role', () => {
     // role="alert" implies aria-live="assertive". A consumer aria-live="polite"
     // would silently downgrade the announcement urgency, so it is scrubbed.
+    // `aria-live` is omitted from AlertProps; `as never` simulates a consumer
+    // escaping the type system.
     const { container } = render(Alert, {
-      props: { 'aria-live': 'polite', children: emptySnippet },
+      props: { 'aria-live': 'polite', children: emptySnippet } as never,
     });
     const root = container.querySelector('.cinder-alert');
     expect(root?.getAttribute('role')).toBe('alert');

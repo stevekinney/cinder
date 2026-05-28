@@ -3,7 +3,24 @@ import type { HTMLAttributes } from 'svelte/elements';
 
 export type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 
-export type AlertProps = HTMLAttributes<HTMLDivElement> & {
+/**
+ * Props for the {@link Alert} component — a live-region notification card.
+ *
+ * Per design decision P6-C2, Alert is the assertive live region: it owns
+ * `role="alert"` (which implies `aria-live="assertive"` and `aria-atomic="true"`)
+ * and that role is non-overridable. `role`, `aria-live`, `aria-atomic`, and
+ * `aria-relevant` are therefore omitted from the public surface so a consumer
+ * cannot type `<Alert role="status" />`, downgrade the announcement urgency, or
+ * fragment the assertive announcement — the component also scrubs all four from
+ * spread props at runtime for defense in depth. Mirrors the `Omit`-plus-runtime-
+ * scrub pattern in {@link CalloutProps} (the omit/scrub sets match the
+ * component's behavior in each case). `aria-busy` remains on the surface: it is
+ * a status flag rather than a live-region presentation attribute.
+ */
+export type AlertProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'role' | 'aria-live' | 'aria-atomic' | 'aria-relevant'
+> & {
   variant?: AlertVariant;
   dismissible?: boolean;
   onDismiss?: () => void;
