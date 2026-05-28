@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { relative } from 'node:path';
 
+// Protected-package prefixes are defined centrally in scripts/ssr-import-boundary.ts.
+// This test uses a narrower pattern because editor source files legitimately import
+// from prosemirror-* (they ARE the browser-side layer); the constraint here is that
+// @milkdown/kit/ bundles must stay lazy (no static value imports in non-test files).
 const RUNTIME_MILKDOWN_IMPORT_PATTERN =
   /import\s+(?!type\b)[\s\S]*?\s+from\s+['"]@milkdown\/kit\//g;
 

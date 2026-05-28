@@ -23,7 +23,7 @@ import { describe, expect, it } from 'bun:test';
 import { parse } from 'svelte/compiler';
 
 // ---------------------------------------------------------------------------
-// Protected package set (explicit prefix constants — change only here)
+// Protected package set — keep in sync with scripts/ssr-import-boundary.ts
 // ---------------------------------------------------------------------------
 const PROTECTED_PREFIXES = ['@milkdown/', 'prosemirror-'] as const;
 
