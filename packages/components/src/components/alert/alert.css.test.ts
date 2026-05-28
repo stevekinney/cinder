@@ -108,6 +108,24 @@ function findRule(selector: string): Rule {
 const VARIANTS = ['info', 'success', 'warning', 'error'];
 
 describe('alert chrome reduction — border-equals-base', () => {
+  test('inline-start width EQUALS inline-end width (no stripe — relationship, not magic number)', () => {
+    // P6-C2 acceptance: Alert must NOT have a dominant start edge — start width
+    // must equal end width. Prove it structurally: walk the base rules for
+    // .cinder-alert and assert the only border-affecting declaration is the
+    // `border` shorthand (which sets every edge to the same value). Any future
+    // edit that adds a width longhand would appear here and fail. Uses the
+    // existing BORDER_AFFECTING set — no separate subset needed.
+    const widthDeclarations: string[] = [];
+    for (const rule of findRules('.cinder-alert')) {
+      rule.walkDecls((decl) => {
+        if (BORDER_AFFECTING.has(decl.prop)) widthDeclarations.push(decl.prop);
+      });
+    }
+    // Exactly one entry, the base `border` shorthand — a shorthand sets every
+    // edge identically, so inline-start === inline-end by construction.
+    expect(widthDeclarations).toEqual(['border']);
+  });
+
   test('base rule declares exactly border: 1px solid var(--cinder-border)', () => {
     // The base selector appears in two rules (one declares the scoped
     // --cinder-alert-info token, the other the box). Exactly one of them must

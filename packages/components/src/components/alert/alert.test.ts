@@ -162,6 +162,50 @@ describe('Alert rendering', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
+  test('role="alert" is non-overridable — a consumer role="status" does not downgrade it', () => {
+    // P6-C2 locks Alert as the live-region notification: the role must stay
+    // "alert" and must never become "status" (or any other live-region role).
+    // `role` is omitted from AlertProps, but a consumer can still escape the type
+    // (`as never`), so the component scrubs it from rest and spreads the filtered
+    // rest before role="alert".
+    const { container } = render(Alert, {
+      props: { role: 'status', children: emptySnippet } as never,
+    });
+    const root = container.querySelector('.cinder-alert');
+    expect(root?.getAttribute('role')).toBe('alert');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
+  });
+
+  test('a consumer-supplied aria-live is stripped so it cannot fight the implicit assertive role', () => {
+    // role="alert" implies aria-live="assertive". A consumer aria-live="polite"
+    // would silently downgrade the announcement urgency, so it is scrubbed.
+    // `aria-live` is omitted from AlertProps; `as never` simulates a consumer
+    // escaping the type system.
+    const { container } = render(Alert, {
+      props: { 'aria-live': 'polite', children: emptySnippet } as never,
+    });
+    const root = container.querySelector('.cinder-alert');
+    expect(root?.getAttribute('role')).toBe('alert');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
+  });
+
+  test('aria-atomic and aria-relevant are stripped so consumers cannot override the implicit live-region behavior', () => {
+    // role="alert" implies aria-atomic="true". A consumer aria-atomic="false"
+    // would override the implicit value and fragment announcements. aria-relevant
+    // modifies what changes are announced. Both are scrubbed to prevent the
+    // consumer from undermining the assertive live region.
+    const { container } = render(Alert, {
+      props: {
+        'aria-atomic': 'false',
+        'aria-relevant': 'additions',
+        children: emptySnippet,
+      } as never,
+    });
+    const root = container.querySelector('.cinder-alert');
+    expect(root?.hasAttribute('aria-atomic')).toBe(false);
+    expect(root?.hasAttribute('aria-relevant')).toBe(false);
+  });
+
   test('default variant is "info"', () => {
     const { container } = render(Alert, {
       props: { children: emptySnippet },
