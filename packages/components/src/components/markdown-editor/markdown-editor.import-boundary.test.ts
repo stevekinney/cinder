@@ -115,6 +115,43 @@ function findDynamicImports(node: AstNode, dominatedByGuard: boolean): DynamicIm
 }
 
 // ---------------------------------------------------------------------------
+// Violation collector — shared by production analysis and fixture tests
+// ---------------------------------------------------------------------------
+
+function collectViolations(statements: AstNode[]): {
+  staticValueViolations: string[];
+  unguardedDynamicViolations: string[];
+  nonLiteralDynamicViolations: string[];
+} {
+  const staticValueViolations: string[] = [];
+  const unguardedDynamicViolations: string[] = [];
+  const nonLiteralDynamicViolations: string[] = [];
+
+  for (const stmt of statements) {
+    if (stmt['type'] === 'ImportDeclaration') {
+      const importKind = stmt['importKind'] as string;
+      const source_ = (stmt['source'] as AstNode)['value'] as string;
+      if (importKind === 'value' && isProtected(source_)) {
+        staticValueViolations.push(source_);
+      }
+      continue;
+    }
+    const dynamicImports = findDynamicImports(stmt, false);
+    for (const { specifier, guardedByEarlyReturn } of dynamicImports) {
+      if (specifier === null) {
+        nonLiteralDynamicViolations.push('<non-literal specifier>');
+        continue;
+      }
+      if (isProtected(specifier) && !guardedByEarlyReturn) {
+        unguardedDynamicViolations.push(specifier);
+      }
+    }
+  }
+
+  return { staticValueViolations, unguardedDynamicViolations, nonLiteralDynamicViolations };
+}
+
+// ---------------------------------------------------------------------------
 // Load and parse the MarkdownEditor source
 // ---------------------------------------------------------------------------
 const SOURCE_PATH = new URL('./markdown-editor.svelte', import.meta.url).pathname;
@@ -133,46 +170,10 @@ const moduleBody: AstNode[] =
   (((svelteAst['module'] as AstNode | undefined)?.['content'] as AstNode | undefined)?.['body'] as
     | AstNode[]
     | undefined) ?? [];
-const allTopLevelStatements = [...moduleBody, ...instanceBody];
 
-// ---------------------------------------------------------------------------
-// Collect violations
-// ---------------------------------------------------------------------------
-
-/** Static value imports from a protected package */
-const staticValueViolations: string[] = [];
-
-/** Dynamic imports without a dominating browser guard */
-const unguardedDynamicViolations: string[] = [];
-
-/** Dynamic imports with non-literal specifiers */
-const nonLiteralDynamicViolations: string[] = [];
-
-for (const stmt of allTopLevelStatements) {
-  // Check static imports
-  if (stmt['type'] === 'ImportDeclaration') {
-    const importKind = stmt['importKind'] as string;
-    const source_ = (stmt['source'] as AstNode)['value'] as string;
-    if (importKind === 'value' && isProtected(source_)) {
-      staticValueViolations.push(source_);
-    }
-    continue;
-  }
-
-  // Find dynamic imports inside all other statements
-  const dynamicImports = findDynamicImports(stmt, false);
-  for (const { specifier, guardedByEarlyReturn } of dynamicImports) {
-    if (specifier === null) {
-      nonLiteralDynamicViolations.push('<non-literal specifier>');
-      continue;
-    }
-    if (isProtected(specifier)) {
-      if (!guardedByEarlyReturn) {
-        unguardedDynamicViolations.push(specifier);
-      }
-    }
-  }
-}
+// Production analysis: walk both module and instance script blocks.
+const { staticValueViolations, unguardedDynamicViolations, nonLiteralDynamicViolations } =
+  collectViolations([...moduleBody, ...instanceBody]);
 
 // ---------------------------------------------------------------------------
 // Tests (real component)
@@ -197,47 +198,14 @@ describe('MarkdownEditor import-boundary invariant', () => {
 // matcher itself, not for the component.
 // ---------------------------------------------------------------------------
 
-function analyzeFixture(svelteSource: string): {
-  staticValueViolations: string[];
-  unguardedDynamicViolations: string[];
-  nonLiteralDynamicViolations: string[];
-} {
+// Fixtures use only the instance body (no module script in these synthetic .svelte strings).
+function analyzeFixture(svelteSource: string): ReturnType<typeof collectViolations> {
   const ast = parse(svelteSource, { filename: 'fixture.svelte' }) as unknown as AstNode;
   const body: AstNode[] =
     (((ast['instance'] as AstNode | undefined)?.['content'] as AstNode | undefined)?.['body'] as
       | AstNode[]
       | undefined) ?? [];
-
-  const staticViolations: string[] = [];
-  const unguardedViolations: string[] = [];
-  const nonLiteralViolations: string[] = [];
-
-  for (const stmt of body) {
-    if (stmt['type'] === 'ImportDeclaration') {
-      const importKind = stmt['importKind'] as string;
-      const src = (stmt['source'] as AstNode)['value'] as string;
-      if (importKind === 'value' && isProtected(src)) {
-        staticViolations.push(src);
-      }
-      continue;
-    }
-    const dynamicImports = findDynamicImports(stmt, false);
-    for (const { specifier, guardedByEarlyReturn } of dynamicImports) {
-      if (specifier === null) {
-        nonLiteralViolations.push('<non-literal>');
-        continue;
-      }
-      if (isProtected(specifier) && !guardedByEarlyReturn) {
-        unguardedViolations.push(specifier);
-      }
-    }
-  }
-
-  return {
-    staticValueViolations: staticViolations,
-    unguardedDynamicViolations: unguardedViolations,
-    nonLiteralDynamicViolations: nonLiteralViolations,
-  };
+  return collectViolations(body);
 }
 
 describe('import-boundary matcher fixtures (fail-closed regression coverage)', () => {
@@ -297,7 +265,7 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
         });
       </script><div></div>`,
     );
-    expect(result.nonLiteralDynamicViolations).toEqual(['<non-literal>']);
+    expect(result.nonLiteralDynamicViolations).toEqual(['<non-literal specifier>']);
   });
 
   it('PASSES: dynamic import of a safe (non-protected) package', () => {
