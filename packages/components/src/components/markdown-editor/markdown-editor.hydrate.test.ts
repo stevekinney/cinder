@@ -74,10 +74,17 @@ describe('MarkdownEditor SSR contract (source-level verification)', () => {
   test('server output does not render the live editor (role=application) element', () => {
     // The live editor div has role="application". Svelte's SSR renderer won't
     // emit it because it's inside `{#if browser}`.
-    // Verify: the role="application" element is inside the `{#if browser}` branch.
-    const browserBranchMatch = SVELTE_SOURCE.match(/\{#if browser\}([\s\S]*?)\{:else\}/);
-    expect(browserBranchMatch).not.toBeNull();
-    const browserBranch = browserBranchMatch?.[1] ?? '';
+    // Extract the browser branch by finding the outer {#if browser} … {:else} boundary.
+    // Use index-based extraction rather than a non-greedy regex to avoid matching
+    // the inner {:else} inside {#if mode === 'wysiwyg'} that appears before the
+    // browser/server boundary.
+    const ifBrowserStart = SVELTE_SOURCE.indexOf('{#if browser}');
+    expect(ifBrowserStart).toBeGreaterThan(-1);
+    // The EditorSkeleton {:else} is: {:else}\n    <EditorSkeleton — find this sequence.
+    const elseSkeletonMarker = '{:else}\n    <EditorSkeleton';
+    const elseStart = SVELTE_SOURCE.indexOf(elseSkeletonMarker, ifBrowserStart);
+    expect(elseStart).toBeGreaterThan(ifBrowserStart);
+    const browserBranch = SVELTE_SOURCE.slice(ifBrowserStart + '{#if browser}'.length, elseStart);
     expect(browserBranch).toContain('role="application"');
   });
 

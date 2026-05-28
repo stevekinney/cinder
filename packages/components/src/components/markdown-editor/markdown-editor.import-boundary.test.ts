@@ -144,7 +144,7 @@ const allTopLevelStatements = [...moduleBody, ...instanceBody];
 const staticValueViolations: string[] = [];
 
 /** Dynamic imports without a dominating browser guard */
-const ungardedDynamicViolations: string[] = [];
+const unguardedDynamicViolations: string[] = [];
 
 /** Dynamic imports with non-literal specifiers */
 const nonLiteralDynamicViolations: string[] = [];
@@ -169,7 +169,7 @@ for (const stmt of allTopLevelStatements) {
     }
     if (isProtected(specifier)) {
       if (!guardedByEarlyReturn) {
-        ungardedDynamicViolations.push(specifier);
+        unguardedDynamicViolations.push(specifier);
       }
     }
   }
@@ -184,7 +184,7 @@ describe('MarkdownEditor import-boundary invariant', () => {
   });
 
   it('has no unguarded dynamic imports of @milkdown/ or prosemirror-', () => {
-    expect(ungardedDynamicViolations).toEqual([]);
+    expect(unguardedDynamicViolations).toEqual([]);
   });
 
   it('has no non-literal dynamic import specifiers in the script', () => {
@@ -200,7 +200,7 @@ describe('MarkdownEditor import-boundary invariant', () => {
 
 function analyzeFixture(svelteSource: string): {
   staticValueViolations: string[];
-  ungardedDynamicViolations: string[];
+  unguardedDynamicViolations: string[];
   nonLiteralDynamicViolations: string[];
 } {
   const ast = parse(svelteSource, { filename: 'fixture.svelte' }) as unknown as AstNode;
@@ -236,7 +236,7 @@ function analyzeFixture(svelteSource: string): {
 
   return {
     staticValueViolations: staticViolations,
-    ungardedDynamicViolations: unguardedViolations,
+    unguardedDynamicViolations: unguardedViolations,
     nonLiteralDynamicViolations: nonLiteralViolations,
   };
 }
@@ -265,7 +265,7 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
         });
       </script><div></div>`,
     );
-    expect(result.ungardedDynamicViolations).toEqual([]);
+    expect(result.unguardedDynamicViolations).toEqual([]);
   });
 
   it('FAILS: unguarded dynamic import of protected package at top level', () => {
@@ -274,7 +274,7 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
         void import('@milkdown/kit/prose/history').then(m => {});
       </script><div></div>`,
     );
-    expect(result.ungardedDynamicViolations).toEqual(['@milkdown/kit/prose/history']);
+    expect(result.unguardedDynamicViolations).toEqual(['@milkdown/kit/prose/history']);
   });
 
   it('FAILS: unguarded dynamic import of protected package inside effect (no guard)', () => {
@@ -285,7 +285,7 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
         });
       </script><div></div>`,
     );
-    expect(result.ungardedDynamicViolations).toEqual(['@milkdown/kit/prose/history']);
+    expect(result.unguardedDynamicViolations).toEqual(['@milkdown/kit/prose/history']);
   });
 
   it('FAILS: non-literal specifier in dynamic import', () => {
@@ -307,7 +307,7 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
         void import('some-safe-package').then(m => {});
       </script><div></div>`,
     );
-    expect(result.ungardedDynamicViolations).toEqual([]);
+    expect(result.unguardedDynamicViolations).toEqual([]);
     expect(result.staticValueViolations).toEqual([]);
   });
 });
