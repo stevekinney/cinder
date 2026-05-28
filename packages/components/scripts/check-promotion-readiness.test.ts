@@ -370,6 +370,19 @@ describe('checkPropNames', () => {
     expect(violations).toHaveLength(0);
   });
 
+  test('fails for className even though it is valid camelCase (convention: class)', () => {
+    // cinder components expose `class?: string`, never `className`.
+    const schema = { properties: { className: {} } };
+    const { violations } = checkPropNames(schema);
+    expect(violations.length).toBeGreaterThan(0);
+  });
+
+  test('passes for the canonical class passthrough', () => {
+    const schema = { properties: { class: {} } };
+    const { violations } = checkPropNames(schema);
+    expect(violations).toHaveLength(0);
+  });
+
   test('fails for kebab-case prop names', () => {
     const schema = { properties: { 'full-width': {} } };
     const { violations } = checkPropNames(schema);
@@ -442,6 +455,34 @@ describe('hasHydrationTest', () => {
 
   test('returns false for non-existent file', () => {
     expect(hasHydrationTest('/tmp/no-such-file.test.ts')).toBe(false);
+  });
+
+  test('returns true when renderThenHydrate is inside an active test() block', () => {
+    const tempPath = join(tmpdir(), `hydration-active-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `import { test } from 'bun:test';\n` +
+        `test('hydrates', () => { renderThenHydrate(Foo, src, {}); });\n`,
+    );
+    try {
+      expect(hasHydrationTest(tempPath)).toBe(true);
+    } finally {
+      rmSync(tempPath, { force: true });
+    }
+  });
+
+  test('returns false when renderThenHydrate is only inside test.skip (never runs)', () => {
+    const tempPath = join(tmpdir(), `hydration-skip-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `import { test } from 'bun:test';\n` +
+        `test.skip('hydrates', () => { renderThenHydrate(Foo, src, {}); });\n`,
+    );
+    try {
+      expect(hasHydrationTest(tempPath)).toBe(false);
+    } finally {
+      rmSync(tempPath, { force: true });
+    }
   });
 });
 

@@ -9,10 +9,10 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { parse as parseSvelte } from 'svelte/compiler';
-import { CallExpression, Node, Project, type SourceFile } from 'ts-morph';
+import { Node, Project, type CallExpression, type SourceFile } from 'ts-morph';
 
 // ---------------------------------------------------------------------------
 // Interactive categories — components in these categories require a11y checks.
@@ -23,14 +23,18 @@ const INTERACTIVE_CATEGORIES = new Set(['action', 'form', 'navigation', 'overlay
 
 // ---------------------------------------------------------------------------
 // Prop-name denylist (frozen per plan spec).
-// These are the exact forbidden name strings — the wrong-cased or abbreviated
-// forms that cinder conventions prohibit. Comparison is case-sensitive exact
-// match against the lowercased prop name: a prop named `classname` is denied,
-// but `className` (not in the list) is separately caught by the camelCase rule.
+// These are exact forbidden prop-name strings, compared case-sensitively.
+// They fall into two groups:
+//   1. Wrong-cased / abbreviated forms cinder prohibits (`classname`, `icononly`, …).
+//   2. Valid-camelCase names that nonetheless violate a cinder API convention:
+//      `className` is forbidden because cinder components expose `class?: string`
+//      and destructure it internally as `class: className` — the public prop is
+//      `class`, never `className`. (camelCase alone would let `className` pass.)
 // ---------------------------------------------------------------------------
 
 export const PROP_NAME_DENYLIST = [
   'classname',
+  'className',
   'icononly',
   'leadingicon',
   'trailingicon',
@@ -90,13 +94,30 @@ export function isInteractive(manifestEntry: { category?: string }): boolean {
 /**
  * Returns `true` when an a11y doc exists at either canonical location:
  *   1. Adjacent: `<componentDir>/<name>.a11y.md`
- *   2. Legacy flat: `src/components/<name>.a11y.md` (one directory above componentDir)
+ *   2. Legacy flat: `src/components/<name>.a11y.md`
+ *
+ * The legacy flat path is always anchored at the `src/components` root, not at
+ * the component's immediate parent — for an experimental component at
+ * `src/components/experimental/<name>/`, the flat doc still lives at
+ * `src/components/<name>.a11y.md`, not `src/components/experimental/<name>.a11y.md`.
  */
 export function hasA11yDoc(componentDir: string, componentName: string): boolean {
   const adjacent = join(componentDir, `${componentName}.a11y.md`);
-  // Derive the flat/legacy path: one level above the component directory.
-  const parentDirectory = join(componentDir, '..');
-  const flat = join(parentDirectory, `${componentName}.a11y.md`);
+
+  // Anchor the legacy flat path at the `src/components` root. Walk up from the
+  // component directory until the parent segment is `components`.
+  let candidate = componentDir;
+  for (let depth = 0; depth < 3; depth += 1) {
+    const parent = dirname(candidate);
+    if (basename(parent) === 'components') {
+      const flat = join(parent, `${componentName}.a11y.md`);
+      return existsSync(adjacent) || existsSync(flat);
+    }
+    candidate = parent;
+  }
+
+  // Fallback: if we never found a `components` ancestor, use the immediate parent.
+  const flat = join(dirname(componentDir), `${componentName}.a11y.md`);
   return existsSync(adjacent) || existsSync(flat);
 }
 
@@ -307,25 +328,27 @@ export function hasHydrationTest(testFilePath: string): boolean {
   const project = new Project({ skipAddingFilesFromTsConfig: true });
   const sourceFile = project.addSourceFileAtPath(testFilePath);
 
-  let found = false;
-  sourceFile.forEachDescendant((node) => {
-    if (found || !Node.isCallExpression(node)) return;
-    const expression = node.getExpression();
+  const renderIsFromSvelteServer = isImportedFromSvelteServer(sourceFile, 'render');
 
-    // renderThenHydrate(...)
-    if (Node.isIdentifier(expression) && expression.getText() === 'renderThenHydrate') {
-      found = true;
-      return;
-    }
-
-    // render(...) where render is imported from svelte/server
-    if (Node.isIdentifier(expression) && expression.getText() === 'render') {
-      if (isImportedFromSvelteServer(sourceFile, 'render')) {
+  // Scope the search to ACTIVE test(...)/it(...) blocks only — a render or
+  // renderThenHydrate call inside test.skip / test.todo would never run, so it
+  // must not satisfy the hydration gate (mirrors the substantive-test check).
+  for (const testCall of collectTestCalls(sourceFile)) {
+    let found = false;
+    testCall.forEachDescendant((node) => {
+      if (found || !Node.isCallExpression(node)) return;
+      const expression = node.getExpression();
+      if (!Node.isIdentifier(expression)) return;
+      const name = expression.getText();
+      if (name === 'renderThenHydrate') {
+        found = true;
+      } else if (name === 'render' && renderIsFromSvelteServer) {
         found = true;
       }
-    }
-  });
-  return found;
+    });
+    if (found) return true;
+  }
+  return false;
 }
 
 /** Returns `true` when `name` is imported from `svelte/server` in the given file. */
