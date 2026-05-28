@@ -162,6 +162,29 @@ describe('Alert rendering', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
+  test('role="alert" is non-overridable — a consumer role="status" does not downgrade it', () => {
+    // P6-C2 locks Alert as the live-region notification: the role must stay
+    // "alert" and must never become "status". A consumer can pass role via the
+    // inherited HTMLAttributes surface, so the component scrubs it from rest and
+    // spreads the filtered rest before the hardcoded role="alert".
+    const { container } = render(Alert, {
+      props: { role: 'status', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-alert');
+    expect(root?.getAttribute('role')).toBe('alert');
+  });
+
+  test('a consumer-supplied aria-live is stripped so it cannot fight the implicit assertive role', () => {
+    // role="alert" implies aria-live="assertive". A consumer aria-live="polite"
+    // would silently downgrade the announcement urgency, so it is scrubbed.
+    const { container } = render(Alert, {
+      props: { 'aria-live': 'polite', children: emptySnippet },
+    });
+    const root = container.querySelector('.cinder-alert');
+    expect(root?.getAttribute('role')).toBe('alert');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
+  });
+
   test('default variant is "info"', () => {
     const { container } = render(Alert, {
       props: { children: emptySnippet },

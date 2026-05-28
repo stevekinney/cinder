@@ -107,7 +107,50 @@ function findRule(selector: string): Rule {
 
 const VARIANTS = ['info', 'success', 'warning', 'error'];
 
+/**
+ * Every property that can set an inline-edge width directly or via a shorthand.
+ * The base rule sets width only through the `border` shorthand; if NONE of these
+ * appear anywhere in the sheet, both inline edges resolve to the base shorthand
+ * width and are therefore equal — which is exactly Alert's stripe-free contract.
+ */
+const INLINE_WIDTH_AFFECTING = new Set([
+  'border',
+  'border-width',
+  'border-left',
+  'border-right',
+  'border-left-width',
+  'border-right-width',
+  'border-inline',
+  'border-inline-start',
+  'border-inline-end',
+  'border-inline-width',
+  'border-inline-start-width',
+  'border-inline-end-width',
+]);
+
 describe('alert chrome reduction — border-equals-base', () => {
+  test('inline-start width EQUALS inline-end width (no stripe — relationship, not magic number)', () => {
+    // P6-C2 acceptance: Alert must NOT have a dominant start edge — start width
+    // must equal end width. Rather than hardcoding 1px === 1px, prove it
+    // structurally: the ONLY rule that sets any inline-edge width is the base
+    // `border` shorthand (which sets both edges to the same value). No other
+    // width-affecting declaration exists anywhere in the sheet, so both inline
+    // edges resolve to that one shorthand width and are necessarily equal. A
+    // future edit that lifts one edge would add a declaration here and fail.
+    const widthDeclarations: string[] = [];
+    root.walkRules((rule) => {
+      rule.walkDecls((decl) => {
+        if (INLINE_WIDTH_AFFECTING.has(decl.prop)) widthDeclarations.push(decl.prop);
+      });
+    });
+    // Exactly one width-affecting declaration, and it's the `border` shorthand —
+    // a shorthand sets every edge to the SAME width, so inline-start === inline-end
+    // by construction. No per-edge width longhand exists to break the equality.
+    // The literal value is intentionally NOT asserted here (that's the base-rule
+    // test below); a base border of 1px or 2px both satisfy start === end.
+    expect(widthDeclarations).toEqual(['border']);
+  });
+
   test('base rule declares exactly border: 1px solid var(--cinder-border)', () => {
     // The base selector appears in two rules (one declares the scoped
     // --cinder-alert-info token, the other the box). Exactly one of them must

@@ -157,6 +157,33 @@ const VARIANTS: Array<{ variant: string; token: string }> = [
   { variant: 'danger', token: '--cinder-danger' },
 ];
 
+/**
+ * Parse a CSS length like `4px`, `1px`, or `0.5rem` into a number of pixels.
+ * Only `px` and unitless `0` are accepted — every border width in this sheet is
+ * authored in px, so a unit the resolver does not model (em/rem/%) returns NaN
+ * and fails the relationship comparison cleanly instead of silently matching.
+ */
+function pxWidth(value: string): number {
+  const trimmed = value.trim();
+  if (trimmed === '0') return 0;
+  const match = /^([\d.]+)px$/.exec(trimmed);
+  return match ? Number(match[1]) : Number.NaN;
+}
+
+/**
+ * Extract the width token from a `border` shorthand like
+ * `1px solid var(--cinder-border)`. The width is the first space-separated
+ * component that parses as a length; `solid` and the `var(...)` color are
+ * skipped. Returns NaN when no length component is present.
+ */
+function borderShorthandWidth(value: string): number {
+  for (const part of value.trim().split(/\s+/)) {
+    const width = pxWidth(part);
+    if (!Number.isNaN(width)) return width;
+  }
+  return Number.NaN;
+}
+
 describe('callout stripe — directional treatment', () => {
   test('base rule sets the box border and the 4px inline-start stripe width', () => {
     // Stripe width is not theme-branched (no light-dark on widths), so the 4px
@@ -164,6 +191,23 @@ describe('callout stripe — directional treatment', () => {
     const base = findRule('.cinder-callout');
     expect(declValue(base, 'border')).toBe('1px solid var(--cinder-border)');
     expect(declValue(base, 'border-inline-start-width')).toBe('4px');
+  });
+
+  test('inline-start width is strictly GREATER than inline-end width (relationship, not magic number)', () => {
+    // P6-C2 acceptance: Callout's start edge must dominate its end edge. Derive
+    // both widths from the source rather than hardcoding 4px > 1px so a token
+    // change (e.g. base border 1px → 2px, stripe 4px → 6px) keeps the test green
+    // as long as the start-dominates-end RELATIONSHIP holds. No variant rule
+    // touches a width longhand (asserted below), so the inline-end width is the
+    // base `border` shorthand width and the inline-start width is the explicit
+    // base longhand. Widths are not theme-branched, so this holds in both
+    // schemes and is asserted once.
+    const base = findRule('.cinder-callout');
+    const endWidth = borderShorthandWidth(declValue(base, 'border')!);
+    const startWidth = pxWidth(declValue(base, 'border-inline-start-width')!);
+    expect(Number.isNaN(endWidth)).toBe(false);
+    expect(Number.isNaN(startWidth)).toBe(false);
+    expect(startWidth).toBeGreaterThan(endWidth);
   });
 
   for (const { variant, token } of VARIANTS) {

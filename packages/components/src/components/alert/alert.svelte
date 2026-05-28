@@ -35,10 +35,31 @@
     visible = false;
     onDismiss?.();
   }
+
+  // P6-C2 locks Alert as the live-region notification: `role="alert"` is
+  // non-overridable and must never downgrade to `role="status"`. The prop type
+  // inherits `role` from HTMLAttributes, so a consumer can still pass it via
+  // spread. Scrub `role` (and `aria-live`, which would fight the role's implicit
+  // `aria-live="assertive"`) from rest, then spread the filtered rest BEFORE the
+  // locked `role="alert"` so the hardcoded value always wins the cascade.
+  // Mirrors banner.svelte / callout.svelte defense-in-depth.
+  const restWithoutForbidden = $derived.by(() => {
+    const {
+      role: _role,
+      'aria-live': _ariaLive,
+      ...filtered
+    } = rest as typeof rest & Record<string, unknown>;
+    return filtered;
+  });
 </script>
 
 {#if visible}
-  <div class={cn('cinder-alert', className)} data-cinder-variant={variant} role="alert" {...rest}>
+  <div
+    {...restWithoutForbidden}
+    class={cn('cinder-alert', className)}
+    data-cinder-variant={variant}
+    role="alert"
+  >
     {#if icon}
       <div class="cinder-alert__icon" aria-hidden="true">
         {@render icon()}
