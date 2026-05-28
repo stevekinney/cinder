@@ -203,12 +203,13 @@ the matching entry in `cinder/manifest`.
 
 <!-- generated:overlap-families:start -->
 
-### hover (2 components)
+### hover (3 components)
 
-| id        | purpose                                                                                                     | use when                                                                                                   |
-| --------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `tooltip` | Hover-and-focus triggered descriptive hint anchored to a focusable child element, wired through…            | Showing a short non-interactive label or description for an icon-only button or terse control.             |
-| `popover` | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger… | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or… |
+| id           | purpose                                                                                                     | use when                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `tooltip`    | Hover-and-focus triggered descriptive hint anchored to a focusable child element, wired through…            | Showing a short non-interactive label or description for an icon-only button or terse control.             |
+| `popover`    | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger… | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or… |
+| `hover-card` | Hover-and-focus triggered rich preview card for non-interactive contextual content.                         | Showing a profile, issue, or metadata preview that is richer than a tooltip but still read-only.           |
 
 ### notice (3 components)
 
@@ -218,14 +219,15 @@ the matching entry in `cinder/manifest`.
 | `alert`   | Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or…     | Surfacing the result of a just-completed action such as a save failure or success.                        |
 | `callout` | Inline aside that highlights supporting commentary alongside body content without claiming live-region…       | Drawing attention to tangential information nested inside prose, documentation, or article content.       |
 
-### overlay (4 components)
+### overlay (5 components)
 
-| id        | purpose                                                                                                        | use when                                                                                                      |
-| --------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `modal`   | Centered modal dialog built on the native dialog element with focus capture, restoration, and dismissal…       | Interrupting the user for a focused task or decision that blocks the rest of the page.                        |
-| `drawer`  | Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.                 |
-| `sheet`   | Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first…  | Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces. |
-| `popover` | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…    |
+| id             | purpose                                                                                                        | use when                                                                                                      |
+| -------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `modal`        | Centered modal dialog built on the native dialog element with focus capture, restoration, and dismissal…       | Interrupting the user for a focused task or decision that blocks the rest of the page.                        |
+| `drawer`       | Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.                 |
+| `sheet`        | Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first…  | Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces. |
+| `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…    |
+| `alert-dialog` | Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.           | Requiring acknowledgement of a blocking warning before the user can continue.                                 |
 
 ### selection (3 components)
 
@@ -439,3 +441,91 @@ The reason must come from `allowedExampleExclusionReasons` in
 `manifest.meta.ts`. To add a new reason, edit that array and document
 why in your PR. The exclusion budget is capped at 10% of all playground
 examples; above that, `components:check` fails.
+
+## Stable-promotion gate
+
+Before flipping a component's `@status` from `alpha` or `beta` to `stable`,
+run the promotion gate:
+
+```bash
+bun run components:promotion-check <component-name>
+# or with machine-readable output:
+bun run components:promotion-check <component-name> --json
+```
+
+Exits 0 on PASS, 1 on FAIL. The `--json` flag writes a single JSON object to
+stdout and routes all human-readable diagnostics to stderr.
+
+### What the gate checks
+
+**Check 1 — Substantive test present.** The component must have a
+`<name>.test.ts` file containing at least one active `test(...)` or `it(...)`
+call (`.skip`, `.todo`, `.failing` suffixes excluded). A types-only snapshot
+file does not satisfy this.
+
+**Check 2 — Accessibility coverage (interactive components only).** A component
+is considered interactive when its `@category` metadata is one of `action`,
+`form`, `navigation`, or `overlay`. The check passes when EITHER:
+
+- An a11y doc exists at `<name>.a11y.md` adjacent to the component, OR at the
+  legacy flat path `src/components/<name>.a11y.md`, OR
+- A single `test(...)` block in `<name>.test.ts` contains BOTH a keyboard call
+  (`fireEvent.keyDown` or `user.keyboard`) AND an ARIA/role query
+  (`getByRole`/`findByRole`/`queryByRole`, or `expect(...).toHaveAttribute`
+  where the attribute name is `"role"` or starts with `"aria-"`).
+
+Setup-only mentions outside a test block do not count. Non-interactive
+components are N/A.
+
+**Check 3 — Hydration/SSR coverage (only if a browser guard exists).** The
+gate detects a browser guard structurally: a `{#if browser}` or
+`{#if hydrated}` template block (via `svelte/compiler` AST), or an import of
+`BROWSER` from `esm-env`. When a guard is found, the test file must contain a
+`render` call imported from `svelte/server` OR a `renderThenHydrate` call. A
+test merely _named_ "hydrates" does not satisfy this. No guard detected → N/A.
+
+**Check 4 — Prop-name conventions.** The committed `<name>.schema.json` must
+be up-to-date (no drift vs. what `components:generate` would produce), and all
+prop names must satisfy:
+
+- camelCase (starts with a lowercase letter, letters and digits only)
+- `class` is always allowed as a passthrough
+- `aria-*` and `data-*` attribute names are allowed
+- The prop name must NOT appear in the **frozen denylist** below
+
+`is`-prefix and `has`-prefix boolean props (e.g. `isLoading`) emit a **warning**
+but do not cause failure.
+
+### Frozen prop-name denylist
+
+These exact strings are forbidden as prop names. They are the all-lowercased,
+wrong-cased forms of legitimate camelCase props:
+
+| Forbidden name | Correct form   |
+| -------------- | -------------- |
+| `classname`    | `className`    |
+| `icononly`     | `iconOnly`     |
+| `leadingicon`  | `leadingIcon`  |
+| `trailingicon` | `trailingIcon` |
+| `ondismiss`    | `onDismiss`    |
+| `onchange`     | `onChange`     |
+
+To add to this list: update `PROP_NAME_DENYLIST` in
+`scripts/component-conventions.ts` and document the entry here in the same PR.
+
+### Schema-exempt components
+
+Components listed in `SCHEMA_EXEMPT` inside `scripts/check-promotion-readiness.ts`
+are skipped for the schema-drift and prop-name checks. Add a component to this
+set only when it has no `.types.ts` by design and document the reason.
+
+### Promotion workflow
+
+1. Run `bun run components:promotion-check <name>`.
+2. If PASS: flip `@status` to `stable` in the component's `.svelte` module
+   script, then run `bun run components:generate`.
+3. If FAIL: address each gap listed in the report. Do NOT promote with known
+   gaps — document them instead and leave the status unchanged.
+
+The gate is opt-in and is not wired into CI. It is a human/agent pre-promotion
+step, not an automated blocker.

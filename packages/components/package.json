@@ -2950,6 +2950,7 @@
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
     "components:fixture": "bun run scripts/run-consumer-fixture.ts",
     "components:generate": "bun run scripts/generate-component-artifacts.ts",
+    "components:promotion-check": "bun run scripts/check-promotion-readiness.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json && bun run check:no-cycle-imports",
