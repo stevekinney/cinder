@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -246,7 +246,7 @@ test('keyboard and role', async () => {
     try {
       expect(hasA11yCoverage(tempPath)).toBe(true);
     } finally {
-      Bun.file(tempPath);
+      rmSync(tempPath, { force: true });
     }
   });
 
@@ -268,7 +268,7 @@ test('role only', () => {
     try {
       expect(hasA11yCoverage(tempPath)).toBe(false);
     } finally {
-      Bun.file(tempPath);
+      rmSync(tempPath, { force: true });
     }
   });
 
@@ -287,7 +287,7 @@ test('keyboard only', async () => {
     try {
       expect(hasA11yCoverage(tempPath)).toBe(false);
     } finally {
-      Bun.file(tempPath);
+      rmSync(tempPath, { force: true });
     }
   });
 
@@ -305,7 +305,7 @@ test('role only', () => {
     try {
       expect(hasA11yCoverage(tempPath)).toBe(false);
     } finally {
-      Bun.file(tempPath);
+      rmSync(tempPath, { force: true });
     }
   });
 });
@@ -451,7 +451,12 @@ describe('hasHydrationTest', () => {
 
 describe('--json output shape on a failing component', () => {
   test('drawer exits 1 (hydration FAIL) with valid JSON report', async () => {
-    // Drawer has a browser guard but no renderThenHydrate test.
+    // FRAGILE: this relies on `drawer` currently having a browser guard
+    // ({#if hydrated}) but no renderThenHydrate / svelte-server render test. If
+    // drawer ever gains a hydration test, this assertion flips to PASS and the
+    // test must be repointed at another guarded-but-untested component (or
+    // replaced with a synthetic fixture). The `hydration === fail` assertion
+    // below is what guards against a silent flip.
     const { stdout, exitCode } = await runPromotionCheck(['drawer', '--json']);
     expect(exitCode).toBe(1);
 
@@ -469,4 +474,14 @@ describe('--json output shape on a failing component', () => {
     const { stdout } = await runPromotionCheck(['drawer', '--json']);
     expect(stdout.trimStart()).toMatch(/^\{/);
   });
+
+  // KNOWN COVERAGE GAP: the schema-drift FAIL paths in runPropNamesCheck
+  // (missing .schema.json, missing .types.ts, stale schema, generator throw)
+  // are not directly exercised — every committed component has an in-sync
+  // schema, so there is no real fixture to trigger them, and the script
+  // resolves COMPONENTS_DIRECTORY relative to itself which makes a synthetic
+  // out-of-tree component directory impractical to wire through the CLI. The
+  // drift PASS path is covered by the button and json-viewer integration
+  // tests above. The FAIL paths are simple guard clauses returning a
+  // structured { status: 'fail', detail } result.
 });

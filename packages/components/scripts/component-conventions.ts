@@ -222,18 +222,49 @@ export function hasBrowserGuard(sveltePath: string): boolean {
 }
 
 function hasBrowserGuardInSource(source: string): boolean {
-  const ast = parseSvelte(source, { modern: true });
+  const ast = parseSvelte(source, { modern: true }) as unknown as Record<string, unknown>;
 
-  // Check 1: instance script imports BROWSER from esm-env
-  if (hasBrowserImport(source)) return true;
+  // Check 1: a <script> block imports BROWSER from esm-env (structural — walk
+  // the module and instance script ASTs, not a substring/regex on raw source).
+  if (
+    scriptImportsBrowserFromEsmEnv(ast['module']) ||
+    scriptImportsBrowserFromEsmEnv(ast['instance'])
+  ) {
+    return true;
+  }
 
   // Check 2: template contains {#if browser} or {#if hydrated}
-  return templateHasBrowserIfBlock(ast.fragment);
+  return templateHasBrowserIfBlock(ast['fragment']);
 }
 
-/** Checks the raw source for `import { BROWSER` from 'esm-env'. */
-function hasBrowserImport(source: string): boolean {
-  return /import\s*\{[^}]*\bBROWSER\b[^}]*\}\s*from\s*['"]esm-env['"]/.test(source);
+/**
+ * Returns `true` when the given Svelte `<script>` node (module or instance)
+ * contains an `import { BROWSER } from 'esm-env'` declaration. Walks the ESTree
+ * body the Svelte compiler attaches at `script.content.body` — no substring match.
+ */
+function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
+  if (!scriptNode || typeof scriptNode !== 'object') return false;
+  const content = (scriptNode as Record<string, unknown>)['content'];
+  if (!content || typeof content !== 'object') return false;
+  const body = (content as Record<string, unknown>)['body'];
+  if (!Array.isArray(body)) return false;
+
+  for (const statement of body) {
+    if (!statement || typeof statement !== 'object') continue;
+    const node = statement as Record<string, unknown>;
+    if (node['type'] !== 'ImportDeclaration') continue;
+    const sourceNode = node['source'] as Record<string, unknown> | undefined;
+    if (sourceNode?.['value'] !== 'esm-env') continue;
+    const specifiers = node['specifiers'];
+    if (!Array.isArray(specifiers)) continue;
+    for (const specifier of specifiers) {
+      const imported = (specifier as Record<string, unknown>)?.['imported'] as
+        | Record<string, unknown>
+        | undefined;
+      if (imported?.['name'] === 'BROWSER') return true;
+    }
+  }
+  return false;
 }
 
 /**
