@@ -159,6 +159,7 @@
     if (!browser) return;
 
     let cancelled = false;
+    // Milkdown/ProseMirror runtime graph is browser-bound; keep this import inside the browser-only effect.
     void import('@milkdown/kit/prose/history').then((module) => {
       if (!cancelled) {
         historyUtilities = {
@@ -177,6 +178,7 @@
     if (!browser) return;
 
     let cancelled = false;
+    // Milkdown/ProseMirror runtime graph is browser-bound; keep this import inside the browser-only effect.
     void import('cinder/markdown/pipeline').then((module) => {
       if (!cancelled) {
         pipelineUtilities = {
