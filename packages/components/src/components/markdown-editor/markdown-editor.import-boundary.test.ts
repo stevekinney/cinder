@@ -22,8 +22,9 @@
 import { describe, expect, it } from 'bun:test';
 import { parse } from 'svelte/compiler';
 
-// Protected package set — single source of truth is scripts/ssr-import-boundary.ts.
-// Defined inline because cross-package imports are outside the components rootDir.
+// Protected package set — keep in sync with scripts/ssr-import-boundary.ts PROTECTED_PREFIXES.
+// Defined inline because TypeScript rootDir (packages/components) prevents importing scripts/.
+// When adding a new prefix: update BOTH this constant AND scripts/ssr-import-boundary.ts.
 const PROTECTED_PREFIXES = ['@milkdown/', 'prosemirror-'] as const;
 
 function isProtected(specifier: string): boolean {
