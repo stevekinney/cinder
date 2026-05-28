@@ -107,47 +107,22 @@ function findRule(selector: string): Rule {
 
 const VARIANTS = ['info', 'success', 'warning', 'error'];
 
-/**
- * Every property that can set an inline-edge width directly or via a shorthand.
- * The base rule sets width only through the `border` shorthand; if NONE of these
- * appear anywhere in the sheet, both inline edges resolve to the base shorthand
- * width and are therefore equal — which is exactly Alert's stripe-free contract.
- */
-const INLINE_WIDTH_AFFECTING = new Set([
-  'border',
-  'border-width',
-  'border-left',
-  'border-right',
-  'border-left-width',
-  'border-right-width',
-  'border-inline',
-  'border-inline-start',
-  'border-inline-end',
-  'border-inline-width',
-  'border-inline-start-width',
-  'border-inline-end-width',
-]);
-
 describe('alert chrome reduction — border-equals-base', () => {
   test('inline-start width EQUALS inline-end width (no stripe — relationship, not magic number)', () => {
     // P6-C2 acceptance: Alert must NOT have a dominant start edge — start width
-    // must equal end width. Rather than hardcoding 1px === 1px, prove it
-    // structurally: the ONLY rule that sets any inline-edge width is the base
-    // `border` shorthand (which sets both edges to the same value). No other
-    // width-affecting declaration exists anywhere in the sheet, so both inline
-    // edges resolve to that one shorthand width and are necessarily equal. A
-    // future edit that lifts one edge would add a declaration here and fail.
+    // must equal end width. Prove it structurally: walk the base rules for
+    // .cinder-alert and assert the only border-affecting declaration is the
+    // `border` shorthand (which sets every edge to the same value). Any future
+    // edit that adds a width longhand would appear here and fail. Uses the
+    // existing BORDER_AFFECTING set — no separate subset needed.
     const widthDeclarations: string[] = [];
-    root.walkRules((rule) => {
+    for (const rule of findRules('.cinder-alert')) {
       rule.walkDecls((decl) => {
-        if (INLINE_WIDTH_AFFECTING.has(decl.prop)) widthDeclarations.push(decl.prop);
+        if (BORDER_AFFECTING.has(decl.prop)) widthDeclarations.push(decl.prop);
       });
-    });
-    // Exactly one width-affecting declaration, and it's the `border` shorthand —
-    // a shorthand sets every edge to the SAME width, so inline-start === inline-end
-    // by construction. No per-edge width longhand exists to break the equality.
-    // The literal value is intentionally NOT asserted here (that's the base-rule
-    // test below); a base border of 1px or 2px both satisfy start === end.
+    }
+    // Exactly one entry, the base `border` shorthand — a shorthand sets every
+    // edge identically, so inline-start === inline-end by construction.
     expect(widthDeclarations).toEqual(['border']);
   });
 

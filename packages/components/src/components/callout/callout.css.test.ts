@@ -160,8 +160,9 @@ const VARIANTS: Array<{ variant: string; token: string }> = [
 /**
  * Parse a CSS length like `4px`, `1px`, or `0.5rem` into a number of pixels.
  * Only `px` and unitless `0` are accepted — every border width in this sheet is
- * authored in px, so a unit the resolver does not model (em/rem/%) returns NaN
- * and fails the relationship comparison cleanly instead of silently matching.
+ * authored in px. Keyword widths (`thin`, `medium`, `thick`) and relative units
+ * (em/rem/%) return NaN, which fails the relationship comparison cleanly instead
+ * of silently passing with a wrong value.
  */
 function pxWidth(value: string): number {
   const trimmed = value.trim();
@@ -171,10 +172,10 @@ function pxWidth(value: string): number {
 }
 
 /**
- * Extract the width token from a `border` shorthand like
- * `1px solid var(--cinder-border)`. The width is the first space-separated
- * component that parses as a length; `solid` and the `var(...)` color are
- * skipped. Returns NaN when no length component is present.
+ * Extract the width from a `border` shorthand like `1px solid var(--cinder-border)`.
+ * The width is the first space-separated component that parses as a px length;
+ * `solid`, `var(...)`, and keyword widths are skipped (keywords return NaN from
+ * pxWidth, causing the test to fail rather than silently pass with a wrong value).
  */
 function borderShorthandWidth(value: string): number {
   for (const part of value.trim().split(/\s+/)) {

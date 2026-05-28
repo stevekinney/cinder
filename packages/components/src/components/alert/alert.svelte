@@ -16,6 +16,8 @@
 </script>
 
 <script lang="ts">
+  import type { HTMLAttributes } from 'svelte/elements';
+
   import { cn } from '../../utilities/class-names.ts';
   import type { AlertProps } from './alert.types.ts';
 
@@ -37,18 +39,20 @@
   }
 
   // P6-C2 locks Alert as the live-region notification: `role="alert"` is
-  // non-overridable and must never downgrade to `role="status"`. The prop type
-  // inherits `role` from HTMLAttributes, so a consumer can still pass it via
-  // spread. Scrub `role` (and `aria-live`, which would fight the role's implicit
-  // `aria-live="assertive"`) from rest, then spread the filtered rest BEFORE the
-  // locked `role="alert"` so the hardcoded value always wins the cascade.
-  // Mirrors banner.svelte / callout.svelte defense-in-depth.
+  // non-overridable and must never downgrade to `role="status"`. Scrub role,
+  // aria-live (would fight the implicit assertive), aria-atomic (ARIA spec
+  // implies true for role=alert; a consumer false would override the implicit),
+  // and aria-relevant (modifies announcement behavior) from rest, then spread
+  // the filtered rest BEFORE the locked `role="alert"` so the hardcoded value
+  // always wins the cascade. Mirrors banner.svelte / callout.svelte defense.
   const restWithoutForbidden = $derived.by(() => {
     const {
       role: _role,
       'aria-live': _ariaLive,
+      'aria-atomic': _ariaAtomic,
+      'aria-relevant': _ariaRelevant,
       ...filtered
-    } = rest as typeof rest & Record<string, unknown>;
+    } = rest as HTMLAttributes<HTMLDivElement> & Record<string, unknown>;
     return filtered;
   });
 </script>
