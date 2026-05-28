@@ -71,8 +71,12 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     css: 'external',
     dev: false,
   });
+  // Resolve svelte's location from the hydrate helper's own directory so it
+  // works regardless of process.cwd() (which varies when tests run from the
+  // package root vs the monorepo root).
+  const sveltePackageJson = new URL(import.meta.resolve('svelte/package.json')).pathname;
   const serverSvelteEntry = pathToFileURL(
-    join(process.cwd(), 'node_modules/svelte/src/index-server.js'),
+    join(dirname(sveltePackageJson), 'src/index-server.js'),
   ).href;
   const serverCode = compiled.js.code.replaceAll(
     "from 'svelte';",
