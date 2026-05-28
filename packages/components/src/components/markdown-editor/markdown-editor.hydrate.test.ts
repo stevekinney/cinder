@@ -95,18 +95,12 @@ describe('MarkdownEditor SSR contract (source-level verification)', () => {
 });
 
 describe('MarkdownEditor hydration status', () => {
-  test('live-editor hydration is BLOCKED — document why', () => {
-    // This test explicitly records that full renderThenHydrate of MarkdownEditor
-    // is blocked by the `cinder/editor/component-runtime` "node" conditional
-    // export pointing to a missing dist file. See file header for details.
-    //
-    // Acceptance criterion from the plan: "Default-mode (wysiwyg) hydrate test
-    // passes, OR live-editor hydration is explicitly marked blocked/unmet with
-    // a tracking note."
-    //
-    // This test PASSES (asserts true) to signal the criterion is documented as
-    // blocked, not silently skipped. The note above describes what's needed to
-    // unblock it.
-    expect(true).toBe(true);
-  });
+  // Acceptance criterion from the plan: "Default-mode (wysiwyg) hydrate test passes,
+  // OR live-editor hydration is explicitly marked blocked/unmet with a tracking note."
+  //
+  // Full renderThenHydrate is blocked by `cinder/editor/component-runtime` having no
+  // "bun" conditional export — the "node" export points to a missing dist file.
+  // See file header for the three unblocking options. When unblocked, replace this
+  // todo with a real renderThenHydrate assertion.
+  test.skip('live-editor hydration BLOCKED — cinder/editor/component-runtime missing "bun" conditional export (see file header)', () => {});
 });
