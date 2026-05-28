@@ -8,12 +8,14 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   checkPropNames,
+  hasA11yCoverage,
   hasA11yDoc,
   hasBooleanIsPrefix,
   hasBrowserGuard,
@@ -99,13 +101,48 @@ describe('button reference component', () => {
 // ---------------------------------------------------------------------------
 
 test('exits 1 for unknown component', async () => {
-  const { exitCode } = await runPromotionCheck(['not-a-real-component-xyzzy']);
+  const { exitCode, stderr } = await runPromotionCheck(['not-a-real-component-xyzzy']);
   expect(exitCode).toBe(1);
+  expect(stderr).toMatch(/not found/i);
 });
 
 test('exits 1 with no arguments', async () => {
   const { exitCode } = await runPromotionCheck([]);
   expect(exitCode).toBe(1);
+});
+
+test('--json exits 1 for unknown component with no stdout (error on stderr only)', async () => {
+  const { stdout, stderr, exitCode } = await runPromotionCheck([
+    'not-a-real-component-xyzzy',
+    '--json',
+  ]);
+  expect(exitCode).toBe(1);
+  expect(stdout.trim()).toBe('');
+  expect(stderr).toMatch(/not found/i);
+});
+
+// ---------------------------------------------------------------------------
+// Experimental component path
+// ---------------------------------------------------------------------------
+
+describe('experimental component (json-viewer)', () => {
+  test('exits 0 for json-viewer (experimental, alpha)', async () => {
+    const { exitCode } = await runPromotionCheck(['json-viewer']);
+    expect(exitCode).toBe(0);
+  });
+
+  test('--json for json-viewer reports propNames pass (depthToSrc=3 path)', async () => {
+    const { stdout, exitCode } = await runPromotionCheck(['json-viewer', '--json']);
+    expect(exitCode).toBe(0);
+    const report = JSON.parse(stdout) as {
+      component: string;
+      checks: Record<string, { status: string }>;
+      result: string;
+    };
+    expect(report.component).toBe('json-viewer');
+    expect(report.checks['propNames']?.status).toBe('pass');
+    expect(report.result).toBe('PASS');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -184,6 +221,96 @@ describe('hasA11yDoc', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Unit tests: hasA11yCoverage
+// ---------------------------------------------------------------------------
+
+describe('hasA11yCoverage', () => {
+  test('returns false for non-existent file', () => {
+    expect(hasA11yCoverage('/tmp/no-such-a11y.test.ts')).toBe(false);
+  });
+
+  test('returns true when a single test block has both a keyboard call and a role query', () => {
+    const tempPath = join(tmpdir(), `a11y-coverage-pass-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `
+import { fireEvent } from '@testing-library/svelte';
+test('keyboard and role', async () => {
+  const { getByRole } = render(Component);
+  const el = getByRole('button');
+  await fireEvent.keyDown(el, { key: 'Enter' });
+  expect(el).toBeTruthy();
+});
+`,
+    );
+    try {
+      expect(hasA11yCoverage(tempPath)).toBe(true);
+    } finally {
+      Bun.file(tempPath);
+    }
+  });
+
+  test('returns false when keyboard call and role query are in separate test blocks', () => {
+    const tempPath = join(tmpdir(), `a11y-coverage-split-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `
+import { fireEvent } from '@testing-library/svelte';
+test('keyboard only', async () => {
+  await fireEvent.keyDown(document.body, { key: 'Enter' });
+});
+test('role only', () => {
+  const el = getByRole('button');
+  expect(el).toBeTruthy();
+});
+`,
+    );
+    try {
+      expect(hasA11yCoverage(tempPath)).toBe(false);
+    } finally {
+      Bun.file(tempPath);
+    }
+  });
+
+  test('returns false when only keyboard call is present (no role query)', () => {
+    const tempPath = join(tmpdir(), `a11y-coverage-noRole-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `
+import { fireEvent } from '@testing-library/svelte';
+test('keyboard only', async () => {
+  await fireEvent.keyDown(document.body, { key: 'Enter' });
+  expect(true).toBe(true);
+});
+`,
+    );
+    try {
+      expect(hasA11yCoverage(tempPath)).toBe(false);
+    } finally {
+      Bun.file(tempPath);
+    }
+  });
+
+  test('returns false when only role query is present (no keyboard call)', () => {
+    const tempPath = join(tmpdir(), `a11y-coverage-noKeyboard-${Date.now()}.test.ts`);
+    writeFileSync(
+      tempPath,
+      `
+test('role only', () => {
+  const el = getByRole('button');
+  expect(el).toBeTruthy();
+});
+`,
+    );
+    try {
+      expect(hasA11yCoverage(tempPath)).toBe(false);
+    } finally {
+      Bun.file(tempPath);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Unit tests: hasBrowserGuard
 // ---------------------------------------------------------------------------
 
@@ -255,8 +382,15 @@ describe('checkPropNames', () => {
     expect(violations.length).toBeGreaterThan(0);
   });
 
-  test('returns warnings for is/has-prefix props', () => {
+  test('returns warnings for is-prefix props', () => {
     const schema = { properties: { isLoading: {} } };
+    const { violations, warnings } = checkPropNames(schema);
+    expect(violations).toHaveLength(0);
+    expect(warnings.length).toBeGreaterThan(0);
+  });
+
+  test('returns warnings for has-prefix props', () => {
+    const schema = { properties: { hasError: {} } };
     const { violations, warnings } = checkPropNames(schema);
     expect(violations).toHaveLength(0);
     expect(warnings.length).toBeGreaterThan(0);
