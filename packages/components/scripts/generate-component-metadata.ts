@@ -141,14 +141,14 @@ function parseTagsFromLines(lines: string[], cinderIndex: number): ParsedTag[] {
  * Tells the author exactly where the tag goes and where to read more.
  */
 const NO_CINDER_HEADER_FIX =
-  '\n  Fix: Add @cinder as the first tag in the <script lang=ts module> JSDoc block. See AGENTS.md §The five analyzer conventions.';
+  '\n  Fix: Add @cinder as the first tag in the <script lang="ts" module> JSDoc block. See AGENTS.md §The five analyzer conventions.';
 
 /**
  * Inline fix appended to the "missing required tags" failure. A copy-pasteable
  * minimal block showing the three mandatory tags in context.
  */
 const MISSING_REQUIRED_TAGS_FIX =
-  '\n  Fix: the minimal block is:\n  /**\n   * @cinder\n   * @category <one of the values above>\n   * @status <one of the values above>\n   * @purpose <one-sentence description>\n   */';
+  '\n  Fix: the minimal block is:\n  /**\n   * @cinder\n   * @category <valid category id — see AGENTS.md §The five analyzer conventions>\n   * @status <valid status id — see AGENTS.md §The five analyzer conventions>\n   * @purpose <one-sentence description>\n   */';
 
 /**
  * Return a short "did you mean X?" hint when `actual` shares a leading

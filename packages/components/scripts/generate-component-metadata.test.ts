@@ -326,7 +326,7 @@ export type { ButtonProps } from './button.types.ts';
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.reason).toContain(
-      'Add @cinder as the first tag in the <script lang=ts module> JSDoc block',
+      'Add @cinder as the first tag in the <script lang="ts" module> JSDoc block',
     );
     expect(result.error.reason).toContain('AGENTS.md §The five analyzer conventions');
   });
