@@ -48,6 +48,13 @@ function sanitize(value) {
   return value.replace(/[^a-zA-Z0-9]+/g, '_');
 }
 
+// The marker attribute and the validator's extraction regex assume composite ids
+// contain no characters that need HTML-attribute escaping (notably `"`). The
+// manifest schema constrains component ids and example ids to this pattern, so
+// this is a guard that fails loud if that contract ever changes — rather than
+// silently emitting a marker the validator cannot parse.
+const SAFE_ID = /^[a-z][a-z0-9-]*$/;
+
 const imports = [];
 const renders = [];
 const expectedCompositeIds = [];
@@ -62,7 +69,31 @@ for (const component of componentsWithExamples) {
     process.exit(1);
   }
 
+  if (!SAFE_ID.test(component.id)) {
+    process.stderr.write(
+      `generate-examples: component id "${component.id}" is not attribute-safe (${SAFE_ID}); ` +
+        `the data-example-id marker contract requires it.\n`,
+    );
+    process.exit(1);
+  }
+
+  const seenExampleIds = new Set();
   for (const example of exampleSet.examples) {
+    if (!SAFE_ID.test(example.id)) {
+      process.stderr.write(
+        `generate-examples: ${component.id} example id "${example.id}" is not attribute-safe (${SAFE_ID}).\n`,
+      );
+      process.exit(1);
+    }
+    if (seenExampleIds.has(example.id)) {
+      process.stderr.write(
+        `generate-examples: ${component.id} has duplicate example id "${example.id}" — ` +
+          `composite ids must be unique for the exact-once render assertion.\n`,
+      );
+      process.exit(1);
+    }
+    seenExampleIds.add(example.id);
+
     const compositeId = `${component.id}::${example.id}`;
     expectedCompositeIds.push(compositeId);
     entryCount += 1;

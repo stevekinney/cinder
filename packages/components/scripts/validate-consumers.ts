@@ -1079,8 +1079,11 @@ async function runManifestConsumerFixture(): Promise<void> {
  *   Gate 1 — tsc NodeNext type resolution (no `svelte` condition): proves every
  *            component main + schema + variables `types` condition resolves
  *            under plain Node/NodeNext, the lens a non-Svelte TS consumer uses.
- *   Gate 2 — tsc with `customConditions: ["svelte"]`: proves adding the Svelte
- *            consumer's condition does not break type resolution.
+ *   Gate 2 — tsc with `customConditions: ["svelte"]`: the Svelte-aware consumer's
+ *            type-resolution lens. When a subpath has `types` it resolves the same
+ *            target as Gate 1, but when a subpath has `svelte` and no `types` it
+ *            falls back to the `.ts` source — a path Gate 1 cannot resolve. Guards
+ *            that fallback (and that adding the condition never breaks resolution).
  *   Gate 3 — svelte-check over a generated `.svelte` probe: the real Svelte-aware
  *            view; resolves every component's `svelte` source condition.
  * Gate 4 (real Node ESM + CJS RUNTIME resolve with no `svelte` condition) is
@@ -1288,7 +1291,8 @@ try {
 
   // Fastest-first fixture ordering: manifest-consumer (Node resolution, seconds)
   // → node-consumer (tsc + SSR render) → typescript-consumer (tsc + svelte-check)
-  // → sveltekit-consumer (full Vite build, slowest).
+  // → sveltekit-consumer (full Vite build) → examples-consumer (SvelteKit build +
+  // SSR over every example, slowest).
   await runManifestConsumerFixture();
   await runNodeFixture();
   await runTypescriptConsumerFixture();

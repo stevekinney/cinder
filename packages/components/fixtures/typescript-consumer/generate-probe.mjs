@@ -45,7 +45,16 @@ function toIdentifier(id) {
 }
 
 // ---------------------------------------------------------------------------
-// probe.ts — type-only surface (Gate 1: NodeNext types; Gate 2: svelte cond).
+// probe.ts — type-only surface, compiled under two condition sets:
+//   Gate 1 (no `svelte` condition): resolves via the `types` condition — the
+//           plain non-Svelte TS/NodeNext consumer lens.
+//   Gate 2 (`customConditions: ["svelte"]`): when `types` is present it resolves
+//           the same target as Gate 1 (TypeScript checks `types` first). The
+//           gates DIVERGE only when a subpath has `svelte` but no `types`: Gate 1
+//           fails (no condition matches) while Gate 2 falls back to the `.ts`
+//           source via the `svelte` condition. Gate 2 therefore guards the
+//           Svelte-aware consumer's type-resolution fallback, not a duplicate of
+//           Gate 1. (Verified: drop `types`, keep `svelte` → Gate 1 TS2307, Gate 2 OK.)
 // ---------------------------------------------------------------------------
 
 const tsLines = [

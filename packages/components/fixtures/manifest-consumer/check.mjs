@@ -96,10 +96,27 @@ function assertRuntimeResolvable(specifier) {
 }
 
 /**
- * Assert a specifier is NOT runtime-resolvable under the default condition —
- * i.e. resolving it throws ERR_PACKAGE_PATH_NOT_EXPORTED. This documents the
- * intentional type/svelte-only contract for the schema and variables subpaths.
+ * Assert a specifier is NOT runtime-resolvable under the default condition.
+ *
+ * This is a deliberate TRIPWIRE, not a bug check. The schema/variables subpaths
+ * ship `types` + `svelte` conditions only — no `node`/`default` and no runtime
+ * JS — by `generate-exports.ts` design (they are metadata, not runtime entry
+ * points). Resolving them under Node's default condition therefore throws.
+ *
+ * If task 4176c51c (or any change) later makes schema/variables runtime entry
+ * points, this assertion goes RED — that is the signal to update this fixture
+ * to assert runtime resolution instead of asserting it throws.
+ *
+ * We accept either ERR_PACKAGE_PATH_NOT_EXPORTED (the export key exists but no
+ * condition matches the default lens) or ERR_MODULE_NOT_FOUND (resolver-version
+ * differences can surface the same "not a runtime entry point" condition under
+ * a different code). Any OTHER outcome — a successful resolve, or a different
+ * error code — fails.
  */
+const EXPECTED_NOT_RESOLVABLE_CODES = new Set([
+  'ERR_PACKAGE_PATH_NOT_EXPORTED',
+  'ERR_MODULE_NOT_FOUND',
+]);
 function assertNotRuntimeResolvable(specifier, reason) {
   for (const [resolverLabel, resolve] of [
     ['esm', (s) => import.meta.resolve(s)],
@@ -109,15 +126,17 @@ function assertNotRuntimeResolvable(specifier, reason) {
     try {
       resolved = resolve(specifier);
     } catch (error) {
-      if (error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') continue; // expected
+      if (EXPECTED_NOT_RESOLVABLE_CODES.has(error.code)) continue; // expected tripwire state
       record(
-        `${specifier} [${resolverLabel}]: expected ERR_PACKAGE_PATH_NOT_EXPORTED but got ${error.code ?? error.message}`,
+        `${specifier} [${resolverLabel}]: expected ERR_PACKAGE_PATH_NOT_EXPORTED or ` +
+          `ERR_MODULE_NOT_FOUND but got ${error.code ?? error.message}`,
       );
       continue;
     }
     record(
       `${specifier} [${resolverLabel}]: expected NOT to resolve (${reason}) but resolved to ${resolved}. ` +
-        `If task 4176c51c made schema/variables runtime entry points, update manifest-consumer.`,
+        `This is the task-4176c51c tripwire: if schema/variables intentionally became runtime entry ` +
+        `points, update manifest-consumer to assert runtime resolution instead of non-resolution.`,
     );
   }
 }
@@ -208,11 +227,13 @@ for (const component of manifest.components) {
   //     exist in the tarball, but runtime default resolution must NOT resolve.
   for (const metadataKey of ['schema', 'variables']) {
     const specifier = artifacts[metadataKey];
-    assert.equal(
-      specifier,
-      `${importSpecifier}/${metadataKey}`,
-      `${id}: artifacts.${metadataKey} ("${specifier}") must equal import + "/${metadataKey}"`,
-    );
+    // Accumulate (don't throw) so one malformed component doesn't mask the rest.
+    if (specifier !== `${importSpecifier}/${metadataKey}`) {
+      record(
+        `${id}: artifacts.${metadataKey} ("${specifier}") must equal import + "/${metadataKey}"`,
+      );
+      continue;
+    }
     const exportKey = specifierToExportKey(specifier);
     expectedComponentExportKeys.add(exportKey);
 
@@ -244,11 +265,10 @@ for (const component of manifest.components) {
   for (const sidecarKey of ['examples', 'constraints']) {
     const specifier = artifacts[sidecarKey];
     if (specifier === undefined) continue; // not all components ship these
-    assert.equal(
-      specifier,
-      `${importSpecifier}/${sidecarKey}`,
-      `${id}: artifacts.${sidecarKey} must equal import + "/${sidecarKey}"`,
-    );
+    if (specifier !== `${importSpecifier}/${sidecarKey}`) {
+      record(`${id}: artifacts.${sidecarKey} ("${specifier}") must equal import + "/${sidecarKey}"`);
+      continue;
+    }
     assertRuntimeResolvable(specifier);
     expectedComponentExportKeys.add(specifierToExportKey(specifier));
   }
@@ -294,7 +314,10 @@ for (const key of exportKeys) {
 }
 if (orphanExports.length > 0) {
   record(
-    `package exports not accounted for by the manifest or the allowlist (orphans):\n    ${orphanExports.join('\n    ')}`,
+    `package exports not accounted for by the manifest or the allowlist (orphans):\n    ${orphanExports.join('\n    ')}\n` +
+      `  To resolve: if an orphan is a component artifact, the manifest should advertise it ` +
+      `(check generate-manifest.ts); if it is a new top-level export, add it to ` +
+      `allowedNonComponentExportKeys in this file.`,
   );
 }
 
