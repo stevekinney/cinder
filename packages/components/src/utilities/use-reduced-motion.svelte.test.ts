@@ -108,4 +108,18 @@ describe('useReducedMotion', () => {
 
     expect(motion.current).toBe(false);
   });
+
+  test('returns the false fallback without throwing when matchMedia is unavailable', () => {
+    // Simulates the SSR-contract path: the client `MediaQuery` build is loaded
+    // (browser export condition) but there is no DOM, so `window.matchMedia` is
+    // missing. The hook must not call the throwing client constructor.
+    const original = window.matchMedia;
+    delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+    try {
+      const motion = useReducedMotion();
+      expect(motion.current).toBe(false);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

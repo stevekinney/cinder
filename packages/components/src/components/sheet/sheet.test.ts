@@ -1,4 +1,6 @@
 /// <reference lib="dom" />
+import { join } from 'node:path';
+
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
@@ -10,6 +12,9 @@ import {
   OverflowFadeResizeObserver,
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
+
+const SHEET_SOURCE = join(import.meta.dir, 'sheet.svelte');
 
 setupHappyDom();
 
@@ -779,5 +784,33 @@ describe('Sheet', () => {
     await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(siblingEscapeCount).toBe(2);
     releaseSiblingEscape();
+  });
+});
+
+// The sheet's <dialog> is gated behind a `hydrated` $state set inside an
+// $effect, which never runs on the server. These tests render the component in
+// Svelte's server compiler and assert the gated markup is absent server-side —
+// the contract that prevents client-only dialog markup from leaking into SSR
+// and causing a hydration mismatch.
+describe('Sheet SSR contract', () => {
+  test('emits no <dialog> server-side even when open=true', async () => {
+    const html = await renderToServerHtml(SHEET_SOURCE, {
+      open: true,
+      title: 'Test Sheet',
+      children: emptySnippet,
+    });
+    expect(html).not.toContain('<dialog');
+    expect(html).not.toContain('cinder-sheet');
+    expect(html).not.toContain('cinder-sheet__panel');
+  });
+
+  test('emits no <dialog> server-side when open=false', async () => {
+    const html = await renderToServerHtml(SHEET_SOURCE, {
+      open: false,
+      title: 'Test Sheet',
+      children: emptySnippet,
+    });
+    expect(html).not.toContain('<dialog');
+    expect(html).not.toContain('cinder-sheet');
   });
 });

@@ -16,6 +16,13 @@ const { default: Wrapper } = await import('../../test/fixtures/toast-fixture.sve
 
 const TOAST_REGION_SOURCE = join(import.meta.dir, 'toast-region.svelte');
 const REPOSITORY_ROOT = join(import.meta.dir, '../../../../../');
+// Resolve Svelte's server index from this process so the SSR subprocess works
+// regardless of where `node_modules` lives — in a git worktree it is hoisted to
+// the monorepo root, so a `process.cwd()`-relative path would not find it.
+const SVELTE_SERVER_ENTRY = new URL(
+  './src/index-server.js',
+  import.meta.resolve('svelte/package.json'),
+).href;
 
 let mockedPerformanceNow = 0;
 
@@ -65,7 +72,7 @@ describe('ToastRegion structure', () => {
       const sourcePath = ${JSON.stringify(TOAST_REGION_SOURCE)};
       const source = await Bun.file(sourcePath).text();
       const compiled = compile(source, { filename: sourcePath, generate: 'server', css: 'external', dev: false });
-      const serverSvelteEntry = pathToFileURL(join(process.cwd(), 'node_modules/svelte/src/index-server.js')).href;
+      const serverSvelteEntry = ${JSON.stringify(SVELTE_SERVER_ENTRY)};
       const serverCode = compiled.js.code.replaceAll("from 'svelte';", \`from \${JSON.stringify(serverSvelteEntry)};\`);
       const file = join(dirname(sourcePath), \`.cinder-ssr-test-\${process.pid}-\${Date.now()}.mjs\`);
       await writeFile(file, serverCode, 'utf-8');

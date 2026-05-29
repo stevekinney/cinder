@@ -19,3 +19,4 @@ export {
   type KeyModifiers,
 } from './keyboard.ts';
 export { expectNoLeakedTimers, trackTimers } from './lifecycle.ts';
+export { renderToServerHtml } from './server-render.ts';

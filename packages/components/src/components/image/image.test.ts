@@ -1,9 +1,14 @@
 /// <reference lib="dom" />
+import { join } from 'node:path';
+
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
+
+const IMAGE_SOURCE = join(import.meta.dir, 'image.svelte');
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Image } = await import('./image.svelte');
@@ -315,5 +320,36 @@ describe('Image', () => {
     const wrapper = container.querySelector('div.cinder-image');
     expect(wrapper?.className).toContain('cinder-image');
     expect(wrapper?.className).toContain('hero');
+  });
+});
+
+// Unlike the dialog overlays, Image renders its wrapper and <img> on the
+// server — only the load/error STATE is client-only. `loaded`/`errored` derive
+// from `loadedSource`/`erroredSource`, which start null, and the cached-image
+// probe runs inside the client-only `{@attach detectCached}`. So the server
+// HTML must contain the wrapper and image but none of the state markers
+// (`data-cinder-loaded`, `data-cinder-errored`, `data-cinder-fallback`) that
+// only the client can set — otherwise SSR would assert a load state that
+// hasn't happened yet and hydration would mismatch.
+describe('Image SSR contract', () => {
+  test('emits the wrapper and <img> server-side', async () => {
+    const html = await renderToServerHtml(IMAGE_SOURCE, { src: '/a.jpg', alt: 'A photo' });
+    expect(html).toContain('cinder-image');
+    expect(html).toContain('cinder-image__img');
+    expect(html).toContain('src="/a.jpg"');
+    expect(html).toContain('alt="A photo"');
+  });
+
+  test('omits client-only load/error state markers server-side', async () => {
+    const html = await renderToServerHtml(IMAGE_SOURCE, {
+      src: '/a.jpg',
+      alt: 'A photo',
+      placeholder: 'data:image/png;base64,iVBORw0KGgo=',
+    });
+    expect(html).not.toContain('data-cinder-loaded');
+    expect(html).not.toContain('data-cinder-errored');
+    expect(html).not.toContain('data-cinder-fallback');
+    // The placeholder background is still emitted because nothing has loaded.
+    expect(html).toContain('background-image');
   });
 });

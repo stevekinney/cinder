@@ -1,4 +1,6 @@
 /// <reference lib="dom" />
+import { join } from 'node:path';
+
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
@@ -10,6 +12,9 @@ import {
   OverflowFadeResizeObserver,
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
+
+const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
 
 setupHappyDom();
 
@@ -104,13 +109,12 @@ describe('Drawer', () => {
     expect(dialog?.hasAttribute('open')).toBe(true);
   });
 
-  // ---- 2. SSR-empty: dialog absent when hydrated flag is false ----
-  test('dialog is absent during SSR (hydrated=false)', () => {
-    // In happy-dom $effect runs synchronously, so mounted=true on render.
-    // We test the SSR contract by checking that the component only renders
-    // the dialog after the $effect fires (which is observable via DOM presence).
-    // The SSR model relies on $effect not running server-side — the test documents
-    // the contract; actual SSR behavior is verified by renderToString in a Node env.
+  // ---- 2. Post-hydration: dialog present (closed) once the $effect fires ----
+  test('dialog is present but closed after hydration when open=false', () => {
+    // In happy-dom $effect runs synchronously, so `hydrated` is true by the
+    // time we read the DOM and the dialog is mounted (but closed). The
+    // server-side absence of the dialog is asserted separately in the
+    // "Drawer SSR contract" describe block below.
     const { container } = render(Drawer, {
       props: { open: false, title: 'Test Drawer', children: emptySnippet },
     });
@@ -687,5 +691,33 @@ describe('Drawer', () => {
     });
     const closeButton = container.querySelector('.cinder-drawer__close');
     expect(closeButton?.getAttribute('aria-label')).toBe('Close drawer');
+  });
+});
+
+// The drawer's <dialog> is gated behind a `hydrated` $state set inside an
+// $effect, which never runs on the server. These tests render the component in
+// Svelte's server compiler and assert the gated markup is absent server-side —
+// the contract that prevents client-only dialog markup from leaking into SSR
+// and causing a hydration mismatch.
+describe('Drawer SSR contract', () => {
+  test('emits no <dialog> server-side even when open=true', async () => {
+    const html = await renderToServerHtml(DRAWER_SOURCE, {
+      open: true,
+      title: 'Test Drawer',
+      children: emptySnippet,
+    });
+    expect(html).not.toContain('<dialog');
+    expect(html).not.toContain('cinder-drawer');
+    expect(html).not.toContain('cinder-drawer__panel');
+  });
+
+  test('emits no <dialog> server-side when open=false', async () => {
+    const html = await renderToServerHtml(DRAWER_SOURCE, {
+      open: false,
+      title: 'Test Drawer',
+      children: emptySnippet,
+    });
+    expect(html).not.toContain('<dialog');
+    expect(html).not.toContain('cinder-drawer');
   });
 });
