@@ -630,19 +630,15 @@ describe('Popover — focus management', () => {
     expect(document.activeElement).toBe(outsideButton);
   });
 
-  // Skipped: introduced in #109 (Svelte 5 hygiene pass) but never passed.
-  // The test passes `open` as a plain getter/setter object to render(), which
-  // is NOT reactive in Svelte 5 — Popover's $effect that runs the focus-restore
-  // cleanup never fires because `open` doesn't change inside the component.
-  // The panel stays mounted with focus, so the `expect(document.activeElement)
-  // .toBe(previouslyFocused)` assertion fails on a stale activeElement.
-  // Fix requires routing this through a fixture component with `$state` and
-  // `bind:open` (see popover-bindable-fixture.svelte) plus extending that
-  // fixture to accept a `triggerRef` prop — out of scope for the playground
-  // typecheck-CI PR this guard surfaced the failure in.
-  // TODO(post-#110): rewrite both `focus restores` tests against a reactive
-  // fixture, OR roll back the candidate-iteration refactor that broke them.
-  test.skip('focus restores to capturedFocus when triggerRef is unmounted before close', async () => {
+  // Drives the close through the reactive `bind:open` fixture so Popover's
+  // open-lifecycle $effect actually re-runs its cleanup (the candidate
+  // iteration that restores focus). Passing `open` as a plain getter/setter to
+  // render() — as the original #109 test did — is NOT reactive in Svelte 5, so
+  // the cleanup never fired and the assertion ran against a stale activeElement
+  // (see TODO(post-#110)). With the trigger removed before close, the first two
+  // candidates (triggerRef, resolvedAnchorAtOpen) fail the connection check and
+  // focus falls through to the third candidate, capturedFocus.
+  test('focus restores to capturedFocus when triggerRef is unmounted before close', async () => {
     const previouslyFocused = document.createElement('button');
     previouslyFocused.id = 'popover-prev-focus';
     attachScratch(previouslyFocused);
@@ -652,30 +648,22 @@ describe('Popover — focus management', () => {
     triggerEl.id = 'popover-transient-trigger';
     attachScratch(triggerEl);
 
-    let openValue = true;
-    render(Popover, {
-      props: {
-        get open() {
-          return openValue;
-        },
-        set open(value: boolean) {
-          openValue = value;
-        },
-        triggerRef: triggerEl,
-        children: textSnippet('content'),
-      },
+    const { container } = render(BindableFixture, {
+      props: { initialOpen: true, triggerRef: triggerEl },
     });
 
     await waitFor(() => {
       expect(queryPopoverPanel()).not.toBeNull();
     });
 
-    // Drop the trigger before close.
+    // Drop the trigger before close. triggerRef and resolvedAnchorAtOpen now
+    // both point at a disconnected node, so the candidate iteration must fall
+    // through to capturedFocus (the element focused when the popover opened).
     triggerEl.remove();
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await waitFor(() => {
-      expect(openValue).toBe(false);
+      expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('closed');
     });
     expect(document.activeElement).toBe(previouslyFocused);
   });
