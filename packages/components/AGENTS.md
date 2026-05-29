@@ -47,6 +47,11 @@ component's CSS. There is no per-component CSS to import.
 
 ### Provider setup (highlighter context)
 
+> [!WARNING]
+> CinderProvider is planned for removal — CodeBlock will auto-load Shiki without
+> it. Only add this if you need a custom highlighter or scoped highlighting for a
+> subtree.
+
 `<CodeBlock>` resolves its syntax highlighter through Svelte context. Mount
 **one** `<CinderProvider>` near your app root and every descendant
 `<CodeBlock>` shares the highlighter. The recommended default is the

@@ -137,6 +137,20 @@ function parseTagsFromLines(lines: string[], cinderIndex: number): ParsedTag[] {
 }
 
 /**
+ * Inline fix appended to the "no @cinder metadata header found" failure.
+ * Tells the author exactly where the tag goes and where to read more.
+ */
+const NO_CINDER_HEADER_FIX =
+  '\n  Fix: Add @cinder as the first tag in the <script lang=ts module> JSDoc block. See AGENTS.md §The five analyzer conventions.';
+
+/**
+ * Inline fix appended to the "missing required tags" failure. A copy-pasteable
+ * minimal block showing the three mandatory tags in context.
+ */
+const MISSING_REQUIRED_TAGS_FIX =
+  '\n  Fix: the minimal block is:\n  /**\n   * @cinder\n   * @category <one of the values above>\n   * @status <one of the values above>\n   * @purpose <one-sentence description>\n   */';
+
+/**
  * Return a short "did you mean X?" hint when `actual` shares a leading
  * prefix with one of the `candidates`. Only fires when the match is
  * reasonably strong (≥4 shared leading characters).
@@ -196,7 +210,7 @@ export function extractFromSource(
   // Step 2 — Parse JSDoc tags after `@cinder`.
   const tags = parseCinderTags(scriptContent);
   if (tags === null) {
-    return fail(`no @cinder metadata header found in ${filePath}`);
+    return fail(`no @cinder metadata header found in ${filePath}${NO_CINDER_HEADER_FIX}`);
   }
 
   // Step 3 — Bucket tag values by name.
@@ -249,7 +263,7 @@ export function extractFromSource(
   if (statusValues.length === 0) missing.push('@status');
   if (purposeValues.length === 0) missing.push('@purpose');
   if (missing.length > 0) {
-    return fail(`missing required tags: ${missing.join(', ')}`);
+    return fail(`missing required tags: ${missing.join(', ')}${MISSING_REQUIRED_TAGS_FIX}`);
   }
 
   const categoryRaw = categoryValues[0]!;
@@ -258,13 +272,17 @@ export function extractFromSource(
 
   // Step 6 — Validate closed vocabulary ids.
   if (!isCategoryId(categoryRaw)) {
+    const categoryKeys = Object.keys(categories);
     return fail(
-      `unknown category '${categoryRaw}'${didYouMean(categoryRaw, Object.keys(categories))}`,
+      `unknown category '${categoryRaw}'${didYouMean(categoryRaw, categoryKeys)}. Valid values: ${categoryKeys.join(', ')}`,
     );
   }
 
   if (!isStatusLevel(statusRaw)) {
-    return fail(`unknown status '${statusRaw}'${didYouMean(statusRaw, Object.keys(statusLevels))}`);
+    const statusKeys = Object.keys(statusLevels);
+    return fail(
+      `unknown status '${statusRaw}'${didYouMean(statusRaw, statusKeys)}. Valid values: ${statusKeys.join(', ')}`,
+    );
   }
 
   // Step 7 — Validate @purpose constraints.
