@@ -8,6 +8,17 @@
  * - Auto-deletes threads when their anchor text is removed
  *
  * @module
+ *
+ * SSR safety: the `@milkdown/kit/prose/*` value imports below resolve to
+ * prosemirror-state and prosemirror-view. They are imported STATICALLY — and
+ * deliberately so — because prosemirror is SSR-safe at module-evaluation time:
+ * `prosemirror-view` reads `document`/`navigator` only behind
+ * `typeof X !== 'undefined'` guards, so on the server (where those globals are
+ * absent) it falls back to null/"" rather than throwing. There is therefore
+ * nothing to defer behind a runtime browser guard at this layer; the SSR
+ * boundary lives in the consuming Svelte component (MarkdownEditor mounts the
+ * live editor inside `{#if browser}`). This invariant is enforced by
+ * `src/ssr-import.test.ts`.
  */
 
 import type { EditorState, Transaction } from '@milkdown/kit/prose/state';
