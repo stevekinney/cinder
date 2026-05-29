@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category form
-   * @status beta
+   * @status stable
    * @purpose Free-form text input with asynchronous suggestion hints rendered in a listbox popover.
    * @tag form
    * @tag autocomplete

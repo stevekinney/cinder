@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Responsive SVG line chart for comparing one or more numeric series over an ordered x domain.
    * @tag chart
    * @tag line

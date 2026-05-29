@@ -172,7 +172,7 @@
       "import": "cinder/area-chart",
       "exportName": "AreaChart",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Filled SVG area chart for showing magnitude and cumulative trends across an ordered x domain.",
       "tags": ["chart", "area", "analytics"],
       "useWhen": [
@@ -224,7 +224,7 @@
       "import": "cinder/autocomplete",
       "exportName": "Autocomplete",
       "category": "form",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Free-form text input with asynchronous suggestion hints rendered in a listbox popover.",
       "tags": ["form", "autocomplete"],
       "useWhen": [
@@ -349,7 +349,7 @@
       "import": "cinder/bar-chart",
       "exportName": "BarChart",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Responsive SVG bar chart for grouped or stacked category comparisons.",
       "tags": ["chart", "bar", "analytics"],
       "useWhen": [
@@ -707,7 +707,7 @@
       "import": "cinder/collapsible",
       "exportName": "Collapsible",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Single-panel disclosure that toggles one region with an animated height.",
       "tags": ["disclosure", "collapsible"],
       "useWhen": [
@@ -857,7 +857,7 @@
       "import": "cinder/command-menu",
       "exportName": "CommandMenu",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Inline caret-anchored slash-command list for textareas and single-line text inputs.",
       "tags": ["overlay", "command"],
       "useWhen": [
@@ -932,10 +932,10 @@
     {
       "name": "ConnectionIndicator",
       "id": "connection-indicator",
-      "import": "cinder/experimental/connection-indicator",
+      "import": "cinder/connection-indicator",
       "exportName": "ConnectionIndicator",
       "category": "feedback",
-      "status": "alpha",
+      "status": "stable",
       "purpose": "Live-status pill pairing a semantic dot with a label to communicate real-time WebSocket, SSE, or polling connection state.",
       "tags": ["connection", "status", "realtime"],
       "useWhen": [
@@ -943,15 +943,14 @@
         "Giving operators an at-a-glance health signal for a long-lived transport."
       ],
       "avoidWhen": [
-        "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive.",
-        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+        "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive."
       ],
       "related": ["status-dot", "spinner"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "cinder/experimental/connection-indicator/schema",
-        "variables": "cinder/experimental/connection-indicator/variables"
+        "schema": "cinder/connection-indicator/schema",
+        "variables": "cinder/connection-indicator/variables"
       }
     },
     {
@@ -960,7 +959,7 @@
       "import": "cinder/container",
       "exportName": "Container",
       "category": "layout",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Centered content-width wrapper for the narrow-column reading pattern, capping inline size at a configurable width token.",
       "tags": ["layout"],
       "useWhen": [
@@ -1747,10 +1746,10 @@
     {
       "name": "JsonViewer",
       "id": "json-viewer",
-      "import": "cinder/experimental/json-viewer",
+      "import": "cinder/json-viewer",
       "exportName": "JsonViewer",
       "category": "data-display",
-      "status": "alpha",
+      "status": "stable",
       "purpose": "Collapsible tree visualization of an arbitrary JSON value with hard depth and byte caps and a fallback for oversized payloads.",
       "tags": ["json", "inspector", "tree"],
       "useWhen": [
@@ -1759,15 +1758,14 @@
       ],
       "avoidWhen": [
         "The payload is large enough to need search, filter, or virtualization — compose a custom viewer instead.",
-        "Showing arbitrary source code rather than a JSON value — code-block is the right surface for that.",
-        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+        "Showing arbitrary source code rather than a JSON value — code-block is the right surface for that."
       ],
       "related": ["code-block", "tree"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "cinder/experimental/json-viewer/schema",
-        "variables": "cinder/experimental/json-viewer/variables"
+        "schema": "cinder/json-viewer/schema",
+        "variables": "cinder/json-viewer/variables"
       }
     },
     {
@@ -1776,7 +1774,7 @@
       "import": "cinder/kanban-board",
       "exportName": "KanbanBoard",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Controlled multi-column board for reordering cards within and across workflow columns with keyboard, pointer, and live-region feedback.",
       "tags": ["board", "kanban", "drag", "reorder"],
       "useWhen": [
@@ -1849,7 +1847,7 @@
       "import": "cinder/line-chart",
       "exportName": "LineChart",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Responsive SVG line chart for comparing one or more numeric series over an ordered x domain.",
       "tags": ["chart", "line", "analytics"],
       "useWhen": [
@@ -1875,7 +1873,7 @@
       "import": "cinder/load-more",
       "exportName": "LoadMore",
       "category": "navigation",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.",
       "tags": ["navigation", "paging"],
       "useWhen": [
@@ -1925,7 +1923,7 @@
       "import": "cinder/menu-bar",
       "exportName": "MenuBar",
       "category": "navigation",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Command menubar for application chrome such as File, Edit, and View menus.",
       "tags": ["navigation", "menu", "chrome"],
       "useWhen": [
@@ -1948,10 +1946,10 @@
     {
       "name": "Message",
       "id": "message",
-      "import": "cinder/experimental/message",
+      "import": "cinder/message",
       "exportName": "Message",
       "category": "data-display",
-      "status": "alpha",
+      "status": "stable",
       "purpose": "Chat-style bubble that renders a role label, optional timestamp, and arbitrary body content for transcript or run-stream views.",
       "tags": ["chat", "message", "conversation"],
       "useWhen": [
@@ -1960,15 +1958,14 @@
       ],
       "avoidWhen": [
         "Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead.",
-        "Communicating a single non-conversational notice — callout is more appropriate.",
-        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+        "Communicating a single non-conversational notice — callout is more appropriate."
       ],
       "related": ["chat", "callout"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "cinder/experimental/message/schema",
-        "variables": "cinder/experimental/message/variables"
+        "schema": "cinder/message/schema",
+        "variables": "cinder/message/variables"
       }
     },
     {
@@ -2335,7 +2332,7 @@
       "import": "cinder/resizable-panels",
       "exportName": "ResizablePanels",
       "category": "layout",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Measured splitter layout that renders adjacent resize handles between panes and emits persisted layout state after pointer, keyboard, and collapse interactions.",
       "tags": ["layout", "splitter", "panels"],
       "useWhen": [
@@ -2538,7 +2535,7 @@
       "import": "cinder/selection-popover",
       "exportName": "SelectionPopover",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Floating toolbar anchored to a text selection that exposes a comment-on-selection action with an inline composer.",
       "tags": ["overlay", "selection"],
       "useWhen": [
@@ -3281,7 +3278,7 @@
       "import": "cinder/time-picker",
       "exportName": "TimePicker",
       "category": "form",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Time input with optional scroll-list popover for choosing hours, minutes, seconds, and meridiem.",
       "tags": ["form", "time"],
       "useWhen": [
@@ -3301,10 +3298,10 @@
     {
       "name": "Timeline",
       "id": "timeline",
-      "import": "cinder/experimental/timeline",
+      "import": "cinder/timeline",
       "exportName": "Timeline",
       "category": "data-display",
-      "status": "alpha",
+      "status": "stable",
       "purpose": "Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.",
       "tags": ["timeline", "history", "events"],
       "useWhen": [
@@ -3313,25 +3310,24 @@
       ],
       "avoidWhen": [
         "Surfacing a real-time social or activity stream — feed is the higher-affordance composition.",
-        "Guiding users through a numbered procedural flow — steps conveys progress more clearly.",
-        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+        "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
       ],
       "related": ["timeline-item", "feed", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "cinder/experimental/timeline/schema",
-        "variables": "cinder/experimental/timeline/variables",
-        "examples": "cinder/experimental/timeline/examples"
+        "schema": "cinder/timeline/schema",
+        "variables": "cinder/timeline/variables",
+        "examples": "cinder/timeline/examples"
       }
     },
     {
       "name": "TimelineItem",
       "id": "timeline-item",
-      "import": "cinder/experimental/timeline-item",
+      "import": "cinder/timeline-item",
       "exportName": "TimelineItem",
       "category": "data-display",
-      "status": "alpha",
+      "status": "stable",
       "purpose": "Single event inside a timeline rail with a decorative tone marker, timestamp-first header, optional group header, and body content.",
       "tags": ["timeline", "event"],
       "useWhen": [
@@ -3339,15 +3335,14 @@
         "Coloring decorative markers by tone (info, success, warning, error) while keeping the meaningful status in title or content."
       ],
       "avoidWhen": [
-        "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better.",
-        "Production-critical surfaces — this component is alpha and may change or be removed before promotion to beta."
+        "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better."
       ],
       "related": ["timeline", "feed-event"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "cinder/experimental/timeline-item/schema",
-        "variables": "cinder/experimental/timeline-item/variables"
+        "schema": "cinder/timeline-item/schema",
+        "variables": "cinder/timeline-item/variables"
       }
     },
     {

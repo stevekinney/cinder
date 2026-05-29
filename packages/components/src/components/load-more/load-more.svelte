@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category navigation
-   * @status beta
+   * @status stable
    * @purpose Sentinel-based infinite-scroll trigger with an always-visible button fallback and accessible status states.
    * @tag navigation
    * @tag paging

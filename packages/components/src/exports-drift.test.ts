@@ -20,6 +20,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   assertNoForbiddenExportKeys,
+  computeDeprecatedExperimentalAliases,
   computeExports,
   computeUpstreamReexports,
   FORBIDDEN_EXPORT_KEY_PATTERN,
@@ -79,7 +80,16 @@ describe('exports drift', () => {
     const upstreamReexports = await deriveUpstreamReexports();
     const upstreamExports = computeUpstreamReexports(upstreamReexports);
 
-    const expected = { ...flatExpected, ...directoryExports, ...upstreamExports };
+    // 4. Deprecated `./experimental/<name>` aliases for components promoted
+    //    out of the experimental tree.
+    const deprecatedAliasExports = computeDeprecatedExperimentalAliases();
+
+    const expected = {
+      ...flatExpected,
+      ...directoryExports,
+      ...upstreamExports,
+      ...deprecatedAliasExports,
+    };
 
     const issues: string[] = [];
     for (const [key, entry] of Object.entries(expected)) {

@@ -34,6 +34,7 @@
 @import '../components/combobox/combobox.css';
 @import '../components/command-palette/command-palette.css';
 @import '../components/confirm-dialog/confirm-dialog.css';
+@import '../components/connection-indicator/connection-indicator.css';
 @import '../components/container/container.css';
 @import '../components/context-menu/context-menu.css';
 @import '../components/copy-button/copy-button.css';
@@ -56,12 +57,14 @@
 @import '../components/input/input.css';
 @import './components/json-highlight.css';
 @import '../components/json-schema-editor/json-schema-editor.css';
+@import '../components/json-viewer/json-viewer.css';
 @import '../components/kanban-board/kanban-board.css';
 @import '../components/kbd/kbd.css';
 @import '../components/label/label.css';
 @import '../components/line-chart/line-chart.css';
 @import '../components/load-more/load-more.css';
 @import '../components/menu-bar/menu-bar.css';
+@import '../components/message/message.css';
 @import '../components/modal/modal.css';
 @import '../components/navigation-bar/navigation-bar.css';
 @import '../components/navigation-item/navigation-item.css';
@@ -112,6 +115,8 @@
 @import '../components/tabs/tabs.css';
 @import '../components/textarea/textarea.css';
 @import '../components/time-picker/time-picker.css';
+@import '../components/timeline/timeline.css';
+@import '../components/timeline-item/timeline-item.css';
 @import '../components/toast-region/toast-region.css';
 @import '../components/toggle/toggle.css';
 @import '../components/toolbar/toolbar.css';

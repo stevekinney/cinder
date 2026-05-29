@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category navigation
-   * @status beta
+   * @status stable
    * @purpose Command menubar for application chrome such as File, Edit, and View menus.
    * @tag navigation
    * @tag menu

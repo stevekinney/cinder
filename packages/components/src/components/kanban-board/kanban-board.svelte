@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Controlled multi-column board for reordering cards within and across workflow columns with keyboard, pointer, and live-region feedback.
    * @tag board
    * @tag kanban

@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Responsive SVG bar chart for grouped or stacked category comparisons.
    * @tag chart
    * @tag bar

@@ -180,6 +180,88 @@ function jsonSidecarExport(filePath: string): JsonExportEntry {
 }
 
 /**
+ * Components promoted out of `src/components/experimental/<name>/` into the
+ * main tree that must keep their old `cinder/experimental/<name>` import paths
+ * working as deprecated aliases for one major version.
+ *
+ * Each entry keeps a thin shim at `src/components/experimental/<name>/index.ts`
+ * that re-exports the promoted component and emits a one-time dev warning. The
+ * `./experimental/<name>` export resolves to that shim; the metadata subpaths
+ * (`/schema`, `/variables`, `/styles`, `/examples`) resolve to the promoted
+ * component's new location since those files moved with it.
+ *
+ * Remove an entry — and delete its shim directory — when the deprecation
+ * window closes.
+ */
+export type DeprecatedExperimentalAlias = {
+  /** Kebab-case component name (its new, non-experimental directory name). */
+  name: string;
+  /** True when the promoted component ships a CSS sidecar (`./experimental/<name>/styles`). */
+  hasCss: boolean;
+  /** True when the promoted component ships an examples sidecar (`./experimental/<name>/examples`). */
+  hasExamples: boolean;
+};
+
+export const DEPRECATED_EXPERIMENTAL_ALIASES: readonly DeprecatedExperimentalAlias[] = [
+  { name: 'connection-indicator', hasCss: true, hasExamples: false },
+  { name: 'json-viewer', hasCss: true, hasExamples: false },
+  { name: 'message', hasCss: true, hasExamples: false },
+  { name: 'timeline', hasCss: true, hasExamples: true },
+  { name: 'timeline-item', hasCss: true, hasExamples: false },
+];
+
+/**
+ * Compute the deprecated `./experimental/<name>` alias entries for components
+ * promoted into the main tree. The component entry resolves to the shim under
+ * `src/components/experimental/<name>/` (so the dev warning fires); every
+ * metadata subpath resolves to the promoted component's new location.
+ */
+export function computeDeprecatedExperimentalAliases(
+  aliases: readonly DeprecatedExperimentalAlias[] = DEPRECATED_EXPERIMENTAL_ALIASES,
+): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+
+  for (const { name, hasCss, hasExamples } of aliases) {
+    const aliasPrefix = `./experimental/${name}`;
+    const shimSrcDir = `./src/components/experimental/${name}`;
+    const shimDistDir = `./dist/components/experimental/${name}`;
+    const shimServerDistDir = `./dist/server/components/experimental/${name}`;
+    // Metadata files (schema/variables/styles/examples) moved with the
+    // component, so they resolve at the promoted (non-experimental) location.
+    const newSrcDir = `./src/components/${name}`;
+    const newDistDir = `./dist/components/${name}`;
+
+    out[aliasPrefix] = orderedExportEntry({
+      types: `${shimDistDir}/index.d.ts`,
+      svelte: `${shimSrcDir}/index.ts`,
+      node: `${shimServerDistDir}/index.js`,
+      default: `${shimDistDir}/index.js`,
+    });
+
+    out[`${aliasPrefix}/schema`] = orderedExportEntry({
+      types: `${newDistDir}/${name}.schema.d.ts`,
+      svelte: `${newSrcDir}/${name}.schema.ts`,
+    });
+    out[`${aliasPrefix}/variables`] = orderedExportEntry({
+      types: `${newDistDir}/${name}.variables.d.ts`,
+      svelte: `${newSrcDir}/${name}.variables.ts`,
+    });
+
+    if (hasCss) {
+      out[`${aliasPrefix}/styles`] = {
+        default: `${newDistDir}/${name}.css`,
+      };
+    }
+
+    if (hasExamples) {
+      out[`${aliasPrefix}/examples`] = jsonSidecarExport(`${newSrcDir}/${name}.examples.json`);
+    }
+  }
+
+  return out;
+}
+
+/**
  * Compute the cinder-side exports entries for every public sub-path of the
  * four `@cinder/*` workspace packages. Each entry mirrors the four-condition
  * shape used by component sub-paths so in-repo Svelte tooling resolves the
@@ -329,9 +411,11 @@ async function main(): Promise<void> {
   const components = await discoverComponents();
   const componentComputed = computeExports(components);
   const upstreamComputed = computeUpstreamReexports(upstreamReexports);
+  const deprecatedAliasComputed = computeDeprecatedExperimentalAliases();
   const computed: Record<string, ExportEntry | JsonExportEntry> = {
     ...componentComputed,
     ...upstreamComputed,
+    ...deprecatedAliasComputed,
   };
   const rootExport = computeRootExport();
 
@@ -465,6 +549,9 @@ async function main(): Promise<void> {
   for (const [key, entry] of Object.entries(packageJson.exports)) {
     if (RESERVED_KEYS.has(key)) continue;
     if (migratedNames.has(key)) continue;
+    // Deprecated experimental aliases own their `./experimental/<name>` keys
+    // via `computed`; never let a stale verbatim copy survive as "legacy".
+    if (key in computed) continue;
     if (
       key.endsWith('/schema') ||
       key.endsWith('/variables') ||
