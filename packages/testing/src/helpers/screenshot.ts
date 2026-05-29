@@ -125,6 +125,34 @@ export type UpdateSnapshotsState = FullConfig['updateSnapshots'];
 export type BlockBaselineGuardResult = { ok: true } | { ok: false; message: string };
 
 /**
+ * Whether Playwright is in a baseline-authoring state (`--update-snapshots`),
+ * in which a missing baseline is expected and must NOT trigger the guard.
+ *
+ * Written as an exhaustive switch over every {@link UpdateSnapshotsState}
+ * literal rather than `!== 'none'`: the `never`-typed default makes any literal
+ * Playwright adds to its `updateSnapshots` union a compile-time error here,
+ * forcing a deliberate validate-vs-author decision instead of silently treating
+ * the new mode as authoring and suppressing the missing-baseline guard.
+ */
+function isAuthoringState(updateSnapshots: UpdateSnapshotsState): boolean {
+  switch (updateSnapshots) {
+    case 'none':
+      // Validating against committed baselines — the guard may fire.
+      return false;
+    case 'all':
+    case 'changed':
+    case 'missing':
+      // --update-snapshots is active; toHaveScreenshot legitimately writes the
+      // baseline, so a missing one is not an error.
+      return true;
+    default: {
+      const exhaustive: never = updateSnapshots;
+      return exhaustive;
+    }
+  }
+}
+
+/**
  * Decides whether a block-mode capture should fail fast with an actionable
  * "update baselines" message instead of delegating to `toHaveScreenshot`.
  *
@@ -147,7 +175,7 @@ export function blockBaselineGuard(
   baselineExists: boolean,
   updateSnapshots: UpdateSnapshotsState,
 ): BlockBaselineGuardResult {
-  if (baselineExists || updateSnapshots !== 'none') {
+  if (baselineExists || isAuthoringState(updateSnapshots)) {
     return { ok: true };
   }
 
