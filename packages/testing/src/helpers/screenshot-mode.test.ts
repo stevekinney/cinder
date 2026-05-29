@@ -4,8 +4,13 @@
  * browser; they only exercise the pure string-to-mode mapping.
  */
 
+import type { FullConfig } from '@playwright/test';
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import { resolveVisualDiffMode } from './screenshot.ts';
+import {
+  blockBaselineGuard,
+  resolveVisualDiffMode,
+  type UpdateSnapshotsState,
+} from './screenshot.ts';
 
 // ---------------------------------------------------------------------------
 // Env-var helpers
@@ -130,3 +135,81 @@ describe("resolveVisualDiffMode — invalid values fall back to 'off'", () => {
     warnSpy.mockRestore();
   });
 });
+
+// ---------------------------------------------------------------------------
+// blockBaselineGuard — actionable "update baselines" failure in block mode
+// ---------------------------------------------------------------------------
+
+const BASELINE = '/repo/packages/testing/snapshots/button/light-desktop-default.png';
+
+describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
+  it('passes when the baseline exists', () => {
+    expect(blockBaselineGuard(BASELINE, true, 'none')).toEqual({ ok: true });
+  });
+
+  it('fails with an actionable message when the baseline is missing', () => {
+    const result = blockBaselineGuard(BASELINE, false, 'none');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected guard to fail');
+
+    // Names the missing file so the offending case is identifiable.
+    expect(result.message).toContain(BASELINE);
+    // Names the block-mode env var that triggered the comparison.
+    expect(result.message).toContain('CINDER_VISUAL_DIFF=block');
+    // Points at the Docker update workflow rather than Playwright's generic text.
+    expect(result.message).toContain('test:browser:update:docker');
+    expect(result.message).toContain('update-baselines');
+    expect(result.message).toContain('docs/visual-regression/baselines.md');
+  });
+});
+
+describe('blockBaselineGuard — authoring (updateSnapshots !== none)', () => {
+  it("stays silent for 'all' even when the baseline is missing", () => {
+    // --update-snapshots is active; toHaveScreenshot legitimately writes the file.
+    expect(blockBaselineGuard(BASELINE, false, 'all')).toEqual({ ok: true });
+  });
+
+  it("stays silent for 'missing' when the baseline is missing", () => {
+    expect(blockBaselineGuard(BASELINE, false, 'missing')).toEqual({ ok: true });
+  });
+
+  it("stays silent for 'changed' when the baseline is missing", () => {
+    expect(blockBaselineGuard(BASELINE, false, 'changed')).toEqual({ ok: true });
+  });
+
+  it('passes when authoring and the baseline already exists', () => {
+    expect(blockBaselineGuard(BASELINE, true, 'all')).toEqual({ ok: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Type-level contract: UpdateSnapshotsState must stay pinned to Playwright's
+// `FullConfig['updateSnapshots']` union, NOT a bare `string`. The guard's
+// correctness hinges on the `'none'` sentinel; if the param widened back to
+// `string`, an arbitrary string would type-check as an "authoring" run and
+// silently skip the missing-baseline check. These checks fail to compile (and
+// thus fail `bun run typecheck`) if the contract regresses.
+// ---------------------------------------------------------------------------
+
+// Assignable to/from Playwright's union — proves the alias resolves to exactly
+// `'all' | 'changed' | 'missing' | 'none'` and not a wider/narrower type.
+{
+  const fromPlaywright: FullConfig['updateSnapshots'] = 'none';
+  const asState: UpdateSnapshotsState = fromPlaywright;
+  const backToPlaywright: FullConfig['updateSnapshots'] = asState;
+  void backToPlaywright;
+}
+
+// All four valid literals are accepted by the guard's parameter.
+blockBaselineGuard(BASELINE, false, 'all');
+blockBaselineGuard(BASELINE, false, 'changed');
+blockBaselineGuard(BASELINE, false, 'missing');
+blockBaselineGuard(BASELINE, false, 'none');
+
+// A non-union string must be rejected by the compiler. If UpdateSnapshotsState
+// ever widens to `string`, this line stops erroring and typecheck fails on the
+// now-unused @ts-expect-error directive, surfacing the regression.
+// @ts-expect-error 'nonee' is not a valid FullConfig['updateSnapshots'] value
+blockBaselineGuard(BASELINE, false, 'nonee');
+// @ts-expect-error 'NONE' (wrong case) is not assignable to the union
+blockBaselineGuard(BASELINE, false, 'NONE');

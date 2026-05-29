@@ -64,8 +64,13 @@ All gitignored. Paths are relative to `packages/testing/`:
 - `screenshots/<slug>/<theme>-<viewport>.png` — viewport screenshots.
 - `.playwright/manifest.json` — cached `/api/manifest` snapshot + digest.
 
+## Visual regression
+
+Screenshot diffing is wired through the `CINDER_VISUAL_DIFF` environment variable (`off` | `report` | `block`). `off` (the default) captures PNGs for human review only; `report` records non-blocking diffs against committed baselines; `block` fails the suite on any pixel difference beyond tolerance. Committed baselines live under `packages/testing/snapshots/` and are authored only inside the canonical `cinder-playwright` Docker image — host pixels diverge from CI.
+
+See [`docs/visual-regression/baselines.md`](../../docs/visual-regression/baselines.md) for the full authoring/update workflow, the pinned environment, and how block mode behaves on a clean checkout.
+
 ## v1 non-goals
 
 - No interaction-state testing — components are scanned in their default render. A modal that ships closed is scanned closed.
-- No visual regression / screenshot diffing — captures are for human review only.
 - No axe gating — violations are recorded but do not fail the suite. The baseline informs a follow-up plan that converts severity buckets into hard assertions.
