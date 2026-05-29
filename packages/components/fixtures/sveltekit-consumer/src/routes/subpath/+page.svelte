@@ -25,7 +25,9 @@
   let currentPage = $state(1);
   let inputValue = $state('');
   let textareaValue = $state('');
-  let selectValue = $state('option-a');
+  // Select is generic over its option value union (#192); this fixture offers a
+  // single option, so the bound value is the `'option-a'` literal.
+  let selectValue = $state<'option-a'>('option-a');
   let togglePressed = $state(false);
   let modalOpen = $state(false);
   let dropdownOpen = $state(false);

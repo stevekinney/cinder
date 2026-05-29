@@ -162,14 +162,54 @@ subpaths you fetch next.
 **2. Fetch the prop signature.**
 
 ```ts
-import buttonSchema from 'cinder/button/schema';
+type ButtonSchema = typeof import('cinder/button/schema').default;
 ```
 
-`cinder/<name>/schema` and `cinder/<name>/variables` are **TypeScript modules**
-whose default export is the data — you can import them as regular ESM and
-TypeScript will type-narrow the result. The schema itself is a JSON Schema
-draft 2020-12 document. Required props, prop types, enum values, and defaults
-are all there.
+`cinder/<name>/schema` and `cinder/<name>/variables` are **type-only metadata
+modules**. They ship `types` + `svelte` conditions only — no `node`/`default`
+runtime condition, because the build emits no `.schema.js`/`.variables.js`. The
+default export is a **value** (`declare const _default: ComponentSchema`), so
+reach its type with `typeof`. Take it through `import(...)` as shown above, or
+off the default binding of an `import type`:
+
+```ts
+import type ButtonSchemaModule from 'cinder/button/schema';
+type ButtonSchema = typeof ButtonSchemaModule.default;
+```
+
+> [!WARNING]
+> A default-only `import type ButtonSchemaModule from '…'` binds the **module
+> namespace**, not the schema. Using that bare name in a type position fails
+> (`TS2709`/`TS2749`). Always reach the type through `typeof` — either
+> `typeof import('cinder/button/schema').default` or
+> `typeof ButtonSchemaModule.default`.
+
+The resulting type describes a JSON Schema draft 2020-12 document: required
+props, prop types, enum values, and defaults are all there.
+
+> [!WARNING]
+> Do not `import` these for their runtime value from a plain Node or Vite
+> (non-Svelte) consumer. Because there is no `default` condition, the runtime
+> resolver throws `ERR_PACKAGE_PATH_NOT_EXPORTED`. That is intentional — these
+> subpaths are metadata, not runtime entry points.
+
+If you genuinely need the schema as a runtime **value** (e.g. to feed a form
+generator or validator), read the JSON sidecar that ships alongside the module.
+Anchor the path off the package root — resolve `cinder/package.json` (which _is_
+an export) and join to the sidecar so you never hardcode a `node_modules` layout:
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const packageRoot = dirname(fileURLToPath(import.meta.resolve('cinder/package.json')));
+const sidecar = join(packageRoot, 'src/components/button/button.schema.json');
+const buttonSchema = JSON.parse(await readFile(sidecar, 'utf-8'));
+```
+
+The authoritative, machine-readable index for every component is `cinder/manifest`
+(step 1) — prefer it over hand-resolving sidecar paths whenever you can.
 
 **3. Fetch the cross-prop constraints — when `hasConstraints` is true.**
 
