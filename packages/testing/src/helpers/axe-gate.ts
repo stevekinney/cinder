@@ -14,8 +14,10 @@
  * - `moderate` and `minor` violations are recorded as annotations only, to
  *   avoid noise from low-severity findings.
  * - A component/fixture combination may be allow-listed in {@link AXE_ALLOW_LIST}
- *   with a tracking reason; allow-listed blocking violations are downgraded to
- *   annotations instead of failing the test.
+ *   for specific axe rule ids with a tracking reason; only those rules are
+ *   downgraded to annotations. A blocking violation whose rule id is not
+ *   allow-listed still fails, so new regressions are caught even on allow-listed
+ *   components.
  *
  * The four targeted assertions in `tests/a11y-regressions.playwright.ts` are
  * intentionally stricter (they assert *zero* violations of any impact) and do
@@ -35,9 +37,10 @@ export const BLOCKING_IMPACTS: readonly AxeImpact[] = ['critical', 'serious'] as
  * A single documented exception to the accessibility gate.
  *
  * Matching is by component `slug`, optionally narrowed to a specific `theme`,
- * `viewport`, and/or `fixture`. An entry with only a `slug` allow-lists every
- * theme/viewport/fixture combination for that component. Each entry MUST carry
- * a `reason` so the exception is auditable and removable.
+ * `viewport`, and/or `fixture`. An entry with only a `slug` (plus narrowers)
+ * scopes the exception to that component, but `ruleIds` further restricts it to
+ * the specific axe rules it was created for. Each entry MUST carry a `reason`
+ * and a non-empty `ruleIds` list so the exception is auditable and removable.
  */
 export type AxeAllowEntry = {
   /** Component slug from the manifest (kebab-case). */
@@ -48,6 +51,14 @@ export type AxeAllowEntry = {
   viewport?: ArtifactKey['viewport'];
   /** Restrict the exception to a single fixture. Omit to match every fixture. */
   fixture?: string;
+  /**
+   * The exact axe rule ids this entry downgrades (e.g. `['color-contrast']`).
+   * Only blocking violations whose `id` is in this list are treated as allowed;
+   * any other blocking violation in the same scope still fails the gate, so a
+   * brand-new regression on an allow-listed component is never silently masked.
+   * Required and non-empty.
+   */
+  ruleIds: readonly string[];
   /**
    * Why this combination is allow-listed: the pre-existing violation(s) and a
    * tracking note (issue link, follow-up task, etc.). Required and non-empty.
@@ -68,17 +79,18 @@ export type AxeAllowEntry = {
  * The baseline below was captured by running the full broad sweep
  * (`bun run scripts/start-server.ts` → 134 components × 2 themes × 3 viewports)
  * against the playground on 2026-05-29. Every entry records the exact axe rule
- * id(s) it covers so the exception is auditable and can be removed the moment
- * the underlying violation is fixed. Color-contrast findings are theme-scoped
- * because contrast depends on the active palette; structural findings
- * (nested-interactive, svg-img-alt, etc.) reproduce across every
- * theme/viewport, so those entries match by slug alone.
+ * ids it covers in `ruleIds`; only those rules are downgraded, so a *new*
+ * critical/serious regression on an allow-listed component still fails the gate.
+ * Color-contrast findings are theme-scoped because contrast depends on the
+ * active palette; structural findings (nested-interactive, svg-img-alt, etc.)
+ * reproduce across every theme/viewport, so those entries match by slug alone.
  *
  * An empty list would mean the gate is fully enforced for every component.
  */
 export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
   {
     slug: 'area-chart',
+    ruleIds: ['nested-interactive', 'svg-img-alt'],
     reason:
       'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
       'Charts render interactive data points inside the <svg> without a non-nested control and ' +
@@ -86,36 +98,42 @@ export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
   },
   {
     slug: 'bar-chart',
+    ruleIds: ['nested-interactive', 'svg-img-alt'],
     reason:
       'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
       'Same root cause as area-chart (shared chart primitives). Tracking: chart-a11y follow-up.',
   },
   {
     slug: 'line-chart',
+    ruleIds: ['nested-interactive', 'svg-img-alt'],
     reason:
       'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
       'Same root cause as area-chart (shared chart primitives). Tracking: chart-a11y follow-up.',
   },
   {
     slug: 'avatar-group',
+    ruleIds: ['aria-prohibited-attr'],
     reason:
       'Pre-existing serious violation: aria-prohibited-attr — an aria-* attribute is set on an ' +
       'element whose role does not permit it. Tracking: avatar-group-a11y follow-up.',
   },
   {
     slug: 'progress',
+    ruleIds: ['aria-progressbar-name'],
     reason:
       'Pre-existing serious violation: aria-progressbar-name — the progressbar node lacks an ' +
       'accessible name. Tracking: progress-a11y follow-up.',
   },
   {
     slug: 'tag-input',
+    ruleIds: ['nested-interactive'],
     reason:
       'Pre-existing serious violation: nested-interactive — the removable-tag control is nested ' +
       'inside another interactive element. Tracking: tag-input-a11y follow-up.',
   },
   {
     slug: 'code-block',
+    ruleIds: ['color-contrast', 'scrollable-region-focusable'],
     reason:
       'Pre-existing serious violations: color-contrast (all viewports) and ' +
       'scrollable-region-focusable (the scrollable code region lacks keyboard access, surfaces in ' +
@@ -124,6 +142,7 @@ export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
   {
     slug: 'table',
     theme: 'light',
+    ruleIds: ['color-contrast'],
     reason:
       'Pre-existing serious violation: color-contrast in the light theme (all viewports). ' +
       'Tracking: table-light-contrast follow-up.',
@@ -131,6 +150,7 @@ export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
   {
     slug: 'chip',
     theme: 'light',
+    ruleIds: ['color-contrast'],
     reason:
       'Pre-existing serious violation: color-contrast in the light theme (all viewports). ' +
       'Tracking: chip-light-contrast follow-up.',
@@ -138,6 +158,7 @@ export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
   {
     slug: 'copy-button',
     theme: 'dark',
+    ruleIds: ['color-contrast'],
     reason:
       'Pre-existing serious violation: color-contrast in the dark theme (all viewports). ' +
       'Tracking: copy-button-dark-contrast follow-up.',
@@ -197,10 +218,14 @@ export type AxeGateDecision =
  * Evaluates the accessibility gate for one artifact key.
  *
  * - `pass`: no blocking violations.
- * - `allowed`: blocking violations exist but the key is covered by an
- *   {@link AXE_ALLOW_LIST} entry; the caller should annotate, not fail.
- * - `fail`: blocking violations exist and the key is not allow-listed; the
- *   caller should fail the test with `message`.
+ * - `allowed`: every blocking violation is covered by a matching
+ *   {@link AXE_ALLOW_LIST} entry's `ruleIds`; the caller should annotate, not
+ *   fail.
+ * - `fail`: at least one blocking violation is not covered — either the key is
+ *   not allow-listed at all, or it is allow-listed but a blocking violation's
+ *   rule id is outside the entry's `ruleIds` (a new regression). The caller
+ *   should fail the test with `message`, which lists only the un-allowed
+ *   violations.
  */
 export function evaluateAxeGate(
   key: ArtifactKey,
@@ -213,9 +238,19 @@ export function evaluateAxeGate(
   }
 
   const allowEntry = findAllowEntry(key, allowList);
-  if (allowEntry !== undefined) {
-    return { status: 'allowed', violations, reason: allowEntry.reason };
+  if (allowEntry === undefined) {
+    return { status: 'fail', violations, message: formatBlockingViolations(key, violations) };
   }
 
-  return { status: 'fail', violations, message: formatBlockingViolations(key, violations) };
+  const allowedRuleIds = new Set(allowEntry.ruleIds);
+  const unallowed = violations.filter((violation) => !allowedRuleIds.has(violation.id));
+  if (unallowed.length > 0) {
+    return {
+      status: 'fail',
+      violations: unallowed,
+      message: formatBlockingViolations(key, unallowed),
+    };
+  }
+
+  return { status: 'allowed', violations, reason: allowEntry.reason };
 }

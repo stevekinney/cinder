@@ -111,9 +111,11 @@ for (const entry of entries) {
             // Accessibility gate: `critical` and `serious` violations fail the
             // sweep; `moderate`/`minor` stay annotation-only (recorded above).
             // An entry in `AXE_ALLOW_LIST` (matched by slug, optionally narrowed
-            // to theme/viewport/fixture) downgrades blocking violations to an
-            // annotation so a known pre-existing violation can be explicitly
-            // tracked rather than forcing a zero-violation baseline.
+            // to theme/viewport/fixture) downgrades the specific rule ids it
+            // names to an annotation so a known pre-existing violation can be
+            // explicitly tracked rather than forcing a zero-violation baseline.
+            // A blocking violation whose rule id is *not* allow-listed still
+            // fails, so new regressions on allow-listed components are caught.
             const decision = evaluateAxeGate(key, buckets);
             if (decision.status === 'allowed') {
               test.info().annotations.push({
