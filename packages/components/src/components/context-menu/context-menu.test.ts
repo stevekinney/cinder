@@ -249,6 +249,108 @@ describe('ContextMenu', () => {
     expect(document.activeElement).toBe(triggerButton);
   });
 
+  test('opening focuses the first enabled menu item', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+  });
+
+  test('ArrowDown and ArrowUp navigate enabled items and skip disabled ones', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+
+    // "Disabled action" is skipped — ArrowDown lands on the next enabled item.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Rename');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Delete');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement?.textContent).toContain('Rename');
+  });
+
+  test('ArrowDown wraps from the last enabled item back to the first', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    expect(document.activeElement?.textContent).toContain('Delete');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Open');
+  });
+
+  test('ArrowUp wraps from the first enabled item to the last', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement?.textContent).toContain('Delete');
+  });
+
+  test('Enter on the focused item selects it and closes the menu', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Rename');
+
+    // DropdownItem dispatches a synthetic click on Enter, so selection and
+    // close-on-select both fire even though happy-dom does not synthesize the
+    // click from keydown on its own.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+
+    await waitFor(() => expect(queryMenu()).toBeNull());
+    expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');
+  });
+
+  test('Escape closes the menu and restores focus to the trigger region', async () => {
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    triggerButton.focus();
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Open');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+
+    // Escape both flips open to false (the close effect restores focus) and
+    // runs DropdownMenu's own focusTrigger() call, so focus lands back inside
+    // the trigger region rather than escaping to the body.
+    await waitFor(() => expect(queryMenu()).toBeNull());
+    expect(region.contains(document.activeElement)).toBe(true);
+  });
+
   test('keyboard context menu keys open at the focused target edge', async () => {
     const { container } = render(ContextMenuHarness);
     const button = container.querySelector('.context-menu-button') as HTMLButtonElement;

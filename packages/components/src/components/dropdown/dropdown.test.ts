@@ -469,6 +469,58 @@ describe('Dropdown', () => {
     expect(document.activeElement?.textContent).toContain('Copy link');
   });
 
+  test('ArrowUp from the first item wraps to the last item', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+  });
+
+  test('ArrowDown from the last item wraps to the first item', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Copy link');
+  });
+
+  test('Enter activates the focused menu item and closes the menu', async () => {
+    const { container } = render(DropdownCompoundFixture);
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain('Copy link');
+    });
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    // DropdownItem dispatches a synthetic click on Enter, so activation and
+    // close-on-select both run even though happy-dom does not synthesize the
+    // click from keydown on a <button> itself.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(container.querySelector('[role="menu"]')).toBeNull();
+    });
+    expect(container.querySelector('output')?.textContent).toBe('share');
+  });
+
   test('legacy trigger wrapper does not own aria-haspopup', () => {
     const { container } = render(Dropdown, {
       props: {
