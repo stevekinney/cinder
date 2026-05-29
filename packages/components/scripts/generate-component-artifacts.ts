@@ -22,7 +22,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import prettier from 'prettier';
+import * as prettier from 'prettier';
 
 import {
   discoverComponentDirectories,

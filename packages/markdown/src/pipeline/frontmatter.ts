@@ -29,6 +29,17 @@ type FrontMatterSegments = {
   body: string;
 };
 
+/**
+ * Narrow an unknown value to a plain key/value record.
+ *
+ * Excludes `null` and arrays so callers can index string keys safely. YAML and
+ * JSON both produce these three "object-ish" shapes, so the array check is the
+ * one that actually matters here.
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function stripSingleLeadingNewline(value: string): string {
   if (value.startsWith('\r\n')) {
     return value.slice(2);
@@ -42,16 +53,13 @@ function stripSingleLeadingNewline(value: string): string {
 function parseYaml(raw: string): Record<string, unknown> | null {
   const parsed = load(raw, SAFE_YAML_OPTIONS);
 
-  // YAML can parse to primitives (string, number, boolean) but front matter must be an object
-  if (parsed === null || parsed === undefined) {
+  // YAML can parse to primitives (string, number, boolean), null, or arrays,
+  // but front matter must be a key/value object.
+  if (!isRecord(parsed)) {
     return null;
   }
 
-  if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return null;
-  }
-
-  return parsed as Record<string, unknown>;
+  return parsed;
 }
 
 function extractFrontMatterSegments(markdown: string): FrontMatterSegments | null {
@@ -318,9 +326,9 @@ function formatYamlLine(key: string, value: unknown): string {
     return `${key}:\n${items}`;
   }
 
-  if (typeof value === 'object') {
+  if (isRecord(value)) {
     // For nested objects, use YAML block style
-    const nested = serializeNestedObject(value as Record<string, unknown>, 2);
+    const nested = serializeNestedObject(value, 2);
     return `${key}:\n${nested}`;
   }
 
@@ -337,9 +345,9 @@ function serializeNestedObject(obj: Record<string, unknown>, indent: number): st
 
   for (const key of sortedKeys) {
     const value = obj[key];
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (isRecord(value)) {
       lines.push(`${spaces}${key}:`);
-      lines.push(serializeNestedObject(value as Record<string, unknown>, indent + 2));
+      lines.push(serializeNestedObject(value, indent + 2));
     } else {
       lines.push(`${spaces}${key}: ${formatValue(value)}`);
     }
@@ -367,12 +375,11 @@ function formatValue(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(formatValue).join(', ')}]`;
   }
-  if (typeof value === 'object') {
+  if (isRecord(value)) {
     // Serialize objects in YAML flow style: {key: value, key2: value2}
-    const obj = value as Record<string, unknown>;
-    const pairs = Object.keys(obj)
+    const pairs = Object.keys(value)
       .toSorted()
-      .map((k) => `${k}: ${formatValue(obj[k])}`);
+      .map((k) => `${k}: ${formatValue(value[k])}`);
     return `{${pairs.join(', ')}}`;
   }
 

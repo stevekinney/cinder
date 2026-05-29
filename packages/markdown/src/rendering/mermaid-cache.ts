@@ -34,6 +34,9 @@ const cache = new Map<string, string>();
  */
 let renderLock: Promise<void> = Promise.resolve();
 
+/** Placeholder before the lock's resolver is captured from its executor. */
+function noop(): void {}
+
 /**
  * Execute a function with exclusive access to Mermaid.
  *
@@ -48,7 +51,7 @@ export async function withMermaidLock<T>(fn: () => Promise<T>): Promise<T> {
   const previousLock = renderLock;
 
   // Create a new lock that resolves when our operation completes
-  let releaseLock: () => void = () => {};
+  let releaseLock: () => void = noop;
   renderLock = new Promise<void>((resolve) => {
     releaseLock = resolve;
   });

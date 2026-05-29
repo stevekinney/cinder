@@ -46,7 +46,16 @@
 
     "typescript/no-unused-vars": "off",
     "typescript/no-floating-promises": "error",
-    "typescript/await-thenable": "error"
+    "typescript/await-thenable": "error",
+
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "no-shadow": "error",
+    "unicorn/consistent-function-scoping": "error",
+    "import/no-named-as-default-member": "error",
+    "import/no-unassigned-import": "error",
+    "unicorn/no-array-sort": "error",
+    "unicorn/prefer-add-event-listener": "error"
   },
   "ignorePatterns": [
     "dist/**",
@@ -61,7 +70,13 @@
   ],
   "overrides": [
     {
-      "files": ["**/*.test.ts", "**/*.spec.ts", "**/test/**/*.ts", "**/__tests__/**/*.ts"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.type-test.ts",
+        "**/*.spec.ts",
+        "**/test/**/*.ts",
+        "**/__tests__/**/*.ts"
+      ],
       "rules": {
         "typescript/no-explicit-any": "off",
         "typescript/no-unsafe-argument": "off",
@@ -79,6 +94,8 @@
         "typescript/no-unused-vars": "off",
         "typescript/no-unsafe-type-assertion": "off",
         "typescript/await-thenable": "off",
+        "no-shadow": "off",
+        "unicorn/consistent-function-scoping": "off",
         "no-unused-vars": "off"
       }
     }

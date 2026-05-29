@@ -30,6 +30,7 @@ import type {
   ImageReference,
   LinkReference,
   Root as MdastRoot,
+  Nodes as MdastNodes,
   Parent,
 } from 'mdast';
 import rehypeSanitize from 'rehype-sanitize';
@@ -68,7 +69,7 @@ import type { RenderOptions, RenderResult } from './types.js';
 let baseProcessor: unknown = null;
 function getBaseProcessor(): Processor {
   if (!baseProcessor) baseProcessor = unified().use(remarkParse).use(remarkGfm);
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `.use()` returns a narrowly-parameterised `Processor<...>` that doesn't structurally extend the zero-arg `Processor`; see the `baseProcessor` doc comment above.
   return baseProcessor as Processor;
 }
 
@@ -125,7 +126,7 @@ async function ensureMathPipeline(): Promise<{
   if (!mathProcessor) {
     mathProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkMath);
   }
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see baseProcessor note above
+  // eslint-disable-next-line no-unsafe-type-assertion -- same Processor variance constraint as getBaseProcessor; see the `baseProcessor` doc comment above.
   return { processor: mathProcessor as Processor, rehypeKatex };
 }
 
@@ -245,7 +246,7 @@ function cloneResult(result: RenderResult): RenderResult {
  */
 function removeRawHtmlNodes(root: MdastRoot): boolean {
   // Collect nodes to remove using Set for O(1) lookup (can't remove during visit)
-  const nodesToRemove = new Set<Html>();
+  const nodesToRemove = new Set<MdastNodes>();
 
   visit(root, 'html', (node: Html) => {
     nodesToRemove.add(node);
@@ -255,7 +256,7 @@ function removeRawHtmlNodes(root: MdastRoot): boolean {
   if (nodesToRemove.size > 0) {
     visit(root, (node) => {
       if ('children' in node && Array.isArray(node.children)) {
-        node.children = node.children.filter((child) => !nodesToRemove.has(child as Html));
+        node.children = node.children.filter((child) => !nodesToRemove.has(child));
       }
     });
   }
@@ -294,7 +295,7 @@ function stripLinkNodes(root: MdastRoot): void {
   // Remove definitions that are ONLY used by linkReference nodes, not imageReference.
   // If a definition is shared by both a link and an image, keep it for the image.
   if (linkRefIdentifiers.size > 0) {
-    const definitionsToRemove = new Set<Definition>();
+    const definitionsToRemove = new Set<MdastNodes>();
 
     visit(root, 'definition', (node: Definition) => {
       // Only remove if used by a link reference AND NOT by an image reference
@@ -306,9 +307,7 @@ function stripLinkNodes(root: MdastRoot): void {
     if (definitionsToRemove.size > 0) {
       visit(root, (node) => {
         if ('children' in node && Array.isArray(node.children)) {
-          node.children = node.children.filter(
-            (child) => !definitionsToRemove.has(child as Definition),
-          );
+          node.children = node.children.filter((child) => !definitionsToRemove.has(child));
         }
       });
     }
@@ -381,8 +380,8 @@ function renderFromMdast(
   const mathRenderedHast =
     rehypeKatex === null
       ? hast
-      : // eslint-disable-next-line @typescript-eslint/no-explicit-any -- plugin shape is opaque after dynamic import
-        unified()
+      : unified()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unsafe-type-assertion -- rehype-katex's plugin signature is opaque after dynamic import; unified's `.use()` can't type-check a runtime-loaded plugin.
           .use(rehypeKatex as any)
           .runSync(hast);
 
@@ -391,6 +390,7 @@ function renderFromMdast(
   // initializes lazily on first getHighlighter() call.
   const highlightedHast = unified()
     .use(rehypeShikiSync, { theme: 'depict', defaultLanguage: 'plaintext' })
+    // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the remark→rehype pipeline guarantees a hast `Root` here.
     .runSync(mathRenderedHast as HastRoot);
 
   // Sanitize the hast - MUST use runSync() to execute the transform
@@ -398,6 +398,7 @@ function renderFromMdast(
   // to run sanitization explicitly before stringifying
   const sanitizedHast = unified()
     .use(rehypeSanitize, schema)
+    // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the prior rehype steps guarantee a hast `Root` here.
     .runSync(highlightedHast as HastRoot);
 
   // Stringify the sanitized hast to HTML
@@ -461,6 +462,7 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
   }
 
   // Parse markdown to mdast (no math).
+  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()` is typed as the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
   const mdast = getBaseProcessor().parse(markdown) as MdastRoot;
   const result = renderFromMdast(markdown, options, mdast, null);
 
@@ -537,6 +539,7 @@ export async function renderMarkdownWithMath(
     return cloneResult(cached);
   }
 
+  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()` is typed as the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
   const mdast = processor.parse(markdown) as MdastRoot;
   const result = renderFromMdast(markdown, options, mdast, rehypeKatex);
 

@@ -49,6 +49,9 @@ export const COMPONENT_LAYER_NAME = 'cinder.components';
  */
 function isComponentLayerNode(node: { type: string }): boolean {
   if (node.type !== 'atrule') return false;
+  // The `type === 'atrule'` runtime check guarantees this is a postcss AtRule,
+  // but the loose `{ type: string }` param type can't carry that narrowing.
+  // eslint-disable-next-line no-unsafe-type-assertion -- runtime-checked: node.type === 'atrule' above.
   const atRule = node as AtRule;
   return (
     atRule.name === 'layer' &&
@@ -164,7 +167,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
       file,
       line: 1,
       column: 1,
-      message: `Could not parse CSS: ${(error as Error).message}`,
+      message: `Could not parse CSS: ${error instanceof Error ? error.message : String(error)}`,
     });
     return violations;
   }
@@ -214,6 +217,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
       ancestor = ancestor.parent
     ) {
       if (ancestor.type === 'atrule') {
+        // eslint-disable-next-line no-unsafe-type-assertion -- runtime-checked: ancestor.type === 'atrule' above narrows this postcss node to an AtRule.
         const atRule = ancestor as AtRule;
         if (/^(-\w+-)?keyframes$/i.test(atRule.name)) return;
       }

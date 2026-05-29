@@ -195,7 +195,8 @@ export class SortableController<Item> {
  */
 export function reorder<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   const result = [...items];
-  const removed = result.splice(fromIndex, 1)[0] as T;
+  const [removed] = result.splice(fromIndex, 1);
+  if (removed === undefined) return result;
   result.splice(toIndex, 0, removed);
   return result;
 }

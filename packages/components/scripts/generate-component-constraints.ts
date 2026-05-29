@@ -23,6 +23,7 @@ import type {
   ConstraintSeverity,
 } from '../src/_internal/constraints.ts';
 import { discoverComponentDirectories } from './discover-component-directories.ts';
+import { isObjectRecord } from './validation-utilities.ts';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -142,10 +143,10 @@ function validateDocument(document: ConstraintsDocument, expectedId: string): Va
  * the evaluator never has to guess which discriminator wins.
  */
 function validatePredicate(predicate: unknown, context: string): string | null {
-  if (predicate === null || typeof predicate !== 'object') {
+  if (!isObjectRecord(predicate)) {
     return `${context}: predicate must be an object`;
   }
-  const p = predicate as Record<string, unknown>;
+  const p = predicate;
   const keys = Object.keys(p);
 
   // Group-1 operators (each one is its own shape — no other discriminators allowed).

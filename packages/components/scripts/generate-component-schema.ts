@@ -12,6 +12,7 @@
 import { basename, dirname, join } from 'node:path';
 
 import {
+  Node,
   Project,
   type InterfaceDeclaration,
   type Symbol as MorphSymbol,
@@ -21,7 +22,11 @@ import {
 } from 'ts-morph';
 
 const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
-const JSON_SCHEMA_THEN_KEYWORD = ['th', 'en'].join('') as 'then';
+// JSON Schema's conditional `then` keyword, used as a computed object key in
+// the generated `if`/`then` blocks below. `as const` keeps it typed as the
+// literal without an assertion.
+// eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword, not a Promise `.then`; this constant only ever becomes a computed key on schema data, never an awaited value.
+const JSON_SCHEMA_THEN_KEYWORD = 'then' as const;
 
 export type UnsupportedReason =
   | 'function-or-snippet'
@@ -198,6 +203,7 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
         },
         required: ['role'],
       },
+      // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['describedById'],
       },
@@ -261,9 +267,9 @@ function convertUnion(parts: Type[], depth = 0, expandObjectShapes = false): Con
 
 function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
   if (type.isStringLiteral())
-    return { kind: 'ok', schema: { const: type.getLiteralValueOrThrow() as string } };
+    return { kind: 'ok', schema: { const: stringLiteralValue(type) } };
   if (type.isNumberLiteral())
-    return { kind: 'ok', schema: { const: type.getLiteralValueOrThrow() as number } };
+    return { kind: 'ok', schema: { const: numberLiteralValue(type) } };
   if (type.isBooleanLiteral()) {
     return { kind: 'ok', schema: { const: booleanLiteralValue(type) } };
   }
@@ -392,15 +398,42 @@ function isDeclaredInComponentTypesFile(type: Type): boolean {
   });
 }
 
+/**
+ * Read a string-literal type's value. ts-morph types `getLiteralValueOrThrow()`
+ * as `string | number | PseudoBigInt`, so we runtime-check rather than assert.
+ */
+function stringLiteralValue(type: Type): string {
+  const value = type.getLiteralValueOrThrow();
+  if (typeof value !== 'string') {
+    throw new Error(`Expected string literal, got ${typeof value}: ${type.getText()}`);
+  }
+  return value;
+}
+
+/**
+ * Read a number-literal type's value. See {@link stringLiteralValue} for why
+ * this runtime-checks instead of asserting.
+ */
+function numberLiteralValue(type: Type): number {
+  const value = type.getLiteralValueOrThrow();
+  if (typeof value !== 'number') {
+    throw new Error(`Expected number literal, got ${typeof value}: ${type.getText()}`);
+  }
+  return value;
+}
+
 function literalValue(type: Type): string | number | boolean {
-  if (type.isStringLiteral()) return type.getLiteralValueOrThrow() as string;
-  if (type.isNumberLiteral()) return type.getLiteralValueOrThrow() as number;
+  if (type.isStringLiteral()) return stringLiteralValue(type);
+  if (type.isNumberLiteral()) return numberLiteralValue(type);
   if (type.isBooleanLiteral()) return booleanLiteralValue(type);
   throw new Error(`literalValue called on non-literal type: ${type.getText()}`);
 }
 
 function booleanLiteralValue(type: Type): boolean {
-  return (type.compilerType as { intrinsicName?: string }).intrinsicName === 'true';
+  // A boolean-literal type prints as exactly `true` or `false`. ts-morph's
+  // public `Type` API has no boolean accessor, so the type text is the
+  // cast-free way to read which literal this is.
+  return type.getText() === 'true';
 }
 
 function hasSchemaObjectTag(type: Type): boolean {
@@ -415,14 +448,8 @@ function hasSchemaObjectTag(type: Type): boolean {
   }
 
   for (const declaration of declarations) {
-    if (!('getJsDocs' in declaration)) continue;
-    const docs = (
-      declaration as {
-        getJsDocs(): Array<{
-          getTags(): Array<{ getTagName(): string }>;
-        }>;
-      }
-    ).getJsDocs();
+    if (!Node.isJSDocable(declaration)) continue;
+    const docs = declaration.getJsDocs();
     if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === 'schemaObject'))) {
       return true;
     }
@@ -586,11 +613,7 @@ function findExportedType(sourceFile: SourceFile, name: string): Type | null {
 function readJsDocDescription(symbol: MorphSymbol): string | undefined {
   const tags = symbol
     .getDeclarations()
-    .flatMap((d) =>
-      'getJsDocs' in d
-        ? (d as { getJsDocs(): Array<{ getDescription(): string }> }).getJsDocs()
-        : [],
-    );
+    .flatMap((d) => (Node.isJSDocable(d) ? d.getJsDocs() : []));
   for (const doc of tags) {
     const text = doc.getDescription().trim();
     if (text) return text;
@@ -600,14 +623,8 @@ function readJsDocDescription(symbol: MorphSymbol): string | undefined {
 
 function readJsDocDefault(symbol: MorphSymbol): unknown {
   for (const decl of symbol.getDeclarations()) {
-    if (!('getJsDocs' in decl)) continue;
-    const docs = (
-      decl as {
-        getJsDocs(): Array<{
-          getTags(): Array<{ getTagName(): string; getCommentText(): string | undefined }>;
-        }>;
-      }
-    ).getJsDocs();
+    if (!Node.isJSDocable(decl)) continue;
+    const docs = decl.getJsDocs();
     for (const doc of docs) {
       for (const tag of doc.getTags()) {
         if (tag.getTagName() === 'default') {
@@ -623,14 +640,8 @@ function readJsDocDefault(symbol: MorphSymbol): unknown {
 
 function hasJsDocTag(symbol: MorphSymbol, tagName: string): boolean {
   for (const decl of symbol.getDeclarations()) {
-    if (!('getJsDocs' in decl)) continue;
-    const docs = (
-      decl as {
-        getJsDocs(): Array<{
-          getTags(): Array<{ getTagName(): string }>;
-        }>;
-      }
-    ).getJsDocs();
+    if (!Node.isJSDocable(decl)) continue;
+    const docs = decl.getJsDocs();
     if (docs.some((doc) => doc.getTags().some((tag) => tag.getTagName() === tagName))) {
       return true;
     }
@@ -663,9 +674,15 @@ function renderSchemaModule(schema: ComponentSchemaOutput, depthToSrc: number): 
   const relativePath = '../'.repeat(depthToSrc) + 'schema-types';
   const literal = JSON.stringify(schema, null, 2);
   if (schema.allOf) {
+    // `allOf` schemas carry a JSON Schema `then` keyword. Emitting them as an
+    // object literal would (a) make the `then` key trip `unicorn/no-thenable`
+    // and (b) force `tsc` to deep-check a large literal. Parsing a JSON string
+    // sidesteps both; the value is a build-time-generated schema, so the single
+    // assertion on `JSON.parse`'s `any` result is safe and documented.
     return [
       `import type { ComponentSchema } from '${relativePath}';`,
       ``,
+      `// eslint-disable-next-line no-unsafe-type-assertion -- generated schema parsed from a build-validated JSON string; see generate-component-schema.ts.`,
       `const schema = JSON.parse(${JSON.stringify(literal)}) as ComponentSchema;`,
       ``,
       `export default schema;`,

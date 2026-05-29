@@ -53,6 +53,7 @@ import {
   type UpstreamReexport,
 } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
+import { readJsonFile } from './lib/read-json-file.ts';
 
 export type { ComponentDiscovery } from './lib/discover-components.ts';
 
@@ -311,7 +312,7 @@ interface PackageJson {
 async function main(): Promise<void> {
   const checkMode = process.argv.includes('--check');
   const packageJsonPath = join(import.meta.dir, '..', 'package.json');
-  const packageJson = (await Bun.file(packageJsonPath).json()) as PackageJson;
+  const packageJson = await readJsonFile<PackageJson>(packageJsonPath);
 
   // Derive upstream re-exports first so the forbidden-key guard knows which
   // keys are legitimate even when they contain segments like `test-utilities`

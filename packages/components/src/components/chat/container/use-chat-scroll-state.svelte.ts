@@ -17,6 +17,16 @@ import {
   shouldShowJumpToLatest,
 } from './scroll-utilities';
 
+/**
+ * Cleanup resources.
+ *
+ * No-op: this helper owns no long-lived resources. IntersectionObserver
+ * cleanup is handled by the disconnect function returned from
+ * `createSentinelObserver`. Exposed for API symmetry with consumers that
+ * call `destroy()` unconditionally on teardown.
+ */
+const destroy = (): void => {};
+
 // ==========================================================================
 // Types
 // ==========================================================================
@@ -281,14 +291,6 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       const lastMessage = lastWrapper?.querySelector<HTMLElement>('.chat-message') ?? null;
       lastMessage?.focus();
     }, scrollDuration);
-  }
-
-  /**
-   * Cleanup resources.
-   */
-  function destroy(): void {
-    // No resources to cleanup for this helper
-    // IntersectionObserver cleanup is handled by returning the disconnect function
   }
 
   return {

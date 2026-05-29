@@ -9,7 +9,7 @@
 import { basename, join } from 'node:path';
 
 import { readdir } from 'node:fs/promises';
-import postcss, { type AtRule, type Declaration } from 'postcss';
+import { parse, type AtRule, type Declaration } from 'postcss';
 
 const PREFIX = '--cinder-';
 
@@ -44,7 +44,7 @@ export async function generateVariablesForComponent(
   for (const cssFile of cssFiles) {
     const filePath = join(componentDirectory, cssFile);
     const source = await Bun.file(filePath).text();
-    const root = postcss.parse(source, { from: filePath });
+    const root = parse(source, { from: filePath });
 
     root.walkDecls((decl: Declaration) => {
       if (decl.prop.startsWith(PREFIX)) collected.add(decl.prop);

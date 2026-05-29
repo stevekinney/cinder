@@ -16,7 +16,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import prettier from 'prettier';
+import { format, resolveConfig } from 'prettier';
 
 import {
   checkPropNames,
@@ -220,8 +220,8 @@ async function runPropNamesCheck(
     }
     const depthToSrc = isExperimental ? 3 : 2;
     const generateResult = generateSchemaForComponent({ typesFilePath, componentName, depthToSrc });
-    const prettierOptions = await prettier.resolveConfig(committedSchemaPath);
-    freshSchemaJson = await prettier.format(generateResult.schemaJson, {
+    const prettierOptions = await resolveConfig(committedSchemaPath);
+    freshSchemaJson = await format(generateResult.schemaJson, {
       ...prettierOptions,
       filepath: committedSchemaPath,
     });
@@ -251,7 +251,7 @@ async function runPropNamesCheck(
   // Parse schema and check prop names.
   let schema: Record<string, unknown>;
   try {
-    schema = JSON.parse(committedSchemaJson) as Record<string, unknown>;
+    schema = parseJsonFile<Record<string, unknown>>(committedSchemaJson);
   } catch {
     return {
       result: { status: 'fail', detail: `Could not parse ${componentName}.schema.json` },
@@ -288,7 +288,7 @@ function renderHumanReport(
   process.stdout.write('─'.repeat(60) + '\n');
 
   for (const [checkName, check] of Object.entries(checks)) {
-    const symbol = statusEmoji[check.status as CheckStatus];
+    const symbol = statusEmoji[check.status];
     const label = checkName.padEnd(12);
     const statusLabel = check.status.toUpperCase().padEnd(4);
     process.stdout.write(`  ${symbol} ${label} ${statusLabel}`);
