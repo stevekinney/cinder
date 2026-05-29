@@ -13,11 +13,15 @@
  * Tests run with TZ=UTC via the package.json test script.
  */
 
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 import { parse } from 'svelte/compiler';
+
+import { hasSubstantiveTest } from '../scripts/component-conventions.ts';
 
 const COMPONENTS_DIR = join(import.meta.dir, 'components');
 
@@ -73,6 +77,45 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
  * `class` prop via `classNames()` rather than land on this list.
  */
 const NO_CLASS_MERGING_ALLOW_LIST = new Set(['cinder-provider']);
+
+/**
+ * Components that currently ship without a substantive behavioral `.test.ts`
+ * (a sibling test file containing at least one active `test(...)`/`it(...)`
+ * call — a types-only `.type-test.svelte` snapshot does not count).
+ *
+ * This list documents the existing coverage gap so CI stays green today while
+ * convention check #9 prevents NEW untested components from landing. Each entry
+ * is a known debt to be paid down: add a real test, then delete its line here.
+ *
+ * Detection shares the exact `hasSubstantiveTest` predicate the stable-promotion
+ * gate uses (`scripts/component-conventions.ts`), so "has a real test" means the
+ * same thing in both places.
+ */
+const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
+  'chat', // TODO: add tests and remove from allow-list
+  'command-item', // TODO: add tests and remove from allow-list
+  'context-menu-trigger', // TODO: add tests and remove from allow-list
+  'diff-viewer', // TODO: add tests and remove from allow-list
+  'dropdown-group', // TODO: add tests and remove from allow-list
+  'dropdown-item', // TODO: add tests and remove from allow-list
+  'dropdown-label', // TODO: add tests and remove from allow-list
+  'dropdown-menu', // TODO: add tests and remove from allow-list
+  'dropdown-separator', // TODO: add tests and remove from allow-list
+  'dropdown-trigger', // TODO: add tests and remove from allow-list
+  'markdown-editor', // TODO: add tests and remove from allow-list
+  'radio', // TODO: add tests and remove from allow-list
+  'review-editor', // TODO: add tests and remove from allow-list
+  'segment', // TODO: add tests and remove from allow-list
+  'tab', // TODO: add tests and remove from allow-list
+  'tab-list', // TODO: add tests and remove from allow-list
+  'tab-panel', // TODO: add tests and remove from allow-list
+  'table-body', // TODO: add tests and remove from allow-list
+  'table-cell', // TODO: add tests and remove from allow-list
+  'table-header', // TODO: add tests and remove from allow-list
+  'table-row', // TODO: add tests and remove from allow-list
+  'tree-item', // TODO: add tests and remove from allow-list
+  'tree-select-all', // TODO: add tests and remove from allow-list
+]);
 
 /**
  * Discover the public-component .svelte files. After the per-directory migration
@@ -352,6 +395,25 @@ describe('component conventions', () => {
           errors.push(`${file}: interactive component missing ${name}.a11y.md`);
         }
       }
+
+      // 9. Every component must have a sibling <name>.test.ts containing at
+      //    least one active test()/it() call. A types-only snapshot file does
+      //    not satisfy this. Components on the NO_TEST_REQUIRED_ALLOW_LIST are
+      //    grandfathered-in gaps tracked for follow-up; everything else — and
+      //    crucially every NEW component — must ship a real test.
+      //    Detection uses the same hasSubstantiveTest predicate as the
+      //    stable-promotion gate so the "has a substantive test" signal is
+      //    identical in both places.
+      if (!NO_TEST_REQUIRED_ALLOW_LIST.has(name)) {
+        const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
+        if (!hasSubstantiveTest(testFilePath).pass) {
+          errors.push(
+            `${file}: missing a substantive ${name}.test.ts (needs >=1 active test()/it() call; ` +
+              `a types-only snapshot does not count). Add a test, or — only if truly unavoidable — ` +
+              `add '${name}' to NO_TEST_REQUIRED_ALLOW_LIST with a TODO.`,
+          );
+        }
+      }
     }
 
     if (errors.length > 0) {
@@ -360,4 +422,120 @@ describe('component conventions', () => {
     // Parses every public .svelte file; raise the timeout so CPU contention
     // (parallel CI / multi-worktree) does not flake this whole-tree scan.
   }, 60_000);
+});
+
+// ---------------------------------------------------------------------------
+// Regression coverage for convention check #9 (substantive-test requirement).
+//
+// The whole-tree test above proves the live tree is clean; these focused tests
+// prove the GATE itself behaves correctly — it must flag a brand-new untested
+// component, reject a types-only snapshot or a `.skip` stub, and keep the
+// allow-list honest (no stale entries; every entry is a real current gap).
+// ---------------------------------------------------------------------------
+
+describe('convention #9 — substantive-test gate', () => {
+  // The check's decision for one discovered component, mirroring the loop above:
+  // exempt if allow-listed, otherwise it must have a substantive test.
+  function componentFails(name: string, testFilePath: string): boolean {
+    if (NO_TEST_REQUIRED_ALLOW_LIST.has(name)) return false;
+    return !hasSubstantiveTest(testFilePath).pass;
+  }
+
+  test('a new component with no test file fails the check', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'convention9-notest-'));
+    try {
+      writeFileSync(
+        join(directory, 'widget.svelte'),
+        `<script lang="ts" module>export type WidgetProps = { class?: string };</script>` +
+          `<div class={classNames(rest.class)}></div>`,
+      );
+      // No widget.test.ts written at all.
+      const result = componentFails('widget', join(directory, 'widget.test.ts'));
+      expect(result).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a component with only a types-only snapshot (no test() call) fails the check', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'convention9-typesonly-'));
+    try {
+      // A .type-test.svelte snapshot exists, but the .test.ts has zero test()/it() calls.
+      writeFileSync(join(directory, 'widget.type-test.svelte'), `<!-- type snapshot only -->`);
+      writeFileSync(
+        join(directory, 'widget.test.ts'),
+        `import { expectTypeOf } from 'expect-type';\n` +
+          `// purely a type assertion module — no runtime test() or it() calls\n` +
+          `expectTypeOf<string>().toBeString();\n`,
+      );
+      expect(componentFails('widget', join(directory, 'widget.test.ts'))).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a stub test file with only test.skip / test.todo fails the check', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'convention9-skip-'));
+    try {
+      writeFileSync(
+        join(directory, 'widget.test.ts'),
+        `import { test } from 'bun:test';\n` +
+          `test.skip('not yet', () => {});\n` +
+          `test.todo('later');\n`,
+      );
+      expect(componentFails('widget', join(directory, 'widget.test.ts'))).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a component with at least one active test() passes the check', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'convention9-pass-'));
+    try {
+      writeFileSync(
+        join(directory, 'widget.test.ts'),
+        `import { test, expect } from 'bun:test';\n` +
+          `test('renders', () => { expect(true).toBe(true); });\n`,
+      );
+      expect(componentFails('widget', join(directory, 'widget.test.ts'))).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('an allow-listed component is exempt even with no test', () => {
+    // Pick any current allow-list entry; the gate must not flag it.
+    const [firstAllowListed] = [...NO_TEST_REQUIRED_ALLOW_LIST];
+    expect(firstAllowListed).toBeDefined();
+    expect(componentFails(firstAllowListed!, '/tmp/does-not-exist-for-allow-listed.test.ts')).toBe(
+      false,
+    );
+  });
+
+  test('every allow-list entry is a real current gap (no stale entries)', async () => {
+    // If a component on the list gained a substantive test, its entry is stale
+    // and must be deleted. This keeps the documented debt accurate over time.
+    const files = await getSvelteFiles();
+    const byName = new Map<string, string>();
+    for (const file of files) {
+      const base = file.includes('/') ? file.split('/').pop()! : file;
+      const name = base.replace(/\.svelte$/, '');
+      byName.set(name, file);
+    }
+
+    const stale: string[] = [];
+    for (const name of NO_TEST_REQUIRED_ALLOW_LIST) {
+      const file = byName.get(name);
+      if (!file) {
+        stale.push(`${name} (no matching component .svelte — remove from allow-list)`);
+        continue;
+      }
+      const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
+      if (hasSubstantiveTest(testFilePath).pass) {
+        stale.push(`${name} (now has a substantive test — remove from allow-list)`);
+      }
+    }
+
+    expect(stale).toEqual([]);
+  }, 30_000);
 });
