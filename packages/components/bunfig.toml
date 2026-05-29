@@ -22,10 +22,10 @@ preload = ["./scripts/preload.ts"]
 #
 # NOT a blocker — cross-file `globalThis.ResizeObserver` mutation. Several
 # tests reassign `globalThis.ResizeObserver` at module top-level with no
-# save/restore: the chart tests (bar-/area-/line-chart.test.ts, each at
-# line 14) and resizable-panels.test.ts (Object.defineProperty at lines
-# 42-45; its afterEach only resets the stub's instances, never restoring the
-# original). Under SERIAL execution all 200+ files share one global object,
+# save/restore: the chart tests (bar-chart.test.ts, area-chart.test.ts,
+# line-chart.test.ts) and resizable-panels.test.ts (Object.defineProperty;
+# its afterEach only resets the stub's instances, never restoring the
+# original).
 # so these reassignments persist and bleed across files — a real pre-existing
 # test-hygiene wart, but ordering is deterministic so nothing flakes today.
 # This is NOT a reason `--parallel` must stay off: Bun's `--parallel` implies
