@@ -24,12 +24,26 @@ import { COMPONENT_LAYER_NAME } from '../../scripts/check-component-css.ts';
  * (hoisting its children to the top level); content outside the wrapper and
  * wrappers with any other name are left untouched. Source with no such wrapper
  * is returned unchanged.
+ *
+ * The hoisted rules are dedented by one indentation level so the result is
+ * byte-for-byte the flat CSS the file would have been WITHOUT the wrapper —
+ * i.e. top-level declarations sit at two-space indent, not the four-space
+ * indent they carry while nested inside the layer block. Tests assert on that
+ * flat shape (`getComputedStyle` plus exact-substring matches), so the dedent
+ * keeps the helper faithful to "the CSS this file declares".
  */
 export function stripCinderComponentsLayer(css: string): string {
   const root = parse(css);
+  let stripped = false;
   root.walkAtRules('layer', (atRule: AtRule) => {
     if (atRule.params.trim() !== COMPONENT_LAYER_NAME || atRule.nodes === undefined) return;
     atRule.replaceWith(atRule.nodes);
+    stripped = true;
   });
-  return root.toString();
+  const output = root.toString();
+  if (!stripped) return output;
+  // Remove exactly one level (two spaces) of leading indentation from every
+  // line that has it — the wrapper added exactly one level uniformly, so this
+  // restores the original flat indentation without disturbing relative nesting.
+  return output.replace(/^ {2}/gm, '');
 }
