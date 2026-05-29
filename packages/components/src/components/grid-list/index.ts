@@ -8,9 +8,7 @@ import GridListRoot from './grid-list.svelte';
  */
 const GridList = Object.assign(GridListRoot, {
   Item: GridListItem,
-}) as typeof GridListRoot & {
-  Item: typeof GridListItem;
-};
+});
 
 export default GridList;
 export type { GridListProps } from './grid-list.types.ts';

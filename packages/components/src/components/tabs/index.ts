@@ -13,11 +13,7 @@ const Tabs = Object.assign(TabsRoot, {
   List: TabList,
   Trigger: Tab,
   Panel: TabPanel,
-}) as typeof TabsRoot & {
-  List: typeof TabList;
-  Trigger: typeof Tab;
-  Panel: typeof TabPanel;
-};
+});
 
 export default Tabs;
 export type { TabsContext, TabsOrientation, TabsProps } from './tabs.types.ts';

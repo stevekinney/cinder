@@ -8,9 +8,7 @@ import FeedRoot from './feed.svelte';
  */
 const Feed = Object.assign(FeedRoot, {
   Event: FeedEvent,
-}) as typeof FeedRoot & {
-  Event: typeof FeedEvent;
-};
+});
 
 export default Feed;
 export type { FeedProps } from './feed.types.ts';

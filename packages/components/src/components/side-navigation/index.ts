@@ -11,10 +11,7 @@ import SideNavigationRoot from './side-navigation.svelte';
 const SideNavigation = Object.assign(SideNavigationRoot, {
   Group: SideNavigationGroup,
   Item: SideNavigationItem,
-}) as typeof SideNavigationRoot & {
-  Group: typeof SideNavigationGroup;
-  Item: typeof SideNavigationItem;
-};
+});
 
 export default SideNavigation;
 export type { SideNavigationProps } from './side-navigation.types.ts';
