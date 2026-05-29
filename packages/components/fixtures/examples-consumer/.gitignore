@@ -1,0 +1,5 @@
+node_modules
+.svelte-kit
+build
+src/generated
+src/routes/+page.svelte
