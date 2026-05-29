@@ -112,9 +112,6 @@ export type { CheckboxProps } from './components/checkbox/index.ts';
 export { default as CheckboxGroup } from './components/checkbox-group/index.ts';
 export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 
-export { default as CinderProvider } from './components/cinder-provider/index.ts';
-export type { CinderProviderProps } from './components/cinder-provider/index.ts';
-
 export { default as Cluster } from './components/cluster/index.ts';
 export type { ClusterProps } from './components/cluster/index.ts';
 

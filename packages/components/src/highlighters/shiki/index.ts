@@ -1,19 +1,19 @@
 /**
- * First-party Shiki adapter for `<CinderProvider>`.
+ * First-party Shiki adapter for `<CodeBlock>`.
  *
- * Usage:
+ * `<CodeBlock>` already auto-loads this adapter with default options when a
+ * `language` is set — you only need it directly to customize the theme or
+ * preload grammars, which you then pass via the `highlighter` prop:
  *
  * ```svelte
  * <script lang="ts">
- *   import { CinderProvider } from 'cinder';
+ *   import { CodeBlock } from 'cinder';
  *   import { shikiHighlighter } from 'cinder/highlighters/shiki';
  *
- *   const highlighter = shikiHighlighter();
+ *   const highlighter = shikiHighlighter({ theme: 'github-light' });
  * </script>
  *
- * <CinderProvider {highlighter}>
- *   <!-- every descendant <CodeBlock> picks the highlighter up via context -->
- * </CinderProvider>
+ * <CodeBlock {code} language="ts" {highlighter} />
  * ```
  *
  * The factory is synchronous. Shiki itself is imported lazily on the first
@@ -46,6 +46,15 @@
  */
 
 import type { Highlighter } from '../../utilities/highlighter.ts';
+import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
+
+/**
+ * Re-exported for backwards compatibility on the public
+ * `cinder/highlighters/shiki` surface. The canonical implementation lives in
+ * `utilities/retrying-loader-cache.ts` so `<CodeBlock>`'s default-highlighter
+ * seam can reuse it without a static import edge to this adapter module.
+ */
+export { createRetryingLoaderCache };
 
 /** Options accepted by {@link shikiHighlighter}. */
 export type ShikiHighlighterOptions = {
@@ -108,43 +117,8 @@ type ShikiModule = {
 };
 
 /**
- * Wrap a one-shot async loader in a promise cache that:
- *
- *   1. De-duplicates concurrent callers — multiple `await` callers during
- *      the same in-flight load share one promise.
- *   2. Evicts the cached promise on rejection so the next call retries.
- *      Without eviction, a single transient failure (network error,
- *      chunk-load failure, etc.) would lock the cached rejection in
- *      forever and every subsequent call would replay the failure.
- *
- * Exported so the eviction-on-rejection behavior is testable in isolation
- * (Bun's `mock.module` caches dynamic-import results across calls, which
- * makes the equivalent black-box test against `shikiHighlighter` hard to
- * write reliably).
- */
-export function createRetryingLoaderCache<T>(loader: () => Promise<T>): () => Promise<T> {
-  let cached: Promise<T> | undefined;
-  return () => {
-    if (cached === undefined) {
-      const pending = loader();
-      // Attach a rejection handler that evicts the cached promise so the
-      // next call retries. `.catch` returns a new promise; we don't await
-      // it — the original `pending` is what concurrent callers share, and
-      // they'll observe its rejection through their own awaits.
-      pending.catch(() => {
-        if (cached === pending) {
-          cached = undefined;
-        }
-      });
-      cached = pending;
-    }
-    return cached;
-  };
-}
-
-/**
  * Create a Shiki-backed {@link Highlighter} suitable for
- * `<CinderProvider highlighter={...}>`. See module-level JSDoc for the
+ * `<CodeBlock highlighter={...} />`. See module-level JSDoc for the
  * full behavior contract.
  */
 export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlighter {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { createRetryingLoaderCache } from './index.ts';
+import { createRetryingLoaderCache } from './retrying-loader-cache.ts';
 
 describe('createRetryingLoaderCache', () => {
   test('returns the same in-flight promise for concurrent callers', async () => {
@@ -30,10 +30,11 @@ describe('createRetryingLoaderCache', () => {
 
   test('evicts the cached rejection so the next call retries the loader', async () => {
     // Bugbot regression case: a one-shot loader failure must not lock
-    // every subsequent call into replaying the same rejection. The
-    // Shiki adapter wraps `import('shiki')` with this cache; without
-    // eviction a transient chunk-load failure would force the adapter
-    // into plaintext fallback for the lifetime of the highlighter.
+    // every subsequent call into replaying the same rejection. Both the
+    // Shiki adapter (wrapping `import('shiki')`) and CodeBlock's default
+    // highlighter seam (wrapping the dynamic adapter import) rely on this;
+    // without eviction a transient chunk-load failure would force the
+    // plaintext fallback for the lifetime of the cache.
     let invocations = 0;
     const load = createRetryingLoaderCache(async () => {
       invocations += 1;

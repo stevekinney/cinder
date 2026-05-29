@@ -10,7 +10,13 @@ const schema = {
     },
     language: {
       type: 'string',
-      description: 'Optional language label rendered in the header.',
+      description:
+        'Optional language label rendered in the header; also selects the grammar for highlighting.',
+    },
+    highlight: {
+      type: 'boolean',
+      description:
+        'Whether to highlight. Defaults to `true` whenever `language` is set.\n\n`highlight={false}` is an absolute off switch: it disables ALL\nhighlighting — including an explicit `highlighter` prop — and triggers no\nShiki import. The block renders the escaped plain `<pre><code>` fallback\nwhile keeping the `language` header label.',
     },
     copyable: {
       type: 'boolean',
@@ -23,6 +29,14 @@ const schema = {
   },
   additionalProperties: false,
   required: ['code'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'highlighter',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

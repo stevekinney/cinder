@@ -626,30 +626,6 @@
       }
     },
     {
-      "name": "CinderProvider",
-      "id": "cinder-provider",
-      "import": "cinder/cinder-provider",
-      "exportName": "CinderProvider",
-      "category": "layout",
-      "status": "stable",
-      "purpose": "Root-mounted context provider that shares a syntax highlighter with every descendant `<CodeBlock>`.",
-      "tags": ["context", "provider"],
-      "useWhen": [
-        "Mounting cinder in an app root and wanting every `<CodeBlock>` to share one highlighter (the canonical setup).",
-        "Scoping a different highlighter to a subtree by nesting a second `<CinderProvider>`."
-      ],
-      "avoidWhen": [
-        "Configuring highlighters per `<CodeBlock>` — the prop was removed in PR 2; the provider IS the API now."
-      ],
-      "related": ["code-block"],
-      "hasConstraints": false,
-      "hasExamples": false,
-      "artifacts": {
-        "schema": "cinder/cinder-provider/schema",
-        "variables": "cinder/cinder-provider/variables"
-      }
-    },
-    {
       "name": "Cluster",
       "id": "cluster",
       "import": "cinder/cluster",
@@ -682,7 +658,7 @@
       "exportName": "CodeBlock",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.",
+      "purpose": "Block container for multi-line source code with automatic syntax highlighting and a copy-to-clipboard control.",
       "tags": ["code", "snippet"],
       "useWhen": [
         "Displaying a multi-line code sample or terminal transcript inside documentation or chat.",
@@ -692,7 +668,7 @@
         "Annotating a single inline keystroke or shortcut — use kbd instead.",
         "Rendering rich prose that happens to include code — embed it in markdown instead."
       ],
-      "related": ["kbd", "copy-button", "cinder-provider"],
+      "related": ["kbd", "copy-button"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
