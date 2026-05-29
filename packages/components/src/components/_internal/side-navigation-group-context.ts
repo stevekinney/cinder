@@ -20,6 +20,8 @@
 
 import { createContext } from 'svelte';
 
+import { optionalContext } from '../../_internal/optional-context.ts';
+
 /** Registration handle returned to each child item. */
 export type SideNavigationGroupRegistration = {
   /** Report whether this item is currently active. Idempotent per state. */
@@ -42,10 +44,5 @@ export { setSideNavigationGroupContext };
  * Optional read — items outside a group are valid (flat sidebars), so a
  * missing context resolves to `undefined` instead of throwing.
  */
-export function tryGetSideNavigationGroupContext(): SideNavigationGroupContext | undefined {
-  try {
-    return getSideNavigationGroupContextStrict();
-  } catch {
-    return undefined;
-  }
-}
+export const tryGetSideNavigationGroupContext: () => SideNavigationGroupContext | undefined =
+  optionalContext(getSideNavigationGroupContextStrict);
