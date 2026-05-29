@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'bun:test';
 
+import { categories, statusLevels } from '../src/manifest.meta.ts';
 import { extractFromSource } from './generate-component-metadata.ts';
 
 // ---------------------------------------------------------------------------
@@ -309,6 +310,26 @@ export type { ButtonProps } from './button.types.ts';
     if (result.ok) throw new Error('expected error');
     expect(result.error.reason).toContain('no @cinder metadata header found');
   });
+
+  it('appends an inline fix hint pointing at AGENTS.md for the missing @cinder block', () => {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * This component exports some types.
+ * @internal
+ */
+export type { ButtonProps } from './button.types.ts';
+`),
+    );
+
+    const result = extract(source);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain(
+      'Add @cinder as the first tag in the <script lang="ts" module> JSDoc block',
+    );
+    expect(result.error.reason).toContain('AGENTS.md §The five analyzer conventions');
+  });
 });
 
 describe('error: missing required tags', () => {
@@ -345,9 +366,36 @@ describe('error: missing required tags', () => {
     const result = extract(source);
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
+    // The appended minimal-block fix snippet always lists all three tags, so
+    // the missing-list correctness guard must scope to the "missing required
+    // tags:" prefix (everything before the "\n  Fix:" marker) rather than the
+    // whole message. Split on the marker and assert the prefix enumerates ONLY
+    // the genuinely-missing tag and does not spuriously list present ones.
+    const prefix = result.error.reason.split('\n  Fix:')[0];
+    expect(prefix).toContain('@purpose');
+    expect(prefix).not.toContain('@category');
+    expect(prefix).not.toContain('@status');
+    expect(result.error.reason).toContain('the minimal block is');
+  });
+
+  it('appends the minimal @cinder block snippet as an inline fix', () => {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * @cinder
+ * @tag action
+ */
+`),
+    );
+
+    const result = extract(source);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('the minimal block is');
+    expect(result.error.reason).toContain('@cinder');
+    expect(result.error.reason).toContain('@category');
+    expect(result.error.reason).toContain('@status');
     expect(result.error.reason).toContain('@purpose');
-    expect(result.error.reason).not.toContain('@category');
-    expect(result.error.reason).not.toContain('@status');
   });
 });
 
@@ -389,6 +437,27 @@ describe('error: unknown category id', () => {
     if (result.ok) throw new Error('expected error');
     expect(result.error.reason).toContain("unknown category 'widgets'");
   });
+
+  it('lists every valid category inline', () => {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * @cinder
+ * @category widgets
+ * @status stable
+ * @purpose Some component.
+ */
+`),
+    );
+
+    const result = extract(source);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('Valid values:');
+    for (const category of Object.keys(categories)) {
+      expect(result.error.reason).toContain(category);
+    }
+  });
 });
 
 describe('error: unknown status id', () => {
@@ -408,6 +477,27 @@ describe('error: unknown status id', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.reason).toContain("unknown status 'released'");
+  });
+
+  it('lists every valid status inline', () => {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * @cinder
+ * @category action
+ * @status released
+ * @purpose Some action component.
+ */
+`),
+    );
+
+    const result = extract(source);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('Valid values:');
+    for (const status of Object.keys(statusLevels)) {
+      expect(result.error.reason).toContain(status);
+    }
   });
 });
 
