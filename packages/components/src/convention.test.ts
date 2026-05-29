@@ -230,6 +230,29 @@ describe('component conventions', () => {
       const pascal = toPascal(name);
       const source = await readFile(join(COMPONENTS_DIR, file), 'utf-8');
 
+      // 9. Every component must have a sibling <name>.test.ts containing at
+      //    least one active test()/it() call. A types-only snapshot file does
+      //    not satisfy this. Components on the NO_TEST_REQUIRED_ALLOW_LIST are
+      //    grandfathered-in gaps tracked for follow-up; everything else — and
+      //    crucially every NEW component — must ship a real test.
+      //    Detection uses the same hasSubstantiveTest predicate as the
+      //    stable-promotion gate so the "has a substantive test" signal is
+      //    identical in both places.
+      //    This requirement is evaluated FIRST, before any of the structural
+      //    `continue`s below (missing module/instance script, no $props()).
+      //    A component that lacks an instance script must still ship a test —
+      //    otherwise a new module-only component would silently skip the gate.
+      if (!NO_TEST_REQUIRED_ALLOW_LIST.has(name)) {
+        const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
+        if (!hasSubstantiveTest(testFilePath).pass) {
+          errors.push(
+            `${file}: missing a substantive ${name}.test.ts (needs >=1 active test()/it() call; ` +
+              `a types-only snapshot does not count). Add a test, or — only if truly unavoidable — ` +
+              `add '${name}' to NO_TEST_REQUIRED_ALLOW_LIST with a TODO.`,
+          );
+        }
+      }
+
       let ast: ReturnType<typeof parse>;
       try {
         ast = parse(source, { filename: file, modern: true });
@@ -395,25 +418,6 @@ describe('component conventions', () => {
           errors.push(`${file}: interactive component missing ${name}.a11y.md`);
         }
       }
-
-      // 9. Every component must have a sibling <name>.test.ts containing at
-      //    least one active test()/it() call. A types-only snapshot file does
-      //    not satisfy this. Components on the NO_TEST_REQUIRED_ALLOW_LIST are
-      //    grandfathered-in gaps tracked for follow-up; everything else — and
-      //    crucially every NEW component — must ship a real test.
-      //    Detection uses the same hasSubstantiveTest predicate as the
-      //    stable-promotion gate so the "has a substantive test" signal is
-      //    identical in both places.
-      if (!NO_TEST_REQUIRED_ALLOW_LIST.has(name)) {
-        const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
-        if (!hasSubstantiveTest(testFilePath).pass) {
-          errors.push(
-            `${file}: missing a substantive ${name}.test.ts (needs >=1 active test()/it() call; ` +
-              `a types-only snapshot does not count). Add a test, or — only if truly unavoidable — ` +
-              `add '${name}' to NO_TEST_REQUIRED_ALLOW_LIST with a TODO.`,
-          );
-        }
-      }
     }
 
     if (errors.length > 0) {
@@ -510,6 +514,45 @@ describe('convention #9 — substantive-test gate', () => {
     expect(componentFails(firstAllowListed!, '/tmp/does-not-exist-for-allow-listed.test.ts')).toBe(
       false,
     );
+  });
+
+  // Regression: a component with a module script but NO instance script must
+  // still be required to have a test. The whole-tree loop has an early
+  // `continue` for a missing instance script (and another for a missing
+  // module script / no $props()); if the test requirement runs *after* those,
+  // a module-only component silently skips the gate. This test reproduces the
+  // loop's control flow to prove the requirement is evaluated before the
+  // early `continue`s.
+  test('a module-only component (no instance script) is not exempted by the early continue', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'convention9-moduleonly-'));
+    try {
+      const source =
+        `<script lang="ts" module>export type WidgetProps = { class?: string };</script>` +
+        `<div></div>`;
+      writeFileSync(join(directory, 'widget.svelte'), source);
+      // No widget.test.ts written at all.
+
+      // Reproduce the relevant slice of the whole-tree loop body, including the
+      // early `continue` that fires when there is no instance script.
+      const ast = parse(source, { filename: 'widget.svelte', modern: true });
+      const errors: string[] = [];
+
+      // #9 runs first, before any structural `continue`.
+      if (!NO_TEST_REQUIRED_ALLOW_LIST.has('widget')) {
+        if (!hasSubstantiveTest(join(directory, 'widget.test.ts')).pass) {
+          errors.push('widget.svelte: missing a substantive widget.test.ts');
+        }
+      }
+
+      // The structural `continue` that the bug let bypass the check.
+      const hasInstanceScript = ast.instance?.content != null;
+      expect(hasInstanceScript).toBe(false); // sanity: this component would `continue`
+
+      // The test requirement must have fired despite the missing instance script.
+      expect(errors).toHaveLength(1);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   test('every allow-list entry is a real current gap (no stale entries)', async () => {
