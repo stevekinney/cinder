@@ -415,8 +415,11 @@ export const CONTRACT: Record<string, ComponentContract> = {
     html_attrs: 'HTMLSelectAttributes',
     props: {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      value: { optional: false, type_kind: 'TSStringKeyword', default: BE },
-      options: { optional: false, type_kind: 'TSArrayType', default: REQUIRED },
+      // Generic over the option value type: `value?: NoInfer<T>` (TSTypeReference),
+      // now optional (aligns with the `$bindable()` runtime — undefined is the
+      // unselected sentinel); `options: readonly SelectOption<T>[]` (TSTypeOperator).
+      value: { optional: true, type_kind: 'TSTypeReference', default: BE },
+      options: { optional: false, type_kind: 'TSTypeOperator', default: REQUIRED },
       label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },

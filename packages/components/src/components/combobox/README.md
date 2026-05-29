@@ -28,9 +28,9 @@ A Combobox component. Replace this sentence with a one-line purpose statement on
 | `label`             | `string`   | no       | —       | Visible label rendered in a `<label>` associated via `for`.                                                                                                                                                                            |
 | `maxVisibleOptions` | `number`   | no       | —       | Hard cap on visible filtered options. Default 200.                                                                                                                                                                                     |
 | `placeholder`       | `string`   | no       | —       | Placeholder when no value is selected.                                                                                                                                                                                                 |
-| `value`             | `string`   | no       | —       | Currently selected value. Bindable.                                                                                                                                                                                                    |
 | `filter`            | `(opaque)` | —        | —       | function-or-snippet                                                                                                                                                                                                                    |
 | `options`           | `(opaque)` | —        | —       | unknown-shape                                                                                                                                                                                                                          |
+| `value`             | `(opaque)` | —        | —       | generic-type-parameter                                                                                                                                                                                                                 |
 
 <!-- generated:props:end -->
 

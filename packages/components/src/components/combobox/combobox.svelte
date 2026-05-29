@@ -15,7 +15,7 @@
   export type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="T extends string = string">
   import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
   import { untrack } from 'svelte';
 
@@ -41,7 +41,7 @@
     maxVisibleOptions = 200,
     class: className,
     'aria-describedby': consumerDescribedBy,
-  }: ComboboxProps = $props();
+  }: ComboboxProps<T> = $props();
 
   const listboxId = `${id}-listbox`;
   const descriptionId = $derived(describeId(id, !!description));
@@ -49,7 +49,7 @@
   const errId = $derived(buildErrorId(id, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
-  const defaultFilter = (option: ComboboxOption, query: string): boolean => {
+  const defaultFilter = (option: ComboboxOption<T>, query: string): boolean => {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
@@ -60,7 +60,7 @@
 
   const filteredOptions = $derived.by(() => {
     const fn = filter ?? defaultFilter;
-    const matches: ComboboxOption[] = [];
+    const matches: ComboboxOption<T>[] = [];
     for (const option of options) {
       if (fn(option, inputValue)) {
         matches.push(option);
@@ -116,7 +116,7 @@
     open = false;
   }
 
-  function selectOption(option: ComboboxOption) {
+  function selectOption(option: ComboboxOption<T>) {
     if (option.disabled) return;
     value = option.value;
     inputValue = option.label;

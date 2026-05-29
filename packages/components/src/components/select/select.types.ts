@@ -1,12 +1,18 @@
 import type { HTMLSelectAttributes } from 'svelte/elements';
-export type SelectOption = { value: string; label: string; disabled?: boolean };
-export type SelectProps = HTMLSelectAttributes & {
+
+export type SelectOption<T extends string = string> = {
+  value: T;
+  label: string;
+  disabled?: boolean;
+};
+
+export type SelectProps<T extends string = string> = HTMLSelectAttributes & {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
-  /** Bound selected value. */
-  value: string;
-  /** Options to render as `<option>` children. */
-  options: SelectOption[];
+  /** Bound selected value. `undefined` when nothing is selected. */
+  value?: NoInfer<T>;
+  /** Options to render as `<option>` children. The sole inference source for T. */
+  options: readonly SelectOption<T>[];
   /** Visible label rendered in a `<label>` associated via `for`. */
   label?: string;
   /** Helper text rendered below the control; wired via `aria-describedby`. */

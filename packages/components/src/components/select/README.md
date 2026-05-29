@@ -26,7 +26,7 @@ A Select component. Replace this sentence with a one-line purpose statement once
 | `required`    | `boolean`  | no       | —       | Marks the control required and sets the native `required` attribute.                      |
 | `class`       | `(opaque)` | —        | —       | unknown-shape                                                                             |
 | `options`     | `(opaque)` | —        | —       | unknown-shape                                                                             |
-| `value`       | `(opaque)` | —        | —       | unknown-shape                                                                             |
+| `value`       | `(opaque)` | —        | —       | generic-type-parameter                                                                    |
 
 <!-- generated:props:end -->
 

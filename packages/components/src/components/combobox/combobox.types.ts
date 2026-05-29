@@ -1,9 +1,9 @@
 /**
  * One option in a Combobox.
  */
-export type ComboboxOption = {
+export type ComboboxOption<T extends string = string> = {
   /** Submitted value. */
-  value: string;
+  value: T;
   /** Visible label (primary line). */
   label: string;
   /** Optional secondary description rendered beneath the label inside the option. */
@@ -17,6 +17,7 @@ export type ComboboxOption = {
   /** When true, the option is non-selectable. */
   disabled?: boolean;
 };
+
 /**
  * Props for the Combobox component.
  *
@@ -32,15 +33,15 @@ export type ComboboxOption = {
  * Bigger Combobox patterns will live as separate components or as an
  * extension once consumer needs justify them.
  */
-export type ComboboxProps = {
+export type ComboboxProps<T extends string = string> = {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
-  /** Currently selected value. Bindable. */
-  value?: string;
+  /** Currently selected value. Bindable. `''` when nothing is selected. */
+  value?: NoInfer<T> | '';
   /** Free-text input value (the text the user has typed). Bindable. */
   inputValue?: string;
-  /** Full set of options to filter. */
-  options: ComboboxOption[];
+  /** Full set of options to filter. The sole inference source for T. */
+  options: readonly ComboboxOption<T>[];
   /** Visible label rendered in a `<label>` associated via `for`. */
   label?: string;
   /** Placeholder when no value is selected. */
@@ -50,7 +51,7 @@ export type ComboboxProps = {
    * value; returns true to keep. Defaults to case-insensitive substring
    * match on label.
    */
-  filter?: (option: ComboboxOption, query: string) => boolean;
+  filter?: (option: ComboboxOption<T>, query: string) => boolean;
   /** Helper text displayed below the input; wired via aria-describedby. */
   description?: string;
   /** Validation error message; sets aria-invalid="true". */

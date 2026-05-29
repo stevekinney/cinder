@@ -47,6 +47,20 @@ describe('Select', () => {
     expect(optionEls[2]!.getAttribute('value')).toBe('c');
   });
 
+  test('renders without a value prop (undefined unselected sentinel does not crash)', () => {
+    // `value` is now optional (was required) — `$bindable()` yields undefined when
+    // omitted. Rendering with no initial selection must not throw, and the native
+    // <select> falls back to its first option.
+    const { container } = render(Select, {
+      props: { id: 'no-value-select', options: defaultOptions },
+    });
+    const selectEl = container.querySelector('select#no-value-select') as HTMLSelectElement;
+    expect(selectEl).not.toBeNull();
+    expect(Array.from(selectEl.querySelectorAll('option')).length).toBe(3);
+    // Native <select> with no explicit selection reports the first option's value.
+    expect(selectEl.value).toBe('a');
+  });
+
   test('<select> value matches initial bound value', () => {
     const { container } = render(Select, {
       props: { id: 'test-select', value: 'b', options: defaultOptions },

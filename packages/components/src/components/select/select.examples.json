@@ -14,6 +14,12 @@
       "title": "Select with disabled option",
       "description": "Individual options can be marked disabled.",
       "code": "<script lang=\"ts\">\n  import { Select } from 'cinder/select';\n  const options = [\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise (contact sales)', disabled: true },\n  ];\n\n  let plan = $state(options[0]?.value ?? 'free');\n</script>\n\n<Select id=\"plan\" bind:value={plan} {options} label=\"Plan\" />\n"
+    },
+    {
+      "id": "typed-options",
+      "title": "Typed options with as const",
+      "description": "Use `as const` on the options array to infer a precise literal-union type for `T`. TypeScript then rejects any `value` that is not a member of the union at compile time.",
+      "code": "<script lang=\"ts\">\n  import { Select } from 'cinder/select';\n\n  // `as const` narrows value types to the literal union 'us' | 'ca' | 'gb' | 'au'.\n  // T is inferred from `options`; passing value=\"invalid\" would be a compile error.\n  const options = [\n    { value: 'us', label: 'United States' },\n    { value: 'ca', label: 'Canada' },\n    { value: 'gb', label: 'United Kingdom' },\n    { value: 'au', label: 'Australia' },\n  ] as const;\n\n  type CountryCode = (typeof options)[number]['value'];\n  let country = $state<CountryCode>('us');\n</script>\n\n<Select id=\"country-typed\" bind:value={country} {options} label=\"Country\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {country}</p>\n"
     }
   ]
 }

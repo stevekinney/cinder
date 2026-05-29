@@ -15,7 +15,7 @@
   export type { SelectOption, SelectProps } from './select.types.ts';
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="T extends string = string">
   import type { SelectProps } from './select.types.ts';
   import {
     ariaInvalid,
@@ -38,7 +38,7 @@
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
-  }: SelectProps = $props();
+  }: SelectProps<T> = $props();
 
   const descriptionId = $derived(describeId(id, !!description));
   // errId is only included in aria-describedby when error is active — the element

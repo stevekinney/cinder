@@ -8,10 +8,6 @@ const schema = {
       type: 'string',
       description: 'Unique identifier — required for label association and ARIA wiring.',
     },
-    value: {
-      type: 'string',
-      description: 'Currently selected value. Bindable.',
-    },
     inputValue: {
       type: 'string',
       description: 'Free-text input value (the text the user has typed). Bindable.',
@@ -61,6 +57,10 @@ const schema = {
       {
         name: 'options',
         reason: 'unknown-shape',
+      },
+      {
+        name: 'value',
+        reason: 'generic-type-parameter',
       },
     ],
   },

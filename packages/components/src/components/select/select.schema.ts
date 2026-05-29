@@ -44,7 +44,7 @@ const schema = {
       },
       {
         name: 'value',
-        reason: 'unknown-shape',
+        reason: 'generic-type-parameter',
       },
     ],
   },

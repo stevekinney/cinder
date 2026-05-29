@@ -293,6 +293,13 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     return { kind: 'unsupported', reason: 'generic-type-parameter' };
   }
 
+  // NoInfer<T> — TypeScript 5.4 substitution type that wraps a type parameter to
+  // prevent inference widening. ts-morph does not flag it as a type parameter, but
+  // its getText() returns "NoInfer<…>", so we detect it by text prefix.
+  if (type.getText().startsWith('NoInfer<')) {
+    return { kind: 'unsupported', reason: 'generic-type-parameter' };
+  }
+
   // Object: model simple structural object types only when explicitly allowed.
   // Unsupported member shapes make the whole prop unsupported instead of emitting
   // an opaque object schema that downstream consumers would treat as permissive.
@@ -538,11 +545,34 @@ function getHtmlAttributeDeclarationSites(): Set<string> {
 
 function getPropType(symbol: MorphSymbol): Type | null {
   const declarations = symbol.getDeclarations();
-  const decl = declarations[0];
-  if (!decl) {
-    return null;
+  if (declarations.length === 0) return null;
+
+  // When a component's own prop type shadows an inherited HTML attribute (e.g.
+  // `value?: NoInfer<T>` in `SelectProps<T>` shadowing `HTMLSelectAttributes`'s
+  // `value?: any`), ts-morph returns the HTML-attribute declaration first because
+  // TypeScript resolves intersections left-to-right. We prefer the locally-authored
+  // declaration so schema generation sees the component's intended type, not the
+  // HTML fallback.
+  const htmlAttributeSites = getHtmlAttributeDeclarationSites();
+  const localDecl = declarations.find(
+    (d) => !htmlAttributeSites.has(d.getSourceFile().getFilePath()),
+  );
+  const decl = localDecl ?? declarations[0]!;
+  const resolvedType = symbol.getTypeAtLocation(decl);
+
+  // `symbol.getTypeAtLocation` collapses `NoInfer<T>` props to `any` when the
+  // enclosing type alias is generic (e.g. `SelectProps<T>`). When the resolved
+  // type is `any` and the local declaration lives in the active types file, use
+  // the TypeChecker directly on that declaration to recover the unevaluated
+  // generic type. We only substitute the checker type when it references `NoInfer`
+  // to avoid changing resolution for other components (e.g. `Input`, `Radio`) that
+  // also shadow HTML attribute `value` with a plain `string` type.
+  if (resolvedType.isAny() && localDecl !== undefined) {
+    const checkerType = getProject().getTypeChecker().getTypeAtLocation(localDecl);
+    if (checkerType.getText().includes('NoInfer<')) return checkerType;
   }
-  return symbol.getTypeAtLocation(decl);
+
+  return resolvedType;
 }
 
 function findExportedType(sourceFile: SourceFile, name: string): Type | null {
