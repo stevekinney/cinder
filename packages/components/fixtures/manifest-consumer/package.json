@@ -1,0 +1,24 @@
+{
+  "name": "manifest-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "overrides": {
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz"
+  },
+  "dependencies": {
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz",
+    "cinder": "file:../../cinder-0.0.1.tgz"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

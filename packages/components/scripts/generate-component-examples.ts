@@ -21,19 +21,15 @@
  * Run: bun run scripts/generate-component-examples.ts
  * Check: bun run scripts/generate-component-examples.ts --check
  *
- * TODO: Phase 3 follow-up — `packages/components/fixtures/examples-consumer/`
- * A SvelteKit fixture that compiles every published example and runs SSR.
- * See plan §Phase 3 "Compile gate". Deferred until the generator and examples
- * are landing successfully with correct import specifiers.
- *
- * TODO: Phase 3 follow-up — `packages/components/fixtures/typescript-consumer/`
- * A TypeScript-only fixture (`.ts` + `.svelte`) that imports `cinder/manifest`,
- * `cinder/{name}/examples`, and `cinder/{name}/constraints`, validated with
- * `tsc --noEmit` and `svelte-check`.
- *
- * TODO: Phase 3 follow-up — `packages/components/fixtures/manifest-consumer/`
- * A Node ESM fixture that installs the packed tarball and resolves every
- * `artifacts.<key>` subpath listed in the manifest.
+ * Consumer fixtures that exercise these artifacts live under
+ * `packages/components/fixtures/` and run via `bun run validate:consumer`
+ * (see `scripts/validate-consumers.ts`):
+ *   - `manifest-consumer/`   — Node ESM+CJS resolution of every manifest
+ *                              `artifacts.<key>` subpath from the packed tarball.
+ *   - `typescript-consumer/` — manifest-generated probe (tsc + svelte-check)
+ *                              covering every component's props/schema/variables.
+ *   - `examples-consumer/`   — SvelteKit app that SSR-renders every published
+ *                              example exactly once.
  */
 
 import { existsSync } from 'node:fs';

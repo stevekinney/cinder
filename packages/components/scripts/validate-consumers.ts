@@ -1038,6 +1038,225 @@ async function runNodeFixture(): Promise<void> {
   }
 }
 
+/**
+ * manifest-consumer — install the packed tarball into the fixture and run its
+ * Node `.mjs` contract check (cinder/manifest resolution, runtime artifact
+ * resolution via ESM+CJS, type/svelte-only schema/variables tripwire, two-way
+ * export↔manifest consistency). Fastest fixture — pure Node resolution.
+ */
+async function runManifestConsumerFixture(): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/manifest-consumer');
+  process.stdout.write('[validate-consumers] step: manifest-consumer (Node resolve)…\n');
+
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
+
+  try {
+    await $`rm -rf node_modules`.cwd(fixtureDirectory);
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) fail(`manifest-consumer bun install failed`);
+
+    const checkResult = Bun.spawnSync([nodeBinaryPath, 'check.mjs'], {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    });
+    if (checkResult.exitCode !== 0) {
+      fail(
+        `manifest-consumer check.mjs exited ${checkResult.exitCode}\n` +
+          `stdout: ${checkResult.stdout.toString()}\n` +
+          `stderr: ${checkResult.stderr.toString()}`,
+      );
+    }
+    process.stdout.write(`[validate-consumers] ${checkResult.stdout.toString().trim()}\n`);
+  } finally {
+    restoreManifest();
+  }
+}
+
+/**
+ * typescript-consumer — install the packed tarball, GENERATE a probe from the
+ * installed `cinder/manifest` covering every component + its schema/variables
+ * artifacts, then run the TypeScript-facing gates:
+ *   Gate 1 — tsc NodeNext type resolution (no `svelte` condition): proves every
+ *            component main + schema + variables `types` condition resolves
+ *            under plain Node/NodeNext, the lens a non-Svelte TS consumer uses.
+ *   Gate 2 — tsc with `customConditions: ["svelte"]`: proves adding the Svelte
+ *            consumer's condition does not break type resolution.
+ *   Gate 3 — svelte-check over a generated `.svelte` probe: the real Svelte-aware
+ *            view; resolves every component's `svelte` source condition.
+ * Gate 4 (real Node ESM + CJS RUNTIME resolve with no `svelte` condition) is
+ * owned by manifest-consumer so the resolver matrix is not duplicated; it is the
+ * fixture that asserts the schema/variables subpaths intentionally do NOT
+ * runtime-resolve today (the task-4176c51c tripwire).
+ */
+async function runTypescriptConsumerFixture(): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/typescript-consumer');
+  process.stdout.write('[validate-consumers] step: typescript-consumer (tsc + svelte-check)…\n');
+
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
+
+  try {
+    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) fail(`typescript-consumer bun install failed`);
+
+    // Regenerate the probe from the INSTALLED manifest — stale output must not
+    // survive a run, and the probe must cover whatever the tarball publishes.
+    const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    });
+    if (generateResult.exitCode !== 0) {
+      fail(
+        `typescript-consumer generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
+      );
+    }
+
+    const tscGates: Array<{ label: string; tsconfig: string }> = [
+      { label: 'gate 1 — nodenext (no svelte condition)', tsconfig: 'tsconfig.nodenext.json' },
+      { label: 'gate 2 — svelte condition', tsconfig: 'tsconfig.svelte.json' },
+    ];
+    for (const { label, tsconfig } of tscGates) {
+      const result = await $`bunx tsc --noEmit -p ${tsconfig}`.cwd(fixtureDirectory).nothrow();
+      if (result.exitCode !== 0) {
+        fail(
+          `typescript-consumer ${label} failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+        );
+      }
+    }
+
+    const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
+      .cwd(fixtureDirectory)
+      .nothrow();
+    if (checkResult.exitCode !== 0) {
+      fail(
+        `typescript-consumer gate 3 — svelte-check failed:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+      );
+    }
+    process.stdout.write('[validate-consumers] typescript-consumer OK (gates 1–3 green).\n');
+  } finally {
+    restoreManifest();
+  }
+}
+
+/**
+ * examples-consumer — a SvelteKit app that materializes EVERY published example
+ * into a compilable component, builds + SSR-renders them, and asserts every
+ * `examples[]` entry's COMPOSITE id (`${componentId}::${exampleId}`) appears in
+ * the rendered HTML EXACTLY ONCE. Slowest fixture (full Vite build + server), so
+ * it runs last.
+ *
+ * Generator lifecycle is explicit: delete `src/generated` + the generated
+ * `+page.svelte`, regenerate from the INSTALLED manifest AFTER tarball install
+ * and BEFORE `svelte-kit sync` → `vite build`. Stale output never survives.
+ */
+async function runExamplesConsumerFixture(): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/examples-consumer');
+  process.stdout.write('[validate-consumers] step: examples-consumer (SvelteKit build + SSR)…\n');
+
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
+
+  try {
+    await $`rm -rf node_modules .svelte-kit build src/generated src/routes/+page.svelte`.cwd(
+      fixtureDirectory,
+    );
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) fail(`examples-consumer bun install failed`);
+
+    const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-examples.mjs'], {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    });
+    if (generateResult.exitCode !== 0) {
+      fail(
+        `examples-consumer generate-examples.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
+      );
+    }
+
+    const syncResult = await $`bunx svelte-kit sync`.cwd(fixtureDirectory).nothrow();
+    if (syncResult.exitCode !== 0) {
+      fail(
+        `examples-consumer svelte-kit sync failed:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
+      );
+    }
+
+    const buildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
+    if (buildResult.exitCode !== 0) {
+      fail(
+        `examples-consumer vite build failed:\n${buildResult.stdout.toString()}\n${buildResult.stderr.toString()}`,
+      );
+    }
+
+    // Load the exact expected composite-id set this run produced.
+    const expectedRaw = await Bun.file(
+      join(fixtureDirectory, 'src/generated/expected-example-ids.json'),
+    ).text();
+    const expected = JSON.parse(expectedRaw) as { entryCount: number; compositeIds: string[] };
+
+    const httpPort = await pickEphemeralPort();
+    const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        ...Bun.env,
+        PORT: String(httpPort),
+        HOST: '127.0.0.1',
+        TZ: 'UTC',
+        LANG: 'en_US.UTF-8',
+      },
+    });
+
+    try {
+      await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, fixtureServer);
+      const response = await fetch(`http://127.0.0.1:${httpPort}/`);
+      if (response.status !== 200) {
+        fail(`examples-consumer / returned ${response.status}, want 200`);
+      }
+      const body = await response.text();
+
+      // Count every rendered composite id. The marker attribute is the source of
+      // truth — extract them all, then compare exact multisets.
+      const renderedIds = [...body.matchAll(/data-example-id="([^"]*)"/g)].map(
+        (match) => match[1]!,
+      );
+      const renderedCounts = new Map<string, number>();
+      for (const id of renderedIds) {
+        renderedCounts.set(id, (renderedCounts.get(id) ?? 0) + 1);
+      }
+
+      const expectedSet = new Set(expected.compositeIds);
+      const missing = expected.compositeIds.filter((id) => !renderedCounts.has(id));
+      const duplicated = [...renderedCounts.entries()]
+        .filter(([, count]) => count > 1)
+        .map(([id, count]) => `${id} (×${count})`);
+      const unexpected = [...renderedCounts.keys()].filter((id) => !expectedSet.has(id));
+
+      const problems: string[] = [];
+      if (missing.length > 0) problems.push(`missing (${missing.length}): ${missing.join(', ')}`);
+      if (duplicated.length > 0) {
+        problems.push(`rendered more than once: ${duplicated.join(', ')}`);
+      }
+      if (unexpected.length > 0) {
+        problems.push(`rendered but not expected: ${unexpected.join(', ')}`);
+      }
+      if (problems.length > 0) {
+        fail(
+          `examples-consumer composite-id assertion failed (expected ${expected.entryCount} entries each exactly once):\n  ${problems.join('\n  ')}`,
+        );
+      }
+
+      process.stdout.write(
+        `[validate-consumers] examples-consumer OK — ${expected.entryCount} example entries each rendered exactly once.\n`,
+      );
+    } finally {
+      fixtureServer.kill();
+      await fixtureServer.exited;
+    }
+  } finally {
+    restoreManifest();
+  }
+}
+
 try {
   ensureSupportedPlatform();
   await ensureNodeOnPath();
@@ -1067,8 +1286,14 @@ try {
     await rm(publishStagingDirectory, { recursive: true, force: true }).catch(() => {});
   }
 
-  await runSveltekitFixture();
+  // Fastest-first fixture ordering: manifest-consumer (Node resolution, seconds)
+  // → node-consumer (tsc + SSR render) → typescript-consumer (tsc + svelte-check)
+  // → sveltekit-consumer (full Vite build, slowest).
+  await runManifestConsumerFixture();
   await runNodeFixture();
+  await runTypescriptConsumerFixture();
+  await runSveltekitFixture();
+  await runExamplesConsumerFixture();
   process.stdout.write('[validate-consumers] all checks passed.\n');
 } catch (error) {
   if (error instanceof ValidationError) {

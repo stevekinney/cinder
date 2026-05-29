@@ -1,0 +1,29 @@
+{
+  "name": "typescript-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "echo 'run via validate-consumers.ts'"
+  },
+  "overrides": {
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz"
+  },
+  "dependencies": {
+    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
+    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
+    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
+    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz",
+    "cinder": "file:../../cinder-0.0.1.tgz"
+  },
+  "devDependencies": {
+    "svelte": "~5.55.0",
+    "svelte-check": "^4.4.6",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
