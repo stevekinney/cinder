@@ -7,7 +7,7 @@
  *   - --json output shape and exit-code contracts (via Bun.spawn)
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,6 +24,14 @@ import {
   isInteractive,
   PROP_NAME_DENYLIST,
 } from './component-conventions.ts';
+
+// Several tests spawn the promotion-check CLI as a full `bun` subprocess (schema
+// regeneration + ts-morph/svelte AST parsing per run). Under the parallel
+// pre-push suite those subprocesses are starved and routinely exceed bun:test's
+// default 5s per-test timeout, producing load-induced flakes. Raise the ceiling
+// so the spawn-based contract tests stay deterministic under load; the fast
+// in-process unit tests in this file are unaffected by the larger ceiling.
+setDefaultTimeout(30_000);
 
 const SCRIPT_FILE = join(fileURLToPath(import.meta.url), '..', 'check-promotion-readiness.ts');
 
