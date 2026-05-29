@@ -195,8 +195,10 @@ export class SortableController<Item> {
  */
 export function reorder<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   const result = [...items];
-  const [removed] = result.splice(fromIndex, 1);
-  if (removed === undefined) return result;
-  result.splice(toIndex, 0, removed);
+  const spliced = result.splice(fromIndex, 1);
+  // Check the splice length, not the element value, so that a valid-index
+  // element whose value is `undefined` is still reinserted correctly.
+  if (spliced.length === 0) return result;
+  result.splice(toIndex, 0, ...spliced);
   return result;
 }

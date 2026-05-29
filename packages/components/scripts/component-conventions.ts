@@ -235,7 +235,7 @@ function hasAriaOrRoleCall(root: CallExpression): boolean {
  * narrows through this guard rather than asserting `as Record<…>`.
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Read a property as a nested record, or `undefined` if it isn't one. */

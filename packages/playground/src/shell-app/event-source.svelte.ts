@@ -50,6 +50,8 @@ export function createEventSource(
       }
       if (handlers.events) {
         for (const [name, handler] of Object.entries(handlers.events)) {
+          // EventSource named events are always MessageEvent at runtime.
+          // eslint-disable-next-line no-unsafe-type-assertion -- EventSource dispatches named events as MessageEvent; the handler contract is correct.
           source.addEventListener(name, handler as EventListener);
         }
       }
