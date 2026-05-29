@@ -43,9 +43,27 @@ if (existsSync(join(here, 'src', 'generated'))) {
 }
 mkdirSync(generatedExamplesDirectory, { recursive: true });
 
-/** Sanitize a composite id for use as a filename / import identifier. */
+/**
+ * Sanitize a composite id (`${componentId}::${exampleId}`) for use as a
+ * filename and JS import identifier.
+ *
+ * Component ids and example ids are constrained to `^[a-z][a-z0-9-]*$` — the
+ * only non-alphanumeric character in each part is `-`. We split on `::` first,
+ * replace hyphens with underscores in each part, then rejoin with `__` (double
+ * underscore). This keeps the componentId/exampleId boundary unambiguous:
+ *
+ *   `button-group::basic`  → `button_group__basic`
+ *   `button::group-basic`  → `button__group_basic`  (distinct from the above)
+ *
+ * A flat replace of all non-alphanumeric chars collapses both `-` and `::` to
+ * a single `_`, which is lossy — both examples above would produce
+ * `button_group_basic`, causing a silent filename and identifier collision.
+ */
 function sanitize(value) {
-  return value.replace(/[^a-zA-Z0-9]+/g, '_');
+  return value
+    .split('::')
+    .map((part) => part.replace(/-/g, '_'))
+    .join('__');
 }
 
 // The marker attribute and the validator's extraction regex assume composite ids
