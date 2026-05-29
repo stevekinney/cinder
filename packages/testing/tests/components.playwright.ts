@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { expect, test } from '../src/fixtures/component-page.ts';
+import { evaluateAxeGate } from '../src/helpers/axe-gate.ts';
 import { runAxe } from '../src/helpers/axe.ts';
 import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
 import { applyInteractions } from '../src/helpers/interact.ts';
@@ -107,7 +108,21 @@ for (const entry of entries) {
               'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
             await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
 
-            // v1: no assertions on axe buckets — record only.
+            // Accessibility gate: `critical` and `serious` violations fail the
+            // sweep; `moderate`/`minor` stay annotation-only (recorded above).
+            // An entry in `AXE_ALLOW_LIST` (matched by slug, optionally narrowed
+            // to theme/viewport/fixture) downgrades blocking violations to an
+            // annotation so a known pre-existing violation can be explicitly
+            // tracked rather than forcing a zero-violation baseline.
+            const decision = evaluateAxeGate(key, buckets);
+            if (decision.status === 'allowed') {
+              test.info().annotations.push({
+                type: 'axe-allowed',
+                description: `Allow-listed blocking violation(s): ${decision.reason}`,
+              });
+            } else if (decision.status === 'fail') {
+              expect(decision.violations, decision.message).toHaveLength(0);
+            }
           });
         }
       }
