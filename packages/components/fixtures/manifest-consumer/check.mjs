@@ -107,16 +107,13 @@ function assertRuntimeResolvable(specifier) {
  * points, this assertion goes RED — that is the signal to update this fixture
  * to assert runtime resolution instead of asserting it throws.
  *
- * We accept either ERR_PACKAGE_PATH_NOT_EXPORTED (the export key exists but no
- * condition matches the default lens) or ERR_MODULE_NOT_FOUND (resolver-version
- * differences can surface the same "not a runtime entry point" condition under
- * a different code). Any OTHER outcome — a successful resolve, or a different
- * error code — fails.
+ * We require ERR_PACKAGE_PATH_NOT_EXPORTED specifically — it proves the runtime
+ * condition is ABSENT from the package's exports map. We deliberately do NOT
+ * accept ERR_MODULE_NOT_FOUND: that code means the subpath IS runtime-exported
+ * but resolves to a missing file — a different, broken contract that this
+ * tripwire must NOT silently tolerate. Any other outcome — a successful
+ * resolve, or a different error code — fails.
  */
-const EXPECTED_NOT_RESOLVABLE_CODES = new Set([
-  'ERR_PACKAGE_PATH_NOT_EXPORTED',
-  'ERR_MODULE_NOT_FOUND',
-]);
 function assertNotRuntimeResolvable(specifier, reason) {
   for (const [resolverLabel, resolve] of [
     ['esm', (s) => import.meta.resolve(s)],
@@ -126,10 +123,10 @@ function assertNotRuntimeResolvable(specifier, reason) {
     try {
       resolved = resolve(specifier);
     } catch (error) {
-      if (EXPECTED_NOT_RESOLVABLE_CODES.has(error.code)) continue; // expected tripwire state
+      if (error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') continue; // expected tripwire state
       record(
-        `${specifier} [${resolverLabel}]: expected ERR_PACKAGE_PATH_NOT_EXPORTED or ` +
-          `ERR_MODULE_NOT_FOUND but got ${error.code ?? error.message}`,
+        `${specifier} [${resolverLabel}]: expected ERR_PACKAGE_PATH_NOT_EXPORTED (no runtime ` +
+          `condition in the exports map) but got ${error.code ?? error.message}`,
       );
       continue;
     }
