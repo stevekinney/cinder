@@ -29,6 +29,7 @@ import {
 } from './component-conventions.ts';
 import { extractComponentMetadata } from './generate-component-metadata.ts';
 import { generateSchemaForComponent } from './generate-component-schema.ts';
+import { parseJsonFile } from './lib/read-json-file.ts';
 
 // ---------------------------------------------------------------------------
 // Paths
