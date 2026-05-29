@@ -97,8 +97,10 @@ describe('exports drift', () => {
       '.',
       './package.json',
       './styles',
+      './styles/all',
       './styles/tokens',
       './styles/foundation',
+      './styles/utilities',
       './highlighters/shiki',
     ]);
     for (const key of Object.keys(existing)) {
@@ -117,8 +119,14 @@ describe('exports drift', () => {
     const exports = packageJson.exports as Record<string, unknown>;
     expect(exports['.']).toBeDefined();
     expect(exports['./styles']).toBeDefined();
+    expect(exports['./styles/all']).toBeDefined();
     expect(exports['./styles/tokens']).toBeDefined();
     expect(exports['./styles/foundation']).toBeDefined();
+    expect(exports['./styles/utilities']).toBeDefined();
+    // The slim base points at the layer-order + tokens/foundation/utilities
+    // aggregator; the all-in entry points at the full-cascade aggregator.
+    expect(exports['./styles']).toEqual({ default: './src/styles/index.css' });
+    expect(exports['./styles/all']).toEqual({ default: './src/styles/all.css' });
   });
 
   test('checked-in exports contain no forbidden keys', async () => {

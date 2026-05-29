@@ -1,0 +1,24 @@
+/*
+ * Full-cascade convenience aggregator — `cinder/styles/all`.
+ *
+ * Imports tokens, foundation, EVERY component's CSS, and utilities in one
+ * shot. This is the all-in escape hatch for consumers who do not want to
+ * manage per-component style imports; it ships the entire component layer
+ * regardless of which components the app actually renders (no tree-shaking).
+ *
+ * Prefer the per-component path for production apps: import `cinder/styles`
+ * once (tokens + foundation + utilities + shared internals + layer order),
+ * then import `cinder/<component>/styles` for each component you use. Bundlers
+ * then include only the component CSS you reference.
+ *
+ * The `@layer` declaration on the first line fixes cascade-layer priority
+ * independent of import order. It MUST stay byte-identical to the declaration
+ * in `index.css` so both entry points agree on layer ordering.
+ */
+
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@import './tokens.css' layer(cinder.tokens);
+@import './foundation.css' layer(cinder.foundation);
+@import './components.css';
+@import './utilities.css' layer(cinder.utilities);

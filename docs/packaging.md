@@ -45,44 +45,61 @@ the exports map is a follow-up track.
 
 ## Styles — two consumption modes
 
-`cinder` exposes CSS through dedicated subpaths. There are two supported ways
-to pull styles in.
+`cinder` exposes CSS through dedicated subpaths. The base entry (`cinder/styles`)
+is a **slim base**: it declares the `@layer` order and ships tokens, foundation
+(reset), shared internal chrome, and utilities, but it **does not** import any
+per-component CSS. Renders without component CSS appear unstyled. There are two
+supported ways to add the component layer on top of that base.
 
 ### Mode 1 — whole-system aggregator
 
 ```ts
 // app.css or your global stylesheet entry
-import 'cinder/styles';
+import 'cinder/styles/all';
 ```
 
-`cinder/styles` is the full cascade. It declares the `@layer` order and pulls in
-tokens, foundation (reset), components, and utilities — each wrapped in its own
-layer. Use this when you want the design system "as shipped" and do not need to
-tree-shake CSS by component.
+`cinder/styles/all` is the full cascade as shipped. It declares the `@layer`
+order and pulls in tokens, foundation (reset), **every** component's CSS, and
+utilities — each in its correct layer. Use this when you want the design system
+"as shipped" and do not need to tree-shake CSS by component. It ships the entire
+component layer regardless of which components your app actually renders.
+
+> [!NOTE] `cinder/styles` alone is not enough
+> `cinder/styles` is the slim base and intentionally ships **no** per-component
+> CSS. A consumer that imports only `cinder/styles` and renders a `<Button>`
+> gets the button **unstyled**. Either import `cinder/styles/all` (this mode) or
+> the slim base plus per-component sidecars (Mode 2).
 
 ### Mode 2 — à la carte
 
 ```ts
-// Required: tokens and foundation must come first.
-import 'cinder/styles/tokens';
-import 'cinder/styles/foundation';
+// Required: the slim base must come FIRST. It declares the @layer order and
+// ships tokens, foundation, utilities, and shared internal chrome.
+import 'cinder/styles';
 
 // Then import only the components you use.
 import 'cinder/button/styles';
 import 'cinder/badge/styles';
 ```
 
-Per-component CSS exports (`cinder/<name>/styles`) ship **layer-unwrapped CSS**.
-They contain only component-scoped selectors and `--cinder-*` custom properties.
-They do **not** declare `@layer`, tokens, or resets — because those must be
-imported once at the top of the cascade, not duplicated per component.
+Per-component CSS exports (`cinder/<name>/styles`) ship **layer-wrapped CSS**.
+Every sidecar self-declares its cascade layer — its rules live inside an
+intrinsic `@layer cinder.components { … }` wrapper so the layer assignment
+survives a direct subpath import. They contain only component-scoped selectors
+and `--cinder-*` custom properties; they do **not** ship tokens or resets,
+because those come from the base once at the top of the cascade, not duplicated
+per component.
 
 This mode lets the bundler tree-shake unused component CSS, but the contract is
 strict:
 
-- `cinder/styles/tokens` and `cinder/styles/foundation` are **required** when
-  using per-component CSS. Without them, components reference `--cinder-*`
-  variables that have no definitions and inherit no resets.
+- `cinder/styles` (the slim base) is **required and must be imported first**.
+  Sidecars carry layer _membership_ but not layer _ordering_ — the base declares
+  the `@layer` order. If a sidecar lands before the base, the layers are created
+  in insertion order and utilities can no longer override component defaults.
+  The base is also what defines the `--cinder-*` tokens and resets the sidecars
+  reference; without it components have no token definitions and inherit no
+  resets.
 - Component JS modules (`cinder/button`, `cinder/badge`, etc.) do not pull CSS
   as a side effect. Importing the JS gives you the component; importing
   `cinder/<name>/styles` gives you its CSS. They are independent.

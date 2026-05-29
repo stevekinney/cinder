@@ -14,6 +14,15 @@
  *      intrinsic to the file and survives a direct subpath import
  *      (`cinder/<name>/styles`). A bare top-level rule outside the wrapper is
  *      a violation.
+ *   4. The ONLY at-rules permitted outside the wrapper are leading
+ *      sibling-leaf `@import '../<leaf>/<leaf>.css'` statements. Compound
+ *      parents (Tabs, Table, Accordion, SideNavigation) use these so that
+ *      importing `cinder/<parent>/styles` pulls the whole family. The path
+ *      shape mirrors the verbatim dist layout — `dist/components/<parent>/`
+ *      and `dist/components/<leaf>/` are siblings — so `../<leaf>/<leaf>.css`
+ *      resolves identically in `src/` and `dist/`. Any other `@import`
+ *      (absolute, bare specifier, or non-sibling path) is rejected because it
+ *      would not resolve after the verbatim copy.
  *
  * Scoped descendants are allowed (e.g. `.button *`, `.alert :where(html)`).
  * The check distinguishes these from forbidden globals by walking the parsed
@@ -43,6 +52,26 @@ export type CssViolation = {
 export const COMPONENT_LAYER_NAME = 'cinder.components';
 
 /**
+ * Matches a sibling-leaf CSS import: `'../<leaf>/<leaf>.css'` where the
+ * directory name and file basename are identical kebab-case tokens. This is
+ * the only `@import` shape a compound-parent sidecar may carry — it resolves
+ * identically in `src/components/<parent>/` and the verbatim-copied
+ * `dist/components/<parent>/` because the leaf lives at the sibling
+ * `<leaf>/<leaf>.css`.
+ */
+const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
+
+/**
+ * Whether a `@import` at-rule is a permitted sibling-leaf import (see
+ * {@link SIBLING_LEAF_IMPORT_PARAMS}). The capture group `\2` forces the
+ * directory name and file basename to match, so `../tab/tab.css` passes while
+ * `../tab/other.css`, `'foo'`, or `url(...)` forms do not.
+ */
+function isSiblingLeafImport(atRule: AtRule): boolean {
+  return SIBLING_LEAF_IMPORT_PARAMS.test(atRule.params.trim());
+}
+
+/**
  * Whether a top-level AST node is the `@layer cinder.components { … }` wrapper —
  * a `@layer` at-rule whose params name exactly the component layer AND that has
  * a block body (rejecting the statement form `@layer cinder.components;`).
@@ -59,18 +88,26 @@ function isComponentLayerNode(node: { type: string }): boolean {
 
 /**
  * Whether a parsed stylesheet satisfies the wrapper invariant: after ignoring
- * comments, its only top-level node is a single `@layer cinder.components { … }`
- * block. Shared by the build gate ({@link checkComponentCssSource}), the
- * dist-side verification in `build.ts`, and the structural invariant test so all
- * three agree on one definition.
+ * comments, exactly one top-level node is a `@layer cinder.components { … }`
+ * block, and every other top-level node is a permitted sibling-leaf `@import`
+ * (compound-parent family aggregation). Shared by the build gate
+ * ({@link checkComponentCssSource}) and the structural invariant test so both
+ * agree on one definition.
  */
 export function isSingleComponentLayer(root: Root): boolean {
   const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
-  return (
-    topLevelNodes.length === 1 &&
-    topLevelNodes[0] !== undefined &&
-    isComponentLayerNode(topLevelNodes[0])
-  );
+  let layerCount = 0;
+  for (const node of topLevelNodes) {
+    if (isComponentLayerNode(node)) {
+      layerCount += 1;
+      continue;
+    }
+    if (node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)) {
+      continue;
+    }
+    return false;
+  }
+  return layerCount === 1;
 }
 
 const FUNCTIONAL_PSEUDOS = new Set([':is', ':where', ':not', ':has', ':matches']);
@@ -169,28 +206,59 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     return violations;
   }
 
-  // Sidecars are copied verbatim into `dist/components/<name>/`. An `@import`
-  // would try to resolve from that directory, where its target was never
-  // copied. Reject upfront rather than ship a broken sidecar.
+  // Sidecars are copied verbatim into `dist/components/<name>/`. A general
+  // `@import` would try to resolve from that directory, where its target was
+  // never copied. The single exception is a sibling-leaf import
+  // (`../<leaf>/<leaf>.css`) used by compound parents to aggregate their
+  // family — that path resolves identically in `src/` and `dist/` because the
+  // layout mirrors. Reject every other `@import` upfront.
   root.walkAtRules('import', (atRule) => {
+    if (isSiblingLeafImport(atRule)) return;
     violations.push({
       file,
       line: atRule.source?.start?.line ?? 1,
       column: atRule.source?.start?.column ?? 1,
       message:
-        '`@import` is not allowed inside a component CSS sidecar. The sidecar is copied verbatim into `dist/components/<name>/` and `@import` paths would not resolve. Inline the rules instead.',
+        "`@import` is not allowed inside a component CSS sidecar, except a sibling-leaf family import of the form `@import '../<leaf>/<leaf>.css'`. The sidecar is copied verbatim into `dist/components/<name>/`, where only sibling-leaf paths resolve. Inline other rules instead.",
     });
   });
+
+  // Sibling-leaf imports must precede the `@layer` block. CSS ignores any
+  // `@import` that follows a style rule or layer block, so a misordered import
+  // would silently fail to pull the leaf family in a real bundler.
+  const topLevel = root.nodes.filter((node) => node.type !== 'comment');
+  let sawLayerBlock = false;
+  for (const node of topLevel) {
+    if (isComponentLayerNode(node)) {
+      sawLayerBlock = true;
+      continue;
+    }
+    if (node.type === 'atrule' && node.name === 'import' && sawLayerBlock) {
+      violations.push({
+        file,
+        line: node.source?.start?.line ?? 1,
+        column: node.source?.start?.column ?? 1,
+        message:
+          'A sibling-leaf `@import` must appear BEFORE the `@layer cinder.components { … }` block. CSS ignores `@import` rules that follow style rules or layer blocks.',
+      });
+    }
+  }
 
   // Layer assignment must be intrinsic to the sidecar so it survives a direct
   // subpath import (`cinder/<name>/styles`) rather than relying on the
   // aggregator wrapping the `@import` with `layer(cinder.components)`. The
-  // contract: every top-level node (ignoring comments) must live inside a
-  // single `@layer cinder.components { … }` wrapper. A bare top-level style
-  // rule or at-rule sitting outside that wrapper is the violation.
+  // contract: exactly one top-level node (ignoring comments) is the
+  // `@layer cinder.components { … }` wrapper; the only other permitted
+  // top-level nodes are leading sibling-leaf `@import` statements. A bare
+  // top-level style rule or any other at-rule outside that wrapper is the
+  // violation.
   if (!isSingleComponentLayer(root)) {
     const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
-    const offender = topLevelNodes.find((node) => !isComponentLayerNode(node));
+    const offender = topLevelNodes.find(
+      (node) =>
+        !isComponentLayerNode(node) &&
+        !(node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)),
+    );
     const target = offender ?? root;
     violations.push({
       file,

@@ -1,3 +1,10 @@
+/* Compound family aggregation: importing `cinder/tabs/styles` pulls the whole
+ * Tabs family (TabList, Tab, TabPanel). Sibling-leaf paths resolve identically
+ * in `src/` and the verbatim-copied `dist/` because the layout mirrors. */
+@import '../tab/tab.css';
+@import '../tab-list/tab-list.css';
+@import '../tab-panel/tab-panel.css';
+
 @layer cinder.components {
   /* ========================================
  * TABS

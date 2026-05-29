@@ -5,7 +5,7 @@
  *   ./<name>             → component (types/svelte/node/default conditions)
  *   ./<name>/schema      → schema module (types + svelte only)
  *   ./<name>/variables   → variables module (types + svelte only)
- *   ./<name>/styles      → layer-unwrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css)
+ *   ./<name>/styles      → layer-wrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
@@ -25,13 +25,18 @@
  *
  *   .                    → root entry (also rewritten with the four-condition shape)
  *   ./package.json       → self-export, required for some resolvers
- *   ./styles             → full-cascade aggregator (tokens + foundation + components + utilities)
+ *   ./styles             → slim base: layer-order declaration + tokens + foundation + shared internals + utilities (NO per-component CSS)
+ *   ./styles/all         → full-cascade convenience aggregator (base + EVERY component, not tree-shaken)
  *   ./styles/tokens      → token-layer-only aggregator
  *   ./styles/foundation  → foundation-layer-only aggregator
+ *   ./styles/utilities   → utility-layer-only aggregator
  *
- * The per-component `/styles` exports emit layer-unwrapped CSS. Consumers using
- * à la carte CSS must also import `cinder/styles/tokens` and
- * `cinder/styles/foundation` to get tokens, resets, and layer assignments.
+ * The per-component `/styles` exports ship layer-WRAPPED CSS (every sidecar
+ * self-declares `@layer cinder.components { … }`), so a direct
+ * `cinder/<name>/styles` import lands inside the cascade layer. Consumers must
+ * still import `cinder/styles` FIRST so the `@layer` order is declared before
+ * any per-component CSS arrives; otherwise layer priority is set by insertion
+ * order.
  *
  * If a newly-emitted subpath would collide with a non-generated reserved
  * entry, the generator aborts with a named error rather than silently
@@ -78,8 +83,10 @@ type JsonExportEntry = {
 };
 
 const STYLES_KEY = './styles';
+const STYLES_ALL_KEY = './styles/all';
 const STYLES_TOKENS_KEY = './styles/tokens';
 const STYLES_FOUNDATION_KEY = './styles/foundation';
+const STYLES_UTILITIES_KEY = './styles/utilities';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
@@ -93,11 +100,32 @@ const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 const RESERVED_KEYS = new Set([
   ROOT_KEY,
   STYLES_KEY,
+  STYLES_ALL_KEY,
   STYLES_TOKENS_KEY,
   STYLES_FOUNDATION_KEY,
+  STYLES_UTILITIES_KEY,
   PACKAGE_JSON_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
 ]);
+
+/**
+ * The five hand-authored `cinder/styles*` subpaths and their canonical CSS
+ * targets. These are reserved (never computed from component discovery) and
+ * emitted/checked verbatim. Ordered base-first so the generated exports map
+ * lists the base entry point before its variants.
+ */
+const RESERVED_STYLES_ENTRIES: ReadonlyArray<readonly [string, string]> = [
+  [STYLES_KEY, './src/styles/index.css'],
+  [STYLES_ALL_KEY, './src/styles/all.css'],
+  [STYLES_TOKENS_KEY, './src/styles/tokens.css'],
+  [STYLES_FOUNDATION_KEY, './src/styles/foundation.css'],
+  [STYLES_UTILITIES_KEY, './src/styles/utilities.css'],
+];
+
+/** Canonical `{ default: <css> }` entry for a reserved styles subpath. */
+function stylesExport(cssPath: string): ExportEntry {
+  return { default: cssPath };
+}
 
 /**
  * Canonical four-condition entry for `cinder/highlighters/shiki`. Hand-shaped
@@ -240,9 +268,11 @@ export function computeExports(
       svelte: `${srcDir}/${name}.variables.ts`,
     });
 
-    // Per-component CSS sidecar — layer-unwrapped. Consumers using these
-    // à la carte must also import `cinder/styles/tokens` and
-    // `cinder/styles/foundation` to get tokens, resets, and layer assignments.
+    // Per-component CSS sidecar — layer-WRAPPED (the sidecar self-declares
+    // `@layer cinder.components { … }`). Consumers must import `cinder/styles`
+    // FIRST so the `@layer` order is established before per-component CSS
+    // arrives; the sidecar then slots into the correct layer regardless of
+    // import order.
     //
     // Only emitted when the component ships a source CSS sidecar — emitting
     // `/styles` for a component without CSS would publish a dead export
@@ -383,12 +413,14 @@ async function main(): Promise<void> {
       issues.push(`Stale root export "${ROOT_KEY}"`);
     }
 
-    if (!existing[STYLES_KEY]) issues.push(`Reserved export "${STYLES_KEY}" is missing`);
-    if (!existing[STYLES_TOKENS_KEY]) {
-      issues.push(`Reserved export "${STYLES_TOKENS_KEY}" is missing`);
-    }
-    if (!existing[STYLES_FOUNDATION_KEY]) {
-      issues.push(`Reserved export "${STYLES_FOUNDATION_KEY}" is missing`);
+    for (const [key, cssPath] of RESERVED_STYLES_ENTRIES) {
+      const expected = stylesExport(cssPath);
+      const current = existing[key];
+      if (!current) {
+        issues.push(`Reserved export "${key}" is missing`);
+      } else if (JSON.stringify(current) !== JSON.stringify(expected)) {
+        issues.push(`Stale reserved export "${key}"`);
+      }
     }
 
     const expectedShikiEntry = highlightersShikiExport();
@@ -441,18 +473,15 @@ async function main(): Promise<void> {
   // Generate mode: build the next exports map in deterministic order:
   //   1. `.` (root, four-condition shape)
   //   2. `./package.json` self-export
-  //   3. `./styles` (preserved verbatim)
-  //   4. computed component subpaths (incl. /examples, /constraints when present)
-  //   5. preserved legacy flat component subpaths (partial-migration window)
+  //   3. `./styles*` reserved entries (canonical, base-first)
+  //   4. `./highlighters/shiki`
+  //   5. computed component subpaths (incl. /examples, /constraints when present)
+  //   6. preserved legacy flat component subpaths (partial-migration window)
   const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
   next[ROOT_KEY] = rootExport;
   next[PACKAGE_JSON_KEY] = './package.json';
-  if (packageJson.exports[STYLES_KEY]) next[STYLES_KEY] = packageJson.exports[STYLES_KEY];
-  if (packageJson.exports[STYLES_TOKENS_KEY]) {
-    next[STYLES_TOKENS_KEY] = packageJson.exports[STYLES_TOKENS_KEY];
-  }
-  if (packageJson.exports[STYLES_FOUNDATION_KEY]) {
-    next[STYLES_FOUNDATION_KEY] = packageJson.exports[STYLES_FOUNDATION_KEY];
+  for (const [key, cssPath] of RESERVED_STYLES_ENTRIES) {
+    next[key] = stylesExport(cssPath);
   }
   next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 

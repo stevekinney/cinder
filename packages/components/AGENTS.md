@@ -36,14 +36,46 @@ import Button from 'cinder/button';
 import Modal from 'cinder/modal';
 ```
 
-Then load the stylesheet **once** at your app entry:
+Then load the **base** stylesheet **once**, **first**, at your app entry:
 
 ```ts
 import 'cinder/styles';
 ```
 
-That single import wires up the design tokens, base resets, and every
-component's CSS. There is no per-component CSS to import.
+`cinder/styles` is the slim base: it declares the `@layer` order
+(`cinder.tokens, cinder.foundation, cinder.components, cinder.utilities`),
+ships the design tokens, base resets, utilities, and shared internal chrome.
+It does **not** ship per-component CSS. Import each component's styles
+alongside the component:
+
+```ts
+import Button from 'cinder/button';
+import 'cinder/button/styles';
+
+import Modal from 'cinder/modal';
+import 'cinder/modal/styles';
+```
+
+Bundlers (Vite, SvelteKit, esbuild, Bun) then include only the component CSS
+you actually reference — a button-only app ships zero badge or tabs rules.
+
+> [!WARNING] Import order matters
+> `cinder/styles` MUST be imported before any `cinder/<component>/styles`. The
+> base declares the `@layer` order; if a component's CSS lands first, the
+> cascade layers are created in insertion order and utilities can no longer
+> override component defaults. (A guard for this ships in a companion task.)
+
+**Compound components** (Tabs, Table, Accordion, SideNavigation) ship their
+whole family from the parent subpath — `import 'cinder/tabs/styles'` pulls in
+Tab, TabList, and TabPanel CSS too, so you do not import each leaf separately.
+
+**All-in escape hatch.** If you do not want to manage per-component imports,
+`import 'cinder/styles/all'` ships the base plus every component's CSS in one
+shot (no tree-shaking). The `cinder/styles/all` bundle also carries the
+experimental-component styles and the JSON-highlight token set used by
+`highlightJson()`; the slim base does not. There are also layer-only
+sub-entries — `cinder/styles/tokens`, `cinder/styles/foundation`, and
+`cinder/styles/utilities` — for advanced à-la-carte setups.
 
 ### Provider setup (highlighter context)
 
@@ -365,6 +397,16 @@ app;`) before importing cinder styles — the sidecar carries layer _membership_
 not ordering, so ordering stays the consumer's responsibility.
 `scripts/check-component-css.ts` enforces the wrapper at build time.
 
+Once the sidecar exists, `bun run exports:generate` automatically emits a
+`cinder/<id>/styles` subpath pointing at the built `dist/components/<id>/<id>.css`
+— no hand-editing of `package.json` exports. The slim base
+(`src/styles/index.css` → `cinder/styles`) does **not** import per-component
+CSS; the all-in aggregator (`src/styles/all.css` → `cinder/styles/all`) imports
+`components.css`, which lists every component sidecar in alphabetical order. If
+you add a brand-new component with a sidecar, add its `@import` line to
+`src/styles/components.css` (the all-in aggregator is hand-maintained, not
+regenerated) so `cinder/styles/all` picks it up.
+
 > [!WARNING] This reversed the earlier bare-rules contract
 > Component sidecars used to hold bare rules with NO `@layer` wrapper — the
 > aggregator applied `layer(cinder.components)` on import, and the build gate
@@ -392,6 +434,17 @@ Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
   the parent barrel, the root barrel, or any namespace helper — that would
   defeat tree-shaking for consumers importing only `cinder/<leaf>`. The
   `compound-leaf-import-boundary.test.ts` enforces this.
+- **Parent CSS aggregates the family.** When leaves ship their own CSS, the
+  parent `<parent>.css` sidecar `@import`s each leaf's sidecar with a
+  sibling-leaf path (`@import '../<leaf>/<leaf>.css';`) placed **before** the
+  `@layer cinder.components { … }` wrapper. That path resolves identically in
+  `src/` and the verbatim-copied `dist/` because the layout mirrors, so a
+  consumer importing only `cinder/<parent>/styles` gets the whole family. Each
+  leaf still gets its own `cinder/<leaf>/styles` subpath; bundlers dedupe the
+  shared file by URL. `scripts/check-component-css.ts` permits exactly this
+  sibling-leaf `@import` shape and rejects every other import. (Most table/tab
+  leaves are styled entirely by the parent and ship empty registry sidecars —
+  the `@import` is still correct and future-proof.)
 - **Add flat exports for new leaves too.** Continue adding the flat
   `cinder/<leaf>` subpath and the leaf's entry in `src/index.ts`. The
   namespace API is additive, not a replacement — keep flat leaf exports

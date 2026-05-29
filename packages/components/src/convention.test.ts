@@ -92,10 +92,8 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set(['cinder-provider']);
  * same thing in both places.
  */
 const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
-  'chat', // TODO: add tests and remove from allow-list
   'command-item', // TODO: add tests and remove from allow-list
   'context-menu-trigger', // TODO: add tests and remove from allow-list
-  'diff-viewer', // TODO: add tests and remove from allow-list
   'dropdown-group', // TODO: add tests and remove from allow-list
   'dropdown-item', // TODO: add tests and remove from allow-list
   'dropdown-label', // TODO: add tests and remove from allow-list
