@@ -349,6 +349,25 @@ Convention shown for Button:
    manifest entry, and per-component READMEs. Re-run `bun run
 components:check` to confirm the drift checker is happy.
 
+If the component ships a `<id>.css` sidecar, its rules must self-declare their
+cascade layer: wrap the whole file in `@layer cinder.components { … }`. The
+layer membership has to be intrinsic to the file so it survives a direct
+subpath import (`cinder/<id>/styles`) rather than relying on the aggregator's
+`@import … layer(cinder.components)`. Applications that layer their own
+overrides should declare their layer order (e.g. `@layer cinder.components,
+app;`) before importing cinder styles — the sidecar carries layer _membership_,
+not ordering, so ordering stays the consumer's responsibility.
+`scripts/check-component-css.ts` enforces the wrapper at build time.
+
+> [!WARNING] This reversed the earlier bare-rules contract
+> Component sidecars used to hold bare rules with NO `@layer` wrapper — the
+> aggregator applied `layer(cinder.components)` on import, and the build gate
+> _rejected_ any `@layer` inside a sidecar. That is now inverted. A branch that
+> adds or edits a `.css` sidecar without the wrapper will fail the build with a
+> "must live inside a single top-level `@layer cinder.components { … }` wrapper"
+> error. To migrate, wrap the file's entire content in
+> `@layer cinder.components { … }`.
+
 ### Compound components
 
 A compound component is a parent that owns context and a small fixed set of

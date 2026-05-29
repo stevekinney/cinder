@@ -1,235 +1,236 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * DROPDOWN
  * ======================================== */
 
-.cinder-dropdown {
-  position: relative;
-  display: inline-block;
-}
+  .cinder-dropdown {
+    position: relative;
+    display: inline-block;
+  }
 
-.cinder-dropdown-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--cinder-space-2);
-  min-block-size: var(--cinder-button-height-md);
-  padding-block: var(--cinder-button-padding-y-md);
-  padding-inline: var(--cinder-button-padding-x-md);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-button-radius-md);
-  background: var(--cinder-surface);
-  color: var(--cinder-text);
-  font: inherit;
-  font-size: var(--cinder-button-font-size-md);
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-2);
+    min-block-size: var(--cinder-button-height-md);
+    padding-block: var(--cinder-button-padding-y-md);
+    padding-inline: var(--cinder-button-padding-x-md);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-button-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font: inherit;
+    font-size: var(--cinder-button-font-size-md);
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-.cinder-dropdown-trigger:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
-      var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
-}
-
-.cinder-button-group
-  > .cinder-dropdown[data-cinder-button-group-item]
-  > .cinder-dropdown-trigger:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: inset 0 0 0 var(--cinder-ring-width)
-    var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
-}
-
-@media (forced-colors: active) {
-  /* box-shadow is suppressed in Windows High Contrast Mode, so paint a
-   * solid outline that respects ButtonText for visible focus. */
   .cinder-dropdown-trigger:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
   }
 
   .cinder-button-group
     > .cinder-dropdown[data-cinder-button-group-item]
     > .cinder-dropdown-trigger:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: calc(var(--cinder-ring-width) * -1);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-dropdown-trigger-ring, var(--cinder-ring-color));
   }
-}
 
-.cinder-dropdown-trigger[aria-expanded='true'] {
-  background: var(--cinder-surface-pressed);
-}
+  @media (forced-colors: active) {
+    /* box-shadow is suppressed in Windows High Contrast Mode, so paint a
+   * solid outline that respects ButtonText for visible focus. */
+    .cinder-dropdown-trigger:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
 
-.cinder-dropdown-trigger__caret {
-  display: block;
-  flex: none;
-  inline-size: 0.75em;
-  block-size: 0.75em;
-  opacity: 0.65;
-}
+    .cinder-button-group
+      > .cinder-dropdown[data-cinder-button-group-item]
+      > .cinder-dropdown-trigger:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+  }
 
-/* ----------------------------------------
+  .cinder-dropdown-trigger[aria-expanded='true'] {
+    background: var(--cinder-surface-pressed);
+  }
+
+  .cinder-dropdown-trigger__caret {
+    display: block;
+    flex: none;
+    inline-size: 0.75em;
+    block-size: 0.75em;
+    opacity: 0.65;
+  }
+
+  /* ----------------------------------------
  * Trigger wrapper
  * ---------------------------------------- */
 
-.cinder-dropdown__trigger {
-  display: inline-block;
-}
+  .cinder-dropdown__trigger {
+    display: inline-block;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Menu panel
  * ---------------------------------------- */
 
-.cinder-dropdown__menu,
-.cinder-dropdown-menu {
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface-raised);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
-}
+  .cinder-dropdown__menu,
+  .cinder-dropdown-menu {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
+  }
 
-.cinder-dropdown__menu {
-  position: absolute;
-  z-index: var(--cinder-z-dropdown, 40);
-  min-width: 12rem;
-  padding: var(--cinder-space-1) 0;
-  overflow: hidden;
+  .cinder-dropdown__menu {
+    position: absolute;
+    z-index: var(--cinder-z-dropdown, 40);
+    min-width: 12rem;
+    padding: var(--cinder-space-1) 0;
+    overflow: hidden;
 
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-}
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+  }
 
-.cinder-dropdown-menu {
-  position: absolute;
-  inset-block-start: calc(100% + var(--cinder-space-1));
-  inset-inline-end: 0;
-  min-width: 12rem;
-  max-width: calc(100vw - 1rem);
-  max-height: calc(100vh - 2rem);
-  margin: 0;
-  padding: var(--cinder-space-1);
-  overflow-y: auto;
-  outline: none;
-}
+  .cinder-dropdown-menu {
+    position: absolute;
+    inset-block-start: calc(100% + var(--cinder-space-1));
+    inset-inline-end: 0;
+    min-width: 12rem;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 2rem);
+    margin: 0;
+    padding: var(--cinder-space-1);
+    overflow-y: auto;
+    outline: none;
+  }
 
-.cinder-dropdown-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  width: 100%;
-  min-height: var(--cinder-control-height-lg);
-  padding-block: var(--cinder-space-2-5);
-  padding-inline: var(--cinder-space-3);
-  border: 0;
-  border-radius: var(--cinder-radius-sm);
-  background: transparent;
-  color: var(--cinder-text);
-  cursor: pointer;
-  font-size: var(--cinder-text-sm);
-  text-align: left;
-  user-select: none;
-  outline: none;
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    color var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-dropdown-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    width: 100%;
+    min-height: var(--cinder-control-height-lg);
+    padding-block: var(--cinder-space-2-5);
+    padding-inline: var(--cinder-space-3);
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: var(--cinder-text);
+    cursor: pointer;
+    font-size: var(--cinder-text-sm);
+    text-align: left;
+    user-select: none;
+    outline: none;
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Scoped to the BEM-style menu (.cinder-dropdown__menu), which uses padding-block-only
+  /* Scoped to the BEM-style menu (.cinder-dropdown__menu), which uses padding-block-only
  * (no horizontal inset). Items inset themselves so the rounded hover/focus background
  * doesn't bleed into the menu's outer corners. The flat-named .cinder-dropdown-menu
  * variant already has padding on all sides — items there sit at full width. */
-.cinder-dropdown__menu .cinder-dropdown-item {
-  width: calc(100% - var(--cinder-space-1) * 2);
-  margin-inline: var(--cinder-space-1);
-}
-
-.cinder-dropdown-item[data-disabled] {
-  pointer-events: none;
-  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
-}
-
-.cinder-dropdown-item[data-cinder-variant='default']:focus-visible {
-  background: var(--cinder-surface-hover);
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: inset 0 0 0 var(--cinder-ring-width)
-    var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
-}
-
-.cinder-dropdown-item[data-cinder-variant='danger'] {
-  --_cinder-dropdown-item-ring: var(--cinder-danger);
-  color: var(--cinder-danger);
-}
-
-.cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: inset 0 0 0 var(--cinder-ring-width)
-    var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
-}
-
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
- * "stick" after tap. Placed before :active rules so press feedback wins on tap. */
-@media (hover: hover) {
-  .cinder-dropdown-trigger:hover:not([aria-expanded='true']) {
-    background: var(--cinder-surface-hover);
+  .cinder-dropdown__menu .cinder-dropdown-item {
+    width: calc(100% - var(--cinder-space-1) * 2);
+    margin-inline: var(--cinder-space-1);
   }
 
-  .cinder-dropdown-item[data-cinder-variant='default']:hover {
-    background: var(--cinder-surface-hover);
+  .cinder-dropdown-item[data-disabled] {
+    pointer-events: none;
+    /* opacity centralized in foundation.css disabled-visual rule (0.6) */
   }
 
-  .cinder-dropdown-item[data-cinder-variant='danger']:hover {
+  .cinder-dropdown-item[data-cinder-variant='default']:focus-visible {
+    background: var(--cinder-surface-hover);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
+  }
+
+  .cinder-dropdown-item[data-cinder-variant='danger'] {
+    --_cinder-dropdown-item-ring: var(--cinder-danger);
+    color: var(--cinder-danger);
+  }
+
+  .cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
     background: var(--cinder-color-danger-bg);
     color: var(--cinder-color-danger-fg);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-dropdown-item-ring, var(--cinder-ring-color));
   }
-}
 
-/* :active stays unwrapped — fires on tap. */
-.cinder-dropdown-item[data-cinder-variant='default']:active {
-  background: var(--cinder-surface-pressed);
-}
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap. Placed before :active rules so press feedback wins on tap. */
+  @media (hover: hover) {
+    .cinder-dropdown-trigger:hover:not([aria-expanded='true']) {
+      background: var(--cinder-surface-hover);
+    }
 
-.cinder-dropdown-item[data-cinder-variant='danger']:active {
-  background: var(--cinder-color-danger-border);
-  color: var(--cinder-color-danger-fg);
-}
+    .cinder-dropdown-item[data-cinder-variant='default']:hover {
+      background: var(--cinder-surface-hover);
+    }
 
-@media (forced-colors: active) {
-  /* Inset box-shadow rings vanish in HCM — paint a solid outline instead. */
-  .cinder-dropdown-item[data-cinder-variant='default']:focus-visible,
-  .cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: calc(var(--cinder-ring-width) * -1);
+    .cinder-dropdown-item[data-cinder-variant='danger']:hover {
+      background: var(--cinder-color-danger-bg);
+      color: var(--cinder-color-danger-fg);
+    }
   }
-}
 
-.cinder-dropdown-item--inset {
-  padding-inline-start: var(--cinder-space-8);
-}
+  /* :active stays unwrapped — fires on tap. */
+  .cinder-dropdown-item[data-cinder-variant='default']:active {
+    background: var(--cinder-surface-pressed);
+  }
 
-.cinder-dropdown-label {
-  padding-block: var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3);
-  color: var(--cinder-text-muted);
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-semibold);
-}
+  .cinder-dropdown-item[data-cinder-variant='danger']:active {
+    background: var(--cinder-color-danger-border);
+    color: var(--cinder-color-danger-fg);
+  }
 
-.cinder-dropdown-separator {
-  height: 1px;
-  margin-block: var(--cinder-space-1);
-  background: var(--cinder-border);
-}
+  @media (forced-colors: active) {
+    /* Inset box-shadow rings vanish in HCM — paint a solid outline instead. */
+    .cinder-dropdown-item[data-cinder-variant='default']:focus-visible,
+    .cinder-dropdown-item[data-cinder-variant='danger']:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+  }
 
-/* ----------------------------------------
+  .cinder-dropdown-item--inset {
+    padding-inline-start: var(--cinder-space-8);
+  }
+
+  .cinder-dropdown-label {
+    padding-block: var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  .cinder-dropdown-separator {
+    height: 1px;
+    margin-block: var(--cinder-space-1);
+    background: var(--cinder-border);
+  }
+
+  /* ----------------------------------------
  * Popover-API positioning (CSS Anchor Positioning)
  * ----------------------------------------
  *
@@ -250,53 +251,53 @@
  * browsers would render the menu at viewport-relative `inset: auto`.
  */
 
-@supports (anchor-name: --x) and (position-anchor: --x) and (top: anchor(bottom)) {
-  .cinder-dropdown-menu[popover] {
-    position: fixed;
-    inset: auto;
-    top: calc(anchor(bottom) + var(--cinder-space-1));
-    right: anchor(right);
-    position-try-fallbacks: flip-block, flip-inline;
+  @supports (anchor-name: --x) and (position-anchor: --x) and (top: anchor(bottom)) {
+    .cinder-dropdown-menu[popover] {
+      position: fixed;
+      inset: auto;
+      top: calc(anchor(bottom) + var(--cinder-space-1));
+      right: anchor(right);
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+
+    .cinder-dropdown__menu[popover] {
+      position: fixed;
+      margin: 0;
+      inset: auto;
+      inset-block-start: calc(anchor(bottom) + var(--cinder-space-1));
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+
+    .cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu[popover] {
+      inset-inline-start: anchor(left);
+    }
+
+    .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
+      inset-inline-end: anchor(right);
+      inset-inline-start: auto;
+    }
   }
 
-  .cinder-dropdown__menu[popover] {
-    position: fixed;
-    margin: 0;
-    inset: auto;
-    inset-block-start: calc(anchor(bottom) + var(--cinder-space-1));
-    position-try-fallbacks: flip-block, flip-inline;
-  }
-
-  .cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu[popover] {
-    inset-inline-start: anchor(left);
-  }
-
-  .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu[popover] {
-    inset-inline-end: anchor(right);
-    inset-inline-start: auto;
-  }
-}
-
-/* ----------------------------------------
+  /* ----------------------------------------
  * Non-popover fallback path
  *
  * Browsers without the popover API render the menu inside the dropdown's
  * relatively-positioned root, so percent-based offsets work normally.
  * ---------------------------------------- */
 
-.cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu:not([popover]) {
-  position: absolute;
-  inset-block-start: calc(100% + var(--cinder-space-1));
-  inset-inline-start: 0;
-}
+  .cinder-dropdown[data-cinder-placement='bottom-start'] .cinder-dropdown__menu:not([popover]) {
+    position: absolute;
+    inset-block-start: calc(100% + var(--cinder-space-1));
+    inset-inline-start: 0;
+  }
 
-.cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu:not([popover]) {
-  position: absolute;
-  inset-block-start: calc(100% + var(--cinder-space-1));
-  inset-inline-end: 0;
-}
+  .cinder-dropdown[data-cinder-placement='bottom-end'] .cinder-dropdown__menu:not([popover]) {
+    position: absolute;
+    inset-block-start: calc(100% + var(--cinder-space-1));
+    inset-inline-end: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Reduced motion
  * ----------------------------------------
  *
@@ -305,24 +306,25 @@
  * the menu must still be visible, so we set opacity: 1 unconditionally below.
  */
 
-.cinder-dropdown__menu {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: no-preference) {
   .cinder-dropdown__menu {
-    animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
-      forwards;
+    opacity: 1;
   }
 
-  @keyframes cinder-dropdown-enter {
-    from {
-      opacity: 0;
-      translate: 0 -0.25rem;
+  @media (prefers-reduced-motion: no-preference) {
+    .cinder-dropdown__menu {
+      animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
+        forwards;
     }
-    to {
-      opacity: 1;
-      translate: 0 0;
+
+    @keyframes cinder-dropdown-enter {
+      from {
+        opacity: 0;
+        translate: 0 -0.25rem;
+      }
+      to {
+        opacity: 1;
+        translate: 0 0;
+      }
     }
   }
 }

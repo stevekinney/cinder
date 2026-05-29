@@ -3,6 +3,7 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
@@ -19,7 +20,11 @@ const fruits = [
 ];
 
 function readComboboxStyles(): string {
-  return readFileSync(new URL('./combobox.css', import.meta.url), 'utf8');
+  // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+  // getComputedStyle. Inner declarations are unchanged.
+  return stripCinderComponentsLayer(
+    readFileSync(new URL('./combobox.css', import.meta.url), 'utf8'),
+  );
 }
 
 describe('Combobox', () => {

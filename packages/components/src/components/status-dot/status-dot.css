@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * STATUS DOT
  *
  * Small colored dot with optional visible label communicating binary or
@@ -9,69 +10,70 @@
  * instance without forking.
  * ======================================== */
 
-.cinder-status-dot {
-  --cinder-status-dot-size: 0.625rem; /* 10px — md default */
-  --cinder-status-dot-color: var(--cinder-text-muted);
+  .cinder-status-dot {
+    --cinder-status-dot-size: 0.625rem; /* 10px — md default */
+    --cinder-status-dot-color: var(--cinder-text-muted);
 
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1-5);
-  font-size: var(--cinder-text-sm);
-  line-height: 1.25;
-  color: var(--cinder-text);
-  vertical-align: middle;
-}
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1-5);
+    font-size: var(--cinder-text-sm);
+    line-height: 1.25;
+    color: var(--cinder-text);
+    vertical-align: middle;
+  }
 
-.cinder-status-dot__indicator {
-  display: inline-block;
-  flex-shrink: 0;
-  inline-size: var(--cinder-status-dot-size);
-  block-size: var(--cinder-status-dot-size);
-  border-radius: var(--cinder-radius-full);
-  background: var(--cinder-status-dot-color);
-}
+  .cinder-status-dot__indicator {
+    display: inline-block;
+    flex-shrink: 0;
+    inline-size: var(--cinder-status-dot-size);
+    block-size: var(--cinder-status-dot-size);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-status-dot-color);
+  }
 
-.cinder-status-dot__label {
-  color: inherit;
-}
+  .cinder-status-dot__label {
+    color: inherit;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */
 
-.cinder-status-dot[data-cinder-size='sm'] {
-  --cinder-status-dot-size: 0.5rem; /* 8px */
-  font-size: var(--cinder-text-xs);
-}
+  .cinder-status-dot[data-cinder-size='sm'] {
+    --cinder-status-dot-size: 0.5rem; /* 8px */
+    font-size: var(--cinder-text-xs);
+  }
 
-.cinder-status-dot[data-cinder-size='md'] {
-  --cinder-status-dot-size: 0.625rem; /* 10px */
-}
+  .cinder-status-dot[data-cinder-size='md'] {
+    --cinder-status-dot-size: 0.625rem; /* 10px */
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Status → semantic token mapping
  * ---------------------------------------- */
 
-.cinder-status-dot[data-cinder-status='online'] {
-  --cinder-status-dot-color: var(--cinder-success);
-}
+  .cinder-status-dot[data-cinder-status='online'] {
+    --cinder-status-dot-color: var(--cinder-success);
+  }
 
-.cinder-status-dot[data-cinder-status='offline'] {
-  --cinder-status-dot-color: var(--cinder-text-muted);
-}
+  .cinder-status-dot[data-cinder-status='offline'] {
+    --cinder-status-dot-color: var(--cinder-text-muted);
+  }
 
-.cinder-status-dot[data-cinder-status='warning'] {
-  --cinder-status-dot-color: var(--cinder-warning);
-}
+  .cinder-status-dot[data-cinder-status='warning'] {
+    --cinder-status-dot-color: var(--cinder-warning);
+  }
 
-.cinder-status-dot[data-cinder-status='error'] {
-  --cinder-status-dot-color: var(--cinder-danger);
-}
+  .cinder-status-dot[data-cinder-status='error'] {
+    --cinder-status-dot-color: var(--cinder-danger);
+  }
 
-.cinder-status-dot[data-cinder-status='pending'] {
-  --cinder-status-dot-color: var(--cinder-info);
-}
+  .cinder-status-dot[data-cinder-status='pending'] {
+    --cinder-status-dot-color: var(--cinder-info);
+  }
 
-.cinder-status-dot[data-cinder-status='neutral'] {
-  --cinder-status-dot-color: var(--cinder-text-muted);
+  .cinder-status-dot[data-cinder-status='neutral'] {
+    --cinder-status-dot-color: var(--cinder-text-muted);
+  }
 }

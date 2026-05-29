@@ -9,9 +9,11 @@
  *      properties of the `--cinder-*` family.
  *   2. No `:root`, `html`, `body`, or bare universal `*` selectors at the
  *      effective top level — those belong in token / foundation layers.
- *   3. No `@layer` declarations inside the sidecar — layer assignment happens
- *      at the import side, via the `cinder/styles` aggregator wrapping its
- *      imports with `@import '...' layer(cinder.components)`.
+ *   3. All rules must live inside a single top-level
+ *      `@layer cinder.components { … }` wrapper so the layer assignment is
+ *      intrinsic to the file and survives a direct subpath import
+ *      (`cinder/<name>/styles`). A bare top-level rule outside the wrapper is
+ *      a violation.
  *
  * Scoped descendants are allowed (e.g. `.button *`, `.alert :where(html)`).
  * The check distinguishes these from forbidden globals by walking the parsed
@@ -22,7 +24,7 @@
  * build before sidecars are copied into `dist/`.
  */
 
-import postcss from 'postcss';
+import { parse, type AtRule, type Container, type Document, type Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
 export type CssViolation = {
@@ -32,6 +34,44 @@ export type CssViolation = {
   selector?: string;
   message: string;
 };
+
+/**
+ * The single cascade layer every component CSS sidecar must self-declare.
+ * Exported as the one source of truth so the build gate, the dist-side
+ * verification, and the invariant test all agree on the name.
+ */
+export const COMPONENT_LAYER_NAME = 'cinder.components';
+
+/**
+ * Whether a top-level AST node is the `@layer cinder.components { … }` wrapper —
+ * a `@layer` at-rule whose params name exactly the component layer AND that has
+ * a block body (rejecting the statement form `@layer cinder.components;`).
+ */
+function isComponentLayerNode(node: { type: string }): boolean {
+  if (node.type !== 'atrule') return false;
+  const atRule = node as AtRule;
+  return (
+    atRule.name === 'layer' &&
+    atRule.params.trim() === COMPONENT_LAYER_NAME &&
+    atRule.nodes !== undefined
+  );
+}
+
+/**
+ * Whether a parsed stylesheet satisfies the wrapper invariant: after ignoring
+ * comments, its only top-level node is a single `@layer cinder.components { … }`
+ * block. Shared by the build gate ({@link checkComponentCssSource}), the
+ * dist-side verification in `build.ts`, and the structural invariant test so all
+ * three agree on one definition.
+ */
+export function isSingleComponentLayer(root: Root): boolean {
+  const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
+  return (
+    topLevelNodes.length === 1 &&
+    topLevelNodes[0] !== undefined &&
+    isComponentLayerNode(topLevelNodes[0])
+  );
+}
 
 const FUNCTIONAL_PSEUDOS = new Set([':is', ':where', ':not', ':has', ':matches']);
 
@@ -116,9 +156,9 @@ export async function checkComponentCss(file: string): Promise<CssViolation[]> {
 export function checkComponentCssSource(source: string, file: string): CssViolation[] {
   const violations: CssViolation[] = [];
 
-  let root: postcss.Root;
+  let root: Root;
   try {
-    root = postcss.parse(source, { from: file });
+    root = parse(source, { from: file });
   } catch (error) {
     violations.push({
       file,
@@ -142,15 +182,23 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     });
   });
 
-  root.walkAtRules('layer', (atRule) => {
+  // Layer assignment must be intrinsic to the sidecar so it survives a direct
+  // subpath import (`cinder/<name>/styles`) rather than relying on the
+  // aggregator wrapping the `@import` with `layer(cinder.components)`. The
+  // contract: every top-level node (ignoring comments) must live inside a
+  // single `@layer cinder.components { … }` wrapper. A bare top-level style
+  // rule or at-rule sitting outside that wrapper is the violation.
+  if (!isSingleComponentLayer(root)) {
+    const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
+    const offender = topLevelNodes.find((node) => !isComponentLayerNode(node));
+    const target = offender ?? root;
     violations.push({
       file,
-      line: atRule.source?.start?.line ?? 1,
-      column: atRule.source?.start?.column ?? 1,
-      message:
-        '`@layer` is not allowed inside a component CSS sidecar. Layer assignment happens at the import side via `cinder/styles`.',
+      line: target.source?.start?.line ?? 1,
+      column: target.source?.start?.column ?? 1,
+      message: `Component CSS sidecar rules must live inside a single top-level \`@layer ${COMPONENT_LAYER_NAME} { … }\` wrapper so the layer assignment survives a direct subpath import. Wrap the file contents in \`@layer ${COMPONENT_LAYER_NAME} { … }\`.`,
     });
-  });
+  }
 
   root.walkRules((rule) => {
     // Rules nested under another rule (CSS nesting) are inherently scoped to a
@@ -161,12 +209,12 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     // descendant selectors that target the document tree. The keyframes rule
     // itself is scoped via its `animation-name` consumer.
     for (
-      let ancestor: postcss.Container | postcss.Document | undefined = rule.parent;
+      let ancestor: Container | Document | undefined = rule.parent;
       ancestor && ancestor.type !== 'root';
       ancestor = ancestor.parent
     ) {
       if (ancestor.type === 'atrule') {
-        const atRule = ancestor as postcss.AtRule;
+        const atRule = ancestor as AtRule;
         if (/^(-\w+-)?keyframes$/i.test(atRule.name)) return;
       }
     }
@@ -193,7 +241,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
 
 export function formatViolation(violation: CssViolation): string {
   const location = `${violation.file}:${violation.line}:${violation.column}`;
-  return violation.selector
-    ? `${location}  ${violation.message}`
-    : `${location}  ${violation.message}`;
+  // The selector, when present, is already embedded in `message`, so the
+  // formatted line is the same shape either way.
+  return `${location}  ${violation.message}`;
 }

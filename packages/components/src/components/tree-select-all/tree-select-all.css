@@ -1,36 +1,38 @@
-.cinder-tree-select-all {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2, 0.5rem);
-}
+@layer cinder.components {
+  .cinder-tree-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2, 0.5rem);
+  }
 
-.cinder-tree-select-all__label {
-  color: var(--cinder-text-muted, inherit);
-  font-size: var(--cinder-text-sm, 0.875rem);
-}
+  .cinder-tree-select-all__label {
+    color: var(--cinder-text-muted, inherit);
+    font-size: var(--cinder-text-sm, 0.875rem);
+  }
 
-.cinder-tree-select-all__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 2rem;
-  padding-block: var(--cinder-space-1, 0.25rem);
-  padding-inline: var(--cinder-space-2, 0.5rem);
-  border: 1px solid var(--cinder-border, currentColor);
-  border-radius: var(--cinder-radius-sm);
-  background: var(--cinder-surface, transparent);
-  color: var(--cinder-text, currentColor);
-  font: inherit;
-  cursor: pointer;
-}
+  .cinder-tree-select-all__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 2rem;
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    border: 1px solid var(--cinder-border, currentColor);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface, transparent);
+    color: var(--cinder-text, currentColor);
+    font: inherit;
+    cursor: pointer;
+  }
 
-.cinder-tree-select-all__button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+  .cinder-tree-select-all__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 
-@media (hover: hover) {
-  .cinder-tree-select-all__button:not(:disabled):hover {
-    background: var(--cinder-surface-raised, transparent);
+  @media (hover: hover) {
+    .cinder-tree-select-all__button:not(:disabled):hover {
+      background: var(--cinder-surface-raised, transparent);
+    }
   }
 }

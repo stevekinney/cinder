@@ -1,186 +1,188 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SELECT
  * ======================================== */
 
-.cinder-select-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1-5);
-}
+  .cinder-select-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1-5);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Label
  * ---------------------------------------- */
 
-.cinder-select-field > label {
-  display: inline-block;
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1;
-  color: var(--cinder-text);
-}
+  .cinder-select-field > label {
+    display: inline-block;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1;
+    color: var(--cinder-text);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Select control
  * ---------------------------------------- */
 
-.cinder-select-field__control {
-  display: block;
-  position: relative;
-  inline-size: 100%;
-}
-
-.cinder-select {
-  display: block;
-  width: 100%;
-  min-height: var(--cinder-control-height, 2.25rem);
-  padding: var(--cinder-space-1-5) var(--cinder-space-8) var(--cinder-space-1-5)
-    var(--cinder-space-3);
-
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text);
-
-  background-color: var(--cinder-surface-raised);
-
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-
-  appearance: none;
-  cursor: pointer;
-
-  transition:
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
-
-@media (hover: hover) {
-  .cinder-select:hover:not(:disabled) {
-    border-color: var(--cinder-border-strong);
+  .cinder-select-field__control {
+    display: block;
+    position: relative;
+    inline-size: 100%;
   }
-}
 
-.cinder-select:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
+  .cinder-select {
+    display: block;
+    width: 100%;
+    min-height: var(--cinder-control-height, 2.25rem);
+    padding: var(--cinder-space-1-5) var(--cinder-space-8) var(--cinder-space-1-5)
+      var(--cinder-space-3);
 
-/* Forced Colors Mode: box-shadow is ignored; restore an outline-based ring so
- * keyboard focus remains visible in Windows High Contrast and print modes. */
-@media (forced-colors: active) {
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text);
+
+    background-color: var(--cinder-surface-raised);
+
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+
+    appearance: none;
+    cursor: pointer;
+
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-select:hover:not(:disabled) {
+      border-color: var(--cinder-border-strong);
+    }
+  }
+
   .cinder-select:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
-}
 
-.cinder-select:disabled {
-  background-color: var(--cinder-surface-inset);
-  border-color: var(--cinder-border-muted);
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-}
+  /* Forced Colors Mode: box-shadow is ignored; restore an outline-based ring so
+ * keyboard focus remains visible in Windows High Contrast and print modes. */
+  @media (forced-colors: active) {
+    .cinder-select:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
 
-/* Empty guard — visual indicator when no options are available */
-.cinder-select[data-cinder-empty='true'] {
-  border-style: dashed;
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .cinder-select:disabled {
+    background-color: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
 
-/* ----------------------------------------
+  /* Empty guard — visual indicator when no options are available */
+  .cinder-select[data-cinder-empty='true'] {
+    border-style: dashed;
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ----------------------------------------
  * Decorative chevron
  * Painted with `mask-image` + `background-color: currentColor` so the icon
  * color tracks the `--cinder-text-muted` token through theme switches.
  * ---------------------------------------- */
 
-.cinder-select-field__chevron {
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-end: var(--cinder-space-2);
-  inline-size: 1rem;
-  block-size: 1rem;
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 1;
+  .cinder-select-field__chevron {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: var(--cinder-space-2);
+    inline-size: 1rem;
+    block-size: 1rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 1;
 
-  color: var(--cinder-text-muted);
-  background-color: currentColor;
+    color: var(--cinder-text-muted);
+    background-color: currentColor;
 
-  --_cinder-select-chevron-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    --_cinder-select-chevron-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
 
-  -webkit-mask-image: var(--_cinder-select-chevron-mask);
-  mask-image: var(--_cinder-select-chevron-mask);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 1rem 1rem;
-  mask-size: 1rem 1rem;
-}
+    -webkit-mask-image: var(--_cinder-select-chevron-mask);
+    mask-image: var(--_cinder-select-chevron-mask);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 1rem 1rem;
+    mask-size: 1rem 1rem;
+  }
 
-.cinder-select:disabled + .cinder-select-field__chevron {
-  color: var(--cinder-text-disabled);
-}
+  .cinder-select:disabled + .cinder-select-field__chevron {
+    color: var(--cinder-text-disabled);
+  }
 
-.cinder-select[data-cinder-empty='true'] + .cinder-select-field__chevron {
-  opacity: 0.5;
-}
+  .cinder-select[data-cinder-empty='true'] + .cinder-select-field__chevron {
+    opacity: 0.5;
+  }
 
-/* Forced Colors Mode override — UA suppresses `background-color: currentColor`,
+  /* Forced Colors Mode override — UA suppresses `background-color: currentColor`,
  * so the masked chevron becomes invisible. Opt out of forced-color adjustment
  * for the glyph and paint with a system color that survives the override.
  * Disabled selects use the conventional `GrayText` system color to match how
  * the rest of the disabled control reads in High Contrast. */
-@media (forced-colors: active) {
-  .cinder-select-field__chevron {
-    forced-color-adjust: none;
-    background-color: ButtonText;
+  @media (forced-colors: active) {
+    .cinder-select-field__chevron {
+      forced-color-adjust: none;
+      background-color: ButtonText;
+    }
+
+    .cinder-select:disabled + .cinder-select-field__chevron {
+      background-color: GrayText;
+    }
   }
 
-  .cinder-select:disabled + .cinder-select-field__chevron {
-    background-color: GrayText;
-  }
-}
-
-/* ----------------------------------------
+  /* ----------------------------------------
  * Error / invalid state
  * ---------------------------------------- */
 
-.cinder-select[aria-invalid='true'] {
-  border-color: var(--cinder-danger);
-}
-
-@media (hover: hover) {
-  .cinder-select[aria-invalid='true']:hover:not(:disabled) {
-    border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+  .cinder-select[aria-invalid='true'] {
+    border-color: var(--cinder-danger);
   }
-}
 
-/* ----------------------------------------
+  @media (hover: hover) {
+    .cinder-select[aria-invalid='true']:hover:not(:disabled) {
+      border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+    }
+  }
+
+  /* ----------------------------------------
  * Supporting text
  * ---------------------------------------- */
 
-.cinder-select-field__description {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-  margin: 0;
-}
+  .cinder-select-field__description {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    margin: 0;
+  }
 
-.cinder-select-field__error {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-danger);
-  margin: 0;
-}
+  .cinder-select-field__error {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-danger);
+    margin: 0;
+  }
 
-/* Hide the always-present live region when no error is active. Uses visibility
+  /* Hide the always-present live region when no error is active. Uses visibility
  * rather than display:none so the aria-live region stays in the accessibility
  * tree and is ready to announce changes. */
-.cinder-select-field__error:not([data-cinder-error]) {
-  position: absolute;
-  visibility: hidden;
-  height: 0;
-  overflow: hidden;
+  .cinder-select-field__error:not([data-cinder-error]) {
+    position: absolute;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+  }
 }

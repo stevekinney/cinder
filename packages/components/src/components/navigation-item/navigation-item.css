@@ -1,95 +1,96 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * NAVIGATION ITEM
  * ======================================== */
 
-.cinder-navigation-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  min-height: 2rem;
-  padding-inline: var(--cinder-space-3);
-  padding-block: var(--cinder-space-1-5);
+  .cinder-navigation-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-height: 2rem;
+    padding-inline: var(--cinder-space-3);
+    padding-block: var(--cinder-space-1-5);
 
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-medium);
-  line-height: var(--cinder-leading-none);
-  text-decoration: none;
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-none);
+    text-decoration: none;
 
-  color: var(--cinder-text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: var(--cinder-radius-sm) var(--cinder-radius-sm) 0 0;
+    color: var(--cinder-text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--cinder-radius-sm) var(--cinder-radius-sm) 0 0;
 
-  cursor: pointer;
-  user-select: none;
+    cursor: pointer;
+    user-select: none;
 
-  transition:
-    color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+    transition:
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Hover — only when interactive (not disabled)
  * ---------------------------------------- */
 
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  .cinder-navigation-item:hover:not([aria-disabled='true']) {
-    color: var(--cinder-text);
-    background-color: var(--cinder-surface-hover);
+  @media (hover: hover) {
+    .cinder-navigation-item:hover:not([aria-disabled='true']) {
+      color: var(--cinder-text);
+      background-color: var(--cinder-surface-hover);
+    }
   }
-}
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Focus visible
  * ---------------------------------------- */
 
-.cinder-navigation-item:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-/* Forced Colors Mode — box-shadow focus rings are invisible; use a real outline. */
-@media (forced-colors: active) {
   .cinder-navigation-item:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
-}
 
-/* ----------------------------------------
+  /* Forced Colors Mode — box-shadow focus rings are invisible; use a real outline. */
+  @media (forced-colors: active) {
+    .cinder-navigation-item:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
+  /* ----------------------------------------
  * Active state
  * ---------------------------------------- */
 
-.cinder-navigation-item[data-active='true'] {
-  color: var(--cinder-text);
-  border-bottom-color: var(--cinder-accent);
-}
+  .cinder-navigation-item[data-active='true'] {
+    color: var(--cinder-text);
+    border-bottom-color: var(--cinder-accent);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Disabled state
  * ---------------------------------------- */
 
-.cinder-navigation-item[aria-disabled='true'] {
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-  opacity: 0.6;
-}
+  .cinder-navigation-item[aria-disabled='true'] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Button-specific reset (when rendered as <button>)
  * ---------------------------------------- */
 
-button.cinder-navigation-item {
-  appearance: none;
-  background: transparent;
-  padding-inline: var(--cinder-space-3);
-}
+  button.cinder-navigation-item {
+    appearance: none;
+    background: transparent;
+    padding-inline: var(--cinder-space-3);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Vertical variant — sidebar / vertical-tab contexts
  *
  * Square row geometry for flush sidebar edges. The inline-start border is the
@@ -97,39 +98,40 @@ button.cinder-navigation-item {
  * shifts the label.
  * ---------------------------------------- */
 
-.cinder-navigation-item[data-variant='vertical'] {
-  display: flex;
-  inline-size: 100%;
-  justify-content: flex-start;
-  border-bottom: none;
-  border-radius: 0;
-  border-inline-start: 2px solid transparent;
-}
+  .cinder-navigation-item[data-variant='vertical'] {
+    display: flex;
+    inline-size: 100%;
+    justify-content: flex-start;
+    border-bottom: none;
+    border-radius: 0;
+    border-inline-start: 2px solid transparent;
+  }
 
-.cinder-navigation-item[data-variant='vertical'][data-active='true'] {
-  border-bottom-color: transparent;
-  border-inline-start-color: var(--cinder-accent);
-  background-color: var(--cinder-surface-inset);
-}
+  .cinder-navigation-item[data-variant='vertical'][data-active='true'] {
+    border-bottom-color: transparent;
+    border-inline-start-color: var(--cinder-accent);
+    background-color: var(--cinder-surface-inset);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Mobile variant — stacked full-width layout
  * Breakpoint: 47.99rem (~767px). No breakpoint token exists in this
  * package yet; extract to a shared token in a follow-up task.
  * ---------------------------------------- */
 
-@media (max-width: 47.99rem) {
-  .cinder-navigation-item[data-variant='mobile'] {
-    display: flex;
-    inline-size: 100%;
-    justify-content: flex-start;
-    padding-block: var(--cinder-space-3);
+  @media (max-width: 47.99rem) {
+    .cinder-navigation-item[data-variant='mobile'] {
+      display: flex;
+      inline-size: 100%;
+      justify-content: flex-start;
+      padding-block: var(--cinder-space-3);
+    }
   }
-}
 
-@media (forced-colors: active) and (max-width: 47.99rem) {
-  .cinder-navigation-item[data-variant='mobile']:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+  @media (forced-colors: active) and (max-width: 47.99rem) {
+    .cinder-navigation-item[data-variant='mobile']:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 }

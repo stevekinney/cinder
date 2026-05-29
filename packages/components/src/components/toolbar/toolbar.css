@@ -1,49 +1,51 @@
-.cinder-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  min-inline-size: 0;
-}
+@layer cinder.components {
+  .cinder-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+  }
 
-.cinder-toolbar[data-cinder-orientation='vertical'] {
-  flex-direction: column;
-  align-items: stretch;
-}
+  .cinder-toolbar[data-cinder-orientation='vertical'] {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.cinder-toolbar__group {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  min-inline-size: 0;
-  flex-wrap: nowrap;
-}
+  .cinder-toolbar__group {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+    flex-wrap: nowrap;
+  }
 
-.cinder-toolbar[data-cinder-orientation='vertical'] .cinder-toolbar__group,
-.cinder-toolbar__group[data-cinder-orientation='vertical'] {
-  flex-direction: column;
-  align-items: stretch;
-}
+  .cinder-toolbar[data-cinder-orientation='vertical'] .cinder-toolbar__group,
+  .cinder-toolbar__group[data-cinder-orientation='vertical'] {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.cinder-toolbar[data-cinder-orientation='horizontal']
-  > .cinder-toolbar__group
-  + .cinder-toolbar__group::before {
-  content: '';
-  inline-size: 1px;
-  block-size: 1.5rem;
-  background: var(--cinder-border);
-  flex-shrink: 0;
-}
+  .cinder-toolbar[data-cinder-orientation='horizontal']
+    > .cinder-toolbar__group
+    + .cinder-toolbar__group::before {
+    content: '';
+    inline-size: 1px;
+    block-size: 1.5rem;
+    background: var(--cinder-border);
+    flex-shrink: 0;
+  }
 
-.cinder-toolbar[data-cinder-orientation='vertical']
-  > .cinder-toolbar__group
-  + .cinder-toolbar__group::before {
-  content: '';
-  inline-size: 100%;
-  block-size: 1px;
-  background: var(--cinder-border);
-}
+  .cinder-toolbar[data-cinder-orientation='vertical']
+    > .cinder-toolbar__group
+    + .cinder-toolbar__group::before {
+    content: '';
+    inline-size: 100%;
+    block-size: 1px;
+    background: var(--cinder-border);
+  }
 
-.cinder-toolbar__spacer {
-  flex: 1 1 auto;
-  min-inline-size: var(--cinder-space-2);
+  .cinder-toolbar__spacer {
+    flex: 1 1 auto;
+    min-inline-size: var(--cinder-space-2);
+  }
 }

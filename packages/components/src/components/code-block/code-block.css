@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * CODE BLOCK
  * Preformatted code with optional language label and copy button.
  * Syntax highlighting is opt-in via the `highlighter` prop. Highlighter
@@ -6,107 +7,108 @@
  * normalized here so highlighted and plain blocks share the same chrome.
  * ======================================== */
 
-.cinder-code-block {
-  background: var(--cinder-surface-inset);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  overflow: hidden;
-}
+  .cinder-code-block {
+    background: var(--cinder-surface-inset);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    overflow: hidden;
+  }
 
-.cinder-code-block__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cinder-space-2);
-  min-height: 2rem;
-  padding: var(--cinder-space-1-5) var(--cinder-space-3);
-  border-bottom: 1px solid var(--cinder-border-muted);
-  background: var(--cinder-surface-inset);
-}
+  .cinder-code-block__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    min-height: 2rem;
+    padding: var(--cinder-space-1-5) var(--cinder-space-3);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-inset);
+  }
 
-.cinder-code-block__language {
-  font-size: var(--cinder-text-xs);
-  font-family: var(--cinder-font-mono);
-  color: var(--cinder-text-muted);
-  text-transform: uppercase;
-  letter-spacing: var(--cinder-tracking-wide);
-}
+  .cinder-code-block__language {
+    font-size: var(--cinder-text-xs);
+    font-family: var(--cinder-font-mono);
+    color: var(--cinder-text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--cinder-tracking-wide);
+  }
 
-.cinder-code-block__pre,
+  .cinder-code-block__pre,
 /* Highlighter output (e.g. Shiki) replaces __pre with its own markup
  * (typically <pre class="shiki ...">). Match it so the highlighted variant
  * inherits the same padding / font / line-height as the plain variant —
  * this is what Issue 6 was supposed to fix originally. */
 .cinder-code-block > pre {
-  margin: 0;
-  padding: var(--cinder-space-4);
-  overflow-x: auto;
-  font-family: var(--cinder-font-mono);
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-relaxed);
-  color: var(--cinder-text);
-  background: var(--cinder-surface-inset);
-}
+    margin: 0;
+    padding: var(--cinder-space-4);
+    overflow-x: auto;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-relaxed);
+    color: var(--cinder-text);
+    background: var(--cinder-surface-inset);
+  }
 
-.cinder-code-block__code {
-  font-family: inherit;
-  font-size: inherit;
-}
+  .cinder-code-block__code {
+    font-family: inherit;
+    font-size: inherit;
+  }
 
-.cinder-code-block :where(pre.shiki) {
-  margin: 0 !important;
-  padding: var(--cinder-space-3) var(--cinder-space-4) !important;
-  overflow-x: auto;
-  font-family: var(--cinder-font-mono);
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-relaxed);
-  background: var(--cinder-surface-inset) !important;
-}
+  .cinder-code-block :where(pre.shiki) {
+    margin: 0 !important;
+    padding: var(--cinder-space-3) var(--cinder-space-4) !important;
+    overflow-x: auto;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-relaxed);
+    background: var(--cinder-surface-inset) !important;
+  }
 
-.cinder-code-block :where(pre.shiki code) {
-  font-family: inherit;
-  font-size: inherit;
-}
+  .cinder-code-block :where(pre.shiki code) {
+    font-family: inherit;
+    font-size: inherit;
+  }
 
-/* Compact, borderless copy button when nested inside a code block header.
+  /* Compact, borderless copy button when nested inside a code block header.
  * Specificity bump (`.cinder-code-block .cinder-code-block__header .cinder-copy-button`)
  * is required because copy-button.css imports AFTER code-block.css in components.css;
  * with equal specificity the later import would win and the bordered default would
  * leak through. Scoped so the standalone CopyButton keeps its bordered default
  * everywhere else in the app. */
-.cinder-code-block .cinder-code-block__header .cinder-copy-button {
-  border: none;
-  background: transparent;
-  padding: var(--cinder-space-1);
-  color: var(--cinder-text-subtle);
-}
+  .cinder-code-block .cinder-code-block__header .cinder-copy-button {
+    border: none;
+    background: transparent;
+    padding: var(--cinder-space-1);
+    color: var(--cinder-text-subtle);
+  }
 
-.cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
-}
-
-@media (forced-colors: active) {
   .cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
-    outline-color: CanvasText;
-    box-shadow: none;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
-}
 
-/* Sticky-hover suppression on touch. */
-@media (hover: hover) {
-  .cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
-    background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
-    border-color: transparent;
+  @media (forced-colors: active) {
+    .cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
+      outline-color: CanvasText;
+      box-shadow: none;
+    }
   }
-}
 
-/* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
+  /* Sticky-hover suppression on touch. */
+  @media (hover: hover) {
+    .cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+      border-color: transparent;
+    }
+  }
+
+  /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
    Svelte appends new nodes alongside the old when an `{@html}` value changes
    between two non-null strings unless it sits inside a stable parent element.
    Purely structural: `display: contents` so it never affects layout. Target
    the inner `<pre>` (Shiki-emitted) for styling, not this wrapper. */
-.cinder-code-block__highlighted {
-  display: contents;
+  .cinder-code-block__highlighted {
+    display: contents;
+  }
 }

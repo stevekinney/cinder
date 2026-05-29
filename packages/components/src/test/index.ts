@@ -7,6 +7,7 @@
  */
 
 export { expectAttribute, expectAttributes, getRelated } from './aria.ts';
+export { stripCinderComponentsLayer } from './css.ts';
 export { setupHappyDom } from './happy-dom.ts';
 export { renderThenHydrate, type HydrateResult } from './hydrate.ts';
 export {

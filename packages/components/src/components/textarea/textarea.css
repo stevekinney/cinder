@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TEXTAREA FIELD
  * ========================================
  *
@@ -7,125 +8,126 @@
  * custom properties defined in the base token sheet.
  * ======================================== */
 
-.cinder-textarea-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1-5);
-  inline-size: 100%;
-}
+  .cinder-textarea-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1-5);
+    inline-size: 100%;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Label
  * ---------------------------------------- */
 
-.cinder-textarea-label {
-  display: block;
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1;
-  color: var(--cinder-text);
-}
+  .cinder-textarea-label {
+    display: block;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1;
+    color: var(--cinder-text);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Textarea control
  * ---------------------------------------- */
 
-.cinder-textarea {
-  display: block;
-  width: 100%;
-  min-height: 6rem;
-  resize: vertical;
-  field-sizing: content;
+  .cinder-textarea {
+    display: block;
+    width: 100%;
+    min-height: 6rem;
+    resize: vertical;
+    field-sizing: content;
 
-  padding: var(--cinder-space-2) var(--cinder-space-3);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
 
-  font-family: inherit;
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text);
+    font-family: inherit;
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text);
 
-  background: var(--cinder-surface-raised);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
 
-  transition:
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
-
-.cinder-textarea::placeholder {
-  color: var(--cinder-text-placeholder, var(--cinder-text-muted));
-}
-
-@media (hover: hover) {
-  .cinder-textarea:hover:not(:disabled) {
-    border-color: var(--cinder-border-strong);
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
-}
 
-.cinder-textarea:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
+  .cinder-textarea::placeholder {
+    color: var(--cinder-text-placeholder, var(--cinder-text-muted));
+  }
 
-/* Forced Colors Mode — box-shadow is invisible in WHCM; use a real outline instead. */
-@media (forced-colors: active) {
+  @media (hover: hover) {
+    .cinder-textarea:hover:not(:disabled) {
+      border-color: var(--cinder-border-strong);
+    }
+  }
+
   .cinder-textarea:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 2px;
-    box-shadow: none;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
-}
 
-/* ----------------------------------------
+  /* Forced Colors Mode — box-shadow is invisible in WHCM; use a real outline instead. */
+  @media (forced-colors: active) {
+    .cinder-textarea:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
+  /* ----------------------------------------
  * Invalid / error state
  * ---------------------------------------- */
 
-.cinder-textarea[aria-invalid='true'] {
-  border-color: var(--cinder-danger);
-}
+  .cinder-textarea[aria-invalid='true'] {
+    border-color: var(--cinder-danger);
+  }
 
-.cinder-textarea[aria-invalid='true']:focus-visible {
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
-}
+  .cinder-textarea[aria-invalid='true']:focus-visible {
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Disabled state
  * ---------------------------------------- */
 
-.cinder-textarea:disabled {
-  cursor: not-allowed;
-  resize: none;
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: var(--cinder-border-muted);
-}
+  .cinder-textarea:disabled {
+    cursor: not-allowed;
+    resize: none;
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Description and error messages
  * ---------------------------------------- */
 
-.cinder-textarea-description,
-.cinder-textarea-error {
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-}
+  .cinder-textarea-description,
+  .cinder-textarea-error {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+  }
 
-.cinder-textarea-description {
-  color: var(--cinder-text-muted);
-}
+  .cinder-textarea-description {
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-textarea-error {
-  color: var(--cinder-danger);
-}
+  .cinder-textarea-error {
+    color: var(--cinder-danger);
+  }
 
-.cinder-textarea-count {
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-  text-align: end;
+  .cinder-textarea-count {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    text-align: end;
+  }
 }

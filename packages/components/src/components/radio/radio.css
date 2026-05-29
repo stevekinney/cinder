@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * RADIO
  * Radio inherits its visual treatment from radio-group.css since the row
  * (input + label pair) is shared between the standalone Radio and the
@@ -9,3 +10,4 @@
  * Override any .cinder-radio specifics here in the future without touching
  * the group-level styles.
  * ======================================== */
+}

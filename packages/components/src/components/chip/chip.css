@@ -1,261 +1,263 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * CHIP
  * ======================================== */
 
-.cinder-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1.25;
-  border-radius: var(--cinder-radius-full);
-  border: 1px solid var(--cinder-border);
-  white-space: nowrap;
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text);
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1.25;
+    border-radius: var(--cinder-radius-full);
+    border: 1px solid var(--cinder-border);
+    white-space: nowrap;
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Mode is expressed through internal affordances, never through a separate
+  /* Mode is expressed through internal affordances, never through a separate
  * chip-root surface. Display, resting toggle, and removable roots share this
  * same surface contract. */
 
-button.cinder-chip {
-  font: inherit;
-  cursor: pointer;
-  appearance: none;
-}
+  button.cinder-chip {
+    font: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */
 
-.cinder-chip[data-cinder-size='sm'] {
-  font-size: var(--cinder-text-2xs, 0.625rem);
-  padding: 0 var(--cinder-space-1);
-  line-height: 1rem;
-}
+  .cinder-chip[data-cinder-size='sm'] {
+    font-size: var(--cinder-text-2xs, 0.625rem);
+    padding: 0 var(--cinder-space-1);
+    line-height: 1rem;
+  }
 
-.cinder-chip[data-cinder-size='md'] {
-  font-size: var(--cinder-text-xs);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-}
+  .cinder-chip[data-cinder-size='md'] {
+    font-size: var(--cinder-text-xs);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+  }
 
-/* density="toolbar": opt the chip into the shared --cinder-control-height-sm
+  /* density="toolbar": opt the chip into the shared --cinder-control-height-sm
  * tier so it lines up with sibling Button (size="sm") and SegmentedControl
  * (density="toolbar"). The base `display: inline-flex; align-items: center`
  * already centers the chip text vertically — we just need to set the box
  * height. box-sizing: border-box is explicit so border width does not push
  * the rendered height above 32px. */
-.cinder-chip[data-cinder-density='toolbar'] {
-  box-sizing: border-box;
-  min-block-size: var(--cinder-control-height-sm);
-}
+  .cinder-chip[data-cinder-density='toolbar'] {
+    box-sizing: border-box;
+    min-block-size: var(--cinder-control-height-sm);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Color variants
  * ---------------------------------------- */
 
-.cinder-chip[data-cinder-variant='neutral'] {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text);
-  border-color: var(--cinder-border);
-}
+  .cinder-chip[data-cinder-variant='neutral'] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
+    border-color: var(--cinder-border);
+  }
 
-.cinder-chip[data-cinder-variant='success'] {
-  background: var(--cinder-color-success-bg);
-  color: var(--cinder-color-success-fg);
-  border-color: var(--cinder-color-success-border);
-}
+  .cinder-chip[data-cinder-variant='success'] {
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
+    border-color: var(--cinder-color-success-border);
+  }
 
-.cinder-chip[data-cinder-variant='warning'] {
-  background: var(--cinder-color-warning-bg);
-  color: var(--cinder-color-warning-fg);
-  border-color: var(--cinder-color-warning-border);
-}
+  .cinder-chip[data-cinder-variant='warning'] {
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
+    border-color: var(--cinder-color-warning-border);
+  }
 
-.cinder-chip[data-cinder-variant='danger'] {
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-  border-color: var(--cinder-color-danger-border);
-}
+  .cinder-chip[data-cinder-variant='danger'] {
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+    border-color: var(--cinder-color-danger-border);
+  }
 
-.cinder-chip[data-cinder-variant='info'] {
-  background: var(--cinder-color-info-bg);
-  color: var(--cinder-color-info-fg);
-  border-color: var(--cinder-color-info-border);
-}
+  .cinder-chip[data-cinder-variant='info'] {
+    background: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
+    border-color: var(--cinder-color-info-border);
+  }
 
-.cinder-chip[data-cinder-variant='accent'] {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
-  color: var(--cinder-accent);
-  border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
-}
+  .cinder-chip[data-cinder-variant='accent'] {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+    color: var(--cinder-accent);
+    border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Hover states (button chips only)
  * ---------------------------------------- */
 
-/* Hover tint: a flat overlay drawn over the chip's existing background.
+  /* Hover tint: a flat overlay drawn over the chip's existing background.
  * Uses `light-dark()` so the overlay darkens in light mode and lightens
  * in dark mode, following `color-scheme` (driven by `prefers-color-scheme`
  * and any `[data-theme]` override on an ancestor). This replaces a
  * `filter: brightness()` toggle that previously needed a
  * prefers-color-scheme media query. */
-/* Sticky-hover suppression on touch: hover-only chrome wrapped so it doesn't
+  /* Sticky-hover suppression on touch: hover-only chrome wrapped so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  button.cinder-chip:hover:not(:disabled) {
-    background-image: linear-gradient(
-      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
-      light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
-    );
+  @media (hover: hover) {
+    button.cinder-chip:hover:not(:disabled) {
+      background-image: linear-gradient(
+        light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
+        light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+      );
+    }
   }
-}
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Pressed state (toggle chips)
  * ---------------------------------------- */
 
-.cinder-chip[aria-pressed='true'][data-cinder-variant='neutral'] {
-  background: var(--cinder-surface-pressed);
-  color: var(--cinder-text);
-  border-color: var(--cinder-border-strong);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='neutral'] {
+    background: var(--cinder-surface-pressed);
+    color: var(--cinder-text);
+    border-color: var(--cinder-border-strong);
+  }
 
-/* Neutral pressed state is a restrained selection shift on the shared chip
+  /* Neutral pressed state is a restrained selection shift on the shared chip
  * surface, not a full inversion. Status pressed recipes remain intentionally
  * separate until their readable-foreground cleanup lands. */
-.cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
-  background: var(--cinder-success);
-  color: var(--cinder-success-contrast);
-  border-color: var(--cinder-success);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
+    background: var(--cinder-success);
+    color: var(--cinder-success-contrast);
+    border-color: var(--cinder-success);
+  }
 
-.cinder-chip[aria-pressed='true'][data-cinder-variant='warning'] {
-  background: var(--cinder-warning);
-  color: var(--cinder-warning-contrast);
-  border-color: var(--cinder-warning);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='warning'] {
+    background: var(--cinder-warning);
+    color: var(--cinder-warning-contrast);
+    border-color: var(--cinder-warning);
+  }
 
-.cinder-chip[aria-pressed='true'][data-cinder-variant='danger'] {
-  background: var(--cinder-danger);
-  color: var(--cinder-danger-contrast);
-  border-color: var(--cinder-danger);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='danger'] {
+    background: var(--cinder-danger);
+    color: var(--cinder-danger-contrast);
+    border-color: var(--cinder-danger);
+  }
 
-.cinder-chip[aria-pressed='true'][data-cinder-variant='info'] {
-  background: var(--cinder-info);
-  color: var(--cinder-info-contrast);
-  border-color: var(--cinder-info);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='info'] {
+    background: var(--cinder-info);
+    color: var(--cinder-info-contrast);
+    border-color: var(--cinder-info);
+  }
 
-.cinder-chip[aria-pressed='true'][data-cinder-variant='accent'] {
-  background: var(--cinder-accent);
-  color: var(--cinder-accent-contrast);
-  border-color: var(--cinder-accent);
-}
+  .cinder-chip[aria-pressed='true'][data-cinder-variant='accent'] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    border-color: var(--cinder-accent);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Focus-visible ring
  * ---------------------------------------- */
 
-button.cinder-chip:focus-visible,
-.cinder-chip__remove:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-@media (forced-colors: active) {
   button.cinder-chip:focus-visible,
   .cinder-chip__remove:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
-}
 
-/* ----------------------------------------
+  @media (forced-colors: active) {
+    button.cinder-chip:focus-visible,
+    .cinder-chip__remove:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
+  /* ----------------------------------------
  * Disabled state
  * ---------------------------------------- */
 
-button.cinder-chip:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  button.cinder-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.cinder-chip__remove:disabled {
-  cursor: not-allowed;
-}
+  .cinder-chip__remove:disabled {
+    cursor: not-allowed;
+  }
 
-.cinder-chip[data-cinder-disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .cinder-chip[data-cinder-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Icon slot
  * ---------------------------------------- */
 
-.cinder-chip__icon {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  line-height: 0;
-}
+  .cinder-chip__icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    line-height: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Remove button
  * ---------------------------------------- */
 
-.cinder-chip__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 1rem;
-  block-size: 1rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  border-radius: var(--cinder-radius-full);
-  font: inherit;
-  margin-inline-start: var(--cinder-space-0-5);
-  appearance: none;
-  /* Anchor the WCAG 2.5.5 hit-area pseudo-element. */
-  position: relative;
-}
-
-/* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout.
- * Anchored to the right edge so the expansion never encroaches into the label on the left. */
-.cinder-chip__remove::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: 44px;
-  height: 44px;
-  transform: translateY(-50%);
-}
-
-@media (hover: hover) {
-  .cinder-chip__remove:hover:not(:disabled) {
-    background-color: var(--cinder-surface-hover);
+  .cinder-chip__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1rem;
+    block-size: 1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: var(--cinder-radius-full);
+    font: inherit;
+    margin-inline-start: var(--cinder-space-0-5);
+    appearance: none;
+    /* Anchor the WCAG 2.5.5 hit-area pseudo-element. */
+    position: relative;
   }
-}
 
-/* ----------------------------------------
+  /* Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting layout.
+ * Anchored to the right edge so the expansion never encroaches into the label on the left. */
+  .cinder-chip__remove::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+
+  @media (hover: hover) {
+    .cinder-chip__remove:hover:not(:disabled) {
+      background-color: var(--cinder-surface-hover);
+    }
+  }
+
+  /* ----------------------------------------
  * Reduced motion
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-chip {
-    transition: none;
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-chip {
+      transition: none;
+    }
   }
 }

@@ -1,88 +1,90 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * DIFF STATISTICS
  * ======================================== */
 
-.cinder-diff-statistics {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-3);
-  font-size: var(--cinder-text-sm);
-}
+  .cinder-diff-statistics {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    font-size: var(--cinder-text-sm);
+  }
 
-.cinder-diff-statistics[data-cinder-variant='compact'] {
-  gap: var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
-}
+  .cinder-diff-statistics[data-cinder-variant='compact'] {
+    gap: var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+  }
 
-.cinder-diff-statistics__stat {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  font-weight: var(--cinder-font-medium);
-  white-space: nowrap;
-}
+  .cinder-diff-statistics__stat {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    font-weight: var(--cinder-font-medium);
+    white-space: nowrap;
+  }
 
-.cinder-diff-statistics__prefix,
-.cinder-diff-statistics__value {
-  font-family: var(--cinder-font-mono);
-}
+  .cinder-diff-statistics__prefix,
+  .cinder-diff-statistics__value {
+    font-family: var(--cinder-font-mono);
+  }
 
-.cinder-diff-statistics__value {
-  font-variant-numeric: tabular-nums;
-}
+  .cinder-diff-statistics__value {
+    font-variant-numeric: tabular-nums;
+  }
 
-.cinder-diff-statistics__label {
-  color: var(--cinder-text-muted);
-  font-weight: var(--cinder-font-normal);
-}
+  .cinder-diff-statistics__label {
+    color: var(--cinder-text-muted);
+    font-weight: var(--cinder-font-normal);
+  }
 
-.cinder-diff-statistics__stat--added {
-  color: var(--cinder-success);
-}
+  .cinder-diff-statistics__stat--added {
+    color: var(--cinder-success);
+  }
 
-.cinder-diff-statistics__stat--removed {
-  color: var(--cinder-danger);
-}
+  .cinder-diff-statistics__stat--removed {
+    color: var(--cinder-danger);
+  }
 
-.cinder-diff-statistics__stat--modified {
-  color: var(--cinder-warning);
-}
+  .cinder-diff-statistics__stat--modified {
+    color: var(--cinder-warning);
+  }
 
-.cinder-diff-statistics__stat--none {
-  color: var(--cinder-text-muted);
-  font-style: italic;
-  font-weight: var(--cinder-font-normal);
-}
+  .cinder-diff-statistics__stat--none {
+    color: var(--cinder-text-muted);
+    font-style: italic;
+    font-weight: var(--cinder-font-normal);
+  }
 
-.cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat {
-  padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
-  border-radius: var(--cinder-radius-sm);
-  background: var(--cinder-surface-inset);
-}
+  .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat {
+    padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+  }
 
-.cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--added {
-  background: var(--cinder-color-success-bg);
-  color: var(--cinder-color-success-fg);
-}
+  .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--added {
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
+  }
 
-.cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--removed {
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-}
+  .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--removed {
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+  }
 
-.cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--modified {
-  background: var(--cinder-color-warning-bg);
-  color: var(--cinder-color-warning-fg);
-}
+  .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--modified {
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
+  }
 
-/* compact + density="toolbar": opt the compact stat pills into the shared
+  /* compact + density="toolbar": opt the compact stat pills into the shared
  * --cinder-control-height-sm tier so they align with sibling Button (size="sm")
  * and SegmentedControl (density="toolbar") in editor toolbars. The base
  * `display: inline-flex; align-items: center` already centers the text
  * vertically; we just need to set the box height. Default compact rendering
  * (without density) is unchanged. */
-.cinder-diff-statistics[data-cinder-variant='compact'][data-cinder-density='toolbar']
-  .cinder-diff-statistics__stat {
-  box-sizing: border-box;
-  min-block-size: var(--cinder-control-height-sm);
+  .cinder-diff-statistics[data-cinder-variant='compact'][data-cinder-density='toolbar']
+    .cinder-diff-statistics__stat {
+    box-sizing: border-box;
+    min-block-size: var(--cinder-control-height-sm);
+  }
 }

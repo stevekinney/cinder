@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * BANNER
  * ----------------------------------------
  * Full-width, page-level notification strip. Stretches the inline size of
@@ -9,82 +10,82 @@
  * must be gated on `prefers-reduced-motion: no-preference`.
  * ======================================== */
 
-.cinder-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-3);
-  inline-size: 100%;
-  padding-block: var(--cinder-space-3);
-  padding-inline: var(--cinder-space-4);
-  border-block: 1px solid var(--cinder-border);
-  background: var(--cinder-surface);
-  color: var(--cinder-text);
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-}
-
-@media (prefers-reduced-motion: no-preference) {
   .cinder-banner {
-    transition:
-      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    inline-size: 100%;
+    padding-block: var(--cinder-space-3);
+    padding-inline: var(--cinder-space-4);
+    border-block: 1px solid var(--cinder-border);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
   }
-}
 
-/* ----------------------------------------
+  @media (prefers-reduced-motion: no-preference) {
+    .cinder-banner {
+      transition:
+        background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+        border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    }
+  }
+
+  /* ----------------------------------------
  * Content area
  * ---------------------------------------- */
 
-.cinder-banner__content {
-  flex: 1;
-  min-width: 0;
-}
+  .cinder-banner__content {
+    flex: 1;
+    min-width: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Actions region
  * ---------------------------------------- */
 
-.cinder-banner__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  flex-shrink: 0;
-}
+  .cinder-banner__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-shrink: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Dismiss button
  * Mirrors .cinder-alert__dismiss rule-for-rule.
  * ---------------------------------------- */
 
-/* Box-model reset, hit-area, and idle :hover live on .cinder-_dismiss-button
+  /* Box-model reset, hit-area, and idle :hover live on .cinder-_dismiss-button
  * (see src/styles/components.css). Only Banner-specific layout positioning,
  * the motion-gated transition, and status-driven focus chrome live here. */
-.cinder-banner__dismiss {
-  align-self: center;
-}
-
-@media (prefers-reduced-motion: no-preference) {
   .cinder-banner__dismiss {
-    transition:
-      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+    align-self: center;
   }
-}
 
-.cinder-banner__dismiss:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
-      var(--_cinder-banner-ring, var(--cinder-ring-color));
-}
+  @media (prefers-reduced-motion: no-preference) {
+    .cinder-banner__dismiss {
+      transition:
+        background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+        box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+    }
+  }
 
-.cinder-banner__dismiss-icon {
-  width: 1rem;
-  height: 1rem;
-}
+  .cinder-banner__dismiss:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-banner-ring, var(--cinder-ring-color));
+  }
 
-/* ----------------------------------------
+  .cinder-banner__dismiss-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* ----------------------------------------
  * Variant: info
  *
  * NOTE (CSS audit, Batch D): The four status variants below intentionally
@@ -96,106 +97,107 @@
  * docs/css-audit/status-triple-equivalence.md for the full pre-flight table.
  * ---------------------------------------- */
 
-.cinder-banner[data-cinder-variant='info'] {
-  --_cinder-banner-ring: var(--cinder-info);
+  .cinder-banner[data-cinder-variant='info'] {
+    --_cinder-banner-ring: var(--cinder-info);
 
-  background-color: light-dark(
-    oklch(from var(--cinder-info) 96.5% 0.015 h),
-    oklch(from var(--cinder-info) 20% 0.03 h)
-  );
-  border-color: light-dark(
-    oklch(from var(--cinder-info) 85% 0.05 h),
-    oklch(from var(--cinder-info) 35% 0.08 h)
-  );
-  color: light-dark(
-    oklch(from var(--cinder-info) 35% 0.12 h),
-    oklch(from var(--cinder-info) 88% 0.12 h)
-  );
-}
+    background-color: light-dark(
+      oklch(from var(--cinder-info) 96.5% 0.015 h),
+      oklch(from var(--cinder-info) 20% 0.03 h)
+    );
+    border-color: light-dark(
+      oklch(from var(--cinder-info) 85% 0.05 h),
+      oklch(from var(--cinder-info) 35% 0.08 h)
+    );
+    color: light-dark(
+      oklch(from var(--cinder-info) 35% 0.12 h),
+      oklch(from var(--cinder-info) 88% 0.12 h)
+    );
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Variant: success
  * ---------------------------------------- */
 
-.cinder-banner[data-cinder-variant='success'] {
-  --_cinder-banner-ring: var(--cinder-success);
+  .cinder-banner[data-cinder-variant='success'] {
+    --_cinder-banner-ring: var(--cinder-success);
 
-  background-color: light-dark(
-    oklch(from var(--cinder-success) 96.5% 0.015 h),
-    oklch(from var(--cinder-success) 20% 0.03 h)
-  );
-  border-color: light-dark(
-    oklch(from var(--cinder-success) 85% 0.05 h),
-    oklch(from var(--cinder-success) 35% 0.08 h)
-  );
-  color: light-dark(
-    oklch(from var(--cinder-success) 35% 0.14 h),
-    oklch(from var(--cinder-success) 88% 0.12 h)
-  );
-}
+    background-color: light-dark(
+      oklch(from var(--cinder-success) 96.5% 0.015 h),
+      oklch(from var(--cinder-success) 20% 0.03 h)
+    );
+    border-color: light-dark(
+      oklch(from var(--cinder-success) 85% 0.05 h),
+      oklch(from var(--cinder-success) 35% 0.08 h)
+    );
+    color: light-dark(
+      oklch(from var(--cinder-success) 35% 0.14 h),
+      oklch(from var(--cinder-success) 88% 0.12 h)
+    );
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Variant: warning
  * ---------------------------------------- */
 
-.cinder-banner[data-cinder-variant='warning'] {
-  --_cinder-banner-ring: var(--cinder-warning);
+  .cinder-banner[data-cinder-variant='warning'] {
+    --_cinder-banner-ring: var(--cinder-warning);
 
-  background-color: light-dark(
-    oklch(from var(--cinder-warning) 96.5% 0.015 h),
-    oklch(from var(--cinder-warning) 20% 0.03 h)
-  );
-  border-color: light-dark(
-    oklch(from var(--cinder-warning) 85% 0.05 h),
-    oklch(from var(--cinder-warning) 35% 0.08 h)
-  );
-  color: light-dark(
-    oklch(from var(--cinder-warning) 35% 0.16 h),
-    oklch(from var(--cinder-warning) 88% 0.14 h)
-  );
-}
+    background-color: light-dark(
+      oklch(from var(--cinder-warning) 96.5% 0.015 h),
+      oklch(from var(--cinder-warning) 20% 0.03 h)
+    );
+    border-color: light-dark(
+      oklch(from var(--cinder-warning) 85% 0.05 h),
+      oklch(from var(--cinder-warning) 35% 0.08 h)
+    );
+    color: light-dark(
+      oklch(from var(--cinder-warning) 35% 0.16 h),
+      oklch(from var(--cinder-warning) 88% 0.14 h)
+    );
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Variant: danger
  * ---------------------------------------- */
 
-.cinder-banner[data-cinder-variant='danger'] {
-  --_cinder-banner-ring: var(--cinder-danger);
+  .cinder-banner[data-cinder-variant='danger'] {
+    --_cinder-banner-ring: var(--cinder-danger);
 
-  background-color: light-dark(
-    oklch(from var(--cinder-danger) 96.5% 0.015 h),
-    oklch(from var(--cinder-danger) 20% 0.03 h)
-  );
-  border-color: light-dark(
-    oklch(from var(--cinder-danger) 85% 0.05 h),
-    oklch(from var(--cinder-danger) 35% 0.08 h)
-  );
-  color: light-dark(
-    oklch(from var(--cinder-danger) 35% 0.18 h),
-    oklch(from var(--cinder-danger) 88% 0.16 h)
-  );
-}
+    background-color: light-dark(
+      oklch(from var(--cinder-danger) 96.5% 0.015 h),
+      oklch(from var(--cinder-danger) 20% 0.03 h)
+    );
+    border-color: light-dark(
+      oklch(from var(--cinder-danger) 85% 0.05 h),
+      oklch(from var(--cinder-danger) 35% 0.08 h)
+    );
+    color: light-dark(
+      oklch(from var(--cinder-danger) 35% 0.18 h),
+      oklch(from var(--cinder-danger) 88% 0.16 h)
+    );
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Forced-colors / high-contrast
  * ---------------------------------------- */
 
-@media (forced-colors: active) {
-  .cinder-banner {
-    border-block: 1px solid CanvasText;
-  }
-
-  /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace.
-   * Nested under @media (hover: hover) to suppress sticky-hover on touch. */
-  @media (hover: hover) {
-    .cinder-banner__dismiss:hover {
-      background: ButtonFace;
+  @media (forced-colors: active) {
+    .cinder-banner {
+      border-block: 1px solid CanvasText;
     }
-  }
 
-  .cinder-banner__dismiss:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
-    box-shadow: none;
+    /* `color-mix` against transparent is unreliable in forced-colors mode; pin to ButtonFace.
+   * Nested under @media (hover: hover) to suppress sticky-hover on touch. */
+    @media (hover: hover) {
+      .cinder-banner__dismiss:hover {
+        background: ButtonFace;
+      }
+    }
+
+    .cinder-banner__dismiss:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 }

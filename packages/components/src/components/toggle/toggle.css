@@ -1,177 +1,179 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TOGGLE (toggle-button pattern)
  * ======================================== */
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Field wrapper + label
  * ---------------------------------------- */
 
-.cinder-toggle-field {
-  position: relative; /* scope the position:absolute hidden label to the wrapper */
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-}
+  .cinder-toggle-field {
+    position: relative; /* scope the position:absolute hidden label to the wrapper */
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-toggle-field__label {
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1;
-  color: var(--cinder-text);
-  cursor: pointer;
-}
+  .cinder-toggle-field__label {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1;
+    color: var(--cinder-text);
+    cursor: pointer;
+  }
 
-.cinder-toggle-field__label[data-disabled] {
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-}
+  .cinder-toggle-field__label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
 
-/* hideLabel: keep the label as the accessible name, remove it from layout.
+  /* hideLabel: keep the label as the accessible name, remove it from layout.
  * Same recipe as the global .cinder-sr-only utility, inlined here so the
  * per-component sidecar (dist/components/toggle/toggle.css) is self-sufficient. */
-.cinder-toggle-field__label[data-hidden] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
+  .cinder-toggle-field__label[data-hidden] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
-.cinder-toggle {
-  /* Layout: pill track containing the sliding thumb. */
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  box-sizing: border-box;
+  .cinder-toggle {
+    /* Layout: pill track containing the sliding thumb. */
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    box-sizing: border-box;
 
-  /* Dimensions — 44 × 24 px satisfies WCAG 2.5.5 minimum touch target at 44 px height
+    /* Dimensions — 44 × 24 px satisfies WCAG 2.5.5 minimum touch target at 44 px height
    * when the surrounding interactive area is considered. Adjust via tokens if needed.
    */
-  width: var(--cinder-toggle-width, 2.75rem); /* 44px */
-  height: var(--cinder-toggle-height, 1.5rem); /* 24px */
+    width: var(--cinder-toggle-width, 2.75rem); /* 44px */
+    height: var(--cinder-toggle-height, 1.5rem); /* 24px */
 
-  padding: 0;
-  border: none;
-  border-radius: var(--cinder-radius-full);
-  cursor: pointer;
-  vertical-align: middle;
+    padding: 0;
+    border: none;
+    border-radius: var(--cinder-radius-full);
+    cursor: pointer;
+    vertical-align: middle;
 
-  /* Track background — unset (off) state. */
-  background: var(--cinder-toggle-track-off, var(--cinder-border-muted, #d1d5db));
+    /* Track background — unset (off) state. */
+    background: var(--cinder-toggle-track-off, var(--cinder-border-muted, #d1d5db));
 
-  transition:
-    background-color var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease),
-    box-shadow var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);
-}
+    transition:
+      background-color var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease),
+      box-shadow var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Pressed (on) state
  * ---------------------------------------- */
 
-.cinder-toggle[data-cinder-checked] {
-  background: var(--cinder-toggle-track-on, var(--cinder-accent, #6366f1));
-}
+  .cinder-toggle[data-cinder-checked] {
+    background: var(--cinder-toggle-track-on, var(--cinder-accent, #6366f1));
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Focus
  * ---------------------------------------- */
 
-.cinder-toggle:focus-visible {
-  outline: var(--cinder-ring-width, 2px) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset, 2px)
-      var(--cinder-ring-offset-color, var(--cinder-surface, #fff)),
-    0 0 0 calc(var(--cinder-ring-offset, 2px) + var(--cinder-ring-width, 2px))
-      var(--cinder-toggle-ring, var(--cinder-ring-color, #6366f1));
-}
+  .cinder-toggle:focus-visible {
+    outline: var(--cinder-ring-width, 2px) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset, 2px)
+        var(--cinder-ring-offset-color, var(--cinder-surface, #fff)),
+      0 0 0 calc(var(--cinder-ring-offset, 2px) + var(--cinder-ring-width, 2px))
+        var(--cinder-toggle-ring, var(--cinder-ring-color, #6366f1));
+  }
 
-/* Forced Colors Mode: box-shadow is suppressed by Windows High Contrast Mode, so
+  /* Forced Colors Mode: box-shadow is suppressed by Windows High Contrast Mode, so
  * we switch to a solid outline. ButtonText is guaranteed to contrast the button surface.
  */
-@media (forced-colors: active) {
-  .cinder-toggle:focus-visible {
-    outline: var(--cinder-ring-width, 2px) solid ButtonText;
-    outline-offset: 3px;
+  @media (forced-colors: active) {
+    .cinder-toggle:focus-visible {
+      outline: var(--cinder-ring-width, 2px) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
-}
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Hover
  * ---------------------------------------- */
 
-@media (hover: hover) {
-  .cinder-toggle:hover:not(:disabled) {
-    background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
+  @media (hover: hover) {
+    .cinder-toggle:hover:not(:disabled) {
+      background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
+    }
+
+    .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
+      background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
+    }
   }
 
-  .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
-    background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
-  }
-}
-
-/* ----------------------------------------
+  /* ----------------------------------------
  * Disabled
  * ---------------------------------------- */
 
-.cinder-toggle:disabled {
-  cursor: not-allowed;
-  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
-  /* Preserve the current track color via grayscale so on/off is still readable. */
-  filter: grayscale(0.4);
-}
+  .cinder-toggle:disabled {
+    cursor: not-allowed;
+    /* opacity centralized in foundation.css disabled-visual rule (0.6) */
+    /* Preserve the current track color via grayscale so on/off is still readable. */
+    filter: grayscale(0.4);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Thumb
  * ---------------------------------------- */
 
-.cinder-toggle__thumb {
-  /* Remove from pointer events — the button handles all interaction. */
-  pointer-events: none;
+  .cinder-toggle__thumb {
+    /* Remove from pointer events — the button handles all interaction. */
+    pointer-events: none;
 
-  /* Circle sitting inside the track, vertically centered with a gap on every side. */
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 0.125rem; /* 2px gap from track edge */
-  display: block;
-  width: var(
-    --cinder-toggle-thumb-size,
-    1.125rem
-  ); /* 18px — leaves 3px vertical gap in 24px track */
-  height: var(--cinder-toggle-thumb-size, 1.125rem);
-  border-radius: 50%;
-  background: var(--cinder-toggle-thumb-color, #ffffff);
-  box-shadow: var(
-    --cinder-shadow-sm,
-    0 1px 3px 0 rgb(0 0 0 / 0.1),
-    0 1px 2px -1px rgb(0 0 0 / 0.1)
-  );
+    /* Circle sitting inside the track, vertically centered with a gap on every side. */
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 0.125rem; /* 2px gap from track edge */
+    display: block;
+    width: var(
+      --cinder-toggle-thumb-size,
+      1.125rem
+    ); /* 18px — leaves 3px vertical gap in 24px track */
+    height: var(--cinder-toggle-thumb-size, 1.125rem);
+    border-radius: 50%;
+    background: var(--cinder-toggle-thumb-color, #ffffff);
+    box-shadow: var(
+      --cinder-shadow-sm,
+      0 1px 3px 0 rgb(0 0 0 / 0.1),
+      0 1px 2px -1px rgb(0 0 0 / 0.1)
+    );
 
-  /* Slide transition — mirrors the track transition duration. */
-  transition: transform var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);
+    /* Slide transition — mirrors the track transition duration. */
+    transition: transform var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);
 
-  /* Unpressed: thumb sits at the start of the track, vertically centered.
+    /* Unpressed: thumb sits at the start of the track, vertically centered.
    * translateY(-50%) compensates for inset-block-start: 50%. */
-  transform: translate(0, -50%);
-}
+    transform: translate(0, -50%);
+  }
 
-/* Pressed: slide thumb to the end. Travel distance is track-width minus thumb-size minus
+  /* Pressed: slide thumb to the end. Travel distance is track-width minus thumb-size minus
  * the 2px gap on each side: 44 - 18 - 4 = 22px = 1.375rem. */
-.cinder-toggle[data-cinder-checked] .cinder-toggle__thumb {
-  transform: translate(var(--cinder-toggle-thumb-travel, 1.375rem), -50%);
-}
+  .cinder-toggle[data-cinder-checked] .cinder-toggle__thumb {
+    transform: translate(var(--cinder-toggle-thumb-travel, 1.375rem), -50%);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Reduced motion
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-toggle,
-  .cinder-toggle__thumb {
-    transition: none;
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-toggle,
+    .cinder-toggle__thumb {
+      transition: none;
+    }
   }
 }

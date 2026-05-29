@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -94,7 +95,12 @@ function expectNoDeclaration(block: string, propertyName: string): void {
 }
 
 async function readDropdownCss(): Promise<string> {
-  return await Bun.file(new URL('./dropdown.css', import.meta.url)).text();
+  // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+  // getComputedStyle. The inner declaration blocks are unchanged, so the
+  // string-extraction assertions that also use this read are unaffected.
+  return stripCinderComponentsLayer(
+    await Bun.file(new URL('./dropdown.css', import.meta.url)).text(),
+  );
 }
 
 async function injectDropdownCss(): Promise<() => void> {

@@ -1,91 +1,93 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * BREADCRUMBS
  * Navigation landmark with an ordered list of links.
  * ======================================== */
 
-.cinder-breadcrumbs__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-muted);
-  /* Single-line stopgap: clip a long trail with an ellipsis instead of
+  .cinder-breadcrumbs__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+    /* Single-line stopgap: clip a long trail with an ellipsis instead of
      wrapping to a second row. True earliest-first priority needs the deferred
      `maxVisible` prop. */
-  overflow: hidden;
-  white-space: nowrap;
-}
+    overflow: hidden;
+    white-space: nowrap;
+  }
 
-.cinder-breadcrumbs__item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  /* Ancestor crumbs shrink hard (high factor) so they absorb the overflow and
+  .cinder-breadcrumbs__item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    /* Ancestor crumbs shrink hard (high factor) so they absorb the overflow and
      ellipsize first. */
-  min-width: 0;
-  flex-shrink: 100;
-}
+    min-width: 0;
+    flex-shrink: 100;
+  }
 
-/* The last item holds the current crumb. It still shrinks — so a lone long
+  /* The last item holds the current crumb. It still shrinks — so a lone long
    current crumb ellipsizes against the container instead of hard-clipping —
    but with a far lower factor than the ancestors, so they always yield first.
    Plain flex cannot express strict source-order priority; the lopsided shrink
    factors approximate "current crumb is the priority" while guaranteeing it can
    never overflow the container without its own ellipsis engaging. */
-.cinder-breadcrumbs__item:last-child {
-  flex-shrink: 1;
-}
-
-.cinder-breadcrumbs__link {
-  min-width: 0;
-  flex: 1 1 auto;
-  color: var(--cinder-text-muted);
-  text-decoration: none;
-  border-radius: var(--cinder-radius-sm);
-  transition: color var(--cinder-duration-fast) var(--cinder-ease-standard);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cinder-breadcrumbs__link:hover {
-  color: var(--cinder-text);
-  text-decoration: underline;
-}
-
-.cinder-breadcrumbs__link:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-@media (forced-colors: active) {
-  .cinder-breadcrumbs__link:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+  .cinder-breadcrumbs__item:last-child {
+    flex-shrink: 1;
   }
-}
 
-.cinder-breadcrumbs__current {
-  color: var(--cinder-text);
-  font-weight: var(--cinder-font-medium);
-  /* The current crumb is the priority: its low-shrink item (see `:last-child`)
+  .cinder-breadcrumbs__link {
+    min-width: 0;
+    flex: 1 1 auto;
+    color: var(--cinder-text-muted);
+    text-decoration: none;
+    border-radius: var(--cinder-radius-sm);
+    transition: color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cinder-breadcrumbs__link:hover {
+    color: var(--cinder-text);
+    text-decoration: underline;
+  }
+
+  .cinder-breadcrumbs__link:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-breadcrumbs__link:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
+  .cinder-breadcrumbs__current {
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-medium);
+    /* The current crumb is the priority: its low-shrink item (see `:last-child`)
      makes ancestors yield first. But it must never hard-clip against the
      container edge — `max-width: 100%` plus `min-width: 0` bound it to the
      available width so its own ellipsis engages as a last resort when it alone
      exceeds the container. */
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.cinder-breadcrumbs__separator {
-  color: var(--cinder-text-muted);
-  user-select: none;
-  /* Separators never collapse. */
-  flex-shrink: 0;
+  .cinder-breadcrumbs__separator {
+    color: var(--cinder-text-muted);
+    user-select: none;
+    /* Separators never collapse. */
+    flex-shrink: 0;
+  }
 }

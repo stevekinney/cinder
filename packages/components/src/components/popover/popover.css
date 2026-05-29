@@ -1,139 +1,141 @@
-.cinder-popover {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: var(--cinder-z-popover);
-  min-width: 10rem;
-  max-width: min(90vw, 28rem);
-  padding: var(--cinder-space-3);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-lg);
-  opacity: 1;
-  transition: opacity var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease-out);
-}
+@layer cinder.components {
+  .cinder-popover {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--cinder-z-popover);
+    min-width: 10rem;
+    max-width: min(90vw, 28rem);
+    padding: var(--cinder-space-3);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-lg);
+    opacity: 1;
+    transition: opacity var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease-out);
+  }
 
-.cinder-popover:focus-visible {
-  outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
-  outline-offset: 2px;
-}
+  .cinder-popover:focus-visible {
+    outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
+    outline-offset: 2px;
+  }
 
-.cinder-popover[data-cinder-position-ready='false'] {
-  visibility: hidden;
-  pointer-events: none;
-  opacity: 0;
-}
+  .cinder-popover[data-cinder-position-ready='false'] {
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+  }
 
-.cinder-popover__trigger {
-  display: contents;
-}
+  .cinder-popover__trigger {
+    display: contents;
+  }
 
-.cinder-popover__arrow {
-  position: absolute;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-}
+  .cinder-popover__arrow {
+    position: absolute;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+  }
 
-/* Panel is BELOW trigger - arrow tip points UP.
+  /* Panel is BELOW trigger - arrow tip points UP.
    Floating UI's arrow middleware writes `left` directly to center the
    border-box (offsetWidth=16 because of the 8px L+R borders) on the
    reference. Do not add a negative margin — that would double-shift it. */
-.cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow {
-  top: -8px;
-  /* stylelint-disable csstools/use-logical */
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid var(--cinder-border);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow {
+    top: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--cinder-border);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-.cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow::after {
-  content: '';
-  position: absolute;
-  /* stylelint-disable csstools/use-logical */
-  left: -7px;
-  top: 2px;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 7px solid var(--cinder-surface);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow::after {
+    content: '';
+    position: absolute;
+    /* stylelint-disable csstools/use-logical */
+    left: -7px;
+    top: 2px;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 7px solid var(--cinder-surface);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-/* Panel is ABOVE trigger - arrow tip points DOWN. See bottom-placement
+  /* Panel is ABOVE trigger - arrow tip points DOWN. See bottom-placement
    note above re: Floating UI offsetWidth centering. */
-.cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
-  bottom: -8px;
-  /* stylelint-disable csstools/use-logical */
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid var(--cinder-border);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
+    bottom: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--cinder-border);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-.cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow::after {
-  content: '';
-  position: absolute;
-  /* stylelint-disable csstools/use-logical */
-  left: -7px;
-  bottom: 2px;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-top: 7px solid var(--cinder-surface);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow::after {
+    content: '';
+    position: absolute;
+    /* stylelint-disable csstools/use-logical */
+    left: -7px;
+    bottom: 2px;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 7px solid var(--cinder-surface);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-/* Panel is to the RIGHT of trigger - arrow tip points LEFT.
+  /* Panel is to the RIGHT of trigger - arrow tip points LEFT.
    Floating UI writes `top` directly to center the border-box on the
    reference vertically (offsetHeight=16); no negative margin needed. */
-.cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow {
-  left: -8px;
-  /* stylelint-disable csstools/use-logical */
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-right: 8px solid var(--cinder-border);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow {
+    left: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 8px solid var(--cinder-border);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-.cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow::after {
-  content: '';
-  position: absolute;
-  /* stylelint-disable csstools/use-logical */
-  left: 2px;
-  top: -7px;
-  border-top: 7px solid transparent;
-  border-bottom: 7px solid transparent;
-  border-right: 7px solid var(--cinder-surface);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow::after {
+    content: '';
+    position: absolute;
+    /* stylelint-disable csstools/use-logical */
+    left: 2px;
+    top: -7px;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 7px solid var(--cinder-surface);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-/* Panel is to the LEFT of trigger - arrow tip points RIGHT. See
+  /* Panel is to the LEFT of trigger - arrow tip points RIGHT. See
    right-placement note above re: Floating UI offsetHeight centering. */
-.cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
-  right: -8px;
-  /* stylelint-disable csstools/use-logical */
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-left: 8px solid var(--cinder-border);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
+    right: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--cinder-border);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-.cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow::after {
-  content: '';
-  position: absolute;
-  /* stylelint-disable csstools/use-logical */
-  right: 2px;
-  top: -7px;
-  border-top: 7px solid transparent;
-  border-bottom: 7px solid transparent;
-  border-left: 7px solid var(--cinder-surface);
-  /* stylelint-enable csstools/use-logical */
-}
+  .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow::after {
+    content: '';
+    position: absolute;
+    /* stylelint-disable csstools/use-logical */
+    right: 2px;
+    top: -7px;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 7px solid var(--cinder-surface);
+    /* stylelint-enable csstools/use-logical */
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-popover {
-    transition: none;
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-popover {
+      transition: none;
+    }
   }
 }

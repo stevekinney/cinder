@@ -1,62 +1,64 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TOOLTIP
  * ======================================== */
 
-.cinder-tooltip-wrapper {
-  display: inline-flex;
-  align-items: center;
-}
+  .cinder-tooltip-wrapper {
+    display: inline-flex;
+    align-items: center;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Tooltip element
  * ---------------------------------------- */
 
-.cinder-tooltip {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: var(--cinder-z-tooltip, 50);
+  .cinder-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--cinder-z-tooltip, 50);
 
-  max-width: 16rem;
-  padding: var(--cinder-space-1-5) var(--cinder-space-2-5);
+    max-width: 16rem;
+    padding: var(--cinder-space-1-5) var(--cinder-space-2-5);
 
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-text);
-  color: var(--cinder-surface);
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-snug);
-  white-space: nowrap;
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-text);
+    color: var(--cinder-surface);
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-snug);
+    white-space: nowrap;
 
-  pointer-events: none;
-  user-select: none;
+    pointer-events: none;
+    user-select: none;
 
-  transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-.cinder-tooltip[data-cinder-position-ready='false'] {
-  visibility: hidden;
-  opacity: 0;
-}
+  .cinder-tooltip[data-cinder-position-ready='false'] {
+    visibility: hidden;
+    opacity: 0;
+  }
 
-/* Visible state */
-.cinder-tooltip[aria-hidden='false'] {
-  visibility: visible;
-  opacity: 1;
-}
+  /* Visible state */
+  .cinder-tooltip[aria-hidden='false'] {
+    visibility: visible;
+    opacity: 1;
+  }
 
-/* Hidden state */
-.cinder-tooltip[aria-hidden='true'] {
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
+  /* Hidden state */
+  .cinder-tooltip[aria-hidden='true'] {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Reduced motion
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-tooltip {
-    transition: none;
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-tooltip {
+      transition: none;
+    }
   }
 }

@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
 
-import { parse, type Declaration, type Rule } from 'postcss';
+import { parse, type AtRule, type Declaration, type Rule } from 'postcss';
 
 function loadCss(relativePath: string): string {
   const fullPath = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -93,10 +93,27 @@ const ALLOWED_VARIANT_BORDER = ['border-color', 'border-inline-start-color'];
  * reuses `.cinder-callout`, so skipping `atrule` parents keeps us on the base
  * rule whose cascade the acceptance criteria reference.
  */
+/**
+ * A rule is "effectively top-level" when the only at-rules between it and the
+ * stylesheet root are `@layer` wrappers. Component CSS now self-declares
+ * `@layer cinder.components { … }`, so the base rules sit one `@layer` deep;
+ * that wrapper is transparent for cascade purposes. Rules nested under
+ * `@media` / `@supports` / `@container` (e.g. the forced-colors block) are NOT
+ * top-level and must still be skipped.
+ */
+function isEffectivelyTopLevel(rule: Rule): boolean {
+  let ancestor = rule.parent;
+  while (ancestor && ancestor.type !== 'root') {
+    if (ancestor.type === 'atrule' && (ancestor as AtRule).name !== 'layer') return false;
+    ancestor = ancestor.parent;
+  }
+  return true;
+}
+
 function findRule(selector: string): Rule {
   let match: Rule | undefined;
   root.walkRules((rule) => {
-    if (rule.parent?.type === 'atrule') return undefined;
+    if (!isEffectivelyTopLevel(rule)) return undefined;
     if (rule.selectors.includes(selector)) {
       match = rule;
       return false;

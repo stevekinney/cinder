@@ -304,6 +304,11 @@ for (const component of components) {
   if (!existsSync(source)) continue;
   const destination = componentCssDestination(component);
   await mkdir(dirname(destination), { recursive: true });
+  // The sidecar is copied verbatim. Its `@layer cinder.components { … }` wrapper
+  // — required so a direct `cinder/<name>/styles` import keeps its rules inside
+  // the cascade layer rather than outside every layer — was already enforced on
+  // the source by the AST gate above (`cssLintViolations`), so the copy carries
+  // it intact. No dist-side re-check is needed.
   const text = await Bun.file(source).text();
   await Bun.write(destination, text);
   copiedSidecars.push(destination);

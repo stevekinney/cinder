@@ -1,98 +1,100 @@
-.cinder-resizable-panels {
-  display: flex;
-  min-inline-size: 0;
-  min-block-size: 0;
-}
-
-.cinder-resizable-panels[data-cinder-orientation='horizontal'] {
-  flex-direction: row;
-}
-
-.cinder-resizable-panels[data-cinder-orientation='vertical'] {
-  flex-direction: column;
-}
-
-.cinder-resizable-panels__pane {
-  flex: 1 1 0;
-  min-inline-size: 0;
-  min-block-size: 0;
-}
-
-.cinder-resizable-panels__pane[style] {
-  flex: 0 0 var(--_cinder-resizable-panel-size);
-}
-
-.cinder-resizable-panels__pane[data-cinder-collapsed] {
-  overflow: hidden;
-}
-
-.cinder-resizable-panels__handle {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--cinder-border-strong);
-  position: relative;
-}
-
-.cinder-resizable-panels__handle[data-cinder-orientation='horizontal'] {
-  inline-size: 0.75rem;
-  cursor: col-resize;
-  touch-action: none;
-}
-
-.cinder-resizable-panels__handle[data-cinder-orientation='vertical'] {
-  block-size: 0.75rem;
-  cursor: row-resize;
-  touch-action: none;
-}
-
-.cinder-resizable-panels__handle-line {
-  display: block;
-  border-radius: var(--cinder-radius-full);
-  background: currentColor;
-  opacity: 0.5;
-}
-
-.cinder-resizable-panels__handle[data-cinder-orientation='horizontal']
-  .cinder-resizable-panels__handle-line {
-  inline-size: 2px;
-  block-size: 2.5rem;
-}
-
-.cinder-resizable-panels__handle[data-cinder-orientation='vertical']
-  .cinder-resizable-panels__handle-line {
-  inline-size: 2.5rem;
-  block-size: 2px;
-}
-
-.cinder-resizable-panels__handle::after {
-  content: '';
-  position: absolute;
-  inset: 50% auto auto 50%;
-  inline-size: 44px;
-  block-size: 44px;
-  transform: translate(-50%, -50%);
-}
-
-@media (hover: hover) {
-  .cinder-resizable-panels__handle:hover .cinder-resizable-panels__handle-line {
-    opacity: 0.9;
+@layer cinder.components {
+  .cinder-resizable-panels {
+    display: flex;
+    min-inline-size: 0;
+    min-block-size: 0;
   }
-}
 
-.cinder-resizable-panels__handle:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
+  .cinder-resizable-panels[data-cinder-orientation='horizontal'] {
+    flex-direction: row;
+  }
 
-@media (forced-colors: active) {
+  .cinder-resizable-panels[data-cinder-orientation='vertical'] {
+    flex-direction: column;
+  }
+
+  .cinder-resizable-panels__pane {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    min-block-size: 0;
+  }
+
+  .cinder-resizable-panels__pane[style] {
+    flex: 0 0 var(--_cinder-resizable-panel-size);
+  }
+
+  .cinder-resizable-panels__pane[data-cinder-collapsed] {
+    overflow: hidden;
+  }
+
+  .cinder-resizable-panels__handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--cinder-border-strong);
+    position: relative;
+  }
+
+  .cinder-resizable-panels__handle[data-cinder-orientation='horizontal'] {
+    inline-size: 0.75rem;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .cinder-resizable-panels__handle[data-cinder-orientation='vertical'] {
+    block-size: 0.75rem;
+    cursor: row-resize;
+    touch-action: none;
+  }
+
+  .cinder-resizable-panels__handle-line {
+    display: block;
+    border-radius: var(--cinder-radius-full);
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .cinder-resizable-panels__handle[data-cinder-orientation='horizontal']
+    .cinder-resizable-panels__handle-line {
+    inline-size: 2px;
+    block-size: 2.5rem;
+  }
+
+  .cinder-resizable-panels__handle[data-cinder-orientation='vertical']
+    .cinder-resizable-panels__handle-line {
+    inline-size: 2.5rem;
+    block-size: 2px;
+  }
+
+  .cinder-resizable-panels__handle::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    inline-size: 44px;
+    block-size: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  @media (hover: hover) {
+    .cinder-resizable-panels__handle:hover .cinder-resizable-panels__handle-line {
+      opacity: 0.9;
+    }
+  }
+
   .cinder-resizable-panels__handle:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
-    box-shadow: none;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-resizable-panels__handle:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 }

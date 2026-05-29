@@ -1,76 +1,77 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TABLE
  * Semantic <table> styled to match the rest of the design system.
  * Composition: Table > TableHeader > TableRow > TableHeaderCell
  *              Table > TableBody   > TableRow > TableCell
  * ======================================== */
 
-.cinder-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text);
-  background: var(--cinder-surface);
-}
+  .cinder-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+    background: var(--cinder-surface);
+  }
 
-.cinder-table__caption {
-  caption-side: top;
-  text-align: left;
-  padding-block: var(--cinder-space-3) var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3);
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text);
-}
+  .cinder-table__caption {
+    caption-side: top;
+    text-align: left;
+    padding-block: var(--cinder-space-3) var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Header
  * ---------------------------------------- */
 
-.cinder-table__header {
-  background: var(--cinder-surface-inset);
-}
+  .cinder-table__header {
+    background: var(--cinder-surface-inset);
+  }
 
-.cinder-table[data-cinder-sticky-header] .cinder-table__header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
+  .cinder-table[data-cinder-sticky-header] .cinder-table__header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 
-.cinder-table__header-cell {
-  padding-block: var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3);
-  text-align: left;
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text-muted);
-  border-bottom: 1px solid var(--cinder-border-muted);
-  white-space: nowrap;
-}
+  .cinder-table__header-cell {
+    padding-block: var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3);
+    text-align: left;
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-muted);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    white-space: nowrap;
+  }
 
-.cinder-table__header-cell[aria-sort='ascending'],
-.cinder-table__header-cell[aria-sort='descending'] {
-  color: var(--cinder-text);
-}
+  .cinder-table__header-cell[aria-sort='ascending'],
+  .cinder-table__header-cell[aria-sort='descending'] {
+    color: var(--cinder-text);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Density — padding overrides for header and body cells.
  * Comfortable is the baseline (set on .cinder-table__cell / .cinder-table__header-cell).
  * Only condensed and spacious need explicit overrides; any unknown density value
  * falls back gracefully to comfortable padding.
  * ---------------------------------------- */
 
-.cinder-table[data-cinder-density='condensed'] .cinder-table__cell,
-.cinder-table[data-cinder-density='condensed'] .cinder-table__header-cell {
-  padding-block: var(--cinder-space-1);
-  padding-inline: var(--cinder-space-3);
-}
+  .cinder-table[data-cinder-density='condensed'] .cinder-table__cell,
+  .cinder-table[data-cinder-density='condensed'] .cinder-table__header-cell {
+    padding-block: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-3);
+  }
 
-.cinder-table[data-cinder-density='spacious'] .cinder-table__cell,
-.cinder-table[data-cinder-density='spacious'] .cinder-table__header-cell {
-  padding-block: var(--cinder-space-3);
-  padding-inline: var(--cinder-space-4);
-}
+  .cinder-table[data-cinder-density='spacious'] .cinder-table__cell,
+  .cinder-table[data-cinder-density='spacious'] .cinder-table__header-cell {
+    padding-block: var(--cinder-space-3);
+    padding-inline: var(--cinder-space-4);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Selection cells
  * Specificity (0,3,0) — equal to density rules; source order places these
  * after density so equal-specificity resolution favors selection.
@@ -78,101 +79,102 @@
  * density (the checkbox is a fixed-height control).
  * ---------------------------------------- */
 
-.cinder-table[data-cinder-selectable] .cinder-table__cell--selection,
-.cinder-table[data-cinder-selectable] .cinder-table__header-cell--selection {
-  width: 1px;
-  padding-inline: var(--cinder-space-3);
-  padding-block: var(--cinder-space-2);
-  text-align: center;
-  vertical-align: middle;
-}
+  .cinder-table[data-cinder-selectable] .cinder-table__cell--selection,
+  .cinder-table[data-cinder-selectable] .cinder-table__header-cell--selection {
+    width: 1px;
+    padding-inline: var(--cinder-space-3);
+    padding-block: var(--cinder-space-2);
+    text-align: center;
+    vertical-align: middle;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Sort button (rendered inside sortable header cells)
  * ---------------------------------------- */
 
-.cinder-table__sort-button {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  width: 100%;
-  text-align: inherit;
-  border-radius: var(--cinder-radius-sm);
-  /* position: relative is required so z-index applies when :focus-visible fires */
-  position: relative;
-}
+  .cinder-table__sort-button {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    width: 100%;
+    text-align: inherit;
+    border-radius: var(--cinder-radius-sm);
+    /* position: relative is required so z-index applies when :focus-visible fires */
+    position: relative;
+  }
 
-.cinder-table__header-cell[data-cinder-align='center'] .cinder-table__sort-button {
-  justify-content: center;
-}
+  .cinder-table__header-cell[data-cinder-align='center'] .cinder-table__sort-button {
+    justify-content: center;
+  }
 
-.cinder-table__header-cell[data-cinder-align='right'] .cinder-table__sort-button {
-  justify-content: flex-end;
-}
+  .cinder-table__header-cell[data-cinder-align='right'] .cinder-table__sort-button {
+    justify-content: flex-end;
+  }
 
-.cinder-table__sort-button:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-  /* Lift above sticky thead stacking context only while focused */
-  z-index: 2;
-}
+  .cinder-table__sort-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    /* Lift above sticky thead stacking context only while focused */
+    z-index: 2;
+  }
 
-.cinder-table__sort-indicator {
-  display: inline-flex;
-  color: var(--cinder-text-subtle);
-}
+  .cinder-table__sort-indicator {
+    display: inline-flex;
+    color: var(--cinder-text-subtle);
+  }
 
-.cinder-table__sort-indicator[data-cinder-direction='ascending'],
-.cinder-table__sort-indicator[data-cinder-direction='descending'] {
-  color: var(--cinder-text);
-}
+  .cinder-table__sort-indicator[data-cinder-direction='ascending'],
+  .cinder-table__sort-indicator[data-cinder-direction='descending'] {
+    color: var(--cinder-text);
+  }
 
-.cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,
-.cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up {
-  opacity: 0.3;
-}
+  .cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,
+  .cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up {
+    opacity: 0.3;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Body / rows / cells
  * ---------------------------------------- */
 
-.cinder-table__row {
-  transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
-
-@media (hover: hover) {
-  .cinder-table__body .cinder-table__row:hover {
-    background: var(--cinder-surface-hover);
+  .cinder-table__row {
+    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
-}
 
-.cinder-table__cell {
-  padding-block: var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3);
-  border-bottom: 1px solid var(--cinder-border-muted);
-}
+  @media (hover: hover) {
+    .cinder-table__body .cinder-table__row:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
 
-.cinder-table__cell[data-cinder-align='center'] {
-  text-align: center;
-}
+  .cinder-table__cell {
+    padding-block: var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3);
+    border-bottom: 1px solid var(--cinder-border-muted);
+  }
 
-.cinder-table__cell[data-cinder-align='right'] {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+  .cinder-table__cell[data-cinder-align='center'] {
+    text-align: center;
+  }
 
-.cinder-table__header-cell[data-cinder-align='center'] {
-  text-align: center;
-}
+  .cinder-table__cell[data-cinder-align='right'] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 
-.cinder-table__header-cell[data-cinder-align='right'] {
-  text-align: right;
+  .cinder-table__header-cell[data-cinder-align='center'] {
+    text-align: center;
+  }
+
+  .cinder-table__header-cell[data-cinder-align='right'] {
+    text-align: right;
+  }
 }

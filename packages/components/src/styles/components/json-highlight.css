@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * JSON syntax highlight tokens
  * Used by `highlightJson()` (utilities/json-highlight.ts) when rendering
  * tool-call arguments and results, or any other JSON value passed through
@@ -12,27 +13,28 @@
  * the lighter --cinder-surface in light mode.
  * ======================================== */
 
-.cinder-json-token-key {
-  color: var(--cinder-accent);
-}
+  .cinder-json-token-key {
+    color: var(--cinder-accent);
+  }
 
-.cinder-json-token-string {
-  color: var(--cinder-success);
-}
+  .cinder-json-token-string {
+    color: var(--cinder-success);
+  }
 
-/* Semantic warning foreground is calibrated to remain readable on soft surfaces. */
-.cinder-json-token-number {
-  color: var(--cinder-color-warning-fg);
-}
+  /* Semantic warning foreground is calibrated to remain readable on soft surfaces. */
+  .cinder-json-token-number {
+    color: var(--cinder-color-warning-fg);
+  }
 
-.cinder-json-token-boolean,
+  .cinder-json-token-boolean,
 /* `null` is a semantic value (not decoration); use the same color as boolean. */
 .cinder-json-token-null {
-  color: var(--cinder-info);
-}
+    color: var(--cinder-info);
+  }
 
-/* JSON punctuation is rendered text; --cinder-text-muted meets AA in both
+  /* JSON punctuation is rendered text; --cinder-text-muted meets AA in both
  * themes (light: oklch 32% on ≥94%, dark: oklch 82% on ≤20%). */
-.cinder-json-token-punctuation {
-  color: var(--cinder-text-muted);
+  .cinder-json-token-punctuation {
+    color: var(--cinder-text-muted);
+  }
 }

@@ -1,185 +1,187 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * MODAL
  * ======================================== */
 
-.cinder-modal {
-  /* Reset browser's default <dialog> styles */
-  margin: auto;
-  padding: 0;
-  border: none;
-  border-radius: var(--cinder-radius-xl);
-  background: transparent;
-  color: var(--cinder-text);
-  max-width: min(90vw, 32rem);
-  width: 100%;
+  .cinder-modal {
+    /* Reset browser's default <dialog> styles */
+    margin: auto;
+    padding: 0;
+    border: none;
+    border-radius: var(--cinder-radius-xl);
+    background: transparent;
+    color: var(--cinder-text);
+    max-width: min(90vw, 32rem);
+    width: 100%;
 
-  /* Prevent the panel from touching viewport edges on small screens */
-  max-height: calc(100dvh - var(--cinder-space-8));
-  overflow: hidden;
-}
+    /* Prevent the panel from touching viewport edges on small screens */
+    max-height: calc(100dvh - var(--cinder-space-8));
+    overflow: hidden;
+  }
 
-/* Backdrop — native <dialog>::backdrop is controlled by the UA */
-.cinder-modal::backdrop {
-  background: var(--cinder-overlay-backdrop);
-  backdrop-filter: blur(var(--cinder-overlay-blur));
-}
+  /* Backdrop — native <dialog>::backdrop is controlled by the UA */
+  .cinder-modal::backdrop {
+    background: var(--cinder-overlay-backdrop);
+    backdrop-filter: blur(var(--cinder-overlay-blur));
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Panel (the visible card inside the dialog)
  * ---------------------------------------- */
 
-.cinder-modal__panel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--cinder-surface-raised);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-xl);
-  box-shadow: var(--cinder-shadow-lg);
-  max-height: inherit;
-  overflow: hidden;
-}
+  .cinder-modal__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-xl);
+    box-shadow: var(--cinder-shadow-lg);
+    max-height: inherit;
+    overflow: hidden;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Header
  * ---------------------------------------- */
 
-.cinder-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cinder-space-4);
-  /* Reserve trailing inline space so the title doesn't run under the
+  .cinder-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+    /* Reserve trailing inline space so the title doesn't run under the
      absolute-positioned close button. */
-  padding-block: var(--cinder-space-5);
-  padding-inline-start: var(--cinder-space-6);
-  padding-inline-end: calc(var(--cinder-space-6) + 2rem);
-  border-block-end: 1px solid var(--cinder-border);
-  flex-shrink: 0;
-}
+    padding-block: var(--cinder-space-5);
+    padding-inline-start: var(--cinder-space-6);
+    padding-inline-end: calc(var(--cinder-space-6) + 2rem);
+    border-block-end: 1px solid var(--cinder-border);
+    flex-shrink: 0;
+  }
 
-.cinder-modal__title {
-  margin: 0;
-  font-size: var(--cinder-text-lg);
-  font-weight: var(--cinder-font-semibold);
-  line-height: var(--cinder-leading-snug);
-  color: var(--cinder-text);
-}
+  .cinder-modal__title {
+    margin: 0;
+    font-size: var(--cinder-text-lg);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-snug);
+    color: var(--cinder-text);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Close button
  * ---------------------------------------- */
 
-.cinder-modal__close {
-  /* Rendered last in DOM order so the close button isn't the first focusable
+  .cinder-modal__close {
+    /* Rendered last in DOM order so the close button isn't the first focusable
      element on dialog open — but visually positioned in the header corner. */
-  position: absolute;
-  inset-block-start: var(--cinder-space-3);
-  inset-inline-end: var(--cinder-space-3);
+    position: absolute;
+    inset-block-start: var(--cinder-space-3);
+    inset-inline-end: var(--cinder-space-3);
 
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  padding: var(--cinder-space-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    padding: var(--cinder-space-1);
 
-  border-radius: var(--cinder-radius-md);
-  border: none;
-  background: transparent;
-  color: var(--cinder-text-muted);
-  cursor: pointer;
+    border-radius: var(--cinder-radius-md);
+    border: none;
+    background: transparent;
+    color: var(--cinder-text-muted);
+    cursor: pointer;
 
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
-
-@media (hover: hover) {
-  .cinder-modal__close:hover {
-    background: color-mix(in oklch, currentColor, transparent 85%);
-    color: var(--cinder-text);
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
-}
 
-.cinder-modal__close:focus-visible {
-  /* Use `outline` rather than `box-shadow` so the focus ring is not clipped
+  @media (hover: hover) {
+    .cinder-modal__close:hover {
+      background: color-mix(in oklch, currentColor, transparent 85%);
+      color: var(--cinder-text);
+    }
+  }
+
+  .cinder-modal__close:focus-visible {
+    /* Use `outline` rather than `box-shadow` so the focus ring is not clipped
      by the panel's `overflow: hidden`. Outline renders outside the box model
      and is unaffected by ancestor clipping (WCAG 2.4.11 / 2.4.12). */
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: var(--cinder-ring-offset);
-}
-
-@media (forced-colors: active) {
-  .cinder-modal__close:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: var(--cinder-ring-offset);
   }
-}
 
-.cinder-modal__close-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
+  @media (forced-colors: active) {
+    .cinder-modal__close:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
 
-/* ----------------------------------------
+  .cinder-modal__close-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* ----------------------------------------
  * Body
  * ---------------------------------------- */
 
-.cinder-modal__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--cinder-space-6);
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  /* The body container is focused on open (tabindex=-1) when the dialog has
+  .cinder-modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--cinder-space-6);
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    /* The body container is focused on open (tabindex=-1) when the dialog has
      no autofocus target. The ring is hidden because focus arrived
      programmatically — pressing Tab forward will move into real content. */
-  outline: none;
-}
+    outline: none;
+  }
 
-.cinder-modal__body[data-cinder-overflows] {
-  mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-}
+  .cinder-modal__body[data-cinder-overflows] {
+    mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+    mask-size: 100% 100%;
+    mask-repeat: no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
+    -webkit-mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Footer
  * ---------------------------------------- */
 
-.cinder-modal__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--cinder-space-3);
-  padding: var(--cinder-space-4) var(--cinder-space-6);
-  border-block-start: 1px solid var(--cinder-border);
-  flex-shrink: 0;
-}
+  .cinder-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-4) var(--cinder-space-6);
+    border-block-start: 1px solid var(--cinder-border);
+    flex-shrink: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Reduced motion
  * ---------------------------------------- */
 
-@media (prefers-reduced-motion: no-preference) {
-  .cinder-modal {
-    animation: cinder-modal-enter var(--cinder-duration-normal) var(--cinder-ease-spring) forwards;
-  }
-
-  @keyframes cinder-modal-enter {
-    from {
-      opacity: 0;
-      translate: 0 -0.5rem;
+  @media (prefers-reduced-motion: no-preference) {
+    .cinder-modal {
+      animation: cinder-modal-enter var(--cinder-duration-normal) var(--cinder-ease-spring) forwards;
     }
-    to {
-      opacity: 1;
-      translate: 0 0;
+
+    @keyframes cinder-modal-enter {
+      from {
+        opacity: 0;
+        translate: 0 -0.5rem;
+      }
+      to {
+        opacity: 1;
+        translate: 0 0;
+      }
     }
   }
 }

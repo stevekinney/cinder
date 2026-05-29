@@ -1,70 +1,72 @@
-.cinder-section-heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-}
+@layer cinder.components {
+  .cinder-section-heading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
 
-.cinder-section-heading__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--cinder-space-4);
-  flex-wrap: wrap;
-}
+  .cinder-section-heading__row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+    flex-wrap: wrap;
+  }
 
-.cinder-section-heading__primary {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1);
-  min-width: 0;
-}
+  .cinder-section-heading__primary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    min-width: 0;
+  }
 
-.cinder-section-heading__hgroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1);
-  margin: 0;
-}
+  .cinder-section-heading__hgroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    margin: 0;
+  }
 
-/* Label contrast: --cinder-text-muted at --cinder-text-xs (12px uppercase) against
+  /* Label contrast: --cinder-text-muted at --cinder-text-xs (12px uppercase) against
    cinder surface tokens passes WCAG AA (4.5:1). Placing this on non-token
    backgrounds (custom colored surfaces) is the consumer's responsibility. */
-.cinder-section-heading__label {
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cinder-text-muted);
-}
+  .cinder-section-heading__label {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-section-heading__title {
-  font-size: var(--cinder-text-lg);
-  font-weight: var(--cinder-font-semibold);
-  color: var(--cinder-text);
-  margin: 0;
-  line-height: var(--cinder-leading-tight);
-}
+  .cinder-section-heading__title {
+    font-size: var(--cinder-text-lg);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    margin: 0;
+    line-height: var(--cinder-leading-tight);
+  }
 
-.cinder-section-heading__description {
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-muted);
-  margin: 0;
-  max-width: 60ch;
-}
+  .cinder-section-heading__description {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+    margin: 0;
+    max-width: 60ch;
+  }
 
-.cinder-section-heading__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  flex-shrink: 0;
-}
+  .cinder-section-heading__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-shrink: 0;
+  }
 
-.cinder-section-heading__tabs {
-  display: block;
-  min-width: 0;
-}
+  .cinder-section-heading__tabs {
+    display: block;
+    min-width: 0;
+  }
 
-.cinder-section-heading[data-cinder-variant='actions-and-tabs'] > .cinder-section-heading__tabs {
-  margin-top: calc(var(--cinder-space-2) * -1);
+  .cinder-section-heading[data-cinder-variant='actions-and-tabs'] > .cinder-section-heading__tabs {
+    margin-top: calc(var(--cinder-space-2) * -1);
+  }
 }

@@ -1,88 +1,90 @@
-.cinder-autocomplete {
-  display: grid;
-  gap: var(--cinder-space-2);
-}
+@layer cinder.components {
+  .cinder-autocomplete {
+    display: grid;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-autocomplete__label {
-  color: var(--cinder-text);
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-weight-medium);
-}
+  .cinder-autocomplete__label {
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-weight-medium);
+  }
 
-.cinder-autocomplete__input {
-  width: 100%;
-  min-height: 2.5rem;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface);
-  color: var(--cinder-text);
-  font: inherit;
-}
+  .cinder-autocomplete__input {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font: inherit;
+  }
 
-.cinder-autocomplete__input:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
+  .cinder-autocomplete__input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
 
-.cinder-autocomplete__description,
-.cinder-autocomplete__error {
-  margin: 0;
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-}
+  .cinder-autocomplete__description,
+  .cinder-autocomplete__error {
+    margin: 0;
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+  }
 
-.cinder-autocomplete__description {
-  color: var(--cinder-text-muted);
-}
+  .cinder-autocomplete__description {
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-autocomplete__error {
-  color: var(--cinder-danger);
-}
+  .cinder-autocomplete__error {
+    color: var(--cinder-danger);
+  }
 
-.cinder-autocomplete__panel {
-  min-width: min(24rem, calc(100vw - 2rem));
-  padding: var(--cinder-space-1);
-}
+  .cinder-autocomplete__panel {
+    min-width: min(24rem, calc(100vw - 2rem));
+    padding: var(--cinder-space-1);
+  }
 
-.cinder-autocomplete__option {
-  display: grid;
-  gap: 0.125rem;
-  padding: var(--cinder-space-2) var(--cinder-space-3);
-  border-radius: var(--cinder-radius-sm);
-  color: var(--cinder-text);
-}
+  .cinder-autocomplete__option {
+    display: grid;
+    gap: 0.125rem;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-radius: var(--cinder-radius-sm);
+    color: var(--cinder-text);
+  }
 
-.cinder-autocomplete__option[data-cinder-disabled] {
-  color: var(--cinder-text-muted);
-}
+  .cinder-autocomplete__option[data-cinder-disabled] {
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-autocomplete__option[data-cinder-active] {
-  background: var(--cinder-surface-raised);
-}
+  .cinder-autocomplete__option[data-cinder-active] {
+    background: var(--cinder-surface-raised);
+  }
 
-.cinder-autocomplete__option-text {
-  display: grid;
-  gap: 0.125rem;
-}
+  .cinder-autocomplete__option-text {
+    display: grid;
+    gap: 0.125rem;
+  }
 
-.cinder-autocomplete__option-label {
-  font-weight: var(--cinder-font-weight-medium);
-}
+  .cinder-autocomplete__option-label {
+    font-weight: var(--cinder-font-weight-medium);
+  }
 
-.cinder-autocomplete__option-description {
-  color: var(--cinder-text-muted);
-  font-size: var(--cinder-text-sm);
-}
+  .cinder-autocomplete__option-description {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
 
-.cinder-autocomplete__match {
-  padding: 0;
-  background: oklch(from var(--cinder-warning) 96.5% 0.015 h);
-  color: inherit;
-}
+  .cinder-autocomplete__match {
+    padding: 0;
+    background: oklch(from var(--cinder-warning) 96.5% 0.015 h);
+    color: inherit;
+  }
 
-.cinder-autocomplete__status {
-  padding: var(--cinder-space-2) var(--cinder-space-3);
-  color: var(--cinder-text-muted);
-  font-size: var(--cinder-text-sm);
+  .cinder-autocomplete__status {
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
 }

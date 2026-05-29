@@ -1,8 +1,10 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SPACER
  * ======================================== */
 
-.cinder-spacer {
-  flex: 1 1 auto;
-  align-self: stretch;
+  .cinder-spacer {
+    flex: 1 1 auto;
+    align-self: stretch;
+  }
 }

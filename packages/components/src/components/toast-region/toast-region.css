@@ -1,260 +1,262 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TOAST REGION
  * Two stacked aria-live regions (polite + assertive) anchored to the
  * bottom-right of the viewport. Toast.svelte owns the visual treatment of
  * individual toasts via the .cinder-toast class.
  * ======================================== */
 
-.cinder-toast-region {
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-  z-index: var(--cinder-z-toast);
-  pointer-events: none;
-  /* Stack the two aria-live channels in the same visual column. Each channel
+  .cinder-toast-region {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    z-index: var(--cinder-z-toast);
+    pointer-events: none;
+    /* Stack the two aria-live channels in the same visual column. Each channel
    * is independent — a polite info and an assertive warning may sit
    * side-by-side visually but route to different SR-announcement queues. */
-}
+  }
 
-.cinder-toast-region[data-cinder-position^='top'] {
-  top: var(--cinder-space-4);
-}
+  .cinder-toast-region[data-cinder-position^='top'] {
+    top: var(--cinder-space-4);
+  }
 
-.cinder-toast-region[data-cinder-position^='bottom'] {
-  bottom: var(--cinder-space-4);
-}
+  .cinder-toast-region[data-cinder-position^='bottom'] {
+    bottom: var(--cinder-space-4);
+  }
 
-.cinder-toast-region[data-cinder-position$='left'] {
-  left: var(--cinder-space-4);
-  align-items: flex-start;
-}
+  .cinder-toast-region[data-cinder-position$='left'] {
+    left: var(--cinder-space-4);
+    align-items: flex-start;
+  }
 
-.cinder-toast-region[data-cinder-position$='center'] {
-  left: 50%;
-  align-items: center;
-  transform: translateX(-50%);
-}
+  .cinder-toast-region[data-cinder-position$='center'] {
+    left: 50%;
+    align-items: center;
+    transform: translateX(-50%);
+  }
 
-.cinder-toast-region[data-cinder-position$='right'] {
-  right: var(--cinder-space-4);
-  align-items: flex-end;
-}
+  .cinder-toast-region[data-cinder-position$='right'] {
+    right: var(--cinder-space-4);
+    align-items: flex-end;
+  }
 
-.cinder-toast-region__channel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  .cinder-toast-region__channel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-toast-region[data-cinder-position^='top'] .cinder-toast-region__channel {
-  flex-direction: column-reverse;
-}
+  .cinder-toast-region[data-cinder-position^='top'] .cinder-toast-region__channel {
+    flex-direction: column-reverse;
+  }
 
-.cinder-toast-shell {
-  display: block;
-  max-height: var(--cinder-toast-height, none);
-  opacity: 1;
-  transition:
-    max-height var(--cinder-duration-fast) var(--cinder-ease-standard),
-    opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
-    margin-block var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-toast-shell {
+    display: block;
+    max-height: var(--cinder-toast-height, none);
+    opacity: 1;
+    transition:
+      max-height var(--cinder-duration-fast) var(--cinder-ease-standard),
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      margin-block var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-.cinder-toast-shell[data-cinder-presence='exiting'] {
-  max-height: 0;
-  opacity: 0;
-  margin-block: 0;
-  overflow: hidden;
-}
+  .cinder-toast-shell[data-cinder-presence='exiting'] {
+    max-height: 0;
+    opacity: 0;
+    margin-block: 0;
+    overflow: hidden;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Individual toast
  * ---------------------------------------- */
 
-.cinder-toast {
-  pointer-events: auto;
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--cinder-space-3);
-  min-width: 18rem;
-  max-width: 28rem;
-  padding: var(--cinder-space-3) var(--cinder-space-4);
-  background: var(--cinder-surface-raised);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  box-shadow:
-    inset 0 1px 0 light-dark(transparent, oklch(100% 0 0 / 0.06)),
-    0 1px 2px oklch(0% 0 0 / 0.04),
-    0 4px 12px oklch(0% 0 0 / 0.08);
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text);
-  touch-action: pan-y;
-  transform: translateX(var(--cinder-toast-swipe-x, 0))
-    translateY(calc(var(--cinder-toast-stack-index, 0) * -2px));
-  transition:
-    transform var(--cinder-duration-fast) var(--cinder-ease-standard),
-    opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
-  /* Smooth in/out at default speed; reduced-motion zeroes the duration via
+  .cinder-toast {
+    pointer-events: auto;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cinder-space-3);
+    min-width: 18rem;
+    max-width: 28rem;
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    box-shadow:
+      inset 0 1px 0 light-dark(transparent, oklch(100% 0 0 / 0.06)),
+      0 1px 2px oklch(0% 0 0 / 0.04),
+      0 4px 12px oklch(0% 0 0 / 0.08);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+    touch-action: pan-y;
+    transform: translateX(var(--cinder-toast-swipe-x, 0))
+      translateY(calc(var(--cinder-toast-stack-index, 0) * -2px));
+    transition:
+      transform var(--cinder-duration-fast) var(--cinder-ease-standard),
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+    /* Smooth in/out at default speed; reduced-motion zeroes the duration via
    * the global motion tokens. */
-  animation: cinder-toast-in var(--cinder-duration-fast) var(--cinder-ease-decelerate);
-}
-
-.cinder-toast[data-cinder-swiping='true'] {
-  user-select: none;
-}
-
-@keyframes cinder-toast-in {
-  from {
-    opacity: 0;
+    animation: cinder-toast-in var(--cinder-duration-fast) var(--cinder-ease-decelerate);
   }
-  to {
-    opacity: 1;
-  }
-}
 
-@keyframes cinder-toast-spinner-spin {
-  to {
-    transform: rotate(360deg);
+  .cinder-toast[data-cinder-swiping='true'] {
+    user-select: none;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .cinder-toast-shell,
-  .cinder-toast,
-  .cinder-toast__spinner {
-    animation: none;
-    transition-duration: 0ms;
+  @keyframes cinder-toast-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
-}
 
-/* Variant accent stripe — drawn as a ::before pseudo so it sits inside the
+  @keyframes cinder-toast-spinner-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-toast-shell,
+    .cinder-toast,
+    .cinder-toast__spinner {
+      animation: none;
+      transition-duration: 0ms;
+    }
+  }
+
+  /* Variant accent stripe — drawn as a ::before pseudo so it sits inside the
  * toast's border-radius without fighting border-left's miter corners. The
  * stripe rounds its own start-side corners (matching the toast's outer
  * radius minus the 1px border) so the parent toast does not need
  * `overflow: hidden`, which would clip the dismiss button's 44×44 ::after
  * hit-area pseudo-element. */
-.cinder-toast[data-cinder-variant]::before {
-  content: '';
-  position: absolute;
-  /* Sit just inside the toast's 1px border so the stripe doesn't cover it. */
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 3px;
-  background: var(--_cinder-toast-accent, transparent);
-  border-start-start-radius: calc(var(--cinder-radius-md) - 1px);
-  border-end-start-radius: calc(var(--cinder-radius-md) - 1px);
-}
+  .cinder-toast[data-cinder-variant]::before {
+    content: '';
+    position: absolute;
+    /* Sit just inside the toast's 1px border so the stripe doesn't cover it. */
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 3px;
+    background: var(--_cinder-toast-accent, transparent);
+    border-start-start-radius: calc(var(--cinder-radius-md) - 1px);
+    border-end-start-radius: calc(var(--cinder-radius-md) - 1px);
+  }
 
-.cinder-toast[data-cinder-variant='info'] {
-  --_cinder-toast-accent: var(--cinder-info);
-}
+  .cinder-toast[data-cinder-variant='info'] {
+    --_cinder-toast-accent: var(--cinder-info);
+  }
 
-.cinder-toast[data-cinder-variant='success'] {
-  --_cinder-toast-accent: var(--cinder-success);
-}
+  .cinder-toast[data-cinder-variant='success'] {
+    --_cinder-toast-accent: var(--cinder-success);
+  }
 
-.cinder-toast[data-cinder-variant='warning'] {
-  --_cinder-toast-accent: var(--cinder-warning);
-}
+  .cinder-toast[data-cinder-variant='warning'] {
+    --_cinder-toast-accent: var(--cinder-warning);
+  }
 
-.cinder-toast[data-cinder-variant='danger'] {
-  --_cinder-toast-accent: var(--cinder-danger);
-}
+  .cinder-toast[data-cinder-variant='danger'] {
+    --_cinder-toast-accent: var(--cinder-danger);
+  }
 
-.cinder-toast__icon {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  line-height: 0;
-  color: var(--_cinder-toast-accent, var(--cinder-text-muted));
-}
+  .cinder-toast__icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    line-height: 0;
+    color: var(--_cinder-toast-accent, var(--cinder-text-muted));
+  }
 
-.cinder-toast__spinner {
-  display: inline-block;
-  flex-shrink: 0;
-  width: var(--cinder-spinner-size-sm, 1rem);
-  height: var(--cinder-spinner-size-sm, 1rem);
-  border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  color: var(--_cinder-toast-accent, var(--cinder-text-muted));
-  animation: cinder-toast-spinner-spin var(--cinder-duration-spin) linear infinite;
-}
+  .cinder-toast__spinner {
+    display: inline-block;
+    flex-shrink: 0;
+    width: var(--cinder-spinner-size-sm, 1rem);
+    height: var(--cinder-spinner-size-sm, 1rem);
+    border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    color: var(--_cinder-toast-accent, var(--cinder-text-muted));
+    animation: cinder-toast-spinner-spin var(--cinder-duration-spin) linear infinite;
+  }
 
-.cinder-toast__message {
-  flex: 1 1 auto;
-  line-height: var(--cinder-leading-normal);
-}
+  .cinder-toast__message {
+    flex: 1 1 auto;
+    line-height: var(--cinder-leading-normal);
+  }
 
-.cinder-toast__action {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-accent);
-  cursor: pointer;
-  border-radius: var(--cinder-radius-sm);
-}
+  .cinder-toast__action {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-accent);
+    cursor: pointer;
+    border-radius: var(--cinder-radius-sm);
+  }
 
-.cinder-toast__action:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: 2px;
-}
+  .cinder-toast__action:focus-visible {
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: 2px;
+  }
 
-.cinder-toast__dismiss {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: var(--cinder-space-0-5);
-  margin: 0;
-  color: var(--cinder-text-muted);
-  cursor: pointer;
-  border-radius: var(--cinder-radius-sm);
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
-  position: relative;
-}
+  .cinder-toast__dismiss {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: var(--cinder-space-0-5);
+    margin: 0;
+    color: var(--cinder-text-muted);
+    cursor: pointer;
+    border-radius: var(--cinder-radius-sm);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Anchor the WCAG 2.5.5 hit-area pseudo-element below. */
+    position: relative;
+  }
 
-.cinder-toast__dismiss svg {
-  width: 1rem;
-  height: 1rem;
-}
+  .cinder-toast__dismiss svg {
+    width: 1rem;
+    height: 1rem;
+  }
 
-/*
+  /*
  * Expand the interactive hit area to 44×44 px (WCAG 2.5.5) without affecting
  * layout. Mirrors the alert dismiss treatment.
  */
-.cinder-toast__dismiss::after {
-  content: '';
-  position: absolute;
-  inset: 50% auto auto 50%;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
-}
-
-@media (hover: hover) {
-  .cinder-toast__dismiss:hover {
-    color: var(--cinder-text);
-    background: var(--cinder-surface-hover);
+  .cinder-toast__dismiss::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
-}
 
-.cinder-toast__dismiss:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: 2px;
-}
+  @media (hover: hover) {
+    .cinder-toast__dismiss:hover {
+      color: var(--cinder-text);
+      background: var(--cinder-surface-hover);
+    }
+  }
 
-@media (forced-colors: active) {
-  .cinder-toast__action:focus-visible,
   .cinder-toast__dismiss:focus-visible {
-    outline-color: ButtonText;
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-toast__action:focus-visible,
+    .cinder-toast__dismiss:focus-visible {
+      outline-color: ButtonText;
+    }
   }
 }

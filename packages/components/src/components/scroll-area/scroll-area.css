@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SCROLL AREA
  *
  * Styled scrollable container. Uses the native scrollbar (never substitutes
@@ -6,85 +7,86 @@
  * and assistive-technology interactions stay intact.
  * ======================================== */
 
-.cinder-scroll-area {
-  display: block;
-  min-block-size: 0;
-  min-inline-size: 0;
-  /* Contain scroll momentum so reaching the end of this region does not
+  .cinder-scroll-area {
+    display: block;
+    min-block-size: 0;
+    min-inline-size: 0;
+    /* Contain scroll momentum so reaching the end of this region does not
    * bleed into an ancestor scroller (rubber-band on iOS, page-scroll on
    * desktop). Matches the modal / command-palette body convention. */
-  overscroll-behavior: contain;
+    overscroll-behavior: contain;
 
-  /* Firefox scrollbar theming. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--cinder-scrollbar-thumb) var(--cinder-scrollbar-track);
-}
-
-.cinder-scroll-area[data-cinder-direction='vertical'] {
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.cinder-scroll-area[data-cinder-direction='horizontal'] {
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.cinder-scroll-area[data-cinder-direction='both'] {
-  overflow: auto;
-}
-
-/* Chromium / Safari scrollbar theming. */
-.cinder-scroll-area::-webkit-scrollbar {
-  inline-size: var(--cinder-scrollbar-size);
-  block-size: var(--cinder-scrollbar-size);
-}
-
-.cinder-scroll-area::-webkit-scrollbar-track {
-  background: var(--cinder-scrollbar-track);
-}
-
-.cinder-scroll-area::-webkit-scrollbar-thumb {
-  background: var(--cinder-scrollbar-thumb);
-  border-radius: var(--cinder-radius-sm);
-}
-
-.cinder-scroll-area::-webkit-scrollbar-thumb:hover {
-  background: var(--cinder-scrollbar-thumb-hover);
-}
-
-.cinder-scroll-area::-webkit-scrollbar-corner {
-  background: var(--cinder-scrollbar-track);
-}
-
-/* Visible focus ring for keyboard scroll users. Matches the button focus
- * pattern: transparent outline as a forced-colors fallback, box-shadow rings
- * for offset + ring colors. */
-.cinder-scroll-area:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-/* Windows High Contrast Mode (forced-colors) ignores box-shadow and
- * overrides custom scrollbar paint. Map the focus ring and scrollbar parts
- * to system colors so keyboard users keep their affordances. */
-@media (forced-colors: active) {
-  .cinder-scroll-area:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
-    box-shadow: none;
+    /* Firefox scrollbar theming. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--cinder-scrollbar-thumb) var(--cinder-scrollbar-track);
   }
 
-  .cinder-scroll-area::-webkit-scrollbar-track,
-  .cinder-scroll-area::-webkit-scrollbar-corner {
-    background: Canvas;
+  .cinder-scroll-area[data-cinder-direction='vertical'] {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .cinder-scroll-area[data-cinder-direction='horizontal'] {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .cinder-scroll-area[data-cinder-direction='both'] {
+    overflow: auto;
+  }
+
+  /* Chromium / Safari scrollbar theming. */
+  .cinder-scroll-area::-webkit-scrollbar {
+    inline-size: var(--cinder-scrollbar-size);
+    block-size: var(--cinder-scrollbar-size);
+  }
+
+  .cinder-scroll-area::-webkit-scrollbar-track {
+    background: var(--cinder-scrollbar-track);
   }
 
   .cinder-scroll-area::-webkit-scrollbar-thumb {
-    background: CanvasText;
+    background: var(--cinder-scrollbar-thumb);
+    border-radius: var(--cinder-radius-sm);
   }
 
   .cinder-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: ButtonText;
+    background: var(--cinder-scrollbar-thumb-hover);
+  }
+
+  .cinder-scroll-area::-webkit-scrollbar-corner {
+    background: var(--cinder-scrollbar-track);
+  }
+
+  /* Visible focus ring for keyboard scroll users. Matches the button focus
+ * pattern: transparent outline as a forced-colors fallback, box-shadow rings
+ * for offset + ring colors. */
+  .cinder-scroll-area:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  /* Windows High Contrast Mode (forced-colors) ignores box-shadow and
+ * overrides custom scrollbar paint. Map the focus ring and scrollbar parts
+ * to system colors so keyboard users keep their affordances. */
+  @media (forced-colors: active) {
+    .cinder-scroll-area:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+
+    .cinder-scroll-area::-webkit-scrollbar-track,
+    .cinder-scroll-area::-webkit-scrollbar-corner {
+      background: Canvas;
+    }
+
+    .cinder-scroll-area::-webkit-scrollbar-thumb {
+      background: CanvasText;
+    }
+
+    .cinder-scroll-area::-webkit-scrollbar-thumb:hover {
+      background: ButtonText;
+    }
   }
 }

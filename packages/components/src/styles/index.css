@@ -2,5 +2,5 @@
 
 @import './tokens.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
-@import './components.css' layer(cinder.components);
+@import './components.css';
 @import './utilities.css' layer(cinder.utilities);

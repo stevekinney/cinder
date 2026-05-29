@@ -1,9 +1,11 @@
-.cinder-alert-dialog .cinder-modal__panel {
-  max-width: min(28rem, calc(100vw - 2rem));
-}
+@layer cinder.components {
+  .cinder-alert-dialog .cinder-modal__panel {
+    max-width: min(28rem, calc(100vw - 2rem));
+  }
 
-.cinder-alert-dialog__description {
-  margin: 0;
-  color: var(--cinder-text-muted);
-  line-height: var(--cinder-leading-relaxed);
+  .cinder-alert-dialog__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    line-height: var(--cinder-leading-relaxed);
+  }
 }
