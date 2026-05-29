@@ -498,12 +498,16 @@ but do not cause failure.
 
 ### Frozen prop-name denylist
 
-These exact strings are forbidden as prop names. They are the all-lowercased,
-wrong-cased forms of legitimate camelCase props:
+These exact strings are forbidden as prop names. Most are the all-lowercased,
+wrong-cased forms of legitimate camelCase props. `className` is special: it is
+valid camelCase but still forbidden, because cinder components expose
+`class?: string` as the public prop and destructure it internally as
+`class: className` — the public API is always `class`, never `className`.
 
 | Forbidden name | Correct form   |
 | -------------- | -------------- |
-| `classname`    | `className`    |
+| `classname`    | `class`        |
+| `className`    | `class`        |
 | `icononly`     | `iconOnly`     |
 | `leadingicon`  | `leadingIcon`  |
 | `trailingicon` | `trailingIcon` |
