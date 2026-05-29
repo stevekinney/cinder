@@ -78,8 +78,24 @@ export async function renderToServerHtml<Props extends Record<string, unknown>>(
     // narrow to express the dual-target reality.
     const ssrModule = (await import(file)) as { default: unknown };
     const { render } = (await import('svelte/server')) as typeof import('svelte/server');
-    const { body } = render(ssrModule.default as Component<Props>, { props });
-    return body;
+
+    // Clear happy-dom's `document`/`window` globals around the server render.
+    // The surrounding tests install them via `setupHappyDom()` at module scope,
+    // so without this a component that branches on `typeof document` would take
+    // the browser path during this supposedly server-only render — making the
+    // SSR contract assert markup that real SSR would never emit. Restore them in
+    // `finally` so the rest of the test sees its DOM again. Mirrors `hydrate.ts`.
+    const originalDocument = globalThis.document;
+    const originalWindow = globalThis.window;
+    globalThis.document = undefined as unknown as Document;
+    globalThis.window = undefined as unknown as Window & typeof globalThis;
+    try {
+      const { body } = render(ssrModule.default as Component<Props>, { props });
+      return body;
+    } finally {
+      globalThis.document = originalDocument;
+      globalThis.window = originalWindow;
+    }
   } finally {
     // Best-effort cleanup of the temp module. A stray file never breaks a test.
     void rm(file, { force: true }).catch(() => {});
