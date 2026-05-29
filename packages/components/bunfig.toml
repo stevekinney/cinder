@@ -6,3 +6,38 @@ bun = true
 
 [test]
 preload = ["./scripts/preload.ts"]
+
+# The `test` / `test:coverage` scripts in package.json run with `--parallel=1`
+# (serial). This is deliberate; do not strip the flag without re-measuring.
+#
+# The ONE constraint that forces it (reproducibly verified, May 2026):
+#
+#   Import-race deadlock. Bun's `--parallel` runner uses separate worker
+#   processes; when many test files race to import the Svelte test stack at
+#   module-init, the runner deadlocks — workers hang past completion while
+#   unrelated tests (popover, pin-input, …) report `timed out after 5000ms`
+#   even though wall-clock runs for minutes. `scripts/preload.ts` removed
+#   half the race by pre-installing happy-dom so files can use STATIC
+#   imports, but enabling `--parallel` still hangs the full 222-file suite.
+#
+# NOT a blocker — cross-file `globalThis.ResizeObserver` mutation. Several
+# tests reassign `globalThis.ResizeObserver` at module top-level with no
+# save/restore: the chart tests (bar-/area-/line-chart.test.ts, each at
+# line 14) and resizable-panels.test.ts (Object.defineProperty at lines
+# 42-45; its afterEach only resets the stub's instances, never restoring the
+# original). Under SERIAL execution all 200+ files share one global object,
+# so these reassignments persist and bleed across files — a real pre-existing
+# test-hygiene wart, but ordering is deterministic so nothing flakes today.
+# This is NOT a reason `--parallel` must stay off: Bun's `--parallel` implies
+# `--isolate` (verified on bun 1.3.13 via `bun test --help`), which runs each
+# file in a fresh global object, so leaked handles from one file cannot affect
+# another. Enabling `--parallel` would ELIMINATE this bleed, not cause it.
+# Cleaning up the chart/resizable-panels ResizeObserver hygiene is worthwhile
+# on its own merits but removes no parallelism blocker. (Contrast: the
+# overflow-fade helper saves/restores at lines 40/59 and attachments.test.ts
+# at lines 9/123 — those two are already hygienic.)
+#
+# Measured cost: serial wall-clock is ~117s for 222 files on a 10-core machine.
+# That is the accepted price until the import-race deadlock is fixed upstream
+# in Bun. Tracking: revisit if Bun's parallel runner stops deadlocking on
+# concurrent module-init imports.
