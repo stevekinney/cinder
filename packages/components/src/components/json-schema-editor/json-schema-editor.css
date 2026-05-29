@@ -1,4 +1,5 @@
-/**
+@layer cinder.components {
+  /**
  * Layout for the JsonSchemaEditor component.
  *
  * Visual hierarchy by indentation and dividers, not nested borders. Depth 0
@@ -6,367 +7,368 @@
  * surrounding details panel for visual depth.
  */
 
-.cinder-jse {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-4);
-}
-
-/* ===== Toolbar ===== */
-.cinder-jse-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cinder-space-3);
-  flex-wrap: wrap;
-  padding: var(--cinder-space-2) var(--cinder-space-3);
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface);
-}
-
-.cinder-jse-toolbar__left,
-.cinder-jse-toolbar__right {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  flex-wrap: wrap;
-}
-
-/* ===== Property editor ===== */
-.cinder-jse-property-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Depth 0: the only level that gets a bordered card. */
-.cinder-jse-property-editor[data-cinder-jse-depth='0'] {
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface);
-}
-
-/* Sections are divided by a top border. The first section drops it so the
-   card's own border is the only edge. */
-.cinder-jse-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-  padding: var(--cinder-space-4);
-  border-top: 1px solid var(--cinder-border-muted);
-}
-
-.cinder-jse-property-editor > .cinder-jse-section:first-of-type {
-  border-top: 0;
-}
-
-.cinder-jse-section__title {
-  margin: 0;
-  font-size: var(--cinder-text-2xs);
-  font-weight: var(--cinder-font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--cinder-text-subtle);
-}
-
-/* Lead section (Common: title + description) — slightly more breathing room. */
-.cinder-jse-section--lead {
-  gap: var(--cinder-space-2);
-}
-
-/* Collapsible <details> sections — chevron + section title combine into the
-   summary; body padding kicks in on expand. */
-.cinder-jse-section--collapsible {
-  padding: 0;
-}
-
-.cinder-jse-section--collapsible > summary {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  list-style: none;
-  cursor: pointer;
-  padding: var(--cinder-space-3) var(--cinder-space-4);
-  user-select: none;
-}
-
-.cinder-jse-section--collapsible > summary::-webkit-details-marker {
-  display: none;
-}
-
-.cinder-jse-section--collapsible > summary::before {
-  content: '▸';
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-subtle);
-  transition: transform var(--cinder-duration-fast) ease;
-}
-
-.cinder-jse-section--collapsible[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.cinder-jse-section__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-  padding: 0 var(--cinder-space-4) var(--cinder-space-4);
-}
-
-/* Type checkbox row — compact, wraps on narrow widths. */
-.cinder-jse-type-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cinder-space-2) var(--cinder-space-4);
-  align-items: center;
-}
-
-.cinder-jse-type-row .cinder-checkbox-field {
-  flex: 0 0 auto;
-}
-
-/* ===== Boolean schema short-circuit ===== */
-.cinder-jse-boolean-schema {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cinder-space-3);
-  padding: var(--cinder-space-3) var(--cinder-space-4);
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-muted);
-}
-
-/* ===== Collapsed deep-node placeholder ===== */
-.cinder-jse-collapsed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--cinder-space-2) var(--cinder-space-3);
-  background: transparent;
-  border: 1px dashed var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-sm);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text);
-}
-
-@media (hover: hover) {
-  .cinder-jse-collapsed:hover {
-    background: var(--cinder-surface-raised);
+  .cinder-jse {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
   }
-}
 
-.cinder-jse-collapsed__hint {
-  color: var(--cinder-text-subtle);
-  font-size: var(--cinder-text-xs);
-}
+  /* ===== Toolbar ===== */
+  .cinder-jse-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+    flex-wrap: wrap;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+  }
 
-.cinder-jse-section-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--cinder-space-2) var(--cinder-space-4) 0;
-}
+  .cinder-jse-toolbar__left,
+  .cinder-jse-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
 
-/* ===== Property list ===== */
-.cinder-jse-property-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  /* ===== Property editor ===== */
+  .cinder-jse-property-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
 
-.cinder-jse-property-list__empty {
-  margin: 0;
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-subtle);
-}
+  /* Depth 0: the only level that gets a bordered card. */
+  .cinder-jse-property-editor[data-cinder-jse-depth='0'] {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+  }
 
-/* Each property is a custom disclosure (not <details>/<summary> — putting the
+  /* Sections are divided by a top border. The first section drops it so the
+   card's own border is the only edge. */
+  .cinder-jse-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-4);
+    border-top: 1px solid var(--cinder-border-muted);
+  }
+
+  .cinder-jse-property-editor > .cinder-jse-section:first-of-type {
+    border-top: 0;
+  }
+
+  .cinder-jse-section__title {
+    margin: 0;
+    font-size: var(--cinder-text-2xs);
+    font-weight: var(--cinder-font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cinder-text-subtle);
+  }
+
+  /* Lead section (Common: title + description) — slightly more breathing room. */
+  .cinder-jse-section--lead {
+    gap: var(--cinder-space-2);
+  }
+
+  /* Collapsible <details> sections — chevron + section title combine into the
+   summary; body padding kicks in on expand. */
+  .cinder-jse-section--collapsible {
+    padding: 0;
+  }
+
+  .cinder-jse-section--collapsible > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    list-style: none;
+    cursor: pointer;
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    user-select: none;
+  }
+
+  .cinder-jse-section--collapsible > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cinder-jse-section--collapsible > summary::before {
+    content: '▸';
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    transition: transform var(--cinder-duration-fast) ease;
+  }
+
+  .cinder-jse-section--collapsible[open] > summary::before {
+    transform: rotate(90deg);
+  }
+
+  .cinder-jse-section__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding: 0 var(--cinder-space-4) var(--cinder-space-4);
+  }
+
+  /* Type checkbox row — compact, wraps on narrow widths. */
+  .cinder-jse-type-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2) var(--cinder-space-4);
+    align-items: center;
+  }
+
+  .cinder-jse-type-row .cinder-checkbox-field {
+    flex: 0 0 auto;
+  }
+
+  /* ===== Boolean schema short-circuit ===== */
+  .cinder-jse-boolean-schema {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+  }
+
+  /* ===== Collapsed deep-node placeholder ===== */
+  .cinder-jse-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    background: transparent;
+    border: 1px dashed var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+  }
+
+  @media (hover: hover) {
+    .cinder-jse-collapsed:hover {
+      background: var(--cinder-surface-raised);
+    }
+  }
+
+  .cinder-jse-collapsed__hint {
+    color: var(--cinder-text-subtle);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-jse-section-header {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--cinder-space-2) var(--cinder-space-4) 0;
+  }
+
+  /* ===== Property list ===== */
+  .cinder-jse-property-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-jse-property-list__empty {
+    margin: 0;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+  }
+
+  /* Each property is a custom disclosure (not <details>/<summary> — putting the
    action buttons inside <summary> creates an ARIA "interactive within
    interactive" violation). One top divider per row; no per-row card chrome.
    The Required pill's primary/ghost variant conveys required state, so we
    don't render a separate text marker. */
-.cinder-jse-property-row {
-  border-top: 1px solid var(--cinder-border-muted);
-  background: transparent;
-}
+  .cinder-jse-property-row {
+    border-top: 1px solid var(--cinder-border-muted);
+    background: transparent;
+  }
 
-.cinder-jse-property-row:first-child {
-  border-top: 0;
-}
+  .cinder-jse-property-row:first-child {
+    border-top: 0;
+  }
 
-.cinder-jse-property-row__summary {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  padding: var(--cinder-space-1-5) var(--cinder-space-3);
-  min-height: var(--cinder-button-height-md);
-}
+  .cinder-jse-property-row__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-1-5) var(--cinder-space-3);
+    min-height: var(--cinder-button-height-md);
+  }
 
-/* The chevron + name + type form a single clickable disclosure trigger.
+  /* The chevron + name + type form a single clickable disclosure trigger.
    Action buttons live as siblings inside __summary so they keep the
    single-baseline layout without nesting interactive elements. */
-.cinder-jse-property-row__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  font-family: inherit;
-  color: inherit;
-  text-align: left;
-}
+  .cinder-jse-property-row__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+  }
 
-.cinder-jse-property-row__trigger:focus-visible {
-  outline: 2px solid var(--cinder-accent);
-  outline-offset: 2px;
-  border-radius: var(--cinder-radius-sm);
-}
+  .cinder-jse-property-row__trigger:focus-visible {
+    outline: 2px solid var(--cinder-accent);
+    outline-offset: 2px;
+    border-radius: var(--cinder-radius-sm);
+  }
 
-.cinder-jse-property-row__chevron {
-  display: inline-block;
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-subtle);
-  transition: transform var(--cinder-duration-fast) ease;
-  width: 0.75rem;
-  text-align: center;
-}
+  .cinder-jse-property-row__chevron {
+    display: inline-block;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    transition: transform var(--cinder-duration-fast) ease;
+    width: 0.75rem;
+    text-align: center;
+  }
 
-.cinder-jse-property-row__trigger[aria-expanded='true'] > .cinder-jse-property-row__chevron {
-  transform: rotate(90deg);
-}
+  .cinder-jse-property-row__trigger[aria-expanded='true'] > .cinder-jse-property-row__chevron {
+    transform: rotate(90deg);
+  }
 
-.cinder-jse-property-row__name {
-  font-family: var(--cinder-font-mono);
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-semibold);
-  color: var(--cinder-text);
-}
+  .cinder-jse-property-row__name {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+  }
 
-.cinder-jse-property-row__type {
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-subtle);
-  padding: 0 var(--cinder-space-1-5);
-}
+  .cinder-jse-property-row__type {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    padding: 0 var(--cinder-space-1-5);
+  }
 
-.cinder-jse-property-row__spacer {
-  flex: 1 1 auto;
-}
+  .cinder-jse-property-row__spacer {
+    flex: 1 1 auto;
+  }
 
-.cinder-jse-property-row__panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-  padding: var(--cinder-space-3) var(--cinder-space-3) var(--cinder-space-4);
-  background: transparent;
-}
+  .cinder-jse-property-row__panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-3) var(--cinder-space-3) var(--cinder-space-4);
+    background: transparent;
+  }
 
-/* The nested PropertyEditor inside an open property panel doesn't get a card. */
-.cinder-jse-property-row__panel > .cinder-jse-property-editor[data-cinder-jse-depth] {
-  border: 0;
-  background: transparent;
-  border-radius: 0;
-}
+  /* The nested PropertyEditor inside an open property panel doesn't get a card. */
+  .cinder-jse-property-row__panel > .cinder-jse-property-editor[data-cinder-jse-depth] {
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+  }
 
-.cinder-jse-property-row__panel > .cinder-jse-property-editor > .cinder-jse-section {
-  padding-inline: 0;
-}
+  .cinder-jse-property-row__panel > .cinder-jse-property-editor > .cinder-jse-section {
+    padding-inline: 0;
+  }
 
-/* Required-only chip area */
-.cinder-jse-required-only {
-  margin-top: var(--cinder-space-2);
-}
+  /* Required-only chip area */
+  .cinder-jse-required-only {
+    margin-top: var(--cinder-space-2);
+  }
 
-.cinder-jse-required-only__summary {
-  cursor: pointer;
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-subtle);
-  padding: var(--cinder-space-1) var(--cinder-space-2);
-  list-style: none;
-}
+  .cinder-jse-required-only__summary {
+    cursor: pointer;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    list-style: none;
+  }
 
-.cinder-jse-required-only__summary::-webkit-details-marker {
-  display: none;
-}
+  .cinder-jse-required-only__summary::-webkit-details-marker {
+    display: none;
+  }
 
-.cinder-jse-required-only__panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cinder-space-2);
-  align-items: center;
-  padding: var(--cinder-space-2);
-}
+  .cinder-jse-required-only__panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2);
+    align-items: center;
+    padding: var(--cinder-space-2);
+  }
 
-.cinder-jse-required-only__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-full);
-  font-size: var(--cinder-text-xs);
-  background: var(--cinder-surface);
-}
+  .cinder-jse-required-only__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-full);
+    font-size: var(--cinder-text-xs);
+    background: var(--cinder-surface);
+  }
 
-/* ===== Advanced row ($ref / preserved badges) ===== */
-.cinder-jse-advanced-row {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  padding: var(--cinder-space-2) var(--cinder-space-4);
-  border-top: 1px solid var(--cinder-border-muted);
-}
+  /* ===== Advanced row ($ref / preserved badges) ===== */
+  .cinder-jse-advanced-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-4);
+    border-top: 1px solid var(--cinder-border-muted);
+  }
 
-/* ===== JSON view ===== */
-.cinder-jse-json-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-}
+  /* ===== JSON view ===== */
+  .cinder-jse-json-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
 
-.cinder-jse-json-view__toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-  flex-wrap: wrap;
-}
+  .cinder-jse-json-view__toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
 
-textarea.cinder-jse-json-view__textarea {
-  font-family: var(--cinder-font-mono);
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-  min-height: 16rem;
-  /* Tab characters render as 2 spaces' worth — matches the canonical text we serialise. */
-  tab-size: 2;
-}
+  textarea.cinder-jse-json-view__textarea {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    min-height: 16rem;
+    /* Tab characters render as 2 spaces' worth — matches the canonical text we serialise. */
+    tab-size: 2;
+  }
 
-.cinder-jse-json-view__errors {
-  margin: 0;
-  white-space: pre-wrap;
-  font-family: var(--cinder-font-mono);
-  font-size: var(--cinder-text-xs);
-}
+  .cinder-jse-json-view__errors {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+  }
 
-/* ===== Diff view ===== */
-.cinder-jse-diff-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-}
+  /* ===== Diff view ===== */
+  .cinder-jse-diff-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
 
-/* ===== Form view ===== */
-.cinder-jse-form-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-3);
-}
+  /* ===== Form view ===== */
+  .cinder-jse-form-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
 
-.cinder-jse-dirty-actions {
-  display: flex;
-  gap: var(--cinder-space-2);
-  margin-top: var(--cinder-space-2);
+  .cinder-jse-dirty-actions {
+    display: flex;
+    gap: var(--cinder-space-2);
+    margin-top: var(--cinder-space-2);
+  }
 }

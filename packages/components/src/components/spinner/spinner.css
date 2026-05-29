@@ -1,62 +1,64 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SPINNER
  * ======================================== */
 
-.cinder-spinner {
-  display: inline-block;
-  width: var(--cinder-spinner-size, 1.5rem);
-  height: var(--cinder-spinner-size, 1.5rem);
-  border: 2px solid var(--cinder-spinner-track, color-mix(in srgb, currentColor 25%, transparent));
-  border-top-color: var(--cinder-spinner-indicator, currentColor);
-  border-radius: 50%;
-  vertical-align: -0.125em;
-  animation: cinder-spinner-spin var(--cinder-duration-spin) linear infinite;
-  flex-shrink: 0;
-}
-
-/* Screen-reader-only label — visually hidden but announced by assistive tech */
-.cinder-spinner__sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-@keyframes cinder-spinner-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Respect the user's reduced-motion preference */
-@media (prefers-reduced-motion: reduce) {
   .cinder-spinner {
-    animation: none;
-    border-top-color: var(--cinder-border-muted, #ccc);
-    opacity: 0.5;
+    display: inline-block;
+    width: var(--cinder-spinner-size, 1.5rem);
+    height: var(--cinder-spinner-size, 1.5rem);
+    border: 2px solid var(--cinder-spinner-track, color-mix(in srgb, currentColor 25%, transparent));
+    border-top-color: var(--cinder-spinner-indicator, currentColor);
+    border-radius: 50%;
+    vertical-align: -0.125em;
+    animation: cinder-spinner-spin var(--cinder-duration-spin) linear infinite;
+    flex-shrink: 0;
   }
-}
 
-/* ----------------------------------------
+  /* Screen-reader-only label — visually hidden but announced by assistive tech */
+  .cinder-spinner__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  @keyframes cinder-spinner-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Respect the user's reduced-motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-spinner {
+      animation: none;
+      border-top-color: var(--cinder-border-muted, #ccc);
+      opacity: 0.5;
+    }
+  }
+
+  /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */
 
-.cinder-spinner[data-cinder-size='sm'] {
-  --cinder-spinner-size: var(--cinder-spinner-size-sm, 1rem);
-  border-width: 1.5px;
-}
+  .cinder-spinner[data-cinder-size='sm'] {
+    --cinder-spinner-size: var(--cinder-spinner-size-sm, 1rem);
+    border-width: 1.5px;
+  }
 
-.cinder-spinner[data-cinder-size='md'] {
-  --cinder-spinner-size: var(--cinder-spinner-size-md, 1.5rem);
-  border-width: 2px;
-}
+  .cinder-spinner[data-cinder-size='md'] {
+    --cinder-spinner-size: var(--cinder-spinner-size-md, 1.5rem);
+    border-width: 2px;
+  }
 
-.cinder-spinner[data-cinder-size='lg'] {
-  --cinder-spinner-size: var(--cinder-spinner-size-lg, 2rem);
-  border-width: 2.5px;
+  .cinder-spinner[data-cinder-size='lg'] {
+    --cinder-spinner-size: var(--cinder-spinner-size-lg, 2rem);
+    border-width: 2.5px;
+  }
 }

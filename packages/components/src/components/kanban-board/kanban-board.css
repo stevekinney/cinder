@@ -1,143 +1,145 @@
-.cinder-kanban-board {
-  --cinder-kanban-column-width: 18rem;
-  --cinder-kanban-column-gap: var(--cinder-space-4);
-  --cinder-kanban-column-background: var(--cinder-surface-raised);
-  --cinder-kanban-card-background: var(--cinder-surface);
+@layer cinder.components {
+  .cinder-kanban-board {
+    --cinder-kanban-column-width: 18rem;
+    --cinder-kanban-column-gap: var(--cinder-space-4);
+    --cinder-kanban-column-background: var(--cinder-surface-raised);
+    --cinder-kanban-card-background: var(--cinder-surface);
 
-  display: block;
-  overflow-x: auto;
-  padding-block-end: var(--cinder-space-2);
-}
+    display: block;
+    overflow-x: auto;
+    padding-block-end: var(--cinder-space-2);
+  }
 
-.cinder-kanban-board__columns {
-  display: grid;
-  grid-auto-columns: minmax(var(--cinder-kanban-column-width), 1fr);
-  grid-auto-flow: column;
-  gap: var(--cinder-kanban-column-gap);
-  align-items: start;
-  min-inline-size: max-content;
-}
+  .cinder-kanban-board__columns {
+    display: grid;
+    grid-auto-columns: minmax(var(--cinder-kanban-column-width), 1fr);
+    grid-auto-flow: column;
+    gap: var(--cinder-kanban-column-gap);
+    align-items: start;
+    min-inline-size: max-content;
+  }
 
-.cinder-kanban-board__column {
-  display: grid;
-  grid-template-rows: auto minmax(4rem, 1fr);
-  gap: var(--cinder-space-3);
-  min-block-size: 8rem;
-  padding: var(--cinder-space-3);
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-kanban-column-background);
-  box-shadow: var(--cinder-shadow-sm);
-}
+  .cinder-kanban-board__column {
+    display: grid;
+    grid-template-rows: auto minmax(4rem, 1fr);
+    gap: var(--cinder-space-3);
+    min-block-size: 8rem;
+    padding: var(--cinder-space-3);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-kanban-column-background);
+    box-shadow: var(--cinder-shadow-sm);
+  }
 
-.cinder-kanban-board__column[data-cinder-collapsed] {
-  grid-template-rows: auto;
-  min-block-size: auto;
-}
+  .cinder-kanban-board__column[data-cinder-collapsed] {
+    grid-template-rows: auto;
+    min-block-size: auto;
+  }
 
-.cinder-kanban-board__column-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: var(--cinder-space-2);
-  align-items: center;
-}
+  .cinder-kanban-board__column-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: var(--cinder-space-2);
+    align-items: center;
+  }
 
-.cinder-kanban-board__column-title {
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-  font-size: var(--cinder-text-sm);
-  font-weight: 600;
-  color: var(--cinder-text);
-}
-
-.cinder-kanban-board__column-actions {
-  display: inline-flex;
-  gap: var(--cinder-space-1);
-  align-items: center;
-}
-
-.cinder-kanban-board__column-handle,
-.cinder-kanban-board__collapse {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
-  padding: 0;
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-sm);
-  background: var(--cinder-surface);
-  color: var(--cinder-text-muted);
-  cursor: pointer;
-}
-
-.cinder-kanban-board__column-handle:focus-visible,
-.cinder-kanban-board__collapse:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
-}
-
-@media (hover: hover) {
-  .cinder-kanban-board__column-handle:hover,
-  .cinder-kanban-board__collapse:hover {
-    background: var(--cinder-surface-hover);
+  .cinder-kanban-board__column-title {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    font-size: var(--cinder-text-sm);
+    font-weight: 600;
     color: var(--cinder-text);
   }
-}
 
-.cinder-kanban-board__cards {
-  display: grid;
-  gap: var(--cinder-space-2);
-  min-block-size: 3rem;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
+  .cinder-kanban-board__column-actions {
+    display: inline-flex;
+    gap: var(--cinder-space-1);
+    align-items: center;
+  }
 
-.cinder-kanban-board__card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--cinder-space-2);
-  align-items: start;
-  padding: var(--cinder-space-3);
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-kanban-card-background);
-  box-shadow: var(--cinder-shadow-xs);
-}
+  .cinder-kanban-board__column-handle,
+  .cinder-kanban-board__collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    padding: 0;
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text-muted);
+    cursor: pointer;
+  }
 
-.cinder-kanban-board__card.cinder-sortable-item--lifted {
-  border-color: var(--cinder-ring-color);
-  box-shadow: var(--cinder-shadow-md);
-}
+  .cinder-kanban-board__column-handle:focus-visible,
+  .cinder-kanban-board__collapse:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  }
 
-.cinder-kanban-board__card-content {
-  min-inline-size: 0;
-}
+  @media (hover: hover) {
+    .cinder-kanban-board__column-handle:hover,
+    .cinder-kanban-board__collapse:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
+  }
 
-.cinder-kanban-board .cinder-sortable-handle {
-  align-self: start;
-}
+  .cinder-kanban-board__cards {
+    display: grid;
+    gap: var(--cinder-space-2);
+    min-block-size: 3rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
 
-.cinder-kanban-board__empty {
-  display: grid;
-  place-items: center;
-  min-block-size: 3rem;
-  padding: var(--cinder-space-3);
-  border: 1px dashed var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-md);
-  color: var(--cinder-text-muted);
-  font-size: var(--cinder-text-sm);
-}
+  .cinder-kanban-board__card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--cinder-space-2);
+    align-items: start;
+    padding: var(--cinder-space-3);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-kanban-card-background);
+    box-shadow: var(--cinder-shadow-xs);
+  }
 
-@media (prefers-reduced-motion: no-preference) {
-  .cinder-kanban-board__card,
-  .cinder-kanban-board__column {
-    transition:
-      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
-      background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  .cinder-kanban-board__card.cinder-sortable-item--lifted {
+    border-color: var(--cinder-ring-color);
+    box-shadow: var(--cinder-shadow-md);
+  }
+
+  .cinder-kanban-board__card-content {
+    min-inline-size: 0;
+  }
+
+  .cinder-kanban-board .cinder-sortable-handle {
+    align-self: start;
+  }
+
+  .cinder-kanban-board__empty {
+    display: grid;
+    place-items: center;
+    min-block-size: 3rem;
+    padding: var(--cinder-space-3);
+    border: 1px dashed var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cinder-kanban-board__card,
+    .cinder-kanban-board__column {
+      transition:
+        border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+        box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
+        background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    }
   }
 }

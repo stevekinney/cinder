@@ -1,84 +1,86 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TREE
  * ======================================== */
 
-.cinder-tree-root,
-.cinder-tree {
-  display: flex;
-  flex-direction: column;
-  inline-size: 100%;
-}
+  .cinder-tree-root,
+  .cinder-tree {
+    display: flex;
+    flex-direction: column;
+    inline-size: 100%;
+  }
 
-.cinder-tree {
-  outline: none;
-}
+  .cinder-tree {
+    outline: none;
+  }
 
-.cinder-tree__selection-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cinder-space-2, 0.5rem);
-  margin-block-end: var(--cinder-space-2, 0.5rem);
-}
+  .cinder-tree__selection-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2, 0.5rem);
+    margin-block-end: var(--cinder-space-2, 0.5rem);
+  }
 
-.cinder-tree-item {
-  display: flex;
-  flex-direction: column;
-  outline: none;
-  cursor: default;
-  border-radius: var(--cinder-radius-sm);
-}
+  .cinder-tree-item {
+    display: flex;
+    flex-direction: column;
+    outline: none;
+    cursor: default;
+    border-radius: var(--cinder-radius-sm);
+  }
 
-.cinder-tree-item:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: calc(-1 * var(--cinder-ring-width));
-}
-
-@media (forced-colors: active) {
   .cinder-tree-item:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: calc(-1 * var(--cinder-ring-width));
   }
-}
 
-.cinder-tree-item__row {
-  display: flex;
-  align-items: center;
-  gap: var(--cinder-space-2, 0.5rem);
-  padding-block: var(--cinder-space-1, 0.25rem);
-  padding-inline: var(--cinder-space-2, 0.5rem);
-  border-radius: var(--cinder-radius-sm);
-  user-select: none;
-}
+  @media (forced-colors: active) {
+    .cinder-tree-item:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
 
-.cinder-tree-item__checkbox {
-  flex: 0 0 auto;
-  width: 1rem;
-  height: 1rem;
-  accent-color: var(--cinder-accent, currentColor);
-  pointer-events: auto;
-}
+  .cinder-tree-item__row {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2, 0.5rem);
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    border-radius: var(--cinder-radius-sm);
+    user-select: none;
+  }
 
-.cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
-  background-color: color-mix(in srgb, var(--cinder-accent) 15%, transparent);
-  color: var(--cinder-accent);
-}
+  .cinder-tree-item__checkbox {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--cinder-accent, currentColor);
+    pointer-events: auto;
+  }
 
-@media (forced-colors: active) {
   .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
-    background-color: Highlight;
-    color: HighlightText;
-    forced-color-adjust: none;
+    background-color: color-mix(in srgb, var(--cinder-accent) 15%, transparent);
+    color: var(--cinder-accent);
   }
-}
 
-.cinder-tree-item[data-cinder-disabled] {
-  opacity: 0.5;
-  /* Use default cursor: disabled items can still be expanded/collapsed;
+  @media (forced-colors: active) {
+    .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
+      background-color: Highlight;
+      color: HighlightText;
+      forced-color-adjust: none;
+    }
+  }
+
+  .cinder-tree-item[data-cinder-disabled] {
+    opacity: 0.5;
+    /* Use default cursor: disabled items can still be expanded/collapsed;
      only selection is blocked. not-allowed would mislead mouse users. */
-  cursor: default;
-}
+    cursor: default;
+  }
 
-.cinder-tree-item__children {
-  display: flex;
-  flex-direction: column;
-  padding-inline-start: var(--cinder-space-4, 1rem);
+  .cinder-tree-item__children {
+    display: flex;
+    flex-direction: column;
+    padding-inline-start: var(--cinder-space-4, 1rem);
+  }
 }

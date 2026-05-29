@@ -1,15 +1,17 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * ACCORDION
  * ======================================== */
 
-.cinder-accordion {
-  display: flex;
-  flex-direction: column;
-  inline-size: 100%;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-lg);
-  background: var(--cinder-surface);
+  .cinder-accordion {
+    display: flex;
+    flex-direction: column;
+    inline-size: 100%;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface);
 
-  /* Clip children so item borders respect the container's border-radius */
-  overflow: clip;
+    /* Clip children so item borders respect the container's border-radius */
+    overflow: clip;
+  }
 }

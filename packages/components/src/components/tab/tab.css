@@ -1,6 +1,8 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * TAB
  * Visual treatment for the tab button lives in tabs.css alongside the
  * sibling tablist and panel styles. This file is kept as an empty registry
  * entry — one CSS partial per .svelte file keeps the convention honest.
  * ======================================== */
+}

@@ -1,7 +1,9 @@
-.cinder-context-menu {
-  display: contents;
-}
+@layer cinder.components {
+  .cinder-context-menu {
+    display: contents;
+  }
 
-.cinder-context-menu-trigger {
-  display: contents;
+  .cinder-context-menu-trigger {
+    display: contents;
+  }
 }

@@ -1,39 +1,41 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * COMMAND MENU
  * ======================================== */
 
-.cinder-command-menu {
-  position: fixed;
-  z-index: var(--cinder-z-popover);
-  box-sizing: border-box;
-  min-inline-size: min(20rem, calc(100vw - var(--cinder-space-4)));
-  max-inline-size: min(28rem, calc(100vw - var(--cinder-space-4)));
-  max-block-size: min(20rem, calc(100vh - var(--cinder-space-4)));
-  margin: 0;
-  padding: var(--cinder-space-2) 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  list-style: none;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface-raised);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
-}
+  .cinder-command-menu {
+    position: fixed;
+    z-index: var(--cinder-z-popover);
+    box-sizing: border-box;
+    min-inline-size: min(20rem, calc(100vw - var(--cinder-space-4)));
+    max-inline-size: min(28rem, calc(100vw - var(--cinder-space-4)));
+    max-block-size: min(20rem, calc(100vh - var(--cinder-space-4)));
+    margin: 0;
+    padding: var(--cinder-space-2) 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    list-style: none;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
+  }
 
-.cinder-command-menu__listbox {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+  .cinder-command-menu__listbox {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
-.cinder-command-menu[data-cinder-position-ready='false'] {
-  visibility: hidden;
-}
+  .cinder-command-menu[data-cinder-position-ready='false'] {
+    visibility: hidden;
+  }
 
-.cinder-command-menu__empty {
-  padding: var(--cinder-space-6) var(--cinder-space-4);
-  color: var(--cinder-text-muted);
-  font-size: var(--cinder-text-sm);
-  text-align: center;
+  .cinder-command-menu__empty {
+    padding: var(--cinder-space-6) var(--cinder-space-4);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    text-align: center;
+  }
 }

@@ -1,91 +1,93 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * CARD
  * ======================================== */
 
-.cinder-card {
-  inline-size: 100%;
-  border-radius: var(--cinder-radius-lg);
-  background: var(--cinder-surface-raised);
-  border: 1px solid var(--cinder-border-muted);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-sm);
-  overflow: hidden;
-}
+  .cinder-card {
+    inline-size: 100%;
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border-muted);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-sm);
+    overflow: hidden;
+  }
 
-.cinder-card[data-cinder-variant='well'] {
-  background: var(--cinder-surface);
-  box-shadow: none;
-}
+  .cinder-card[data-cinder-variant='well'] {
+    background: var(--cinder-surface);
+    box-shadow: none;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Header
  * ---------------------------------------- */
 
-.cinder-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1);
-  padding: var(--cinder-space-3) var(--cinder-space-4);
-  border-bottom: 1px solid var(--cinder-border-muted);
-}
+  .cinder-card__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    border-bottom: 1px solid var(--cinder-border-muted);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Title & description (title arm)
  * ---------------------------------------- */
 
-.cinder-card__title {
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text);
-  margin: 0;
-}
+  .cinder-card__title {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+    margin: 0;
+  }
 
-.cinder-card__description {
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-subtle);
-  margin: 0;
-}
+  .cinder-card__description {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+    margin: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Body
  * ---------------------------------------- */
 
-.cinder-card__body {
-  padding: var(--cinder-space-4);
-}
+  .cinder-card__body {
+    padding: var(--cinder-space-4);
+  }
 
-.cinder-card__body[data-cinder-tone='muted'] {
-  background: var(--cinder-surface-inset);
-}
+  .cinder-card__body[data-cinder-tone='muted'] {
+    background: var(--cinder-surface-inset);
+  }
 
-.cinder-card[data-cinder-variant='well'] .cinder-card__body {
-  background: var(--cinder-surface-inset);
-}
+  .cinder-card[data-cinder-variant='well'] .cinder-card__body {
+    background: var(--cinder-surface-inset);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Footer
  * ---------------------------------------- */
 
-.cinder-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--cinder-space-2);
-  padding: var(--cinder-space-3) var(--cinder-space-4);
-  border-top: 1px solid var(--cinder-border-muted);
-}
+  .cinder-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    border-top: 1px solid var(--cinder-border-muted);
+  }
 
-.cinder-card__footer[data-cinder-tone='muted'] {
-  background: var(--cinder-surface-inset);
-}
+  .cinder-card__footer[data-cinder-tone='muted'] {
+    background: var(--cinder-surface-inset);
+  }
 
-@media (width < 640px) {
-  .cinder-card[data-cinder-edge-to-edge-mobile] {
-    --cinder-card-mobile-bleed: var(--cinder-space-4);
+  @media (width < 640px) {
+    .cinder-card[data-cinder-edge-to-edge-mobile] {
+      --cinder-card-mobile-bleed: var(--cinder-space-4);
 
-    inline-size: calc(100% + (var(--cinder-card-mobile-bleed) * 2));
-    margin-inline: calc(var(--cinder-card-mobile-bleed) * -1);
-    border-inline: 0;
-    border-radius: 0;
+      inline-size: calc(100% + (var(--cinder-card-mobile-bleed) * 2));
+      margin-inline: calc(var(--cinder-card-mobile-bleed) * -1);
+      border-inline: 0;
+      border-radius: 0;
+    }
   }
 }

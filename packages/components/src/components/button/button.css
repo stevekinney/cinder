@@ -1,460 +1,468 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * BUTTON
  * ======================================== */
 
-.cinder-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--cinder-space-1-5);
-  white-space: nowrap;
-  text-decoration: none;
+  .cinder-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-1-5);
+    white-space: nowrap;
+    text-decoration: none;
 
-  font-weight: var(--cinder-font-medium);
-  font-size: var(--cinder-text-sm);
-  line-height: 1;
+    font-weight: var(--cinder-font-medium);
+    font-size: var(--cinder-text-sm);
+    line-height: 1;
 
-  background: var(--cinder-button-bg);
-  color: var(--cinder-button-fg);
-  border: 1px solid var(--cinder-button-border);
-  border-radius: var(--cinder-button-radius);
+    background: var(--cinder-button-bg);
+    color: var(--cinder-button-fg);
+    border: 1px solid var(--cinder-button-border);
+    border-radius: var(--cinder-button-radius);
 
-  cursor: pointer;
+    cursor: pointer;
 
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-.cinder-button:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
-      var(--_cinder-button-ring, var(--cinder-ring-color));
-}
+  .cinder-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-button-ring, var(--cinder-ring-color));
+  }
 
-/* Forced Colors Mode (Windows High Contrast, print, etc.) ignores `box-shadow`. Without this
+  /* Forced Colors Mode (Windows High Contrast, print, etc.) ignores `box-shadow`. Without this
  * override the entire focus ring is invisible to users who rely on WHCM. ButtonText is the
  * system color for text on buttons; it's guaranteed to contrast the button surface.
  */
-@media (forced-colors: active) {
-  /* Larger offset in WHCM separates the focus outline from ButtonBorder, which often shares
+  @media (forced-colors: active) {
+    /* Larger offset in WHCM separates the focus outline from ButtonBorder, which often shares
    * the ButtonText color family; 1px offset would let the two colors visually merge.
    */
-  .cinder-button:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+    .cinder-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
-}
 
-/* Disabled — matches both native :disabled and aria-disabled for link variant.
+  /* Disabled — matches both native :disabled and aria-disabled for link variant.
  * Scoped with :not([data-cinder-loading]) so the loading state can own its own colors below
  * without the variant-specific disabled rules (higher specificity) silently winning.
  */
-.cinder-button:disabled:not([data-cinder-loading]),
-.cinder-button[aria-disabled='true']:not([data-cinder-loading]) {
-  cursor: not-allowed;
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: var(--cinder-border-muted);
-  /* opacity centralized in foundation.css disabled-visual rule */
-}
+  .cinder-button:disabled:not([data-cinder-loading]),
+  .cinder-button[aria-disabled='true']:not([data-cinder-loading]) {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+    /* opacity centralized in foundation.css disabled-visual rule */
+  }
 
-/* Loading state — cursor + visible feedback. Per-variant loading overrides below restore
+  /* Loading state — cursor + visible feedback. Per-variant loading overrides below restore
  * each variant's own colors so loading buttons don't read as permanently-disabled.
  */
-.cinder-button[data-cinder-loading] {
-  cursor: wait;
-  opacity: 1;
-}
+  .cinder-button[data-cinder-loading] {
+    cursor: wait;
+    opacity: 1;
+  }
 
-/* Spinner — visible feedback for sighted users while `aria-busy` informs assistive tech.
+  /* Spinner — visible feedback for sighted users while `aria-busy` informs assistive tech.
  * No `margin-inline-start` here: the parent `.cinder-button` has `gap: var(--cinder-space-1-5)`
  * which already separates the pseudo-element from the preceding label/children. Adding margin
  * too would double-count the gap.
  */
-.cinder-button[data-cinder-loading]::after {
-  content: '';
-  display: inline-block;
-  width: 0.75em;
-  height: 0.75em;
-  border: 2px solid currentColor;
-  border-inline-end-color: transparent;
-  border-radius: 50%;
-  animation: cinder-button-spin 0.6s linear infinite;
-}
+  .cinder-button[data-cinder-loading]::after {
+    content: '';
+    display: inline-block;
+    width: 0.75em;
+    height: 0.75em;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: 50%;
+    animation: cinder-button-spin 0.6s linear infinite;
+  }
 
-/* At `xs` size the button is ~24px tall and the spinner ends up ~9px square; a 2px border
+  /* At `xs` size the button is ~24px tall and the spinner ends up ~9px square; a 2px border
  * is disproportionately thick and reads as a chunky ring. Drop to 1px for xs only.
  */
-.cinder-button[data-cinder-size='xs'][data-cinder-loading]::after {
-  border-width: 1px;
-}
-
-@keyframes cinder-button-spin {
-  to {
-    transform: rotate(360deg);
+  .cinder-button[data-cinder-size='xs'][data-cinder-loading]::after {
+    border-width: 1px;
   }
-}
 
-/* Full-width modifier */
-.cinder-button[data-cinder-full-width] {
-  width: 100%;
-}
+  @keyframes cinder-button-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 
-/* ----------------------------------------
+  /* Full-width modifier */
+  .cinder-button[data-cinder-full-width] {
+    width: 100%;
+  }
+
+  /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */
 
-.cinder-button[data-cinder-size='xs'] {
-  font-size: var(--cinder-button-font-size-xs);
-  padding: var(--cinder-button-padding-y-xs) var(--cinder-button-padding-x-xs);
-  min-height: var(--cinder-button-height-xs);
-  border-radius: var(--cinder-button-radius-xs);
-}
+  .cinder-button[data-cinder-size='xs'] {
+    font-size: var(--cinder-button-font-size-xs);
+    padding: var(--cinder-button-padding-y-xs) var(--cinder-button-padding-x-xs);
+    min-height: var(--cinder-button-height-xs);
+    border-radius: var(--cinder-button-radius-xs);
+  }
 
-.cinder-button[data-cinder-size='sm'] {
-  font-size: var(--cinder-button-font-size-sm);
-  padding: var(--cinder-button-padding-y-sm) var(--cinder-button-padding-x-sm);
-  min-height: var(--cinder-button-height-sm);
-  border-radius: var(--cinder-button-radius-sm);
-}
+  .cinder-button[data-cinder-size='sm'] {
+    font-size: var(--cinder-button-font-size-sm);
+    padding: var(--cinder-button-padding-y-sm) var(--cinder-button-padding-x-sm);
+    min-height: var(--cinder-button-height-sm);
+    border-radius: var(--cinder-button-radius-sm);
+  }
 
-.cinder-button[data-cinder-size='md'] {
-  font-size: var(--cinder-button-font-size-md);
-  padding: var(--cinder-button-padding-y-md) var(--cinder-button-padding-x-md);
-  min-height: var(--cinder-button-height-md);
-  border-radius: var(--cinder-button-radius-md);
-}
+  .cinder-button[data-cinder-size='md'] {
+    font-size: var(--cinder-button-font-size-md);
+    padding: var(--cinder-button-padding-y-md) var(--cinder-button-padding-x-md);
+    min-height: var(--cinder-button-height-md);
+    border-radius: var(--cinder-button-radius-md);
+  }
 
-.cinder-button[data-cinder-size='lg'] {
-  font-size: var(--cinder-button-font-size-lg);
-  padding: var(--cinder-button-padding-y-lg) var(--cinder-button-padding-x-lg);
-  min-height: var(--cinder-button-height-lg);
-  border-radius: var(--cinder-button-radius-lg);
-}
+  .cinder-button[data-cinder-size='lg'] {
+    font-size: var(--cinder-button-font-size-lg);
+    padding: var(--cinder-button-padding-y-lg) var(--cinder-button-padding-x-lg);
+    min-height: var(--cinder-button-height-lg);
+    border-radius: var(--cinder-button-radius-lg);
+  }
 
-.cinder-button[data-cinder-size='xl'] {
-  font-size: var(--cinder-button-font-size-xl);
-  padding: var(--cinder-button-padding-y-xl) var(--cinder-button-padding-x-xl);
-  min-height: var(--cinder-button-height-xl);
-  border-radius: var(--cinder-button-radius-xl);
-}
+  .cinder-button[data-cinder-size='xl'] {
+    font-size: var(--cinder-button-font-size-xl);
+    padding: var(--cinder-button-padding-y-xl) var(--cinder-button-padding-x-xl);
+    min-height: var(--cinder-button-height-xl);
+    border-radius: var(--cinder-button-radius-xl);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Icon-only modifier
  * Button sizes are compact visual sizes, not guaranteed touch targets.
  * See button.a11y.md for touch-target guidance.
  * ---------------------------------------- */
 
-.cinder-button[data-cinder-icon-only] {
-  padding-inline: 0;
-  aspect-ratio: 1;
-}
+  .cinder-button[data-cinder-icon-only] {
+    padding-inline: 0;
+    aspect-ratio: 1;
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-size='xs'] {
-  min-width: var(--cinder-button-height-xs);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-size='xs'] {
+    min-width: var(--cinder-button-height-xs);
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-size='sm'] {
-  min-width: var(--cinder-button-height-sm);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-size='sm'] {
+    min-width: var(--cinder-button-height-sm);
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-size='md'] {
-  min-width: var(--cinder-button-height-md);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-size='md'] {
+    min-width: var(--cinder-button-height-md);
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-size='lg'] {
-  min-width: var(--cinder-button-height-lg);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-size='lg'] {
+    min-width: var(--cinder-button-height-lg);
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-size='xl'] {
-  min-width: var(--cinder-button-height-xl);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-size='xl'] {
+    min-width: var(--cinder-button-height-xl);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Icon slot wrapper — used for leadingIcon and trailingIcon snippets.
  * These slots are decorative-only; meaning lives in the button's accessible name.
  * ---------------------------------------- */
 
-.cinder-button__icon {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  line-height: 0;
-}
+  .cinder-button__icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    line-height: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Color variants
  * ---------------------------------------- */
 
-.cinder-button[data-cinder-variant='primary'] {
-  --_cinder-button-ring: var(--cinder-accent);
-  background: var(--cinder-accent);
-  color: var(--cinder-accent-contrast);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='primary'] {
+    --_cinder-button-ring: var(--cinder-accent);
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    border-color: transparent;
+  }
 
-/* Variant-specific disabled overrides are now :not([data-cinder-loading]) so loading buttons
+  /* Variant-specific disabled overrides are now :not([data-cinder-loading]) so loading buttons
  * keep their variant colors instead of falling through to the grey disabled palette.
  */
-.cinder-button[data-cinder-variant='primary']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='primary'][aria-disabled='true']:not([data-cinder-loading]) {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: var(--cinder-border-muted);
-}
+  .cinder-button[data-cinder-variant='primary']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='primary'][aria-disabled='true']:not([data-cinder-loading]) {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+  }
 
-.cinder-button[data-cinder-variant='secondary'] {
-  background: var(--cinder-surface-raised);
-  color: var(--cinder-text);
-  border-color: var(--cinder-border);
-}
+  .cinder-button[data-cinder-variant='secondary'] {
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    border-color: var(--cinder-border);
+  }
 
-.cinder-button[data-cinder-variant='danger'] {
-  --_cinder-button-ring: var(--cinder-danger);
-  background: var(--cinder-danger);
-  color: var(--cinder-danger-contrast);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='danger'] {
+    --_cinder-button-ring: var(--cinder-danger);
+    background: var(--cinder-danger);
+    color: var(--cinder-danger-contrast);
+    border-color: transparent;
+  }
 
-.cinder-button[data-cinder-variant='danger']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='danger'][aria-disabled='true']:not([data-cinder-loading]) {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: var(--cinder-border-muted);
-}
+  .cinder-button[data-cinder-variant='danger']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='danger'][aria-disabled='true']:not([data-cinder-loading]) {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+  }
 
-.cinder-button[data-cinder-variant='ghost'] {
-  background: transparent;
-  color: var(--cinder-text-muted);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='ghost'] {
+    background: transparent;
+    color: var(--cinder-text-muted);
+    border-color: transparent;
+  }
 
-.cinder-button[data-cinder-variant='ghost-danger'] {
-  --_cinder-button-ring: var(--cinder-danger);
-  background: transparent;
-  color: var(--cinder-danger);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='ghost-danger'] {
+    --_cinder-button-ring: var(--cinder-danger);
+    background: transparent;
+    color: var(--cinder-danger);
+    border-color: transparent;
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
-  background: var(--cinder-surface);
-  background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
-  border-color: var(--cinder-border-muted);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
+    background: var(--cinder-surface);
+    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+    border-color: var(--cinder-border-muted);
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
-  background: var(--cinder-color-danger-bg);
-  background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
-  border-color: var(--cinder-color-danger-border);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
+    background: var(--cinder-color-danger-bg);
+    background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
+    border-color: var(--cinder-color-danger-border);
+  }
 
-.cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='ghost'][aria-disabled='true']:not([data-cinder-loading]) {
-  background: transparent;
-  color: var(--cinder-text-disabled);
-  border-color: transparent;
-  opacity: 0.6;
-}
+  .cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='ghost'][aria-disabled='true']:not([data-cinder-loading]) {
+    background: transparent;
+    color: var(--cinder-text-disabled);
+    border-color: transparent;
+    opacity: 0.6;
+  }
 
-.cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading] {
-  background: transparent;
-  color: var(--cinder-danger);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading] {
+    background: transparent;
+    color: var(--cinder-danger);
+    border-color: transparent;
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading] {
-  background: var(--cinder-color-danger-bg);
-  background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
-  border-color: var(--cinder-color-danger-border);
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading] {
+    background: var(--cinder-color-danger-bg);
+    background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
+    border-color: var(--cinder-color-danger-border);
+  }
 
-.cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
-    [data-cinder-loading]
-  ) {
-  background: transparent;
-  color: var(--cinder-danger);
-  border-color: transparent;
-  opacity: 0.6;
-}
+  .cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
+      [data-cinder-loading]
+    ) {
+    background: transparent;
+    color: var(--cinder-danger);
+    border-color: transparent;
+    opacity: 0.6;
+  }
 
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:disabled:not(
-    [data-cinder-loading]
-  ),
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'][aria-disabled='true']:not(
-    [data-cinder-loading]
-  ),
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:disabled:not(
-    [data-cinder-loading]
-  ),
-.cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
-    [data-cinder-loading]
-  ) {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: var(--cinder-border-muted);
-  opacity: 0.6;
-}
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:disabled:not(
+      [data-cinder-loading]
+    ),
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'][aria-disabled='true']:not(
+      [data-cinder-loading]
+    ),
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:disabled:not(
+      [data-cinder-loading]
+    ),
+  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][aria-disabled='true']:not(
+      [data-cinder-loading]
+    ) {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+    opacity: 0.6;
+  }
 
-/* soft — tinted accent background, accent foreground, no border.
+  /* soft — tinted accent background, accent foreground, no border.
  * Background uses color-mix so it resolves against the theme-aware --cinder-accent token
  * in both light and dark themes. Contrast ratios must be verified mechanically (WebAIM
  * contrast checker) before shipping; see button.a11y.md for the verification procedure. */
-.cinder-button[data-cinder-variant='soft'] {
-  --_cinder-button-ring: var(--cinder-accent);
-  background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
-  color: var(--cinder-accent);
-  border-color: transparent;
-}
-
-.cinder-button[data-cinder-variant='soft']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='soft'][aria-disabled='true']:not([data-cinder-loading]) {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: transparent;
-  opacity: 0.6;
-}
-
-@media (forced-colors: active) {
   .cinder-button[data-cinder-variant='soft'] {
-    border: 1px solid ButtonBorder;
+    --_cinder-button-ring: var(--cinder-accent);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+    color: var(--cinder-accent);
+    border-color: transparent;
   }
-}
 
-/* soft-danger — tinted danger background, danger foreground, no border. */
-.cinder-button[data-cinder-variant='soft-danger'] {
-  --_cinder-button-ring: var(--cinder-danger);
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-  border-color: transparent;
-}
+  .cinder-button[data-cinder-variant='soft']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='soft'][aria-disabled='true']:not([data-cinder-loading]) {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: transparent;
+    opacity: 0.6;
+  }
 
-.cinder-button[data-cinder-variant='soft-danger']:disabled:not([data-cinder-loading]),
-.cinder-button[data-cinder-variant='soft-danger'][aria-disabled='true']:not([data-cinder-loading]) {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text-disabled);
-  border-color: transparent;
-  opacity: 0.6;
-}
+  @media (forced-colors: active) {
+    .cinder-button[data-cinder-variant='soft'] {
+      border: 1px solid ButtonBorder;
+    }
+  }
 
-@media (forced-colors: active) {
+  /* soft-danger — tinted danger background, danger foreground, no border. */
   .cinder-button[data-cinder-variant='soft-danger'] {
-    border: 1px solid ButtonBorder;
+    --_cinder-button-ring: var(--cinder-danger);
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+    border-color: transparent;
   }
-}
 
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+  .cinder-button[data-cinder-variant='soft-danger']:disabled:not([data-cinder-loading]),
+  .cinder-button[data-cinder-variant='soft-danger'][aria-disabled='true']:not(
+      [data-cinder-loading]
+    ) {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: transparent;
+    opacity: 0.6;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-button[data-cinder-variant='soft-danger'] {
+      border: 1px solid ButtonBorder;
+    }
+  }
+
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  .cinder-button:hover {
-    text-decoration: none;
+  @media (hover: hover) {
+    .cinder-button:hover {
+      text-decoration: none;
+    }
+
+    .cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-accent-hover);
+      border-color: transparent;
+    }
+
+    .cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ) {
+      background: var(--cinder-surface-hover);
+    }
+
+    .cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-danger-hover);
+      border-color: transparent;
+    }
+
+    .cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-surface-hover);
+    }
+
+    .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ) {
+      background: var(--cinder-surface-hover);
+      border-color: var(--cinder-border);
+      color: var(--cinder-text);
+    }
+
+    .cinder-button[data-cinder-variant='ghost-danger']:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ) {
+      background: var(--cinder-color-danger-bg);
+      color: var(--cinder-color-danger-fg);
+    }
+
+    .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:hover:not(
+        :disabled
+      ):not([aria-disabled='true']) {
+      background: var(--cinder-color-danger-bg);
+      border-color: var(--cinder-color-danger-border);
+      color: var(--cinder-color-danger-fg);
+    }
+
+    .cinder-button[data-cinder-variant='soft']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: color-mix(in oklch, var(--cinder-accent), transparent 80%);
+    }
+
+    .cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ) {
+      background: var(--cinder-color-danger-border);
+      color: var(--cinder-color-danger-fg);
+    }
   }
 
-  .cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-accent-hover);
-    border-color: transparent;
+  /* :active rules placed AFTER @media (hover: hover) so press feedback overrides
+ * hover paint when both states are active on hover-capable devices. Unwrapped
+ * so they fire on tap. */
+  .cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-accent-active);
   }
 
-  .cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-surface-hover);
-  }
-
-  .cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-danger-hover);
-    border-color: transparent;
-  }
-
-  .cinder-button[data-cinder-variant='ghost']:hover:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-surface-hover);
-  }
-
-  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost']:hover:not(:disabled):not(
+  .cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-surface-hover);
-    border-color: var(--cinder-border);
-    color: var(--cinder-text);
+    background: var(--cinder-surface-pressed);
   }
 
-  .cinder-button[data-cinder-variant='ghost-danger']:hover:not(:disabled):not(
-      [aria-disabled='true']
-    ) {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
+  .cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-danger-active);
   }
 
-  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:hover:not(
-      :disabled
-    ):not([aria-disabled='true']) {
-    background: var(--cinder-color-danger-bg);
-    border-color: var(--cinder-color-danger-border);
-    color: var(--cinder-color-danger-fg);
+  .cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-surface-pressed);
   }
 
-  .cinder-button[data-cinder-variant='soft']:hover:not(:disabled):not([aria-disabled='true']) {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 80%);
-  }
-
-  .cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not(
+  .cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
     background: var(--cinder-color-danger-border);
     color: var(--cinder-color-danger-fg);
   }
-}
 
-/* :active rules placed AFTER @media (hover: hover) so press feedback overrides
- * hover paint when both states are active on hover-capable devices. Unwrapped
- * so they fire on tap. */
-.cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-accent-active);
-}
-
-.cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-pressed);
-}
-
-.cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-danger-active);
-}
-
-.cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--cinder-surface-pressed);
-}
-
-.cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
-    [aria-disabled='true']
-  ) {
-  background: var(--cinder-color-danger-border);
-  color: var(--cinder-color-danger-fg);
-}
-
-.cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 74%);
-}
-
-.cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
-    [aria-disabled='true']
-  ) {
-  background: var(--cinder-danger);
-  color: var(--cinder-danger-contrast);
-}
-
-@media (forced-colors: active) {
-  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
-    background: ButtonFace;
-    border-color: ButtonBorder;
-    color: ButtonText;
+  .cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 74%);
   }
 
-  .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
-    background: ButtonFace;
-    border-color: ButtonBorder;
-    color: ButtonText;
+  .cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
+      [aria-disabled='true']
+    ) {
+    background: var(--cinder-danger);
+    color: var(--cinder-danger-contrast);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
+      background: ButtonFace;
+      border-color: ButtonBorder;
+      color: ButtonText;
+    }
+
+    .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
+      background: ButtonFace;
+      border-color: ButtonBorder;
+      color: ButtonText;
+    }
   }
 }

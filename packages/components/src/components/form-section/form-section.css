@@ -1,75 +1,77 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * FORM SECTION
  * ======================================== */
 
-.cinder-form-section {
-  container-type: inline-size;
-  container-name: cinder-form-section;
-  display: block;
-  border: none;
-  padding: 0;
-  margin: 0;
-}
+  .cinder-form-section {
+    container-type: inline-size;
+    container-name: cinder-form-section;
+    display: block;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Heading / Legend
  * ---------------------------------------- */
 
-.cinder-form-section__heading,
-.cinder-form-section__legend {
-  display: block;
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-semibold);
-  line-height: var(--cinder-leading-snug);
-  color: var(--cinder-text);
-  margin: 0 0 var(--cinder-space-1-5);
-  padding: 0;
-}
+  .cinder-form-section__heading,
+  .cinder-form-section__legend {
+    display: block;
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-snug);
+    color: var(--cinder-text);
+    margin: 0 0 var(--cinder-space-1-5);
+    padding: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Description
  * ---------------------------------------- */
 
-.cinder-form-section__description {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-  margin: 0 0 var(--cinder-space-3);
-}
+  .cinder-form-section__description {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    margin: 0 0 var(--cinder-space-3);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Responsive grid — driven by container queries
  * ---------------------------------------- */
 
-.cinder-form-section__grid {
-  display: grid;
-  gap: var(--cinder-form-section-gap, 1rem);
-  grid-template-columns: 1fr; /* default: single column */
-}
-
-@container cinder-form-section (min-width: 40rem) {
-  .cinder-form-section[data-columns='2'] .cinder-form-section__grid,
-  .cinder-form-section[data-columns='3'] .cinder-form-section__grid,
-  .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .cinder-form-section__grid {
+    display: grid;
+    gap: var(--cinder-form-section-gap, 1rem);
+    grid-template-columns: 1fr; /* default: single column */
   }
 
-  .cinder-form-section[data-columns='2'] .cinder-form-section__span-2,
-  .cinder-form-section[data-columns='3'] .cinder-form-section__span-2,
-  .cinder-form-section[data-columns='4'] .cinder-form-section__span-2 {
-    grid-column: span 2;
-  }
-}
+  @container cinder-form-section (min-width: 40rem) {
+    .cinder-form-section[data-columns='2'] .cinder-form-section__grid,
+    .cinder-form-section[data-columns='3'] .cinder-form-section__grid,
+    .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 
-@container cinder-form-section (min-width: 60rem) {
-  .cinder-form-section[data-columns='3'] .cinder-form-section__grid,
-  .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    .cinder-form-section[data-columns='2'] .cinder-form-section__span-2,
+    .cinder-form-section[data-columns='3'] .cinder-form-section__span-2,
+    .cinder-form-section[data-columns='4'] .cinder-form-section__span-2 {
+      grid-column: span 2;
+    }
   }
-}
 
-@container cinder-form-section (min-width: 80rem) {
-  .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  @container cinder-form-section (min-width: 60rem) {
+    .cinder-form-section[data-columns='3'] .cinder-form-section__grid,
+    .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container cinder-form-section (min-width: 80rem) {
+    .cinder-form-section[data-columns='4'] .cinder-form-section__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 }

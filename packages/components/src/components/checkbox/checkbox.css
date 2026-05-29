@@ -1,182 +1,184 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * CHECKBOX
  * Styled native <input type="checkbox"> with description and error.
  * ======================================== */
 
-.cinder-checkbox-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1-5);
-}
+  .cinder-checkbox-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1-5);
+  }
 
-.cinder-checkbox-row {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-}
+  .cinder-checkbox-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-checkbox {
-  /* Custom-painted but native: keep the input in the layout so screen readers
+  .cinder-checkbox {
+    /* Custom-painted but native: keep the input in the layout so screen readers
    * and form submission see it; restyle via appearance:none. */
-  appearance: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-sm);
-  background: var(--cinder-surface-raised);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition:
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    background var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  .cinder-checkbox:hover:not(:disabled) {
-    border-color: var(--cinder-border-strong);
+  @media (hover: hover) {
+    .cinder-checkbox:hover:not(:disabled) {
+      border-color: var(--cinder-border-strong);
+    }
   }
-}
 
-.cinder-checkbox:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
-      var(--_cinder-checkbox-ring, var(--cinder-ring-color));
-}
-
-@media (forced-colors: active) {
   .cinder-checkbox:focus-visible {
-    outline: var(--cinder-ring-width) solid Highlight;
-    outline-offset: 1px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-checkbox-ring, var(--cinder-ring-color));
   }
-}
 
-/* Checked state — paint the box with the accent color. The visible glyph is
+  @media (forced-colors: active) {
+    .cinder-checkbox:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
+  }
+
+  /* Checked state — paint the box with the accent color. The visible glyph is
  * drawn by the aria-hidden sibling indicator with `mask-image` so the icon
  * color tracks `--cinder-accent-contrast` through theme switches. */
-.cinder-checkbox:checked {
-  background: var(--cinder-accent);
-  border-color: var(--cinder-accent);
-}
+  .cinder-checkbox:checked {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
 
-.cinder-checkbox:indeterminate {
-  background: var(--cinder-accent);
-  border-color: var(--cinder-accent);
-}
+  .cinder-checkbox:indeterminate {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
 
-/* Sibling indicator: a square overlay centered on the input that is masked
+  /* Sibling indicator: a square overlay centered on the input that is masked
  * to the check or indeterminate glyph. The input still owns the border,
  * focus ring, and interaction; the indicator is non-interactive. */
 
-.cinder-checkbox-field__control {
-  position: relative;
-  display: inline-flex;
-  inline-size: 1.125rem;
-  block-size: 1.125rem;
-  flex-shrink: 0;
-}
+  .cinder-checkbox-field__control {
+    position: relative;
+    display: inline-flex;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    flex-shrink: 0;
+  }
 
-.cinder-checkbox-field__indicator {
-  --_cinder-checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.7 4.3L6.5 10.6 3.3 7.4 2 8.7l4.5 4.5 7.6-7.6z'/%3E%3C/svg%3E");
-  --_cinder-checkbox-indeterminate-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='7' width='10' height='2' rx='1'/%3E%3C/svg%3E");
+  .cinder-checkbox-field__indicator {
+    --_cinder-checkbox-check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.7 4.3L6.5 10.6 3.3 7.4 2 8.7l4.5 4.5 7.6-7.6z'/%3E%3C/svg%3E");
+    --_cinder-checkbox-indeterminate-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='7' width='10' height='2' rx='1'/%3E%3C/svg%3E");
 
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  inline-size: 0.875rem;
-  block-size: 0.875rem;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0;
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
 
-  color: var(--cinder-accent-contrast);
-  background-color: currentColor;
+    color: var(--cinder-accent-contrast);
+    background-color: currentColor;
 
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 0.875rem 0.875rem;
-  mask-size: 0.875rem 0.875rem;
-}
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 0.875rem 0.875rem;
+    mask-size: 0.875rem 0.875rem;
+  }
 
-.cinder-checkbox:checked + .cinder-checkbox-field__indicator {
-  opacity: 1;
-  -webkit-mask-image: var(--_cinder-checkbox-check-mask);
-  mask-image: var(--_cinder-checkbox-check-mask);
-}
+  .cinder-checkbox:checked + .cinder-checkbox-field__indicator {
+    opacity: 1;
+    -webkit-mask-image: var(--_cinder-checkbox-check-mask);
+    mask-image: var(--_cinder-checkbox-check-mask);
+  }
 
-.cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
-  opacity: 1;
-  -webkit-mask-image: var(--_cinder-checkbox-indeterminate-mask);
-  mask-image: var(--_cinder-checkbox-indeterminate-mask);
-}
+  .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
+    opacity: 1;
+    -webkit-mask-image: var(--_cinder-checkbox-indeterminate-mask);
+    mask-image: var(--_cinder-checkbox-indeterminate-mask);
+  }
 
-/* Forced Colors Mode: UA suppresses `background-color: currentColor`, so the
+  /* Forced Colors Mode: UA suppresses `background-color: currentColor`, so the
  * masked indicator becomes invisible. Opt out of forced-color adjustment for
  * the glyph and paint with a system color that survives the override. */
-@media (forced-colors: active) {
-  .cinder-checkbox:checked + .cinder-checkbox-field__indicator,
-  .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
-    forced-color-adjust: none;
-    background-color: ButtonText;
+  @media (forced-colors: active) {
+    .cinder-checkbox:checked + .cinder-checkbox-field__indicator,
+    .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
+      forced-color-adjust: none;
+      background-color: ButtonText;
+    }
   }
-}
 
-/* Disabled state */
-.cinder-checkbox:disabled {
-  cursor: not-allowed;
-  background: var(--cinder-surface-inset);
-  border-color: var(--cinder-border-muted);
-}
+  /* Disabled state */
+  .cinder-checkbox:disabled {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+  }
 
-.cinder-checkbox:disabled:checked,
-.cinder-checkbox:disabled:indeterminate {
-  background-color: var(--cinder-text-disabled);
-  border-color: var(--cinder-text-disabled);
-}
+  .cinder-checkbox:disabled:checked,
+  .cinder-checkbox:disabled:indeterminate {
+    background-color: var(--cinder-text-disabled);
+    border-color: var(--cinder-text-disabled);
+  }
 
-/* Error / invalid state */
-.cinder-checkbox[aria-invalid='true'] {
-  --_cinder-checkbox-ring: var(--cinder-danger);
-  border-color: var(--cinder-danger);
-}
+  /* Error / invalid state */
+  .cinder-checkbox[aria-invalid='true'] {
+    --_cinder-checkbox-ring: var(--cinder-danger);
+    border-color: var(--cinder-danger);
+  }
 
-/* Label */
-.cinder-checkbox-field__label {
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text);
-  cursor: pointer;
-}
+  /* Label */
+  .cinder-checkbox-field__label {
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text);
+    cursor: pointer;
+  }
 
-.cinder-checkbox-field__label[data-disabled] {
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-}
+  .cinder-checkbox-field__label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
 
-/* Supporting text */
-.cinder-checkbox-field__description {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-  margin: 0;
-  padding-inline-start: calc(1.125rem + var(--cinder-space-2));
-}
+  /* Supporting text */
+  .cinder-checkbox-field__description {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    margin: 0;
+    padding-inline-start: calc(1.125rem + var(--cinder-space-2));
+  }
 
-.cinder-checkbox-field__error {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-danger);
-  margin: 0;
-  padding-inline-start: calc(1.125rem + var(--cinder-space-2));
+  .cinder-checkbox-field__error {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-danger);
+    margin: 0;
+    padding-inline-start: calc(1.125rem + var(--cinder-space-2));
+  }
 }

@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, mock, test } from 'bun:test';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -8,7 +9,11 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/table-fixture.svelte');
 
-const tableCss = await Bun.file(new URL('./table.css', import.meta.url)).text();
+// Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+// getComputedStyle or expose them as top-level CSSStyleRules.
+const tableCss = stripCinderComponentsLayer(
+  await Bun.file(new URL('./table.css', import.meta.url)).text(),
+);
 
 const columns = [
   { key: 'name', label: 'Name', sortable: true },

@@ -299,6 +299,7 @@ if (!perComponentServerBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const copiedSidecars: string[] = [];
+const unlayeredSidecars: string[] = [];
 for (const component of components) {
   const source = componentCssSource(component);
   if (!existsSync(source)) continue;
@@ -307,6 +308,21 @@ for (const component of components) {
   const text = await Bun.file(source).text();
   await Bun.write(destination, text);
   copiedSidecars.push(destination);
+  // The shipped sidecar must self-declare its cascade layer so a direct
+  // subpath import (`cinder/<name>/styles`) lands its rules INSIDE
+  // `cinder.components` rather than outside every layer (where they would be
+  // un-overridable). `check-component-css.ts` enforces this on the source
+  // above; this is the dist-side backstop against a copy-path regression.
+  if (!text.includes('@layer cinder.components')) {
+    unlayeredSidecars.push(destination);
+  }
+}
+if (unlayeredSidecars.length > 0) {
+  process.stderr.write(
+    'Build aborted: component CSS sidecars copied to dist/ without a `@layer cinder.components` wrapper:\n',
+  );
+  for (const path of unlayeredSidecars) process.stderr.write(`  - ${path}\n`);
+  process.exit(1);
 }
 
 // -----------------------------------------------------------------------------

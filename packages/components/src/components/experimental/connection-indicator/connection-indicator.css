@@ -1,60 +1,62 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * CONNECTION INDICATOR (experimental)
  * Live-status pill with semantic dot + label.
  * ======================================== */
 
-.cinder-connection-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1-5);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  border-radius: var(--cinder-radius-full);
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text);
-}
-
-.cinder-connection-indicator__dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--cinder-radius-full);
-  background: currentColor;
-}
-
-.cinder-connection-indicator[data-cinder-state='connected'] {
-  color: var(--cinder-success);
-}
-
-.cinder-connection-indicator[data-cinder-state='connecting'] {
-  color: var(--cinder-warning);
-}
-
-.cinder-connection-indicator[data-cinder-state='connecting'] .cinder-connection-indicator__dot {
-  animation: cinder-connection-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes cinder-connection-pulse {
-  0%,
-  100% {
-    opacity: 1;
+  .cinder-connection-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1-5);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
   }
-  50% {
-    opacity: 0.3;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
+  .cinder-connection-indicator__dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--cinder-radius-full);
+    background: currentColor;
+  }
+
+  .cinder-connection-indicator[data-cinder-state='connected'] {
+    color: var(--cinder-success);
+  }
+
+  .cinder-connection-indicator[data-cinder-state='connecting'] {
+    color: var(--cinder-warning);
+  }
+
   .cinder-connection-indicator[data-cinder-state='connecting'] .cinder-connection-indicator__dot {
-    animation: none;
+    animation: cinder-connection-pulse 1.4s ease-in-out infinite;
   }
-}
 
-.cinder-connection-indicator[data-cinder-state='disconnected'] {
-  color: var(--cinder-text-muted);
-}
+  @keyframes cinder-connection-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
 
-.cinder-connection-indicator[data-cinder-state='error'] {
-  color: var(--cinder-danger);
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-connection-indicator[data-cinder-state='connecting'] .cinder-connection-indicator__dot {
+      animation: none;
+    }
+  }
+
+  .cinder-connection-indicator[data-cinder-state='disconnected'] {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-connection-indicator[data-cinder-state='error'] {
+    color: var(--cinder-danger);
+  }
 }

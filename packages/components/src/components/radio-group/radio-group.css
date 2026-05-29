@@ -1,275 +1,277 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * RADIO GROUP
  * Fieldset wrapper + child Radio rows.
  * ======================================== */
 
-.cinder-radio-group {
-  border: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  .cinder-radio-group {
+    border: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-radio-group__legend {
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text);
-  padding: 0;
-  margin: 0 0 var(--cinder-space-1) 0;
-}
+  .cinder-radio-group__legend {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+    padding: 0;
+    margin: 0 0 var(--cinder-space-1) 0;
+  }
 
-.cinder-radio-group[data-cinder-disabled] .cinder-radio-group__legend {
-  color: var(--cinder-text-disabled);
-}
+  .cinder-radio-group[data-cinder-disabled] .cinder-radio-group__legend {
+    color: var(--cinder-text-disabled);
+  }
 
-.cinder-radio-group__items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  .cinder-radio-group__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-radio-group__description {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-  margin: 0;
-}
+  .cinder-radio-group__description {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    margin: 0;
+  }
 
-.cinder-radio-group__error {
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-danger);
-  margin: 0;
-}
+  .cinder-radio-group__error {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-danger);
+    margin: 0;
+  }
 
-/* ========================================
+  /* ========================================
  * RADIO ROW + INPUT
  * ======================================== */
 
-.cinder-radio-row {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-2);
-}
+  .cinder-radio-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-radio {
-  appearance: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-full);
-  background: var(--cinder-surface-raised);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition:
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    background var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-radio {
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface-raised);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  .cinder-radio:hover:not(:disabled) {
-    border-color: var(--cinder-border-strong);
+  @media (hover: hover) {
+    .cinder-radio:hover:not(:disabled) {
+      border-color: var(--cinder-border-strong);
+    }
   }
-}
 
-.cinder-radio:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
-      var(--_cinder-radio-ring, var(--cinder-ring-color));
-}
-
-@media (forced-colors: active) {
   .cinder-radio:focus-visible {
-    outline: var(--cinder-ring-width) solid Highlight;
-    outline-offset: 1px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-radio-ring, var(--cinder-ring-color));
   }
-}
 
-.cinder-radio:checked {
-  background: var(--cinder-accent);
-  border-color: var(--cinder-accent);
-}
+  @media (forced-colors: active) {
+    .cinder-radio:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
+  }
 
-/* Sibling indicator: a circular dot drawn with `mask-image` so the inner
+  .cinder-radio:checked {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
+
+  /* Sibling indicator: a circular dot drawn with `mask-image` so the inner
  * glyph color tracks `--cinder-accent-contrast`. Input keeps the border,
  * focus ring, and interaction; indicator is non-interactive. */
 
-.cinder-radio-row__control {
-  position: relative;
-  display: inline-flex;
-  inline-size: 1.125rem;
-  block-size: 1.125rem;
-  flex-shrink: 0;
-}
-
-.cinder-radio-row__indicator {
-  --_cinder-radio-dot-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3.5'/%3E%3C/svg%3E");
-
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  inline-size: 0.875rem;
-  block-size: 0.875rem;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0;
-
-  color: var(--cinder-accent-contrast);
-  background-color: currentColor;
-
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 0.875rem 0.875rem;
-  mask-size: 0.875rem 0.875rem;
-}
-
-.cinder-radio:checked + .cinder-radio-row__indicator {
-  opacity: 1;
-  -webkit-mask-image: var(--_cinder-radio-dot-mask);
-  mask-image: var(--_cinder-radio-dot-mask);
-}
-
-/* Forced Colors Mode override — see checkbox.css for rationale. */
-@media (forced-colors: active) {
-  .cinder-radio:checked + .cinder-radio-row__indicator {
-    forced-color-adjust: none;
-    background-color: ButtonText;
+  .cinder-radio-row__control {
+    position: relative;
+    display: inline-flex;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    flex-shrink: 0;
   }
-}
 
-.cinder-radio:disabled {
-  cursor: not-allowed;
-  background: var(--cinder-surface-inset);
-  border-color: var(--cinder-border-muted);
-}
+  .cinder-radio-row__indicator {
+    --_cinder-radio-dot-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3.5'/%3E%3C/svg%3E");
 
-.cinder-radio:disabled:checked {
-  background-color: var(--cinder-text-disabled);
-  border-color: var(--cinder-text-disabled);
-}
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
 
-.cinder-radio[aria-invalid='true'] {
-  --_cinder-radio-ring: var(--cinder-danger);
-  border-color: var(--cinder-danger);
-}
+    color: var(--cinder-accent-contrast);
+    background-color: currentColor;
 
-.cinder-radio-row__label {
-  font-size: var(--cinder-text-sm);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text);
-  cursor: pointer;
-}
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 0.875rem 0.875rem;
+    mask-size: 0.875rem 0.875rem;
+  }
 
-.cinder-radio-row__label[data-disabled] {
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-}
+  .cinder-radio:checked + .cinder-radio-row__indicator {
+    opacity: 1;
+    -webkit-mask-image: var(--_cinder-radio-dot-mask);
+    mask-image: var(--_cinder-radio-dot-mask);
+  }
 
-/* ========================================
+  /* Forced Colors Mode override — see checkbox.css for rationale. */
+  @media (forced-colors: active) {
+    .cinder-radio:checked + .cinder-radio-row__indicator {
+      forced-color-adjust: none;
+      background-color: ButtonText;
+    }
+  }
+
+  .cinder-radio:disabled {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+  }
+
+  .cinder-radio:disabled:checked {
+    background-color: var(--cinder-text-disabled);
+    border-color: var(--cinder-text-disabled);
+  }
+
+  .cinder-radio[aria-invalid='true'] {
+    --_cinder-radio-ring: var(--cinder-danger);
+    border-color: var(--cinder-danger);
+  }
+
+  .cinder-radio-row__label {
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text);
+    cursor: pointer;
+  }
+
+  .cinder-radio-row__label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+
+  /* ========================================
  * PER-OPTION DESCRIPTION
  * ======================================== */
 
-.cinder-radio-row[data-has-description] {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: var(--cinder-space-2);
-  row-gap: var(--cinder-space-1);
-  align-items: start;
-}
+  .cinder-radio-row[data-has-description] {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--cinder-space-2);
+    row-gap: var(--cinder-space-1);
+    align-items: start;
+  }
 
-.cinder-radio-row[data-has-description] .cinder-radio-row__control {
-  grid-row: 1;
-  grid-column: 1;
-  margin-top: var(--cinder-space-0-5); /* align input with label's first cap-height line */
-}
+  .cinder-radio-row[data-has-description] .cinder-radio-row__control {
+    grid-row: 1;
+    grid-column: 1;
+    margin-top: var(--cinder-space-0-5); /* align input with label's first cap-height line */
+  }
 
-.cinder-radio-row[data-has-description] .cinder-radio-row__label {
-  grid-row: 1;
-  grid-column: 2;
-}
+  .cinder-radio-row[data-has-description] .cinder-radio-row__label {
+    grid-row: 1;
+    grid-column: 2;
+  }
 
-.cinder-radio-row__description {
-  grid-row: 2;
-  grid-column: 2;
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  line-height: var(--cinder-leading-normal);
-  color: var(--cinder-text-muted);
-}
+  .cinder-radio-row__description {
+    grid-row: 2;
+    grid-column: 2;
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-radio-row__description[data-disabled] {
-  color: var(--cinder-text-disabled);
-}
+  .cinder-radio-row__description[data-disabled] {
+    color: var(--cinder-text-disabled);
+  }
 
-/* ========================================
+  /* ========================================
  * CARD VARIANT
  * ======================================== */
 
-.cinder-radio-group[data-variant='card'] .cinder-radio-group__items {
-  gap: var(--cinder-space-2);
-}
+  .cinder-radio-group[data-variant='card'] .cinder-radio-group__items {
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-radio-group[data-variant='card'] .cinder-radio-row {
-  border: 1px solid var(--cinder-border);
-  border-radius: var(--cinder-radius-md);
-  padding: var(--cinder-space-3);
-  background: var(--cinder-surface-raised);
-  transition:
-    border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    background var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    padding: var(--cinder-space-3);
+    background: var(--cinder-surface-raised);
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. The :not([data-disabled])
  * exclusion replaces a separate reset rule for disabled cards. */
-@media (hover: hover) {
-  .cinder-radio-group[data-variant='card'] .cinder-radio-row:hover:not([data-disabled]) {
-    border-color: var(--cinder-border-strong);
-  }
-}
-
-/* Selection reinforcement — NOT the sole indicator. */
-.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
-  border-color: var(--cinder-accent);
-  background: var(--cinder-surface-selected, var(--cinder-surface-raised));
-}
-
-/* Invalid state on the card surface. Driven by `data-invalid` on the row. */
-.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
-  border-color: var(--cinder-danger);
-}
-
-/* Disabled card — driven by `data-disabled` on the row. */
-.cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled] {
-  background: var(--cinder-surface-inset);
-  border-color: var(--cinder-border-muted);
-  cursor: not-allowed;
-}
-
-@media (forced-colors: active) {
-  .cinder-radio-group[data-variant='card'] .cinder-radio-row {
-    border: 1px solid CanvasText;
+  @media (hover: hover) {
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row:hover:not([data-disabled]) {
+      border-color: var(--cinder-border-strong);
+    }
   }
 
+  /* Selection reinforcement — NOT the sole indicator. */
   .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
-    border: 2px solid Highlight;
+    border-color: var(--cinder-accent);
+    background: var(--cinder-surface-selected, var(--cinder-surface-raised));
   }
 
+  /* Invalid state on the card surface. Driven by `data-invalid` on the row. */
   .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
-    border: 2px solid Mark;
+    border-color: var(--cinder-danger);
+  }
+
+  /* Disabled card — driven by `data-disabled` on the row. */
+  .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-disabled] {
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+    cursor: not-allowed;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row {
+      border: 1px solid CanvasText;
+    }
+
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
+      border: 2px solid Highlight;
+    }
+
+    .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-invalid] {
+      border: 2px solid Mark;
+    }
   }
 }

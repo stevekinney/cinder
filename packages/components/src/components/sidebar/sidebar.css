@@ -1,4 +1,5 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SIDEBAR
  * Layout-level vertical navigation container. Combines branding, a nav
  * region, and an optional footer. Delegates the actual list to
@@ -7,62 +8,62 @@
  * both surfaces because the inner regions render the same elements.
  * ======================================== */
 
-.cinder-sidebar {
-  display: flex;
-  flex-direction: column;
-  inline-size: 16rem;
-  /* Fill the parent's cross-axis. `align-self: stretch` makes a flex item
+  .cinder-sidebar {
+    display: flex;
+    flex-direction: column;
+    inline-size: 16rem;
+    /* Fill the parent's cross-axis. `align-self: stretch` makes a flex item
      fill its parent's cross-axis size. An explicit `block-size` here would
      opt out of stretch behavior, so we deliberately leave it off. */
-  align-self: stretch;
-  background: var(--cinder-surface);
-  border-inline-end: 1px solid var(--cinder-border);
-  overflow: hidden;
-}
+    align-self: stretch;
+    background: var(--cinder-surface);
+    border-inline-end: 1px solid var(--cinder-border);
+    overflow: hidden;
+  }
 
-/* The mobile surface is rendered inside <Drawer>, which already paints its
+  /* The mobile surface is rendered inside <Drawer>, which already paints its
  * own surface and borders. Don't double up. */
-.cinder-sidebar.cinder-sidebar--mobile {
-  inline-size: 100%;
-  block-size: 100%;
-  background: transparent;
-  border-inline-end: none;
-}
+  .cinder-sidebar.cinder-sidebar--mobile {
+    inline-size: 100%;
+    block-size: 100%;
+    background: transparent;
+    border-inline-end: none;
+  }
 
-/* Collapsed (icon-only) mode applies to the inline <aside>. The mobile drawer
+  /* Collapsed (icon-only) mode applies to the inline <aside>. The mobile drawer
  * surface ignores `data-cinder-collapsed` for sizing because drawer-closed is
  * the collapsed state on mobile. */
-.cinder-sidebar[data-cinder-collapsed]:not(.cinder-sidebar--mobile) {
-  inline-size: 4rem;
-}
+  .cinder-sidebar[data-cinder-collapsed]:not(.cinder-sidebar--mobile) {
+    inline-size: 4rem;
+  }
 
-.cinder-sidebar__brand {
-  display: flex;
-  align-items: center;
-  padding-block: var(--cinder-space-4);
-  padding-inline: var(--cinder-space-4);
-  border-block-end: 1px solid var(--cinder-border);
-  flex-shrink: 0;
-}
+  .cinder-sidebar__brand {
+    display: flex;
+    align-items: center;
+    padding-block: var(--cinder-space-4);
+    padding-inline: var(--cinder-space-4);
+    border-block-end: 1px solid var(--cinder-border);
+    flex-shrink: 0;
+  }
 
-.cinder-sidebar__nav {
-  flex: 1;
-  overflow-y: auto;
-  padding-block: var(--cinder-space-3);
-  padding-inline: var(--cinder-space-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  .cinder-sidebar__nav {
+    flex: 1;
+    overflow-y: auto;
+    padding-block: var(--cinder-space-3);
+    padding-inline: var(--cinder-space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-sidebar__footer {
-  padding-block: var(--cinder-space-3);
-  padding-inline: var(--cinder-space-3);
-  border-block-start: 1px solid var(--cinder-border);
-  flex-shrink: 0;
-}
+  .cinder-sidebar__footer {
+    padding-block: var(--cinder-space-3);
+    padding-inline: var(--cinder-space-3);
+    border-block-start: 1px solid var(--cinder-border);
+    flex-shrink: 0;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Collapsed (icon-only) treatment for descendant items.
  *
  * Decorative chrome (group badge, chevron, panel) is hidden with `display:
@@ -75,84 +76,97 @@
  * lands on the trigger or link.
  * ---------------------------------------- */
 
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__badge,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__chevron,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__panel {
-  display: none;
-}
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__badge,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__chevron,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__panel {
+    display: none;
+  }
 
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__trigger {
-  justify-content: center;
-  padding-inline: var(--cinder-space-2);
-}
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__trigger {
+    justify-content: center;
+    padding-inline: var(--cinder-space-2);
+  }
 
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__label,
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-side-navigation
-  a.cinder-navigation-item
-  > :not([aria-hidden='true']):not(svg):not(img),
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-side-navigation
-  button.cinder-navigation-item
-  > :not([aria-hidden='true']):not(svg):not(img),
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-sidebar__footer
-  a.cinder-navigation-item
-  > :not([aria-hidden='true']):not(svg):not(img),
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-sidebar__footer
-  button.cinder-navigation-item
-  > :not([aria-hidden='true']):not(svg):not(img) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation-group__label,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    a.cinder-navigation-item
+    > :not([aria-hidden='true']):not(svg):not(img),
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    button.cinder-navigation-item
+    > :not([aria-hidden='true']):not(svg):not(img),
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    a.cinder-navigation-item
+    > :not([aria-hidden='true']):not(svg):not(img),
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    button.cinder-navigation-item
+    > :not([aria-hidden='true']):not(svg):not(img) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
-/* Leaf items in collapsed mode collapse to icon-only width. `font-size: 0`
+  /* Leaf items in collapsed mode collapse to icon-only width. `font-size: 0`
  * covers bare text children that cannot be selected directly; element
  * children are additionally visually hidden above. The DOM text remains
  * available for accessible-name computation. */
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation button.cinder-navigation-item,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer button.cinder-navigation-item {
-  justify-content: center;
-  padding-inline: var(--cinder-space-2);
-  gap: 0;
-  font-size: 0;
-}
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation button.cinder-navigation-item,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer button.cinder-navigation-item {
+    justify-content: center;
+    padding-inline: var(--cinder-space-2);
+    gap: 0;
+    font-size: 0;
+  }
 
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item > svg,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation button.cinder-navigation-item > svg,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item > svg,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer button.cinder-navigation-item > svg,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item > img,
-.cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation button.cinder-navigation-item > img,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item > img,
-.cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer button.cinder-navigation-item > img,
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-side-navigation
-  a.cinder-navigation-item
-  > [aria-hidden='true'],
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-side-navigation
-  button.cinder-navigation-item
-  > [aria-hidden='true'],
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-sidebar__footer
-  a.cinder-navigation-item
-  > [aria-hidden='true'],
-.cinder-sidebar[data-cinder-collapsed]
-  .cinder-sidebar__footer
-  button.cinder-navigation-item
-  > [aria-hidden='true'] {
-  flex-shrink: 0;
-  font-size: var(--cinder-text-sm);
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item > svg,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    button.cinder-navigation-item
+    > svg,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item > svg,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    button.cinder-navigation-item
+    > svg,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-side-navigation a.cinder-navigation-item > img,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    button.cinder-navigation-item
+    > img,
+  .cinder-sidebar[data-cinder-collapsed] .cinder-sidebar__footer a.cinder-navigation-item > img,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    button.cinder-navigation-item
+    > img,
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    a.cinder-navigation-item
+    > [aria-hidden='true'],
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-side-navigation
+    button.cinder-navigation-item
+    > [aria-hidden='true'],
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    a.cinder-navigation-item
+    > [aria-hidden='true'],
+  .cinder-sidebar[data-cinder-collapsed]
+    .cinder-sidebar__footer
+    button.cinder-navigation-item
+    > [aria-hidden='true'] {
+    flex-shrink: 0;
+    font-size: var(--cinder-text-sm);
+  }
 }

@@ -1,82 +1,84 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * BADGE
  * ======================================== */
 
-.cinder-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1.25;
-  border-radius: var(--cinder-radius-sm);
-  border: 1px solid var(--cinder-border);
-  white-space: nowrap;
+  .cinder-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1.25;
+    border-radius: var(--cinder-radius-sm);
+    border: 1px solid var(--cinder-border);
+    white-space: nowrap;
 
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
 
-  transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Size variants
  * ---------------------------------------- */
 
-.cinder-badge[data-cinder-size='xs'] {
-  font-size: 0.625rem; /* 10px — smaller than 2xs (11px) for icon-button count badges */
-  padding: 0 var(--cinder-space-1);
-  line-height: 0.875rem;
-}
+  .cinder-badge[data-cinder-size='xs'] {
+    font-size: 0.625rem; /* 10px — smaller than 2xs (11px) for icon-button count badges */
+    padding: 0 var(--cinder-space-1);
+    line-height: 0.875rem;
+  }
 
-.cinder-badge[data-cinder-size='sm'] {
-  font-size: var(--cinder-text-2xs, 0.625rem);
-  padding: 0 var(--cinder-space-1);
-  line-height: 1rem;
-}
+  .cinder-badge[data-cinder-size='sm'] {
+    font-size: var(--cinder-text-2xs, 0.625rem);
+    padding: 0 var(--cinder-space-1);
+    line-height: 1rem;
+  }
 
-.cinder-badge[data-cinder-size='md'] {
-  font-size: var(--cinder-text-xs);
-  padding: var(--cinder-space-0-5) var(--cinder-space-2);
-}
+  .cinder-badge[data-cinder-size='md'] {
+    font-size: var(--cinder-text-xs);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Color variants
  * ---------------------------------------- */
 
-.cinder-badge[data-cinder-variant='neutral'] {
-  background: var(--cinder-surface-inset);
-  color: var(--cinder-text);
-  border-color: var(--cinder-border);
-}
+  .cinder-badge[data-cinder-variant='neutral'] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
+    border-color: var(--cinder-border);
+  }
 
-.cinder-badge[data-cinder-variant='success'] {
-  background: var(--cinder-color-success-bg);
-  color: var(--cinder-color-success-fg);
-  border-color: var(--cinder-color-success-border);
-}
+  .cinder-badge[data-cinder-variant='success'] {
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
+    border-color: var(--cinder-color-success-border);
+  }
 
-.cinder-badge[data-cinder-variant='warning'] {
-  background: var(--cinder-color-warning-bg);
-  color: var(--cinder-color-warning-fg);
-  border-color: var(--cinder-color-warning-border);
-}
+  .cinder-badge[data-cinder-variant='warning'] {
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
+    border-color: var(--cinder-color-warning-border);
+  }
 
-.cinder-badge[data-cinder-variant='danger'] {
-  background: var(--cinder-color-danger-bg);
-  color: var(--cinder-color-danger-fg);
-  border-color: var(--cinder-color-danger-border);
-}
+  .cinder-badge[data-cinder-variant='danger'] {
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
+    border-color: var(--cinder-color-danger-border);
+  }
 
-.cinder-badge[data-cinder-variant='info'] {
-  background: var(--cinder-color-info-bg);
-  color: var(--cinder-color-info-fg);
-  border-color: var(--cinder-color-info-border);
-}
+  .cinder-badge[data-cinder-variant='info'] {
+    background: var(--cinder-color-info-bg);
+    color: var(--cinder-color-info-fg);
+    border-color: var(--cinder-color-info-border);
+  }
 
-.cinder-badge[data-cinder-variant='accent'] {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
-  color: var(--cinder-accent);
-  border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+  .cinder-badge[data-cinder-variant='accent'] {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+    color: var(--cinder-accent);
+    border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
+  }
 }

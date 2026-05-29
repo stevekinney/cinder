@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
 
-import { parse, type Declaration, type Rule } from 'postcss';
+import { parse, type AtRule, type Declaration, type Rule } from 'postcss';
 
 function loadCss(relativePath: string): string {
   const fullPath = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -88,10 +88,26 @@ const BORDER_AFFECTING = new Set([
   'border-image-repeat',
 ]);
 
+/**
+ * A rule is "effectively top-level" when the only at-rules between it and the
+ * stylesheet root are `@layer` wrappers. Component CSS now self-declares
+ * `@layer cinder.components { … }`, so the base rules sit one `@layer` deep;
+ * that wrapper is transparent. Rules under `@media` / `@supports` /
+ * `@container` (e.g. the forced-colors block) are NOT top-level and are skipped.
+ */
+function isEffectivelyTopLevel(rule: Rule): boolean {
+  let ancestor = rule.parent;
+  while (ancestor && ancestor.type !== 'root') {
+    if (ancestor.type === 'atrule' && (ancestor as AtRule).name !== 'layer') return false;
+    ancestor = ancestor.parent;
+  }
+  return true;
+}
+
 function findRules(selector: string): Rule[] {
   const matches: Rule[] = [];
   root.walkRules((rule) => {
-    if (rule.parent?.type === 'atrule') return undefined;
+    if (!isEffectivelyTopLevel(rule)) return undefined;
     if (rule.selectors.includes(selector)) matches.push(rule);
     return undefined;
   });

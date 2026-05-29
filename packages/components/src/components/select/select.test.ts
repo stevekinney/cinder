@@ -3,6 +3,7 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toBeDisabled, toBeVisible).
@@ -25,7 +26,9 @@ const defaultOptions = [
 ];
 
 function readSelectStyles(): string {
-  return readFileSync(new URL('./select.css', import.meta.url), 'utf8');
+  // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+  // getComputedStyle. Inner declarations are unchanged.
+  return stripCinderComponentsLayer(readFileSync(new URL('./select.css', import.meta.url), 'utf8'));
 }
 
 describe('Select', () => {

@@ -1,134 +1,136 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * GRID LIST
  * ======================================== */
 
-.cinder-grid-list {
-  /* Default min-cell-width if `columns` prop is omitted. */
-  --cinder-grid-list-min-width: 16rem;
+  .cinder-grid-list {
+    /* Default min-cell-width if `columns` prop is omitted. */
+    --cinder-grid-list-min-width: 16rem;
 
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  inline-size: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    inline-size: 100%;
 
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(min(var(--cinder-grid-list-min-width), 100%), 1fr)
-  );
-  gap: var(--cinder-space-4);
-}
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(var(--cinder-grid-list-min-width), 100%), 1fr)
+    );
+    gap: var(--cinder-space-4);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Item — visually a card, semantically an <li>.
  * Reuses Card tokens; no new visual variables.
  * ---------------------------------------- */
 
-.cinder-grid-list__item {
-  position: relative; /* Anchors the stretched-link pseudo overlay. */
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-  padding: var(--cinder-space-4);
-  border-radius: var(--cinder-radius-lg);
-  background: var(--cinder-surface-raised);
-  border: 1px solid var(--cinder-border-muted);
-  color: var(--cinder-text);
-  box-shadow: var(--cinder-shadow-sm);
-  transition:
-    box-shadow 150ms ease,
-    border-color 150ms ease;
-}
-
-@media (hover: hover) {
-  .cinder-grid-list__item:has(.cinder-grid-list__link:hover) {
-    box-shadow: var(--cinder-shadow-md);
-    border-color: var(--cinder-border);
+  .cinder-grid-list__item {
+    position: relative; /* Anchors the stretched-link pseudo overlay. */
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-4);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border-muted);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-sm);
+    transition:
+      box-shadow 150ms ease,
+      border-color 150ms ease;
   }
-}
 
-/* ----------------------------------------
+  @media (hover: hover) {
+    .cinder-grid-list__item:has(.cinder-grid-list__link:hover) {
+      box-shadow: var(--cinder-shadow-md);
+      border-color: var(--cinder-border);
+    }
+  }
+
+  /* ----------------------------------------
  * Snippet wrappers — provide stable selectors and predictable layout.
  * All wrappers sit UNDER the stretched-link overlay except `.cinder-grid-list__actions`.
  * ---------------------------------------- */
 
-.cinder-grid-list__image,
-.cinder-grid-list__title,
-.cinder-grid-list__subtitle,
-.cinder-grid-list__meta {
-  min-inline-size: 0; /* Allows long content to truncate inside flex parents. */
-}
+  .cinder-grid-list__image,
+  .cinder-grid-list__title,
+  .cinder-grid-list__subtitle,
+  .cinder-grid-list__meta {
+    min-inline-size: 0; /* Allows long content to truncate inside flex parents. */
+  }
 
-.cinder-grid-list__title {
-  font-size: var(--cinder-text-base);
-  font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text);
-}
+  .cinder-grid-list__title {
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+  }
 
-.cinder-grid-list__subtitle {
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-muted);
-}
+  .cinder-grid-list__subtitle {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+  }
 
-.cinder-grid-list__meta {
-  font-size: var(--cinder-text-sm);
-  color: var(--cinder-text-subtle);
-}
+  .cinder-grid-list__meta {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Stretched link — opt-in via `href` prop.
  *
  * The anchor wraps the title text but its ::after extends to cover the
  * entire item, so any pointer click anywhere on the item activates the link.
  * ---------------------------------------- */
 
-.cinder-grid-list__link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.cinder-grid-list__link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* Match the item's radius directly — `inherit` would resolve to 0 since the
-     anchor's ancestor chain doesn't carry the radius token. */
-  border-radius: var(--cinder-radius-lg);
-  z-index: 0;
-}
-
-/* Focus ring on the stretched-link anchor. Uses box-shadow offset technique
-   to float the ring outside the card's border, matching stacked-list-item.css. */
-.cinder-grid-list__link:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  border-radius: var(--cinder-radius-lg);
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-/* Forced Colors Mode — box-shadow rings are invisible; use a real outline. */
-@media (forced-colors: active) {
-  .cinder-grid-list__link:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+  .cinder-grid-list__link {
+    color: inherit;
+    text-decoration: none;
   }
-}
 
-/* ----------------------------------------
+  .cinder-grid-list__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* Match the item's radius directly — `inherit` would resolve to 0 since the
+     anchor's ancestor chain doesn't carry the radius token. */
+    border-radius: var(--cinder-radius-lg);
+    z-index: 0;
+  }
+
+  /* Focus ring on the stretched-link anchor. Uses box-shadow offset technique
+   to float the ring outside the card's border, matching stacked-list-item.css. */
+  .cinder-grid-list__link:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    border-radius: var(--cinder-radius-lg);
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  /* Forced Colors Mode — box-shadow rings are invisible; use a real outline. */
+  @media (forced-colors: active) {
+    .cinder-grid-list__link:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
+  /* ----------------------------------------
  * Actions row — lifted above the stretched-link overlay so its
  * buttons remain clickable / focusable.
  * ---------------------------------------- */
 
-.cinder-grid-list__actions {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cinder-space-2);
-  margin-block-start: auto; /* Pin actions to the bottom of the card. */
-}
+  .cinder-grid-list__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2);
+    margin-block-start: auto; /* Pin actions to the bottom of the card. */
+  }
 
-/* Allow consumers to lift an arbitrary descendant above the overlay. */
-.cinder-grid-list__item [data-cinder-stretched-link-escape] {
-  position: relative;
-  z-index: 1;
+  /* Allow consumers to lift an arbitrary descendant above the overlay. */
+  .cinder-grid-list__item [data-cinder-stretched-link-escape] {
+    position: relative;
+    z-index: 1;
+  }
 }

@@ -1,261 +1,263 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * STEPS
  * Wizard step indicator with horizontal and vertical orientations.
  * Uses aria-current="step" for the active step; completed steps render
  * a checkmark icon. No role="progressbar" — steps are navigation, not metering.
  * ======================================== */
 
-.cinder-steps {
-  display: block;
-}
+  .cinder-steps {
+    display: block;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * List
  * ---------------------------------------- */
 
-.cinder-steps__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-}
+  .cinder-steps__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+  }
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__list {
-  flex-direction: row;
-  align-items: flex-start;
-}
+  .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__list {
+    flex-direction: row;
+    align-items: flex-start;
+  }
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__list {
-  flex-direction: column;
-  align-items: stretch;
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__list {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Item — horizontal layout
  * Marker (top-left) | Connector (top-right, centered vertically)
  * Body spans full width in second row
  * ---------------------------------------- */
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__item {
-  flex: 1 1 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  gap: 0 var(--cinder-space-2);
-}
+  .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__item {
+    flex: 1 1 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 0 var(--cinder-space-2);
+  }
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__marker {
-  grid-column: 1;
-  grid-row: 1;
-}
+  .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__marker {
+    grid-column: 1;
+    grid-row: 1;
+  }
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  height: 1px;
-  /* Shorten the painted line by the leading gap and push it clear of the
+  .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    height: 1px;
+    /* Shorten the painted line by the leading gap and push it clear of the
      marker, so the total inline footprint of the cell is unchanged (no
      overshoot into the next marker). */
-  width: calc(100% - var(--cinder-space-2));
-  margin-inline-start: var(--cinder-space-2);
-}
+    width: calc(100% - var(--cinder-space-2));
+    margin-inline-start: var(--cinder-space-2);
+  }
 
-.cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
-  grid-column: 1 / -1;
-  grid-row: 2;
-}
+  .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Item — vertical layout
  * Marker (top of column 1) | Body (column 2, spanning both rows)
  * Connector (below marker in column 1)
  * ---------------------------------------- */
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 0 var(--cinder-space-3);
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 0 var(--cinder-space-3);
+  }
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__marker {
-  grid-column: 1;
-  grid-row: 1;
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__marker {
+    grid-column: 1;
+    grid-row: 1;
+  }
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__connector {
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: center;
-  width: 1px;
-  min-height: var(--cinder-space-6);
-  align-self: stretch;
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__connector {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    width: 1px;
+    min-height: var(--cinder-space-6);
+    align-self: stretch;
+  }
 
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__body {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  padding-bottom: var(--cinder-space-4);
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__body {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding-bottom: var(--cinder-space-4);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Marker — the step circle
  * ---------------------------------------- */
 
-.cinder-steps__marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--cinder-radius-full);
-  background: var(--cinder-surface-inset);
-  flex-shrink: 0;
-}
-
-[data-cinder-state='complete'] .cinder-steps__marker {
-  background: var(--cinder-accent);
-  color: var(--cinder-accent-contrast);
-}
-
-[data-cinder-state='current'] .cinder-steps__marker {
-  background: var(--cinder-surface);
-  box-shadow: 0 0 0 2px var(--cinder-accent);
-  color: var(--cinder-accent);
-}
-
-@media (forced-colors: active) {
-  [data-cinder-state='current'] .cinder-steps__marker {
-    outline: 2px solid ButtonText;
-    outline-offset: 2px;
-    box-shadow: none;
+  .cinder-steps__marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface-inset);
+    flex-shrink: 0;
   }
-}
 
-[data-cinder-state='upcoming'] .cinder-steps__marker {
-  color: var(--cinder-text-muted);
-}
+  [data-cinder-state='complete'] .cinder-steps__marker {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+  }
 
-/* ----------------------------------------
+  [data-cinder-state='current'] .cinder-steps__marker {
+    background: var(--cinder-surface);
+    box-shadow: 0 0 0 2px var(--cinder-accent);
+    color: var(--cinder-accent);
+  }
+
+  @media (forced-colors: active) {
+    [data-cinder-state='current'] .cinder-steps__marker {
+      outline: 2px solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
+  [data-cinder-state='upcoming'] .cinder-steps__marker {
+    color: var(--cinder-text-muted);
+  }
+
+  /* ----------------------------------------
  * Check icon and step index number
  * ---------------------------------------- */
 
-.cinder-steps__check {
-  width: 0.875rem;
-  height: 0.875rem;
-}
+  .cinder-steps__check {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
 
-.cinder-steps__index {
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-semibold);
-  line-height: 1;
-}
+  .cinder-steps__index {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+    line-height: 1;
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Body — label and description
  * ---------------------------------------- */
 
-.cinder-steps__body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1);
-  padding-top: var(--cinder-space-2);
-}
+  .cinder-steps__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    padding-top: var(--cinder-space-2);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Interactive body — an <a>/<button> occupying the body cell. Resets native
  * chrome so both elements render identically to the static body, then layers
  * a focus ring. The element keeps .cinder-steps__body, so the body's flex
  * layout (position/display/gap) is reused with zero duplication.
  * ---------------------------------------- */
 
-.cinder-steps__interactive {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  text-align: inherit;
-  inline-size: 100%;
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
-  border-radius: var(--cinder-radius-sm);
-}
-
-/* Restore body padding cleared by the reset above. Interactive steps must match
-   static step spacing in both orientations. */
-.cinder-steps__interactive.cinder-steps__body {
-  padding-top: var(--cinder-space-2);
-}
-
-.cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__interactive.cinder-steps__body {
-  padding-bottom: var(--cinder-space-4);
-}
-
-.cinder-steps__interactive:focus-visible {
-  outline: var(--cinder-ring-width) solid transparent;
-  box-shadow: var(--_cinder-focus-ring-shadow);
-}
-
-@media (forced-colors: active) {
-  .cinder-steps__interactive:focus-visible {
-    outline: var(--cinder-ring-width) solid ButtonText;
-    outline-offset: 3px;
+  .cinder-steps__interactive {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    text-align: inherit;
+    inline-size: 100%;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: var(--cinder-radius-sm);
   }
-}
 
-.cinder-steps__label {
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-normal);
-  color: var(--cinder-text);
-  line-height: var(--cinder-leading-tight);
-}
+  /* Restore body padding cleared by the reset above. Interactive steps must match
+   static step spacing in both orientations. */
+  .cinder-steps__interactive.cinder-steps__body {
+    padding-top: var(--cinder-space-2);
+  }
 
-[data-cinder-state='current'] .cinder-steps__label {
-  font-weight: var(--cinder-font-semibold);
-}
+  .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__interactive.cinder-steps__body {
+    padding-bottom: var(--cinder-space-4);
+  }
 
-[data-cinder-state='upcoming'] .cinder-steps__label {
-  color: var(--cinder-text-muted);
-}
+  .cinder-steps__interactive:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
 
-.cinder-steps__description {
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-muted);
-  line-height: var(--cinder-leading-normal);
-}
+  @media (forced-colors: active) {
+    .cinder-steps__interactive:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
 
-/* ----------------------------------------
+  .cinder-steps__label {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-normal);
+    color: var(--cinder-text);
+    line-height: var(--cinder-leading-tight);
+  }
+
+  [data-cinder-state='current'] .cinder-steps__label {
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  [data-cinder-state='upcoming'] .cinder-steps__label {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-steps__description {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    line-height: var(--cinder-leading-normal);
+  }
+
+  /* ----------------------------------------
  * Connector — the line between steps
  * ---------------------------------------- */
 
-.cinder-steps__connector {
-  /* border-muted reads clearly in dark mode where plain --cinder-border is
+  .cinder-steps__connector {
+    /* border-muted reads clearly in dark mode where plain --cinder-border is
      near-invisible against --cinder-surface. */
-  background: var(--cinder-border-muted);
-}
+    background: var(--cinder-border-muted);
+  }
 
-.cinder-steps__connector[data-cinder-state='complete'] {
-  background: var(--cinder-accent);
-}
+  .cinder-steps__connector[data-cinder-state='complete'] {
+    background: var(--cinder-accent);
+  }
 
-/* ----------------------------------------
+  /* ----------------------------------------
  * Visually-hidden text for completed steps
  * ---------------------------------------- */
 
-.cinder-steps__sr-only,
-.cinder-steps__sr-only-separator {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  .cinder-steps__sr-only,
+  .cinder-steps__sr-only-separator {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
 }

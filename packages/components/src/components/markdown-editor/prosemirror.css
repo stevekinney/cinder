@@ -6,7 +6,7 @@
  * upstream CSS import is removed elsewhere.
  */
 
-@layer components {
+@layer cinder.components {
   .ProseMirror {
     position: relative;
   }

@@ -1,109 +1,111 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * RATING
  * ======================================== */
 
-.cinder-rating-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cinder-space-1-5);
-  inline-size: max-content;
-}
-
-.cinder-rating-field__label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  font-size: var(--cinder-text-xs);
-  font-weight: var(--cinder-font-medium);
-  line-height: 1;
-  color: var(--cinder-text);
-}
-
-.cinder-rating-field__label[data-disabled] {
-  color: var(--cinder-text-disabled);
-  cursor: not-allowed;
-}
-
-.cinder-rating {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cinder-space-1);
-  --_cinder-rating-color: var(--cinder-warning, oklch(80% 0.18 80));
-  --_cinder-rating-empty: var(--cinder-border-strong);
-  --_cinder-rating-size: 1.5rem;
-}
-
-.cinder-rating__star {
-  position: relative;
-  inline-size: var(--_cinder-rating-size);
-  block-size: var(--_cinder-rating-size);
-  background: var(--_cinder-rating-empty);
-  -webkit-mask: var(--_cinder-rating-mask) center / contain no-repeat;
-  mask: var(--_cinder-rating-mask) center / contain no-repeat;
-  --_cinder-rating-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2l2.99 6.06 6.69.97-4.84 4.72 1.14 6.66L12 17.27l-5.98 3.14 1.14-6.66L2.32 9.03l6.69-.97L12 2z'/></svg>");
-}
-
-.cinder-rating__star-fill {
-  display: block;
-  block-size: 100%;
-  inline-size: var(--_cinder-rating-fill, 0%);
-  background: var(--_cinder-rating-color);
-}
-
-.cinder-rating__hit-area {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: stretch;
-}
-
-.cinder-rating__option {
-  flex: 1 1 0;
-  min-inline-size: 0;
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-}
-
-.cinder-rating__option:focus-visible {
-  outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-  outline-offset: var(--cinder-ring-offset);
-  border-radius: var(--cinder-radius-sm);
-}
-
-.cinder-rating--readonly {
-  pointer-events: none;
-}
-
-.cinder-rating[aria-disabled='true'] {
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.cinder-rating[aria-disabled='true'] .cinder-rating__option {
-  cursor: not-allowed;
-}
-
-@media (forced-colors: active) {
-  .cinder-rating__star-fill {
-    background: Highlight;
+  .cinder-rating-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1-5);
+    inline-size: max-content;
   }
-}
 
-.cinder-rating-field__description {
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-text-muted);
-}
+  .cinder-rating-field__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1;
+    color: var(--cinder-text);
+  }
 
-.cinder-rating-field__error {
-  margin: 0;
-  font-size: var(--cinder-text-xs);
-  color: var(--cinder-danger);
+  .cinder-rating-field__label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+
+  .cinder-rating {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    --_cinder-rating-color: var(--cinder-warning, oklch(80% 0.18 80));
+    --_cinder-rating-empty: var(--cinder-border-strong);
+    --_cinder-rating-size: 1.5rem;
+  }
+
+  .cinder-rating__star {
+    position: relative;
+    inline-size: var(--_cinder-rating-size);
+    block-size: var(--_cinder-rating-size);
+    background: var(--_cinder-rating-empty);
+    -webkit-mask: var(--_cinder-rating-mask) center / contain no-repeat;
+    mask: var(--_cinder-rating-mask) center / contain no-repeat;
+    --_cinder-rating-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2l2.99 6.06 6.69.97-4.84 4.72 1.14 6.66L12 17.27l-5.98 3.14 1.14-6.66L2.32 9.03l6.69-.97L12 2z'/></svg>");
+  }
+
+  .cinder-rating__star-fill {
+    display: block;
+    block-size: 100%;
+    inline-size: var(--_cinder-rating-fill, 0%);
+    background: var(--_cinder-rating-color);
+  }
+
+  .cinder-rating__hit-area {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .cinder-rating__option {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+  }
+
+  .cinder-rating__option:focus-visible {
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: var(--cinder-ring-offset);
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .cinder-rating--readonly {
+    pointer-events: none;
+  }
+
+  .cinder-rating[aria-disabled='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .cinder-rating[aria-disabled='true'] .cinder-rating__option {
+    cursor: not-allowed;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-rating__star-fill {
+      background: Highlight;
+    }
+  }
+
+  .cinder-rating-field__description {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-rating-field__error {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-danger);
+  }
 }

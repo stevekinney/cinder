@@ -1,159 +1,160 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SEGMENTED CONTROL
  * ======================================== */
 
-.cinder-segmented-control-container {
-  display: inline-flex;
-  flex-direction: column;
-  gap: var(--cinder-space-2);
-}
+  .cinder-segmented-control-container {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
 
-.cinder-segmented-control-container:has([data-cinder-full-width]) {
-  display: flex;
-  width: 100%;
-}
+  .cinder-segmented-control-container:has([data-cinder-full-width]) {
+    display: flex;
+    width: 100%;
+  }
 
-.cinder-segmented-control-label {
-  color: var(--cinder-text);
-  font-size: var(--cinder-text-sm);
-  font-weight: var(--cinder-font-medium);
-}
+  .cinder-segmented-control-label {
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+  }
 
-/* ── Attached (default) ─────────────────────────────────────────────────── */
+  /* ── Attached (default) ─────────────────────────────────────────────────── */
 
-.cinder-segmented-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  padding: 1px;
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-md);
-  background: var(--cinder-surface-inset);
-}
+  .cinder-segmented-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    padding: 1px;
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+  }
 
-/* ── Full width ─────────────────────────────────────────────────────────── */
+  /* ── Full width ─────────────────────────────────────────────────────────── */
 
-.cinder-segmented-control[data-cinder-full-width] {
-  display: flex;
-  width: 100%;
-}
+  .cinder-segmented-control[data-cinder-full-width] {
+    display: flex;
+    width: 100%;
+  }
 
-.cinder-segmented-control[data-cinder-full-width] .cinder-segmented-control-option {
-  flex: 1;
-}
+  .cinder-segmented-control[data-cinder-full-width] .cinder-segmented-control-option {
+    flex: 1;
+  }
 
-/* ── Vertical orientation ───────────────────────────────────────────────── */
+  /* ── Vertical orientation ───────────────────────────────────────────────── */
 
-.cinder-segmented-control[data-cinder-orientation='vertical'] {
-  flex-direction: column;
-}
+  .cinder-segmented-control[data-cinder-orientation='vertical'] {
+    flex-direction: column;
+  }
 
-/* ── Detached ────────────────────────────────────────────────────────────── */
+  /* ── Detached ────────────────────────────────────────────────────────────── */
 
-.cinder-segmented-control[data-cinder-detached] {
-  gap: var(--cinder-space-1);
-  padding: 0;
-  border: none;
-  background: transparent;
-}
+  .cinder-segmented-control[data-cinder-detached] {
+    gap: var(--cinder-space-1);
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
 
-.cinder-segmented-control[data-cinder-detached] .cinder-segmented-control-option {
-  border: 1px solid var(--cinder-border-muted);
-  border-radius: var(--cinder-radius-md);
-}
+  .cinder-segmented-control[data-cinder-detached] .cinder-segmented-control-option {
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+  }
 
-/* ── Disabled group ─────────────────────────────────────────────────────── */
+  /* ── Disabled group ─────────────────────────────────────────────────────── */
 
-.cinder-segmented-control[aria-disabled='true'] {
-  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
-  pointer-events: none;
-}
+  .cinder-segmented-control[aria-disabled='true'] {
+    /* opacity centralized in foundation.css disabled-visual rule (0.6) */
+    pointer-events: none;
+  }
 
-/* ── Option base ────────────────────────────────────────────────────────── */
+  /* ── Option base ────────────────────────────────────────────────────────── */
 
-.cinder-segmented-control-option {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--cinder-space-1);
-  border: 0;
-  border-radius: calc(var(--cinder-radius-sm) - 1px);
-  background: transparent;
-  color: var(--cinder-text-muted);
-  cursor: pointer;
-  font-weight: var(--cinder-font-medium);
-  line-height: 1;
-  transition:
-    background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    color var(--cinder-duration-fast) var(--cinder-ease-standard),
-    box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  .cinder-segmented-control-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-1);
+    border: 0;
+    border-radius: calc(var(--cinder-radius-sm) - 1px);
+    background: transparent;
+    color: var(--cinder-text-muted);
+    cursor: pointer;
+    font-weight: var(--cinder-font-medium);
+    line-height: 1;
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-/* Separator between attached options */
-.cinder-segmented-control:not([data-cinder-detached])
-  .cinder-segmented-control-option:not(:first-child)::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 0;
-  block-size: 60%;
-  border-inline-start: 1px solid var(--cinder-border-muted);
-  transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
-}
+  /* Separator between attached options */
+  .cinder-segmented-control:not([data-cinder-detached])
+    .cinder-segmented-control-option:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    block-size: 60%;
+    border-inline-start: 1px solid var(--cinder-border-muted);
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
 
-.cinder-segmented-control:not([data-cinder-detached])
-  .cinder-segmented-control-option[data-cinder-selected]:not(:first-child)::before,
-.cinder-segmented-control:not([data-cinder-detached])
-  .cinder-segmented-control-option[data-cinder-pressed]:not(:first-child)::before,
-.cinder-segmented-control:not([data-cinder-detached])
-  [data-cinder-selected]
-  + .cinder-segmented-control-option::before,
-.cinder-segmented-control:not([data-cinder-detached])
-  [data-cinder-pressed]
-  + .cinder-segmented-control-option::before {
-  opacity: 0;
-}
+  .cinder-segmented-control:not([data-cinder-detached])
+    .cinder-segmented-control-option[data-cinder-selected]:not(:first-child)::before,
+  .cinder-segmented-control:not([data-cinder-detached])
+    .cinder-segmented-control-option[data-cinder-pressed]:not(:first-child)::before,
+  .cinder-segmented-control:not([data-cinder-detached])
+    [data-cinder-selected]
+    + .cinder-segmented-control-option::before,
+  .cinder-segmented-control:not([data-cinder-detached])
+    [data-cinder-pressed]
+    + .cinder-segmented-control-option::before {
+    opacity: 0;
+  }
 
-.cinder-segmented-control[data-cinder-orientation='vertical']
-  .cinder-segmented-control-option:not(:first-child)::before {
-  inset-inline-start: unset;
-  inset-block-start: 0;
-  inline-size: 60%;
-  block-size: auto;
-  border-inline-start: none;
-  border-block-start: 1px solid var(--cinder-border-muted);
-}
+  .cinder-segmented-control[data-cinder-orientation='vertical']
+    .cinder-segmented-control-option:not(:first-child)::before {
+    inset-inline-start: unset;
+    inset-block-start: 0;
+    inline-size: 60%;
+    block-size: auto;
+    border-inline-start: none;
+    border-block-start: 1px solid var(--cinder-border-muted);
+  }
 
-/* ── Size variants ──────────────────────────────────────────────────────── */
+  /* ── Size variants ──────────────────────────────────────────────────────── */
 
-/* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target.
+  /* sm: 1.5rem = 24px @ 16px base — WCAG 2.5.8 minimum touch target.
  * Note: 2.5.8 also requires >=24px of offset space between adjacent targets
  * smaller than 24px in either dimension. Attached options sit flush against
  * each other so the bounding box must stay >= 24px; do not reduce this. */
-.cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
-  min-block-size: 1.5rem;
-  padding-block: var(--cinder-space-1);
-  padding-inline: var(--cinder-space-2);
-  font-size: var(--cinder-text-xs);
-}
+  .cinder-segmented-control[data-cinder-size='sm'] .cinder-segmented-control-option {
+    min-block-size: 1.5rem;
+    padding-block: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+  }
 
-/* md: 2rem = 32px — comfortable middle ground */
-.cinder-segmented-control[data-cinder-size='md'] .cinder-segmented-control-option {
-  min-block-size: 2rem;
-  padding-block: var(--cinder-space-1);
-  padding-inline: var(--cinder-space-2);
-  font-size: var(--cinder-text-sm);
-}
+  /* md: 2rem = 32px — comfortable middle ground */
+  .cinder-segmented-control[data-cinder-size='md'] .cinder-segmented-control-option {
+    min-block-size: 2rem;
+    padding-block: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-2);
+    font-size: var(--cinder-text-sm);
+  }
 
-/* lg: 2.75rem = 44px — recommended pointer/touch target per WCAG 2.5.5 */
-.cinder-segmented-control[data-cinder-size='lg'] .cinder-segmented-control-option {
-  min-block-size: 2.75rem;
-  padding-block: var(--cinder-space-2);
-  padding-inline: var(--cinder-space-3, 0.75rem);
-  font-size: var(--cinder-text-sm);
-}
+  /* lg: 2.75rem = 44px — recommended pointer/touch target per WCAG 2.5.5 */
+  .cinder-segmented-control[data-cinder-size='lg'] .cinder-segmented-control-option {
+    min-block-size: 2.75rem;
+    padding-block: var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3, 0.75rem);
+    font-size: var(--cinder-text-sm);
+  }
 
-/* density="toolbar" resolves through the component to data-cinder-size="sm",
+  /* density="toolbar" resolves through the component to data-cinder-size="sm",
  * so font and (for detached or vertical toolbars) inline padding flow from
  * the `sm` rule above; attached horizontal toolbars pick up the 12px inline
  * padding from the override block below because they match the
@@ -167,11 +168,11 @@
  * unscoped by orientation — vertical toolbar density is not a supported
  * combination, since stacking 32px options vertically would defeat the
  * row-alignment contract; treat vertical + toolbar as undefined. */
-.cinder-segmented-control[data-cinder-density='toolbar'] .cinder-segmented-control-option {
-  min-block-size: var(--cinder-control-height-sm);
-}
+  .cinder-segmented-control[data-cinder-density='toolbar'] .cinder-segmented-control-option {
+    min-block-size: var(--cinder-control-height-sm);
+  }
 
-/* Attached horizontal options need at least 12px between the inter-segment
+  /* Attached horizontal options need at least 12px between the inter-segment
  * separator (rendered as a ::before pseudo-element at inset-inline-start: 0)
  * and the option label. The base `sm` and `md` size rules use --cinder-space-2
  * (0.5rem = 8px), which causes labels to pinch against the separator. Bump
@@ -181,30 +182,30 @@
  * controls resolve to data-cinder-size="sm" via the Svelte component, so
  * attached horizontal toolbars match the `sm` arm of this selector and
  * correctly receive the 12px inline padding too. */
-.cinder-segmented-control:not(
-    [data-cinder-detached]
-  )[data-cinder-orientation='horizontal'][data-cinder-size='sm']
-  .cinder-segmented-control-option,
-.cinder-segmented-control:not(
-    [data-cinder-detached]
-  )[data-cinder-orientation='horizontal'][data-cinder-size='md']
-  .cinder-segmented-control-option {
-  padding-inline: var(--cinder-space-3, 0.75rem);
-}
-
-/* ── Hover ──────────────────────────────────────────────────────────────── */
-
-/* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
- * "stick" after tap on touch devices that emulate :hover. */
-@media (hover: hover) {
-  .cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
-      [data-cinder-pressed]
-    ) {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    color: var(--cinder-text);
+  .cinder-segmented-control:not(
+      [data-cinder-detached]
+    )[data-cinder-orientation='horizontal'][data-cinder-size='sm']
+    .cinder-segmented-control-option,
+  .cinder-segmented-control:not(
+      [data-cinder-detached]
+    )[data-cinder-orientation='horizontal'][data-cinder-size='md']
+    .cinder-segmented-control-option {
+    padding-inline: var(--cinder-space-3, 0.75rem);
   }
 
-  /* Selected/pressed segments get hover feedback too, so they don't read as
+  /* ── Hover ──────────────────────────────────────────────────────────────── */
+
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+  @media (hover: hover) {
+    .cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
+        [data-cinder-pressed]
+      ) {
+      background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+      color: var(--cinder-text);
+    }
+
+    /* Selected/pressed segments get hover feedback too, so they don't read as
    * disabled. Darken the accent fill via the theme-aware accent-hover token
    * while keeping the selected contrast color (inherited from the resting
    * selected/pressed rules). A selected-but-disabled segment stays focusable
@@ -212,54 +213,54 @@
    * attribute (see segmented-control.a11y.md / the C6 selected-but-disabled
    * contract), so guard on BOTH :not(:disabled) and :not([aria-disabled='true'])
    * to keep hover chrome off disabled segments. */
-  .cinder-segmented-control-option[data-cinder-selected]:hover:not(:disabled):not(
-      [aria-disabled='true']
-    ),
-  .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled):not(
-      [aria-disabled='true']
-    ) {
-    background: var(--cinder-accent-hover);
+    .cinder-segmented-control-option[data-cinder-selected]:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ),
+    .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ) {
+      background: var(--cinder-accent-hover);
+    }
   }
-}
 
-/* ── Focus ──────────────────────────────────────────────────────────────── */
+  /* ── Focus ──────────────────────────────────────────────────────────────── */
 
-.cinder-segmented-control-option:focus-visible {
-  outline: 2px solid transparent;
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
-  z-index: 1;
-}
+  .cinder-segmented-control-option:focus-visible {
+    outline: 2px solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+    z-index: 1;
+  }
 
-/* ── Disabled option ────────────────────────────────────────────────────── */
+  /* ── Disabled option ────────────────────────────────────────────────────── */
 
-.cinder-segmented-control-option:disabled {
-  cursor: not-allowed;
-  /* opacity centralized in foundation.css disabled-visual rule (0.6) */
-}
+  .cinder-segmented-control-option:disabled {
+    cursor: not-allowed;
+    /* opacity centralized in foundation.css disabled-visual rule (0.6) */
+  }
 
-/* ── Selected (single mode) ─────────────────────────────────────────────── */
+  /* ── Selected (single mode) ─────────────────────────────────────────────── */
 
-.cinder-segmented-control-option[data-cinder-selected] {
-  background: var(--cinder-accent);
-  color: var(--cinder-accent-contrast);
-  box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
-}
+  .cinder-segmented-control-option[data-cinder-selected] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+  }
 
-.cinder-segmented-control-option-icon {
-  opacity: 0.9;
-}
+  .cinder-segmented-control-option-icon {
+    opacity: 0.9;
+  }
 
-/* ── Pressed (multiple mode) ────────────────────────────────────────────── */
+  /* ── Pressed (multiple mode) ────────────────────────────────────────────── */
 
-.cinder-segmented-control-option[data-cinder-pressed] {
-  background: var(--cinder-accent);
-  color: var(--cinder-accent-contrast);
-  box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
-}
+  .cinder-segmented-control-option[data-cinder-pressed] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+  }
 
-/* ── Tablist variant (single mode only) ─────────────────────────────────────
+  /* ── Tablist variant (single mode only) ─────────────────────────────────────
  * See docs/decisions/segmented-control-tablist-variant.md. The tablist variant
  * carries tab semantics for externally owned panels, so it must read as a
  * tab strip rather than the default filled-pill radiogroup. All rules here are
@@ -273,98 +274,99 @@
  * to non-tablist roots.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/* Strip the surface-inset container chrome: no background, no enclosing border,
+  /* Strip the surface-inset container chrome: no background, no enclosing border,
  * no inset padding. Layout, sizing, density, and full-width behavior are
  * unaffected because they key off other selectors. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'] {
-  padding: 0;
-  border: none;
-  background: transparent;
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'] {
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
 
-/* Suppress the connected-bar separators between attached tablist options. The
+  /* Suppress the connected-bar separators between attached tablist options. The
  * base separator and its vertical variant both render via the option
  * ::before; neutralize them here for tablists only. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']:not(
-    [data-cinder-detached]
-  )
-  .cinder-segmented-control-option:not(:first-child)::before {
-  content: none;
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']:not(
+      [data-cinder-detached]
+    )
+    .cinder-segmented-control-option:not(:first-child)::before {
+    content: none;
+  }
 
-/* Selected tab: accent text, no filled background, no selected shadow. The
+  /* Selected tab: accent text, no filled background, no selected shadow. The
  * underline-style indicator (below) carries the selected affordance instead. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
-  .cinder-segmented-control-option[data-cinder-selected] {
-  background: transparent;
-  color: var(--cinder-accent);
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+    .cinder-segmented-control-option[data-cinder-selected] {
+    background: transparent;
+    color: var(--cinder-accent);
+  }
 
-/* The base `[data-cinder-selected]` rule paints the filled-pill drop shadow via
+  /* The base `[data-cinder-selected]` rule paints the filled-pill drop shadow via
  * box-shadow; strip it for tablists. Scope to `:not(:focus-visible)` so this
  * does not run on the focused selected tab — the focus ring (also box-shadow)
  * must survive there. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
-  .cinder-segmented-control-option[data-cinder-selected]:not(:focus-visible) {
-  box-shadow: none;
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+    .cinder-segmented-control-option[data-cinder-selected]:not(:focus-visible) {
+    box-shadow: none;
+  }
 
-/* Re-assert the focus ring on the selected + focused tab. Stripping the pill
+  /* Re-assert the focus ring on the selected + focused tab. Stripping the pill
  * shadow above is not enough: the base `[data-cinder-selected]` rule
  * (box-shadow: shadow-sm, specificity 0,2,0) is declared after the base
  * `:focus-visible` ring rule (equal specificity), so on a focused selected tab
  * the base selected shadow would otherwise win and the ring would vanish. This
  * higher-specificity tablist rule, declared last, restores the exact base ring
  * shadow so keyboard focus stays visible on the active tab. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
-  .cinder-segmented-control-option[data-cinder-selected]:focus-visible {
-  box-shadow:
-    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+    .cinder-segmented-control-option[data-cinder-selected]:focus-visible {
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  }
 
-/* Forced-colors / Windows High Contrast: box-shadow rings are suppressed by the
+  /* Forced-colors / Windows High Contrast: box-shadow rings are suppressed by the
  * UA, so the base option focus ring (outline: transparent + box-shadow) becomes
  * invisible. Substitute a system-color outline, matching the Tabs component. */
-@media (forced-colors: active) {
-  .cinder-segmented-control-option:focus-visible {
-    outline: var(--cinder-ring-width) solid Highlight;
-    outline-offset: 1px;
+  @media (forced-colors: active) {
+    .cinder-segmented-control-option:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
   }
-}
 
-/* Selected hover must not restore the filled pill — keep the selected tab's
+  /* Selected hover must not restore the filled pill — keep the selected tab's
  * transparent background and accent text. Unselected hover keeps the base
  * accent-tint treatment from the base hover rule. */
-@media (hover: hover) {
-  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
-    .cinder-segmented-control-option[data-cinder-selected]:hover {
-    background: transparent;
-    color: var(--cinder-accent);
+  @media (hover: hover) {
+    .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+      .cinder-segmented-control-option[data-cinder-selected]:hover {
+      background: transparent;
+      color: var(--cinder-accent);
+    }
   }
-}
 
-/* Accent indicator on the selected tab edge. The option is already
+  /* Accent indicator on the selected tab edge. The option is already
  * position: relative (base rule), so the absolutely positioned ::after anchors
  * to it without changing layout. Horizontal tablists place the indicator on the
  * block-end edge spanning the inline axis; the vertical override below moves it
  * to the inline-start edge spanning the block axis. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
-  .cinder-segmented-control-option[data-cinder-selected]::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  inset-block-end: 0;
-  block-size: 2px;
-  background: var(--cinder-accent);
-  border-radius: var(--cinder-radius-full, 999px);
-}
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+    .cinder-segmented-control-option[data-cinder-selected]::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    block-size: 2px;
+    background: var(--cinder-accent);
+    border-radius: var(--cinder-radius-full, 999px);
+  }
 
-/* Vertical tablist indicator: inline-start edge, spanning the block axis. */
-.cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'][data-cinder-orientation='vertical']
-  .cinder-segmented-control-option[data-cinder-selected]::after {
-  inset-inline: 0 auto;
-  inset-block: 0;
-  inline-size: 2px;
-  block-size: auto;
+  /* Vertical tablist indicator: inline-start edge, spanning the block axis. */
+  .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist'][data-cinder-orientation='vertical']
+    .cinder-segmented-control-option[data-cinder-selected]::after {
+    inset-inline: 0 auto;
+    inset-block: 0;
+    inline-size: 2px;
+    block-size: auto;
+  }
 }

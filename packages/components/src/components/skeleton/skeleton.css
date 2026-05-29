@@ -1,34 +1,36 @@
-/* ========================================
+@layer cinder.components {
+  /* ========================================
  * SKELETON
  * ======================================== */
 
-.cinder-skeleton {
-  display: block;
-  width: 100%;
-  height: 1em;
-  border-radius: var(--cinder-radius-sm);
-  background: linear-gradient(
-    90deg,
-    var(--cinder-surface-inset) 0%,
-    oklch(from var(--cinder-surface-inset) calc(l + 0.06) c h) 50%,
-    var(--cinder-surface-inset) 100%
-  );
-  background-size: 200% 100%;
-  animation: cinder-skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes cinder-skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
   .cinder-skeleton {
-    animation: none;
-    background: var(--cinder-surface-inset);
+    display: block;
+    width: 100%;
+    height: 1em;
+    border-radius: var(--cinder-radius-sm);
+    background: linear-gradient(
+      90deg,
+      var(--cinder-surface-inset) 0%,
+      oklch(from var(--cinder-surface-inset) calc(l + 0.06) c h) 50%,
+      var(--cinder-surface-inset) 100%
+    );
+    background-size: 200% 100%;
+    animation: cinder-skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes cinder-skeleton-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-skeleton {
+      animation: none;
+      background: var(--cinder-surface-inset);
+    }
   }
 }
