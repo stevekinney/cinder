@@ -111,6 +111,7 @@ describe('exports drift', () => {
       './styles/tokens',
       './styles/foundation',
       './styles/utilities',
+      './styles/guard',
       './highlighters/shiki',
     ]);
     for (const key of Object.keys(existing)) {

@@ -40,6 +40,7 @@ Then load the **base** stylesheet **once**, **first**, at your app entry:
 
 ```ts
 import 'cinder/styles';
+import 'cinder/styles/guard'; // dev-only: warns if the above line is missing
 ```
 
 `cinder/styles` is the slim base: it declares the `@layer` order
@@ -59,11 +60,19 @@ import 'cinder/modal/styles';
 Bundlers (Vite, SvelteKit, esbuild, Bun) then include only the component CSS
 you actually reference — a button-only app ships zero badge or tabs rules.
 
-> [!WARNING] Import order matters
+> [!WARNING] `cinder/styles` MUST be imported first
 > `cinder/styles` MUST be imported before any `cinder/<component>/styles`. The
-> base declares the `@layer` order; if a component's CSS lands first, the
-> cascade layers are created in insertion order and utilities can no longer
-> override component defaults. (A guard for this ships in a companion task.)
+> base declares the `@layer` order. If a component's CSS lands first, the
+> cascade layers are created in insertion order — utilities can no longer
+> override component defaults, and tokens may lose to component rules. This is
+> a silent cascade inversion that produces no browser error.
+>
+> To catch this in development, import `cinder/styles/guard` at your app entry
+> alongside `cinder/styles`. The guard is a no-op in production (the `DEV`
+> constant from `esm-env` eliminates it at build time). In development it
+> checks once, after module evaluation, whether the base custom property
+> (`--cinder-base-loaded`) is present on `:root`; if not, it logs a warning
+> pointing at the fix.
 
 **Compound components** (Tabs, Table, Accordion, SideNavigation) ship their
 whole family from the parent subpath — `import 'cinder/tabs/styles'` pulls in

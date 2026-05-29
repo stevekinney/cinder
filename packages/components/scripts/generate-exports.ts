@@ -30,6 +30,7 @@
  *   ./styles/tokens      → token-layer-only aggregator
  *   ./styles/foundation  → foundation-layer-only aggregator
  *   ./styles/utilities   → utility-layer-only aggregator
+ *   ./styles/guard       → dev-only base-loaded guard (warns once when cinder/styles is not imported first)
  *
  * The per-component `/styles` exports ship layer-WRAPPED CSS (every sidecar
  * self-declares `@layer cinder.components { … }`), so a direct
@@ -88,6 +89,7 @@ const STYLES_ALL_KEY = './styles/all';
 const STYLES_TOKENS_KEY = './styles/tokens';
 const STYLES_FOUNDATION_KEY = './styles/foundation';
 const STYLES_UTILITIES_KEY = './styles/utilities';
+const STYLES_GUARD_KEY = './styles/guard';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
@@ -105,6 +107,7 @@ const RESERVED_KEYS = new Set([
   STYLES_TOKENS_KEY,
   STYLES_FOUNDATION_KEY,
   STYLES_UTILITIES_KEY,
+  STYLES_GUARD_KEY,
   PACKAGE_JSON_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
 ]);
@@ -140,6 +143,22 @@ function highlightersShikiExport(): ExportEntry {
     svelte: './src/highlighters/shiki/index.ts',
     node: './dist/server/highlighters/shiki/index.js',
     default: './dist/highlighters/shiki/index.js',
+  });
+}
+
+/**
+ * Canonical four-condition entry for `cinder/styles/guard`. This is the
+ * dev-only base-loaded guard module: it warns once in browser + dev environments
+ * when a per-component CSS subpath is imported without first importing
+ * `cinder/styles`. The guard is stripped by any bundler that performs constant
+ * folding on `esm-env`'s `DEV` and `BROWSER` constants.
+ */
+export function stylesGuardExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/styles/base-guard.d.ts',
+    svelte: './src/styles/base-guard.ts',
+    node: './dist/server/styles/base-guard.js',
+    default: './dist/styles/base-guard.js',
   });
 }
 
@@ -516,6 +535,14 @@ async function main(): Promise<void> {
       issues.push(`Stale reserved export "${HIGHLIGHTERS_SHIKI_KEY}"`);
     }
 
+    const expectedGuardEntry = stylesGuardExport();
+    const currentGuardEntry = existing[STYLES_GUARD_KEY];
+    if (!currentGuardEntry) {
+      issues.push(`Reserved export "${STYLES_GUARD_KEY}" is missing`);
+    } else if (JSON.stringify(currentGuardEntry) !== JSON.stringify(expectedGuardEntry)) {
+      issues.push(`Stale reserved export "${STYLES_GUARD_KEY}"`);
+    }
+
     if (existing[PACKAGE_JSON_KEY] !== './package.json') {
       issues.push(`Missing or stale self-export "${PACKAGE_JSON_KEY}"`);
     }
@@ -559,15 +586,17 @@ async function main(): Promise<void> {
   //   1. `.` (root, four-condition shape)
   //   2. `./package.json` self-export
   //   3. `./styles*` reserved entries (canonical, base-first)
-  //   4. `./highlighters/shiki`
-  //   5. computed component subpaths (incl. /examples, /constraints when present)
-  //   6. preserved legacy flat component subpaths (partial-migration window)
+  //   4. `./styles/guard` dev-only base-loaded guard
+  //   5. `./highlighters/shiki`
+  //   6. computed component subpaths (incl. /examples, /constraints when present)
+  //   7. preserved legacy flat component subpaths (partial-migration window)
   const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
   next[ROOT_KEY] = rootExport;
   next[PACKAGE_JSON_KEY] = './package.json';
   for (const [key, cssPath] of RESERVED_STYLES_ENTRIES) {
     next[key] = stylesExport(cssPath);
   }
+  next[STYLES_GUARD_KEY] = stylesGuardExport();
   next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 
   // Preserve legacy flat component subpaths whose component still exists as
