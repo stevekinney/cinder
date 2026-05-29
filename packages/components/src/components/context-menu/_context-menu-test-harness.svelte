@@ -24,20 +24,28 @@
       onpointerup?: (event: PointerEvent) => void;
     };
   } = $props();
+
+  let selected = $state('');
 </script>
 
 {#snippet menuContent()}
-  <DropdownItem>Open</DropdownItem>
+  <DropdownItem onclick={() => (selected = 'open')}>Open</DropdownItem>
   <DropdownItem disabled>Disabled action</DropdownItem>
+  <DropdownItem onclick={() => (selected = 'rename')}>Rename</DropdownItem>
+  <DropdownItem onclick={() => (selected = 'delete')}>Delete</DropdownItem>
 {/snippet}
 
-<ContextMenu {disabled} {longPressDelay} {open} {anchorPoint}>
-  <ContextMenuTrigger class="context-menu-region" {...triggerHandlers}>
-    <button type="button" class="context-menu-button">File one.txt</button>
-  </ContextMenuTrigger>
-  <DropdownMenu>
-    {@render menuContent()}
-  </DropdownMenu>
-</ContextMenu>
+<div>
+  <ContextMenu {disabled} {longPressDelay} {open} {anchorPoint}>
+    <ContextMenuTrigger class="context-menu-region" {...triggerHandlers}>
+      <button type="button" class="context-menu-button">File one.txt</button>
+    </ContextMenuTrigger>
+    <DropdownMenu>
+      {@render menuContent()}
+    </DropdownMenu>
+  </ContextMenu>
 
-<div class="context-menu-selection"></div>
+  <div class="context-menu-selection"></div>
+  <output class="context-menu-selected">{selected}</output>
+</div>
+
