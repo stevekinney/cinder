@@ -22,7 +22,7 @@
       <select
         value={side}
         onchange={(e) => (side = (e.currentTarget as HTMLSelectElement).value as DrawerSide)}
-        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db;"
+        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background-color: var(--cinder-surface-inset); color: var(--cinder-text);"
       >
         <option value="right">right</option>
         <option value="left">left</option>
@@ -34,7 +34,7 @@
       <select
         value={size}
         onchange={(e) => (size = (e.currentTarget as HTMLSelectElement).value as DrawerSize)}
-        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db;"
+        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background-color: var(--cinder-surface-inset); color: var(--cinder-text);"
       >
         <option value="sm">sm</option>
         <option value="md">md</option>
