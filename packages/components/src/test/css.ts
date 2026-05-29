@@ -2,9 +2,13 @@
  * CSS test helpers. Internal — not part of the public package surface.
  */
 
+import { parse, type AtRule } from 'postcss';
+
+import { COMPONENT_LAYER_NAME } from '../../scripts/check-component-css.ts';
+
 /**
- * Strip a single outer `@layer cinder.components { … }` wrapper from a component
- * CSS sidecar, returning the inner rule text.
+ * Strip the outer `@layer cinder.components { … }` wrapper from a component CSS
+ * sidecar, returning the inner rules as flat CSS.
  *
  * Component CSS files self-declare `@layer cinder.components { … }` so the layer
  * assignment survives a direct subpath import. happy-dom's CSS engine does NOT
@@ -14,29 +18,18 @@
  * structure therefore strip the wrapper first — they assert on the CSS the file
  * declares, not on layer cascade behavior (which happy-dom cannot model).
  *
- * If the source has no `@layer cinder.components` wrapper, it is returned
- * unchanged.
+ * Parsing is done with PostCSS (a real CSS tokenizer) rather than a hand-rolled
+ * brace scan, so braces inside `content`, quoted strings, `url()`, or comments
+ * cannot corrupt the result. Every `@layer cinder.components` block is unwrapped
+ * (hoisting its children to the top level); content outside the wrapper and
+ * wrappers with any other name are left untouched. Source with no such wrapper
+ * is returned unchanged.
  */
 export function stripCinderComponentsLayer(css: string): string {
-  const open = /@layer\s+cinder\.components\s*\{/.exec(css);
-  if (!open) return css;
-
-  const bodyStart = open.index + open[0].length;
-
-  // Find the matching closing brace for the wrapper by tracking brace depth.
-  let depth = 1;
-  let index = bodyStart;
-  for (; index < css.length; index += 1) {
-    const char = css[index];
-    if (char === '{') depth += 1;
-    else if (char === '}') {
-      depth -= 1;
-      if (depth === 0) break;
-    }
-  }
-
-  const before = css.slice(0, open.index);
-  const inner = css.slice(bodyStart, index);
-  const after = css.slice(index + 1);
-  return `${before}${inner}${after}`;
+  const root = parse(css);
+  root.walkAtRules('layer', (atRule: AtRule) => {
+    if (atRule.params.trim() !== COMPONENT_LAYER_NAME || atRule.nodes === undefined) return;
+    atRule.replaceWith(atRule.nodes);
+  });
+  return root.toString();
 }

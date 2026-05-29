@@ -1,7 +1,9 @@
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
-import { parse } from 'postcss';
+import { parse, type ChildNode } from 'postcss';
+
+import { COMPONENT_LAYER_NAME, isSingleComponentLayer } from '../../scripts/check-component-css.ts';
 
 /**
  * Every component CSS file that reaches the cascade must carry its own
@@ -18,7 +20,8 @@ import { parse } from 'postcss';
  * This asserts the structural invariant directly against the parsed CSS AST:
  * after ignoring comments, the only top-level node in each file is a single
  * `@layer cinder.components` block. No style-producing rule or at-rule may live
- * outside it.
+ * outside it. The shape check is shared with the build gate
+ * (`isSingleComponentLayer` in `check-component-css.ts`) so both agree.
  */
 
 const repoRoot = join(import.meta.dir, '..', '..');
@@ -40,37 +43,53 @@ const UNWRAPPED_ALLOWLIST = new Set([
   'src/styles/components/experimental/_json-viewer-node.css',
 ]);
 
-async function cssFilesUnder(directory: string): Promise<string[]> {
-  const glob = new Bun.Glob(`${directory}/**/*.css`);
+async function scanGlob(pattern: string): Promise<string[]> {
+  const glob = new Bun.Glob(pattern);
   const files: string[] = [];
   for await (const file of glob.scan(repoRoot)) {
     if (file.includes('.test.')) continue;
     files.push(file);
   }
-  return files.toSorted();
+  return files;
+}
+
+/**
+ * CSS files imported DIRECTLY by component source (`import './foo.css'` in a
+ * `.svelte` or `.ts`) rather than through the `cinder/styles` aggregator. These
+ * still reach a consumer's cascade, so they are subject to the same invariant.
+ * `markdown-editor.svelte` imports `prosemirror.css` this way — it lives under
+ * `src/components/` so the glob already covers it, but enumerating the import
+ * graph keeps the guard honest if such a file ever lands outside that root.
+ */
+async function directlyImportedComponentCss(): Promise<string[]> {
+  const sources = await scanGlob('src/components/**/*.{svelte,ts}');
+  const importPattern = /import\s+['"](\.[^'"]+\.css)['"]/g;
+  const found = new Set<string>();
+  for (const source of sources) {
+    const absolute = join(repoRoot, source);
+    const text = await Bun.file(absolute).text();
+    for (const match of text.matchAll(importPattern)) {
+      // Resolve the relative specifier against the importing file's directory,
+      // then re-express it relative to the package root for comparison.
+      const resolved = join(source, '..', match[1]!);
+      found.add(resolved);
+    }
+  }
+  return [...found];
 }
 
 /**
  * The full set of component CSS files subject to the wrapper invariant:
- * per-component sidecars under `src/components/` plus the shared partials under
- * `src/styles/components/`, minus the named allowlist of files that
- * legitimately stay unwrapped.
+ * per-component sidecars under `src/components/`, the shared partials under
+ * `src/styles/components/`, and any CSS imported directly by component source —
+ * minus the named allowlist of files that legitimately stay unwrapped.
  */
 async function wrappedCssFiles(): Promise<string[]> {
-  const sidecars = await cssFilesUnder('src/components');
-  const partials = await cssFilesUnder('src/styles/components');
-  return [...sidecars, ...partials].filter((file) => !UNWRAPPED_ALLOWLIST.has(file)).toSorted();
-}
-
-function isSingleCinderComponentsLayer(source: string, file: string): boolean {
-  const root = parse(source, { from: file });
-  const topLevel = root.nodes.filter((node) => node.type !== 'comment');
-  return (
-    topLevel.length === 1 &&
-    topLevel[0]?.type === 'atrule' &&
-    topLevel[0].name === 'layer' &&
-    topLevel[0].params.trim() === 'cinder.components'
-  );
+  const sidecars = await scanGlob('src/components/**/*.css');
+  const partials = await scanGlob('src/styles/components/**/*.css');
+  const directImports = await directlyImportedComponentCss();
+  const union = new Set([...sidecars, ...partials, ...directImports]);
+  return [...union].filter((file) => !UNWRAPPED_ALLOWLIST.has(file)).toSorted();
 }
 
 function describeShape(source: string, file: string): string {
@@ -87,6 +106,11 @@ function describeShape(source: string, file: string): string {
     .join(' | ');
 }
 
+async function isWrapped(file: string): Promise<boolean> {
+  const source = await Bun.file(join(repoRoot, file)).text();
+  return isSingleComponentLayer(parse(source, { from: file }));
+}
+
 describe('component CSS @layer invariant', () => {
   test('discovers a substantial set of component CSS files', async () => {
     const files = await wrappedCssFiles();
@@ -98,13 +122,22 @@ describe('component CSS @layer invariant', () => {
     const offenders: string[] = [];
 
     for (const file of files) {
-      const source = await Bun.file(join(repoRoot, file)).text();
-      if (!isSingleCinderComponentsLayer(source, file)) {
+      if (!(await isWrapped(file))) {
+        const source = await Bun.file(join(repoRoot, file)).text();
         offenders.push(`${file} → ${describeShape(source, file)}`);
       }
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  test('directly-imported component CSS (e.g. prosemirror.css) is enumerated and wrapped', async () => {
+    // Codex flagged that CSS imported by a component's source — not via the
+    // aggregator — could be a coverage hole. Assert the discovery actually finds
+    // such a file so this guard cannot silently degrade to "found nothing".
+    const directImports = await directlyImportedComponentCss();
+    expect(directImports).toContain('src/components/markdown-editor/prosemirror.css');
+    expect(await isWrapped('src/components/markdown-editor/prosemirror.css')).toBe(true);
   });
 
   test('the unwrapped allowlist stays minimal and accurate', async () => {
@@ -115,34 +148,29 @@ describe('component CSS @layer invariant', () => {
     for (const file of UNWRAPPED_ALLOWLIST) {
       const handle = Bun.file(join(repoRoot, file));
       expect(await handle.exists()).toBe(true);
-      const source = await handle.text();
-      expect(isSingleCinderComponentsLayer(source, file)).toBe(false);
+      expect(await isWrapped(file)).toBe(false);
     }
   });
 });
 
 /**
- * The named-layer override regression test — the precise reason this wrapper
- * matters for direct subpath imports.
+ * Layer-membership regression for direct subpath imports.
  *
- * A consumer that imports a component's CSS file DIRECTLY (e.g.
- * `cinder/badge/styles`, NOT `cinder/styles`) and then declares its own
- * `@layer app` override expects the documented cascade to hold:
+ * This is the structural precondition for the documented override behavior: a
+ * consumer that imports a component's CSS file DIRECTLY (e.g. `cinder/badge/styles`,
+ * NOT `cinder/styles`) and declares its own `@layer app` override after
+ * `@layer cinder.components, app;` expects `@layer app` to win. That only holds
+ * if the directly-imported file's rules are INSIDE `@layer cinder.components`.
+ * Before this fix, `badge.css` held bare rules: a direct import dropped them
+ * outside any layer, where they outrank every layered rule and the override
+ * silently loses.
  *
- *   @layer cinder.components, app;   ← app is declared AFTER cinder.components
- *   <direct import of badge.css>     ← rules join @layer cinder.components
- *   @layer app { .cinder-badge { … } } ← app wins by layer order
- *
- * This only works if the directly-imported file's rules are INSIDE
- * `@layer cinder.components`. Before this fix, `badge.css` held bare rules: a
- * direct import dropped them outside any layer, where they outrank every
- * layered rule and the `@layer app` override silently loses. We assert the
- * structural precondition for the override — every cascade-relevant component
- * rule lives in `cinder.components` — directly against the parsed AST, since a
- * real cascade resolution needs a browser and the layer membership is the only
- * thing this change controls.
+ * This asserts MEMBERSHIP (every cascade-relevant rule lives in
+ * `cinder.components`) against the parsed AST — NOT real cascade resolution,
+ * which needs a browser. Layer membership is the only thing this change
+ * controls; the named-layer ordering remains the consumer's responsibility.
  */
-describe('direct-subpath layer override regression', () => {
+describe('direct-subpath layer membership regression', () => {
   /**
    * Walk a parsed file and collect every style rule's enclosing top-level
    * layer name (or `null` when a rule sits outside any layer). `@keyframes`
@@ -152,19 +180,18 @@ describe('direct-subpath layer override regression', () => {
     const root = parse(source, { from: file });
     const layers: (string | null)[] = [];
 
-    const visit = (nodes: ReturnType<typeof parse>['nodes'], layer: string | null): void => {
+    const visit = (nodes: ChildNode[], layer: string | null): void => {
       for (const node of nodes) {
         if (node.type === 'rule') {
           layers.push(layer);
         } else if (node.type === 'atrule') {
-          const at = node;
-          if (at.name === 'layer' && at.nodes) {
-            visit(at.nodes, at.params.trim());
-          } else if (/^(-\w+-)?keyframes$/i.test(at.name)) {
+          if (node.name === 'layer' && node.nodes) {
+            visit(node.nodes, node.params.trim());
+          } else if (/^(-\w+-)?keyframes$/i.test(node.name)) {
             // animation stops, not document-targeting rules
-          } else if (at.nodes) {
+          } else if (node.nodes) {
             // @media / @supports / @container inherit the enclosing layer
-            visit(at.nodes, layer);
+            visit(node.nodes, layer);
           }
         }
       }
@@ -174,23 +201,20 @@ describe('direct-subpath layer override regression', () => {
     return layers;
   }
 
-  test('badge.css rules all live in @layer cinder.components (override precondition)', async () => {
-    const source = await Bun.file(join(repoRoot, 'src/components/badge/badge.css')).text();
-    const layers = topLevelLayerOfEveryRule(source, 'badge.css');
-
+  async function assertEveryRuleInComponentLayer(file: string): Promise<void> {
+    const source = await Bun.file(join(repoRoot, file)).text();
+    const layers = topLevelLayerOfEveryRule(source, file);
     expect(layers.length).toBeGreaterThan(0);
     // Not a single rule may sit outside the layer — that is the un-overridable
     // landmine this task removes.
-    expect(layers.every((layer) => layer === 'cinder.components')).toBe(true);
+    expect(layers.every((layer) => layer === COMPONENT_LAYER_NAME)).toBe(true);
+  }
+
+  test('badge.css rules all live in @layer cinder.components (override precondition)', async () => {
+    await assertEveryRuleInComponentLayer('src/components/badge/badge.css');
   });
 
   test('a directly-imported partial (json-highlight.css) is fully layered', async () => {
-    const source = await Bun.file(
-      join(repoRoot, 'src/styles/components/json-highlight.css'),
-    ).text();
-    const layers = topLevelLayerOfEveryRule(source, 'json-highlight.css');
-
-    expect(layers.length).toBeGreaterThan(0);
-    expect(layers.every((layer) => layer === 'cinder.components')).toBe(true);
+    await assertEveryRuleInComponentLayer('src/styles/components/json-highlight.css');
   });
 });

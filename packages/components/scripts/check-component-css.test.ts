@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test';
+import { parse } from 'postcss';
 
-import { checkComponentCssSource } from './check-component-css.ts';
+import {
+  checkComponentCssSource,
+  COMPONENT_LAYER_NAME,
+  formatViolation,
+  isSingleComponentLayer,
+} from './check-component-css.ts';
 
 const fakePath = '/virtual/test/component.css';
 
@@ -182,5 +188,51 @@ describe('checkComponentCssSource', () => {
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations).toHaveLength(1);
     expect(violations[0]?.selector).toBe(':root');
+  });
+});
+
+describe('isSingleComponentLayer', () => {
+  it('accepts a single cinder.components block wrapper', () => {
+    expect(isSingleComponentLayer(parse(layered(`.cinder-x { color: red; }`)))).toBe(true);
+  });
+
+  it('accepts leading comments before the wrapper', () => {
+    expect(
+      isSingleComponentLayer(parse(`/* header */\n${layered(`.cinder-x { color: red; }`)}`)),
+    ).toBe(true);
+  });
+
+  it('rejects a bare rule with no wrapper', () => {
+    expect(isSingleComponentLayer(parse(`.cinder-x { color: red; }`))).toBe(false);
+  });
+
+  it('rejects a rule sitting outside the wrapper', () => {
+    expect(isSingleComponentLayer(parse(`${layered(`.cinder-x {}`)}\n.cinder-y {}`))).toBe(false);
+  });
+
+  it('rejects the statement form `@layer cinder.components;` (no block body)', () => {
+    expect(isSingleComponentLayer(parse(`@layer ${COMPONENT_LAYER_NAME};`))).toBe(false);
+  });
+
+  it('rejects a wrapper with a different layer name', () => {
+    expect(isSingleComponentLayer(parse(`@layer other { .cinder-x {} }`))).toBe(false);
+  });
+});
+
+describe('formatViolation', () => {
+  it('renders location + message for a selector-bearing violation', () => {
+    const [violation] = checkComponentCssSource(layered(`:root { color: red; }`), fakePath);
+    expect(violation).toBeDefined();
+    const formatted = formatViolation(violation!);
+    expect(formatted).toStartWith(`${fakePath}:`);
+    expect(formatted).toContain(violation!.message);
+  });
+
+  it('renders location + message for a wrapper violation (no selector)', () => {
+    const [violation] = checkComponentCssSource(`.cinder-x { color: red; }`, fakePath);
+    expect(violation).toBeDefined();
+    expect(violation!.selector).toBeUndefined();
+    const formatted = formatViolation(violation!);
+    expect(formatted).toContain(`@layer ${COMPONENT_LAYER_NAME}`);
   });
 });

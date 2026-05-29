@@ -35,6 +35,44 @@ export type CssViolation = {
   message: string;
 };
 
+/**
+ * The single cascade layer every component CSS sidecar must self-declare.
+ * Exported as the one source of truth so the build gate, the dist-side
+ * verification, and the invariant test all agree on the name.
+ */
+export const COMPONENT_LAYER_NAME = 'cinder.components';
+
+/**
+ * Whether a top-level AST node is the `@layer cinder.components { … }` wrapper —
+ * a `@layer` at-rule whose params name exactly the component layer AND that has
+ * a block body (rejecting the statement form `@layer cinder.components;`).
+ */
+function isComponentLayerNode(node: { type: string }): boolean {
+  if (node.type !== 'atrule') return false;
+  const atRule = node as AtRule;
+  return (
+    atRule.name === 'layer' &&
+    atRule.params.trim() === COMPONENT_LAYER_NAME &&
+    atRule.nodes !== undefined
+  );
+}
+
+/**
+ * Whether a parsed stylesheet satisfies the wrapper invariant: after ignoring
+ * comments, its only top-level node is a single `@layer cinder.components { … }`
+ * block. Shared by the build gate ({@link checkComponentCssSource}), the
+ * dist-side verification in `build.ts`, and the structural invariant test so all
+ * three agree on one definition.
+ */
+export function isSingleComponentLayer(root: Root): boolean {
+  const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
+  return (
+    topLevelNodes.length === 1 &&
+    topLevelNodes[0] !== undefined &&
+    isComponentLayerNode(topLevelNodes[0])
+  );
+}
+
 const FUNCTIONAL_PSEUDOS = new Set([':is', ':where', ':not', ':has', ':matches']);
 
 /**
@@ -150,26 +188,15 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
   // contract: every top-level node (ignoring comments) must live inside a
   // single `@layer cinder.components { … }` wrapper. A bare top-level style
   // rule or at-rule sitting outside that wrapper is the violation.
-  const isCinderComponentsLayer = (node: (typeof root.nodes)[number]): boolean =>
-    node.type === 'atrule' &&
-    (node as AtRule).name === 'layer' &&
-    (node as AtRule).params.trim() === 'cinder.components';
-
-  const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
-  const isWrapped =
-    topLevelNodes.length === 1 &&
-    topLevelNodes[0] !== undefined &&
-    isCinderComponentsLayer(topLevelNodes[0]);
-
-  if (!isWrapped) {
-    const offender = topLevelNodes.find((node) => !isCinderComponentsLayer(node));
+  if (!isSingleComponentLayer(root)) {
+    const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
+    const offender = topLevelNodes.find((node) => !isComponentLayerNode(node));
     const target = offender ?? root;
     violations.push({
       file,
       line: target.source?.start?.line ?? 1,
       column: target.source?.start?.column ?? 1,
-      message:
-        'Component CSS sidecar rules must live inside a single top-level `@layer cinder.components { … }` wrapper so the layer assignment survives a direct subpath import. Wrap the file contents in `@layer cinder.components { … }`.',
+      message: `Component CSS sidecar rules must live inside a single top-level \`@layer ${COMPONENT_LAYER_NAME} { … }\` wrapper so the layer assignment survives a direct subpath import. Wrap the file contents in \`@layer ${COMPONENT_LAYER_NAME} { … }\`.`,
     });
   }
 
@@ -214,7 +241,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
 
 export function formatViolation(violation: CssViolation): string {
   const location = `${violation.file}:${violation.line}:${violation.column}`;
-  return violation.selector
-    ? `${location}  ${violation.message}`
-    : `${location}  ${violation.message}`;
+  // The selector, when present, is already embedded in `message`, so the
+  // formatted line is the same shape either way.
+  return `${location}  ${violation.message}`;
 }
