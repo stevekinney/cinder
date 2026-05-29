@@ -7,7 +7,8 @@
  *   - value uses NoInfer<T> | '' so it consumes but never widens T.
  *   - The empty string '' is always assignable to value (unselected sentinel).
  *   - A value outside the inferred union (and not '') is a type error.
- *   - filter receives ComboboxOption<NoInfer<T>> — value-bearing, no widening.
+ *   - filter receives ComboboxOption<T> — a callback parameter is contra-variant,
+ *     so it is never an inference site for T and cannot widen it (no NoInfer needed).
  *   - Existing non-generic usage (plain mutable options, T=string) compiles.
  */
 import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
@@ -46,7 +47,7 @@ const _invalidValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   value: 'invalid',
 };
 
-// Valid: filter callback accepts ComboboxOption<NoInfer<T>>.
+// Valid: filter callback accepts ComboboxOption<T>.
 const _validFilter: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
