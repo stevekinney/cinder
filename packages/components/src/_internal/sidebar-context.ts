@@ -9,6 +9,8 @@
 
 import { createContext } from 'svelte';
 
+import { optionalContext } from './optional-context.ts';
+
 /**
  * Context published by `<Sidebar>` for descendant components. `collapsed` is a
  * getter so reads stay reactive — destructuring breaks reactivity, property
@@ -30,13 +32,9 @@ export function setSidebarContext(context: SidebarContextValue): void {
  * Read the nearest enclosing `<Sidebar>` context. Returns `undefined` when no
  * `<Sidebar>` ancestor exists. Readers must handle the `undefined` case.
  *
- * Svelte 5's `createContext` getter throws when no provider exists; the wrap
- * preserves the consumer contract — `undefined` on no provider.
+ * Svelte 5's `createContext` getter throws when no provider exists;
+ * `optionalContext` converts that throw to `undefined` so the consumer
+ * contract — `undefined` on no provider — is preserved.
  */
-export function getSidebarContext(): SidebarContextValue | undefined {
-  try {
-    return getSidebarContextStrict();
-  } catch {
-    return undefined;
-  }
-}
+export const getSidebarContext: () => SidebarContextValue | undefined =
+  optionalContext(getSidebarContextStrict);

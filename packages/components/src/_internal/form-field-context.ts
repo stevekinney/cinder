@@ -1,5 +1,7 @@
 import { createContext } from 'svelte';
 
+import { optionalContext } from './optional-context.ts';
+
 /**
  * Context published by `<FormField>` for descendant controls. Controls read this
  * to wire identity and ARIA. All members are getter properties on the object so
@@ -38,13 +40,9 @@ export function setFormFieldContext(context: FormFieldContext): void {
  * `<FormField>` ancestor exists. Controls rely on the `undefined` contract to
  * fall back to their standalone behavior.
  *
- * Svelte 5's `createContext` getter throws when no provider exists; the wrap
- * preserves the consumer contract.
+ * Svelte 5's `createContext` getter throws when no provider exists;
+ * `optionalContext` converts that throw to `undefined` so the consumer
+ * contract is preserved.
  */
-export function getFormFieldContext(): FormFieldContext | undefined {
-  try {
-    return getFormFieldContextStrict();
-  } catch {
-    return undefined;
-  }
-}
+export const getFormFieldContext: () => FormFieldContext | undefined =
+  optionalContext(getFormFieldContextStrict);

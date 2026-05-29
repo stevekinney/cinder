@@ -13,6 +13,8 @@
 
 import { createContext } from 'svelte';
 
+import { optionalContext } from './optional-context.ts';
+
 /** The visual affordance of a surface — describes what the surface looks like. */
 export type SurfaceTone = 'default' | 'raised' | 'inset' | 'transparent';
 
@@ -41,13 +43,9 @@ export function setSurfaceContext(context: SurfaceContextValue): void {
  * `<Surface>` ancestor exists. All readers MUST handle the `undefined` case;
  * cinder makes no implicit "default" assumption when there is no parent.
  *
- * Svelte 5's `createContext` getter throws when no provider exists; we wrap
- * it here so the consumer contract — `undefined` on no provider — is preserved.
+ * Svelte 5's `createContext` getter throws when no provider exists;
+ * `optionalContext` converts that throw to `undefined` so the consumer
+ * contract — `undefined` on no provider — is preserved.
  */
-export function getSurfaceContext(): SurfaceContextValue | undefined {
-  try {
-    return getSurfaceContextStrict();
-  } catch {
-    return undefined;
-  }
-}
+export const getSurfaceContext: () => SurfaceContextValue | undefined =
+  optionalContext(getSurfaceContextStrict);
