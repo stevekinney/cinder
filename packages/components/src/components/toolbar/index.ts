@@ -5,10 +5,7 @@ import ToolbarRoot from './toolbar.svelte';
 const Toolbar = Object.assign(ToolbarRoot, {
   Group: ToolbarGroup,
   Spacer: ToolbarSpacer,
-}) as typeof ToolbarRoot & {
-  Group: typeof ToolbarGroup;
-  Spacer: typeof ToolbarSpacer;
-};
+});
 
 export default Toolbar;
 export type {

@@ -8,9 +8,7 @@ import StatGroupRoot from './stat-group.svelte';
  */
 const StatGroup = Object.assign(StatGroupRoot, {
   Stat,
-}) as typeof StatGroupRoot & {
-  Stat: typeof Stat;
-};
+});
 
 export default StatGroup;
 export type { StatGroupColumns, StatGroupProps, StatGroupVariant } from './stat-group.types.ts';

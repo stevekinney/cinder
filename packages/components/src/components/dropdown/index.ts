@@ -20,14 +20,7 @@ const Dropdown = Object.assign(DropdownRoot, {
   Label: DropdownLabel,
   Separator: DropdownSeparator,
   Group: DropdownGroup,
-}) as typeof DropdownRoot & {
-  Trigger: typeof DropdownTrigger;
-  Menu: typeof DropdownMenu;
-  Item: typeof DropdownItem;
-  Label: typeof DropdownLabel;
-  Separator: typeof DropdownSeparator;
-  Group: typeof DropdownGroup;
-};
+});
 
 export default Dropdown;
 export {

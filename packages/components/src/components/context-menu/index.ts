@@ -13,14 +13,7 @@ const ContextMenu = Object.assign(ContextMenuRoot, {
   Label: DropdownLabel,
   Separator: DropdownSeparator,
   Group: DropdownGroup,
-}) as typeof ContextMenuRoot & {
-  Trigger: typeof ContextMenuTrigger;
-  Menu: typeof DropdownMenu;
-  Item: typeof DropdownItem;
-  Label: typeof DropdownLabel;
-  Separator: typeof DropdownSeparator;
-  Group: typeof DropdownGroup;
-};
+});
 
 export default ContextMenu;
 export type { ContextMenuProps } from './context-menu.types.ts';

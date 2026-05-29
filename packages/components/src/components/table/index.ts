@@ -17,13 +17,7 @@ const Table = Object.assign(TableRoot, {
   Header: TableHeader,
   HeaderCell: TableHeaderCell,
   Row: TableRow,
-}) as typeof TableRoot & {
-  Body: typeof TableBody;
-  Cell: typeof TableCell;
-  Header: typeof TableHeader;
-  HeaderCell: typeof TableHeaderCell;
-  Row: typeof TableRow;
-};
+});
 
 export default Table;
 export {

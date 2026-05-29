@@ -8,9 +8,7 @@ import TreeRoot from './tree.svelte';
  */
 const Tree = Object.assign(TreeRoot, {
   Item: TreeItem,
-}) as typeof TreeRoot & {
-  Item: typeof TreeItem;
-};
+});
 
 export default Tree;
 export type { TreeProps, TreeSelectionBehavior, TreeSelectionMode } from './tree.types.ts';
