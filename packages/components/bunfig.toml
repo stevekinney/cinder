@@ -16,9 +16,9 @@ preload = ["./scripts/preload.ts"]
 #   processes; when many test files race to import the Svelte test stack at
 #   module-init, the runner deadlocks — workers hang past completion while
 #   unrelated tests (popover, pin-input, …) report `timed out after 5000ms`
-#   even though wall-clock runs for minutes. `scripts/preload.ts` removed
-#   half the race by pre-installing happy-dom so files can use STATIC
-#   imports, but enabling `--parallel` still hangs the full 222-file suite.
+#   even though wall-clock runs for minutes. `scripts/preload.ts` pre-installs
+#   happy-dom (so test files can migrate away from top-level `await import(...)`),
+#   but enabling `--parallel` still hangs the full 222-file suite.
 #
 # NOT a blocker — cross-file `globalThis.ResizeObserver` mutation. Several
 # tests reassign `globalThis.ResizeObserver` at module top-level with no
