@@ -51,7 +51,7 @@ export type ComboboxProps<T extends string = string> = {
    * value; returns true to keep. Defaults to case-insensitive substring
    * match on label.
    */
-  filter?: (option: ComboboxOption<NoInfer<T>>, query: string) => boolean;
+  filter?: (option: ComboboxOption<T>, query: string) => boolean;
   /** Helper text displayed below the input; wired via aria-describedby. */
   description?: string;
   /** Validation error message; sets aria-invalid="true". */
