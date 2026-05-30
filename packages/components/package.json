@@ -3043,6 +3043,7 @@
     "check:no-cycle-imports": "bun run scripts/check-no-cycle-imports.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build fixtures/manifest-consumer/node_modules fixtures/typescript-consumer/node_modules fixtures/typescript-consumer/src/generated fixtures/examples-consumer/node_modules fixtures/examples-consumer/.svelte-kit fixtures/examples-consumer/build fixtures/examples-consumer/src/generated fixtures/examples-consumer/src/routes/+page.svelte",
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
+    "components:create": "bun run scripts/create-component.ts",
     "components:fixture": "bun run scripts/run-consumer-fixture.ts",
     "components:generate": "bun run scripts/generate-component-artifacts.ts",
     "components:promotion-check": "bun run scripts/check-promotion-readiness.ts",
