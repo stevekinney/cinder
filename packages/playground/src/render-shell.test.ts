@@ -103,4 +103,119 @@ describe('renderShell', () => {
       );
     expect(layerBlockMatch).not.toBeNull();
   });
+
+  it('declares --cinder-top-bar-height once on :root', () => {
+    // The token is the single source of truth for the fixed top bar's height.
+    // It must live on :root so the top bar, sidebar, and main column all
+    // inherit it without each re-declaring (and drifting out of sync).
+    const html = renderShell('button', ['button']);
+    const rootDeclaration = /:root\s*\{[^}]*--cinder-top-bar-height:\s*52px/.exec(html);
+    expect(rootDeclaration).not.toBeNull();
+  });
+});
+
+describe('renderShell metadata and Open Graph', () => {
+  const ROOT_DESCRIPTION =
+    'Interactive component playground for cinder — a Svelte 5 accessible component library.';
+
+  describe('root page', () => {
+    it('emits the root description and base Open Graph / Twitter tags', () => {
+      const html = renderShell(null, ['button']);
+      expect(html).toContain(`<meta name="description" content="${ROOT_DESCRIPTION}" />`);
+      expect(html).toContain(`<meta property="og:title" content="cinder playground" />`);
+      expect(html).toContain(`<meta property="og:description" content="${ROOT_DESCRIPTION}" />`);
+      expect(html).toContain(`<meta property="og:type" content="website" />`);
+      expect(html).toContain(`<meta property="og:site_name" content="cinder playground" />`);
+      expect(html).toContain(`<meta name="twitter:card" content="summary_large_image" />`);
+      expect(html).toContain(`<meta name="twitter:title" content="cinder playground" />`);
+      expect(html).toContain(`<meta name="twitter:description" content="${ROOT_DESCRIPTION}" />`);
+      // Favicon is an inlined data-URI SVG (no /favicon.svg route exists, so a
+      // file reference would 404 on every page). Assert the data URI, not a path.
+      expect(html).toContain(`<link rel="icon" href="data:image/svg+xml,`);
+      expect(html).not.toContain('href="/favicon.svg"');
+    });
+
+    it('omits absolute-URL tags when no base URL is provided', () => {
+      const html = renderShell(null, ['button'], { baseUrl: '' });
+      expect(html).not.toContain('property="og:url"');
+      expect(html).not.toContain('property="og:image"');
+      expect(html).not.toContain('name="twitter:image"');
+      expect(html).not.toContain('rel="canonical"');
+    });
+
+    it('emits absolute URL tags rooted at "/" when a base URL is provided', () => {
+      const html = renderShell(null, ['button'], { baseUrl: 'https://playground.cinder.dev' });
+      expect(html).toContain('<meta property="og:url" content="https://playground.cinder.dev/" />');
+      expect(html).toContain(
+        '<meta property="og:image" content="https://playground.cinder.dev/social.png" />',
+      );
+      expect(html).toContain(
+        '<meta name="twitter:image" content="https://playground.cinder.dev/social.png" />',
+      );
+      expect(html).toContain('<link rel="canonical" href="https://playground.cinder.dev/" />');
+    });
+  });
+
+  describe('per-component page', () => {
+    const PER_COMPONENT_DESCRIPTION =
+      'Explore the button component in the cinder playground — live examples, props, and CSS variables.';
+
+    it('emits a per-component description and matching og/twitter title', () => {
+      const html = renderShell('button', ['button']);
+      expect(html).toContain(`<meta name="description" content="${PER_COMPONENT_DESCRIPTION}" />`);
+      expect(html).toContain(
+        `<meta property="og:description" content="${PER_COMPONENT_DESCRIPTION}" />`,
+      );
+      expect(html).toContain(`<meta property="og:title" content="cinder playground — button" />`);
+      expect(html).toContain(`<meta name="twitter:title" content="cinder playground — button" />`);
+      expect(html).toContain(
+        `<meta name="twitter:description" content="${PER_COMPONENT_DESCRIPTION}" />`,
+      );
+    });
+
+    it('omits absolute-URL tags when no base URL is provided', () => {
+      const html = renderShell('button', ['button'], { baseUrl: '' });
+      expect(html).not.toContain('property="og:url"');
+      expect(html).not.toContain('property="og:image"');
+      expect(html).not.toContain('name="twitter:image"');
+      expect(html).not.toContain('rel="canonical"');
+    });
+
+    it('builds the absolute canonical/og:url from the component path when a base URL is set', () => {
+      const html = renderShell('button', ['button'], {
+        baseUrl: 'https://playground.cinder.dev',
+      });
+      expect(html).toContain(
+        '<meta property="og:url" content="https://playground.cinder.dev/c/button" />',
+      );
+      expect(html).toContain(
+        '<link rel="canonical" href="https://playground.cinder.dev/c/button" />',
+      );
+      expect(html).toContain(
+        '<meta property="og:image" content="https://playground.cinder.dev/social.png" />',
+      );
+      expect(html).toContain(
+        '<meta name="twitter:image" content="https://playground.cinder.dev/social.png" />',
+      );
+    });
+
+    it('strips a trailing slash from the base URL before composing absolute URLs', () => {
+      const html = renderShell('button', ['button'], {
+        baseUrl: 'https://playground.cinder.dev/',
+      });
+      expect(html).toContain(
+        '<meta property="og:url" content="https://playground.cinder.dev/c/button" />',
+      );
+      expect(html).not.toContain('cinder.dev//c/button');
+    });
+  });
+
+  it('HTML-escapes the component name inside metadata values', () => {
+    // The kebab-case invariant is enforced by the server, but the renderer must
+    // still escape whatever it is handed so a crafted name cannot break out of
+    // an attribute value.
+    const html = renderShell('"><script>', ['button']);
+    expect(html).not.toContain('"><script>');
+    expect(html).toContain('&quot;&gt;&lt;script&gt;');
+  });
 });

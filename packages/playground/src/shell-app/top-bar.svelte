@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { getAnnouncer } from './announcer.svelte.ts';
   import type { BackgroundChoice, ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
+  import { buildIframeSrc } from './routing.ts';
   import {
     Button,
     NumberInput,
@@ -10,6 +12,14 @@
   } from '../../../components/src/index.ts';
 
   const store = getPreviewStore();
+  const announcer = getAnnouncer();
+
+  // Forward toolbar feedback to the shell's single shared live region. The
+  // empty-then-set coalescing trick (so identical repeats still read) lives
+  // in the Announcer; see announcer.svelte.ts.
+  function announce(text: string): void {
+    announcer.announce(text);
+  }
 
   // ── Viewport presets ──────────────────────────────────────────────────────
   // SegmentedControl requires string values. Numeric preset widths are keyed
@@ -93,22 +103,19 @@
     announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
 
-  // ── Announcements ─────────────────────────────────────────────────────────
-  // Empty-then-set with a 50 ms gap forces the aria-live region to emit a DOM
-  // mutation even when the same string is announced twice in a row. Without
-  // the gap the Svelte runtime coalesces identical consecutive assignments into
-  // a no-op and assistive technology never reads the second announcement.
+  // ── Open in new tab ───────────────────────────────────────────────────────
+  // Opens the isolated /page/:name route in a fresh tab. The button is hidden
+  // when no component is selected so we never open a /page/ URL with an empty
+  // name. `noopener` severs the new tab's `window.opener` reference for safety.
 
-  let announcement = $state<string>('');
-  let announceTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  function announce(text: string): void {
-    if (announceTimeout !== null) clearTimeout(announceTimeout);
-    announcement = '';
-    announceTimeout = setTimeout(() => {
-      announcement = text;
-      announceTimeout = null;
-    }, 50);
+  function openInNewTab(): void {
+    if (store.currentComponent === '') return;
+    // Reuse buildIframeSrc so the component name is encodeURIComponent-escaped
+    // exactly like every other /page/:name URL the shell builds (and like the
+    // preview-frame tests assert), then make it absolute for window.open.
+    const url = `${window.location.origin}${buildIframeSrc(store.currentComponent)}`;
+    window.open(url, '_blank', 'noopener');
+    announce(`Opened ${store.currentComponent} preview in a new tab`);
   }
 </script>
 
@@ -181,6 +188,17 @@
     <Toolbar.Spacer />
 
     <Toolbar.Group>
+      {#if store.currentComponent !== ''}
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Open preview in new tab"
+          onclick={openInNewTab}
+        >
+          <span aria-hidden="true">↗</span>
+        </Button>
+      {/if}
+
       <Button
         variant="ghost"
         size="sm"
@@ -192,8 +210,6 @@
       </Button>
     </Toolbar.Group>
   </Toolbar>
-
-  <span class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>
 </header>
 
 <style>
@@ -208,12 +224,10 @@
 
   .top-bar {
     /*
-     * Canonical height token used by shell.svelte for the sidebar's top
-     * offset. Keep them in sync — shell.svelte reads this custom property
-     * via var(--cinder-top-bar-height) on the <main> element.
+     * Height reads from the shared --cinder-top-bar-height token, declared
+     * once on :root by render-shell.ts. The sidebar and main column reference
+     * the same token for their top offset, so all three stay in sync.
      */
-    --cinder-top-bar-height: 52px;
-
     box-sizing: border-box;
     height: var(--cinder-top-bar-height);
     background: var(--cinder-surface);
@@ -301,18 +315,5 @@
     color: var(--cinder-text-subtle);
     padding-inline-start: 3px;
     flex-shrink: 0;
-  }
-
-  /* ── Accessibility ── */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

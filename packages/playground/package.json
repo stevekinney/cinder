@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch run src/server.ts",
-    "lint": "oxlint src/",
-    "lint:fix": "oxlint --fix src/",
-    "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser",
+    "lint": "oxlint src/ api/ scripts/",
+    "lint:fix": "oxlint --fix src/ api/ scripts/",
+    "test": "bun run scripts/run-tests.ts",
     "typecheck": "tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
-    "validate": "bun run src/validate-playground.ts"
+    "validate": "bun run src/validate-playground.ts",
+    "vercel-build": "bun run scripts/vercel-build.ts"
   },
   "dependencies": {
     "cinder": "workspace:*",

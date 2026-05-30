@@ -1,0 +1,169 @@
+name: deploy-playground
+
+# Deploys the cinder playground (@cinder/playground) to Vercel.
+#
+#   - push to `main`  → production deployment (vercel deploy --prod)
+#   - pull_request    → preview deployment, with the URL surfaced in the job
+#                       summary. Previews are best-effort: a fork PR has no
+#                       access to the encrypted secrets and the job is skipped.
+#
+# The playground is a Bun.serve server that builds Svelte bundles on the fly
+# (no SvelteKit, no Vite). On Vercel it runs as a single Bun Function — see
+# packages/playground/api/index.ts and packages/playground/vercel.json.
+#
+# One-time setup (token, org id, project id, project root directory) is
+# documented in CONTRIBUTING.md § "Deploying the playground to Vercel".
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/playground/**'
+      - 'packages/components/**'
+      - '.github/workflows/deploy-playground.yaml'
+      - 'package.json'
+      - 'bun.lock'
+  pull_request:
+    paths:
+      - 'packages/playground/**'
+      - 'packages/components/**'
+      - '.github/workflows/deploy-playground.yaml'
+      - 'package.json'
+      - 'bun.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-playground-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: 1.3.13
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  # Pass the token through the environment (quoted "$VERCEL_TOKEN" in the steps)
+  # rather than interpolating ${{ secrets.* }} into the run: script, so a token
+  # containing a shell metacharacter can't break the command and a later set -x
+  # can't expand it before GitHub's log redaction.
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+jobs:
+  # Preflight gate: decide whether a real deploy can run. `secrets` is NOT
+  # available in a job-level `if:` (only github/needs/vars/inputs are), so we
+  # check the token inside a step here and expose the result as an output the
+  # deploy job gates on. This skips (neutral, not failing) the deploy when the
+  # Vercel secrets haven't been configured yet — see CONTRIBUTING.md
+  # § "Deploying the playground to Vercel" for the one-time setup.
+  preflight:
+    name: deploy-playground-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    # Fork PRs can't read encrypted secrets at all — skip even the preflight.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    outputs:
+      can_deploy: ${{ steps.check.outputs.can_deploy }}
+    steps:
+      - name: Check Vercel credentials are configured
+        id: check
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "VERCEL_TOKEN is not set — skipping deploy. Configure the Vercel secrets per CONTRIBUTING.md to enable." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy:
+    name: deploy-playground
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: preflight
+    if: ${{ needs.preflight.outputs.can_deploy == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: bun add --global vercel@latest
+
+      - name: Determine environment
+        id: environment
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "vercel=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "vercel=preview" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull Vercel environment information
+        run: vercel pull --yes --environment="${{ steps.environment.outputs.vercel }}" --token="$VERCEL_TOKEN"
+
+      - name: Build with Vercel
+        run: |
+          if [ "${{ steps.environment.outputs.vercel }}" = "production" ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          if [ "${{ steps.environment.outputs.vercel }}" = "production" ]; then
+            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          else
+            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test the deployment
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          echo "Probing $url/ping"
+          # Vercel deployment URLs sit behind deployment protection on some
+          # plans; a 401 here means the deploy succeeded but the URL is gated,
+          # which is not a deploy failure. Treat 200 (pong) as the pass signal
+          # and surface anything else without failing the job.
+          status=$(curl -s -o /tmp/ping.txt -w '%{http_code}' "$url/ping" || echo "000")
+          body=$(cat /tmp/ping.txt 2>/dev/null || echo "")
+          echo "HTTP $status — body: $body"
+          if [ "$status" = "200" ] && [ "$body" = "pong" ]; then
+            echo "Health check passed." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$status" = "401" ] || [ "$status" = "403" ]; then
+            # The deploy itself succeeded; the URL is gated by Vercel deployment
+            # protection. Surface it, but don't fail the job.
+            echo "Deployment gated by Vercel deployment protection (HTTP $status) — deploy succeeded, verify the URL manually." >> "$GITHUB_STEP_SUMMARY"
+          else
+            # A real broken deploy (5xx, 000, 200-without-pong, etc.) must red-X
+            # the workflow rather than passing silently with only a summary note.
+            echo "::error::Health check failed: $url/ping returned HTTP $status (body: $body), expected 'pong'."
+            echo "Health check FAILED (HTTP $status, body: $body)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Report deployment URL
+        run: |
+          echo "### Playground deployment (${{ steps.environment.outputs.vercel }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"

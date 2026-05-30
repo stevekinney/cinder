@@ -7,5 +7,5 @@
     // succeed on a fresh checkout without a prior cinder build.
     "customConditions": ["svelte"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "api/**/*", "scripts/**/*"]
 }

@@ -12,6 +12,8 @@
  * Exit 0 on success, non-zero with a descriptive error on failure.
  */
 
+import { join } from 'node:path';
+
 import { discoverComponents } from './discover.ts';
 import { type PlaygroundServer, PORT, startServer, triggerReload } from './server.ts';
 
@@ -27,7 +29,75 @@ function fail(message: string): never {
 }
 
 /** Minimum number of public components expected in src/components/. */
-const MINIMUM_COMPONENT_COUNT = 21;
+const MINIMUM_COMPONENT_COUNT = 80;
+
+// Title-presence check for `.example.svelte` files. SELF-CONTAINED on purpose:
+// this duplicates a tiny title regex rather than importing from
+// `example-metadata.ts`/`server.ts` so the build-time gate has no coupling to
+// the runtime server module (importing server.ts would also auto-wire its
+// import.meta.main guard expectations into this validator's dependency graph).
+
+/** The sentinel a missing title falls back to; an explicit one is rejected too. */
+const UNTITLED_SENTINEL = 'Untitled';
+
+// Matches `export const title = '…' | "…" | `…``. Mirrors the runtime extractor:
+// a same-quote backreference close and `\\.` to skip escaped quotes inside the
+// literal. Interpolated template literals are intentionally not parsed — titles
+// must be plain string literals.
+const TITLE_PATTERN = /export\s+const\s+title\s*=\s*(['"`])((?:[^\\]|\\.)*?)\1/;
+
+/**
+ * Read the `export const title` string literal from example source, or `null`
+ * when the file declares no exported title. Pure — no I/O. Exported for tests.
+ */
+export function readExampleTitle(source: string): string | null {
+  const match = source.match(TITLE_PATTERN);
+  return match ? (match[2] ?? '') : null;
+}
+
+/**
+ * Classify an example's title: `'ok'` when a real title is present, `'missing'`
+ * when no exported title exists, `'untitled'` when it is the `'Untitled'`
+ * sentinel. Pure — no I/O. Exported for tests.
+ */
+export function classifyExampleTitle(source: string): 'ok' | 'missing' | 'untitled' {
+  const title = readExampleTitle(source);
+  if (title === null) return 'missing';
+  if (title === UNTITLED_SENTINEL) return 'untitled';
+  return 'ok';
+}
+
+/**
+ * Scan every `.example.svelte` file and fail when any is missing a `title`
+ * export or uses the `'Untitled'` sentinel. Reports the count of checked files.
+ */
+async function validateExampleTitles(examplesRoot: string): Promise<void> {
+  process.stdout.write('[validate:playground] checking example titles…\n');
+
+  const offenders: string[] = [];
+  let checked = 0;
+  const glob = new Bun.Glob('**/*.example.svelte');
+  for await (const relativePath of glob.scan({ cwd: examplesRoot })) {
+    checked += 1;
+    const filePath = join(examplesRoot, relativePath);
+    const source = await Bun.file(filePath).text();
+    const verdict = classifyExampleTitle(source);
+    if (verdict === 'missing') {
+      offenders.push(`${relativePath} — missing \`export const title\``);
+    } else if (verdict === 'untitled') {
+      offenders.push(`${relativePath} — title is the \`'Untitled'\` placeholder`);
+    }
+  }
+
+  if (offenders.length > 0) {
+    fail(
+      `${offenders.length} of ${checked} example(s) lack a usable title:\n` +
+        offenders.map((line) => `  - ${line}`).join('\n'),
+    );
+  }
+
+  process.stdout.write(`[validate:playground] all ${checked} example titles present.\n`);
+}
 
 /** Wait for the server to become ready by polling /ping. */
 async function waitForPing(baseUrl: string, timeoutMs: number): Promise<void> {
@@ -51,6 +121,15 @@ async function waitForPing(baseUrl: string, timeoutMs: number): Promise<void> {
  */
 async function validateComponentRoutes(baseUrl: string, components: string[]): Promise<void> {
   process.stdout.write(`[validate:playground] crawling ${components.length} component routes…\n`);
+
+  // The snapshot route (`/page/:name?snapshot=1`) re-renders the same page with
+  // snapshot mode enabled, so validating it for every component is redundant.
+  // Sample a bounded, deterministic subset (every Nth component) to keep the
+  // crawl fast while still exercising the snapshot code path across the set.
+  const snapshotSampleStride = Math.max(1, Math.ceil(components.length / 10));
+  const snapshotSample = new Set(
+    components.filter((_, index) => index % snapshotSampleStride === 0),
+  );
 
   for (const name of components) {
     // Shell route
@@ -95,6 +174,25 @@ async function validateComponentRoutes(baseUrl: string, components: string[]): P
     const pageBody = await pageResponse.text();
     if (!pageBody.includes('__CINDER_EXAMPLES__')) {
       fail(`GET ${pageUrl} does not inject __CINDER_EXAMPLES__`);
+    }
+
+    // Snapshot route (sampled): /page/:name?snapshot=1 must return 200 and emit
+    // the data-snapshot-mode attribute on <html> (snapshotModeHtmlAttribute).
+    if (snapshotSample.has(name)) {
+      const snapshotUrl = `${pageUrl}?snapshot=1`;
+      let snapshotResponse: Response;
+      try {
+        snapshotResponse = await fetch(snapshotUrl, { signal: AbortSignal.timeout(5_000) });
+      } catch (error) {
+        fail(`fetch ${snapshotUrl} threw: ${String(error)}`);
+      }
+      if (snapshotResponse.status !== 200) {
+        fail(`GET ${snapshotUrl} returned ${snapshotResponse.status}, expected 200`);
+      }
+      const snapshotBody = await snapshotResponse.text();
+      if (!snapshotBody.includes('data-snapshot-mode')) {
+        fail(`GET ${snapshotUrl} did not emit the data-snapshot-mode attribute`);
+      }
     }
   }
 
@@ -181,35 +279,41 @@ async function validateSseReload(baseUrl: string): Promise<void> {
   process.stdout.write('[validate:playground] SSE reload event received.\n');
 }
 
-let server: PlaygroundServer | undefined;
+// Guarded by import.meta.main so importing this module (e.g. to unit-test the
+// pure title helpers) does not auto-start the server or call process.exit().
+if (import.meta.main) {
+  let server: PlaygroundServer | undefined;
 
-try {
-  server = await startServer(PORT);
-  const baseUrl = `http://127.0.0.1:${server.port}`;
-  process.stdout.write(
-    `[validate:playground] waiting for playground server on port ${server.port}…\n`,
-  );
-  await waitForPing(baseUrl, 10_000);
-  process.stdout.write(`[validate:playground] server ready at ${baseUrl}\n`);
-
-  const components = await discoverComponents();
-  if (components.length < MINIMUM_COMPONENT_COUNT) {
-    fail(
-      `expected at least ${MINIMUM_COMPONENT_COUNT} components but discoverComponents returned ${components.length}`,
+  try {
+    server = await startServer(PORT);
+    const baseUrl = `http://127.0.0.1:${server.port}`;
+    process.stdout.write(
+      `[validate:playground] waiting for playground server on port ${server.port}…\n`,
     );
-  }
+    await waitForPing(baseUrl, 10_000);
+    process.stdout.write(`[validate:playground] server ready at ${baseUrl}\n`);
 
-  await validateComponentRoutes(baseUrl, components);
-  await validateSseReload(baseUrl);
+    const components = await discoverComponents();
+    if (components.length < MINIMUM_COMPONENT_COUNT) {
+      fail(
+        `expected at least ${MINIMUM_COMPONENT_COUNT} components but discoverComponents returned ${components.length}`,
+      );
+    }
 
-  process.stdout.write('[validate:playground] all checks passed.\n');
-  await server.dispose();
-  process.exit(0);
-} catch (error) {
-  await server?.dispose();
-  if (error instanceof PlaygroundValidationError) {
-    process.stderr.write(`[validate:playground] FAILED: ${error.message}\n`);
-    process.exit(1);
+    // import.meta.dirname is packages/playground/src/; examples live under examples/.
+    await validateExampleTitles(join(import.meta.dirname, 'examples'));
+    await validateComponentRoutes(baseUrl, components);
+    await validateSseReload(baseUrl);
+
+    process.stdout.write('[validate:playground] all checks passed.\n');
+    await server.dispose();
+    process.exit(0);
+  } catch (error) {
+    await server?.dispose();
+    if (error instanceof PlaygroundValidationError) {
+      process.stderr.write(`[validate:playground] FAILED: ${error.message}\n`);
+      process.exit(1);
+    }
+    throw error;
   }
-  throw error;
 }

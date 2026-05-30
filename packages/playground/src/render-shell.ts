@@ -18,6 +18,22 @@ const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 /**
+ * Self-contained favicon as a data URI: a rounded square in the cinder ember
+ * orange with a lowercase "c". Inlined so every page has an icon without a
+ * /favicon.svg route (which neither handleRequest nor vercel.json serves) and
+ * therefore without a guaranteed 404 in devtools and server logs.
+ */
+const FAVICON_DATA_URI =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+      '<rect width="32" height="32" rx="7" fill="#e8590c"/>' +
+      '<text x="16" y="23" font-family="system-ui,sans-serif" font-size="22" ' +
+      'font-weight="700" fill="#fff" text-anchor="middle">c</text>' +
+      '</svg>',
+  );
+
+/**
  * Escape a string value so it's safe to embed inside the body of a
  * `<script type="application/json">` tag. JSON.stringify alone is not enough
  * because the resulting string may contain literal `</script>` substrings (if
@@ -79,10 +95,76 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export function renderShell(activeComponent: string | null, components: string[]): string {
+/**
+ * Options for {@link renderShell}.
+ */
+export type RenderShellOptions = {
+  /**
+   * Absolute origin (e.g. `https://playground.cinder.dev`) used to build the
+   * canonical and Open Graph URLs. When empty (the default), the URL-bearing
+   * tags that require an absolute address — `og:url`, `og:image`,
+   * `twitter:image`, and `<link rel="canonical">` — are omitted entirely
+   * rather than emitted with a misleading relative path. Defaults to
+   * `PLAYGROUND_BASE_URL` from the environment, falling back to an empty
+   * string. Any trailing slashes are stripped before composing URLs.
+   */
+  baseUrl?: string;
+};
+
+/**
+ * Render the playground shell HTML for either the root page (`activeComponent`
+ * is `null`) or a specific component page. Emits a complete `<head>` with SEO,
+ * Open Graph, and Twitter card metadata in addition to the mount point and the
+ * data island.
+ *
+ * @param activeComponent - The component being shown, or `null` for the root.
+ * @param components - The list of components to embed for the sidebar.
+ * @param options - Optional rendering options; see {@link RenderShellOptions}.
+ * @returns A complete HTML document string.
+ */
+export function renderShell(
+  activeComponent: string | null,
+  components: string[],
+  options: RenderShellOptions = {},
+): string {
+  const baseUrl = (options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
+
   const title = activeComponent
     ? `cinder playground — ${escapeHtml(activeComponent)}`
     : 'cinder playground';
+
+  const description = activeComponent
+    ? `Explore the ${escapeHtml(activeComponent)} component in the cinder playground — live examples, props, and CSS variables.`
+    : 'Interactive component playground for cinder — a Svelte 5 accessible component library.';
+
+  // Shell routes: `/c/<component>` for a specific component, `/` for the root.
+  const path = activeComponent ? `/c/${encodeURIComponent(activeComponent)}` : '/';
+  const canonicalUrl = baseUrl ? escapeHtml(`${baseUrl}${path}`) : '';
+  // TODO(bf3680cd): /social.png is a placeholder — shipping the actual social
+  // card image is a separate task.
+  const imageUrl = baseUrl ? escapeHtml(`${baseUrl}/social.png`) : '';
+
+  const meta = [
+    `<meta name="description" content="${description}" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:type" content="website" />`,
+    canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}" />` : '',
+    imageUrl ? `<meta property="og:image" content="${imageUrl}" />` : '',
+    `<meta property="og:site_name" content="cinder playground" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    imageUrl ? `<meta name="twitter:image" content="${imageUrl}" />` : '',
+    canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
+    // Inline data-URI favicon: a self-contained SVG ember mark. Embedding it
+    // avoids a guaranteed 404 on every page (there is no /favicon.svg route in
+    // handleRequest or rewrite in vercel.json) without adding a static asset
+    // pipeline. Swap for a shipped /favicon.svg if a richer icon is ever wanted.
+    `<link rel="icon" href="${FAVICON_DATA_URI}" />`,
+  ]
+    .filter(Boolean)
+    .join('\n    ');
 
   const initialData = {
     component: activeComponent ?? '',
@@ -95,6 +177,7 @@ export function renderShell(activeComponent: string | null, components: string[]
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
+    ${meta}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal
@@ -122,6 +205,15 @@ export function renderShell(activeComponent: string | null, components: string[]
          to a concrete light/dark for explicit theme choices. */
       html {
         color-scheme: light dark;
+      }
+
+      /* Single source of truth for the fixed top bar's height. Declared on
+         :root so it resolves for the top bar, the sidebar, and the main
+         column alike — .top-bar only reaches its own descendants, so siblings
+         (sidebar.svelte, shell.svelte) previously had to duplicate this token.
+         Hoisting it here lets those components reference it without fallbacks. */
+      :root {
+        --cinder-top-bar-height: 52px;
       }
 
       html, body, #shell-root {

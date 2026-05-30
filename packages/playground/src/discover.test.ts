@@ -7,14 +7,21 @@
  */
 
 import { describe, expect, it } from 'bun:test';
+import { basename, dirname, join } from 'node:path';
 
+import { analyzeAll } from './analyze.ts';
 import {
   COMPOSE_ONLY_COMPONENTS,
   discoverAll,
+  discoverComponentFilePaths,
   discoverComponents,
   discoverExamples,
   discoverSidebarComponents,
+  invalidateDiscoveryCache,
 } from './discover.ts';
+
+// packages/components/src/components — the same root discoverComponents() scans.
+const COMPONENTS_DIR = join(dirname(import.meta.dirname), '..', 'components', 'src', 'components');
 
 describe('discoverComponents', () => {
   it('returns an array of component kebab names', async () => {
@@ -241,6 +248,177 @@ describe('discoverSidebarComponents', () => {
     const all = await discoverComponents();
     for (const leaf of COMPOSE_ONLY_COMPONENTS) {
       expect(all).toContain(leaf);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shared file-path scan
+//
+// `discoverComponentFilePaths` is the single source of truth backing both
+// `discoverComponents` (kebab names) and `analyzeAll` (file reads). These
+// tests pin that the three views agree, so the two callers cannot drift apart.
+// ---------------------------------------------------------------------------
+
+describe('discoverComponentFilePaths', () => {
+  it('returns absolute .svelte file paths', async () => {
+    const filePaths = await discoverComponentFilePaths(COMPONENTS_DIR);
+    expect(filePaths.length).toBeGreaterThan(0);
+    for (const filePath of filePaths) {
+      expect(filePath.startsWith('/')).toBe(true);
+      expect(filePath).toMatch(/\.svelte$/);
+    }
+  });
+
+  it('yields the exact same name set as discoverComponents() (sorted compare)', async () => {
+    const filePaths = await discoverComponentFilePaths(COMPONENTS_DIR);
+    const namesFromPaths = [...new Set(filePaths.map((p) => basename(p, '.svelte')))].toSorted();
+    const components = await discoverComponents();
+    expect(namesFromPaths).toEqual(components);
+  });
+
+  it('excludes underscore-prefixed, experimental, and icons entries', async () => {
+    const filePaths = await discoverComponentFilePaths(COMPONENTS_DIR);
+    for (const filePath of filePaths) {
+      expect(basename(filePath).startsWith('_')).toBe(false);
+      expect(filePath).not.toContain('/experimental/');
+      expect(filePath).not.toContain('/icons/');
+    }
+  });
+
+  // analyzeAll spins up a fresh ts-morph Project per component (a known perf
+  // cost), so the cold-start scan over the whole library can exceed the default
+  // 5s per-test budget. The generous timeout keeps this invariant test honest
+  // without flaking on a slow machine.
+  it('matches the component set analyzeAll() resolves', async () => {
+    const manifests = await analyzeAll(COMPONENTS_DIR);
+    const fromAnalyze = manifests.map((m) => m.kebabName).toSorted();
+    const fromDiscover = await discoverComponents();
+    expect(fromAnalyze).toEqual(fromDiscover);
+  }, 60_000);
+});
+
+// ---------------------------------------------------------------------------
+// Discovery cache
+//
+// `discoverComponents` / `discoverAll` run on every `/`, `/c/:name`, and
+// `/page/:name` request, so their full `Bun.Glob` scans are memoized at module
+// scope and invalidated on each watcher rebuild via `invalidateDiscoveryCache`.
+// These tests pin that a warm call does NOT re-scan and that invalidation
+// forces a fresh scan — measured by spying on `Bun.Glob`'s `scan`.
+// ---------------------------------------------------------------------------
+
+describe('discovery cache', () => {
+  // Count Bun.Glob().scan() calls so we can assert when a real filesystem
+  // scan happens vs. when a cached result is returned. scanComponents()
+  // constructs two globs (flat + directory) per cold scan, and discoverAll
+  // additionally scans one example glob per component, so a warm call adds
+  // zero scans. We only assert direction (more vs. equal), never exact counts,
+  // so the test is robust to component-count growth.
+  let scanCallCount = 0;
+  const realScan = Bun.Glob.prototype.scan;
+
+  const installSpy = () => {
+    scanCallCount = 0;
+    Bun.Glob.prototype.scan = function spiedScan(this: Bun.Glob, ...args: unknown[]) {
+      scanCallCount += 1;
+      // @ts-expect-error — forwarding the original variadic scan signature.
+      return realScan.apply(this, args);
+    };
+  };
+
+  const restoreSpy = () => {
+    Bun.Glob.prototype.scan = realScan;
+  };
+
+  it('does not re-scan the filesystem on a warm discoverComponents() call', async () => {
+    // Warm the cache first (cold scan happens here, possibly counted partially).
+    invalidateDiscoveryCache();
+    await discoverComponents();
+
+    installSpy();
+    try {
+      const first = await discoverComponents();
+      const countAfterWarm = scanCallCount;
+      const second = await discoverComponents();
+      // A warm call must perform zero new scans.
+      expect(scanCallCount).toBe(countAfterWarm);
+      expect(scanCallCount).toBe(0);
+      // And the cached value is referentially identical across calls.
+      expect(second).toBe(first);
+    } finally {
+      restoreSpy();
+    }
+  });
+
+  it('re-scans after invalidateDiscoveryCache() forces a cold call', async () => {
+    // Warm the cache so the next discoverComponents() would be a cache hit.
+    invalidateDiscoveryCache();
+    await discoverComponents();
+
+    installSpy();
+    try {
+      // Warm hit: no scans.
+      await discoverComponents();
+      expect(scanCallCount).toBe(0);
+
+      // Invalidate, then the next call must perform a real scan.
+      invalidateDiscoveryCache();
+      await discoverComponents();
+      expect(scanCallCount).toBeGreaterThan(0);
+    } finally {
+      restoreSpy();
+    }
+  });
+
+  it('invalidates discoverAll() under the same generation as discoverComponents()', async () => {
+    invalidateDiscoveryCache();
+    const firstAll = await discoverAll();
+    const warmAll = await discoverAll();
+    // Warm discoverAll() returns the identical memoized array.
+    expect(warmAll).toBe(firstAll);
+
+    invalidateDiscoveryCache();
+    const freshAll = await discoverAll();
+    // After invalidation it is a brand-new array (cache was dropped) but with
+    // structurally equal contents — exact values and ordering preserved.
+    expect(freshAll).not.toBe(firstAll);
+    expect(freshAll).toEqual(firstAll);
+  });
+
+  it('preserves exact return values and sorting across the cache boundary', async () => {
+    invalidateDiscoveryCache();
+    const cold = await discoverComponents();
+    const warm = await discoverComponents();
+    expect(warm).toEqual(cold);
+    expect(warm).toEqual([...cold].toSorted());
+  });
+
+  it('re-scans when invalidation happens while a discoverComponents() scan is in flight', async () => {
+    // Reproduces the race the generation guard closes: a caller starts awaiting
+    // a scan, the watcher invalidates mid-flight, and the caller must NOT serve
+    // the now-stale in-flight result — it must re-scan under the new generation.
+    invalidateDiscoveryCache();
+
+    installSpy();
+    try {
+      // Kick off a scan but DON'T await it yet, then invalidate before it
+      // resolves — exactly the interleaving a watcher rebuild produces.
+      const pending = discoverComponents();
+      invalidateDiscoveryCache();
+      await pending;
+      const scansAfterRace = scanCallCount;
+      // The guard must have triggered a second (fresh) scan after invalidation,
+      // not returned the stale in-flight one — so more than one scan ran.
+      expect(scansAfterRace).toBeGreaterThan(0);
+
+      // And a subsequent call is once again a warm hit (cache settled on the
+      // post-invalidation generation).
+      const settled = scanCallCount;
+      await discoverComponents();
+      expect(scanCallCount).toBe(settled);
+    } finally {
+      restoreSpy();
     }
   });
 });

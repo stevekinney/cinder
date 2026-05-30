@@ -28,9 +28,15 @@ import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
 
 import type { BuildArtifact } from 'bun';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
-import { analyzeAll } from './analyze.ts';
-import { discoverComponents, discoverExamples, discoverSidebarComponents } from './discover.ts';
-import { PRE_PAINT_THEME_SCRIPT, renderShell } from './render-shell.ts';
+import { analyzeAll, resetProject } from './analyze.ts';
+import {
+  discoverComponents,
+  discoverExamples,
+  discoverSidebarComponents,
+  invalidateDiscoveryCache,
+} from './discover.ts';
+import { readExampleMetadata } from './example-metadata.ts';
+import { PRE_PAINT_THEME_SCRIPT, jsonForScriptTag, renderShell } from './render-shell.ts';
 
 import {
   isSnapshotMode,
@@ -146,6 +152,23 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
   return undefined;
 }
 
+/**
+ * `Cache-Control` value for content-hashed bundle artifacts (hashed entry
+ * chunks `<name>-<hash>.js` and shared chunks `chunk-<hash>.js`). The hash is
+ * part of the filename, so any source change produces a new URL — the old one
+ * can be cached forever. `immutable` tells the browser never to revalidate.
+ */
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
+/**
+ * `Cache-Control` value for the bare, unhashed bundle entry URLs the browser
+ * requests directly (`/page-bundle/<component>.js`, `/shell-bundle/shell.js`,
+ * and `/bundle/<name>/<scenario>.js`). These point at whatever the latest build
+ * produced, so they must never be cached: a watcher rebuild swaps the bytes
+ * behind the same URL, and the hot-reload flow depends on the browser refetching.
+ */
+const NO_STORE_CACHE_CONTROL = 'no-store';
+
 /** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
 /** In-flight analyzeAll() promise — prevents duplicate concurrent analyses. */
@@ -210,6 +233,11 @@ function scheduleRebuild(shellSourceChanged: boolean): void {
  */
 function startRebuild(shellSourceChanged: boolean): void {
   const generation = ++rebuildGeneration;
+  // A rebuild means component files may have been added, renamed, or removed,
+  // so the cached discovery scans (component list + example counts) are now
+  // potentially stale. Drop them in lockstep with the generation bump so the
+  // next `/`, `/c/:name`, or `/page/:name` request re-scans the filesystem.
+  invalidateDiscoveryCache();
   // The caught chain — NOT the raw rebuild promise — is what route handlers
   // await via `awaitWarmCache`. If we stored the raw promise and it rejected,
   // every blocked route handler would see the rejection re-thrown into its
@@ -256,6 +284,9 @@ async function repopulateBundleCaches(
   let shellBuildSucceeded = false;
   let fatalRebuildFailed = false;
   const failedPages: string[] = [];
+
+  const rebuildStartedAt = Date.now();
+  console.log('[playground] rebuilding…');
 
   try {
     // Shell bundle.
@@ -305,6 +336,9 @@ async function repopulateBundleCaches(
   // rebuild may already have populated a fresh manifest.
   manifestCache = null;
   manifestPromise = null;
+  // Dispose the shared ts-morph project so the next analyzeAll() rebuilds from
+  // fresh compiler state rather than reusing sources from before this rebuild.
+  resetProject();
 
   // Atomic per-family swap. We .clear() then re-populate the existing Map
   // instances so any reference captured by a route handler stays valid.
@@ -338,6 +372,14 @@ async function repopulateBundleCaches(
       '[playground] shell source changed but shell rebuild failed — running shell preserved; no shell-reload emitted',
     );
   }
+
+  // Completion log — only the publishing generation reaches this point (stale
+  // and fatal rebuilds returned early above), so this never reports timing for
+  // a superseded run. N counts the page bundles that landed in the cache, plus
+  // the shell bundle when its build succeeded this run.
+  const bundleCount = localPageEntries.size + (shellBuildSucceeded ? localShellEntries.size : 0);
+  const elapsedSeconds = ((Date.now() - rebuildStartedAt) / 1000).toFixed(2);
+  console.log(`[playground] rebuilt ${bundleCount} bundles in ${elapsedSeconds}s`);
 
   // Emit exactly one event per publish. `shell-reload` only fires when shell
   // sources actually changed AND the new shell bundle is in the cache.
@@ -619,60 +661,6 @@ function artifactRelativePath(path: string): string {
 }
 
 /**
- * Extract title/description from an example file's module script via regex.
- *
- * Supports single-quoted, double-quoted, and template-literal (backtick) strings.
- * The matched body is run through `unescapeStringLiteral` so escape sequences
- * like `\n`, `\'`, and `\\` render correctly. Template literals with
- * `${...}` interpolations are intentionally not supported — example metadata
- * is a static label, not a computed expression.
- */
-async function readExampleMetadata(
-  filePath: string,
-): Promise<{ title: string; description?: string }> {
-  const source = await Bun.file(filePath).text();
-  // Capture group 1 = the surrounding quote (one of `'`, `"`, ``\``);
-  // group 2 = the body. The body matches anything that's not the matching
-  // quote or a backslash-escape — backreferenced \1 enforces same-quote close.
-  const stringPattern = /(['"`])((?:[^\\]|\\.)*?)\1/.source;
-  const titleMatch = source.match(new RegExp(`export\\s+const\\s+title\\s*=\\s*${stringPattern}`));
-  const descriptionMatch = source.match(
-    new RegExp(`export\\s+const\\s+description\\s*=\\s*${stringPattern}`),
-  );
-  const meta: { title: string; description?: string } = {
-    title: titleMatch ? unescapeStringLiteral(titleMatch[2] ?? '') : 'Untitled',
-  };
-  if (descriptionMatch?.[2] !== undefined) {
-    meta.description = unescapeStringLiteral(descriptionMatch[2]);
-  }
-  return meta;
-}
-
-/** Resolve common JavaScript string escape sequences in a captured literal body. */
-function unescapeStringLiteral(raw: string): string {
-  return raw.replace(/\\(.)/g, (_match, char: string) => {
-    switch (char) {
-      case 'n':
-        return '\n';
-      case 't':
-        return '\t';
-      case 'r':
-        return '\r';
-      case '\\':
-        return '\\';
-      case "'":
-        return "'";
-      case '"':
-        return '"';
-      case '`':
-        return '`';
-      default:
-        return char;
-    }
-  });
-}
-
-/**
  * Compile the all-in-one page bundle for a single component without
  * mutating any module-level state. Pure with respect to the cache maps —
  * returns the entry path/code + every artifact this build emitted, leaving
@@ -924,7 +912,10 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
     }),
   );
 
-  const examplesJson = JSON.stringify(examples);
+  // jsonForScriptTag (not raw JSON.stringify) escapes <, >, &, and the Unicode
+  // line/paragraph separators so a `</script>` in an example title/description
+  // cannot terminate this inline script early or inject markup.
+  const examplesJson = jsonForScriptTag(examples);
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
 
@@ -950,18 +941,32 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
         padding: var(--cinder-space-6);
-        transition: background 0.1s, color 0.1s;
+      }
+      /* Guard the background/color crossfade behind a reduced-motion opt-out so
+         users who prefer no motion get an instant theme swap, not a transition. */
+      @media (prefers-reduced-motion: no-preference) {
+        body {
+          transition: background 0.1s, color 0.1s;
+        }
       }
       #app { display: contents; }
       body[data-cinder-bg="checker"] {
+        /* The checker squares adapt with the active color-scheme via
+           light-dark(): the light value is the original subtle gray check
+           (expressed in oklch); the dark value is a faint light-gray square
+           that still reads as a transparency checker against the dark surface.
+           The base color rides on --cinder-surface, which is itself a
+           light-dark() token, so the whole pattern follows the iframe's
+           color-scheme without any JS. */
+        --cinder-checker-square: light-dark(oklch(89% 0 0), oklch(30% 0.01 245));
         background-image:
-          linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
-          linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
-          linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+          linear-gradient(45deg, var(--cinder-checker-square) 25%, transparent 25%),
+          linear-gradient(-45deg, var(--cinder-checker-square) 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, var(--cinder-checker-square) 75%),
+          linear-gradient(-45deg, transparent 75%, var(--cinder-checker-square) 75%);
         background-size: 16px 16px;
         background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-        background-color: #fff;
+        background-color: var(--cinder-surface);
       }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
     <script>
@@ -1097,7 +1102,13 @@ export async function handleRequest(request: Request): Promise<Response> {
     const code = await buildBundle(componentName, scenario);
     if (code === null)
       return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+    // Bare, unhashed scenario entry URL — never cache (see NO_STORE_CACHE_CONTROL).
+    return new Response(code, {
+      headers: {
+        'Content-Type': 'application/javascript',
+        'Cache-Control': NO_STORE_CACHE_CONTROL,
+      },
+    });
   }
 
   // GET /page-bundle/<filename>.js — covers two cases:
@@ -1122,15 +1133,26 @@ export async function handleRequest(request: Request): Promise<Response> {
     const filename = pageBundleMatch[1]!;
     const directHit = findArtifactForFamily('page', `${filename}.js`);
     if (directHit !== undefined) {
+      // A direct cache hit is always a content-hashed artifact (a hashed entry
+      // `page-<name>-<hash>.js` or a shared `chunk-<hash>.js`) — cache forever.
       return new Response(directHit, {
-        headers: { 'Content-Type': 'application/javascript' },
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Cache-Control': IMMUTABLE_CACHE_CONTROL,
+        },
       });
     }
     if (!isSafeSegment(filename)) return notFound();
     const code = await buildPageBundle(filename);
     if (code === null)
       return notFound(`Page bundle for "${filename}" not found or failed to build`);
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+    // Bare, unhashed page entry URL (`/page-bundle/<component>.js`) — never cache.
+    return new Response(code, {
+      headers: {
+        'Content-Type': 'application/javascript',
+        'Cache-Control': NO_STORE_CACHE_CONTROL,
+      },
+    });
   }
 
   // GET /shell-bundle/<filename>.js — same shape as /page-bundle/*:
@@ -1145,8 +1167,13 @@ export async function handleRequest(request: Request): Promise<Response> {
     const filename = shellBundleMatch[1]!;
     const directHit = findArtifactForFamily('shell', `${filename}.js`);
     if (directHit !== undefined) {
+      // Direct hit = content-hashed artifact (hashed entry `shell-<hash>.js` or
+      // a shared `chunk-<hash>.js`) — cache forever.
       return new Response(directHit, {
-        headers: { 'Content-Type': 'application/javascript' },
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Cache-Control': IMMUTABLE_CACHE_CONTROL,
+        },
       });
     }
     // Canonical entry URL is `/shell-bundle/shell.js`. Other filenames must
@@ -1155,7 +1182,13 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (filename !== 'shell') return notFound();
     const code = await buildShellBundle();
     if (code === null) return notFound('Shell bundle failed to build');
-    return new Response(code, { headers: { 'Content-Type': 'application/javascript' } });
+    // Bare, unhashed shell entry URL (`/shell-bundle/shell.js`) — never cache.
+    return new Response(code, {
+      headers: {
+        'Content-Type': 'application/javascript',
+        'Cache-Control': NO_STORE_CACHE_CONTROL,
+      },
+    });
   }
 
   // GET /api/manifest — full manifest array

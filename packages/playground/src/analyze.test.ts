@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { analyzeAll, analyzeComponent } from './analyze.ts';
+import {
+  analyzeAll,
+  analyzeComponent,
+  getProjectCreationCount,
+  resetProject,
+} from './analyze.ts';
 
 const COMPONENTS_DIR = join(import.meta.dirname, '../../components/src/components');
 
@@ -228,6 +234,51 @@ describe('analyzeAll', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Shared ts-morph Project — project sharing + resetProject()
+// ---------------------------------------------------------------------------
+
+describe('shared ts-morph project', () => {
+  it('exposes a callable resetProject()', () => {
+    expect(() => resetProject()).not.toThrow();
+  });
+
+  it('reuses a single Project across one analyzeAll run', async () => {
+    resetProject();
+    const before = getProjectCreationCount();
+    await analyzeAll(COMPONENTS_DIR);
+    const after = getProjectCreationCount();
+    // ~100 concurrent analyzeComponent calls must share a single Project, so
+    // exactly one new instance is created for the whole run.
+    expect(after - before).toBe(1);
+  });
+
+  it('creates exactly one new Project after a reset', async () => {
+    await analyzeAll(COMPONENTS_DIR);
+    resetProject();
+    const before = getProjectCreationCount();
+    await analyzeAll(COMPONENTS_DIR);
+    expect(getProjectCreationCount() - before).toBe(1);
+  });
+
+  it('produces identical manifests across two runs with a reset between them', async () => {
+    const first = await analyzeAll(COMPONENTS_DIR);
+    resetProject();
+    const second = await analyzeAll(COMPONENTS_DIR);
+    // A reset between runs must not change the output: no stale source files
+    // accumulate on the shared project, so the second run reproduces the first.
+    expect(second).toEqual(first);
+  });
+
+  it('produces identical manifests across two runs without a reset', async () => {
+    const first = await analyzeAll(COMPONENTS_DIR);
+    const second = await analyzeAll(COMPONENTS_DIR);
+    // Reusing the same project across runs (synthetic files removed each call)
+    // must also yield identical output.
+    expect(second).toEqual(first);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // NavigationItem — non-destructuring $props() returns empty props array
 // ---------------------------------------------------------------------------
 
@@ -292,5 +343,128 @@ describe('analyzeComponent — card.svelte (discriminated union Props)', () => {
     expect(footerTone?.control).toEqual({ kind: 'select', options: ['default', 'muted'] });
     expect(edgeToEdgeOnMobile?.control.kind).toBe('boolean');
     expect(edgeToEdgeOnMobile?.defaultValue).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bare `<script module>` regression
+//
+// The module-script extractor's opening-tag pattern previously required at
+// least one attribute before `module` (`[^>]+`), so a bare `<script module>`
+// — valid Svelte 5 — silently failed to match. Type info was then lost and
+// every prop collapsed to `{ kind: 'unknown' }`. These fixtures exercise the
+// bare form via a real temp file so the extractor runs end to end.
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — bare <script module> block', () => {
+  let fixtureDir: string;
+
+  beforeAll(() => {
+    fixtureDir = mkdtempSync(join(tmpdir(), 'cinder-analyze-'));
+  });
+
+  afterAll(() => {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
+  /** Writes a `.svelte` fixture to the temp dir and returns its absolute path. */
+  async function writeFixture(kebabName: string, source: string): Promise<string> {
+    const filePath = join(fixtureDir, `${kebabName}.svelte`);
+    await Bun.write(filePath, source);
+    return filePath;
+  }
+
+  it('reads the Props type from a bare <script module> (no leading attribute)', async () => {
+    const source = `<script module>
+  export type WidgetProps = {
+    /** The visual variant. */
+    variant?: 'primary' | 'secondary';
+    disabled?: boolean;
+    count?: number;
+    label?: string;
+  };
+</script>
+
+<script lang="ts">
+  let {
+    variant = 'primary',
+    disabled = false,
+    count = 0,
+    label = 'Widget',
+  }: WidgetProps = $props();
+</script>
+
+<div>{label}</div>`;
+
+    const manifest = await analyzeComponent(await writeFixture('widget', source));
+
+    const variant = manifest.props.find((p) => p.name === 'variant');
+    const disabled = manifest.props.find((p) => p.name === 'disabled');
+    const count = manifest.props.find((p) => p.name === 'count');
+    const label = manifest.props.find((p) => p.name === 'label');
+
+    // The control kinds prove the module script was found: without the fix
+    // every control here would be `{ kind: 'unknown' }`.
+    expect(variant?.control).toEqual({ kind: 'select', options: ['primary', 'secondary'] });
+    expect(disabled?.control.kind).toBe('boolean');
+    expect(count?.control.kind).toBe('number');
+    expect(label?.control.kind).toBe('text');
+
+    // Defaults still come from the instance-script destructuring.
+    expect(variant?.defaultValue).toBe('primary');
+    expect(disabled?.defaultValue).toBe(false);
+    expect(count?.defaultValue).toBe(0);
+
+    // JSDoc descriptions still flow through.
+    expect(variant?.description).toBe('The visual variant.');
+  });
+
+  it('still reads the Props type when an attribute precedes module', async () => {
+    const source = `<script lang="ts" module>
+  export type GadgetProps = {
+    tone?: 'info' | 'danger';
+  };
+</script>
+
+<script lang="ts">
+  let { tone = 'info' }: GadgetProps = $props();
+</script>
+
+<span>{tone}</span>`;
+
+    const manifest = await analyzeComponent(await writeFixture('gadget', source));
+    const tone = manifest.props.find((p) => p.name === 'tone');
+    expect(tone?.control).toEqual({ kind: 'select', options: ['info', 'danger'] });
+  });
+
+  // Regression: `AST.Root.instance` is typed `Script | null`, but at runtime
+  // `parse(..., { modern: true })` returns `undefined` when a component has no
+  // instance `<script>` block. A strict `=== null` check missed that case and
+  // threw `TypeError: undefined is not an object` on `instanceScript.content`.
+  // A markup-only component is the simplest reproduction.
+  it('returns an empty manifest for a markup-only component (no instance script)', async () => {
+    const source = `<div class="notice">Static markup with no script block.</div>`;
+
+    const filePath = await writeFixture('notice', source);
+    const manifest = await analyzeComponent(filePath);
+
+    expect(manifest.props).toEqual([]);
+  });
+
+  // A component with only a `<script module>` block (no instance script) also
+  // leaves `ast.instance` undefined, exercising the same nullish path.
+  it('returns an empty manifest for a module-only component (no instance script)', async () => {
+    const source = `<script lang="ts" module>
+  export type PanelProps = {
+    heading?: string;
+  };
+</script>
+
+<section>Module-only component, no destructured props.</section>`;
+
+    const filePath = await writeFixture('panel', source);
+    const manifest = await analyzeComponent(filePath);
+
+    expect(manifest.props).toEqual([]);
   });
 });
