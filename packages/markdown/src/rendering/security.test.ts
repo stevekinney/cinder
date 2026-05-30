@@ -265,7 +265,16 @@ const x = 1;
       expect(result.html).toContain('<h1>Safe Heading</h1>');
       expect(result.html).toContain('<strong>safe</strong>');
       expect(result.html).toContain('href="https://example.com"');
-      expect(result.html).toContain('const x = 1;');
+      // The fenced `js` block survives sanitization. Assert on the code's
+      // text content rather than the literal `const x = 1;` substring:
+      // when the Shiki highlighter singleton has been initialized by an
+      // earlier render (it persists process-wide), the block is tokenized
+      // into per-token `<span>`s and the literal joined string no longer
+      // appears in the markup even though every character is still present.
+      // Stripping tags makes the assertion deterministic regardless of
+      // whether highlighting ran.
+      const textContent = result.html.replaceAll(/<[^>]+>/g, '');
+      expect(textContent).toContain('const x = 1;');
 
       // Dangerous content removed
       expect(result.html).not.toContain('<script');
