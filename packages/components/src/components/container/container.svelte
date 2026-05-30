@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category layout
-   * @status beta
+   * @status stable
    * @purpose Centered content-width wrapper for the narrow-column reading pattern, capping inline size at a configurable width token.
    * @tag layout
    * @useWhen Centering article or long-form content in a readable, max-width-capped column.

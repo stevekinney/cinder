@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import Timeline from 'cinder/experimental/timeline';
+  import Timeline from 'cinder/timeline';
 
   const entries = [
     {

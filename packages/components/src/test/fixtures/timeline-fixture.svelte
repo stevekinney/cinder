@@ -19,7 +19,7 @@
 </script>
 
 <script lang="ts">
-  import Timeline from '../../components/experimental/timeline/timeline.svelte';
+  import Timeline from '../../components/timeline/timeline.svelte';
 
   let {
     items,

@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Floating toolbar anchored to a text selection that exposes a comment-on-selection action with an inline composer.
    * @tag overlay
    * @tag selection

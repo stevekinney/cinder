@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Inline caret-anchored slash-command list for textareas and single-line text inputs.
    * @tag overlay
    * @tag command

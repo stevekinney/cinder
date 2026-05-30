@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
+import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
 import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
@@ -209,10 +210,23 @@ const perComponentEntrypoints = components.map((component) => componentEntrypoin
  */
 const staticSubpathEntrypoints = [`${sourceRoot}/highlighters/shiki/index.ts`];
 
+/**
+ * Deprecated `cinder/experimental/<name>` alias shims. Each promoted-out
+ * component keeps a thin re-export shim at
+ * `src/components/experimental/<name>/index.ts` so the old import path keeps
+ * resolving (with a dev warning) during the deprecation window. They are not
+ * discovered components (no `.svelte`/`.types.ts`), so the build must list
+ * their entrypoints explicitly to emit `dist/components/experimental/<name>/index.js`.
+ */
+const deprecatedAliasEntrypoints = DEPRECATED_EXPERIMENTAL_ALIASES.map(
+  ({ name }) => `${sourceRoot}/components/experimental/${name}/index.ts`,
+);
+
 const browserEntrypoints = [
   `${sourceRoot}/index.ts`,
   ...perComponentEntrypoints,
   ...staticSubpathEntrypoints,
+  ...deprecatedAliasEntrypoints,
 ];
 // `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
 // the upstream packages have already produced fully-baked `dist/` trees
@@ -266,7 +280,11 @@ if (!browserBuildResult.success) {
 // -----------------------------------------------------------------------------
 
 const perComponentServerBuildResult = await Bun.build({
-  entrypoints: [...perComponentEntrypoints, ...staticSubpathEntrypoints],
+  entrypoints: [
+    ...perComponentEntrypoints,
+    ...staticSubpathEntrypoints,
+    ...deprecatedAliasEntrypoints,
+  ],
   outdir: `${distributionDirectory}/server`,
   root: sourceRoot,
   target: 'node',
@@ -610,6 +628,15 @@ for (const reexport of upstreamReexports) {
     `${distributionDirectory}/${reexport.distRelativePath.replace(/\.js$/, '.d.ts')}`,
   );
   expectedPaths.push(`${distributionDirectory}/server/${reexport.distRelativePath}`);
+}
+
+// Deprecated `cinder/experimental/<name>` alias shims must emit a browser
+// bundle, a server bundle, and a declaration file — the `./experimental/<name>`
+// export conditions resolve to all three.
+for (const { name } of DEPRECATED_EXPERIMENTAL_ALIASES) {
+  expectedPaths.push(`${distributionDirectory}/components/experimental/${name}/index.js`);
+  expectedPaths.push(`${distributionDirectory}/components/experimental/${name}/index.d.ts`);
+  expectedPaths.push(`${distributionDirectory}/server/components/experimental/${name}/index.js`);
 }
 
 const missingPaths = expectedPaths.filter((path) => !existsSync(path));

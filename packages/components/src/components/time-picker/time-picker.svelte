@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category form
-   * @status beta
+   * @status stable
    * @purpose Time input with optional scroll-list popover for choosing hours, minutes, seconds, and meridiem.
    * @tag form
    * @tag time

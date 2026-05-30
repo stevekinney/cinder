@@ -7,9 +7,4 @@
  * to upgrade their callsites alongside Cinder bumps.
  * ======================================== */
 
-@import '../../components/experimental/connection-indicator/connection-indicator.css';
-@import '../../components/experimental/json-viewer/json-viewer.css';
-@import '../../components/experimental/message/message.css';
 @import './experimental/popover.css';
-@import '../../components/experimental/timeline/timeline.css';
-@import '../../components/experimental/timeline-item/timeline-item.css';

@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Filled SVG area chart for showing magnitude and cumulative trends across an ordered x domain.
    * @tag chart
    * @tag area

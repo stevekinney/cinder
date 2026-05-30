@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Single-panel disclosure that toggles one region with an animated height.
    * @tag disclosure
    * @tag collapsible

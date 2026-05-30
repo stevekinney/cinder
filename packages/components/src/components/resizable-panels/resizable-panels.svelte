@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category layout
-   * @status beta
+   * @status stable
    * @purpose Measured splitter layout that renders adjacent resize handles between panes and emits persisted layout state after pointer, keyboard, and collapse interactions.
    * @tag layout
    * @tag splitter
