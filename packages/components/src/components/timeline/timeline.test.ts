@@ -118,6 +118,16 @@ describe('Timeline', () => {
     ).toBe('horizontal');
   });
 
+  test('horizontal timeline ol is keyboard-focusable via tabindex="0"', () => {
+    const { container } = render(Wrapper, { items, orientation: 'horizontal' });
+    expect(container.querySelector('ol.cinder-timeline')?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('vertical timeline ol does not carry a tabindex', () => {
+    const { container } = render(Wrapper, { items, orientation: 'vertical' });
+    expect(container.querySelector('ol.cinder-timeline')?.hasAttribute('tabindex')).toBe(false);
+  });
+
   test('keeps marker snippets decorative', () => {
     const { container } = render(Wrapper, { items });
     const marker = container.querySelector('.cinder-timeline-item__marker');

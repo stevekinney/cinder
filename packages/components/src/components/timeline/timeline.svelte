@@ -69,6 +69,7 @@
   data-cinder-orientation={orientation}
   aria-label={resolvedAriaLabel}
   aria-labelledby={ariaLabelledby}
+  tabindex={orientation === 'horizontal' ? 0 : undefined}
 >
   {#each renderGroups as group (group.key)}
     {#each group.entries as renderEntry (renderEntry.entry.id)}
