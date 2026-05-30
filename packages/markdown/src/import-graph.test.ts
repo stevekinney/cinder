@@ -47,34 +47,88 @@ import { join } from 'node:path';
 // reference internally (worker comm, error messages, etc.).
 const RENDERING_MARKERS = ['scopeName', 'katex', '@shikijs', 'shiki'] as const;
 
-// Resolve the markdown package root from this test file's location:
-// __tests__ live under packages/markdown/src/, so two levels up is the
-// package root. The temp entry file goes inside the package so Bun's
-// module resolution finds the workspace's node_modules and the
-// `@cinder/markdown` self-reference resolves.
-const PACKAGE_ROOT = join(import.meta.dirname, '..');
+// This test file lives at packages/markdown/src/, so `import.meta.dirname` is
+// that `src` directory and three levels up is the workspace root (the directory
+// holding `package.json` + `bun.lock` + the `packages/` folder).
+//
+// The temp entry file MUST live somewhere inside the workspace tree so Bun's
+// module resolution walks up to the workspace `node_modules` and the
+// `@cinder/markdown` self-reference resolves — an entry placed in `os.tmpdir()`
+// fails with `Could not resolve: "@cinder/markdown/..."`. But it must NOT live
+// inside `packages/markdown` itself: see `bundleSnippet` for why.
+const WORKSPACE_ROOT = join(import.meta.dirname, '..', '..', '..');
 
 // Maximum number of Bun.build attempts per snippet. See `isTransientReadError`.
 const MAX_BUILD_ATTEMPTS = 5;
 
 /**
- * Detect the transient filesystem read errors Bun's bundler throws on Linux
- * when the same source file is touched concurrently by another process.
+ * Pull every stringy field out of a thrown bundler error so the retry matcher
+ * can see the real errno text.
+ *
+ * Bun.build surfaces failures two ways: it may *throw* (most failures, including
+ * the transient read errors here), or — for some cases — return
+ * `{ success: false, logs }` (which `buildOnce` handles separately above). When
+ * it throws, the value is typically an `AggregateError` whose own
+ * `String(error)` is only `"AggregateError: Bundle failed"`; the actual
+ * per-module diagnostic — e.g. `EISDIR reading file: ".../line-diff.ts"` —
+ * lives one level down, on each entry of `error.errors`. We concatenate the
+ * top-level string/message with every inner error's string/message and match
+ * against that. (Matching `String(error)` alone, as the original guard did,
+ * could never catch the read error — which is why the earlier retry was inert.)
+ */
+function collectErrorText(error: unknown): string {
+  const parts: string[] = [];
+  const push = (value: unknown): void => {
+    if (value === undefined || value === null) return;
+    if (typeof value === 'string') {
+      parts.push(value);
+      return;
+    }
+    if (value instanceof Error) {
+      // `Error.prototype.toString()` yields "Name: message" — the form the
+      // bundler uses for its per-module diagnostics (e.g. the EISDIR text).
+      parts.push(value.toString());
+    } else {
+      const message = (value as { message?: unknown }).message;
+      if (typeof message === 'string') parts.push(message);
+    }
+    const inner = (value as { errors?: unknown }).errors;
+    if (Array.isArray(inner)) {
+      for (const entry of inner) push(entry);
+    }
+  };
+  push(error);
+  return parts.join('\n');
+}
+
+/**
+ * Detect the transient filesystem read errors Bun's bundler emits when a source
+ * file in the module graph is touched concurrently by another process.
  *
  * Under CI the whole workspace runs `bun run --filter='*' test`, so the
  * `@cinder/diff` package's own `bun test` process reads
- * `packages/diff/src/line-diff.ts` at the same moment this test's
- * `Bun.build` resolves that file through the `@cinder/diff/line-diff`
- * re-export. On Linux that race surfaces as a transient
- * `EISDIR reading file: ".../line-diff.ts"` or
- * `Unexpected reading file: ".../line-diff.ts"` from the bundler — the
- * file is a regular `.ts`, never a directory, and a fresh read succeeds.
- * It never reproduces locally (single process) or on macOS. Retrying the
- * build is the correct response: it preserves every leanness assertion and
- * only papers over a known upstream bundler flake, not a real defect.
+ * `packages/diff/src/line-diff.ts` at the same moment this test's `Bun.build`
+ * resolves that file through the `@cinder/diff/line-diff` re-export. On Linux
+ * (ext4/overlayfs) that cross-process read can momentarily surface as
+ * `EISDIR`/`ENOTDIR` while reading a regular `.ts` file; the bundler reports it
+ * as `EISDIR reading file: ".../line-diff.ts"` /
+ * `Unexpected reading file: ".../line-diff.ts"`, and the underlying libuv form
+ * is `EISDIR: illegal operation on a directory, read`. The file is never a
+ * directory and a fresh read succeeds; it does not reproduce on macOS/APFS.
+ *
+ * This retry is a defence-in-depth backstop only — the primary fix is
+ * structural (see `bundleSnippet`). It is deliberately narrow: it matches the
+ * read-errno families, never a genuine resolution failure or a rendering-payload
+ * leak, so a real regression still fails immediately.
  */
 function isTransientReadError(message: string): boolean {
-  return /(?:EISDIR|Unexpected) reading file:/.test(message);
+  // Match only the known transient forms, never a bare EISDIR/ENOTDIR anywhere
+  // in the message (which could be an unrelated, genuine failure we must not
+  // retry past): the bundler's `<errno> reading file: ...` diagnostic, and the
+  // underlying libuv `EISDIR: illegal operation on a directory, read` form.
+  return /(?:EISDIR|ENOTDIR|Unexpected)[^\n]*reading file|E(?:IS|NOT)DIR:[^\n]*read/.test(
+    message,
+  );
 }
 
 async function buildOnce(entry: string): Promise<string> {
@@ -93,7 +147,19 @@ async function buildOnce(entry: string): Promise<string> {
 }
 
 async function bundleSnippet(snippet: string): Promise<string> {
-  const dir = mkdtempSync(join(PACKAGE_ROOT, '.import-graph-'));
+  // Build from a temp dir at the WORKSPACE ROOT, never inside packages/markdown.
+  //
+  // Root cause of the Linux-only CI flake: when the entry lived inside
+  // packages/markdown, several of these tests ran concurrently, each doing
+  // `mkdtemp`/`rmSync` of a `.import-graph-*` dir inside the very package tree
+  // that `Bun.build` scans while resolving `@cinder/markdown/*`. On Linux a
+  // directory entry appearing or vanishing inside a tree the resolver is
+  // walking can make it stat a path mid-deletion and report a spurious read
+  // error, which propagates as the EISDIR/Unexpected failure on the deepest
+  // leaf of the graph (`line-diff.ts`). Placing the temp dirs at the workspace
+  // root — siblings of `packages/`, not children of it — removes that
+  // interference entirely while keeping module resolution working.
+  const dir = mkdtempSync(join(WORKSPACE_ROOT, '.import-graph-'));
   const entry = join(dir, 'entry.ts');
   writeFileSync(entry, snippet);
   try {
@@ -103,7 +169,9 @@ async function bundleSnippet(snippet: string): Promise<string> {
         return await buildOnce(entry);
       } catch (error) {
         lastError = error;
-        if (attempt < MAX_BUILD_ATTEMPTS && isTransientReadError(String(error))) {
+        // Inspect the AggregateError's inner errors, not just String(error):
+        // the errno text lives there (see collectErrorText).
+        if (attempt < MAX_BUILD_ATTEMPTS && isTransientReadError(collectErrorText(error))) {
           // Brief backoff so the concurrent reader's file-access window can
           // close before we retry, instead of re-hitting the race instantly.
           await Bun.sleep(25 * attempt);
