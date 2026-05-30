@@ -3036,6 +3036,7 @@
     "src/_internal/**/*.ts",
     "!src/_internal/**/*.test.ts",
     "src/styles/**/*.css",
+    "src/styles/base-guard.ts",
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
     "!src/utilities/**/*.test.ts",

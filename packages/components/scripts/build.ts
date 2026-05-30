@@ -201,14 +201,18 @@ const perComponentEntrypoints = components.map((component) => componentEntrypoin
 
 /**
  * Static sub-paths cinder exposes outside the `components/` tree. Today this
- * is the first-party Shiki adapter at `cinder/highlighters/shiki`; new
- * non-component static sub-paths get listed here so the build emits a
- * predictable `dist/<rel>.js` for each one. `shiki` itself stays external
- * (declared in cinder's `dependencies` + the `upstreamTransitiveExternals`
- * list) — the adapter dynamic-imports it lazily so consumers who never use
+ * is the first-party Shiki adapter at `cinder/highlighters/shiki` and the
+ * dev-only base-loaded guard at `cinder/styles/guard`; new non-component
+ * static sub-paths get listed here so the build emits a predictable
+ * `dist/<rel>.js` for each one. `shiki` itself stays external (declared in
+ * cinder's `dependencies` + the `upstreamTransitiveExternals` list) — the
+ * adapter dynamic-imports it lazily so consumers who never use
  * `cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
  */
-const staticSubpathEntrypoints = [`${sourceRoot}/highlighters/shiki/index.ts`];
+const staticSubpathEntrypoints = [
+  `${sourceRoot}/highlighters/shiki/index.ts`,
+  `${sourceRoot}/styles/base-guard.ts`,
+];
 
 /**
  * Deprecated `cinder/experimental/<name>` alias shims. Each promoted-out
@@ -598,6 +602,10 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/highlighters/shiki/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.d.ts`,
   `${distributionDirectory}/server/highlighters/shiki/index.js`,
+  // Dev-only base-loaded guard — browser + server builds, plus types.
+  `${distributionDirectory}/styles/base-guard.js`,
+  `${distributionDirectory}/styles/base-guard.d.ts`,
+  `${distributionDirectory}/server/styles/base-guard.js`,
 ];
 
 for (const component of components) {

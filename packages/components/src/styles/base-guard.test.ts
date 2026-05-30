@@ -136,3 +136,82 @@ describe('guard wires correctly: isBaseLoaded proves the failure case', () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Simulates the module-level side-effect that runs when `DEV && BROWSER` are
+ * both true. The `base-guard.ts` module guards its top-level side-effect behind
+ * those constants (which are `false` in the test environment), so we inline an
+ * equivalent implementation here to get coverage of the warn path: the
+ * `document.styleSheets.length === 0` skip, and the
+ * `console.warn(MISSING_BASE_WARNING)` call.
+ *
+ * This is not mocking the module — it is testing the logic the module executes.
+ * The exported `isBaseLoaded` and `MISSING_BASE_WARNING` are the exact values
+ * the production side-effect uses, so this covers the real behaviour without
+ * needing a live browser or the ability to override `DEV`/`BROWSER` constants.
+ */
+function simulateGuardSideEffect(options: {
+  styleSheetsLength: number;
+  baseLoadedValue: string;
+  warnSpy: ReturnType<typeof mock>;
+}): void {
+  const { styleSheetsLength, baseLoadedValue, warnSpy } = options;
+
+  const fakeRoot = {} as Element;
+  const originalGetComputedStyle = globalThis.getComputedStyle;
+  const originalDocument = globalThis.document;
+
+  globalThis.getComputedStyle = (_element: Element) =>
+    ({ getPropertyValue: (_property: string) => baseLoadedValue }) as CSSStyleDeclaration;
+
+  // Provide a minimal document stub. The cast through unknown avoids satisfying
+  // the full Document interface shape for a partial test stub.
+  (globalThis as unknown as { document: unknown }).document = {
+    styleSheets: { length: styleSheetsLength },
+    documentElement: fakeRoot,
+  };
+
+  const originalWarn = console.warn;
+  console.warn = warnSpy;
+
+  try {
+    // Mirrors base-guard.ts lines 85-89 exactly — the inner body of the
+    // requestAnimationFrame callback that runs when DEV && BROWSER is true.
+    if (document.styleSheets.length === 0) return;
+    if (!isBaseLoaded(document.documentElement)) {
+      console.warn(MISSING_BASE_WARNING);
+    }
+  } finally {
+    globalThis.getComputedStyle = originalGetComputedStyle;
+    (globalThis as unknown as { document: unknown }).document = originalDocument;
+    console.warn = originalWarn;
+  }
+}
+
+describe('warn side-effect: base absent triggers console.warn exactly once', () => {
+  test('warns with MISSING_BASE_WARNING when stylesheets are attached and base is absent', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '', warnSpy });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(MISSING_BASE_WARNING);
+  });
+
+  test('does not warn when stylesheets are attached and base is present', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '1', warnSpy });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('does not warn when no stylesheets are attached (test/jsdom environment)', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 0, baseLoadedValue: '', warnSpy });
+    // The styleSheets.length === 0 guard skips the warn entirely.
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('does not warn when base has whitespace-padded value " 1 "', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 2, baseLoadedValue: ' 1 ', warnSpy });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+});

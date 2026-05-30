@@ -88,3 +88,47 @@ describe('compound-parent family aggregation', () => {
     expect(css).not.toContain('.cinder-button');
   });
 });
+
+/**
+ * Bundleability gate for the base stylesheets (`cinder/styles` and
+ * `cinder/styles/all`). These are the files every consumer is instructed to
+ * import first; if either has a CSS-spec violation (e.g. `@import` rules
+ * preceded by a block-form `@layer`) the downstream Vite/Bun consumer build
+ * will error. These tests run the same Lightning-CSS machinery that consumers
+ * use to prove the files bundle cleanly.
+ *
+ * Regression guard: `@import` rules in CSS must precede all other rules except
+ * `@charset` and statement-form `@layer`. A block-form `@layer { }` before an
+ * `@import` is a spec violation that causes bundlers to drop the imports
+ * entirely. These tests would have caught that defect before merge.
+ */
+describe('base stylesheet bundleability', () => {
+  test('src/styles/index.css bundles cleanly (cinder/styles entry point)', async () => {
+    const entry = join(import.meta.dir, 'index.css');
+    const result = await Bun.build({
+      entrypoints: [entry],
+      outdir: join(scratchDirectory, 'index-css-out'),
+      minify: false,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      // Surface the actual error messages on failure so the fix is obvious.
+      const messages = result.logs.map(String).join('\n');
+      throw new Error(`index.css bundling failed:\n${messages}`);
+    }
+  });
+
+  test('src/styles/all.css bundles cleanly (cinder/styles/all entry point)', async () => {
+    const entry = join(import.meta.dir, 'all.css');
+    const result = await Bun.build({
+      entrypoints: [entry],
+      outdir: join(scratchDirectory, 'all-css-out'),
+      minify: false,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      const messages = result.logs.map(String).join('\n');
+      throw new Error(`all.css bundling failed:\n${messages}`);
+    }
+  });
+});

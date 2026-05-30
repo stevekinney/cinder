@@ -22,19 +22,6 @@
 
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
-/*
- * Base-loaded marker. The `cinder/styles/guard` module reads this custom
- * property at dev time to detect when a component's CSS subpath is imported
- * without first importing `cinder/styles`. Setting it here — inside the
- * cinder.tokens layer, the first in the declared order — guarantees the
- * property is present in any document that loaded the base stylesheet.
- */
-@layer cinder.tokens {
-  :root {
-    --cinder-base-loaded: 1;
-  }
-}
-
 @import './tokens.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
 @import './components/_dismiss-button.css';
