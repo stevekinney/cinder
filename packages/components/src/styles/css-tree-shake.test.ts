@@ -132,3 +132,48 @@ describe('base stylesheet bundleability', () => {
     }
   });
 });
+
+/**
+ * Marker presence invariants for the `--cinder-base-loaded` guard property.
+ *
+ * The guard in `cinder/styles/guard` reads this property to decide whether to
+ * warn. It must be set by BOTH the slim base (`cinder/styles`) AND the all-in
+ * aggregator (`cinder/styles/all`) so that all-in consumers do not get false-
+ * positive warnings. It must NOT be set by `cinder/styles/tokens` alone, which
+ * is independently exported and must not satisfy the guard unintentionally.
+ */
+describe('base-loaded marker coverage', () => {
+  /**
+   * Bundle a stylesheet entry point and return the emitted CSS text.
+   * Uses a dedicated scratch output dir per call to avoid collisions.
+   */
+  async function bundleStylesheet(sourceFile: string, label: string): Promise<string> {
+    const result = await Bun.build({
+      entrypoints: [sourceFile],
+      outdir: join(scratchDirectory, `marker-${label}-out`),
+      minify: false,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error(`${label} bundling failed:\n${result.logs.map(String).join('\n')}`);
+    }
+    const cssOutput = result.outputs.find((output) => output.path.endsWith('.css'));
+    expect(cssOutput).toBeDefined();
+    return cssOutput!.text();
+  }
+
+  test('cinder/styles (index.css) sets --cinder-base-loaded on :root', async () => {
+    const css = await bundleStylesheet(join(import.meta.dir, 'index.css'), 'index');
+    expect(css).toContain('--cinder-base-loaded');
+  });
+
+  test('cinder/styles/all (all.css) also sets --cinder-base-loaded on :root — no false-positive for all-in consumers', async () => {
+    const css = await bundleStylesheet(join(import.meta.dir, 'all.css'), 'all');
+    expect(css).toContain('--cinder-base-loaded');
+  });
+
+  test('cinder/styles/tokens (tokens.css alone) does NOT set --cinder-base-loaded — no false-negative guard bypass', async () => {
+    const css = await bundleStylesheet(join(import.meta.dir, 'tokens.css'), 'tokens');
+    expect(css).not.toContain('--cinder-base-loaded');
+  });
+});
