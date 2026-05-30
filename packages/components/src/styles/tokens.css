@@ -5,17 +5,3 @@
  */
 
 @import './tokens-base.css';
-
-/*
- * Base-loaded marker. The `cinder/styles/guard` module reads this custom
- * property at dev time to detect when a component's CSS subpath is imported
- * without first importing `cinder/styles`. Placing it here — inside the
- * tokens aggregator, which is imported into `@layer cinder.tokens` from
- * index.css — guarantees the property is present in any document that loaded
- * the base stylesheet. Keeping the marker in a file that is @imported (rather
- * than in a block-form `@layer` before the @imports in index.css) satisfies
- * the CSS spec requirement that @import rules precede all other rules.
- */
-:root {
-  --cinder-base-loaded: 1;
-}

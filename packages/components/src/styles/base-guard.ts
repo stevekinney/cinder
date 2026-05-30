@@ -8,9 +8,13 @@
  * cinder.utilities`), silently inverting cascade priority: utilities can no longer
  * override component defaults, and token rules may lose to component rules.
  *
- * The guard detects this by reading `--cinder-base-loaded` from `:root`. The slim
- * base stylesheet (`cinder/styles` → `src/styles/index.css`) sets this custom
- * property inside `@layer cinder.tokens` — the first layer in the declared order.
+ * The guard detects this by reading `--cinder-base-loaded` from `:root`. This
+ * custom property is set by `src/styles/index.css` (the `cinder/styles` entry
+ * point) inside a `@layer cinder.tokens` block that appears AFTER all `@import`
+ * rules — CSS-spec-valid placement. The property is intentionally NOT set by
+ * `src/styles/tokens.css`, which is also exported independently as
+ * `cinder/styles/tokens`. This ensures that importing only `cinder/styles/tokens`
+ * does not falsely satisfy the guard.
  * If the property is absent when this module executes, the base was not loaded
  * first and a warning fires once.
  *

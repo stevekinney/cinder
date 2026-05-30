@@ -108,31 +108,21 @@ describe('guard wires correctly: isBaseLoaded proves the failure case', () => {
     });
   });
 
-  test('no warning fires in test environments where no stylesheets are attached', () => {
-    // The module-level side-effect guards on `document.styleSheets.length === 0`
-    // to avoid false positives in test environments (jsdom, Bun's browser-condition
-    // test runner). In a real test environment, no CSS is applied, so
-    // `getComputedStyle` custom properties always return `""` — indistinguishable
-    // from "base not loaded." Skipping the check when no stylesheets are present
-    // prevents noisy false-positive warnings in unit test suites.
-    //
-    // This test verifies the invariant by asserting that `isBaseLoaded` is the
-    // actual mechanism: in a real browser with the base loaded, it returns `true`;
-    // without it, it returns `false`. The module-level warning fires based solely
-    // on that return value after the styleSheets guard.
+  test('the guard module resolves without rejection and does not warn during import', async () => {
+    // The module-level side-effect is gated on `DEV && BROWSER` (both false in the
+    // test environment), so no console.warn fires during import. Verify that the
+    // module resolves (no top-level error) and that no warning was emitted.
     const warnSpy = mock(() => {});
     const originalWarn = console.warn;
     console.warn = warnSpy;
     try {
-      // Re-importing a cached module doesn't re-run module-level code, so this
-      // just confirms the module is importable without throwing.
-      expect(() => {
-        void import('./base-guard.ts');
-      }).not.toThrow();
+      // import() returns a Promise — await it to assert resolution, not just
+      // that the call was made. A rejected promise would cause this to throw.
+      await expect(import('./base-guard.ts')).resolves.toBeDefined();
     } finally {
       console.warn = originalWarn;
     }
-    // No direct console.warn call from the synchronous import path.
+    // No console.warn from the synchronous import path in the test environment.
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });
