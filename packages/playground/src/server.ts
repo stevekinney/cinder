@@ -144,9 +144,12 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
   if (isEntryName) return undefined;
 
   // Search every map *except* the requesting family's own (already checked).
-  for (const otherFamily of Object.keys(allMaps) as ArtifactFamily[]) {
-    if (otherFamily === family) continue;
-    const hit = allMaps[otherFamily].get(path);
+  // Iterate entries so the value is the typed Map directly — no narrowing cast
+  // on Object.keys (which is typed `string[]`, not `ArtifactFamily[]`).
+  const ownMap = allMaps[family];
+  for (const [, map] of Object.entries(allMaps)) {
+    if (map === ownMap) continue;
+    const hit = map.get(path);
     if (hit !== undefined) return hit;
   }
   return undefined;
@@ -1278,6 +1281,25 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   return notFound();
 }
+
+/**
+ * Vercel Bun-runtime entrypoint.
+ *
+ * Vercel's Bun backend mode auto-detects a root entrypoint by filename
+ * (`server`/`index`/`app` in the project root or `src/`) and runs its default
+ * export. `src/server.ts` matches `server`, so this default export — the
+ * Web-Standard `{ fetch }` shape Vercel expects — makes the whole playground a
+ * single Bun Function that handles every route through `handleRequest`. Without
+ * it, Vercel finds the file but no valid handler and 500s with "Invalid export
+ * found in module". The `import.meta.main` block below is the local dev/CLI
+ * path (it binds a port + file watcher); Vercel never runs it because the
+ * module is imported, not executed as the main entry.
+ */
+export default {
+  fetch(request: Request): Promise<Response> {
+    return handleRequest(request);
+  },
+};
 
 export type PlaygroundServer = {
   port: number;

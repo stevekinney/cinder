@@ -72,8 +72,8 @@ The playground (`@cinder/playground`) is a `Bun.serve` server that builds Svelte
 
 The moving parts:
 
-- `packages/playground/api/index.ts`: the Vercel Function entry. It default-exports `{ fetch }` (the Web Standard handler shape Vercel accepts directly) and forwards to `handleRequest` from `src/server.ts`. No second routing table, no Node `req`/`res` shim.
-- `packages/playground/vercel.json`: `bunVersion: "1.x"`, `framework: null`, the `vercel-build` build command, and `rewrites` that funnel every playground route (`/`, `/c/:name`, `/page/:name`, `/page-bundle/:f`, `/shell-bundle/:f`, `/bundle/:n/:s`, `/api/manifest*`, `/example-src/*`, `/styles/*`, `/components/*`, `/ping`, `/events`) to `/api/index`. The `functions["api/index.ts"].includeFiles` glob bundles `packages/components/{src,scripts}/**` into the function so the on-the-fly builds can read component sources at request time.
+- `packages/playground/src/server.ts`: the Vercel Bun-runtime entrypoint. Vercel's Bun backend mode auto-detects it (the `server` filename in `src/`) and runs its `default` export — the Web Standard `{ fetch }` shape — so the whole playground is one Bun Function that routes every request through `handleRequest`. No `api/` indirection, no rewrites table, no Node `req`/`res` shim. (The `import.meta.main` block in the same file is the local dev/CLI path and is never executed on Vercel, which imports the module rather than running it as main.)
+- `packages/playground/vercel.json`: `bunVersion: "1.x"`, `framework: null`, the `vercel-build` build command, and a single `functions["src/server.ts"]` entry whose `includeFiles` glob bundles `packages/components/{src,scripts}/**` into the function so the on-the-fly builds can read component sources at request time. No `rewrites` are needed — the Bun root entrypoint is a catch-all that receives every route.
 - `packages/playground/scripts/vercel-build.ts` (the `vercel-build` npm script): smoke-imports the function entry so a broken import path fails the build instead of 500-ing the first live request, then materializes the `public/` output directory Vercel expects. `public/` is git-ignored — it holds no real static assets.
 - `.github/workflows/deploy-playground.yaml`: deploys on push to `main` (production) and on pull requests (preview). It uses the Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt`) and finishes with a `/ping` smoke-test.
 
@@ -89,11 +89,11 @@ Nothing below is performed by this repository or its workflows. A maintainer wit
 2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root, because `cinder` is a `workspace:*` dependency). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the function's `includeFiles` glob reaches up into `../components`, and that toggle must be on for those files to be available during the build.
 3. **Capture the three deploy secrets** and add them to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions):
 
-   | Secret              | Where it comes from                                                                                 |
-   | ------------------- | --------------------------------------------------------------------------------------------------- |
-   | `VERCEL_TOKEN`      | Vercel → Account Settings → Tokens → Create Token (scope it to the team that owns the project).      |
-   | `VERCEL_ORG_ID`     | `.vercel/project.json` after `bunx vercel link`, or Team Settings → General → Team ID.               |
-   | `VERCEL_PROJECT_ID` | `.vercel/project.json` after `bunx vercel link`, or the project's Settings → General → Project ID.   |
+   | Secret              | Where it comes from                                                                                |
+   | ------------------- | -------------------------------------------------------------------------------------------------- |
+   | `VERCEL_TOKEN`      | Vercel → Account Settings → Tokens → Create Token (scope it to the team that owns the project).    |
+   | `VERCEL_ORG_ID`     | `.vercel/project.json` after `bunx vercel link`, or Team Settings → General → Team ID.             |
+   | `VERCEL_PROJECT_ID` | `.vercel/project.json` after `bunx vercel link`, or the project's Settings → General → Project ID. |
 
    The workflow reads `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` from `env` and passes `VERCEL_TOKEN` to each CLI invocation. Fork pull requests can't read these secrets, so the deploy job skips itself on fork PRs rather than failing.
 
@@ -119,7 +119,7 @@ The build step is runtime-safe to run on any machine with Bun:
 
 ```bash
 cd packages/playground
-bun run vercel-build   # smoke-imports api/index.ts and writes public/
+bun run vercel-build   # smoke-imports src/server.ts and writes public/
 ```
 
 It does not contact Vercel or deploy anything — it only proves the function entry loads.
