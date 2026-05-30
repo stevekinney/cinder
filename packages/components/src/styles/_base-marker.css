@@ -1,0 +1,21 @@
+/*
+ * Base-loaded marker. Sets --cinder-base-loaded on :root so that the
+ * `cinder/styles/guard` module can detect at dev time when a consumer imports a
+ * per-component CSS subpath without first importing `cinder/styles`.
+ *
+ * This file is imported exclusively by src/styles/index.css (the `cinder/styles`
+ * entry point) using `@import './_base-marker.css' layer(cinder.tokens)`. It is
+ * intentionally NOT exported as a standalone `cinder/styles/*` subpath and NOT
+ * imported by tokens.css or any other independently-exported file.
+ *
+ * Why a separate file instead of a rule in index.css directly:
+ *   - CSS spec requires all @import rules to precede non-import rules.
+ *   - A block-form `@layer cinder.tokens { :root { ... } }` in index.css would
+ *     need to appear AFTER the @imports, which changes the cascade stream shape
+ *     and causes cascade-identity tests to see cinder.tokens appear out of order.
+ *   - An @import here lets the rule slot into cinder.tokens in source order,
+ *     directly after tokens.css, keeping the cascade stream shape intact.
+ */
+:root {
+  --cinder-base-loaded: 1;
+}

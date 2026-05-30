@@ -23,6 +23,13 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
 @import './tokens.css' layer(cinder.tokens);
+/*
+ * Base-loaded marker — imported into cinder.tokens so that it slots directly
+ * after the token primitives in cascade order. This file is NOT an independent
+ * subpath export, so importing only `cinder/styles/tokens` does NOT set the
+ * marker. See _base-marker.css for full rationale.
+ */
+@import './_base-marker.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
 @import './components/_dismiss-button.css';
 @import './utilities.css' layer(cinder.utilities);

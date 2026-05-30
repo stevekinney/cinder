@@ -20,6 +20,7 @@ import {
   computeRootExport,
   FORBIDDEN_EXPORT_KEY_PATTERN,
   orderedExportEntry,
+  stylesGuardExport,
 } from './generate-exports.ts';
 
 describe('orderedExportEntry', () => {
@@ -134,6 +135,28 @@ describe('computeExports', () => {
     expect(out['./experimental/lab/styles']).toEqual({
       default: './dist/components/experimental/lab/lab.css',
     });
+  });
+});
+
+describe('stylesGuardExport', () => {
+  it('emits a four-condition entry pointing at the base-guard module', () => {
+    const entry = stylesGuardExport();
+    expect(entry).toEqual({
+      types: './dist/styles/base-guard.d.ts',
+      svelte: './src/styles/base-guard.ts',
+      node: './dist/server/styles/base-guard.js',
+      default: './dist/styles/base-guard.js',
+    });
+    expect(Object.keys(entry)).toEqual(['types', 'svelte', 'node', 'default']);
+  });
+
+  it('is not affected by the component discovery list (it is a reserved entry)', () => {
+    // The guard entry is stitched in by the generator's reserved-key path,
+    // not by computeExports — so computeExports must NOT emit it.
+    const computed = computeExports([{ name: 'styles', isExperimental: false, hasCss: false }]);
+    // A component named 'styles' would produce './styles', but the guard key
+    // './styles/guard' must never appear in the computed component subpaths.
+    expect(computed['./styles/guard']).toBeUndefined();
   });
 });
 

@@ -48,6 +48,12 @@
     "./styles/utilities": {
       "default": "./src/styles/utilities.css"
     },
+    "./styles/guard": {
+      "types": "./dist/styles/base-guard.d.ts",
+      "svelte": "./src/styles/base-guard.ts",
+      "node": "./dist/server/styles/base-guard.js",
+      "default": "./dist/styles/base-guard.js"
+    },
     "./highlighters/shiki": {
       "types": "./dist/highlighters/shiki/index.d.ts",
       "svelte": "./src/highlighters/shiki/index.ts",
@@ -3016,6 +3022,7 @@
     "src/_internal/**/*.ts",
     "!src/_internal/**/*.test.ts",
     "src/styles/**/*.css",
+    "src/styles/base-guard.ts",
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
     "!src/utilities/**/*.test.ts",

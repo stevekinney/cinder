@@ -20,6 +20,15 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
 @import './tokens.css' layer(cinder.tokens);
+/*
+ * Base-loaded marker — imported so that consumers who load `cinder/styles/all`
+ * instead of the slim `cinder/styles` base still set `--cinder-base-loaded` on
+ * :root. Without this import the `cinder/styles/guard` module would emit a
+ * false-positive warning for all-in consumers even though the @layer order is
+ * correctly established by the declaration above. See _base-marker.css for the
+ * full rationale.
+ */
+@import './_base-marker.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
 @import './components.css';
 @import './utilities.css' layer(cinder.utilities);
