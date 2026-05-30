@@ -71,6 +71,13 @@ export interface CreationContext {
   isExperimental: boolean;
   /** Absolute path to the new component directory. */
   directory: string;
+  /**
+   * Component directory relative to `src/components/`: `<name>` for stable
+   * components, `experimental/<name>` for experimental ones. Used in the
+   * printed scaffold location and the root-barrel next-step path so the output
+   * matches where the files were actually written.
+   */
+  relativeDirectory: string;
   /** Absolute path to the playground examples directory for this component. */
   examplesDirectory: string;
   /** Import subpath consumers use: `cinder/<name>` or `cinder/experimental/<name>`. */
@@ -98,6 +105,7 @@ export function buildContext(inputName: string): CreationContext {
   }
 
   const pascalName = pascalCase(name);
+  const relativeDirectory = isExperimental ? `experimental/${name}` : name;
   const directory = isExperimental
     ? join(COMPONENTS_DIR, 'experimental', name)
     : join(COMPONENTS_DIR, name);
@@ -110,6 +118,7 @@ export function buildContext(inputName: string): CreationContext {
     pascalName,
     isExperimental,
     directory,
+    relativeDirectory,
     examplesDirectory,
     importPath,
   };
@@ -310,31 +319,54 @@ describe('${pascalName}', () => {
 `;
 }
 
-/** Write `content` to `path`, creating parent directories and refusing to overwrite. */
-async function writeNew(path: string, content: string): Promise<void> {
-  if (existsSync(path)) {
-    throw new Error(`refusing to overwrite existing file: ${path}`);
-  }
-  await Bun.write(path, content);
+/** A single file to scaffold: its absolute destination path and rendered content. */
+export interface PlannedFile {
+  path: string;
+  content: string;
 }
 
-/** Scaffold a single component's full skeleton. */
-async function createOne(context: CreationContext): Promise<void> {
+/**
+ * Resolve every file `createOne` will write — across both the component
+ * directory and the playground examples directory — so that all destinations
+ * can be collision-checked up front, before anything touches the disk.
+ */
+export function planFiles(context: CreationContext): PlannedFile[] {
   const { name, directory, examplesDirectory } = context;
+  return [
+    { path: join(directory, `${name}.svelte`), content: renderSvelte(context) },
+    { path: join(directory, `${name}.types.ts`), content: renderTypes(context) },
+    { path: join(directory, 'index.ts'), content: renderIndex(context) },
+    { path: join(directory, `${name}.test.ts`), content: renderTest(context) },
+    { path: join(directory, 'README.md'), content: renderReadme(context) },
+    { path: join(examplesDirectory, 'basic.example.svelte'), content: renderExample(context) },
+  ];
+}
+
+/**
+ * Scaffold a single component's full skeleton atomically: every destination —
+ * the component directory itself and all of its files plus the playground
+ * example — is checked for an existing path BEFORE anything is written, so a
+ * collision aborts cleanly with no half-created scaffold left on disk.
+ */
+export async function createOne(context: CreationContext): Promise<void> {
+  const { directory, examplesDirectory } = context;
 
   if (existsSync(directory)) {
     throw new Error(`component directory already exists: ${directory}`);
   }
 
-  await mkdir(directory, { recursive: true });
-  await writeNew(join(directory, `${name}.svelte`), renderSvelte(context));
-  await writeNew(join(directory, `${name}.types.ts`), renderTypes(context));
-  await writeNew(join(directory, 'index.ts'), renderIndex(context));
-  await writeNew(join(directory, `${name}.test.ts`), renderTest(context));
-  await writeNew(join(directory, 'README.md'), renderReadme(context));
+  const plannedFiles = planFiles(context);
+  for (const { path } of plannedFiles) {
+    if (existsSync(path)) {
+      throw new Error(`refusing to overwrite existing file: ${path}`);
+    }
+  }
 
+  await mkdir(directory, { recursive: true });
   await mkdir(examplesDirectory, { recursive: true });
-  await writeNew(join(examplesDirectory, 'basic.example.svelte'), renderExample(context));
+  for (const { path, content } of plannedFiles) {
+    await Bun.write(path, content);
+  }
 }
 
 async function main(): Promise<void> {
@@ -356,14 +388,14 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  process.stdout.write(`  ✓ scaffolded src/components/${context.name}/\n`);
+  process.stdout.write(`  ✓ scaffolded src/components/${context.relativeDirectory}/\n`);
   process.stdout.write('\nNext steps:\n');
   process.stdout.write('  1. Fill in the @cinder JSDoc placeholders and the props stub.\n');
   process.stdout.write(
     `  2. Flesh out ${context.name}.test.ts with behavioral coverage (a passing stub ships already).\n`,
   );
   process.stdout.write(
-    `  3. Add 'export ... from ./components/${context.name}/index.ts' to src/index.ts.\n`,
+    `  3. Add 'export ... from ./components/${context.relativeDirectory}/index.ts' to src/index.ts.\n`,
   );
   process.stdout.write('  4. Run: bun run components:generate && bun run exports:generate\n');
   process.stdout.write('  5. Verify: bun run components:check && bun run exports:check\n');

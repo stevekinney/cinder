@@ -13,7 +13,8 @@
  *     generator resolves.
  */
 
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -22,12 +23,15 @@ import { describe, expect, it } from 'bun:test';
 import { hasSubstantiveTest } from './component-conventions.ts';
 import {
   buildContext,
+  createOne,
+  planFiles,
   renderExample,
   renderIndex,
   renderReadme,
   renderSvelte,
   renderTest,
   renderTypes,
+  type CreationContext,
 } from './create-component.ts';
 import { extractExampleFile } from './generate-component-examples.ts';
 import { extractFromSource } from './generate-component-metadata.ts';
@@ -39,6 +43,9 @@ describe('buildContext', () => {
     expect(context.pascalName).toBe('MyWidget');
     expect(context.isExperimental).toBe(false);
     expect(context.importPath).toBe('cinder/my-widget');
+    // The printed scaffold location and root-barrel path use relativeDirectory;
+    // for a stable component it is just the bare name.
+    expect(context.relativeDirectory).toBe('my-widget');
   });
 
   it('handles the experimental/ prefix', () => {
@@ -47,6 +54,12 @@ describe('buildContext', () => {
     expect(context.pascalName).toBe('JsonViewer');
     expect(context.isExperimental).toBe(true);
     expect(context.importPath).toBe('cinder/experimental/json-viewer');
+    // relativeDirectory MUST keep the experimental/ segment so the printed
+    // scaffold location (src/components/experimental/<name>/) and the
+    // root-barrel next-step path (./components/experimental/<name>/index.ts)
+    // point at where the files were actually written — not src/components/<name>/.
+    expect(context.relativeDirectory).toBe('experimental/json-viewer');
+    expect(context.directory.endsWith('experimental/json-viewer')).toBe(true);
   });
 
   it('rejects names that are not kebab-case', () => {
@@ -199,5 +212,82 @@ describe('renderTest', () => {
     // Substantive: real test() blocks with assertions, never .skip / .todo.
     expect(source).not.toContain('test.skip');
     expect(source).not.toContain('test.todo');
+  });
+});
+
+describe('planFiles', () => {
+  it('includes the playground example among the destinations so it is collision-checked', () => {
+    const paths = planFiles(buildContext('my-widget')).map((file) => file.path);
+    // The playground example lives outside the component directory; if it is not
+    // in the planned set, the up-front precondition check would miss it and the
+    // partial-scaffold bug returns.
+    expect(paths.some((path) => path.endsWith('basic.example.svelte'))).toBe(true);
+    // And every component-directory file is planned too.
+    for (const suffix of [
+      'my-widget.svelte',
+      'my-widget.types.ts',
+      'index.ts',
+      'my-widget.test.ts',
+      'README.md',
+    ]) {
+      expect(paths.some((path) => path.endsWith(suffix))).toBe(true);
+    }
+  });
+});
+
+describe('createOne', () => {
+  /**
+   * Build a CreationContext whose directory and examplesDirectory point into a
+   * throwaway temp tree, so createOne can be exercised against the real
+   * filesystem without touching the repository's src/ or playground/.
+   */
+  function temporaryContext(root: string, inputName: string): CreationContext {
+    const base = buildContext(inputName);
+    return {
+      ...base,
+      directory: join(root, 'components', base.relativeDirectory),
+      examplesDirectory: join(root, 'examples', base.name),
+    };
+  }
+
+  it('scaffolds every planned file when nothing collides', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'create-component-create-'));
+    try {
+      const context = temporaryContext(root, 'my-widget');
+      await createOne(context);
+      for (const { path } of planFiles(context)) {
+        expect(existsSync(path)).toBe(true);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('aborts BEFORE writing any component file when the playground example already exists', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'create-component-create-'));
+    try {
+      const context = temporaryContext(root, 'my-widget');
+      // Pre-create only the playground example — the regression scenario where
+      // the old code wrote the whole component tree first and only then threw.
+      await mkdir(context.examplesDirectory, { recursive: true });
+      await writeFile(join(context.examplesDirectory, 'basic.example.svelte'), '<!-- existing -->');
+
+      await expect(createOne(context)).rejects.toThrow(
+        /refusing to overwrite existing file.*basic\.example\.svelte/,
+      );
+
+      // The component directory and its files must NOT exist: a clean abort with
+      // no half-created scaffold to clean up by hand.
+      expect(existsSync(context.directory)).toBe(false);
+      expect(existsSync(join(context.directory, 'my-widget.svelte'))).toBe(false);
+      // The pre-existing example is left untouched.
+      const exampleContent = await readFile(
+        join(context.examplesDirectory, 'basic.example.svelte'),
+        'utf8',
+      );
+      expect(exampleContent).toBe('<!-- existing -->');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
