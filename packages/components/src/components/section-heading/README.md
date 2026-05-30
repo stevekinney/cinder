@@ -22,9 +22,9 @@ A SectionHeading component. Replace this sentence with a one-line purpose statem
 | `description` | `string`          | no       | —       | Optional supporting description. Supplementary body text, not a heading subtitle — rendered after the heading but outside `<hgroup>`.                  |
 | `level`       | `2` \| `3` \| `4` | no       | —       | Heading level for the title element. Defaults to `2`. The correct level relative to the surrounding document outline is the consumer's responsibility. |
 | `title`       | `string`          | yes      | —       | Section title text. Rendered inside the dynamic heading element.                                                                                       |
-| `actions`     | `(opaque)`        | —        | —       | function-or-snippet                                                                                                                                    |
-| `label`       | `(opaque)`        | —        | —       | function-or-snippet                                                                                                                                    |
-| `tabs`        | `(opaque)`        | —        | —       | function-or-snippet                                                                                                                                    |
+| `actions`     | `(opaque)`        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                             |
+| `label`       | `(opaque)`        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                             |
+| `tabs`        | `(opaque)`        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                             |
 
 <!-- generated:props:end -->
 

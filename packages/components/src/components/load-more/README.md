@@ -28,18 +28,18 @@ Sentinel-based infinite-scroll trigger with an always-visible button fallback an
 
 <!-- generated:props:start -->
 
-| Prop               | Type       | Required | Default | Description                                                                 |
-| ------------------ | ---------- | -------- | ------- | --------------------------------------------------------------------------- |
-| `buttonLabel`      | `string`   | no       | —       | Visible label for the load-more button.                                     |
-| `class`            | `string`   | no       | —       | Custom class merged with `.cinder-load-more`.                               |
-| `endOfListMessage` | `string`   | no       | —       | Politely announced when the end of the list is reached.                     |
-| `hasMore`          | `boolean`  | no       | —       | Whether more items are available. Bindable.                                 |
-| `loading`          | `boolean`  | no       | —       | Whether a load is in progress. Bindable.                                    |
-| `maxRetries`       | `number`   | no       | —       | Maximum consecutive sentinel-triggered requests before auto-loading pauses. |
-| `retryLabel`       | `string`   | no       | —       | Visible label for the retry button after a load error.                      |
-| `rootMargin`       | `string`   | no       | —       | rootMargin passed to IntersectionObserver. Captured at attachment time.     |
-| `onError`          | `(opaque)` | —        | —       | function-or-snippet                                                         |
-| `onLoadMore`       | `(opaque)` | —        | —       | function-or-snippet                                                         |
+| Prop               | Type       | Required | Default | Description                                                                                                                |
+| ------------------ | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `buttonLabel`      | `string`   | no       | —       | Visible label for the load-more button.                                                                                    |
+| `class`            | `string`   | no       | —       | Custom class merged with `.cinder-load-more`.                                                                              |
+| `endOfListMessage` | `string`   | no       | —       | Politely announced when the end of the list is reached.                                                                    |
+| `hasMore`          | `boolean`  | no       | —       | Whether more items are available. Bindable.                                                                                |
+| `loading`          | `boolean`  | no       | —       | Whether a load is in progress. Bindable.                                                                                   |
+| `maxRetries`       | `number`   | no       | —       | Maximum consecutive sentinel-triggered requests before auto-loading pauses.                                                |
+| `retryLabel`       | `string`   | no       | —       | Visible label for the retry button after a load error.                                                                     |
+| `rootMargin`       | `string`   | no       | —       | rootMargin passed to IntersectionObserver. Captured at attachment time.                                                    |
+| `onError`          | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onLoadMore`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

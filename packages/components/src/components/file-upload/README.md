@@ -34,21 +34,21 @@ announces results, and can render consumer-driven upload progress rows.
 
 <!-- generated:props:start -->
 
-| Prop         | Type       | Required | Default | Description                                                                    |
-| ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------ |
-| `accept`     | `string`   | no       | —       | Native file accept filter.                                                     |
-| `disabled`   | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                            |
-| `id`         | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`. |
-| `maxSize`    | `number`   | no       | —       | Maximum allowed file size in bytes.                                            |
-| `multiple`   | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                     |
-| `name`       | `string`   | no       | —       | Native input name used for form submission.                                    |
-| `class`      | `(opaque)` | —        | —       | unknown-shape                                                                  |
-| `dragActive` | `(opaque)` | —        | —       | function-or-snippet                                                            |
-| `fileList`   | `(opaque)` | —        | —       | function-or-snippet                                                            |
-| `files`      | `(opaque)` | —        | —       | unknown-shape                                                                  |
-| `idle`       | `(opaque)` | —        | —       | function-or-snippet                                                            |
-| `onchange`   | `(opaque)` | —        | —       | function-or-snippet                                                            |
-| `onreject`   | `(opaque)` | —        | —       | function-or-snippet                                                            |
+| Prop         | Type       | Required | Default | Description                                                                                                                |
+| ------------ | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `accept`     | `string`   | no       | —       | Native file accept filter.                                                                                                 |
+| `disabled`   | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                        |
+| `id`         | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                             |
+| `maxSize`    | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                        |
+| `multiple`   | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                 |
+| `name`       | `string`   | no       | —       | Native input name used for form submission.                                                                                |
+| `class`      | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `dragActive` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `fileList`   | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `files`      | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `idle`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onchange`   | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onreject`   | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

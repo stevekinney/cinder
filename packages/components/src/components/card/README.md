@@ -16,18 +16,18 @@ A Card component. Replace this sentence with a one-line purpose statement once t
 
 <!-- generated:props:start -->
 
-| Prop                 | Type                     | Required | Default | Description                                                                  |
-| -------------------- | ------------------------ | -------- | ------- | ---------------------------------------------------------------------------- |
-| `bodyTone`           | `"default"` \| `"muted"` | no       | —       | Body surface treatment. `muted` renders a grey/inset body region.            |
-| `description`        | `string`                 | no       | —       |                                                                              |
-| `edgeToEdgeOnMobile` | `boolean`                | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens. |
-| `footerTone`         | `"default"` \| `"muted"` | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.        |
-| `title`              | `string`                 | no       | —       |                                                                              |
-| `variant`            | `"card"` \| `"well"`     | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.       |
-| `children`           | `(opaque)`               | —        | —       | function-or-snippet                                                          |
-| `class`              | `(opaque)`               | —        | —       | unknown-shape                                                                |
-| `footer`             | `(opaque)`               | —        | —       | function-or-snippet                                                          |
-| `header`             | `(opaque)`               | —        | —       | function-or-snippet                                                          |
+| Prop                 | Type                     | Required | Default | Description                                                                                                                |
+| -------------------- | ------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `bodyTone`           | `"default"` \| `"muted"` | no       | —       | Body surface treatment. `muted` renders a grey/inset body region.                                                          |
+| `description`        | `string`                 | no       | —       |                                                                                                                            |
+| `edgeToEdgeOnMobile` | `boolean`                | no       | —       | Remove side borders/radius and bleed to the viewport edge on narrow screens.                                               |
+| `footerTone`         | `"default"` \| `"muted"` | no       | —       | Footer surface treatment. `muted` renders a grey/inset footer region.                                                      |
+| `title`              | `string`                 | no       | —       |                                                                                                                            |
+| `variant`            | `"card"` \| `"well"`     | no       | —       | Visual container style. `card` is raised; `well` is flatter and inset.                                                     |
+| `children`           | `(opaque)`               | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `class`              | `(opaque)`               | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `footer`             | `(opaque)`               | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `header`             | `(opaque)`               | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

@@ -78,10 +78,38 @@ function renderPropsTable(schema: ComponentSchemaOutput): string {
   for (const [name, reason] of [...unsupported.entries()].toSorted(([a], [b]) =>
     a.localeCompare(b),
   )) {
-    rows.push(`| \`${name}\` | \`(opaque)\` | — | — | ${reason} |`);
+    rows.push(`| \`${name}\` | \`(opaque)\` | no | — | ${describeUnsupportedReason(reason)} |`);
   }
 
   return rows.join('\n');
+}
+
+/**
+ * Maps an `unsupportedProps` reason token to reader-facing prose for the props
+ * table. The reason is a machine code from the schema generator (e.g.
+ * `function-or-snippet`); rendering it verbatim leaks an implementation token
+ * into the docs, so each token gets a real description. Unknown tokens fall
+ * back to a generic sentence rather than emitting the raw code.
+ */
+function describeUnsupportedReason(reason: string): string {
+  const descriptions: Record<string, string> = {
+    'function-or-snippet':
+      'A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.',
+    'generic-type-parameter':
+      'A generically typed prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.',
+    'mapped-type':
+      'A mapped-type prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.',
+    'conditional-type':
+      'A conditional-type prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.',
+    'index-signature':
+      'A prop with an index signature. Its shape is not captured by the JSON schema; see the component types for the exact signature.',
+    'unknown-shape':
+      'A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.',
+  };
+  return (
+    descriptions[reason] ??
+    'A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.'
+  );
 }
 
 function formatType(prop: PropertySchema): string {

@@ -34,7 +34,7 @@ Star rating control with bindable numeric value, optional half-star precision, a
 | `readonly`        | `boolean`             | no       | —       | Render a non-interactive display with an accessible text equivalent.                                                                             |
 | `required`        | `boolean`             | no       | —       | Mark the group as required for assistive technology.                                                                                             |
 | `value`           | `number`              | no       | —       | Bindable rating value. `0` represents an unrated state. External values are clamped into `[0, count]` and snapped to the nearest precision step. |
-| `onchange`        | `(opaque)`            | —        | —       | function-or-snippet                                                                                                                              |
+| `onchange`        | `(opaque)`            | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                       |
 
 <!-- generated:props:end -->
 

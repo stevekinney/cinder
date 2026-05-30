@@ -26,10 +26,10 @@ A SearchField component. Replace this sentence with a one-line purpose statement
 | `readonly`     | `boolean`  | no       | —       | Marks the input as read-only; the clear button becomes inert.                                                                                               |
 | `shortcut`     | `string`   | no       | —       | Optional keyboard shortcut hint (e.g. `'⌘K'`). Rendered as a trailing `<kbd aria-hidden="true">` badge. The shortcut itself is not wired by this component. |
 | `value`        | `string`   | no       | —       | Controlled value. When provided, the field is fully controlled by the parent.                                                                               |
-| `class`        | `(opaque)` | —        | —       | unknown-shape                                                                                                                                               |
-| `onclear`      | `(opaque)` | —        | —       | function-or-snippet                                                                                                                                         |
-| `oninput`      | `(opaque)` | —        | —       | function-or-snippet                                                                                                                                         |
-| `onsearch`     | `(opaque)` | —        | —       | function-or-snippet                                                                                                                                         |
+| `class`        | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                     |
+| `onclear`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                  |
+| `oninput`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                  |
+| `onsearch`     | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                  |
 
 <!-- generated:props:end -->
 

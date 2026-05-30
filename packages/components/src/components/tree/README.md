@@ -32,19 +32,19 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop                | Type                                   | Required | Default | Description                                                                                  |
-| ------------------- | -------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------- |
-| `aria-label`        | `string`                               | no       | —       | Accessible label for the tree. One of aria-label or aria-labelledby is required.             |
-| `aria-labelledby`   | `string`                               | no       | —       |                                                                                              |
-| `checkboxSelection` | `boolean`                              | no       | —       | Render tree-owned checkbox indicators when selectionMode is multiple. Default: false.        |
-| `class`             | `string`                               | no       | —       | Additional CSS class merged with `.cinder-tree`.                                             |
-| `disableTypeahead`  | `boolean`                              | no       | —       | Disable typeahead. Default: false.                                                           |
-| `expandedIds`       | `string`[]                             | no       | —       | Currently expanded branch ids. Bindable.                                                     |
-| `selectedIds`       | `string`[]                             | no       | —       | Currently selected node ids. Bindable.                                                       |
-| `selectionBehavior` | `"independent"` \| `"cascade"`         | no       | —       | Select only the target item or cascade through its selectable scope. Default: 'independent'. |
-| `selectionMode`     | `"none"` \| `"single"` \| `"multiple"` | no       | —       | Selection model. Default: 'none'.                                                            |
-| `children`          | `(opaque)`                             | —        | —       | function-or-snippet                                                                          |
-| `selectionControls` | `(opaque)`                             | —        | —       | function-or-snippet                                                                          |
+| Prop                | Type                                   | Required | Default | Description                                                                                                                |
+| ------------------- | -------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`        | `string`                               | no       | —       | Accessible label for the tree. One of aria-label or aria-labelledby is required.                                           |
+| `aria-labelledby`   | `string`                               | no       | —       |                                                                                                                            |
+| `checkboxSelection` | `boolean`                              | no       | —       | Render tree-owned checkbox indicators when selectionMode is multiple. Default: false.                                      |
+| `class`             | `string`                               | no       | —       | Additional CSS class merged with `.cinder-tree`.                                                                           |
+| `disableTypeahead`  | `boolean`                              | no       | —       | Disable typeahead. Default: false.                                                                                         |
+| `expandedIds`       | `string`[]                             | no       | —       | Currently expanded branch ids. Bindable.                                                                                   |
+| `selectedIds`       | `string`[]                             | no       | —       | Currently selected node ids. Bindable.                                                                                     |
+| `selectionBehavior` | `"independent"` \| `"cascade"`         | no       | —       | Select only the target item or cascade through its selectable scope. Default: 'independent'.                               |
+| `selectionMode`     | `"none"` \| `"single"` \| `"multiple"` | no       | —       | Selection model. Default: 'none'.                                                                                          |
+| `children`          | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `selectionControls` | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

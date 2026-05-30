@@ -14,17 +14,17 @@ snippet. The flat `cinder/grid-list-item` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop       | Type               | Required | Default | Description         |
-| ---------- | ------------------ | -------- | ------- | ------------------- |
-| `href`     | `string`           | no       | —       |                     |
-| `rel`      | `string` \| `null` | no       | —       |                     |
-| `actions`  | `(opaque)`         | —        | —       | function-or-snippet |
-| `class`    | `(opaque)`         | —        | —       | unknown-shape       |
-| `image`    | `(opaque)`         | —        | —       | function-or-snippet |
-| `meta`     | `(opaque)`         | —        | —       | function-or-snippet |
-| `subtitle` | `(opaque)`         | —        | —       | function-or-snippet |
-| `target`   | `(opaque)`         | —        | —       | unknown-shape       |
-| `title`    | `(opaque)`         | —        | —       | function-or-snippet |
+| Prop       | Type               | Required | Default | Description                                                                                                                |
+| ---------- | ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `href`     | `string`           | no       | —       |                                                                                                                            |
+| `rel`      | `string` \| `null` | no       | —       |                                                                                                                            |
+| `actions`  | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `class`    | `(opaque)`         | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `image`    | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `meta`     | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `subtitle` | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `target`   | `(opaque)`         | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `title`    | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

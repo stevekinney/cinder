@@ -16,16 +16,16 @@ A SelectionPopover component. Replace this sentence with a one-line purpose stat
 
 <!-- generated:props:start -->
 
-| Prop              | Type       | Required | Default | Description                                                     |
-| ----------------- | ---------- | -------- | ------- | --------------------------------------------------------------- |
-| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`. |
-| `id`              | `string`   | yes      | —       | Unique identifier for the popover.                              |
-| `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                 |
-| `oncancel`        | `(opaque)` | —        | —       | function-or-snippet                                             |
-| `onclose`         | `(opaque)` | —        | —       | function-or-snippet                                             |
-| `oncommentsubmit` | `(opaque)` | —        | —       | function-or-snippet                                             |
-| `onexpand`        | `(opaque)` | —        | —       | function-or-snippet                                             |
-| `position`        | `(opaque)` | —        | —       | unknown-shape                                                   |
+| Prop              | Type       | Required | Default | Description                                                                                                                |
+| ----------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`.                                                            |
+| `id`              | `string`   | yes      | —       | Unique identifier for the popover.                                                                                         |
+| `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                                                                            |
+| `oncancel`        | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onclose`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `oncommentsubmit` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onexpand`        | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `position`        | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

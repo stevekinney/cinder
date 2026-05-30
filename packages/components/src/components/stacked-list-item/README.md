@@ -16,19 +16,19 @@ A StackedListItem component. Replace this sentence with a one-line purpose state
 
 <!-- generated:props:start -->
 
-| Prop          | Type                             | Required | Default | Description                                                             |
-| ------------- | -------------------------------- | -------- | ------- | ----------------------------------------------------------------------- |
-| `class`       | `string`                         | no       | —       | Merged with `cinder-stacked-list-item`.                                 |
-| `density`     | `"comfortable"` \| `"condensed"` | no       | —       | Density token surfaced as `data-cinder-density`. Default `comfortable`. |
-| `href`        | `string`                         | no       | —       |                                                                         |
-| `hreflang`    | `string` \| `null`               | no       | —       |                                                                         |
-| `rel`         | `string` \| `null`               | no       | —       |                                                                         |
-| `description` | `(opaque)`                       | —        | —       | function-or-snippet                                                     |
-| `leading`     | `(opaque)`                       | —        | —       | function-or-snippet                                                     |
-| `meta`        | `(opaque)`                       | —        | —       | function-or-snippet                                                     |
-| `target`      | `(opaque)`                       | —        | —       | unknown-shape                                                           |
-| `title`       | `(opaque)`                       | —        | —       | function-or-snippet                                                     |
-| `trailing`    | `(opaque)`                       | —        | —       | function-or-snippet                                                     |
+| Prop          | Type                             | Required | Default | Description                                                                                                                |
+| ------------- | -------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`       | `string`                         | no       | —       | Merged with `cinder-stacked-list-item`.                                                                                    |
+| `density`     | `"comfortable"` \| `"condensed"` | no       | —       | Density token surfaced as `data-cinder-density`. Default `comfortable`.                                                    |
+| `href`        | `string`                         | no       | —       |                                                                                                                            |
+| `hreflang`    | `string` \| `null`               | no       | —       |                                                                                                                            |
+| `rel`         | `string` \| `null`               | no       | —       |                                                                                                                            |
+| `description` | `(opaque)`                       | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `leading`     | `(opaque)`                       | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `meta`        | `(opaque)`                       | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `target`      | `(opaque)`                       | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `title`       | `(opaque)`                       | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `trailing`    | `(opaque)`                       | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

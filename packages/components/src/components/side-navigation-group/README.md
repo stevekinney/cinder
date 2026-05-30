@@ -20,10 +20,10 @@ snippet. The flat `cinder/side-navigation-group` subpath remains exported for
 | `expanded` | `boolean`  | no       | —       | Whether the group is expanded. Bindable. Default: true.                                                                        |
 | `id`       | `string`   | no       | —       | Optional stable id for the root <li>. Trigger uses `${id}-trigger`, panel uses `${id}-panel`. If omitted, generated via useId. |
 | `label`    | `string`   | yes      | —       | Visible section header label.                                                                                                  |
-| `badge`    | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
-| `children` | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
-| `class`    | `(opaque)` | —        | —       | unknown-shape                                                                                                                  |
-| `icon`     | `(opaque)` | —        | —       | function-or-snippet                                                                                                            |
+| `badge`    | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
+| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
+| `class`    | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                        |
+| `icon`     | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
 
 <!-- generated:props:end -->
 
