@@ -120,7 +120,13 @@ function collectErrorText(error: unknown): string {
  * leak, so a real regression still fails immediately.
  */
 function isTransientReadError(message: string): boolean {
-  return /(?:EISDIR|ENOTDIR|Unexpected)[^\n]*reading file|EISDIR|ENOTDIR/.test(message);
+  // Match only the known transient forms, never a bare EISDIR/ENOTDIR anywhere
+  // in the message (which could be an unrelated, genuine failure we must not
+  // retry past): the bundler's `<errno> reading file: ...` diagnostic, and the
+  // underlying libuv `EISDIR: illegal operation on a directory, read` form.
+  return /(?:EISDIR|ENOTDIR|Unexpected)[^\n]*reading file|E(?:IS|NOT)DIR:[^\n]*read/.test(
+    message,
+  );
 }
 
 async function buildOnce(entry: string): Promise<string> {
