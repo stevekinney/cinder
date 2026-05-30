@@ -5,12 +5,13 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import postcss from 'postcss';
+import { parse } from 'postcss';
 
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { packForPublish } from './pack-for-publish.ts';
+import { parseJsonFile } from './lib/read-json-file.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -229,13 +230,13 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
     fail(`packed manifest contains \`workspace:\` protocol`);
   }
 
-  const packedManifest = JSON.parse(rawPackedManifest) as {
+  const packedManifest = parseJsonFile<{
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
     optionalDependencies?: Record<string, string>;
     exports?: Record<string, unknown>;
-  };
+  }>(rawPackedManifest);
 
   const depFields: Array<keyof typeof packedManifest> = [
     'dependencies',
@@ -257,8 +258,8 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   const upstreamReexports = await deriveUpstreamReexports();
   const upstreamKeys = new Set(upstreamReexports.map((r) => r.cinderKey));
   for (const [key, value] of Object.entries(exportsMap)) {
-    if (typeof value !== 'object' || value === null) continue;
-    const conditions = value as Record<string, unknown>;
+    if (!isObjectRecord(value)) continue;
+    const conditions = value;
     // PR 1 contract: every upstream re-export sub-path MUST resolve to
     // `dist/` only — no `svelte` condition, no `./src/` target. They are
     // the surface PR 1 introduces and they ship without Svelte source.
@@ -508,9 +509,9 @@ async function inspectTarball(): Promise<void> {
   // build output (e.g. a build step that skips a component, a `files`
   // whitelist that omits the path).
   const packageJsonPath = join(repositoryRoot, 'package.json');
-  const packageJsonContent = JSON.parse(await Bun.file(packageJsonPath).text()) as {
+  const packageJsonContent = parseJsonFile<{
     exports?: Record<string, { default?: string }>;
-  };
+  }>(await Bun.file(packageJsonPath).text());
   const stylesExports = Object.entries(packageJsonContent.exports ?? {}).filter(
     ([key, entry]) =>
       key.endsWith('/styles') && key !== './styles' && typeof entry.default === 'string',
@@ -865,10 +866,9 @@ async function readRouteCssArtifacts(
   if (!existsSync(manifestPath)) {
     fail(`Vite client manifest not found at ${manifestPath}`);
   }
-  const manifest = JSON.parse(await Bun.file(manifestPath).text()) as Record<
-    string,
-    { css?: string[]; imports?: string[]; dynamicImports?: string[]; file?: string }
-  >;
+  const manifest = parseJsonFile<
+    Record<string, { css?: string[]; imports?: string[]; dynamicImports?: string[]; file?: string }>
+  >(await Bun.file(manifestPath).text());
 
   // Find the generated node wrapper that re-exports the target route source.
   let routeSource: string | null = null;
@@ -916,7 +916,7 @@ async function readRouteCssArtifacts(
     const filePath = join(clientOutputDirectory, relativePath);
     if (!existsSync(filePath)) continue;
     const source = await Bun.file(filePath).text();
-    const root_ = postcss.parse(source, { from: filePath });
+    const root_ = parse(source, { from: filePath });
     const selectors: string[] = [];
     const customProperties: string[] = [];
     root_.walkRules((rule) => {
@@ -1193,7 +1193,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
     const expectedRaw = await Bun.file(
       join(fixtureDirectory, 'src/generated/expected-example-ids.json'),
     ).text();
-    const expected = JSON.parse(expectedRaw) as { entryCount: number; compositeIds: string[] };
+    const expected = parseJsonFile<{ entryCount: number; compositeIds: string[] }>(expectedRaw);
 
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {

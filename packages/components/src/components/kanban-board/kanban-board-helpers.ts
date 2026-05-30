@@ -59,9 +59,10 @@ export function findCard<Card>(
 ): LocatedCard<Card> | null {
   for (const [columnIndex, column] of columns.entries()) {
     const cardIndex = column.cards.findIndex((card) => getCardKey(card) === cardKey);
-    if (cardIndex >= 0) {
+    const card = column.cards[cardIndex];
+    if (cardIndex >= 0 && card !== undefined) {
       return {
-        card: column.cards[cardIndex] as Card,
+        card,
         cardKey,
         column,
         columnIndex,
@@ -160,8 +161,8 @@ export function toggleKanbanColumn<Card>(
   columnKey: string | number,
 ): { nextColumns: KanbanBoardColumn<Card>[]; change: KanbanBoardChange } | null {
   const columnIndex = columns.findIndex((column) => column.id === columnKey);
-  if (columnIndex < 0) return null;
-  const column = columns[columnIndex] as KanbanBoardColumn<Card>;
+  const column = columns[columnIndex];
+  if (columnIndex < 0 || column === undefined) return null;
   const collapsed = !column.collapsed;
   return {
     nextColumns: columns.map((current, index) =>

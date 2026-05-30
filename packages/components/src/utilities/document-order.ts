@@ -15,7 +15,7 @@
  * synchronously inside the attachment cleanup, before the node is removed.
  */
 export function inDocumentOrder<T extends { node: Node }>(items: readonly T[]): T[] {
-  return [...items].sort((a, b) => {
+  return items.toSorted((a, b) => {
     if (a.node === b.node) return 0;
     const position = a.node.compareDocumentPosition(b.node);
     if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;

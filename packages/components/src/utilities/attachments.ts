@@ -43,8 +43,10 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
     function handleClick(event: MouseEvent) {
       const isEnabled = typeof enabled === 'function' ? enabled() : enabled;
       if (!isEnabled) return;
-      const target = event.target as Node;
-      if (!node.contains(target)) {
+      const target = event.target;
+      // A non-Node (or null) target is treated as outside the node.
+      const isInside = target instanceof Node && node.contains(target);
+      if (!isInside) {
         handler();
       }
     }

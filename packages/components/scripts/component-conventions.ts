@@ -14,6 +14,8 @@ import { basename, dirname, join } from 'node:path';
 import { parse as parseSvelte } from 'svelte/compiler';
 import { Node, Project, type CallExpression, type SourceFile } from 'ts-morph';
 
+import { isObjectRecord } from './validation-utilities.ts';
+
 // ---------------------------------------------------------------------------
 // Interactive categories — components in these categories require a11y checks.
 // Source of truth: manifest.meta.ts categoryId set.
@@ -229,6 +231,12 @@ function hasAriaOrRoleCall(root: CallExpression): boolean {
 // Check 3 — hydration/SSR coverage
 // ---------------------------------------------------------------------------
 
+/** Read a property as a nested record, or `undefined` if it isn't one. */
+function recordProperty(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const value = record[key];
+  return isObjectRecord(value) ? value : undefined;
+}
+
 /**
  * Returns `true` when the Svelte component at `sveltePath` contains a browser
  * guard: either a `{#if browser}` / `{#if hydrated}` template block, or imports
@@ -243,7 +251,8 @@ export function hasBrowserGuard(sveltePath: string): boolean {
 }
 
 function hasBrowserGuardInSource(source: string): boolean {
-  const ast = parseSvelte(source, { modern: true }) as unknown as Record<string, unknown>;
+  const ast: unknown = parseSvelte(source, { modern: true });
+  if (!isObjectRecord(ast)) return false;
 
   // Check 1: a <script> block imports BROWSER from esm-env (structural — walk
   // the module and instance script ASTs, not a substring/regex on raw source).
@@ -264,24 +273,22 @@ function hasBrowserGuardInSource(source: string): boolean {
  * body the Svelte compiler attaches at `script.content.body` — no substring match.
  */
 function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
-  if (!scriptNode || typeof scriptNode !== 'object') return false;
-  const content = (scriptNode as Record<string, unknown>)['content'];
-  if (!content || typeof content !== 'object') return false;
-  const body = (content as Record<string, unknown>)['body'];
+  if (!isObjectRecord(scriptNode)) return false;
+  const content = recordProperty(scriptNode, 'content');
+  if (!content) return false;
+  const body = content['body'];
   if (!Array.isArray(body)) return false;
 
   for (const statement of body) {
-    if (!statement || typeof statement !== 'object') continue;
-    const node = statement as Record<string, unknown>;
-    if (node['type'] !== 'ImportDeclaration') continue;
-    const sourceNode = node['source'] as Record<string, unknown> | undefined;
+    if (!isObjectRecord(statement)) continue;
+    if (statement['type'] !== 'ImportDeclaration') continue;
+    const sourceNode = recordProperty(statement, 'source');
     if (sourceNode?.['value'] !== 'esm-env') continue;
-    const specifiers = node['specifiers'];
+    const specifiers = statement['specifiers'];
     if (!Array.isArray(specifiers)) continue;
     for (const specifier of specifiers) {
-      const imported = (specifier as Record<string, unknown>)?.['imported'] as
-        | Record<string, unknown>
-        | undefined;
+      if (!isObjectRecord(specifier)) continue;
+      const imported = recordProperty(specifier, 'imported');
       if (imported?.['name'] === 'BROWSER') return true;
     }
   }
@@ -293,11 +300,11 @@ function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
  * whose test expression is the identifier `browser` or `hydrated`.
  */
 function templateHasBrowserIfBlock(node: unknown): boolean {
-  if (!node || typeof node !== 'object') return false;
-  const record = node as Record<string, unknown>;
+  if (!isObjectRecord(node)) return false;
+  const record = node;
 
   if (record['type'] === 'IfBlock') {
-    const test = record['test'] as Record<string, unknown> | undefined;
+    const test = recordProperty(record, 'test');
     if (test && test['type'] === 'Identifier') {
       const name = test['name'];
       if (name === 'browser' || name === 'hydrated') return true;
@@ -381,14 +388,14 @@ export function checkPropNames(schema: Record<string, unknown>): {
   warnings: string[];
 } {
   const properties = schema['properties'];
-  if (!properties || typeof properties !== 'object') {
+  if (!isObjectRecord(properties)) {
     return { violations: [], warnings: [] };
   }
 
   const violations: string[] = [];
   const warnings: string[] = [];
 
-  for (const propName of Object.keys(properties as Record<string, unknown>)) {
+  for (const propName of Object.keys(properties)) {
     const violation = validatePropNameViolation(propName);
     if (violation !== null) {
       violations.push(`"${propName}": ${violation}`);

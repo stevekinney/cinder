@@ -21,12 +21,13 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
-import prettier from 'prettier';
+import * as prettier from 'prettier';
 
 import type { CategoryId, StatusLevel } from '../src/manifest.meta.ts';
 import { categories, overlapFamilies, statusLevels } from '../src/manifest.meta.ts';
 import type { ComponentMetadata } from './generate-component-metadata.ts';
 import { extractAllComponentMetadata } from './generate-component-metadata.ts';
+import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -215,11 +216,11 @@ export async function buildManifest(): Promise<Manifest> {
 
   // 2. Read version and frameworkVersionRange from package.json.
   const packageJsonPath = join(PACKAGE_ROOT, 'package.json');
-  const packageJson = (await Bun.file(packageJsonPath).json()) as {
+  const packageJson = await readJsonFile<{
     name: string;
     version: string;
     peerDependencies?: Record<string, string>;
-  };
+  }>(packageJsonPath);
 
   const version = packageJson.version;
   const frameworkVersionRange = packageJson.peerDependencies?.['svelte'] ?? '>=5.0.0';
@@ -291,7 +292,7 @@ export async function buildManifest(): Promise<Manifest> {
 
   // 6. Validate the manifest against manifest.schema.json before returning.
   const schemaText = await Bun.file(SCHEMA_PATH).text();
-  const schema = JSON.parse(schemaText) as object;
+  const schema = parseJsonFile<object>(schemaText);
 
   const ajv = new Ajv({ strict: false });
   const validate = ajv.compile(schema);

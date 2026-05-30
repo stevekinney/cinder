@@ -6,12 +6,30 @@ import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isObjectRecord } from '../validation-utilities.ts';
+
 /**
  * Absolute path to the repository root, resolved from this file's location.
  * `utilities.ts` lives at `packages/components/scripts/husky/utilities.ts`,
  * so four levels up lands at the workspace root.
  */
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+
+/** Placeholder before a Promise's resolver is captured from its executor. */
+function noop(): void {}
+
+/**
+ * Read the `code` from a caught value if it looks like a Node system error
+ * (`NodeJS.ErrnoException`). Returns `undefined` for anything without a string
+ * `code` — avoids an unsafe `as NodeJS.ErrnoException` assertion on `unknown`.
+ */
+function errnoCode(caught: unknown): string | undefined {
+  if (typeof caught === 'object' && caught !== null && 'code' in caught) {
+    const { code } = caught;
+    return typeof code === 'string' ? code : undefined;
+  }
+  return undefined;
+}
 
 export const isContinuousIntegration = () => Bun.env['CI'] === 'true' || Bun.env['CI'] === '1';
 
@@ -283,9 +301,9 @@ export async function runHookCommand(
   const stderr = options.stderr ?? 'inherit';
   let aborted = false;
   let abortCleanup: Promise<void> | undefined;
-  let notifyAbort: () => void = () => {};
-  const abortObserved = new Promise<void>((resolve) => {
-    notifyAbort = resolve;
+  let notifyAbort: () => void = noop;
+  const abortObserved = new Promise<void>((_resolve) => {
+    notifyAbort = _resolve;
   });
 
   let subprocess: ReturnType<typeof Bun.spawn>;
@@ -401,7 +419,7 @@ function defaultIsProcessAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (caught) {
-    const errorCode = (caught as NodeJS.ErrnoException).code;
+    const errorCode = errnoCode(caught);
     if (errorCode === 'ESRCH') return false;
     return true;
   }
@@ -410,8 +428,8 @@ function defaultIsProcessAlive(pid: number): boolean {
 function parseGateLock(raw: string): GateLockFile | null {
   try {
     const value: unknown = JSON.parse(raw);
-    if (typeof value !== 'object' || value === null) return null;
-    const record = value as Record<string, unknown>;
+    if (!isObjectRecord(value)) return null;
+    const record = value;
     if (
       typeof record['createdAt'] !== 'string' ||
       typeof record['pid'] !== 'number' ||
@@ -466,7 +484,7 @@ export async function withGateLock<T>(
     options.malformedLockGraceMilliseconds ?? DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS;
   const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
   const waitMilliseconds = options.waitMilliseconds ?? DEFAULT_GATE_LOCK_WAIT_MILLISECONDS;
-  const isProcessAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const processAlive = options.isProcessAlive ?? defaultIsProcessAlive;
   const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const startedAt = Date.now();
@@ -510,7 +528,7 @@ export async function withGateLock<T>(
     } catch (caught) {
       await handle?.close();
       if (enteredRun) throw caught;
-      const errorCode = (caught as NodeJS.ErrnoException).code;
+      const errorCode = errnoCode(caught);
       if (errorCode !== 'EEXIST') throw caught;
 
       const existingLock = await readGateLock(lockPath);
@@ -519,9 +537,9 @@ export async function withGateLock<T>(
         let existingLockAgeMilliseconds = 0;
         try {
           existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
-        } catch (caught) {
-          if ((caught as NodeJS.ErrnoException).code === 'ENOENT') continue;
-          throw caught;
+        } catch (statError) {
+          if (errnoCode(statError) === 'ENOENT') continue;
+          throw statError;
         }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
           warning('Removing stale malformed pre-push gate lock.');
@@ -542,7 +560,7 @@ export async function withGateLock<T>(
         continue;
       }
 
-      if (!isProcessAlive(existingLock.pid)) {
+      if (!processAlive(existingLock.pid)) {
         warning('Removing stale pre-push gate lock.');
         await rm(lockPath, { force: true });
         continue;
@@ -611,15 +629,11 @@ type PackageManifest = {
   peerDependencies?: Record<string, unknown>;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
 function isManifest(value: unknown): value is PackageManifest {
-  if (!isRecord(value)) return false;
+  if (!isObjectRecord(value)) return false;
   for (const key of ['scripts', 'dependencies', 'devDependencies', 'peerDependencies'] as const) {
     const field = value[key];
-    if (field !== undefined && !isRecord(field)) return false;
+    if (field !== undefined && !isObjectRecord(field)) return false;
   }
   return true;
 }
@@ -632,7 +646,7 @@ function dependencyNames(manifest: PackageManifest): Set<string> {
     manifest.devDependencies,
     manifest.peerDependencies,
   ]) {
-    if (!isRecord(field)) continue;
+    if (!isObjectRecord(field)) continue;
     for (const name of Object.keys(field)) names.add(name);
   }
   return names;

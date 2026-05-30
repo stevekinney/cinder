@@ -18,7 +18,8 @@
 
 import { file, write } from 'bun';
 import { resolve } from 'node:path';
-import prettier from 'prettier';
+import * as prettier from 'prettier';
+import { readJsonFile } from './lib/read-json-file.ts';
 
 const PACKAGE_ROOT = resolve(import.meta.dir, '..');
 const MANIFEST_PATH = resolve(PACKAGE_ROOT, 'components.json');
@@ -109,7 +110,7 @@ function replaceBlock(source: string, body: string): string {
 async function main(): Promise<void> {
   const check = process.argv.includes('--check');
 
-  const manifest = (await file(MANIFEST_PATH).json()) as Manifest;
+  const manifest = await readJsonFile<Manifest>(MANIFEST_PATH);
   const existing = await file(AGENTS_PATH).text();
   const body = renderOverlapBlock(manifest);
   const rendered = replaceBlock(existing, body);

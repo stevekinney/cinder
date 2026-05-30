@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
 
-import postcss, { type Rule } from 'postcss';
+import { parse as parsePostcss, type Rule } from 'postcss';
 
 // Shared helper — same forced-colors detection the Stylelint plugin uses.
 // Keeping it in one place means the two enforcement layers can't disagree
@@ -50,7 +50,7 @@ const NORMALIZED_GROUPED_DROPDOWN_TRIGGER_SELECTOR = GROUPED_DROPDOWN_TRIGGER_SE
 );
 
 function parse(css: string) {
-  return postcss.parse(css);
+  return parsePostcss(css);
 }
 
 function findRule(root: ReturnType<typeof parse>, selector: string): Rule | undefined {

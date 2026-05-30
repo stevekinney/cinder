@@ -54,6 +54,26 @@ type UpstreamPackageManifest = {
   exports?: UpstreamExportsMap;
 };
 
+/**
+ * Validate the subset of an upstream `package.json` we rely on.
+ *
+ * Unlike this package's own generated files, upstream manifests are not produced
+ * by this pipeline — an upstream package could restructure its `exports` map. A
+ * real guard (rather than an `as` assertion) catches that divergence at the read
+ * site instead of letting a wrongly-typed value flow downstream. Only the fields
+ * actually consumed here are checked; everything else stays optional.
+ */
+function isUpstreamPackageManifest(value: unknown): value is UpstreamPackageManifest {
+  if (typeof value !== 'object' || value === null) return false;
+  if ('exports' in value) {
+    const { exports } = value;
+    if (exports !== undefined && (typeof exports !== 'object' || exports === null)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export type UpstreamReexport = {
   /** `markdown` | `editor` | `commentary` | `diff`. */
   pkg: UpstreamPackageName;
@@ -95,8 +115,11 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
     if (!existsSync(manifestPath)) {
       throw new Error(`Upstream package manifest missing: ${manifestPath}`);
     }
-    const manifest = (await Bun.file(manifestPath).json()) as UpstreamPackageManifest;
-    const exportsMap = manifest.exports ?? {};
+    const parsed: unknown = await Bun.file(manifestPath).json();
+    if (!isUpstreamPackageManifest(parsed)) {
+      throw new Error(`Upstream package manifest has an unexpected shape: ${manifestPath}`);
+    }
+    const exportsMap = parsed.exports ?? {};
 
     for (const [upstreamSubpath, entry] of Object.entries(exportsMap)) {
       if (upstreamSubpath === './package.json') continue;
@@ -156,8 +179,11 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
 function resolveUpstreamSourcePath(reexport: UpstreamReexport): string {
   const manifestPath = join(WORKSPACE_ROOT, 'packages', reexport.pkg, 'package.json');
   const manifestRaw = readFileSync(manifestPath, 'utf-8');
-  const manifest = JSON.parse(manifestRaw) as UpstreamPackageManifest;
-  const exportsMap = manifest.exports ?? {};
+  const parsed: unknown = JSON.parse(manifestRaw);
+  if (!isUpstreamPackageManifest(parsed)) {
+    throw new Error(`Upstream package manifest has an unexpected shape: ${manifestPath}`);
+  }
+  const exportsMap = parsed.exports ?? {};
   const entry = exportsMap[reexport.upstreamSubpath];
   if (!entry || typeof entry === 'string') {
     throw new Error(
@@ -226,7 +252,7 @@ function collectExports(entryPath: string): { values: string[]; types: string[] 
     for (const match of source.matchAll(/^\s*export\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/gm)) {
       // Skip if this is actually `export type { … } from '…'` (the regex
       // above would also fire if we relaxed it).
-      if (/^\s*export\s+type\s*\{/.test(match[0]!)) continue;
+      if (/^\s*export\s+type\s*\{/.test(match[0])) continue;
       const inner = match[1]!;
       // Per-name: items prefixed with `type` are type-only inside an
       // otherwise-mixed clause.
@@ -258,7 +284,7 @@ function collectExports(entryPath: string): { values: string[]; types: string[] 
     // `export { A, B };` (no `from`) — local re-exports of in-scope bindings.
     for (const match of source.matchAll(/^\s*export\s*\{([^}]+)\}\s*;?\s*$/gm)) {
       // Skip `export { … } from …` (already handled).
-      if (/from\s*['"]/.test(match[0]!)) continue;
+      if (/from\s*['"]/.test(match[0])) continue;
       for (const piece of match[1]!.split(',')) {
         const trimmed = piece.trim();
         if (!trimmed) continue;

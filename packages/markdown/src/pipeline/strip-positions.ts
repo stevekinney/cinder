@@ -23,7 +23,9 @@ import { visit } from 'unist-util-visit';
 export function stripPositions(ast: Root): Root {
   const clone = structuredClone(ast);
   visit(clone, (node: Nodes) => {
-    delete (node as unknown as Record<string, unknown>)['position'];
+    // Every mdast node carries an optional `position`; deleting it is the
+    // documented way to compare ASTs independent of source offsets.
+    delete node.position;
   });
   return clone;
 }

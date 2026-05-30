@@ -15,6 +15,7 @@
 // at import time). Workers have no `document` global — this shim provides just enough
 // surface for the module to load. rehype-katex uses `katex.renderToString()` which
 // bypasses real DOM entirely, so these shim nodes are never used at render time.
+// eslint-disable-next-line import/no-unassigned-import -- side-effect import: registers global DOM shims on the worker's `globalThis` before any dependency that touches `document` at module-load time is imported below.
 import './worker-dom-shim.js';
 
 import * as Comlink from 'comlink';

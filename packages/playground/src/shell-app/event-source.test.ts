@@ -121,8 +121,10 @@ describe('createEventSource factory', () => {
     await tick();
     const [source] = [...liveSources];
     expect(source).toBeDefined();
-    source?.onmessage?.(new MessageEvent('message'));
-    source?.onerror?.(new Event('error'));
+    // Handlers are wired via addEventListener, not .onmessage/.onerror.
+    // Invoke through the listeners map to match the addEventListener implementation.
+    source?.listeners.get('message')?.(new MessageEvent('message'));
+    source?.listeners.get('error')?.(new Event('error'));
     expect(messages).toBe(1);
     expect(errors).toBe(1);
     unmount();

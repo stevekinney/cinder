@@ -35,6 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { deriveUpstreamReexports, type UpstreamReexport } from './lib/derive-upstream-reexports.ts';
+import { readJsonFile } from './lib/read-json-file.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
@@ -68,7 +69,7 @@ type SourceManifest = {
  */
 async function readSourceManifest(): Promise<SourceManifest> {
   const path = join(packageRoot, 'package.json');
-  return (await Bun.file(path).json()) as SourceManifest;
+  return readJsonFile<SourceManifest>(path);
 }
 
 /**

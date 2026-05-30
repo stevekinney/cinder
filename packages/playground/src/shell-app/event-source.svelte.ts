@@ -41,10 +41,17 @@ export function createEventSource(
       source = null;
       if (!url) return;
       source = new EventSource(url);
-      if (handlers.onmessage) source.onmessage = handlers.onmessage;
-      if (handlers.onerror) source.onerror = handlers.onerror;
+      const { onmessage, onerror } = handlers;
+      if (onmessage) {
+        source.addEventListener('message', (event: MessageEvent) => onmessage(event));
+      }
+      if (onerror) {
+        source.addEventListener('error', (event: Event) => onerror(event));
+      }
       if (handlers.events) {
         for (const [name, handler] of Object.entries(handlers.events)) {
+          // EventSource named events are always MessageEvent at runtime.
+          // eslint-disable-next-line no-unsafe-type-assertion -- EventSource dispatches named events as MessageEvent; the handler contract is correct.
           source.addEventListener(name, handler as EventListener);
         }
       }

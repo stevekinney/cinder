@@ -297,6 +297,13 @@ describe('reorder', () => {
   test('handles move from last to first', () => {
     expect(reorder(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b']);
   });
+
+  test('returns array unchanged for a beyond-bounds positive fromIndex', () => {
+    // Regression: a fromIndex beyond the array length makes splice return []
+    // (removed is undefined); the guard returns the unchanged array rather than
+    // inserting undefined at toIndex.
+    expect(reorder(['a', 'b', 'c'], 5, 0)).toEqual(['a', 'b', 'c']);
+  });
 });
 
 // ---------------------------------------------------------------------------
