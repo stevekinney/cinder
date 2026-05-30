@@ -520,6 +520,19 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).not.toContain('data-snapshot-mode');
   });
+
+  it('loads the full CSS aggregator (styles/all.css) so component styles are present', async () => {
+    // The component preview iframe must load `cinder/styles/all` (tokens +
+    // foundation + ALL per-component CSS) rather than the slim base
+    // (`cinder/styles` / index.css). After the per-component subpath split,
+    // index.css only contains tokens/foundation/utilities — omitting it here
+    // would leave every component unstyled in the Playwright preview, breaking
+    // visual snapshots, positioning assertions, and accessibility checks.
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    expect(html).toContain('href="/styles/all.css"');
+    expect(html).not.toContain('href="/styles/index.css"');
+  });
 });
 
 // ---------------------------------------------------------------------------

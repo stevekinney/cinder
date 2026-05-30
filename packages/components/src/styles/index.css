@@ -1,6 +1,28 @@
+/*
+ * Base stylesheet — `cinder/styles`.
+ *
+ * Every cinder app imports this ONCE, FIRST, before any per-component CSS.
+ * It establishes:
+ *   1. The `@layer` declaration order (tokens → foundation → components →
+ *      utilities). Declaring the order up front means per-component CSS
+ *      imported later still slots into the correct layer regardless of import
+ *      order.
+ *   2. Design tokens (`cinder.tokens`).
+ *   3. Foundation resets and base element styles (`cinder.foundation`).
+ *   4. Shared internal component chrome that is not owned by any single
+ *      component — currently the Alert/Banner dismiss-button base
+ *      (`cinder.components`). It self-declares its layer, so it is imported
+ *      without a `layer()` qualifier.
+ *   5. Utilities (`cinder.utilities`).
+ *
+ * It does NOT import per-component CSS. Import `cinder/<component>/styles` for
+ * each component you use, or `cinder/styles/all` for the all-in (non
+ * tree-shaken) bundle.
+ */
+
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
 @import './tokens.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
-@import './components.css';
+@import './components/_dismiss-button.css';
 @import './utilities.css' layer(cinder.utilities);

@@ -88,6 +88,23 @@ describe('computeExports', () => {
       default: './dist/components/experimental/lab/index.js',
     });
   });
+
+  it('emits a default-only /styles sidecar export only when hasCss is true', () => {
+    const withCss = computeExports([{ name: 'button', isExperimental: false, hasCss: true }]);
+    expect(withCss['./button/styles']).toEqual({
+      default: './dist/components/button/button.css',
+    });
+
+    const withoutCss = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
+    expect(withoutCss['./button/styles']).toBeUndefined();
+  });
+
+  it('routes experimental /styles sidecars through the experimental dist path', () => {
+    const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: true }]);
+    expect(out['./experimental/lab/styles']).toEqual({
+      default: './dist/components/experimental/lab/lab.css',
+    });
+  });
 });
 
 describe('assertNoForbiddenExportKeys — generate-mode integration', () => {

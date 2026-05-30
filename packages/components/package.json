@@ -36,11 +36,17 @@
     "./styles": {
       "default": "./src/styles/index.css"
     },
+    "./styles/all": {
+      "default": "./src/styles/all.css"
+    },
     "./styles/tokens": {
       "default": "./src/styles/tokens.css"
     },
     "./styles/foundation": {
       "default": "./src/styles/foundation.css"
+    },
+    "./styles/utilities": {
+      "default": "./src/styles/utilities.css"
     },
     "./highlighters/shiki": {
       "types": "./dist/highlighters/shiki/index.d.ts",

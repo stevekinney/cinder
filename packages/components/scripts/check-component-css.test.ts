@@ -141,6 +141,29 @@ describe('checkComponentCssSource', () => {
     expect(violations.some((v) => v.message.includes('@import'))).toBe(true);
   });
 
+  it('allows leading sibling-leaf @import for compound-parent family aggregation', () => {
+    const source = `@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n${layered(`.cinder-tabs { display: flex; }`)}`;
+    expect(checkComponentCssSource(source, fakePath)).toEqual([]);
+  });
+
+  it('rejects a non-sibling-leaf @import (mismatched dir/basename)', () => {
+    const source = `@import '../tab/other.css';\n${layered(`.cinder-tabs { display: flex; }`)}`;
+    const violations = checkComponentCssSource(source, fakePath);
+    expect(violations.some((v) => v.message.includes('@import'))).toBe(true);
+  });
+
+  it('rejects a bare-specifier @import even when shaped like a leaf', () => {
+    const source = `@import 'tab/tab.css';\n${layered(`.cinder-tabs {}`)}`;
+    const violations = checkComponentCssSource(source, fakePath);
+    expect(violations.some((v) => v.message.includes('@import'))).toBe(true);
+  });
+
+  it('rejects a sibling-leaf @import that follows the layer block (CSS would ignore it)', () => {
+    const source = `${layered(`.cinder-tabs {}`)}\n@import '../tab/tab.css';`;
+    const violations = checkComponentCssSource(source, fakePath);
+    expect(violations.some((v) => v.message.includes('must appear BEFORE'))).toBe(true);
+  });
+
   it('handles selector lists', () => {
     const source = layered(`.cinder-button, :root { color: red; }`);
     const violations = checkComponentCssSource(source, fakePath);
@@ -200,6 +223,22 @@ describe('isSingleComponentLayer', () => {
     expect(
       isSingleComponentLayer(parse(`/* header */\n${layered(`.cinder-x { color: red; }`)}`)),
     ).toBe(true);
+  });
+
+  it('accepts leading sibling-leaf @import statements before the wrapper', () => {
+    expect(
+      isSingleComponentLayer(
+        parse(
+          `@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n${layered(`.cinder-tabs {}`)}`,
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects a non-sibling-leaf @import outside the wrapper', () => {
+    expect(
+      isSingleComponentLayer(parse(`@import './tokens.css';\n${layered(`.cinder-x {}`)}`)),
+    ).toBe(false);
   });
 
   it('rejects a bare rule with no wrapper', () => {
