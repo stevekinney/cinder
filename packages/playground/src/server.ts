@@ -12,7 +12,8 @@
  *                              so all dynamic-import URLs from either bundle family
  *                              resolve through this single route.
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
- *   GET /styles.css    → raw contents of src/styles/index.css
+ *   GET /styles.css    → raw contents of src/styles/index.css (slim base — no per-component CSS)
+ *   GET /styles/all.css → full cascade aggregator (all component CSS — used by the preview iframe)
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
  *   GET /ping          → health check ("pong")
@@ -933,7 +934,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${componentName} — cinder playground</title>
-    <link rel="stylesheet" href="/styles/index.css" />
+    <link rel="stylesheet" href="/styles/all.css" />
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Iframe scaffold: scope the reset narrowly. Unlike the shell, the

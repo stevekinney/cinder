@@ -11,9 +11,10 @@
  * then import `cinder/<component>/styles` for each component you use. Bundlers
  * then include only the component CSS you reference.
  *
- * The `@layer` declaration on the first line fixes cascade-layer priority
- * independent of import order. It MUST stay byte-identical to the declaration
- * in `index.css` so both entry points agree on layer ordering.
+ * The `@layer` declaration (the first non-comment rule below) fixes
+ * cascade-layer priority independent of import order. It MUST stay
+ * byte-identical to the declaration in `index.css` so both entry points agree
+ * on layer ordering.
  */
 
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
