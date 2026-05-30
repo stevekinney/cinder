@@ -560,12 +560,51 @@ then fail until the sidecar exists.
 Examples ship as JSON, generated verbatim from
 `.example.svelte` files in the playground. Every example must:
 
-- Carry a `<script lang="ts" module>` block exporting string literal
-  `title` and `description`, plus an optional `component` (kebab-case id).
+- Carry a `<script lang="ts" module>` block exporting a **string-literal**
+  `title`, an optional string-literal `description`, plus an optional
+  `component` (kebab-case id).
+- Provide a **default export** — the example component itself (markup in the
+  instance `<script>` / template). The playground mounts this default export;
+  an example with no default export renders nothing.
 - Import **only** from `cinder`, `cinder/<subpath>`, or a package listed in
   `scripts/example-allowed-packages.ts`. Relative imports, `$lib`,
   playground-only modules, and fixtures are hard errors.
 - Contain no `<style>` block — styles come from `cinder/styles`.
+
+A minimal compliant example:
+
+```svelte
+<script lang="ts" module>
+  // Required: a static string literal. The playground reads this verbatim to
+  // label the example card. Template literals with `${...}` interpolation and
+  // computed expressions are NOT supported — the value must be a plain string.
+  export const title = 'Basic usage';
+  // Optional: a one-line description rendered under the title.
+  export const description = 'The smallest button you can render.';
+  // Optional: an explicit kebab-case component id when the file path can't
+  // be inferred (rare). Most examples omit this.
+  // export const component = 'button';
+</script>
+
+<script lang="ts">
+  import { Button } from 'cinder/button';
+</script>
+
+<Button>Click me</Button>
+```
+
+#### The `title` export is mandatory
+
+`title` is required and must be present as a string literal. When it is missing
+(or only a non-exported `const title` exists), the example metadata reader falls
+back to the sentinel `'Untitled'`, the dev server logs
+`[playground] example missing title: <filePath>`, and
+`bun run --filter='@cinder/playground' validate` fails with the count of
+offending files. A literal `export const title = 'Untitled'` is also rejected —
+pick a real, descriptive title. Single-, double-, and backtick-quoted string
+literals are all accepted; only interpolated template literals are not.
+
+#### Excluding an example
 
 To exclude an example that cannot ship (router-dependent, server-data,
 iframe-isolated, etc.), add a top-of-file marker:
@@ -575,9 +614,18 @@ iframe-isolated, etc.), add a top-of-file marker:
 ```
 
 The reason must come from `allowedExampleExclusionReasons` in
-`manifest.meta.ts`. To add a new reason, edit that array and document
-why in your PR. The exclusion budget is capped at 10% of all playground
-examples; above that, `components:check` fails.
+`manifest.meta.ts`. The currently allowed reasons are:
+
+- `playground-only-interaction` — relies on playground-only wiring that has no
+  standalone equivalent.
+- `requires-router` — needs a router the example harness does not provide.
+- `requires-server-data` — needs server-fetched data to render meaningfully.
+- `requires-iframe-isolation` — must run in an isolated iframe (e.g. global
+  side effects).
+
+To add a new reason, edit that array and document why in your PR. The exclusion
+budget is capped at 10% of all playground examples; above that,
+`components:check` fails.
 
 ## Stable-promotion gate
 

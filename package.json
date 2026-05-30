@@ -61,7 +61,7 @@
       "prettier --write"
     ],
     "packages/playground/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix",
+      "oxlint --fix --type-aware --tsconfig ./packages/playground/tsconfig.json",
       "prettier --write"
     ],
     "packages/testing/**/*.{js,ts,tsx,jsx,mjs,cjs}": [

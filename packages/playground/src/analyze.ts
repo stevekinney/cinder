@@ -2,30 +2,25 @@
  * Component manifest analyzer for the cinder playground.
  *
  * Combines two sources of truth:
- *  1. svelte/compiler.parse — reads the $props() destructuring to extract prop names,
+ *  1. svelte/compiler.parse â reads the $props() destructuring to extract prop names,
  *     bindability ($bindable), and default values.
- *  2. ts-morph — reads the exported `${Name}Props` type alias to determine each
+ *  2. ts-morph â reads the exported `${Name}Props` type alias to determine each
  *     prop's type (and therefore control kind), optionality, and JSDoc description.
  *
  * The $props() destructuring is canonical: only props that appear there are included in
  * the manifest. If the Props type has a property not in the destructuring, it is skipped.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-import { parse } from 'svelte/compiler';
+import type { Expression, Pattern, Property, SpreadElement } from 'estree';
+import { type AST, parse } from 'svelte/compiler';
 import { Project, type PropertySignature, SyntaxKind, type TypeNode } from 'ts-morph';
 
+import { discoverComponentFilePaths } from './discover.ts';
 import type { ComponentManifest, ControlKind, PropManifest } from './types.ts';
 
 export type { ComponentManifest, ControlKind, PropManifest };
-
-// ---------------------------------------------------------------------------
-// Internal types for AST nodes (svelte/compiler returns untyped objects)
-// ---------------------------------------------------------------------------
-
-type AstNode = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Control kind inference from ts-morph TypeNode
@@ -75,7 +70,7 @@ function inferControlKindFromTypeNode(
     const ref = typeNode.asKindOrThrow(SyntaxKind.TypeReference);
     const name = ref.getTypeName().getText();
 
-    // Snippet or Snippet<[...]> → snippet control
+    // Snippet or Snippet<[...]> â snippet control
     if (name === 'Snippet') return { kind: 'snippet' };
 
     // Try to resolve the referenced alias in the same source file
@@ -93,7 +88,7 @@ function inferControlKindFromTypeNode(
 }
 
 // ---------------------------------------------------------------------------
-// Svelte AST helpers — extracting props from $props() destructuring
+// Svelte AST helpers â extracting props from $props() destructuring
 // ---------------------------------------------------------------------------
 
 type RawPropEntry = {
@@ -103,37 +98,46 @@ type RawPropEntry = {
 };
 
 /**
+ * Returns the literal value of an array element, or `undefined` for holes,
+ * spreads, and any non-literal expression.
+ */
+function literalElementValue(element: Expression | SpreadElement | null): unknown {
+  if (element !== null && element.type === 'Literal') return element.value;
+  return undefined;
+}
+
+/**
  * Parses the right-hand side of an AssignmentPattern (the default value expression)
  * and returns { defaultValue, bindable }.
  */
-function parseDefaultExpression(rhs: AstNode): { defaultValue?: unknown; bindable: boolean } {
-  if (rhs['type'] === 'Literal') {
-    return { defaultValue: rhs['value'], bindable: false };
+function parseDefaultExpression(rhs: Expression): { defaultValue?: unknown; bindable: boolean } {
+  if (rhs.type === 'Literal') {
+    return { defaultValue: rhs.value, bindable: false };
   }
 
-  if (rhs['type'] === 'ArrayExpression') {
-    const elements = rhs['elements'] as AstNode[];
+  if (rhs.type === 'ArrayExpression') {
+    const elements = rhs.elements;
     if (elements.length === 0) return { defaultValue: [], bindable: false };
-    const allLiterals = elements.every((el) => el['type'] === 'Literal');
+    const allLiterals = elements.every((el) => el !== null && el.type === 'Literal');
     if (allLiterals) {
-      return { defaultValue: elements.map((el) => el['value']), bindable: false };
+      return { defaultValue: elements.map(literalElementValue), bindable: false };
     }
     return { defaultValue: undefined, bindable: false };
   }
 
-  if (rhs['type'] === 'CallExpression') {
-    const callee = rhs['callee'] as AstNode;
-    if (callee['type'] === 'Identifier' && callee['name'] === '$bindable') {
-      const args = rhs['arguments'] as AstNode[];
+  if (rhs.type === 'CallExpression') {
+    const callee = rhs.callee;
+    if (callee.type === 'Identifier' && callee.name === '$bindable') {
+      const args = rhs.arguments;
       if (args.length === 0) return { defaultValue: undefined, bindable: true };
       const firstArg = args[0];
-      if (firstArg === undefined) return { defaultValue: undefined, bindable: true };
-      if (firstArg['type'] === 'Literal')
-        return { defaultValue: firstArg['value'], bindable: true };
+      if (firstArg === undefined || firstArg.type === 'SpreadElement') {
+        return { defaultValue: undefined, bindable: true };
+      }
+      if (firstArg.type === 'Literal') return { defaultValue: firstArg.value, bindable: true };
       // ArrayExpression default with $bindable (e.g. $bindable([]))
-      if (firstArg['type'] === 'ArrayExpression') {
-        const elements = firstArg['elements'] as AstNode[];
-        return { defaultValue: elements.map((el) => el['value']), bindable: true };
+      if (firstArg.type === 'ArrayExpression') {
+        return { defaultValue: firstArg.elements.map(literalElementValue), bindable: true };
       }
       return { defaultValue: undefined, bindable: true };
     }
@@ -143,60 +147,73 @@ function parseDefaultExpression(rhs: AstNode): { defaultValue?: unknown; bindabl
 }
 
 /**
+ * Resolves the static name of an object-pattern property key. Returns
+ * `undefined` for keys that don't have a usable static name (e.g. a numeric
+ * `Literal` key on a destructured prop, which Svelte components never use).
+ */
+function staticPropertyKeyName(key: Property['key']): string | undefined {
+  if (key.type === 'Identifier') return key.name;
+  if (key.type === 'Literal' && typeof key.value === 'string') return key.value;
+  return undefined;
+}
+
+/**
  * Extracts prop entries from the ObjectPattern of a $props() destructuring.
  * Returns an empty array if the component does not use destructuring (e.g.
  * `const props: Props = $props()`).
  */
 function extractPropsFromSvelteAst(source: string): RawPropEntry[] {
-  const ast = parse(source, { filename: '__analyze__.svelte' });
-  const instanceScript = ast['instance'] as { content: { body: AstNode[] } } | undefined;
+  const ast: AST.Root = parse(source, { filename: '__analyze__.svelte', modern: true });
+  const instanceScript = ast.instance;
 
-  if (instanceScript === undefined) return [];
+  // `AST.Root.instance` is typed `Script | null`, but `parse(..., { modern: true })`
+  // returns `undefined` (not `null`) when a component has no instance `<script>`
+  // block — e.g. markup-only components, or ones with only a `<script module>`.
+  // A strict `=== null` check misses that case and falls through to
+  // `instanceScript.content`, throwing a TypeError. Use a nullish check so both
+  // `null` and `undefined` short-circuit to "no destructured props".
+  if (!instanceScript) return [];
 
   const body = instanceScript.content.body;
 
   for (const node of body) {
-    if (node['type'] !== 'VariableDeclaration') continue;
+    if (node.type !== 'VariableDeclaration') continue;
 
-    const declarations = node['declarations'] as AstNode[];
-    for (const declarator of declarations) {
-      const init = declarator['init'] as AstNode | undefined;
-      if (init === undefined) continue;
+    for (const declarator of node.declarations) {
+      const init = declarator.init;
+      if (init === undefined || init === null) continue;
 
-      // Look for either `$props()` directly or `$props()` as the expression
+      // Look for `$props()` as the initializer expression.
       const isPropsCall =
-        init['type'] === 'CallExpression' &&
-        (init['callee'] as AstNode)['type'] === 'Identifier' &&
-        (init['callee'] as AstNode)['name'] === '$props';
+        init.type === 'CallExpression' &&
+        init.callee.type === 'Identifier' &&
+        init.callee.name === '$props';
 
       if (!isPropsCall) continue;
 
-      const id = declarator['id'] as AstNode;
-      if (id['type'] !== 'ObjectPattern') {
-        // `const props: Type = $props()` — no destructuring, skip
+      const id: Pattern = declarator.id;
+      if (id.type !== 'ObjectPattern') {
+        // `const props: Type = $props()` â no destructuring, skip
         return [];
       }
 
-      const properties = id['properties'] as AstNode[];
       const entries: RawPropEntry[] = [];
 
-      for (const property of properties) {
-        // RestElement → ...rest spread — skip
-        if (property['type'] === 'RestElement') continue;
+      for (const property of id.properties) {
+        // RestElement â ...rest spread â skip
+        if (property.type === 'RestElement') continue;
 
-        const key = property['key'] as AstNode;
-        // Computed properties (e.g. [Symbol.iterator]) — skip
-        if (property['computed'] === true) continue;
+        // Computed properties (e.g. [Symbol.iterator]) â skip
+        if (property.computed) continue;
 
-        const rawName: string =
-          key['type'] === 'Identifier' ? (key['name'] as string) : (key['value'] as string);
+        const rawName = staticPropertyKeyName(property.key);
+        if (rawName === undefined) continue;
 
-        // class, aria-* and other non-standard names — will be filtered later
-        const value = property['value'] as AstNode;
+        // class, aria-* and other non-standard names â will be filtered later
+        const value = property.value;
 
-        if (value['type'] === 'AssignmentPattern') {
-          const rhs = value['right'] as AstNode;
-          const { defaultValue, bindable } = parseDefaultExpression(rhs);
+        if (value.type === 'AssignmentPattern') {
+          const { defaultValue, bindable } = parseDefaultExpression(value.right);
           entries.push({ name: rawName, defaultValue, bindable });
         } else {
           // No default value
@@ -212,16 +229,19 @@ function extractPropsFromSvelteAst(source: string): RawPropEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// ts-morph helpers — extracting type info from the module script block
+// ts-morph helpers â extracting type info from the module script block
 // ---------------------------------------------------------------------------
 
 /**
- * Extracts the content of the first `<script lang="ts" module>` block
- * (attribute order doesn't matter — matches both orderings).
+ * Extracts the content of the first `<script lang="ts" module>` block.
+ *
+ * Attribute order doesn't matter and the `module` attribute may stand alone:
+ * `<script module>`, `<script module lang="ts">`, and `<script lang="ts" module>`
+ * all match. The leading `[^>]*` (not `[^>]+`) is what permits the bare
+ * `<script module>` form valid in Svelte 5.
  */
 function extractModuleScriptContent(source: string): string {
-  // Match <script module lang="ts"> or <script lang="ts" module>
-  const pattern = /<script[^>]+\bmodule\b[^>]*>([\s\S]*?)<\/script>/;
+  const pattern = /<script[^>]*\bmodule\b[^>]*>([\s\S]*?)<\/script>/;
   const match = pattern.exec(source);
   return match?.[1] ?? '';
 }
@@ -283,23 +303,99 @@ type TypeInfo = {
   description: string | undefined;
 };
 
+// ---------------------------------------------------------------------------
+// Shared ts-morph Project
+// ---------------------------------------------------------------------------
+//
+// `analyzeAll` runs `analyzeComponent` concurrently via `Promise.all` for ~100
+// components. Creating a fresh `Project` per call spins up ~100 TypeScript
+// compiler instances, which is the dominant cost of a cold manifest build.
+//
+// Instead we keep one module-scoped `Project`, created lazily on first use, and
+// reuse it across every call. Each `buildTypeInfoMap` call adds a synthetic
+// source file under a unique path (so concurrent calls never collide), reads
+// the type info, then removes the file so the project doesn't accumulate stale
+// sources or leak memory.
+
+/** The shared ts-morph project, created lazily on first analysis. */
+let sharedProject: Project | undefined;
+/** Number of `Project` instances created — exposed for tests to assert sharing. */
+let projectCreationCount = 0;
+/** Monotonic counter guaranteeing a unique synthetic source-file path per call. */
+let syntheticFileCounter = 0;
+
 /**
- * Builds a map from prop name → TypeInfo by reading the exported Props type alias
+ * Returns the shared ts-morph `Project`, creating it on first use. Subsequent
+ * calls return the same instance so concurrent `analyzeComponent` runs share a
+ * single TypeScript compiler.
+ */
+function getSharedProject(): Project {
+  if (sharedProject === undefined) {
+    sharedProject = new Project({
+      tsConfigFilePath: join(import.meta.dirname, '../../components/tsconfig.json'),
+      skipAddingFilesFromTsConfig: true,
+    });
+    projectCreationCount += 1;
+  }
+  return sharedProject;
+}
+
+/**
+ * Disposes the shared ts-morph `Project` so the next analysis builds a fresh
+ * one. Wire this into manifest-cache invalidation (e.g. the playground
+ * watcher's rebuild path) so a long-running server never accumulates stale
+ * compiler state across rebuilds.
+ */
+export function resetProject(): void {
+  sharedProject = undefined;
+}
+
+/**
+ * Returns how many ts-morph `Project` instances have been created since module
+ * load. Tests use this to assert the project is shared across calls and that
+ * {@link resetProject} forces exactly one new instance.
+ */
+export function getProjectCreationCount(): number {
+  return projectCreationCount;
+}
+
+/**
+ * Builds a map from prop name â TypeInfo by reading the exported Props type alias
  * from ts-morph. Handles discriminated unions at the top level by walking all arms
- * and merging prop types (conflicting types → unknown).
+ * and merging prop types (conflicting types â unknown).
  */
 function buildTypeInfoMap(
   moduleScriptContent: string,
   componentName: string,
 ): Map<string, TypeInfo> {
-  const project = new Project({
-    tsConfigFilePath: join(import.meta.dirname, '../../components/tsconfig.json'),
-    skipAddingFilesFromTsConfig: true,
-  });
+  const project = getSharedProject();
 
-  const syntheticPath = `__synthetic__/${componentName}.ts`;
-  const sf = project.createSourceFile(syntheticPath, moduleScriptContent, { overwrite: true });
+  // A unique path per call keeps concurrent `analyzeComponent` runs (and repeat
+  // analyses of the same component) from clobbering each other's source file on
+  // the shared project.
+  syntheticFileCounter += 1;
+  const syntheticPath = `__synthetic__/${componentName}.${syntheticFileCounter}.ts`;
+  const sf = project.createSourceFile(syntheticPath, moduleScriptContent);
 
+  try {
+    return extractTypeInfo(sf, componentName);
+  } finally {
+    // Remove the synthetic source file so the shared project doesn't accumulate
+    // stale sources or leak memory across the ~100 components analyzed per build.
+    project.removeSourceFile(sf);
+  }
+}
+
+/**
+ * Reads the exported `${componentName}Props` type alias from an already-created
+ * ts-morph source file and returns a prop name → {@link TypeInfo} map. Split out
+ * of {@link buildTypeInfoMap} so the synthetic source file can be removed in a
+ * `finally` regardless of which early-return path is taken.
+ */
+function extractTypeInfo(
+  sf: ReturnType<Project['createSourceFile']>,
+  componentName: string,
+): Map<string, TypeInfo> {
   const propsAliasName = `${componentName}Props`;
   const propsAlias = sf.getTypeAlias(propsAliasName);
 
@@ -352,7 +448,7 @@ function buildTypeInfoMap(
             }
             if (prop.hasQuestionToken()) optional = true;
           } else {
-            // Prop missing from this arm → it's optional overall
+            // Prop missing from this arm â it's optional overall
             optional = true;
           }
         }
@@ -374,7 +470,7 @@ function buildTypeInfoMap(
       return;
     }
 
-    // TypeLiteral, IntersectionType, TypeReference — collect all properties
+    // TypeLiteral, IntersectionType, TypeReference â collect all properties
     const propMap = new Map<string, PropertySignature>();
     collectPropertiesFromTypeNode(node, propMap);
 
@@ -413,7 +509,7 @@ const SKIP_PROPS = new Set(['class', 'rest']);
 
 /** Analyzes a single Svelte component file and returns its ComponentManifest. */
 export async function analyzeComponent(filePath: string): Promise<ComponentManifest> {
-  const source = readFileSync(filePath, 'utf-8');
+  const source = await Bun.file(filePath).text();
   const fileBaseName = basename(filePath, '.svelte');
   const componentName = toPascalCase(fileBaseName);
 
@@ -424,8 +520,9 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
   // re-export types from <name>.types.ts. Concatenate the types-file content
   // so the existing module-script type walker finds the Props alias.
   const typesFilePath = filePath.replace(/\.svelte$/, '.types.ts');
-  if (existsSync(typesFilePath)) {
-    const typesSource = readFileSync(typesFilePath, 'utf-8');
+  const typesFile = Bun.file(typesFilePath);
+  if (await typesFile.exists()) {
+    const typesSource = await typesFile.text();
     moduleScriptContent = `${moduleScriptContent}\n${typesSource}`;
   }
 
@@ -475,26 +572,14 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
  * both legacy flat components (`<name>.svelte` at the top level) and the
  * migrated per-directory layout (`<name>/<name>.svelte`). Underscore-prefixed
  * names are excluded as internal-only.
+ *
+ * The file-path scan is shared with `discover.discoverComponents` via
+ * {@link discoverComponentFilePaths} so the two stay in lockstep.
  */
 export async function analyzeAll(componentsDir: string): Promise<ComponentManifest[]> {
-  const filePaths = new Set<string>();
+  const filePaths = await discoverComponentFilePaths(componentsDir);
 
-  // Flat (legacy) components.
-  for await (const file of new Bun.Glob('*.svelte').scan({ cwd: componentsDir })) {
-    if (file.startsWith('_')) continue;
-    filePaths.add(join(componentsDir, file));
-  }
-
-  // Directory-shaped (migrated) components: `<name>/<name>.svelte`.
-  for await (const dir of new Bun.Glob('*/').scan({ cwd: componentsDir, onlyFiles: false })) {
-    const dirName = dir.replace(/\/$/, '');
-    if (dirName.startsWith('_')) continue;
-    if (dirName === 'experimental' || dirName === 'icons') continue;
-    const candidate = join(componentsDir, dirName, `${dirName}.svelte`);
-    if (existsSync(candidate)) filePaths.add(candidate);
-  }
-
-  const manifests = await Promise.all([...filePaths].map((filePath) => analyzeComponent(filePath)));
+  const manifests = await Promise.all(filePaths.map((filePath) => analyzeComponent(filePath)));
 
   return manifests.toSorted((a, b) => a.kebabName.localeCompare(b.kebabName));
 }

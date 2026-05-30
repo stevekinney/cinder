@@ -66,6 +66,64 @@ If a local pre-push failure looks unrelated to your branch, check the latest `ma
 
 This workflow runs on pushes to `main`, on a daily schedule, and by manual dispatch. It is a default-branch monitor, not a pull-request required check: this repository currently reports `Branch not protected` for `main`, and `main-green / workspace-gates` should not be configured as a required pull-request status unless a future change adds a `pull_request` trigger. To roll this monitor back, revert `.github/workflows/main-green.yaml` and this section.
 
+## Deploying the playground to Vercel
+
+The playground (`@cinder/playground`) is a `Bun.serve` server that builds Svelte component bundles on the fly with `Bun.build` — there is no SvelteKit, no Vite, and no pre-rendered static output. On Vercel it runs as a **single Bun Function** that delegates every request to the same `handleRequest` the dev server uses.
+
+The moving parts:
+
+- `packages/playground/api/index.ts`: the Vercel Function entry. It default-exports `{ fetch }` (the Web Standard handler shape Vercel accepts directly) and forwards to `handleRequest` from `src/server.ts`. No second routing table, no Node `req`/`res` shim.
+- `packages/playground/vercel.json`: `bunVersion: "1.x"`, `framework: null`, the `vercel-build` build command, and `rewrites` that funnel every playground route (`/`, `/c/:name`, `/page/:name`, `/page-bundle/:f`, `/shell-bundle/:f`, `/bundle/:n/:s`, `/api/manifest*`, `/example-src/*`, `/styles/*`, `/components/*`, `/ping`, `/events`) to `/api/index`. The `functions["api/index.ts"].includeFiles` glob bundles `packages/components/{src,scripts}/**` into the function so the on-the-fly builds can read component sources at request time.
+- `packages/playground/scripts/vercel-build.ts` (the `vercel-build` npm script): smoke-imports the function entry so a broken import path fails the build instead of 500-ing the first live request, then materializes the `public/` output directory Vercel expects. `public/` is git-ignored — it holds no real static assets.
+- `.github/workflows/deploy-playground.yaml`: deploys on push to `main` (production) and on pull requests (preview). It uses the Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt`) and finishes with a `/ping` smoke-test.
+
+### The tradeoff (read this)
+
+Because every bundle is compiled on demand, the **first** request to a given route on a cold function instance pays a `Bun.build` cost; subsequent requests to that same warm instance (including the hashed-chunk URLs an entry references) are served from the in-process cache. There is no eager pre-build on Vercel — that lives only in the dev server's `startServer`, and running it per cold start would blow the function's startup budget for routes nobody visits. This is the right tradeoff for an internal component playground; it would **not** be appropriate for a high-traffic public site, where you'd want a real static export or a long-lived container instead.
+
+### One-time setup (a human must do this — it is not automated)
+
+Nothing below is performed by this repository or its workflows. A maintainer with Vercel access must do it once:
+
+1. **Create the Vercel project.** In the Vercel dashboard, import this Git repository as a new project (or run `bunx vercel link` locally from the repo root and follow the prompts).
+2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root, because `cinder` is a `workspace:*` dependency). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the function's `includeFiles` glob reaches up into `../components`, and that toggle must be on for those files to be available during the build.
+3. **Capture the three deploy secrets** and add them to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions):
+
+   | Secret              | Where it comes from                                                                                 |
+   | ------------------- | --------------------------------------------------------------------------------------------------- |
+   | `VERCEL_TOKEN`      | Vercel → Account Settings → Tokens → Create Token (scope it to the team that owns the project).      |
+   | `VERCEL_ORG_ID`     | `.vercel/project.json` after `bunx vercel link`, or Team Settings → General → Team ID.               |
+   | `VERCEL_PROJECT_ID` | `.vercel/project.json` after `bunx vercel link`, or the project's Settings → General → Project ID.   |
+
+   The workflow reads `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` from `env` and passes `VERCEL_TOKEN` to each CLI invocation. Fork pull requests can't read these secrets, so the deploy job skips itself on fork PRs rather than failing.
+
+### Verifying a live deploy (the smoke-test)
+
+Once the project and secrets exist, a push to `main` triggers `deploy-playground`. To check the result by hand (or after a `bunx vercel deploy` from your machine), hit the two health endpoints on the deployment URL:
+
+```bash
+# 1. Liveness — must return the literal text "pong".
+curl https://<your-deployment>.vercel.app/ping
+# → pong
+
+# 2. A real component page renders (returns 200 with the shell HTML).
+curl -i https://<your-deployment>.vercel.app/c/button | head -n 1
+# → HTTP/2 200
+```
+
+The workflow's `Smoke-test the deployment` step runs the `/ping` check automatically and writes the result to the job summary. If your Vercel plan has Deployment Protection enabled, the raw deployment URL may return `401` until you visit it authenticated — that is a gating response, not a deploy failure; verify through the dashboard's preview link instead.
+
+### Running the build locally
+
+The build step is runtime-safe to run on any machine with Bun:
+
+```bash
+cd packages/playground
+bun run vercel-build   # smoke-imports api/index.ts and writes public/
+```
+
+It does not contact Vercel or deploy anything — it only proves the function entry loads.
+
 ## Commits and pull requests
 
 - Conventional commit prefixes (`feat`, `fix`, `refactor`, `docs`, `chore`).

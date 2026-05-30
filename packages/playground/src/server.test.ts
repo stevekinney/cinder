@@ -13,6 +13,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import type { ComponentManifest } from './analyze.ts';
+import { jsonForScriptTag } from './render-shell.ts';
 import { PORT, createHttpServerOnAvailablePort, handleRequest, triggerReload } from './server.ts';
 
 const FIXTURE_COMPONENT = 'button';
@@ -221,8 +222,13 @@ describe('chunks under /page-bundle/<filename>.js', () => {
     // Hashed chunks contain a hash segment after the last `-`; the
     // unhashed entry URL is just `<component>.js`. Match the hashed
     // shape with at least one dash and an alphanumeric tail.
+    // A content-hashed chunk ends in `-<hash>.js` where the hash is a long
+    // lowercase-alphanumeric content digest (Bun's `[name]-[hash]` naming).
+    // Requiring that hash tail — rather than "any hyphenated segment" — avoids
+    // matching a bare multi-word entry like `page-accordion-item.js`, which has
+    // dashes but no hash and is served `no-store`, not `immutable`.
     const chunkUrls = Array.from(
-      body.matchAll(/\/page-bundle\/[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)+\.js/g),
+      body.matchAll(/\/page-bundle\/[A-Za-z0-9_-]+-[a-z0-9]{8,}\.js/g),
       (match) => match[0],
     );
     expect(chunkUrls.length).toBeGreaterThan(0);
@@ -232,6 +238,61 @@ describe('chunks under /page-bundle/<filename>.js', () => {
       expect(chunkResponse.status).toBe(200);
       expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
     }
+  }, 60_000);
+});
+
+// HTTP caching contract for the bundle routes. Content-hashed chunk URLs are
+// immutable (the hash changes when the bytes change), so they get a one-year
+// immutable Cache-Control. The bare, unhashed entry URLs the browser requests
+// directly (`/page-bundle/<component>.js`, `/shell-bundle/shell.js`,
+// `/bundle/<name>/<scenario>.js`) point at whatever the latest build produced
+// and must never be cached.
+describe('Cache-Control headers on bundle routes', () => {
+  const IMMUTABLE = 'public, max-age=31536000, immutable';
+  const NO_STORE = 'no-store';
+
+  it('serves the bare page-bundle entry URL with no-store', async () => {
+    const response = await handleRequest(req(`/page-bundle/${FIXTURE_COMPONENT}.js`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe(NO_STORE);
+  }, 30_000);
+
+  it('serves the shell-bundle entry URL with no-store', async () => {
+    const response = await handleRequest(req('/shell-bundle/shell.js'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe(NO_STORE);
+  }, 30_000);
+
+  it('serves the bare scenario bundle entry URL with no-store', async () => {
+    const response = await handleRequest(
+      req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe(NO_STORE);
+  }, 30_000);
+
+  it('serves content-hashed page-bundle chunks with an immutable Cache-Control', async () => {
+    // `chat` lazy-loads markdown rendering, so its entry references at least
+    // one hashed chunk. Warm the entry, extract a hashed chunk URL, then
+    // assert the chunk response carries the immutable header. Hashed URLs
+    // have a `-<hash>` segment; the bare entry URL (`chat.js`) does not.
+    const entryResponse = await handleRequest(req('/page-bundle/chat.js'));
+    expect(entryResponse.status).toBe(200);
+    const body = await entryResponse.text();
+    // A content-hashed chunk ends in `-<hash>.js` where the hash is a long
+    // lowercase-alphanumeric content digest (Bun's `[name]-[hash]` naming).
+    // Requiring that hash tail — rather than "any hyphenated segment" — avoids
+    // matching a bare multi-word entry like `page-accordion-item.js`, which has
+    // dashes but no hash and is served `no-store`, not `immutable`.
+    const chunkUrls = Array.from(
+      body.matchAll(/\/page-bundle\/[A-Za-z0-9_-]+-[a-z0-9]{8,}\.js/g),
+      (match) => match[0],
+    );
+    expect(chunkUrls.length).toBeGreaterThan(0);
+
+    const chunkResponse = await handleRequest(req(chunkUrls[0]!));
+    expect(chunkResponse.status).toBe(200);
+    expect(chunkResponse.headers.get('Cache-Control')).toBe(IMMUTABLE);
   }, 60_000);
 });
 
@@ -532,6 +593,95 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).toContain('href="/styles/all.css"');
     expect(html).not.toContain('href="/styles/index.css"');
+  });
+
+  it('checker background uses theme-adaptive custom properties, not hardcoded colors', async () => {
+    // Regression: the checker squares were hardcoded #e0e0e0 on a #fff base,
+    // which is blinding in dark mode. The pattern must adapt via light-dark()
+    // and the --cinder-surface token so it reads as a transparency checker in
+    // both schemes without any JS.
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    const checkerBlockMatch = /body\[data-cinder-bg="checker"\]\s*\{[^}]*\}/.exec(html);
+    expect(checkerBlockMatch).not.toBeNull();
+    const checkerBlock = checkerBlockMatch![0];
+    expect(checkerBlock).not.toContain('#fff');
+    expect(checkerBlock).not.toContain('#e0e0e0');
+    expect(checkerBlock).toContain('light-dark(');
+    expect(checkerBlock).toContain('var(--cinder-surface)');
+    // Geometry must stay a 16px grid checker.
+    expect(checkerBlock).toContain('background-size: 16px 16px');
+  });
+
+  it('wraps the body background/color transition in a reduced-motion guard', async () => {
+    // The crossfade must only run when the user has not requested reduced
+    // motion, so the unguarded `transition: background ...` is gone.
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    const guardMatch =
+      /@media\s*\(prefers-reduced-motion:\s*no-preference\)\s*\{[^}]*body\s*\{[^}]*transition:\s*background[^}]*\}/.exec(
+        html,
+      );
+    expect(guardMatch).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /page/:name — __CINDER_EXAMPLES__ inline-script escaping (regression for the
+// ecb46fa0 bug: renderComponentPage embedded the examples payload with a raw
+// JSON.stringify, so a `</script>` inside an example title/description closed
+// the inline <script> early and could inject markup. The fix routes the
+// payload through jsonForScriptTag, the same escaper used for the shell data
+// island. Verified at two levels: the escaping policy itself, and the live page.
+// ---------------------------------------------------------------------------
+
+describe('/page/:name — __CINDER_EXAMPLES__ script-tag escaping', () => {
+  it('jsonForScriptTag neutralizes </script> inside an examples-shaped payload', () => {
+    const examples = [
+      {
+        scenario: 'malicious',
+        title: 'Closes early</script><script>alert(1)</script>',
+        description: 'Also nasty: </script> & <img src=x onerror=alert(1)>',
+      },
+    ];
+
+    const encoded = jsonForScriptTag(examples);
+
+    // No raw markup characters survive — `<`, `>`, and `&` are all \uXXXX-escaped,
+    // so the payload cannot terminate the inline script or open a new element.
+    expect(encoded).not.toContain('<');
+    expect(encoded).not.toContain('>');
+    expect(encoded).not.toContain('&');
+    expect(encoded.toLowerCase()).not.toContain('</script');
+    expect(encoded).toContain('\\u003c'); // < was escaped
+    expect(encoded).toContain('\\u003e'); // > was escaped
+
+    // Still valid JSON that round-trips back to the original data.
+    expect(JSON.parse(encoded)).toEqual(examples);
+  });
+
+  it('embeds the live examples payload with no raw markup chars in the inline script', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+
+    // Isolate the __CINDER_EXAMPLES__ assignment (from `window.` to the
+    // terminating `;</script>` that legitimately closes that inline script).
+    const start = html.indexOf('window.__CINDER_EXAMPLES__');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const closer = html.indexOf('</script>', start);
+    expect(closer).toBeGreaterThan(start);
+    const assignment = html.slice(start, closer);
+
+    // The payload (everything after `= `) must carry no raw `<`, `>`, or `&` —
+    // those would mean a future example string could break out of the script.
+    const payload = assignment.slice(assignment.indexOf('= ') + 2);
+    expect(payload).not.toContain('<');
+    expect(payload).not.toContain('>');
+    expect(payload).not.toContain('&');
+
+    // The assignment still parses as JSON once the trailing `;` is dropped.
+    const json = payload.trimEnd().replace(/;$/, '');
+    expect(() => JSON.parse(json)).not.toThrow();
   });
 });
 

@@ -102,6 +102,12 @@ repomix-output.xml
 .env.*.local
 tmp/
 
+# Vercel CLI local state (vercel pull / vercel build write here)
+.vercel/
+
+# Playground Vercel build output (function-only deploy; no real static assets)
+packages/playground/public/
+
 # Playground server temporary wrapper files
 scripts/playground/.controls-*.svelte
 # Per-build UUID temp dirs created by buildBundle/buildPageBundle.

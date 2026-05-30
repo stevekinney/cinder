@@ -1,6 +1,14 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+
+  import Announcer from './announcer.svelte';
+  import {
+    announceNavigation,
+    Announcer as AnnouncerStore,
+    setAnnouncer,
+  } from './announcer.svelte.ts';
   import { createEventSource } from './event-source.svelte.ts';
-  import PreviewFrame from './preview-frame.svelte';
+  import PreviewFrame, { type PreviewFrameHandle } from './preview-frame.svelte';
   import {
     applyThemeToDocument,
     PreviewStore,
@@ -8,7 +16,7 @@
     setPreviewStore,
   } from './preview-store.svelte.ts';
   import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
-  import Sidebar from './sidebar.svelte';
+  import Sidebar, { type SidebarHandle } from './sidebar.svelte';
   import TopBar from './top-bar.svelte';
 
   type Props = {
@@ -17,6 +25,13 @@
   };
 
   let { initialComponent, components }: Props = $props();
+
+  // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
+  let sidebar = $state<SidebarHandle | null>(null);
+
+  // Bound to the PreviewFrame so live-reload events reload through it (re-arming
+  // the loading overlay) instead of poking the raw iframe.
+  let previewFrame = $state<PreviewFrameHandle | null>(null);
 
   // Seed the toolbar from the URL (shareable, survives reload). When the URL
   // is silent about theme, fall back to the localStorage preference so the
@@ -33,30 +48,88 @@
   });
   setPreviewStore(store);
 
+  // Single shared polite live region for the shell. The top bar pushes
+  // toolbar feedback through it; client-side navigation (below) announces the
+  // newly-viewed component. One instance keeps exactly one live region in the
+  // document (two would double-read every message).
+  const announcer = new AnnouncerStore();
+  setAnnouncer(announcer);
+
+  // Clear any pending live-region announcement if the shell is ever torn down,
+  // so a queued setTimeout never fires into a detached component tree. The
+  // shell lives for the page lifetime in practice, but cancelling on teardown
+  // keeps the announcer leak-free and prevents flaky timer carryover in tests.
+  // onDestroy (not a teardown-only $effect) states the intent directly: this is
+  // pure lifecycle cleanup that never tracks reactive state.
+  onDestroy(() => announcer.cancel());
+
+  // `<main>` is programmatically focusable (tabindex="-1") so keyboard focus
+  // can move to the freshly-rendered content after client-side navigation.
+  let mainEl = $state<HTMLElement | null>(null);
+
   // Apply the persisted theme to the shell's root document on first paint.
   // The inline pre-paint script in render-shell.ts already did this before
   // the bundle loaded, but reapplying here keeps the state machine simple
   // (the inline script is a perf optimization, not a correctness gate).
   if (typeof document !== 'undefined') applyThemeToDocument(document, store.theme);
 
-  function selectComponent(name: string): void {
+  async function selectComponent(name: string): Promise<void> {
     if (name === store.currentComponent) return;
     store.currentComponent = name;
     // Preserve the current query string (e.g. ?focus=1) and hash when
     // navigating between components.
     const { search, hash } = window.location;
     history.pushState({}, '', `${buildShellHref(name)}${search}${hash}`);
+
+    // Title (2.4.2) + live-region announcement (4.1.3) + focus move to the
+    // freshly-rendered <main> (2.4.3). Centralized in announceNavigation so the
+    // shell and its tests exercise the same code path.
+    await announceNavigation(announcer, name, () => mainEl);
   }
 
-  function handlePopState(): void {
+  async function handlePopState(): Promise<void> {
     const parsed = parseComponentFromPath(window.location.pathname);
     if (parsed !== null) store.currentComponent = parsed;
+    // Re-sync the toolbar (theme/viewport/focus mode) from the URL *before*
+    // announcing so the toolbar reflects the restored state by the time focus
+    // lands on <main>.
     store.syncFromUrl();
+    // Browser back/forward is client-side navigation too: apply the same
+    // title + live-region + focus side effects as selectComponent (WCAG
+    // 2.4.2 / 4.1.3 / 2.4.3). Guard on a resolved component, mirroring the
+    // null check above.
+    if (parsed !== null) await announceNavigation(announcer, parsed, () => mainEl);
+  }
+
+  /**
+   * True when the keystroke originated from somewhere the user is actively
+   * typing — a text field, textarea, or contenteditable region. Used to keep
+   * the `/` shortcut from hijacking a literal slash the user is typing.
+   */
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape' && store.isFocusMode) {
       store.isFocusMode = false;
+      return;
+    }
+    // `/` focuses the sidebar filter, but only when the user isn't already
+    // typing somewhere (so a literal slash in a field is untouched) and isn't
+    // holding a modifier (so browser shortcuts like ⌘/ are untouched).
+    if (
+      event.key === '/' &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !isTypingTarget(event.target)
+    ) {
+      event.preventDefault();
+      sidebar?.focusFilter();
     }
   }
 
@@ -66,8 +139,10 @@
   const streamUrl = typeof window === 'undefined' ? null : '/events';
 
   function handleReloadEvent(): void {
-    const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-cinder-preview]');
-    iframe?.contentWindow?.location.reload();
+    // Reload through the PreviewFrame handle (not the raw iframe) so the loading
+    // overlay re-arms during hot reload — a direct contentWindow.reload() keeps
+    // the same src, so the overlay would otherwise never show.
+    previewFrame?.reload();
   }
 
   function handleShellReloadEvent(): void {
@@ -80,10 +155,10 @@
 <!--
   Layout overview
   ───────────────
-  The top bar is fixed and spans the full viewport width. It owns the
-  --cinder-top-bar-height custom property (52px). Both the sidebar and
-  the main content area push their top edge down by that amount so nothing
-  slides behind the bar.
+  The top bar is fixed and spans the full viewport width. Its height lives
+  in the --cinder-top-bar-height custom property (52px), declared once on
+  :root by render-shell.ts. Both the sidebar and the main content area push
+  their top edge down by that amount so nothing slides behind the bar.
 
   Focus mode hides both the top bar and the sidebar so the preview fills
   the entire viewport (Escape restores the layout).
@@ -96,23 +171,31 @@
   })}
 >
   <TopBar />
-  <Sidebar {components} currentComponent={store.currentComponent} onSelect={selectComponent} />
-  <main>
-    <PreviewFrame componentName={store.currentComponent} />
+  <Sidebar
+    bind:this={sidebar}
+    {components}
+    currentComponent={store.currentComponent}
+    onSelect={selectComponent}
+  />
+  <!--
+    tabindex="-1" makes <main> programmatically focusable so client-side
+    navigation can move keyboard focus to the new content without adding it to
+    the Tab order. bind:this gives selectComponent a handle to call .focus().
+  -->
+  <main bind:this={mainEl} tabindex="-1">
+    <PreviewFrame bind:this={previewFrame} componentName={store.currentComponent} />
   </main>
+  <Announcer />
 </div>
 
 <style>
   /*
-   * --cinder-top-bar-height is declared on the .top-bar element inside
-   * TopBar. Inherit it here for layout math. If the value ever changes we
-   * only need to update the token in one place (top-bar.svelte).
+   * --cinder-top-bar-height is declared once on :root by render-shell.ts
+   * (the shell scaffold's <head> \3c style>). We just read it here for layout
+   * math — no local declaration or fallback needed since :root always wins
+   * the cascade for an inherited custom property.
    */
   .shell {
-    /* Provide a fallback so the shell still lays out correctly if the
-       TopBar custom property hasn't resolved yet. */
-    --cinder-top-bar-height: 52px;
-
     display: flex;
     height: 100vh;
     font-family: var(--cinder-font-sans);
@@ -136,6 +219,13 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+    /*
+     * <main> is focused programmatically after client-side navigation (it has
+     * tabindex="-1" but is never in the Tab order), so a visible focus ring on
+     * the whole region would be noise. Suppress it — sighted keyboard users
+     * still see focus rings on the interactive controls inside.
+     */
+    outline: none;
   }
 
   /* Focus mode: collapse both the fixed top bar and the sidebar */
@@ -143,7 +233,14 @@
     display: none;
   }
 
-  .shell.focus-mode :global(nav[aria-label='Components']) {
+  /*
+   * Hide the entire fixed sidebar column — not just its <nav> — so the
+   * sticky filter input and the column's right border also disappear. The
+   * filter lives in .sidebar-chrome above the nav, so hiding only the nav
+   * would leave an orphaned 220px search box overlaying the fullscreen
+   * preview.
+   */
+  .shell.focus-mode :global(.sidebar-chrome) {
     display: none;
   }
 
