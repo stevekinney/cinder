@@ -14,6 +14,8 @@ import { basename, dirname, join } from 'node:path';
 import { parse as parseSvelte } from 'svelte/compiler';
 import { Node, Project, type CallExpression, type SourceFile } from 'ts-morph';
 
+import { isObjectRecord } from './validation-utilities.ts';
+
 // ---------------------------------------------------------------------------
 // Interactive categories — components in these categories require a11y checks.
 // Source of truth: manifest.meta.ts categoryId set.
@@ -229,19 +231,10 @@ function hasAriaOrRoleCall(root: CallExpression): boolean {
 // Check 3 — hydration/SSR coverage
 // ---------------------------------------------------------------------------
 
-/**
- * Narrow an unknown value to an indexable record. The Svelte compiler returns
- * an untyped AST (`parse()` has no useful type), so every structural step below
- * narrows through this guard rather than asserting `as Record<…>`.
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /** Read a property as a nested record, or `undefined` if it isn't one. */
 function recordProperty(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
   const value = record[key];
-  return isRecord(value) ? value : undefined;
+  return isObjectRecord(value) ? value : undefined;
 }
 
 /**
@@ -259,7 +252,7 @@ export function hasBrowserGuard(sveltePath: string): boolean {
 
 function hasBrowserGuardInSource(source: string): boolean {
   const ast: unknown = parseSvelte(source, { modern: true });
-  if (!isRecord(ast)) return false;
+  if (!isObjectRecord(ast)) return false;
 
   // Check 1: a <script> block imports BROWSER from esm-env (structural — walk
   // the module and instance script ASTs, not a substring/regex on raw source).
@@ -280,21 +273,21 @@ function hasBrowserGuardInSource(source: string): boolean {
  * body the Svelte compiler attaches at `script.content.body` — no substring match.
  */
 function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
-  if (!isRecord(scriptNode)) return false;
+  if (!isObjectRecord(scriptNode)) return false;
   const content = recordProperty(scriptNode, 'content');
   if (!content) return false;
   const body = content['body'];
   if (!Array.isArray(body)) return false;
 
   for (const statement of body) {
-    if (!isRecord(statement)) continue;
+    if (!isObjectRecord(statement)) continue;
     if (statement['type'] !== 'ImportDeclaration') continue;
     const sourceNode = recordProperty(statement, 'source');
     if (sourceNode?.['value'] !== 'esm-env') continue;
     const specifiers = statement['specifiers'];
     if (!Array.isArray(specifiers)) continue;
     for (const specifier of specifiers) {
-      if (!isRecord(specifier)) continue;
+      if (!isObjectRecord(specifier)) continue;
       const imported = recordProperty(specifier, 'imported');
       if (imported?.['name'] === 'BROWSER') return true;
     }
@@ -307,7 +300,7 @@ function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
  * whose test expression is the identifier `browser` or `hydrated`.
  */
 function templateHasBrowserIfBlock(node: unknown): boolean {
-  if (!isRecord(node)) return false;
+  if (!isObjectRecord(node)) return false;
   const record = node;
 
   if (record['type'] === 'IfBlock') {
@@ -395,7 +388,7 @@ export function checkPropNames(schema: Record<string, unknown>): {
   warnings: string[];
 } {
   const properties = schema['properties'];
-  if (!isRecord(properties)) {
+  if (!isObjectRecord(properties)) {
     return { violations: [], warnings: [] };
   }
 
