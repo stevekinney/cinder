@@ -178,12 +178,14 @@ type ButtonSchema = typeof ButtonSchemaModule.default;
 ```
 
 > [!WARNING]
-> Do **not** use a default-only `import type ButtonSchemaModule from '…'`. That
-> binds `ButtonSchemaModule` to the **type of the default export** (`ComponentSchema`
-> directly), not the module namespace — so `typeof ButtonSchemaModule.default` fails
-> with `TS2339: Property 'default' does not exist on type 'ComponentSchema'`. Use
-> `import type * as` (namespace import) to bind the module namespace, where `.default`
-> correctly refers to the default-exported value.
+> Do **not** use a default-only `import type ButtonSchemaModule from '…'`. The failure
+> mode depends on your `moduleResolution`: under `bundler`, `node16`, or
+> `nodenext`-with-ESM-interop it errors with `TS2339: Property 'default' does not exist
+on type 'ComponentSchema'`; under `nodenext`'s CJS interop path it silently widens
+> `typeof ButtonSchemaModule.default` to `any`—no error, but you lose the schema type
+> entirely. Either way the default-import form is wrong. Use `import type * as` (namespace
+> import) to bind the module namespace, where `.default` correctly refers to the
+> default-exported value under every resolver.
 
 The resulting type describes a JSON Schema draft 2020-12 document: required
 props, prop types, enum values, and defaults are all there.
