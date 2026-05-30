@@ -170,19 +170,20 @@ modules**. They ship `types` + `svelte` conditions only — no `node`/`default`
 runtime condition, because the build emits no `.schema.js`/`.variables.js`. The
 default export is a **value** (`declare const _default: ComponentSchema`), so
 reach its type with `typeof`. Take it through `import(...)` as shown above, or
-off the default binding of an `import type`:
+off the namespace binding of an `import type * as`:
 
 ```ts
-import type ButtonSchemaModule from 'cinder/button/schema';
+import type * as ButtonSchemaModule from 'cinder/button/schema';
 type ButtonSchema = typeof ButtonSchemaModule.default;
 ```
 
 > [!WARNING]
-> A default-only `import type ButtonSchemaModule from '…'` binds the **module
-> namespace**, not the schema. Using that bare name in a type position fails
-> (`TS2709`/`TS2749`). Always reach the type through `typeof` — either
-> `typeof import('cinder/button/schema').default` or
-> `typeof ButtonSchemaModule.default`.
+> Do **not** use a default-only `import type ButtonSchemaModule from '…'`. That
+> binds `ButtonSchemaModule` to the **type of the default export** (`ComponentSchema`
+> directly), not the module namespace — so `typeof ButtonSchemaModule.default` fails
+> with `TS2339: Property 'default' does not exist on type 'ComponentSchema'`. Use
+> `import type * as` (namespace import) to bind the module namespace, where `.default`
+> correctly refers to the default-exported value.
 
 The resulting type describes a JSON Schema draft 2020-12 document: required
 props, prop types, enum values, and defaults are all there.
