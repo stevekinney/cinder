@@ -54,23 +54,67 @@ const RENDERING_MARKERS = ['scopeName', 'katex', '@shikijs', 'shiki'] as const;
 // `@cinder/markdown` self-reference resolves.
 const PACKAGE_ROOT = join(import.meta.dirname, '..');
 
+// Maximum number of Bun.build attempts per snippet. See `isTransientReadError`.
+const MAX_BUILD_ATTEMPTS = 5;
+
+/**
+ * Detect the transient filesystem read errors Bun's bundler throws on Linux
+ * when the same source file is touched concurrently by another process.
+ *
+ * Under CI the whole workspace runs `bun run --filter='*' test`, so the
+ * `@cinder/diff` package's own `bun test` process reads
+ * `packages/diff/src/line-diff.ts` at the same moment this test's
+ * `Bun.build` resolves that file through the `@cinder/diff/line-diff`
+ * re-export. On Linux that race surfaces as a transient
+ * `EISDIR reading file: ".../line-diff.ts"` or
+ * `Unexpected reading file: ".../line-diff.ts"` from the bundler — the
+ * file is a regular `.ts`, never a directory, and a fresh read succeeds.
+ * It never reproduces locally (single process) or on macOS. Retrying the
+ * build is the correct response: it preserves every leanness assertion and
+ * only papers over a known upstream bundler flake, not a real defect.
+ */
+function isTransientReadError(message: string): boolean {
+  return /(?:EISDIR|Unexpected) reading file:/.test(message);
+}
+
+async function buildOnce(entry: string): Promise<string> {
+  const result = await Bun.build({
+    entrypoints: [entry],
+    target: 'browser',
+    format: 'esm',
+    conditions: ['bun'],
+  });
+  if (!result.success) {
+    throw new Error(`Build failed:\n${result.logs.map(String).join('\n')}`);
+  }
+  const output = result.outputs[0];
+  if (!output) throw new Error('Build produced no output');
+  return await output.text();
+}
+
 async function bundleSnippet(snippet: string): Promise<string> {
   const dir = mkdtempSync(join(PACKAGE_ROOT, '.import-graph-'));
   const entry = join(dir, 'entry.ts');
   writeFileSync(entry, snippet);
   try {
-    const result = await Bun.build({
-      entrypoints: [entry],
-      target: 'browser',
-      format: 'esm',
-      conditions: ['bun'],
-    });
-    if (!result.success) {
-      throw new Error(`Build failed:\n${result.logs.map(String).join('\n')}`);
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_BUILD_ATTEMPTS; attempt++) {
+      try {
+        return await buildOnce(entry);
+      } catch (error) {
+        lastError = error;
+        if (attempt < MAX_BUILD_ATTEMPTS && isTransientReadError(String(error))) {
+          // Brief backoff so the concurrent reader's file-access window can
+          // close before we retry, instead of re-hitting the race instantly.
+          await Bun.sleep(25 * attempt);
+          continue;
+        }
+        throw error;
+      }
     }
-    const output = result.outputs[0];
-    if (!output) throw new Error('Build produced no output');
-    return await output.text();
+    // Unreachable: the loop either returns or throws, but TypeScript needs a
+    // terminal statement after the bounded retry.
+    throw lastError;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
