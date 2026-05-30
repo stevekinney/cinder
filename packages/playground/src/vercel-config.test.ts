@@ -61,6 +61,9 @@ describe('vercel.json', () => {
     // The on-the-fly builds read packages/components/{src,scripts} at request
     // time, so those trees must be bundled into the deployed function.
     expect(entry['includeFiles']).toBe('../components/{src,scripts}/**');
+    // maxDuration is load-bearing: a cold-start on-the-fly Svelte build can
+    // exceed Vercel's 10s default and time out without it.
+    expect(entry['maxDuration']).toBe(60);
   });
 
   it('relies on the catch-all root entrypoint, not a rewrites table', async () => {

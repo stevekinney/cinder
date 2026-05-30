@@ -9,7 +9,8 @@ name: deploy-playground
 #
 # The playground is a Bun.serve server that builds Svelte bundles on the fly
 # (no SvelteKit, no Vite). On Vercel it runs as a single Bun Function — see
-# packages/playground/api/index.ts and packages/playground/vercel.json.
+# packages/playground/src/server.ts (the root entrypoint) and
+# packages/playground/vercel.json.
 #
 # One-time setup (token, org id, project id, project root directory) is
 # documented in CONTRIBUTING.md § "Deploying the playground to Vercel".
