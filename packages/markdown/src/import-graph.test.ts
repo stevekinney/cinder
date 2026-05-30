@@ -65,9 +65,11 @@ const MAX_BUILD_ATTEMPTS = 5;
  * Pull every stringy field out of a thrown bundler error so the retry matcher
  * can see the real errno text.
  *
- * On a build failure `Bun.build` *throws* (it does not return
- * `success: false`), and the thrown value is an `AggregateError` whose own
- * `String(error)` is only `"AggregateError: Bundle failed"`. The actual
+ * Bun.build surfaces failures two ways: it may *throw* (most failures, including
+ * the transient read errors here), or — for some cases — return
+ * `{ success: false, logs }` (which `buildOnce` handles separately above). When
+ * it throws, the value is typically an `AggregateError` whose own
+ * `String(error)` is only `"AggregateError: Bundle failed"`; the actual
  * per-module diagnostic — e.g. `EISDIR reading file: ".../line-diff.ts"` —
  * lives one level down, on each entry of `error.errors`. We concatenate the
  * top-level string/message with every inner error's string/message and match
