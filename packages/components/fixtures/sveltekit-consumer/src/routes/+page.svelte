@@ -29,7 +29,9 @@
   let currentPage = $state(1);
   let inputValue = $state('');
   let textareaValue = $state('');
-  let selectValue = $state('option-a');
+  // Select is generic over its option value union (#192); the bound value must
+  // be one of the literal option values, not a widened `string`.
+  let selectValue = $state<'option-a' | 'option-b'>('option-a');
   let togglePressed = $state(false);
   let modalOpen = $state(false);
   let dropdownOpen = $state(false);

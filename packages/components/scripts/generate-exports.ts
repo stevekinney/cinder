@@ -340,8 +340,23 @@ export function computeExports(
     });
 
     // Schema and variables modules ship as source + types only. They are
-    // metadata, not runtime entry points; no JS is emitted for them so we
-    // intentionally do not add `node`/`default` here.
+    // metadata, not runtime entry points; no JS is emitted for them (the build
+    // produces only `.schema.d.ts` / `.variables.d.ts`, never `.schema.js`), so
+    // there is no target a `node`/`default`/`import` condition could point at.
+    //
+    // This is a deliberate contract, NOT a missing-`default` bug: adding a
+    // runtime condition here would advertise an export that resolves to a
+    // non-existent file. A Node/Vite consumer that resolves the default
+    // condition therefore gets `ERR_PACKAGE_PATH_NOT_EXPORTED` — by design.
+    //   • The unit test "never emits a runtime condition on /schema or
+    //     /variables" (generate-exports.test.ts) pins this at the generator.
+    //   • The manifest-consumer fixture (fixtures/manifest-consumer/check.mjs)
+    //     positively asserts the throw against the packed tarball at runtime.
+    //   • AGENTS.md § Discovery recipe documents the type-only contract and the
+    //     runtime escape hatch (read the `<name>.schema.json` sidecar) for the
+    //     rare consumer that genuinely needs the JSON value at runtime.
+    // If schema/variables ever become runtime entry points, all three must move
+    // together.
     out[`${prefix}/schema`] = orderedExportEntry({
       types: `${distDir}/${name}.schema.d.ts`,
       svelte: `${srcDir}/${name}.schema.ts`,

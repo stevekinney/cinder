@@ -79,6 +79,36 @@ describe('computeExports', () => {
     });
   });
 
+  // Tripwire (the inverse of the test above). The schema/variables subpaths are
+  // metadata, not runtime entry points: the build emits no `.schema.js` /
+  // `.variables.js`, so there is no target a runtime condition could point at.
+  // Adding `node`/`default`/`import` here would advertise a runtime export that
+  // resolves to a non-existent file — the exact regression task 4176c51c was
+  // filed against. The manifest-consumer fixture positively asserts these throw
+  // ERR_PACKAGE_PATH_NOT_EXPORTED at Node runtime; this unit test pins the same
+  // contract at the generator so a stray `default` is caught before it ships.
+  it('never emits a runtime condition on /schema or /variables', () => {
+    const out = computeExports([
+      { name: 'button', isExperimental: false, hasCss: false },
+      { name: 'lab', isExperimental: true, hasCss: false },
+    ]);
+    const runtimeConditions = ['node', 'default', 'import'] as const;
+    for (const key of [
+      './button/schema',
+      './button/variables',
+      './experimental/lab/schema',
+      './experimental/lab/variables',
+    ]) {
+      const entry = out[key]!;
+      expect(entry).toBeDefined();
+      for (const condition of runtimeConditions) {
+        expect(entry).not.toHaveProperty(condition);
+      }
+      // Only the type-narrowing conditions are present.
+      expect(Object.keys(entry)).toEqual(['types', 'svelte']);
+    }
+  });
+
   it('routes experimental components through the experimental dist paths', () => {
     const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: false }]);
     expect(out['./experimental/lab']).toEqual({
