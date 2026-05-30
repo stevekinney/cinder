@@ -65,10 +65,8 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
 
 /**
  * Components that intentionally render no class-bearing root element and
- * therefore do not need `cn()` / `classNames()`. Today this is the
- * pass-through `<CinderProvider>` whose entire job is to publish Svelte
- * context for descendants — it renders only `{@render children()}` and
- * carries no DOM of its own to merge classes onto.
+ * therefore do not need `cn()` / `classNames()`. This is empty today: every
+ * public component renders a class-bearing root.
  *
  * **When to add a component here:** the component's entire template is
  * `{@render children()}` (or another snippet/slot pass-through) with no
@@ -76,7 +74,7 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
  * `<div>` they don't expose a class prop for — should accept and merge a
  * `class` prop via `classNames()` rather than land on this list.
  */
-const NO_CLASS_MERGING_ALLOW_LIST = new Set(['cinder-provider']);
+const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([]);
 
 /**
  * Components that currently ship without a substantive behavioral `.test.ts`
@@ -350,9 +348,9 @@ describe('component conventions', () => {
       }
 
       // 5. Source contains cn( or classNames( for class merging.
-      //    Pass-through components (e.g. CinderProvider) that render no
-      //    class-bearing root element are exempt — they have no element to
-      //    merge classes onto.
+      //    Pure pass-through components that render no class-bearing root
+      //    element (see NO_CLASS_MERGING_ALLOW_LIST) are exempt — they have
+      //    no element to merge classes onto.
       if (
         !NO_CLASS_MERGING_ALLOW_LIST.has(name) &&
         !source.includes('cn(') &&

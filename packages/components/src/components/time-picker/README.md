@@ -18,25 +18,25 @@ A TimePicker component for entering a time with an optional scroll-list popover.
 
 <!-- generated:props:start -->
 
-| Prop           | Type                                     | Required | Default | Description         |
-| -------------- | ---------------------------------------- | -------- | ------- | ------------------- |
-| `defaultValue` | `string`                                 | no       | —       |                     |
-| `description`  | `string`                                 | no       | —       |                     |
-| `disabled`     | `boolean`                                | no       | —       |                     |
-| `error`        | `string`                                 | no       | —       |                     |
-| `hourCycle`    | `"h11"` \| `"h12"` \| `"h23"` \| `"h24"` | no       | —       |                     |
-| `id`           | `string`                                 | yes      | —       |                     |
-| `label`        | `string`                                 | no       | —       |                     |
-| `locale`       | `string`                                 | no       | —       |                     |
-| `max`          | `string`                                 | no       | —       |                     |
-| `min`          | `string`                                 | no       | —       |                     |
-| `name`         | `string`                                 | no       | —       |                     |
-| `required`     | `boolean`                                | no       | —       |                     |
-| `seconds`      | `boolean`                                | no       | —       |                     |
-| `step`         | `number`                                 | no       | —       |                     |
-| `value`        | `string`                                 | no       | —       |                     |
-| `class`        | `(opaque)`                               | —        | —       | unknown-shape       |
-| `onchange`     | `(opaque)`                               | —        | —       | function-or-snippet |
+| Prop           | Type                                     | Required | Default | Description                                                                                                                |
+| -------------- | ---------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `defaultValue` | `string`                                 | no       | —       |                                                                                                                            |
+| `description`  | `string`                                 | no       | —       |                                                                                                                            |
+| `disabled`     | `boolean`                                | no       | —       |                                                                                                                            |
+| `error`        | `string`                                 | no       | —       |                                                                                                                            |
+| `hourCycle`    | `"h11"` \| `"h12"` \| `"h23"` \| `"h24"` | no       | —       |                                                                                                                            |
+| `id`           | `string`                                 | yes      | —       |                                                                                                                            |
+| `label`        | `string`                                 | no       | —       |                                                                                                                            |
+| `locale`       | `string`                                 | no       | —       |                                                                                                                            |
+| `max`          | `string`                                 | no       | —       |                                                                                                                            |
+| `min`          | `string`                                 | no       | —       |                                                                                                                            |
+| `name`         | `string`                                 | no       | —       |                                                                                                                            |
+| `required`     | `boolean`                                | no       | —       |                                                                                                                            |
+| `seconds`      | `boolean`                                | no       | —       |                                                                                                                            |
+| `step`         | `number`                                 | no       | —       |                                                                                                                            |
+| `value`        | `string`                                 | no       | —       |                                                                                                                            |
+| `class`        | `(opaque)`                               | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `onchange`     | `(opaque)`                               | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

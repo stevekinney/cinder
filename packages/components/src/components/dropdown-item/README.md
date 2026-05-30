@@ -14,13 +14,13 @@ snippet. The flat `cinder/dropdown-item` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop            | Type                      | Required | Default | Description         |
-| --------------- | ------------------------- | -------- | ------- | ------------------- |
-| `class`         | `string`                  | no       | —       |                     |
-| `closeOnSelect` | `boolean`                 | no       | —       |                     |
-| `inset`         | `boolean`                 | no       | —       |                     |
-| `variant`       | `"default"` \| `"danger"` | no       | —       |                     |
-| `children`      | `(opaque)`                | —        | —       | function-or-snippet |
+| Prop            | Type                      | Required | Default | Description                                                                                                                |
+| --------------- | ------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`         | `string`                  | no       | —       |                                                                                                                            |
+| `closeOnSelect` | `boolean`                 | no       | —       |                                                                                                                            |
+| `inset`         | `boolean`                 | no       | —       |                                                                                                                            |
+| `variant`       | `"default"` \| `"danger"` | no       | —       |                                                                                                                            |
+| `children`      | `(opaque)`                | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

@@ -33,14 +33,14 @@ The leaves remain importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop        | Type                               | Required | Default | Description         |
-| ----------- | ---------------------------------- | -------- | ------- | ------------------- |
-| `class`     | `string`                           | no       | —       |                     |
-| `id`        | `string`                           | no       | —       |                     |
-| `open`      | `boolean`                          | no       | —       |                     |
-| `placement` | `"bottom-start"` \| `"bottom-end"` | no       | —       |                     |
-| `children`  | `(opaque)`                         | —        | —       | function-or-snippet |
-| `trigger`   | `(opaque)`                         | —        | —       | function-or-snippet |
+| Prop        | Type                               | Required | Default | Description                                                                                                                |
+| ----------- | ---------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`     | `string`                           | no       | —       |                                                                                                                            |
+| `id`        | `string`                           | no       | —       |                                                                                                                            |
+| `open`      | `boolean`                          | no       | —       |                                                                                                                            |
+| `placement` | `"bottom-start"` \| `"bottom-end"` | no       | —       |                                                                                                                            |
+| `children`  | `(opaque)`                         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `trigger`   | `(opaque)`                         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

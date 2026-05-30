@@ -16,21 +16,21 @@ A Input component. Replace this sentence with a one-line purpose statement once 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                                                  | Required | Default | Description         |
-| --------------------- | ------------------------------------------------------------------------------------- | -------- | ------- | ------------------- |
-| `description`         | `string`                                                                              | no       | —       |                     |
-| `disabled`            | `boolean`                                                                             | no       | —       |                     |
-| `error`               | `string`                                                                              | no       | —       |                     |
-| `id`                  | `string`                                                                              | yes      | —       |                     |
-| `label`               | `string`                                                                              | no       | —       |                     |
-| `leadingInteractive`  | `boolean`                                                                             | no       | —       |                     |
-| `required`            | `boolean`                                                                             | no       | —       |                     |
-| `trailingInteractive` | `boolean`                                                                             | no       | —       |                     |
-| `type`                | `"date"` \| `"email"` \| `"password"` \| `"search"` \| `"tel"` \| `"text"` \| `"url"` | no       | —       |                     |
-| `class`               | `(opaque)`                                                                            | —        | —       | unknown-shape       |
-| `leading`             | `(opaque)`                                                                            | —        | —       | function-or-snippet |
-| `trailing`            | `(opaque)`                                                                            | —        | —       | function-or-snippet |
-| `value`               | `(opaque)`                                                                            | —        | —       | unknown-shape       |
+| Prop                  | Type                                                                                  | Required | Default | Description                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `description`         | `string`                                                                              | no       | —       |                                                                                                                            |
+| `disabled`            | `boolean`                                                                             | no       | —       |                                                                                                                            |
+| `error`               | `string`                                                                              | no       | —       |                                                                                                                            |
+| `id`                  | `string`                                                                              | yes      | —       |                                                                                                                            |
+| `label`               | `string`                                                                              | no       | —       |                                                                                                                            |
+| `leadingInteractive`  | `boolean`                                                                             | no       | —       |                                                                                                                            |
+| `required`            | `boolean`                                                                             | no       | —       |                                                                                                                            |
+| `trailingInteractive` | `boolean`                                                                             | no       | —       |                                                                                                                            |
+| `type`                | `"date"` \| `"email"` \| `"password"` \| `"search"` \| `"tel"` \| `"text"` \| `"url"` | no       | —       |                                                                                                                            |
+| `class`               | `(opaque)`                                                                            | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `leading`             | `(opaque)`                                                                            | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `trailing`            | `(opaque)`                                                                            | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `value`               | `(opaque)`                                                                            | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

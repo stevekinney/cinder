@@ -505,20 +505,6 @@
       "import": "./src/components/chip/chip.examples.json",
       "default": "./src/components/chip/chip.examples.json"
     },
-    "./cinder-provider": {
-      "types": "./dist/components/cinder-provider/index.d.ts",
-      "svelte": "./src/components/cinder-provider/index.ts",
-      "node": "./dist/server/components/cinder-provider/index.js",
-      "default": "./dist/components/cinder-provider/index.js"
-    },
-    "./cinder-provider/schema": {
-      "types": "./dist/components/cinder-provider/cinder-provider.schema.d.ts",
-      "svelte": "./src/components/cinder-provider/cinder-provider.schema.ts"
-    },
-    "./cinder-provider/variables": {
-      "types": "./dist/components/cinder-provider/cinder-provider.variables.d.ts",
-      "svelte": "./src/components/cinder-provider/cinder-provider.variables.ts"
-    },
     "./cluster": {
       "types": "./dist/components/cluster/index.d.ts",
       "svelte": "./src/components/cluster/index.ts",

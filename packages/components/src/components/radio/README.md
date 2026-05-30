@@ -16,14 +16,14 @@ A Radio component. Replace this sentence with a one-line purpose statement once 
 
 <!-- generated:props:start -->
 
-| Prop          | Type       | Required | Default | Description                                                                      |
-| ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
-| `description` | `string`   | no       | —       | Helper text rendered as `<p id="{id}-description">`, wired via aria-describedby. |
-| `disabled`    | `boolean`  | no       | —       | Override the group's `disabled` for this single radio.                           |
-| `id`          | `string`   | yes      | —       | Unique identifier — required for label association.                              |
-| `label`       | `string`   | yes      | —       | Visible label rendered in a `<label>` element associated via `for`.              |
-| `class`       | `(opaque)` | —        | —       | unknown-shape                                                                    |
-| `value`       | `(opaque)` | —        | —       | unknown-shape                                                                    |
+| Prop          | Type       | Required | Default | Description                                                                                             |
+| ------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `description` | `string`   | no       | —       | Helper text rendered as `<p id="{id}-description">`, wired via aria-describedby.                        |
+| `disabled`    | `boolean`  | no       | —       | Override the group's `disabled` for this single radio.                                                  |
+| `id`          | `string`   | yes      | —       | Unique identifier — required for label association.                                                     |
+| `label`       | `string`   | yes      | —       | Visible label rendered in a `<label>` element associated via `for`.                                     |
+| `class`       | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `value`       | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

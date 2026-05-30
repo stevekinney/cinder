@@ -77,63 +77,72 @@ experimental-component styles and the JSON-highlight token set used by
 sub-entries — `cinder/styles/tokens`, `cinder/styles/foundation`, and
 `cinder/styles/utilities` — for advanced à-la-carte setups.
 
-### Provider setup (highlighter context)
+### Syntax highlighting (automatic)
 
-> [!WARNING]
-> CinderProvider is planned for removal: CodeBlock is moving to auto-load Shiki on
-> its own, so don't scaffold a provider expecting it to be permanent. Today it is
-> still required for highlighting; only add it if you need a custom highlighter or
-> scoped highlighting for a subtree.
-
-`<CodeBlock>` resolves its syntax highlighter through Svelte context. Mount
-**one** `<CinderProvider>` near your app root and every descendant
-`<CodeBlock>` shares the highlighter. The recommended default is the
-bundled `cinder/highlighters/shiki` adapter:
+`<CodeBlock>` highlights itself. Set a `language` and that is all you need —
+CodeBlock lazy-loads the bundled `cinder/highlighters/shiki` adapter on the
+client and highlights automatically. There is no provider to mount and no
+highlighter to wire:
 
 ```svelte
 <script lang="ts">
-  import { CinderProvider } from 'cinder';
-  import { shikiHighlighter } from 'cinder/highlighters/shiki';
-
-  const highlighter = shikiHighlighter();
+  import { CodeBlock } from 'cinder';
 </script>
 
-<CinderProvider {highlighter}>
-  <!-- the rest of your app -->
-</CinderProvider>
+<CodeBlock {code} language="ts" />
 ```
 
-`shikiHighlighter()` accepts a `theme` (single string or
-`{ light, dark }` for CSS-variable-driven dual-theme mode) and an
-optional `langs` array to preload specific grammars. [Shiki](https://shiki.style/)
-itself is
-lazy-imported on the first highlight call, so consumers that never
-mount this adapter ship zero Shiki bytes in their entry chunk.
+Highlighting is a two-phase, client-only enhancement: the server (and the
+first client paint) emit the plain `<pre><code>` fallback, and CodeBlock swaps
+in the highlighted HTML once Shiki resolves — there is a brief flash before
+that swap. Shiki is dynamic-imported the first time any `<CodeBlock>` actually
+highlights, so it never lands in the SSR bundle and a page that renders no
+highlighted code ships zero Shiki bytes in its entry chunk.
 
-> [!WARNING]
-> Pass `theme` as `{ light, dark }` (the default) when highlighted code
-> should re-theme with cinder's light/dark switch. A single-string `theme`
-> bakes one palette into Shiki's inline `color:` styles, which CSS cannot
-> override per theme. That means the choice has to happen at highlight time in
-> `shikiHighlighter`, not later in cinder's stylesheet.
+The bundled default applies Shiki's dual-theme mode (`github-light` /
+`github-dark`), which emits CSS variables that re-theme with cinder's
+light/dark switch. Empty, missing, or unknown languages fall back to escaped
+plaintext rather than throwing.
 
-`<CodeBlock>` rendered without an ancestor provider (or with a provider
-that supplies no `highlighter`) falls back to escaped plaintext — the
-"no syntax highlighting" state is a first-class supported render. The
-adapter follows the same fallback contract: empty/missing/unknown
-languages render as escaped plaintext rather than throwing.
+To override the default per instance, pass a custom `highlighter` — for
+example a `shikiHighlighter()` configured with a specific theme or preloaded
+grammars:
 
-`<CinderProvider>` is app setup context, not a visual component. Treat it
-like a root-level capability boundary for syntax highlighting rather than
-something you render in a component gallery or playground sidebar.
+```svelte
+<script lang="ts">
+  import { CodeBlock } from 'cinder';
+  import { shikiHighlighter } from 'cinder/highlighters/shiki';
+  import type { Highlighter } from 'cinder';
 
-The provider is reactive: assigning a new `highlighter` re-renders every
-descendant `<CodeBlock>`. Nest a second `<CinderProvider>` to scope a
-different highlighter to a subtree (the nearest provider wins). For a
-custom highlighter, implement the `Highlighter` type from `cinder` and
-pass it to `<CinderProvider highlighter={...}>` — the function receives
-`(code, lang)` and must return safe HTML (Shiki's `codeToHtml` escapes
-input by default; if you build your own, escape the code yourself).
+  // A single theme string, or { light, dark } for dual-theme mode; `langs`
+  // preloads specific grammars. Shiki is lazy-imported on first highlight.
+  const highlighter: Highlighter = shikiHighlighter({ theme: 'github-light' });
+</script>
+
+<CodeBlock {code} language="ts" {highlighter} />
+```
+
+> [!WARNING] The `highlighter` output is rendered with `{@html}`
+> A custom `highlighter` returns trusted HTML rendered verbatim via `{@html}`.
+> It MUST escape any user- or caller-provided `code` before returning markup,
+> or it opens an HTML-injection / XSS hole. cinder's only safety guarantee is
+> that the bundled adapter with default options escapes code text — a custom
+> highlighter (and Shiki with custom transformers / decorations / raw-HTML
+> options) is your trust boundary, not cinder's. When you want guaranteed
+> escaped plaintext, pass `highlight={false}` instead: that path renders the
+> code through Svelte text interpolation and never touches `{@html}`.
+
+> [!WARNING] Single-string themes do not re-theme
+> Pass `theme` as `{ light, dark }` when highlighted code should re-theme with
+> cinder's light/dark switch. A single-string `theme` bakes one palette into
+> Shiki's inline `color:` styles, which CSS cannot override per theme — the
+> choice happens at highlight time in `shikiHighlighter`, not later in cinder's
+> stylesheet.
+
+`highlight={false}` keeps the `language` header label while disabling all
+highlighting — including an explicit `highlighter` prop — and triggers no
+Shiki import at all. It is the absolute off switch and the guaranteed-escaped
+plaintext path.
 
 ### Discovery recipe (the agent contract)
 
@@ -302,12 +311,10 @@ scope and you should wire them up yourself:
   take them as snippets or slots — pass an `<svg>`, a Lucide component,
   whatever you ship.
 - **No data fetching.** Components render the data you hand them.
-- **No global state.** There is no `cinder` store or initialization step
-  beyond the styles import. The one optional context provider is
-  `<CinderProvider>` — it scopes a syntax highlighter to its subtree for
-  `<CodeBlock>` to read; see "Provider setup" above. Mount it only if you
-  want syntax highlighting; the unhighlighted code-block render is the
-  no-provider state.
+- **No global state.** There is no `cinder` store, context provider, or
+  initialization step beyond the styles import. `<CodeBlock>` highlights
+  itself by lazy-loading Shiki on the client (see "Syntax highlighting"
+  above) — no provider to mount.
 
 ---
 

@@ -23,7 +23,7 @@ A Avatar component. Replace this sentence with a one-line purpose statement once
 | `shape` | `"circle"` \| `"square"`                       | no       | —       | Shape. Default `circle`.                                                                                        |
 | `size`  | `"xs"` \| `"sm"` \| `"md"` \| `"lg"` \| `"xl"` | no       | —       | Size token. Default `md`.                                                                                       |
 | `src`   | `string`                                       | no       | —       | Image source. When omitted, the initials fallback renders.                                                      |
-| `class` | `(opaque)`                                     | —        | —       | unknown-shape                                                                                                   |
+| `class` | `(opaque)`                                     | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.         |
 
 <!-- generated:props:end -->
 

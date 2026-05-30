@@ -3,62 +3,91 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.
+   * @purpose Block container for multi-line source code with automatic syntax highlighting and a copy-to-clipboard control.
    * @tag code
    * @tag snippet
    * @useWhen Displaying a multi-line code sample or terminal transcript inside documentation or chat.
    * @useWhen Letting the reader copy a snippet to the clipboard via the copyable prop.
    * @avoidWhen Annotating a single inline keystroke or shortcut — use kbd instead.
    * @avoidWhen Rendering rich prose that happens to include code — embed it in markdown instead.
-   * @related kbd, copy-button, cinder-provider
+   * @related kbd, copy-button
    */
   export type { CodeBlockProps } from './code-block.types.ts';
 </script>
 
 <script lang="ts">
-  import { getHighlighterContext } from '../../_internal/highlighter-context.ts';
+  import { loadDefaultHighlighter } from './code-block-default-highlighter.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import type { CodeBlockProps } from './code-block.types.ts';
 
-  let { code, language, copyable = false, class: className }: CodeBlockProps = $props();
-
-  // Capture the highlighter context at component init — Svelte's
-  // `getContext` is documented as init-only, so any call from inside a
-  // `$effect` is outside the supported lifecycle phase. Reading the
-  // getter property from the captured context object inside the effect
-  // below preserves the prop-reactivity the provider bridges.
-  const highlighterContext = getHighlighterContext();
+  let {
+    code,
+    language,
+    highlight,
+    highlighter,
+    copyable = false,
+    class: className,
+  }: CodeBlockProps = $props();
 
   let highlighted = $state<string | null>(null);
 
+  // Two-phase render contract: the server (and the first client paint) emits
+  // the plain `<pre><code>` fallback because `$effect` never runs during SSR.
+  // The effect below — client-only by definition — enhances the block to the
+  // highlighted HTML once the highlighter resolves. Keeping the Shiki boundary
+  // a dynamic import inside this effect is what keeps Shiki out of the SSR
+  // bundle and the consumer's entry chunk.
   $effect(() => {
-    // Read the highlighter from the captured context on every run. The
-    // provider stores it behind a getter property so swapping the prop
-    // on a live provider re-runs this effect with the new function.
-    const highlighter = highlighterContext?.highlighter;
-    if (!language || !highlighter) {
+    // `highlight={false}` is an absolute off switch: it disables ALL
+    // highlighting — including an explicit `highlighter` prop — and triggers
+    // NO default-highlighter import. The block stays the escaped plain
+    // fallback. (Default when unset: highlight whenever `language` is set.)
+    if (highlight === false || !language) {
       highlighted = null;
       return;
     }
+
+    // Snapshot the inputs this run highlights so a later `code`/`language`/
+    // `highlighter` change can't let a stale (and `{@html}`-trusted) result
+    // overwrite a newer state. The cleanup flips `cancelled`, which gates
+    // EVERY assignment below — including the one after the async default
+    // load resolves.
+    const pendingCode = code;
+    const pendingLanguage = language;
+    const explicitHighlighter = highlighter;
+
     // Drop any stale highlighted output before starting a new request so a
-    // code/lang/highlighter change can't leave the previous render visible
-    // while the new request is in flight.
+    // change can't leave the previous render visible while the new request
+    // is in flight.
     highlighted = null;
     let cancelled = false;
-    // The highlighter may throw synchronously OR reject. Promise.resolve()
-    // alone wouldn't catch a sync throw — wrap in an async IIFE so both
-    // failure modes hit the same `.catch`.
+
+    // The highlighter may throw synchronously OR reject, and resolving the
+    // default highlighter is itself async — wrap everything in one async IIFE
+    // so all failure modes hit the same `catch`.
     void (async () => {
       try {
-        const html = await highlighter(code, language);
+        // An explicit `highlighter` bypasses the default entirely: the default
+        // loader is never imported, so its Shiki load + factory side effects
+        // never fire (asserted in the unit tests).
+        const resolvedHighlighter = explicitHighlighter ?? (await loadDefaultHighlighter());
+        if (cancelled) return;
+        const html = await resolvedHighlighter(pendingCode, pendingLanguage);
         if (!cancelled) highlighted = html === '' ? null : html;
       } catch (error) {
         if (!cancelled) highlighted = null;
         // Surface to the developer without breaking the graceful fallback.
-        console.warn('[cinder/CodeBlock] highlighter threw:', error);
+        // Never log the code itself — a code block can contain secrets. Log
+        // the language and the error class/message only.
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        console.warn(
+          `[cinder/CodeBlock] highlight failed for language "${pendingLanguage}":`,
+          detail,
+        );
       }
     })();
+
     return () => {
       cancelled = true;
     };

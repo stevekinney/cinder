@@ -26,10 +26,10 @@ A Image component. Replace this sentence with a one-line purpose statement once 
 | `ratio`       | `string`                          | no       | —       | CSS aspect-ratio applied to the wrapper (e.g. `'16 / 9'`) so layout is stable while the image loads.                                                           |
 | `src`         | `string`                          | yes      | —       | Image source URL.                                                                                                                                              |
 | `width`       | `number`                          | no       | —       | Native pixel width.                                                                                                                                            |
-| `class`       | `(opaque)`                        | —        | —       | unknown-shape                                                                                                                                                  |
-| `fallback`    | `(opaque)`                        | —        | —       | function-or-snippet                                                                                                                                            |
-| `onerror`     | `(opaque)`                        | —        | —       | function-or-snippet                                                                                                                                            |
-| `onload`      | `(opaque)`                        | —        | —       | function-or-snippet                                                                                                                                            |
+| `class`       | `(opaque)`                        | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                        |
+| `fallback`    | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
+| `onerror`     | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
+| `onload`      | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
 
 <!-- generated:props:end -->
 

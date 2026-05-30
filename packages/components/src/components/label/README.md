@@ -16,13 +16,13 @@ A Label component. Replace this sentence with a one-line purpose statement once 
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                         |
-| ---------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------- |
-| `disabled` | `boolean`  | no       | —       | When true, render the label in the disabled color treatment.                        |
-| `for`      | `string`   | yes      | —       | The id of the form control this label labels. Sets `for` on the rendered `<label>`. |
-| `required` | `boolean`  | no       | —       | When true, append a visual indicator that the field is required.                    |
-| `children` | `(opaque)` | —        | —       | function-or-snippet                                                                 |
-| `class`    | `(opaque)` | —        | —       | unknown-shape                                                                       |
+| Prop       | Type       | Required | Default | Description                                                                                                                |
+| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `disabled` | `boolean`  | no       | —       | When true, render the label in the disabled color treatment.                                                               |
+| `for`      | `string`   | yes      | —       | The id of the form control this label labels. Sets `for` on the rendered `<label>`.                                        |
+| `required` | `boolean`  | no       | —       | When true, append a visual indicator that the field is required.                                                           |
+| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `class`    | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

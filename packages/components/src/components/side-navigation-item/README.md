@@ -14,14 +14,14 @@ snippet. The flat `cinder/side-navigation-item` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop            | Type       | Required | Default | Description                       |
-| --------------- | ---------- | -------- | ------- | --------------------------------- |
-| `active`        | `boolean`  | no       | —       |                                   |
-| `class`         | `string`   | no       | —       |                                   |
-| `disabled`      | `boolean`  | no       | —       |                                   |
-| `listItemClass` | `string`   | no       | —       | Class merged onto the outer <li>. |
-| `children`      | `(opaque)` | —        | —       | function-or-snippet               |
-| `onclick`       | `(opaque)` | —        | —       | function-or-snippet               |
+| Prop            | Type       | Required | Default | Description                                                                                                                |
+| --------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `active`        | `boolean`  | no       | —       |                                                                                                                            |
+| `class`         | `string`   | no       | —       |                                                                                                                            |
+| `disabled`      | `boolean`  | no       | —       |                                                                                                                            |
+| `listItemClass` | `string`   | no       | —       | Class merged onto the outer <li>.                                                                                          |
+| `children`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onclick`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

@@ -16,14 +16,14 @@ A EmptyState component. Replace this sentence with a one-line purpose statement 
 
 <!-- generated:props:start -->
 
-| Prop           | Type                                   | Required | Default | Description                          |
-| -------------- | -------------------------------------- | -------- | ------- | ------------------------------------ |
-| `class`        | `string`                               | no       | —       |                                      |
-| `description`  | `string`                               | no       | —       |                                      |
-| `headingLevel` | `1` \| `2` \| `3` \| `4` \| `5` \| `6` | no       | `3`     | Heading level for the title element. |
-| `title`        | `string`                               | yes      | —       |                                      |
-| `action`       | `(opaque)`                             | —        | —       | function-or-snippet                  |
-| `icon`         | `(opaque)`                             | —        | —       | function-or-snippet                  |
+| Prop           | Type                                   | Required | Default | Description                                                                                                                |
+| -------------- | -------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`        | `string`                               | no       | —       |                                                                                                                            |
+| `description`  | `string`                               | no       | —       |                                                                                                                            |
+| `headingLevel` | `1` \| `2` \| `3` \| `4` \| `5` \| `6` | no       | `3`     | Heading level for the title element.                                                                                       |
+| `title`        | `string`                               | yes      | —       |                                                                                                                            |
+| `action`       | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `icon`         | `(opaque)`                             | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

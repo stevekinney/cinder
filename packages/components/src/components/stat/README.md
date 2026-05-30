@@ -14,15 +14,15 @@ snippet. The flat `cinder/stat` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop                 | Type                 | Required | Default | Description                                                                   |
-| -------------------- | -------------------- | -------- | ------- | ----------------------------------------------------------------------------- |
-| `class`              | `string`             | no       | —       | Additional class names merged with `.cinder-stat`.                            |
-| `label`              | `string`             | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                    |
-| `value`              | `string` \| `number` | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber. |
-| `valueLocale`        | `string`             | no       | —       | Locale forwarded to formatNumber (defaults to en-US).                         |
-| `change`             | `(opaque)`           | —        | —       | unknown-shape                                                                 |
-| `icon`               | `(opaque)`           | —        | —       | function-or-snippet                                                           |
-| `valueFormatOptions` | `(opaque)`           | —        | —       | unknown-shape                                                                 |
+| Prop                 | Type                 | Required | Default | Description                                                                                                                |
+| -------------------- | -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`              | `string`             | no       | —       | Additional class names merged with `.cinder-stat`.                                                                         |
+| `label`              | `string`             | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                                                                 |
+| `value`              | `string` \| `number` | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber.                                              |
+| `valueLocale`        | `string`             | no       | —       | Locale forwarded to formatNumber (defaults to en-US).                                                                      |
+| `change`             | `(opaque)`           | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `icon`               | `(opaque)`           | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `valueFormatOptions` | `(opaque)`           | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

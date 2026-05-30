@@ -2,19 +2,17 @@
 'cinder': minor
 ---
 
-New first-party Shiki adapter at `cinder/highlighters/shiki`. Pair it with `<CinderProvider>` for syntax highlighting with one import — no manual `codeToHtml` wrapper required.
+New first-party Shiki adapter at `cinder/highlighters/shiki`. `<CodeBlock>` already auto-loads it with default options when a `language` is set, so you only need it directly to customize the theme or preload grammars — then pass it via the `highlighter` prop. No manual `codeToHtml` wrapper required.
 
 ```svelte
 <script lang="ts">
-  import { CinderProvider } from 'cinder';
+  import { CodeBlock } from 'cinder';
   import { shikiHighlighter } from 'cinder/highlighters/shiki';
 
-  const highlighter = shikiHighlighter();
+  const highlighter = shikiHighlighter({ theme: 'github-light' });
 </script>
 
-<CinderProvider {highlighter}>
-  <!-- the rest of your app -->
-</CinderProvider>
+<CodeBlock {code} language="ts" {highlighter} />
 ```
 
 **Options:**

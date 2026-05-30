@@ -31,7 +31,6 @@
 </script>
 
 <script lang="ts">
-  import CinderProvider from '../../cinder-provider/cinder-provider.svelte';
   import CodeBlock from '../../code-block/code-block.svelte';
   import { classNames } from '../../../utilities/class-names.ts';
 
@@ -46,12 +45,12 @@
 </script>
 
 <div class={classNames('tool-payload-code', className)}>
-  <!-- Scoped highlighter: wrap a local CinderProvider so this tool-payload
-       always gets the JSON/depict highlighter regardless of what the app
-       root provider supplies. The nearest provider wins. -->
-  <CinderProvider highlighter={highlightJson}>
-    <CodeBlock {code} language="json" />
-  </CinderProvider>
+  <!-- Scoped highlighter: pass this tool-payload's own JSON/`depict`-themed
+       highlighter directly so the tool payload is always highlighted with the
+       depict theme — it is NOT routed through CodeBlock's bundled auto-load
+       default, which would silently change the JSON theme and Shiki load
+       timing. -->
+  <CodeBlock {code} language="json" highlighter={highlightJson} />
 </div>
 
 <style>
