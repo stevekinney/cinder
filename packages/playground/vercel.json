@@ -6,9 +6,25 @@
   "installCommand": "cd ../.. && bun install --frozen-lockfile",
   "outputDirectory": "public",
   "functions": {
-    "src/server.ts": {
+    "api/index.ts": {
       "includeFiles": "../components/{src,scripts}/**",
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/ping", "destination": "/api/index" },
+    { "source": "/events", "destination": "/api/index" },
+    { "source": "/styles.css", "destination": "/api/index" },
+    { "source": "/styles/:path*", "destination": "/api/index" },
+    { "source": "/components/:path*", "destination": "/api/index" },
+    { "source": "/c/:name", "destination": "/api/index" },
+    { "source": "/page/:name", "destination": "/api/index" },
+    { "source": "/page-bundle/:file", "destination": "/api/index" },
+    { "source": "/shell-bundle/:file", "destination": "/api/index" },
+    { "source": "/bundle/:name/:scenario", "destination": "/api/index" },
+    { "source": "/api/manifest", "destination": "/api/index" },
+    { "source": "/api/manifest/:name", "destination": "/api/index" },
+    { "source": "/example-src/:name/:scenario", "destination": "/api/index" }
+  ]
 }

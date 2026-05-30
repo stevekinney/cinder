@@ -2,13 +2,12 @@
  * Production build step for the cinder playground's Vercel deployment.
  *
  * The playground has no compiled output: every page and bundle is built on the
- * fly by the `src/server.ts` Bun Function (the Vercel root entrypoint) at
- * request time (see that file and `vercel.json`). So this "build" does two
- * cheap, deploy-protecting things:
+ * fly by the `api/index.ts` Bun Function at request time (see that file and
+ * `vercel.json`). So this "build" does two cheap, deploy-protecting things:
  *
- *   1. Smoke-imports the function entry. Importing `src/server.ts` transitively
- *      loads the Svelte build plugin under `packages/components/scripts`. If
- *      any of that fails to evaluate — a
+ *   1. Smoke-imports the function entry. Importing `api/index.ts` transitively
+ *      loads `src/playground-server.ts` and the Svelte build plugin under
+ *      `packages/components/scripts`. If any of that fails to evaluate — a
  *      bad import path, a syntax error, a missing dependency — the build fails
  *      loudly here instead of 500-ing on the first live request.
  *   2. Materializes the `outputDirectory` that `vercel.json` points at
@@ -32,10 +31,10 @@ const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
  * handler, exercised by the smoke test, not at build time.
  */
 async function verifyFunctionEntryLoads(): Promise<void> {
-  const entry = await import('../src/server.ts');
+  const entry = await import('../api/index.ts');
   if (typeof entry.default?.fetch !== 'function') {
     throw new Error(
-      '[playground:vercel-build] src/server.ts must default-export an object with a fetch() method (the Vercel Bun-runtime entrypoint)',
+      '[playground:vercel-build] api/index.ts must default-export an object with a fetch() method',
     );
   }
 }
@@ -52,10 +51,9 @@ async function ensureOutputDirectory(): Promise<void> {
       'This directory is intentionally (almost) empty.',
       '',
       'The cinder playground is served entirely by the Bun Function at',
-      'src/server.ts (the Vercel root entrypoint), which builds every page and',
-      'bundle on the fly. There are no pre-rendered static assets. This file',
-      'exists only so the configured outputDirectory in vercel.json is present',
-      'for Vercel to publish.',
+      'api/index.ts, which builds every page and bundle on the fly. There are',
+      'no pre-rendered static assets. This file exists only so the configured',
+      'outputDirectory in vercel.json is present for Vercel to publish.',
       '',
     ].join('\n'),
   );

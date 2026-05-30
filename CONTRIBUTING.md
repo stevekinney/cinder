@@ -72,8 +72,9 @@ The playground (`@cinder/playground`) is a `Bun.serve` server that builds Svelte
 
 The moving parts:
 
-- `packages/playground/src/server.ts`: the Vercel Bun-runtime entrypoint. Vercel's Bun backend mode auto-detects it (the `server` filename in `src/`) and runs its `default` export — the Web Standard `{ fetch }` shape — so the whole playground is one Bun Function that routes every request through `handleRequest`. No `api/` indirection, no rewrites table, no Node `req`/`res` shim. (The `import.meta.main` block in the same file is the local dev/CLI path and is never executed on Vercel, which imports the module rather than running it as main.)
-- `packages/playground/vercel.json`: `bunVersion: "1.x"`, `framework: null`, the `vercel-build` build command, and a single `functions["src/server.ts"]` entry whose `includeFiles` glob bundles `packages/components/{src,scripts}/**` into the function so the on-the-fly builds can read component sources at request time. No `rewrites` are needed — the Bun root entrypoint is a catch-all that receives every route.
+- `packages/playground/src/playground-server.ts`: the `Bun.serve` server. Its `handleRequest` (a `(Request) => Promise<Response>`) is the whole router. It is **deliberately not** named `server`/`index`/`app`/`main`: those are Vercel's Bun backend-entrypoint magic names, and matching one makes Vercel auto-detect a root function and ignore the `api/` directory — which drops `includeFiles` and 500s every on-the-fly bundle build. The `import.meta.main` block is the local dev/CLI path (it binds a port + file watcher) and never runs on Vercel.
+- `packages/playground/api/index.ts`: the Vercel Function entry. It default-exports `{ fetch }` (the Web Standard shape Vercel calls) and forwards to `handleRequest`. `functions` keys must live under `api/`, so this thin adapter is what anchors the `includeFiles` glob.
+- `packages/playground/vercel.json`: `bunVersion: "1.x"`, `framework: null`, the `vercel-build` build command, the `functions["api/index.ts"].includeFiles` glob that bundles `packages/components/{src,scripts}/**` into the function (the only way to ship those sources for the request-time builds), and `rewrites` that funnel every playground route (`/`, `/c/:name`, `/page/:name`, `/page-bundle/:f`, `/shell-bundle/:f`, `/bundle/:n/:s`, `/api/manifest*`, `/example-src/*`, `/styles/*`, `/components/*`, `/ping`, `/events`) to `/api/index`.
 - `packages/playground/scripts/vercel-build.ts` (the `vercel-build` npm script): smoke-imports the function entry so a broken import path fails the build instead of 500-ing the first live request, then materializes the `public/` output directory Vercel expects. `public/` is git-ignored — it holds no real static assets.
 - `.github/workflows/deploy-playground.yaml`: deploys on push to `main` (production) and on pull requests (preview). It uses the Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt`) and finishes with a `/ping` smoke-test.
 
@@ -119,7 +120,7 @@ The build step is runtime-safe to run on any machine with Bun:
 
 ```bash
 cd packages/playground
-bun run vercel-build   # smoke-imports src/server.ts and writes public/
+bun run vercel-build   # smoke-imports api/index.ts and writes public/
 ```
 
 It does not contact Vercel or deploy anything — it only proves the function entry loads.
