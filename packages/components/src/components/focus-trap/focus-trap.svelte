@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Headless focus-trap primitive that keeps Tab navigation within a container and restores focus on teardown.
    * @tag overlay
    * @tag accessibility
