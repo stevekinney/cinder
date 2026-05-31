@@ -45,10 +45,13 @@
 <!--
   `aria-invalid` on the <fieldset> (implicit role=group) is a deliberate,
   best-effort supplemental signal — see checkbox-group.a11y.md. ARIA does not
-  formally list aria-invalid for role=group, but the error is the primary
-  signal via the visible aria-live region referenced by aria-describedby, and
-  per-control invalidity is set on each <Checkbox> directly. The lint rule is a
-  false positive for this documented, tested tradeoff.
+  formally list aria-invalid for role=group and most screen readers do not
+  announce it there, so the PRIMARY error signal is the visible aria-live region
+  referenced by aria-describedby. This group wraps independent checkboxes and
+  does not propagate its error to them; per-control aria-invalid is set by each
+  <Checkbox> from its own `error` prop, which the consumer supplies when a
+  specific control is invalid. The lint rule is suppressed for this documented,
+  tested tradeoff.
 -->
 <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset

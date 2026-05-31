@@ -43,8 +43,13 @@ afterEach(() => {
   const unexpected = warnSpy.mock.calls
     .map((args) => args.map(String).join(' '))
     .filter((message) => !message.includes(KNOWN_CODE_BLOCK_WARNING));
-  warnSpy.mockRestore();
-  expect(unexpected).toEqual([]);
+  // Restore in `finally` so an unexpected-warning failure can't leave
+  // `console.warn` patched for every subsequent test in the suite.
+  try {
+    expect(unexpected).toEqual([]);
+  } finally {
+    warnSpy.mockRestore();
+  }
 });
 
 /** A custom highlighter that tags its output so we can assert it ran. */

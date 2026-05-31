@@ -21,6 +21,14 @@ type GlobalWithTimers = typeof globalThis & {
 };
 
 /**
+ * The id `setTimeout`/`setInterval` return in the test runtime (happy-dom + the
+ * DOM lib), which is a numeric handle. Tracking ids by this type means the
+ * wrapper assignments need no casts — the old `as unknown as number` chain was
+ * defensive cruft, not a real requirement.
+ */
+type TimerId = number;
+
+/**
  * Returns a snapshot of currently-active timer IDs. Use as a baseline before
  * mounting a component, then call {@link expectNoLeakedTimers} after unmount.
  *
@@ -29,7 +37,7 @@ type GlobalWithTimers = typeof globalThis & {
  * `release()` is called.
  */
 export function trackTimers(): {
-  active: () => Set<number>;
+  active: () => Set<TimerId>;
   release: () => void;
 } {
   const g = globalThis as GlobalWithTimers;
@@ -38,14 +46,17 @@ export function trackTimers(): {
   const originalClearTimeout = g.clearTimeout;
   const originalClearInterval = g.clearInterval;
 
-  const active = new Set<number>();
+  const active = new Set<TimerId>();
 
-  // Best-effort wrappers. happy-dom's timer types differ slightly from lib.dom;
-  // we coerce IDs to numbers since that's what the standard says.
+  // Best-effort wrappers. The ids are tracked by their real `TimerId` type, so
+  // no casting is needed — `originalSetTimeout` returns exactly what `active`
+  // stores. Note: a `setInterval` id is never auto-removed when the interval
+  // fires (intervals repeat), so a running interval always reads as a leak until
+  // it is explicitly `clearInterval`-ed; no currently-tracked component uses one.
   g.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
     const id = originalSetTimeout(
       ((...a: unknown[]) => {
-        active.delete(id as unknown as number);
+        active.delete(id);
         if (typeof handler === 'function') {
           (handler as (...args: unknown[]) => unknown)(...a);
         }
@@ -53,22 +64,22 @@ export function trackTimers(): {
       timeout,
       ...args,
     );
-    active.add(id as unknown as number);
+    active.add(id);
     return id;
   }) as typeof setTimeout;
 
   g.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
     const id = originalSetInterval(handler, timeout, ...args);
-    active.add(id as unknown as number);
+    active.add(id);
     return id;
   }) as typeof setInterval;
 
-  g.clearTimeout = ((id?: number) => {
+  g.clearTimeout = ((id?: TimerId) => {
     if (id !== undefined) active.delete(id);
     return originalClearTimeout(id);
   }) as typeof clearTimeout;
 
-  g.clearInterval = ((id?: number) => {
+  g.clearInterval = ((id?: TimerId) => {
     if (id !== undefined) active.delete(id);
     return originalClearInterval(id);
   }) as typeof clearInterval;
@@ -88,7 +99,7 @@ export function trackTimers(): {
  * Asserts that the `active` set returned from {@link trackTimers} is empty
  * after the component has been unmounted. Throws with the leaked IDs if not.
  */
-export function expectNoLeakedTimers(active: Set<number>): void {
+export function expectNoLeakedTimers(active: Set<TimerId>): void {
   if (active.size > 0) {
     throw new Error(
       `expected no leaked timers after unmount, got ${active.size}: ${[...active].join(', ')}`,

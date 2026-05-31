@@ -47,6 +47,6 @@ describe('DropdownItem', () => {
     const item = container.querySelector('[role="menuitem"]') as HTMLElement;
     item.focus();
     await fireEvent.keyDown(item, { key: 'Enter' });
-    expect(container.querySelector('output')?.textContent).toBe('copy');
+    await waitFor(() => expect(container.querySelector('output')?.textContent).toBe('copy'));
   });
 });

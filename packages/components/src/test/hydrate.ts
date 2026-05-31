@@ -70,12 +70,16 @@ function ensureExitHandlersRegistered(): void {
 
   process.on('exit', cleanupRegisteredTempFiles);
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(signal, () => {
+    // Install a *named* handler and, on fire, remove only this handler before
+    // re-raising — `process.removeAllListeners(signal)` would wipe unrelated
+    // signal handlers owned by the test runner or other infrastructure.
+    const handler = () => {
       cleanupRegisteredTempFiles();
-      // Restore default disposition and re-raise so exit codes stay correct.
-      process.removeAllListeners(signal);
+      process.off(signal, handler);
+      // Re-raise so the default disposition runs and exit codes stay correct.
       process.kill(process.pid, signal);
-    });
+    };
+    process.on(signal, handler);
   }
 }
 
@@ -83,7 +87,10 @@ function ensureExitHandlersRegistered(): void {
  * Test-only accessors for the temp-file registry. Exposed so `hydrate.test.ts`
  * can verify the exit-handler safety net without actually exiting the process.
  */
-export const __tempFileRegistryForTests = {
+export const __tempFileRegistryForTests: {
+  paths: ReadonlySet<string>;
+  runExitCleanup: () => void;
+} = {
   paths: pendingTempFiles,
   runExitCleanup: cleanupRegisteredTempFiles,
 };
@@ -152,46 +159,61 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   const file = join(sourceDir, ssrFileName);
   ensureExitHandlersRegistered();
   pendingTempFiles.add(file);
-  await writeFile(file, serverCode, 'utf-8');
 
-  // The SSR module's default export is a server-only render function whose
-  // shape (`($$renderer, $$props) => void`) doesn't match the public
-  // `Component<Props>` type. `svelte/server.render` accepts both shapes at
-  // runtime; we route through `unknown` because the public types are too
-  // narrow to express the dual-target reality.
-  const ssrModule = (await import(file)) as { default: unknown };
-
-  const { render } = (await import('svelte/server')) as typeof import('svelte/server');
-  const originalDocument = globalThis.document;
-  const originalWindow = globalThis.window;
-  globalThis.document = undefined as unknown as Document;
-  globalThis.window = undefined as unknown as Window & typeof globalThis;
+  // Everything from the temp-file write through the hydrate is wrapped so that
+  // any failure BEFORE we return a `cleanup()` to the caller still removes and
+  // deregisters the temp file. Without this, a throw in import/render/hydrate
+  // would orphan the file until process exit — the exact leak this helper exists
+  // to prevent.
   let ssrHtml = '';
-  try {
-    ssrHtml = render(ssrModule.default as Component<Props>, { props }).body;
-  } finally {
-    globalThis.document = originalDocument;
-    globalThis.window = originalWindow;
-  }
-
-  const container = document.createElement('div');
-  container.innerHTML = ssrHtml;
-  document.body.appendChild(container);
-
+  let container: HTMLElement;
   const warnings: string[] = [];
-  const originalWarn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    warnings.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
-  };
-
   let instance: Record<string, unknown> | undefined;
   try {
-    instance = hydrate(clientComponent, {
-      target: container,
-      props,
-    }) as Record<string, unknown>;
-  } finally {
-    console.warn = originalWarn;
+    await writeFile(file, serverCode, 'utf-8');
+
+    // The SSR module's default export is a server-only render function whose
+    // shape (`($$renderer, $$props) => void`) doesn't match the public
+    // `Component<Props>` type. `svelte/server.render` accepts both shapes at
+    // runtime; we route through `unknown` because the public types are too
+    // narrow to express the dual-target reality.
+    const ssrModule = (await import(file)) as { default: unknown };
+
+    const { render } = (await import('svelte/server')) as typeof import('svelte/server');
+    const originalDocument = globalThis.document;
+    const originalWindow = globalThis.window;
+    globalThis.document = undefined as unknown as Document;
+    globalThis.window = undefined as unknown as Window & typeof globalThis;
+    try {
+      ssrHtml = render(ssrModule.default as Component<Props>, { props }).body;
+    } finally {
+      globalThis.document = originalDocument;
+      globalThis.window = originalWindow;
+    }
+
+    container = document.createElement('div');
+    container.innerHTML = ssrHtml;
+    document.body.appendChild(container);
+
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    };
+
+    try {
+      instance = hydrate(clientComponent, {
+        target: container,
+        props,
+      }) as Record<string, unknown>;
+    } finally {
+      console.warn = originalWarn;
+    }
+  } catch (error) {
+    // Pre-return failure: remove the temp file and deregister it so it doesn't
+    // linger in the registry, then rethrow for the test to observe.
+    pendingTempFiles.delete(file);
+    void rm(file, { force: true }).catch(() => {});
+    throw error;
   }
 
   return {

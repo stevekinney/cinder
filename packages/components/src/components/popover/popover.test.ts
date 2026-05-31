@@ -125,8 +125,13 @@ afterEach(() => {
   const unexpected = warnSpy.mock.calls
     .map((args) => args.map(String).join(' '))
     .filter((message) => !KNOWN_POPOVER_WARNINGS.some((known) => message.includes(known)));
-  warnSpy.mockRestore();
-  expect(unexpected).toEqual([]);
+  // Restore in `finally` so an unexpected-warning failure can't leave
+  // `console.warn` patched for every subsequent test in the suite.
+  try {
+    expect(unexpected).toEqual([]);
+  } finally {
+    warnSpy.mockRestore();
+  }
 });
 
 // ---------------------------------------------------------------------------

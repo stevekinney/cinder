@@ -13,9 +13,13 @@
  *    we assert that the open dialog's `aria-labelledby` resolves to the title
  *    element and that `aria-describedby` is wired through.
  *
- * The open-dialog assertions render on the client: Modal's open body uses an
- * attachment, and the SSR-recompile helper nulls `document` during the server
- * pass, which is incompatible with rendering raw-snippet children server-side.
+ * KNOWN GAP: the open-dialog test below is a CLIENT-ONLY render, not a hydration
+ * round-trip. Modal's open body uses an attachment, and the SSR-recompile helper
+ * nulls `document` during the server pass, which is incompatible with rendering
+ * raw-snippet children server-side. So that test proves the client wires
+ * `aria-labelledby`/`aria-describedby` correctly, but does NOT prove the SSR HTML
+ * and the hydrated client agree on those ids for an initially-open dialog. The
+ * deterministic-id derivation makes drift unlikely, but it is not asserted here.
  */
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
