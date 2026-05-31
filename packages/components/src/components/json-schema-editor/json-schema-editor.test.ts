@@ -86,10 +86,11 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
    * landmark and asserts the undo/redo toolbar state moves accordingly.
    *
    * The editor's shortcut router (see `json-schema-editor-impl.svelte`) keys off
-   * `metaKey` on Mac and `ctrlKey` elsewhere. The test reads `navigator.platform`
-   * and fires the matching modifier so the shortcut genuinely fires regardless of
-   * the test environment — a platform mismatch would otherwise silently no-op the
-   * keydown and let the assertions pass for the wrong reason.
+   * `metaKey` on Mac and `ctrlKey` elsewhere, decided by its `detectMacPlatform()`
+   * (userAgentData.platform first, then navigator.platform, only `/Mac/`). The test
+   * mirrors that exact detection so it always fires the modifier the handler expects
+   * — a mismatched heuristic would silently no-op the keydown and let the assertions
+   * pass for the wrong reason.
    */
   test('Cmd+Z / Shift+Cmd+Z on the editor region undo and redo a committed edit', async () => {
     render(JsonSchemaEditorImplementation, {
@@ -133,12 +134,22 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     // The committed edit makes undo available.
     expect(undoButton?.hasAttribute('disabled')).toBe(false);
 
-    // Use the platform's primary modifier so the shortcut fires regardless of the
-    // test environment's navigator.platform — otherwise a non-Mac harness would
-    // silently no-op the keydown and the assertions could pass for the wrong reason.
-    const primaryModifier: { metaKey: true } | { ctrlKey: true } = /Mac|iP(hone|ad|od)/.test(
-      navigator.platform,
-    )
+    // Derive the primary modifier with the EXACT logic the component's
+    // detectMacPlatform() uses — prefer navigator.userAgentData.platform, fall
+    // back to navigator.platform, and only `/Mac/` counts as Mac. Using a
+    // different heuristic (e.g. reading navigator.platform alone, or treating iOS
+    // as Mac) could disagree with the handler and fire the wrong modifier, making
+    // the keydown silently no-op and the assertions pass for the wrong reason.
+    const detectMacPlatform = (): boolean => {
+      if (typeof navigator === 'undefined') return false;
+      const modernPlatform = (navigator as Navigator & { userAgentData?: { platform?: string } })
+        .userAgentData?.platform;
+      if (typeof modernPlatform === 'string' && modernPlatform.length > 0) {
+        return /Mac/.test(modernPlatform);
+      }
+      return /Mac/.test(navigator.platform);
+    };
+    const primaryModifier: { metaKey: true } | { ctrlKey: true } = detectMacPlatform()
       ? { metaKey: true }
       : { ctrlKey: true };
 
