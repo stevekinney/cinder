@@ -22,7 +22,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
 }));
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: Harness } = await import('../context-menu/_context-menu-test-harness.svelte');
 const { default: ContextMenuTrigger } = await import('./context-menu-trigger.svelte');
 
@@ -56,5 +56,22 @@ describe('ContextMenuTrigger', () => {
     await waitFor(() => {
       expect(document.body.querySelector('[role="menu"]')).not.toBeNull();
     });
+  });
+
+  // Keyboard accessibility: a keyboard-only user opens the same context menu
+  // with Shift+F10 (the platform-standard context-menu key combination). The
+  // trigger handles keydown and calls openAt, which renders the menu with
+  // role="menu" — so this asserts both the keyboard wiring and the ARIA role
+  // the trigger exposes its menu through.
+  test('Shift+F10 on the trigger opens the menu (role="menu")', async () => {
+    const { container } = render(Harness);
+    const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+    expect(screen.queryByRole('menu')).toBeNull();
+
+    await fireEvent.keyDown(region, { key: 'F10', shiftKey: true });
+
+    const menu = await screen.findByRole('menu');
+    expect(menu).not.toBeNull();
+    expect(menu.getAttribute('aria-orientation')).toBe('vertical');
   });
 });
