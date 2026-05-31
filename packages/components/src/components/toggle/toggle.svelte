@@ -7,7 +7,6 @@
    * @tag form
    * @tag switch
    * @useWhen Flipping a single setting on or off with immediate effect such as notifications or dark mode.
-   * @avoidWhen Selecting zero or more options inside a form submission — use checkbox instead.
    * @avoidWhen Picking one option from a small fixed set — use segmented-control instead.
    * @related checkbox, segmented-control
    */
@@ -24,6 +23,9 @@
     label,
     disabled = false,
     hideLabel = false,
+    name,
+    value = 'on',
+    form,
     class: customClassName,
   }: ToggleProps = $props();
 
@@ -50,6 +52,26 @@
   >
     <span aria-hidden="true" class="cinder-toggle__thumb"></span>
   </button>
+  {#if name !== undefined}
+    <!--
+      Form participation: a hidden, non-interactive checkbox mirrors `checked` so
+      the toggle submits with a native form. The <button> stays the only thing
+      users tab to or operate; this input is removed from the tab order
+      (tabindex="-1") and the a11y tree (aria-hidden), and is visually inert.
+      Rendered only when `name` is set, so a client-side-only toggle pays nothing.
+    -->
+    <input
+      type="checkbox"
+      tabindex="-1"
+      aria-hidden="true"
+      {name}
+      {value}
+      {form}
+      {disabled}
+      {checked}
+      style="position:absolute;opacity:0;pointer-events:none;"
+    />
+  {/if}
   <!--
     The label is a <span> (not a <label for>) named via aria-labelledby. A native
     <label for> targeting the <button> would forward a synthetic click to it,

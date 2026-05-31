@@ -229,6 +229,99 @@ describe('Toggle — rendered label', () => {
   });
 });
 
+describe('Toggle — form participation', () => {
+  test('no hidden input is rendered when name is unset', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf1', checked: false, label: 'Notifications' },
+    });
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  test('hidden checkbox input appears when name is set', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf2', checked: false, label: 'Notifications', name: 'notifications' },
+    });
+    const input = container.querySelector('input[type="checkbox"]');
+    expect(input).not.toBeNull();
+    expect(input?.getAttribute('name')).toBe('notifications');
+  });
+
+  test('hidden input defaults its submitted value to "on"', () => {
+    // For a checkbox the submitted value is the `value` DOM *property*. Svelte
+    // omits the attribute when it equals the native default ("on"), so assert on
+    // the property — that is exactly what a form submission would carry.
+    const { container } = render(Toggle, {
+      props: { id: 'tf3', checked: false, label: 'Notifications', name: 'notifications' },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.value).toBe('on');
+  });
+
+  test('hidden input carries a custom value', () => {
+    const { container } = render(Toggle, {
+      props: {
+        id: 'tf4',
+        checked: false,
+        label: 'Notifications',
+        name: 'notifications',
+        value: 'enabled',
+      },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.value).toBe('enabled');
+  });
+
+  test('hidden input reflects checked=true', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf5', checked: true, label: 'Notifications', name: 'notifications' },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.checked).toBe(true);
+  });
+
+  test('hidden input reflects checked=false', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf6', checked: false, label: 'Notifications', name: 'notifications' },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.checked).toBe(false);
+  });
+
+  test('hidden input tracks checked after a click', async () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf7', checked: false, label: 'Notifications', name: 'notifications' },
+    });
+    const button = container.querySelector('button') as HTMLButtonElement;
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.checked).toBe(false);
+    await fireEvent.click(button);
+    expect(input.checked).toBe(true);
+  });
+
+  test('hidden input is removed from the tab order and a11y tree', () => {
+    const { container } = render(Toggle, {
+      props: { id: 'tf8', checked: false, label: 'Notifications', name: 'notifications' },
+    });
+    const input = container.querySelector('input[type="checkbox"]');
+    expect(input?.getAttribute('tabindex')).toBe('-1');
+    expect(input?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('form prop associates the hidden input with a form by id', () => {
+    const { container } = render(Toggle, {
+      props: {
+        id: 'tf9',
+        checked: false,
+        label: 'Notifications',
+        name: 'notifications',
+        form: 'settings-form',
+      },
+    });
+    const input = container.querySelector('input[type="checkbox"]');
+    expect(input?.getAttribute('form')).toBe('settings-form');
+  });
+});
+
 describe('Toggle — hideLabel', () => {
   test('accessible name is preserved when hideLabel is set', () => {
     render(Toggle, {
