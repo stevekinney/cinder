@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Headless mount-coordination primitives for CSS-driven presence state and Svelte transition functions.
    * @tag overlay
    * @tag motion
