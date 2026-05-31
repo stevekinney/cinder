@@ -209,11 +209,11 @@ type ButtonSchemaToo = typeof ButtonSchemaModule.default;
 
 > [!WARNING]
 > Do **not** use a default-only `import type ButtonSchemaModule from '…'` to
-> reach the _type_. The failure mode depends on your `moduleResolution`: under
-> `bundler`, `node16`, or `nodenext`-with-ESM-interop it errors with `TS2339:
-Property 'default' does not exist on type 'ComponentSchema'`; under
-> `nodenext`'s CJS interop path it silently widens `typeof
-ButtonSchemaModule.default` to `any`. For the runtime _value_ a plain
+> reach the _type_. The failure mode depends on your `moduleResolution`.
+> Under `bundler`, `node16`, or `nodenext`-with-ESM-interop it errors with
+> `TS2339: Property 'default' does not exist on type 'ComponentSchema'`.
+> Under `nodenext`'s CJS interop path it silently widens the default type to
+> `any`. For the runtime _value_ a plain
 > `import buttonSchema from 'cinder/button/schema'` is correct; the namespace
 > form is only needed when you want the `typeof` type.
 
