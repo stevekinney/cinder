@@ -65,10 +65,16 @@ describe('ContextMenuTrigger', () => {
   // the trigger exposes its menu through.
   test('Shift+F10 on the trigger opens the menu (role="menu")', async () => {
     const { container } = render(Harness);
-    const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
     expect(screen.queryByRole('menu')).toBeNull();
 
-    await fireEvent.keyDown(region, { key: 'F10', shiftKey: true });
+    // Fire from a genuinely keyboard-reachable element: the trigger wrapper has no
+    // tabindex/role of its own, so a real keyboard user focuses the focusable child
+    // (the button) and the Shift+F10 keydown bubbles up to the trigger's handler.
+    const triggerButton = container.querySelector('.context-menu-button') as HTMLElement;
+    triggerButton.focus();
+    expect(document.activeElement).toBe(triggerButton);
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'F10', shiftKey: true });
 
     const menu = await screen.findByRole('menu');
     expect(menu).not.toBeNull();

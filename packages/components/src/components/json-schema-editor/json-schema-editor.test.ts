@@ -142,16 +142,33 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
       ? { metaKey: true }
       : { ctrlKey: true };
 
-    // Keyboard call: undo shortcut on the region triggers the editor undo handler.
+    // Fire from a genuinely focused, NON-EDITABLE control inside the region so the
+    // keydown takes the real bubbling path to the region's handler. The handler
+    // deliberately ignores shortcuts whose target is a text field (isEditableTarget
+    // — so native undo wins while typing), so we focus the Undo toolbar button, a
+    // focusable non-editable surface the shortcut is meant to act from.
+    const focusTarget = undoButton as HTMLElement;
+    focusTarget.focus();
+    expect(region.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(focusTarget);
+
+    // Keyboard call: undo shortcut bubbles to the editor undo handler.
     // The dual assertion (undo disabled AND redo enabled) cannot be satisfied by a
     // no-op keydown, which would leave redo disabled.
-    await fireEvent.keyDown(region, { key: 'z', ...primaryModifier });
+    await fireEvent.keyDown(document.activeElement as HTMLElement, {
+      key: 'z',
+      ...primaryModifier,
+    });
     await flushEffects();
     expect(undoButton?.hasAttribute('disabled')).toBe(true);
     expect(redoButton?.hasAttribute('disabled')).toBe(false);
 
     // Redo shortcut (Shift + primary modifier + z) redoes the same edit.
-    await fireEvent.keyDown(region, { key: 'z', ...primaryModifier, shiftKey: true });
+    await fireEvent.keyDown(document.activeElement as HTMLElement, {
+      key: 'z',
+      ...primaryModifier,
+      shiftKey: true,
+    });
     await flushEffects();
     expect(undoButton?.hasAttribute('disabled')).toBe(false);
     expect(redoButton?.hasAttribute('disabled')).toBe(true);

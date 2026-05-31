@@ -27,16 +27,26 @@ When Portal moves your content to `document.body`, the content's position in the
 - **Sequential focus (Tab) order** follows DOM order, not visual order. After portaling to the end of `<body>`, your overlay's focusable elements now sit at the _end_ of the document's tab sequence — far from the trigger that opened them. A keyboard user who tabs forward from the trigger will _not_ land in the overlay next; they'll continue through the rest of the page and reach the overlay last.
 - **Screen-reader reading order** likewise follows DOM order. The overlay is now read at the end of `<body>`, disconnected from its trigger's context.
 
-Portal cannot fix this gap, because fixing it requires knowing the semantics of what you're portaling — and Portal is intentionally semantics-free. **The consumer owns the bridge.** Concretely, an overlay built on Portal must:
+Portal cannot fix this gap, because fixing it requires knowing the semantics of what you're portaling — and Portal is intentionally semantics-free. **The consumer owns the bridge.** What that bridge looks like depends on the **pattern** you are portaling — modal and non-modal overlays have different obligations.
 
-1. **Trap focus** inside the overlay while it is open, so Tab and Shift+Tab cycle within it rather than escaping into the now-distant page content behind it.
+**Modal overlays** (dialog, alert dialog, drawer, modal sheet) take over the page while open. They must:
+
+1. **Trap focus** inside the overlay, so Tab and Shift+Tab cycle within it rather than escaping into the now-distant page content behind it.
 2. **Move focus into** the overlay when it opens (to the first focusable control, the close button, or the surface itself) and **restore focus** to the trigger when it closes. Without this, a keyboard user is stranded at the trigger while the visually-present overlay receives no focus.
-3. **Hide the background** from assistive technology while a modal overlay is open — `aria-modal="true"` on the dialog plus, where needed, `inert` (or `aria-hidden`) on the sibling page content — so screen-reader users can't wander out of the modal into content that is visually obscured.
-4. **Label the surface** with `aria-labelledby`/`aria-label` and, for dialogs, set `role="dialog"`. The accessible name belongs on the consumer's element, never on Portal's wrapper.
-5. **Wire `Escape`** and any other dismissal affordances on the consumer's element. Portal has no key handlers and will not close anything.
+3. **Hide the background** from assistive technology — `aria-modal="true"` on the dialog plus `inert` on the sibling page content — so screen-reader and keyboard users can't wander out of the modal into content that is visually obscured. (Prefer `inert`, which also removes the background from the Tab order; `aria-hidden` alone does not.)
+
+**Non-modal overlays** (tooltip, hover card, popover, menu, toast region) do **not** take over the page, so they must **not** trap focus or steal it on open — that would break the pointer-driven, glance-and-dismiss interaction. Instead:
+
+- **Tooltips / hover cards / toasts** are typically not focus targets at all; they associate with their trigger via `aria-describedby` and dismiss on blur/Escape. Do not move focus into them.
+- **Popovers / menus** move focus into the surface on open and restore it on close (like a modal) but do **not** inert the background; they close on outside interaction or Escape.
+
+In all cases the consumer also owns:
+
+4. **Labelling** — `aria-labelledby`/`aria-label` and the appropriate `role` (`dialog`, `menu`, `tooltip`, …) on the consumer's element. The accessible name belongs there, never on Portal's wrapper.
+5. **Dismissal** — wire `Escape` and any other affordances on the consumer's element. Portal has no key handlers and will not close anything.
 
 > [!WARNING]
-> Treating Portal as "the overlay" is the classic mistake. It relocates pixels and DOM nodes; it does **not** relocate focus, manage the focus trap, or hide the background. Skipping the five responsibilities above produces an overlay that looks correct to a mouse user and is completely broken for keyboard and screen-reader users.
+> Treating Portal as "the overlay" is the classic mistake. It relocates pixels and DOM nodes; it does **not** relocate focus, manage a focus trap, or hide the background. Skipping the responsibilities above — or applying _modal_ focus-trapping to a _non-modal_ tooltip — produces an overlay that looks correct to a mouse user and is broken or hostile for keyboard and screen-reader users.
 
 ## Attribute inheritance and why it exists
 

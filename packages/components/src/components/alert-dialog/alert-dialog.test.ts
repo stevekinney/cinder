@@ -146,8 +146,10 @@ describe('AlertDialog', () => {
       },
     });
 
-    // Role + ARIA wiring: a modal alertdialog whose description is announced.
-    const dialog = getByRole('alertdialog');
+    // Role + ARIA wiring: a modal alertdialog with an accessible name (from the
+    // title) whose description is announced. Querying by name also guards the
+    // aria-labelledby wiring — a broken name would fail the role+name lookup.
+    const dialog = getByRole('alertdialog', { name: 'Session expired' });
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     const describedBy = dialog.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
