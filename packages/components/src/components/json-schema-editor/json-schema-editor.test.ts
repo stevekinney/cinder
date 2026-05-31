@@ -163,6 +163,14 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     expect(undoButton?.hasAttribute('disabled')).toBe(true);
     expect(redoButton?.hasAttribute('disabled')).toBe(false);
 
+    // The undo disabled the button we were focused on, which can blur it. Re-focus
+    // a STABLE enabled non-editable control (the now-enabled Redo button) so the redo
+    // shortcut fires from a genuine in-region focus, not an ambiguous focus state.
+    const redoFocusTarget = redoButton as HTMLElement;
+    redoFocusTarget.focus();
+    expect(region.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(redoFocusTarget);
+
     // Redo shortcut (Shift + primary modifier + z) redoes the same edit.
     await fireEvent.keyDown(document.activeElement as HTMLElement, {
       key: 'z',

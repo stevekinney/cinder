@@ -35,10 +35,11 @@ Portal cannot fix this gap, because fixing it requires knowing the semantics of 
 2. **Move focus into** the overlay when it opens (to the first focusable control, the close button, or the surface itself) and **restore focus** to the trigger when it closes. Without this, a keyboard user is stranded at the trigger while the visually-present overlay receives no focus.
 3. **Hide the background** from assistive technology — `aria-modal="true"` on the dialog plus `inert` on the sibling page content — so screen-reader and keyboard users can't wander out of the modal into content that is visually obscured. (Prefer `inert`, which also removes the background from the Tab order; `aria-hidden` alone does not.)
 
-**Non-modal overlays** (tooltip, hover card, popover, menu, toast region) do **not** take over the page, so they must **not** trap focus or steal it on open — that would break the pointer-driven, glance-and-dismiss interaction. Instead:
+**Non-modal overlays** (tooltip, hover card, popover, menu, toast region) do **not** take over the page, so none of them should inert the background or trap focus like a modal. Beyond that, the right focus behavior differs by pattern:
 
-- **Tooltips / hover cards / toasts** are typically not focus targets at all; they associate with their trigger via `aria-describedby` and dismiss on blur/Escape. Do not move focus into them.
-- **Popovers / menus** move focus into the surface on open and restore it on close (like a modal) but do **not** inert the background; they close on outside interaction or Escape.
+- **Tooltips / hover cards** are not focus targets and must **not** take focus on open — that would break the pointer-driven, glance-and-dismiss interaction. They associate with their trigger via `aria-describedby` and dismiss on blur/Escape.
+- **Toast regions** also must **not** steal focus on appearance (a toast yanking focus is hostile), but they are **not** trigger descriptions and do **not** dismiss on blur. Announce them through a live region — `role="status"` (polite) or `role="alert"` (assertive), or `aria-live` — and keep any actionable controls (Undo, Dismiss) keyboard-reachable in the tab order without auto-moving focus to them.
+- **Popovers / menus** may move focus into the surface on open and restore it on close, per their own pattern (a menu roves focus across `menuitem`s), but they do **not** inert the background; they close on outside interaction or Escape.
 
 In all cases the consumer also owns:
 
