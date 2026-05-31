@@ -20,10 +20,20 @@
  * source file via the package `exports` map, read each file with `readFileSync`,
  * extract its runtime imports with `Bun.Transpiler.scanImports` (which excludes
  * `import type` / `export type`), resolve each specifier, and recurse. A subpath
- * is "lean" iff no FORBIDDEN rendering package is reachable from it. This is
- * deterministic, immune to filesystem races, and a stricter guarantee than
- * grepping bundle text (it catches a rendering import even if the bundler would
- * have tree-shaken or renamed the telltale strings).
+ * is "lean" iff no FORBIDDEN rendering package is reachable from it. Deterministic
+ * and immune to filesystem races.
+ *
+ * GUARANTEE (and the one way it differs from the old bundler test): this asserts
+ * that cinder's own SOURCE graph never DIRECTLY imports a rendering package. It
+ * does NOT traverse into node_modules, so it would not catch a third-party
+ * wrapper that itself pulls in `rehype-katex`. That tradeoff is deliberate and
+ * safe here: cinder controls its own direct dependencies, every rendering package
+ * cinder could import is in FORBIDDEN_RENDERING_PACKAGES, and the traversal FAILS
+ * LOUDLY on any internal edge (relative or `@cinder/*`) it cannot follow — so a
+ * rendering dependency can never hide behind a silently-dropped edge. Within
+ * cinder's source it is actually STRICTER than the old bundle-text grep: it sees
+ * the import even when the bundler would have tree-shaken or renamed the telltale
+ * string.
  *
  * Categories:
  *
@@ -57,10 +67,15 @@ const FORBIDDEN_RENDERING_PACKAGES = ['shiki', '@shikijs/', 'rehype-katex', 'rem
 const WORKSPACE_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const PACKAGES_DIR = join(WORKSPACE_ROOT, 'packages');
 
-// The import conditions a bundler/runtime applies, in priority order, when
-// picking a target from an `exports` entry. We mirror what the lean consumers
-// use (`bun`/`import`) so the traversed graph matches what actually ships.
-const EXPORT_CONDITIONS = ['bun', 'import', 'default'] as const;
+// The import conditions to apply, in priority order, when picking a target from
+// an `exports` entry. The old Bun.build version resolved with `target: 'browser'`
+// + `conditions: ['bun']`, so we mirror that: `bun` first, then the implicit
+// browser/import/default chain. (No @cinder/* package actually declares a
+// `browser` condition today, so for cinder's own graph this resolves identically
+// to `bun`→src; `browser` is included so the resolver stays faithful if one is
+// added later.) `types` is intentionally absent — we must never follow a
+// type-only target.
+const EXPORT_CONDITIONS = ['bun', 'browser', 'import', 'default'] as const;
 
 type PackageJson = {
   name?: string;
@@ -82,7 +97,9 @@ function readPackageJson(packageDir: string): PackageJson | null {
 /** Pick a target string from an `exports` entry, applying conditions in order. */
 function pickConditionTarget(entry: unknown): string | undefined {
   if (typeof entry === 'string') return entry;
-  if (entry === null || typeof entry !== 'object') return undefined;
+  // Array-form exports (`["./a.js", "./b.js"]`) and null/primitives are not
+  // condition objects — bail rather than treating an array index as a condition.
+  if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return undefined;
   const record = entry as Record<string, unknown>;
   for (const condition of EXPORT_CONDITIONS) {
     if (condition in record) {
@@ -121,12 +138,13 @@ function resolveWorkspaceSubpath(specifier: string): string | undefined {
   return toSourcePath(resolved);
 }
 
-/** Map a `dist/.../x.js` path back to its `src/.../x.ts` twin when one exists. */
+/** Map a `dist/.../x.js` export target back to its `src/.../x.ts` twin. */
 function toSourcePath(filePath: string): string | undefined {
   const candidates = [filePath];
   if (filePath.includes('/dist/')) {
-    const srcGuess = filePath.replace('/dist/', '/src/').replace(/\.js$/, '.ts');
-    candidates.unshift(srcGuess);
+    const srcBase = filePath.replace('/dist/', '/src/');
+    // Prefer the source twin; cover both .js→.ts and .jsx→.tsx.
+    candidates.unshift(srcBase.replace(/\.jsx$/, '.tsx'), srcBase.replace(/\.js$/, '.ts'));
   }
   for (const candidate of candidates) {
     if (existsSync(candidate)) return candidate;
@@ -186,12 +204,21 @@ function scanRuntimeImports(filePath: string): string[] {
   return specifiers;
 }
 
+/**
+ * Whether an imported `specifier` belongs to a forbidden-package `entry`. A
+ * trailing-slash entry (e.g. `@shikijs/`) matches any scoped subpath; a plain
+ * entry (e.g. `shiki`) matches the package itself or any of its subpaths
+ * (`shiki`, `shiki/core`, …) but not an unrelated package that merely shares a
+ * prefix (`shiki-foo`).
+ */
+function matchesPackage(specifier: string, entry: string): boolean {
+  return entry.endsWith('/')
+    ? specifier.startsWith(entry)
+    : specifier === entry || specifier.startsWith(`${entry}/`);
+}
+
 function isForbiddenPackage(specifier: string): boolean {
-  return FORBIDDEN_RENDERING_PACKAGES.some((pkg) =>
-    pkg.endsWith('/')
-      ? specifier.startsWith(pkg)
-      : specifier === pkg || specifier.startsWith(`${pkg}/`),
-  );
+  return FORBIDDEN_RENDERING_PACKAGES.some((entry) => matchesPackage(specifier, entry));
 }
 
 type ReachResult = {
@@ -225,19 +252,42 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
     visited.add(file);
 
     for (const specifier of scanRuntimeImports(file)) {
+      // A relative or workspace (@cinder/*) import MUST resolve to a source file
+      // we can follow. If it doesn't, we'd silently drop that subgraph — the
+      // exact false negative this test exists to prevent (a rendering dependency
+      // could hide behind an unfollowed edge). So fail loudly instead of skipping.
       if (specifier.startsWith('.')) {
         const next = resolveRelative(file, specifier);
-        if (next) queue.push(next);
-        // An unresolved relative import is a real problem, but not this test's
-        // concern — typecheck/build would catch it. We simply can't follow it.
+        if (!next) {
+          throw new Error(
+            `Unresolvable relative import "${specifier}" from "${file}". The leanness ` +
+              `traversal must follow every internal edge — a dropped edge could hide a ` +
+              `rendering dependency. Fix the resolver's extension/index candidates or the import.`,
+          );
+        }
+        queue.push(next);
         continue;
       }
       if (specifier.startsWith('@cinder/')) {
         const next = resolveWorkspaceSubpath(specifier);
-        if (next) queue.push(next);
+        if (!next) {
+          throw new Error(
+            `Unresolvable workspace import "${specifier}" from "${file}". It does not map to a ` +
+              `declared export in the target package's package.json "exports". The traversal must ` +
+              `follow every @cinder/* edge; an internal deep import that bypasses exports (or a ` +
+              `missing export entry) could hide a rendering dependency. Declare the export or fix the import.`,
+          );
+        }
+        queue.push(next);
         continue;
       }
-      // External bare import — a graph leaf. Record it; flag if forbidden.
+      // External (non-workspace) bare import — a graph leaf. We record its NAME
+      // and flag it if forbidden, but do NOT traverse into node_modules. This
+      // means the guarantee is "cinder source does not DIRECTLY import a rendering
+      // package", not "no rendering bytes are transitively bundled". See the file
+      // header. A `wrapper-pkg` that itself imports `rehype-katex` would not be
+      // caught here — but cinder controls its own direct deps, and the forbidden
+      // list names every rendering package cinder could import.
       externalsReached.add(specifier);
       if (isForbiddenPackage(specifier)) forbiddenReached.add(specifier);
     }
@@ -292,14 +342,10 @@ describe('import-graph leanness', () => {
     // leanness guarantee.
     it('@cinder/markdown/rendering reaches every rendering package', () => {
       const { externalsReached } = reachFromSubpath('@cinder/markdown/rendering');
-      const missing = FORBIDDEN_RENDERING_PACKAGES.filter((pkg) => {
-        const matcher = pkg.endsWith('/') ? pkg : `${pkg}`;
-        return ![...externalsReached].some((reached) =>
-          matcher.endsWith('/')
-            ? reached.startsWith(matcher)
-            : reached === matcher || reached.startsWith(`${matcher}/`),
-        );
-      });
+      const reached = [...externalsReached];
+      const missing = FORBIDDEN_RENDERING_PACKAGES.filter(
+        (entry) => !reached.some((specifier) => matchesPackage(specifier, entry)),
+      );
       if (missing.length > 0) {
         throw new Error(
           `Sanity check failed: the rendering subpath no longer reaches [${missing.join(', ')}]. ` +
@@ -309,6 +355,31 @@ describe('import-graph leanness', () => {
         );
       }
       expect(missing.length).toBe(0);
+    });
+  });
+
+  describe('known limitation: computed dynamic imports are invisible (documented)', () => {
+    // This guards against a SILENT regression in our own assumptions, not in
+    // cinder source: it pins the fact that `scanImports` sees a string-literal
+    // dynamic import but NOT a computed one. If a future Bun started resolving
+    // computed imports (or stopped seeing literal ones), this test changes and
+    // forces us to revisit the traversal's completeness. cinder source contains
+    // no computed dynamic imports today; if one is ever added to conditionally
+    // load a rendering package, neither this static traversal nor the old
+    // bundle-grep could catch it — hence it is called out, not silently ignored.
+    it('scanImports sees a literal dynamic import but not a computed one', () => {
+      const probe = new Bun.Transpiler({ loader: 'ts' });
+      const literal = probe.scanImports(`await import('rehype-katex');`).map((entry) => entry.path);
+      const computed = probe
+        .scanImports(`const renderer = 'rehype-katex';\nawait import(renderer);`)
+        .map((entry) => entry.path);
+
+      // A literal specifier IS seen — so a real `import('rehype-katex')` in source
+      // would be caught by the leanness traversal.
+      expect(literal).toContain('rehype-katex');
+      // A computed specifier is NOT seen — the documented blind spot. If this ever
+      // flips, revisit the traversal and this file's header note.
+      expect(computed).not.toContain('rehype-katex');
     });
   });
 });
