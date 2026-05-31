@@ -1,277 +1,479 @@
 /**
  * Import-graph leanness guard.
  *
- * The bundle-bloat regression we just fixed (rendering pipeline pulled in
- * by every consumer of @cinder/markdown) is the kind of thing that's
- * easy to re-introduce — one accidental `export *` or a barrel import
- * across subpaths and the rendering stack creeps back into diff-only
- * consumers.
+ * The bundle-bloat regression this protects against (the rendering pipeline
+ * pulled in by every consumer of @cinder/markdown) is easy to re-introduce —
+ * one accidental `export *` or a barrel import across subpaths and the rendering
+ * stack creeps back into diff-only consumers.
  *
- * This test bundles each subpath in isolation via Bun.build and
- * asserts the resulting bundle text does NOT contain any of the heavy
- * rendering-only modules. It does NOT enforce a "no unified" rule on
- * the pipeline barrels — the parser/serializer legitimately depend on
- * unified/remark-parse/remark-stringify, and forcing those out would
- * defeat the purpose of the aggregate.
+ * HOW THIS WORKS (and why it no longer uses Bun.build):
+ *
+ * It used to bundle each subpath with `Bun.build` and grep the output for
+ * rendering-library strings. On Linux CI that intermittently failed with
+ * `EISDIR reading file: ".../packages/diff/src/line-diff.ts"` — a Bun
+ * bundler / libuv / overlayfs path-confusion surfaced as a spurious filesystem
+ * error when `Bun.build` walked the live workspace graph while @cinder/diff's
+ * own test process touched the same file. Retries (PRs #213/#214) only reduced
+ * the probability; they never eliminated it.
+ *
+ * Instead we now walk the import graph STATICALLY: resolve each subpath to its
+ * source file via the package `exports` map, read each file with `readFileSync`,
+ * extract its runtime imports with `Bun.Transpiler.scanImports` (which excludes
+ * `import type` / `export type`), resolve each specifier, and recurse. A subpath
+ * is "lean" iff no FORBIDDEN rendering package is reachable from it. Deterministic
+ * and immune to filesystem races.
+ *
+ * GUARANTEE (and the one way it differs from the old bundler test): this asserts
+ * that cinder's own SOURCE graph never DIRECTLY imports a rendering package. It
+ * does NOT traverse into node_modules, so it would not catch a third-party
+ * wrapper that itself pulls in `rehype-katex`. That tradeoff is deliberate and
+ * safe here: cinder controls its own direct dependencies, every rendering package
+ * cinder could import is in FORBIDDEN_RENDERING_PACKAGES, and the traversal closes
+ * the two ways an edge could otherwise hide a dependency —
+ *   1. it FAILS LOUDLY on any internal edge (relative or `@cinder/*`) it cannot
+ *      follow, and
+ *   2. it BANS computed dynamic imports AND computed `require(...)` calls
+ *      (`import(variable)`, `require('a'+b)`, interpolated `` import(`…${x}…`) ``)
+ *      in guarded source, since those are invisible to static analysis (see
+ *      `assertNoComputedImport`).
+ * Within cinder's source it is actually STRICTER than the old bundle-text grep:
+ * it sees the import even when the bundler would have tree-shaken or renamed the
+ * telltale string.
  *
  * Categories:
  *
- * A. **Narrow / leaf subpaths** — must contain none of the rendering
- *    payload (shiki, katex, rehype-katex). The diff/line-diff path is
- *    the canonical "tiny consumer" — nothing in there should drag the
- *    rendering graph.
- *
- * B. **Aggregate barrels** — must contain none of the rendering payload
- *    even though they may legitimately contain unified for the parser.
- *
- * C. **Bare root** — currently re-exports `diff` and `pipeline` only.
- *    Must contain none of the rendering payload regardless of which
- *    namespace a consumer reaches into.
+ * A. **Narrow / leaf subpaths** — no rendering package reachable. `diff/line-diff`
+ *    is the canonical "tiny consumer"; nothing in it should drag rendering.
+ * B. **Aggregate barrels** — no rendering package reachable, even though they may
+ *    legitimately reach unified/remark for the parser.
+ * C. **Bare root** — re-exports `diff` and `pipeline` only; no rendering reachable
+ *    regardless of which namespace a consumer uses.
+ * D. **Sanity** — the rendering subpath MUST reach the rendering packages, so the
+ *    leanness assertions above cannot pass vacuously.
  */
 
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
-// Markers that the rendering bundle MUST contain. The sanity check below
-// asserts every marker is present in the rendering bundle; the leanness
-// tests assert none are present in lean bundles. Markers must be strings
-// that survive bundling — module-specifier paths (e.g. `shiki/core`) get
-// inlined and don't appear as literals, but identifier names from the
-// modules' source DO appear because Bun emits the module bodies inline.
+import ts from 'typescript';
+
+// Rendering-only packages that cinder's source imports DIRECTLY. A lean subpath
+// must not reach any of these; the rendering subpath must reach all of them.
+// Matched as exact package names or scoped-package prefixes (e.g. any
+// `@shikijs/*` matches `@shikijs/`).
 //
-// `scopeName` is a TextMate grammar property used heavily by shiki's
-// language registrations; `katex` appears in CSS class generation
-// throughout the KaTeX library body. Both are stable across versions.
-// `@shikijs` and `shiki` are present in passthrough strings the libraries
-// reference internally (worker comm, error messages, etc.).
-const RENDERING_MARKERS = ['scopeName', 'katex', '@shikijs', 'shiki'] as const;
+// NB: bare `katex` is intentionally NOT listed — cinder does not import `katex`
+// directly; it imports `rehype-katex` + `remark-math`, which pull katex in
+// transitively. The old Bun.build test saw the string "katex" only because the
+// bundler inlined rehype-katex's transitive katex body. This static graph tracks
+// DIRECT imports, so we forbid the packages cinder actually imports. Reaching
+// rehype-katex/remark-math from a lean subpath still fails correctly.
+const FORBIDDEN_RENDERING_PACKAGES = ['shiki', '@shikijs/', 'rehype-katex', 'remark-math'] as const;
 
-// This test file lives at packages/markdown/src/, so `import.meta.dirname` is
-// that `src` directory and three levels up is the workspace root (the directory
-// holding `package.json` + `bun.lock` + the `packages/` folder).
-//
-// The temp entry file MUST live somewhere inside the workspace tree so Bun's
-// module resolution walks up to the workspace `node_modules` and the
-// `@cinder/markdown` self-reference resolves — an entry placed in `os.tmpdir()`
-// fails with `Could not resolve: "@cinder/markdown/..."`. But it must NOT live
-// inside `packages/markdown` itself: see `bundleSnippet` for why.
-const WORKSPACE_ROOT = join(import.meta.dirname, '..', '..', '..');
+const WORKSPACE_ROOT = resolve(import.meta.dirname, '..', '..', '..');
+const PACKAGES_DIR = join(WORKSPACE_ROOT, 'packages');
 
-// Maximum number of Bun.build attempts per snippet. See `isTransientReadError`.
-const MAX_BUILD_ATTEMPTS = 5;
+// The import conditions to apply, in priority order, when picking a target from
+// an `exports` entry. The old Bun.build version resolved with `target: 'browser'`
+// + `conditions: ['bun']`, so we mirror that: `bun` first, then the implicit
+// browser/import/default chain. (No @cinder/* package actually declares a
+// `browser` condition today, so for cinder's own graph this resolves identically
+// to `bun`→src; `browser` is included so the resolver stays faithful if one is
+// added later.) `types` is intentionally absent — we must never follow a
+// type-only target.
+const EXPORT_CONDITIONS = ['bun', 'browser', 'import', 'default'] as const;
 
-/**
- * Pull every stringy field out of a thrown bundler error so the retry matcher
- * can see the real errno text.
- *
- * Bun.build surfaces failures two ways: it may *throw* (most failures, including
- * the transient read errors here), or — for some cases — return
- * `{ success: false, logs }` (which `buildOnce` handles separately above). When
- * it throws, the value is typically an `AggregateError` whose own
- * `String(error)` is only `"AggregateError: Bundle failed"`; the actual
- * per-module diagnostic — e.g. `EISDIR reading file: ".../line-diff.ts"` —
- * lives one level down, on each entry of `error.errors`. We concatenate the
- * top-level string/message with every inner error's string/message and match
- * against that. (Matching `String(error)` alone, as the original guard did,
- * could never catch the read error — which is why the earlier retry was inert.)
- */
-function collectErrorText(error: unknown): string {
-  const parts: string[] = [];
-  const push = (value: unknown): void => {
-    if (value === undefined || value === null) return;
-    if (typeof value === 'string') {
-      parts.push(value);
-      return;
-    }
-    if (value instanceof Error) {
-      // `Error.prototype.toString()` yields "Name: message" — the form the
-      // bundler uses for its per-module diagnostics (e.g. the EISDIR text).
-      parts.push(value.toString());
-    } else {
-      const message = (value as { message?: unknown }).message;
-      if (typeof message === 'string') parts.push(message);
-    }
-    const inner = (value as { errors?: unknown }).errors;
-    if (Array.isArray(inner)) {
-      for (const entry of inner) push(entry);
-    }
-  };
-  push(error);
-  return parts.join('\n');
+type PackageJson = {
+  name?: string;
+  exports?: Record<string, unknown>;
+};
+
+const packageJsonCache = new Map<string, PackageJson | null>();
+const scanCache = new Map<string, string[]>();
+const transpiler = new Bun.Transpiler({ loader: 'ts' });
+
+function readPackageJson(packageDir: string): PackageJson | null {
+  if (packageJsonCache.has(packageDir)) return packageJsonCache.get(packageDir) ?? null;
+  const path = join(packageDir, 'package.json');
+  const parsed = existsSync(path) ? (JSON.parse(readFileSync(path, 'utf-8')) as PackageJson) : null;
+  packageJsonCache.set(packageDir, parsed);
+  return parsed;
 }
 
-/**
- * Detect the transient filesystem read errors Bun's bundler emits when a source
- * file in the module graph is touched concurrently by another process.
- *
- * Under CI the whole workspace runs `bun run --filter='*' test`, so the
- * `@cinder/diff` package's own `bun test` process reads
- * `packages/diff/src/line-diff.ts` at the same moment this test's `Bun.build`
- * resolves that file through the `@cinder/diff/line-diff` re-export. On Linux
- * (ext4/overlayfs) that cross-process read can momentarily surface as
- * `EISDIR`/`ENOTDIR` while reading a regular `.ts` file; the bundler reports it
- * as `EISDIR reading file: ".../line-diff.ts"` /
- * `Unexpected reading file: ".../line-diff.ts"`, and the underlying libuv form
- * is `EISDIR: illegal operation on a directory, read`. The file is never a
- * directory and a fresh read succeeds; it does not reproduce on macOS/APFS.
- *
- * This retry is a defence-in-depth backstop only — the primary fix is
- * structural (see `bundleSnippet`). It is deliberately narrow: it matches the
- * read-errno families, never a genuine resolution failure or a rendering-payload
- * leak, so a real regression still fails immediately.
- */
-function isTransientReadError(message: string): boolean {
-  // Match only the known transient forms, never a bare EISDIR/ENOTDIR anywhere
-  // in the message (which could be an unrelated, genuine failure we must not
-  // retry past): the bundler's `<errno> reading file: ...` diagnostic, and the
-  // underlying libuv `EISDIR: illegal operation on a directory, read` form.
-  return /(?:EISDIR|ENOTDIR|Unexpected)[^\n]*reading file|E(?:IS|NOT)DIR:[^\n]*read/.test(
-    message,
-  );
-}
-
-async function buildOnce(entry: string): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: [entry],
-    target: 'browser',
-    format: 'esm',
-    conditions: ['bun'],
-  });
-  if (!result.success) {
-    throw new Error(`Build failed:\n${result.logs.map(String).join('\n')}`);
+/** Pick a target string from an `exports` entry, applying conditions in order. */
+function pickConditionTarget(entry: unknown): string | undefined {
+  if (typeof entry === 'string') return entry;
+  // Array-form exports (`["./a.js", "./b.js"]`) and null/primitives are not
+  // condition objects — bail rather than treating an array index as a condition.
+  if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return undefined;
+  const record = entry as Record<string, unknown>;
+  for (const condition of EXPORT_CONDITIONS) {
+    if (condition in record) {
+      const picked = pickConditionTarget(record[condition]);
+      if (picked) return picked;
+    }
   }
-  const output = result.outputs[0];
-  if (!output) throw new Error('Build produced no output');
-  return await output.text();
+  return undefined;
 }
 
-async function bundleSnippet(snippet: string): Promise<string> {
-  // Build from a temp dir at the WORKSPACE ROOT, never inside packages/markdown.
-  //
-  // Root cause of the Linux-only CI flake: when the entry lived inside
-  // packages/markdown, several of these tests ran concurrently, each doing
-  // `mkdtemp`/`rmSync` of a `.import-graph-*` dir inside the very package tree
-  // that `Bun.build` scans while resolving `@cinder/markdown/*`. On Linux a
-  // directory entry appearing or vanishing inside a tree the resolver is
-  // walking can make it stat a path mid-deletion and report a spurious read
-  // error, which propagates as the EISDIR/Unexpected failure on the deepest
-  // leaf of the graph (`line-diff.ts`). Placing the temp dirs at the workspace
-  // root — siblings of `packages/`, not children of it — removes that
-  // interference entirely while keeping module resolution working.
-  const dir = mkdtempSync(join(WORKSPACE_ROOT, '.import-graph-'));
-  const entry = join(dir, 'entry.ts');
-  writeFileSync(entry, snippet);
-  try {
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= MAX_BUILD_ATTEMPTS; attempt++) {
-      try {
-        return await buildOnce(entry);
-      } catch (error) {
-        lastError = error;
-        // Inspect the AggregateError's inner errors, not just String(error):
-        // the errno text lives there (see collectErrorText).
-        if (attempt < MAX_BUILD_ATTEMPTS && isTransientReadError(collectErrorText(error))) {
-          // Brief backoff so the concurrent reader's file-access window can
-          // close before we retry, instead of re-hitting the race instantly.
-          await Bun.sleep(25 * attempt);
-          continue;
-        }
-        throw error;
+/**
+ * Resolve a workspace package subpath (e.g. `@cinder/markdown/diff/line-diff`)
+ * to an absolute SOURCE file path via that package's `exports` map. Returns
+ * undefined for non-workspace (external) packages — those are leaves we only
+ * check by name.
+ */
+function resolveWorkspaceSubpath(specifier: string): string | undefined {
+  if (!specifier.startsWith('@cinder/')) return undefined;
+  const withoutScope = specifier.slice('@cinder/'.length);
+  const packageName = withoutScope.split('/')[0]!;
+  const subpath = withoutScope.slice(packageName.length); // '' or '/diff/line-diff'
+  const packageDir = join(PACKAGES_DIR, packageName);
+  const packageJson = readPackageJson(packageDir);
+  if (!packageJson?.exports) return undefined;
+
+  const exportKey = subpath === '' ? '.' : `.${subpath}`;
+  const entry = packageJson.exports[exportKey];
+  if (entry === undefined) return undefined;
+  const target = pickConditionTarget(entry);
+  if (!target) return undefined;
+
+  // Prefer the source (.ts) target over a built (.js) one so we traverse the
+  // real graph, not a stale dist build. The `bun` condition already points at
+  // src; if a target resolved to dist, map it back to the src twin.
+  const resolved = resolve(packageDir, target);
+  return toSourcePath(resolved);
+}
+
+/** Map a `dist/.../x.js` export target back to its `src/.../x.ts` twin. */
+function toSourcePath(filePath: string): string | undefined {
+  const candidates = [filePath];
+  if (filePath.includes('/dist/')) {
+    const srcBase = filePath.replace('/dist/', '/src/');
+    // Prefer the source twin; cover both .js→.ts and .jsx→.tsx.
+    candidates.unshift(srcBase.replace(/\.jsx$/, '.tsx'), srcBase.replace(/\.js$/, '.ts'));
+  }
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/**
+ * Resolve a relative import specifier (e.g. `./types.js`) from an importer file
+ * to an absolute source path, mapping `.js` → `.ts` and bare dirs → `index.ts`.
+ */
+function resolveRelative(importer: string, specifier: string): string | undefined {
+  const base = resolve(dirname(importer), specifier);
+  const candidates = [
+    base,
+    base.replace(/\.js$/, '.ts'),
+    base.replace(/\.jsx$/, '.tsx'),
+    `${base}.ts`,
+    `${base}.tsx`,
+    join(base, 'index.ts'),
+    join(base, 'index.tsx'),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/**
+ * Runtime import specifiers in a source file.
+ *
+ * `scanImports` returns `import-statement` (static `import`/`export … from`,
+ * including `export * from`), `dynamic-import` (`import('…')`), and
+ * `require-call` entries, and EXCLUDES `import type` / `export type`. We keep ALL
+ * of those kinds deliberately:
+ *   - `export * from`/`export { } from` are exactly the accidental re-exports
+ *     this leanness guard exists to catch — they must be followed.
+ *   - a `dynamic-import` is still a real bundle dependency (it ships in the
+ *     artifact), so we treat it as reachable. This is also load-bearing for the
+ *     sanity check: @cinder/markdown/rendering reaches `remark-math` /
+ *     `rehype-katex` only via dynamic imports in render.ts. If a future Bun
+ *     dropped dynamic imports from scanImports, the sanity check would fail
+ *     loudly (rendering subpath stops reaching them) rather than silently
+ *     weakening the leanness tests — which is the safe failure direction.
+ *
+ * COMPUTED dynamic imports (`import(someVariable)`) are invisible to static
+ * analysis and cannot be followed — so rather than silently accept that blind
+ * spot, the traversal BANS them in guarded source (see `assertNoComputedImport`).
+ * A guarded file must use only string-literal dynamic imports, which we CAN see.
+ */
+function scanRuntimeImports(filePath: string): string[] {
+  const cached = scanCache.get(filePath);
+  if (cached) return cached;
+  const code = readFileSync(filePath, 'utf-8');
+  assertNoComputedImport(filePath, code);
+  const specifiers = transpiler.scanImports(code).map((entry) => entry.path);
+  scanCache.set(filePath, specifiers);
+  return specifiers;
+}
+
+// Ban any dynamic `import(...)` OR `require(...)` whose specifier is NOT a plain
+// string literal or a no-substitution template — those are the only forms
+// `scanImports` (and any static analysis) can follow. `scanImports` reports both
+// `dynamic-import` and `require-call` entries, so both have the SAME blind spot:
+// a computed specifier — `import(variable)`, `require('a' + b)`,
+// `import(\`./\${x}\`)`, `require(cond ? a : c)` — could hide a rendering
+// dependency at runtime while being invisible to the traversal.
+//
+// This uses a real TypeScript AST rather than a regex: a textual scan both MISSES
+// computed expressions that begin with a literal (`import('a' + name)`) and
+// FALSE-POSITIVES on `import(`/`require(` text inside comments or strings. The AST
+// sees only genuine call expressions and inspects the actual first argument.
+function assertNoComputedImport(filePath: string, code: string): void {
+  const sourceFile = ts.createSourceFile(filePath, code, ts.ScriptTarget.Latest, true);
+  const offenders: string[] = [];
+
+  const isDynamicImport = (node: ts.CallExpression): boolean =>
+    node.expression.kind === ts.SyntaxKind.ImportKeyword;
+  // A bare `require(...)` call (require as a plain identifier, not `foo.require`).
+  const isRequireCall = (node: ts.CallExpression): boolean =>
+    ts.isIdentifier(node.expression) && node.expression.text === 'require';
+
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.arguments.length > 0 &&
+      (isDynamicImport(node) || isRequireCall(node))
+    ) {
+      const specifier = node.arguments[0]!;
+      const isFollowable =
+        ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier);
+      if (!isFollowable) {
+        const kind = isRequireCall(node) ? 'require' : 'import';
+        offenders.push(`${kind}(${specifier.getText(sourceFile)})`);
       }
     }
-    // Unreachable: the loop either returns or throws, but TypeScript needs a
-    // terminal statement after the bounded retry.
-    throw lastError;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  if (offenders.length > 0) {
+    throw new Error(
+      `Computed dynamic import/require found in "${filePath}": ${offenders.join(', ')}. A guarded ` +
+        `module must use only string-literal dynamic imports/requires so the leanness traversal can ` +
+        `follow them — a computed specifier is invisible to static analysis and could hide a ` +
+        `rendering dependency. Use a literal, or restructure.`,
+    );
   }
 }
 
-function assertNoRenderingPayload(bundle: string, label: string): void {
-  for (const marker of RENDERING_MARKERS) {
-    if (bundle.includes(marker)) {
-      throw new Error(
-        `${label}: rendering payload "${marker}" leaked into the bundle. ` +
-          `Importing this subpath should not drag the rendering pipeline. ` +
-          `Check whether a recent change added an "export *" or a deep import ` +
-          `that crosses from a non-rendering module into rendering.`,
-      );
+/**
+ * Whether an imported `specifier` belongs to a forbidden-package `entry`. A
+ * trailing-slash entry (e.g. `@shikijs/`) matches any scoped subpath; a plain
+ * entry (e.g. `shiki`) matches the package itself or any of its subpaths
+ * (`shiki`, `shiki/core`, …) but not an unrelated package that merely shares a
+ * prefix (`shiki-foo`).
+ */
+function matchesPackage(specifier: string, entry: string): boolean {
+  return entry.endsWith('/')
+    ? specifier.startsWith(entry)
+    : specifier === entry || specifier.startsWith(`${entry}/`);
+}
+
+function isForbiddenPackage(specifier: string): boolean {
+  return FORBIDDEN_RENDERING_PACKAGES.some((entry) => matchesPackage(specifier, entry));
+}
+
+type ReachResult = {
+  /** Forbidden rendering packages reached from the entry subpath. */
+  forbiddenReached: Set<string>;
+  /** Every external (non-relative, non-workspace) bare import reached. */
+  externalsReached: Set<string>;
+};
+
+/**
+ * Walk the import graph from a workspace subpath and report which forbidden
+ * rendering packages (and all externals) are reachable. Pure file reads —
+ * no bundler, no resolver that can hit the EISDIR race.
+ */
+function reachFromSubpath(entrySubpath: string): ReachResult {
+  const forbiddenReached = new Set<string>();
+  const externalsReached = new Set<string>();
+  const entryFile = resolveWorkspaceSubpath(entrySubpath);
+  if (!entryFile) {
+    throw new Error(
+      `Could not resolve subpath "${entrySubpath}" to a source file via package exports. ` +
+        `Check the package.json "exports" map and the EXPORT_CONDITIONS order.`,
+    );
+  }
+
+  const visited = new Set<string>();
+  const queue: string[] = [entryFile];
+  while (queue.length > 0) {
+    const file = queue.pop()!;
+    if (visited.has(file)) continue;
+    visited.add(file);
+
+    for (const specifier of scanRuntimeImports(file)) {
+      // A relative or workspace (@cinder/*) import MUST resolve to a source file
+      // we can follow. If it doesn't, we'd silently drop that subgraph — the
+      // exact false negative this test exists to prevent (a rendering dependency
+      // could hide behind an unfollowed edge). So fail loudly instead of skipping.
+      if (specifier.startsWith('.')) {
+        const next = resolveRelative(file, specifier);
+        if (!next) {
+          throw new Error(
+            `Unresolvable relative import "${specifier}" from "${file}". The leanness ` +
+              `traversal must follow every internal edge — a dropped edge could hide a ` +
+              `rendering dependency. Fix the resolver's extension/index candidates or the import.`,
+          );
+        }
+        queue.push(next);
+        continue;
+      }
+      if (specifier.startsWith('@cinder/')) {
+        const next = resolveWorkspaceSubpath(specifier);
+        if (!next) {
+          throw new Error(
+            `Unresolvable workspace import "${specifier}" from "${file}". It does not map to a ` +
+              `declared export in the target package's package.json "exports". The traversal must ` +
+              `follow every @cinder/* edge; an internal deep import that bypasses exports (or a ` +
+              `missing export entry) could hide a rendering dependency. Declare the export or fix the import.`,
+          );
+        }
+        queue.push(next);
+        continue;
+      }
+      // External (non-workspace) bare import — a graph leaf. We record its NAME
+      // and flag it if forbidden, but do NOT traverse into node_modules. This
+      // means the guarantee is "cinder source does not DIRECTLY import a rendering
+      // package", not "no rendering bytes are transitively bundled". See the file
+      // header. A `wrapper-pkg` that itself imports `rehype-katex` would not be
+      // caught here — but cinder controls its own direct deps, and the forbidden
+      // list names every rendering package cinder could import.
+      externalsReached.add(specifier);
+      if (isForbiddenPackage(specifier)) forbiddenReached.add(specifier);
     }
+  }
+
+  return { forbiddenReached, externalsReached };
+}
+
+function assertLean(entrySubpath: string): void {
+  const { forbiddenReached } = reachFromSubpath(entrySubpath);
+  if (forbiddenReached.size > 0) {
+    throw new Error(
+      `${entrySubpath}: reaches rendering package(s) [${[...forbiddenReached].join(', ')}]. ` +
+        `Importing this subpath should not drag the rendering pipeline. Check for an ` +
+        `"export *" or a deep import that crosses from a non-rendering module into rendering.`,
+    );
   }
 }
 
 describe('import-graph leanness', () => {
   describe('narrow subpaths (no rendering)', () => {
-    it('@cinder/markdown/diff/line-diff does not pull in shiki/katex/rehype-katex', async () => {
-      const bundle = await bundleSnippet(
-        `import * as m from '@cinder/markdown/diff/line-diff';\nglobalThis.__leanGuard__ = m;\n`,
-      );
-      assertNoRenderingPayload(bundle, '@cinder/markdown/diff/line-diff');
-      // Not also asserting "no unified" — line-diff is pure
-      // string-level diff via diff-match-patch; if a regression adds
-      // unified here it'd be caught implicitly by entry-bundle size
-      // budgets in the playground.
-    }, 30_000);
+    it('@cinder/markdown/diff/line-diff does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@cinder/markdown/diff/line-diff');
+    });
   });
 
   describe('aggregate barrels (no rendering; unified allowed)', () => {
-    it('@cinder/markdown/pipeline does not pull in shiki/katex/rehype-katex', async () => {
-      const bundle = await bundleSnippet(
-        `import * as m from '@cinder/markdown/pipeline';\nglobalThis.__leanGuard__ = m;\n`,
-      );
-      assertNoRenderingPayload(bundle, '@cinder/markdown/pipeline');
-    }, 30_000);
+    it('@cinder/markdown/pipeline does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@cinder/markdown/pipeline');
+    });
 
-    it('@cinder/markdown/diff does not pull in shiki/katex/rehype-katex', async () => {
-      const bundle = await bundleSnippet(
-        `import * as m from '@cinder/markdown/diff';\nglobalThis.__leanGuard__ = m;\n`,
-      );
-      assertNoRenderingPayload(bundle, '@cinder/markdown/diff');
-    }, 30_000);
+    it('@cinder/markdown/diff does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@cinder/markdown/diff');
+    });
   });
 
   describe('bare root (no rendering reachable)', () => {
-    it('@cinder/markdown root via diff namespace does not pull rendering', async () => {
-      const bundle = await bundleSnippet(
-        `import { diff } from '@cinder/markdown';\nglobalThis.__leanGuard__ = diff;\n`,
-      );
-      assertNoRenderingPayload(bundle, '@cinder/markdown (diff usage)');
-    }, 30_000);
-
-    it('@cinder/markdown root via pipeline namespace does not pull rendering', async () => {
-      const bundle = await bundleSnippet(
-        `import { pipeline } from '@cinder/markdown';\nglobalThis.__leanGuard__ = pipeline;\n`,
-      );
-      assertNoRenderingPayload(bundle, '@cinder/markdown (pipeline usage)');
-    }, 30_000);
+    it('@cinder/markdown root does not reach rendering', () => {
+      // The root barrel re-exports diff + pipeline only. Whichever namespace a
+      // consumer reaches into, the rendering graph must not be reachable from
+      // the package entry.
+      assertLean('@cinder/markdown');
+    });
   });
 
-  describe('rendering subpath does pull in shiki/katex (sanity check)', () => {
-    // Inverse assertion: importing the rendering namespace MUST contain
-    // EVERY rendering marker. We require all-present rather than
-    // any-present because a subset would let the leanness tests pass
-    // vacuously: if a future bundler change inlines `shiki/core` so the
-    // string no longer appears literally in bundle text, the leanness
-    // tests would also stop seeing it for the lean subpaths — they'd
-    // pass for the wrong reason. Requiring `=== RENDERING_MARKERS.length`
-    // here forces the test suite to fail loudly if a marker becomes
-    // undetectable, prompting an update to the marker list.
-    it('@cinder/markdown/rendering contains every rendering marker', async () => {
-      const bundle = await bundleSnippet(
-        `import * as m from '@cinder/markdown/rendering';\nglobalThis.__leanGuard__ = m;\n`,
+  describe('rendering subpath does reach shiki/katex (sanity check)', () => {
+    // Inverse assertion: the rendering namespace MUST reach EVERY forbidden
+    // rendering package. We require all-present (not any-present) so the leanness
+    // tests above cannot pass vacuously — if the rendering graph stopped reaching
+    // one of these (e.g. a dependency was renamed), this fails loudly and prompts
+    // an update to FORBIDDEN_RENDERING_PACKAGES rather than silently weakening the
+    // leanness guarantee.
+    it('@cinder/markdown/rendering reaches every rendering package', () => {
+      const { externalsReached } = reachFromSubpath('@cinder/markdown/rendering');
+      const reached = [...externalsReached];
+      const missing = FORBIDDEN_RENDERING_PACKAGES.filter(
+        (entry) => !reached.some((specifier) => matchesPackage(specifier, entry)),
       );
-      const missing = RENDERING_MARKERS.filter((marker) => !bundle.includes(marker));
       if (missing.length > 0) {
         throw new Error(
-          `Sanity check failed: rendering bundle is missing markers ${missing.join(', ')}. ` +
-            `The marker list in import-graph.test.ts (RENDERING_MARKERS) is stale relative ` +
-            `to the actual bundle output — likely because of a shiki/katex/bundler version ` +
-            `change. Update RENDERING_MARKERS to use strings that still appear literally ` +
-            `in the rendering bundle, otherwise the leanness tests above can pass vacuously.`,
+          `Sanity check failed: the rendering subpath no longer reaches [${missing.join(', ')}]. ` +
+            `FORBIDDEN_RENDERING_PACKAGES is stale relative to the actual import graph — likely a ` +
+            `dependency rename or refactor. Update the list, otherwise the leanness tests can pass ` +
+            `vacuously. Externals actually reached: [${[...externalsReached].toSorted().join(', ')}].`,
         );
       }
       expect(missing.length).toBe(0);
-    }, 30_000);
+    });
+  });
+
+  describe('computed dynamic imports are banned in guarded source (not just documented)', () => {
+    // The blind spot — `import(variable)` is invisible to scanImports — is not
+    // merely documented; the traversal BANS it. These tests pin both halves:
+    // (1) scanImports really cannot see a computed specifier (so the ban is the
+    // only thing standing between us and a false negative), and (2) the ban's
+    // detector actually fires on the computed form and stays quiet on the literal
+    // form that the traversal CAN follow.
+    it('scanImports sees a literal dynamic import but not a computed one', () => {
+      const probe = new Bun.Transpiler({ loader: 'ts' });
+      const literal = probe.scanImports(`await import('rehype-katex');`).map((entry) => entry.path);
+      const computed = probe
+        .scanImports(`const renderer = 'rehype-katex';\nawait import(renderer);`)
+        .map((entry) => entry.path);
+      expect(literal).toContain('rehype-katex');
+      expect(computed).not.toContain('rehype-katex'); // the invisible case the ban covers
+    });
+
+    it('assertNoComputedImport allows only literal specifiers and catches every computed shape', () => {
+      // Followable forms — string literal, no-substitution template, static
+      // statements — are fine.
+      expect(() => assertNoComputedImport('ok.ts', `await import('rehype-katex');`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `await import(\`./plain.js\`);`)).not.toThrow();
+      expect(() =>
+        assertNoComputedImport('ok.ts', `import { x } from './x.js';\nexport * from './y.js';`),
+      ).not.toThrow();
+      // Literal require() is followable too (scanImports reports require-call).
+      expect(() =>
+        assertNoComputedImport('ok.ts', `const x = require('rehype-katex');`),
+      ).not.toThrow();
+      // Not dynamic imports/requires at all — must NOT false-positive (the AST
+      // sees these for what they are: an identifier, member calls, a comment, a string).
+      expect(() => assertNoComputedImport('ok.ts', `const reimport = (f) => f;`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `obj.import(thing);`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `mod.require(thing);`)).not.toThrow();
+      expect(() =>
+        assertNoComputedImport('ok.ts', `// do not write import(renderer)\nconst s = "import(x)";`),
+      ).not.toThrow();
+      // Every computed shape must throw — including the ones a regex bypass missed:
+      // bare variable, string concatenation, interpolated template, conditional.
+      expect(() =>
+        assertNoComputedImport('bad.ts', `const r = 'rehype-katex';\nawait import(r);`),
+      ).toThrow(/Computed dynamic import\/require/);
+      expect(() => assertNoComputedImport('bad.ts', `await import('rehype-' + name);`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+      expect(() => assertNoComputedImport('bad.ts', `await import(\`./\${name}.js\`);`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+      expect(() => assertNoComputedImport('bad.ts', `await import(flag ? 'a' : 'b');`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+      // Computed require() has the same blind spot and must throw too.
+      expect(() => assertNoComputedImport('bad.ts', `const x = require(pkgName);`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+      expect(() => assertNoComputedImport('bad.ts', `const x = require('rehype-' + n);`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+    });
   });
 });
