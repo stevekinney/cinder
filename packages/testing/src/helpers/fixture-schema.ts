@@ -70,7 +70,7 @@ const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
  * Schema for a single interaction step. An interaction targets an element
  * identified by its `data-testid` value and performs one supported action.
  */
-const InteractionStepSchema = z
+export const InteractionStepSchema = z
   .object({
     action: z.enum(INTERACTION_ACTIONS),
     target: z.object({

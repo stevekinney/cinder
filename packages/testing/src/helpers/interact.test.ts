@@ -1,11 +1,7 @@
 import { describe, expect, it, mock } from 'bun:test';
 
-import {
-  AmbiguousTestIdError,
-  MissingTestIdError,
-  applyInteractions,
-  type InteractionStep,
-} from './interact.ts';
+import { InteractionStepSchema, type InteractionStep } from './fixture-schema.ts';
+import { AmbiguousTestIdError, MissingTestIdError, applyInteractions } from './interact.ts';
 
 // ---------------------------------------------------------------------------
 // Mock Page factory
@@ -312,5 +308,66 @@ describe('applyInteractions — press without key', () => {
     ];
 
     await expect(applyInteractions(page as never, steps)).rejects.toThrow(/1/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canonical-schema binding (task f1ed0bed)
+//
+// `applyInteractions` consumes `InteractionStep` values; a fixture file's
+// `interact` array is validated at load time by `InteractionStepSchema` in
+// `fixture-schema.ts`. Both must agree on the shape, otherwise a fixture could
+// pass validation yet fail at `applyInteractions`, or vice versa. These tests
+// pin that the canonical schema accepts exactly the well-formed steps
+// `applyInteractions` handles and rejects the malformed `press` steps it throws
+// on — the "interact arrays validate against the canonical InteractionStep
+// before the Playwright run" guarantee.
+// ---------------------------------------------------------------------------
+
+describe('interact steps validate against the canonical InteractionStepSchema', () => {
+  it('accepts every well-formed action this module applies', () => {
+    const wellFormed: InteractionStep[] = [
+      { action: 'focus', target: { testId: 'field' } },
+      { action: 'click', target: { testId: 'button' } },
+      { action: 'hover', target: { testId: 'menu' } },
+      { action: 'press', target: { testId: 'input' }, key: 'Enter' },
+    ];
+    for (const step of wellFormed) {
+      const result = InteractionStepSchema.safeParse(step);
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects a 'press' step with no key — the exact case applyInteractions throws on", () => {
+    const result = InteractionStepSchema.safeParse({
+      action: 'press',
+      target: { testId: 'input' },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a 'press' step with an empty key", () => {
+    const result = InteractionStepSchema.safeParse({
+      action: 'press',
+      target: { testId: 'input' },
+      key: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a target that uses selector instead of testId', () => {
+    const result = InteractionStepSchema.safeParse({
+      action: 'click',
+      target: { selector: '.foo' },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an unknown action', () => {
+    const result = InteractionStepSchema.safeParse({
+      action: 'doubleclick',
+      target: { testId: 'button' },
+    });
+    expect(result.success).toBe(false);
   });
 });

@@ -72,11 +72,15 @@
     },
     "./accordion/schema": {
       "types": "./dist/components/accordion/accordion.schema.d.ts",
-      "svelte": "./src/components/accordion/accordion.schema.ts"
+      "svelte": "./src/components/accordion/accordion.schema.ts",
+      "node": "./dist/server/components/accordion/accordion.schema.js",
+      "default": "./dist/components/accordion/accordion.schema.js"
     },
     "./accordion/variables": {
       "types": "./dist/components/accordion/accordion.variables.d.ts",
-      "svelte": "./src/components/accordion/accordion.variables.ts"
+      "svelte": "./src/components/accordion/accordion.variables.ts",
+      "node": "./dist/server/components/accordion/accordion.variables.js",
+      "default": "./dist/components/accordion/accordion.variables.js"
     },
     "./accordion/styles": {
       "default": "./dist/components/accordion/accordion.css"
@@ -93,11 +97,15 @@
     },
     "./accordion-item/schema": {
       "types": "./dist/components/accordion-item/accordion-item.schema.d.ts",
-      "svelte": "./src/components/accordion-item/accordion-item.schema.ts"
+      "svelte": "./src/components/accordion-item/accordion-item.schema.ts",
+      "node": "./dist/server/components/accordion-item/accordion-item.schema.js",
+      "default": "./dist/components/accordion-item/accordion-item.schema.js"
     },
     "./accordion-item/variables": {
       "types": "./dist/components/accordion-item/accordion-item.variables.d.ts",
-      "svelte": "./src/components/accordion-item/accordion-item.variables.ts"
+      "svelte": "./src/components/accordion-item/accordion-item.variables.ts",
+      "node": "./dist/server/components/accordion-item/accordion-item.variables.js",
+      "default": "./dist/components/accordion-item/accordion-item.variables.js"
     },
     "./accordion-item/styles": {
       "default": "./dist/components/accordion-item/accordion-item.css"
@@ -110,11 +118,15 @@
     },
     "./alert/schema": {
       "types": "./dist/components/alert/alert.schema.d.ts",
-      "svelte": "./src/components/alert/alert.schema.ts"
+      "svelte": "./src/components/alert/alert.schema.ts",
+      "node": "./dist/server/components/alert/alert.schema.js",
+      "default": "./dist/components/alert/alert.schema.js"
     },
     "./alert/variables": {
       "types": "./dist/components/alert/alert.variables.d.ts",
-      "svelte": "./src/components/alert/alert.variables.ts"
+      "svelte": "./src/components/alert/alert.variables.ts",
+      "node": "./dist/server/components/alert/alert.variables.js",
+      "default": "./dist/components/alert/alert.variables.js"
     },
     "./alert/styles": {
       "default": "./dist/components/alert/alert.css"
@@ -131,11 +143,15 @@
     },
     "./alert-dialog/schema": {
       "types": "./dist/components/alert-dialog/alert-dialog.schema.d.ts",
-      "svelte": "./src/components/alert-dialog/alert-dialog.schema.ts"
+      "svelte": "./src/components/alert-dialog/alert-dialog.schema.ts",
+      "node": "./dist/server/components/alert-dialog/alert-dialog.schema.js",
+      "default": "./dist/components/alert-dialog/alert-dialog.schema.js"
     },
     "./alert-dialog/variables": {
       "types": "./dist/components/alert-dialog/alert-dialog.variables.d.ts",
-      "svelte": "./src/components/alert-dialog/alert-dialog.variables.ts"
+      "svelte": "./src/components/alert-dialog/alert-dialog.variables.ts",
+      "node": "./dist/server/components/alert-dialog/alert-dialog.variables.js",
+      "default": "./dist/components/alert-dialog/alert-dialog.variables.js"
     },
     "./alert-dialog/styles": {
       "default": "./dist/components/alert-dialog/alert-dialog.css"
@@ -152,11 +168,15 @@
     },
     "./area-chart/schema": {
       "types": "./dist/components/area-chart/area-chart.schema.d.ts",
-      "svelte": "./src/components/area-chart/area-chart.schema.ts"
+      "svelte": "./src/components/area-chart/area-chart.schema.ts",
+      "node": "./dist/server/components/area-chart/area-chart.schema.js",
+      "default": "./dist/components/area-chart/area-chart.schema.js"
     },
     "./area-chart/variables": {
       "types": "./dist/components/area-chart/area-chart.variables.d.ts",
-      "svelte": "./src/components/area-chart/area-chart.variables.ts"
+      "svelte": "./src/components/area-chart/area-chart.variables.ts",
+      "node": "./dist/server/components/area-chart/area-chart.variables.js",
+      "default": "./dist/components/area-chart/area-chart.variables.js"
     },
     "./area-chart/styles": {
       "default": "./dist/components/area-chart/area-chart.css"
@@ -173,11 +193,15 @@
     },
     "./aspect-ratio/schema": {
       "types": "./dist/components/aspect-ratio/aspect-ratio.schema.d.ts",
-      "svelte": "./src/components/aspect-ratio/aspect-ratio.schema.ts"
+      "svelte": "./src/components/aspect-ratio/aspect-ratio.schema.ts",
+      "node": "./dist/server/components/aspect-ratio/aspect-ratio.schema.js",
+      "default": "./dist/components/aspect-ratio/aspect-ratio.schema.js"
     },
     "./aspect-ratio/variables": {
       "types": "./dist/components/aspect-ratio/aspect-ratio.variables.d.ts",
-      "svelte": "./src/components/aspect-ratio/aspect-ratio.variables.ts"
+      "svelte": "./src/components/aspect-ratio/aspect-ratio.variables.ts",
+      "node": "./dist/server/components/aspect-ratio/aspect-ratio.variables.js",
+      "default": "./dist/components/aspect-ratio/aspect-ratio.variables.js"
     },
     "./aspect-ratio/styles": {
       "default": "./dist/components/aspect-ratio/aspect-ratio.css"
@@ -194,11 +218,15 @@
     },
     "./autocomplete/schema": {
       "types": "./dist/components/autocomplete/autocomplete.schema.d.ts",
-      "svelte": "./src/components/autocomplete/autocomplete.schema.ts"
+      "svelte": "./src/components/autocomplete/autocomplete.schema.ts",
+      "node": "./dist/server/components/autocomplete/autocomplete.schema.js",
+      "default": "./dist/components/autocomplete/autocomplete.schema.js"
     },
     "./autocomplete/variables": {
       "types": "./dist/components/autocomplete/autocomplete.variables.d.ts",
-      "svelte": "./src/components/autocomplete/autocomplete.variables.ts"
+      "svelte": "./src/components/autocomplete/autocomplete.variables.ts",
+      "node": "./dist/server/components/autocomplete/autocomplete.variables.js",
+      "default": "./dist/components/autocomplete/autocomplete.variables.js"
     },
     "./autocomplete/styles": {
       "default": "./dist/components/autocomplete/autocomplete.css"
@@ -215,11 +243,15 @@
     },
     "./avatar/schema": {
       "types": "./dist/components/avatar/avatar.schema.d.ts",
-      "svelte": "./src/components/avatar/avatar.schema.ts"
+      "svelte": "./src/components/avatar/avatar.schema.ts",
+      "node": "./dist/server/components/avatar/avatar.schema.js",
+      "default": "./dist/components/avatar/avatar.schema.js"
     },
     "./avatar/variables": {
       "types": "./dist/components/avatar/avatar.variables.d.ts",
-      "svelte": "./src/components/avatar/avatar.variables.ts"
+      "svelte": "./src/components/avatar/avatar.variables.ts",
+      "node": "./dist/server/components/avatar/avatar.variables.js",
+      "default": "./dist/components/avatar/avatar.variables.js"
     },
     "./avatar/styles": {
       "default": "./dist/components/avatar/avatar.css"
@@ -236,11 +268,15 @@
     },
     "./avatar-group/schema": {
       "types": "./dist/components/avatar-group/avatar-group.schema.d.ts",
-      "svelte": "./src/components/avatar-group/avatar-group.schema.ts"
+      "svelte": "./src/components/avatar-group/avatar-group.schema.ts",
+      "node": "./dist/server/components/avatar-group/avatar-group.schema.js",
+      "default": "./dist/components/avatar-group/avatar-group.schema.js"
     },
     "./avatar-group/variables": {
       "types": "./dist/components/avatar-group/avatar-group.variables.d.ts",
-      "svelte": "./src/components/avatar-group/avatar-group.variables.ts"
+      "svelte": "./src/components/avatar-group/avatar-group.variables.ts",
+      "node": "./dist/server/components/avatar-group/avatar-group.variables.js",
+      "default": "./dist/components/avatar-group/avatar-group.variables.js"
     },
     "./avatar-group/styles": {
       "default": "./dist/components/avatar-group/avatar-group.css"
@@ -257,11 +293,15 @@
     },
     "./badge/schema": {
       "types": "./dist/components/badge/badge.schema.d.ts",
-      "svelte": "./src/components/badge/badge.schema.ts"
+      "svelte": "./src/components/badge/badge.schema.ts",
+      "node": "./dist/server/components/badge/badge.schema.js",
+      "default": "./dist/components/badge/badge.schema.js"
     },
     "./badge/variables": {
       "types": "./dist/components/badge/badge.variables.d.ts",
-      "svelte": "./src/components/badge/badge.variables.ts"
+      "svelte": "./src/components/badge/badge.variables.ts",
+      "node": "./dist/server/components/badge/badge.variables.js",
+      "default": "./dist/components/badge/badge.variables.js"
     },
     "./badge/styles": {
       "default": "./dist/components/badge/badge.css"
@@ -278,11 +318,15 @@
     },
     "./banner/schema": {
       "types": "./dist/components/banner/banner.schema.d.ts",
-      "svelte": "./src/components/banner/banner.schema.ts"
+      "svelte": "./src/components/banner/banner.schema.ts",
+      "node": "./dist/server/components/banner/banner.schema.js",
+      "default": "./dist/components/banner/banner.schema.js"
     },
     "./banner/variables": {
       "types": "./dist/components/banner/banner.variables.d.ts",
-      "svelte": "./src/components/banner/banner.variables.ts"
+      "svelte": "./src/components/banner/banner.variables.ts",
+      "node": "./dist/server/components/banner/banner.variables.js",
+      "default": "./dist/components/banner/banner.variables.js"
     },
     "./banner/styles": {
       "default": "./dist/components/banner/banner.css"
@@ -295,11 +339,15 @@
     },
     "./bar-chart/schema": {
       "types": "./dist/components/bar-chart/bar-chart.schema.d.ts",
-      "svelte": "./src/components/bar-chart/bar-chart.schema.ts"
+      "svelte": "./src/components/bar-chart/bar-chart.schema.ts",
+      "node": "./dist/server/components/bar-chart/bar-chart.schema.js",
+      "default": "./dist/components/bar-chart/bar-chart.schema.js"
     },
     "./bar-chart/variables": {
       "types": "./dist/components/bar-chart/bar-chart.variables.d.ts",
-      "svelte": "./src/components/bar-chart/bar-chart.variables.ts"
+      "svelte": "./src/components/bar-chart/bar-chart.variables.ts",
+      "node": "./dist/server/components/bar-chart/bar-chart.variables.js",
+      "default": "./dist/components/bar-chart/bar-chart.variables.js"
     },
     "./bar-chart/styles": {
       "default": "./dist/components/bar-chart/bar-chart.css"
@@ -316,11 +364,15 @@
     },
     "./breadcrumbs/schema": {
       "types": "./dist/components/breadcrumbs/breadcrumbs.schema.d.ts",
-      "svelte": "./src/components/breadcrumbs/breadcrumbs.schema.ts"
+      "svelte": "./src/components/breadcrumbs/breadcrumbs.schema.ts",
+      "node": "./dist/server/components/breadcrumbs/breadcrumbs.schema.js",
+      "default": "./dist/components/breadcrumbs/breadcrumbs.schema.js"
     },
     "./breadcrumbs/variables": {
       "types": "./dist/components/breadcrumbs/breadcrumbs.variables.d.ts",
-      "svelte": "./src/components/breadcrumbs/breadcrumbs.variables.ts"
+      "svelte": "./src/components/breadcrumbs/breadcrumbs.variables.ts",
+      "node": "./dist/server/components/breadcrumbs/breadcrumbs.variables.js",
+      "default": "./dist/components/breadcrumbs/breadcrumbs.variables.js"
     },
     "./breadcrumbs/styles": {
       "default": "./dist/components/breadcrumbs/breadcrumbs.css"
@@ -337,11 +389,15 @@
     },
     "./button/schema": {
       "types": "./dist/components/button/button.schema.d.ts",
-      "svelte": "./src/components/button/button.schema.ts"
+      "svelte": "./src/components/button/button.schema.ts",
+      "node": "./dist/server/components/button/button.schema.js",
+      "default": "./dist/components/button/button.schema.js"
     },
     "./button/variables": {
       "types": "./dist/components/button/button.variables.d.ts",
-      "svelte": "./src/components/button/button.variables.ts"
+      "svelte": "./src/components/button/button.variables.ts",
+      "node": "./dist/server/components/button/button.variables.js",
+      "default": "./dist/components/button/button.variables.js"
     },
     "./button/styles": {
       "default": "./dist/components/button/button.css"
@@ -362,11 +418,15 @@
     },
     "./button-group/schema": {
       "types": "./dist/components/button-group/button-group.schema.d.ts",
-      "svelte": "./src/components/button-group/button-group.schema.ts"
+      "svelte": "./src/components/button-group/button-group.schema.ts",
+      "node": "./dist/server/components/button-group/button-group.schema.js",
+      "default": "./dist/components/button-group/button-group.schema.js"
     },
     "./button-group/variables": {
       "types": "./dist/components/button-group/button-group.variables.d.ts",
-      "svelte": "./src/components/button-group/button-group.variables.ts"
+      "svelte": "./src/components/button-group/button-group.variables.ts",
+      "node": "./dist/server/components/button-group/button-group.variables.js",
+      "default": "./dist/components/button-group/button-group.variables.js"
     },
     "./button-group/styles": {
       "default": "./dist/components/button-group/button-group.css"
@@ -383,11 +443,15 @@
     },
     "./callout/schema": {
       "types": "./dist/components/callout/callout.schema.d.ts",
-      "svelte": "./src/components/callout/callout.schema.ts"
+      "svelte": "./src/components/callout/callout.schema.ts",
+      "node": "./dist/server/components/callout/callout.schema.js",
+      "default": "./dist/components/callout/callout.schema.js"
     },
     "./callout/variables": {
       "types": "./dist/components/callout/callout.variables.d.ts",
-      "svelte": "./src/components/callout/callout.variables.ts"
+      "svelte": "./src/components/callout/callout.variables.ts",
+      "node": "./dist/server/components/callout/callout.variables.js",
+      "default": "./dist/components/callout/callout.variables.js"
     },
     "./callout/styles": {
       "default": "./dist/components/callout/callout.css"
@@ -400,11 +464,15 @@
     },
     "./card/schema": {
       "types": "./dist/components/card/card.schema.d.ts",
-      "svelte": "./src/components/card/card.schema.ts"
+      "svelte": "./src/components/card/card.schema.ts",
+      "node": "./dist/server/components/card/card.schema.js",
+      "default": "./dist/components/card/card.schema.js"
     },
     "./card/variables": {
       "types": "./dist/components/card/card.variables.d.ts",
-      "svelte": "./src/components/card/card.variables.ts"
+      "svelte": "./src/components/card/card.variables.ts",
+      "node": "./dist/server/components/card/card.variables.js",
+      "default": "./dist/components/card/card.variables.js"
     },
     "./card/styles": {
       "default": "./dist/components/card/card.css"
@@ -421,11 +489,15 @@
     },
     "./center/schema": {
       "types": "./dist/components/center/center.schema.d.ts",
-      "svelte": "./src/components/center/center.schema.ts"
+      "svelte": "./src/components/center/center.schema.ts",
+      "node": "./dist/server/components/center/center.schema.js",
+      "default": "./dist/components/center/center.schema.js"
     },
     "./center/variables": {
       "types": "./dist/components/center/center.variables.d.ts",
-      "svelte": "./src/components/center/center.variables.ts"
+      "svelte": "./src/components/center/center.variables.ts",
+      "node": "./dist/server/components/center/center.variables.js",
+      "default": "./dist/components/center/center.variables.js"
     },
     "./center/styles": {
       "default": "./dist/components/center/center.css"
@@ -442,11 +514,15 @@
     },
     "./chat/schema": {
       "types": "./dist/components/chat/chat.schema.d.ts",
-      "svelte": "./src/components/chat/chat.schema.ts"
+      "svelte": "./src/components/chat/chat.schema.ts",
+      "node": "./dist/server/components/chat/chat.schema.js",
+      "default": "./dist/components/chat/chat.schema.js"
     },
     "./chat/variables": {
       "types": "./dist/components/chat/chat.variables.d.ts",
-      "svelte": "./src/components/chat/chat.variables.ts"
+      "svelte": "./src/components/chat/chat.variables.ts",
+      "node": "./dist/server/components/chat/chat.variables.js",
+      "default": "./dist/components/chat/chat.variables.js"
     },
     "./chat/examples": {
       "import": "./src/components/chat/chat.examples.json",
@@ -460,11 +536,15 @@
     },
     "./checkbox/schema": {
       "types": "./dist/components/checkbox/checkbox.schema.d.ts",
-      "svelte": "./src/components/checkbox/checkbox.schema.ts"
+      "svelte": "./src/components/checkbox/checkbox.schema.ts",
+      "node": "./dist/server/components/checkbox/checkbox.schema.js",
+      "default": "./dist/components/checkbox/checkbox.schema.js"
     },
     "./checkbox/variables": {
       "types": "./dist/components/checkbox/checkbox.variables.d.ts",
-      "svelte": "./src/components/checkbox/checkbox.variables.ts"
+      "svelte": "./src/components/checkbox/checkbox.variables.ts",
+      "node": "./dist/server/components/checkbox/checkbox.variables.js",
+      "default": "./dist/components/checkbox/checkbox.variables.js"
     },
     "./checkbox/styles": {
       "default": "./dist/components/checkbox/checkbox.css"
@@ -481,11 +561,15 @@
     },
     "./checkbox-group/schema": {
       "types": "./dist/components/checkbox-group/checkbox-group.schema.d.ts",
-      "svelte": "./src/components/checkbox-group/checkbox-group.schema.ts"
+      "svelte": "./src/components/checkbox-group/checkbox-group.schema.ts",
+      "node": "./dist/server/components/checkbox-group/checkbox-group.schema.js",
+      "default": "./dist/components/checkbox-group/checkbox-group.schema.js"
     },
     "./checkbox-group/variables": {
       "types": "./dist/components/checkbox-group/checkbox-group.variables.d.ts",
-      "svelte": "./src/components/checkbox-group/checkbox-group.variables.ts"
+      "svelte": "./src/components/checkbox-group/checkbox-group.variables.ts",
+      "node": "./dist/server/components/checkbox-group/checkbox-group.variables.js",
+      "default": "./dist/components/checkbox-group/checkbox-group.variables.js"
     },
     "./checkbox-group/styles": {
       "default": "./dist/components/checkbox-group/checkbox-group.css"
@@ -498,11 +582,15 @@
     },
     "./chip/schema": {
       "types": "./dist/components/chip/chip.schema.d.ts",
-      "svelte": "./src/components/chip/chip.schema.ts"
+      "svelte": "./src/components/chip/chip.schema.ts",
+      "node": "./dist/server/components/chip/chip.schema.js",
+      "default": "./dist/components/chip/chip.schema.js"
     },
     "./chip/variables": {
       "types": "./dist/components/chip/chip.variables.d.ts",
-      "svelte": "./src/components/chip/chip.variables.ts"
+      "svelte": "./src/components/chip/chip.variables.ts",
+      "node": "./dist/server/components/chip/chip.variables.js",
+      "default": "./dist/components/chip/chip.variables.js"
     },
     "./chip/styles": {
       "default": "./dist/components/chip/chip.css"
@@ -519,11 +607,15 @@
     },
     "./cluster/schema": {
       "types": "./dist/components/cluster/cluster.schema.d.ts",
-      "svelte": "./src/components/cluster/cluster.schema.ts"
+      "svelte": "./src/components/cluster/cluster.schema.ts",
+      "node": "./dist/server/components/cluster/cluster.schema.js",
+      "default": "./dist/components/cluster/cluster.schema.js"
     },
     "./cluster/variables": {
       "types": "./dist/components/cluster/cluster.variables.d.ts",
-      "svelte": "./src/components/cluster/cluster.variables.ts"
+      "svelte": "./src/components/cluster/cluster.variables.ts",
+      "node": "./dist/server/components/cluster/cluster.variables.js",
+      "default": "./dist/components/cluster/cluster.variables.js"
     },
     "./cluster/styles": {
       "default": "./dist/components/cluster/cluster.css"
@@ -540,11 +632,15 @@
     },
     "./code-block/schema": {
       "types": "./dist/components/code-block/code-block.schema.d.ts",
-      "svelte": "./src/components/code-block/code-block.schema.ts"
+      "svelte": "./src/components/code-block/code-block.schema.ts",
+      "node": "./dist/server/components/code-block/code-block.schema.js",
+      "default": "./dist/components/code-block/code-block.schema.js"
     },
     "./code-block/variables": {
       "types": "./dist/components/code-block/code-block.variables.d.ts",
-      "svelte": "./src/components/code-block/code-block.variables.ts"
+      "svelte": "./src/components/code-block/code-block.variables.ts",
+      "node": "./dist/server/components/code-block/code-block.variables.js",
+      "default": "./dist/components/code-block/code-block.variables.js"
     },
     "./code-block/styles": {
       "default": "./dist/components/code-block/code-block.css"
@@ -561,11 +657,15 @@
     },
     "./collapsible/schema": {
       "types": "./dist/components/collapsible/collapsible.schema.d.ts",
-      "svelte": "./src/components/collapsible/collapsible.schema.ts"
+      "svelte": "./src/components/collapsible/collapsible.schema.ts",
+      "node": "./dist/server/components/collapsible/collapsible.schema.js",
+      "default": "./dist/components/collapsible/collapsible.schema.js"
     },
     "./collapsible/variables": {
       "types": "./dist/components/collapsible/collapsible.variables.d.ts",
-      "svelte": "./src/components/collapsible/collapsible.variables.ts"
+      "svelte": "./src/components/collapsible/collapsible.variables.ts",
+      "node": "./dist/server/components/collapsible/collapsible.variables.js",
+      "default": "./dist/components/collapsible/collapsible.variables.js"
     },
     "./collapsible/styles": {
       "default": "./dist/components/collapsible/collapsible.css"
@@ -582,11 +682,15 @@
     },
     "./color-field/schema": {
       "types": "./dist/components/color-field/color-field.schema.d.ts",
-      "svelte": "./src/components/color-field/color-field.schema.ts"
+      "svelte": "./src/components/color-field/color-field.schema.ts",
+      "node": "./dist/server/components/color-field/color-field.schema.js",
+      "default": "./dist/components/color-field/color-field.schema.js"
     },
     "./color-field/variables": {
       "types": "./dist/components/color-field/color-field.variables.d.ts",
-      "svelte": "./src/components/color-field/color-field.variables.ts"
+      "svelte": "./src/components/color-field/color-field.variables.ts",
+      "node": "./dist/server/components/color-field/color-field.variables.js",
+      "default": "./dist/components/color-field/color-field.variables.js"
     },
     "./color-field/styles": {
       "default": "./dist/components/color-field/color-field.css"
@@ -599,11 +703,15 @@
     },
     "./color-picker/schema": {
       "types": "./dist/components/color-picker/color-picker.schema.d.ts",
-      "svelte": "./src/components/color-picker/color-picker.schema.ts"
+      "svelte": "./src/components/color-picker/color-picker.schema.ts",
+      "node": "./dist/server/components/color-picker/color-picker.schema.js",
+      "default": "./dist/components/color-picker/color-picker.schema.js"
     },
     "./color-picker/variables": {
       "types": "./dist/components/color-picker/color-picker.variables.d.ts",
-      "svelte": "./src/components/color-picker/color-picker.variables.ts"
+      "svelte": "./src/components/color-picker/color-picker.variables.ts",
+      "node": "./dist/server/components/color-picker/color-picker.variables.js",
+      "default": "./dist/components/color-picker/color-picker.variables.js"
     },
     "./color-picker/styles": {
       "default": "./dist/components/color-picker/color-picker.css"
@@ -620,11 +728,15 @@
     },
     "./color-swatch-picker/schema": {
       "types": "./dist/components/color-swatch-picker/color-swatch-picker.schema.d.ts",
-      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.schema.ts"
+      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.schema.ts",
+      "node": "./dist/server/components/color-swatch-picker/color-swatch-picker.schema.js",
+      "default": "./dist/components/color-swatch-picker/color-swatch-picker.schema.js"
     },
     "./color-swatch-picker/variables": {
       "types": "./dist/components/color-swatch-picker/color-swatch-picker.variables.d.ts",
-      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.variables.ts"
+      "svelte": "./src/components/color-swatch-picker/color-swatch-picker.variables.ts",
+      "node": "./dist/server/components/color-swatch-picker/color-swatch-picker.variables.js",
+      "default": "./dist/components/color-swatch-picker/color-swatch-picker.variables.js"
     },
     "./color-swatch-picker/styles": {
       "default": "./dist/components/color-swatch-picker/color-swatch-picker.css"
@@ -637,11 +749,15 @@
     },
     "./combobox/schema": {
       "types": "./dist/components/combobox/combobox.schema.d.ts",
-      "svelte": "./src/components/combobox/combobox.schema.ts"
+      "svelte": "./src/components/combobox/combobox.schema.ts",
+      "node": "./dist/server/components/combobox/combobox.schema.js",
+      "default": "./dist/components/combobox/combobox.schema.js"
     },
     "./combobox/variables": {
       "types": "./dist/components/combobox/combobox.variables.d.ts",
-      "svelte": "./src/components/combobox/combobox.variables.ts"
+      "svelte": "./src/components/combobox/combobox.variables.ts",
+      "node": "./dist/server/components/combobox/combobox.variables.js",
+      "default": "./dist/components/combobox/combobox.variables.js"
     },
     "./combobox/styles": {
       "default": "./dist/components/combobox/combobox.css"
@@ -658,11 +774,15 @@
     },
     "./command-item/schema": {
       "types": "./dist/components/command-item/command-item.schema.d.ts",
-      "svelte": "./src/components/command-item/command-item.schema.ts"
+      "svelte": "./src/components/command-item/command-item.schema.ts",
+      "node": "./dist/server/components/command-item/command-item.schema.js",
+      "default": "./dist/components/command-item/command-item.schema.js"
     },
     "./command-item/variables": {
       "types": "./dist/components/command-item/command-item.variables.d.ts",
-      "svelte": "./src/components/command-item/command-item.variables.ts"
+      "svelte": "./src/components/command-item/command-item.variables.ts",
+      "node": "./dist/server/components/command-item/command-item.variables.js",
+      "default": "./dist/components/command-item/command-item.variables.js"
     },
     "./command-menu": {
       "types": "./dist/components/command-menu/index.d.ts",
@@ -672,11 +792,15 @@
     },
     "./command-menu/schema": {
       "types": "./dist/components/command-menu/command-menu.schema.d.ts",
-      "svelte": "./src/components/command-menu/command-menu.schema.ts"
+      "svelte": "./src/components/command-menu/command-menu.schema.ts",
+      "node": "./dist/server/components/command-menu/command-menu.schema.js",
+      "default": "./dist/components/command-menu/command-menu.schema.js"
     },
     "./command-menu/variables": {
       "types": "./dist/components/command-menu/command-menu.variables.d.ts",
-      "svelte": "./src/components/command-menu/command-menu.variables.ts"
+      "svelte": "./src/components/command-menu/command-menu.variables.ts",
+      "node": "./dist/server/components/command-menu/command-menu.variables.js",
+      "default": "./dist/components/command-menu/command-menu.variables.js"
     },
     "./command-menu/styles": {
       "default": "./dist/components/command-menu/command-menu.css"
@@ -693,11 +817,15 @@
     },
     "./command-palette/schema": {
       "types": "./dist/components/command-palette/command-palette.schema.d.ts",
-      "svelte": "./src/components/command-palette/command-palette.schema.ts"
+      "svelte": "./src/components/command-palette/command-palette.schema.ts",
+      "node": "./dist/server/components/command-palette/command-palette.schema.js",
+      "default": "./dist/components/command-palette/command-palette.schema.js"
     },
     "./command-palette/variables": {
       "types": "./dist/components/command-palette/command-palette.variables.d.ts",
-      "svelte": "./src/components/command-palette/command-palette.variables.ts"
+      "svelte": "./src/components/command-palette/command-palette.variables.ts",
+      "node": "./dist/server/components/command-palette/command-palette.variables.js",
+      "default": "./dist/components/command-palette/command-palette.variables.js"
     },
     "./command-palette/styles": {
       "default": "./dist/components/command-palette/command-palette.css"
@@ -714,11 +842,15 @@
     },
     "./confirm-dialog/schema": {
       "types": "./dist/components/confirm-dialog/confirm-dialog.schema.d.ts",
-      "svelte": "./src/components/confirm-dialog/confirm-dialog.schema.ts"
+      "svelte": "./src/components/confirm-dialog/confirm-dialog.schema.ts",
+      "node": "./dist/server/components/confirm-dialog/confirm-dialog.schema.js",
+      "default": "./dist/components/confirm-dialog/confirm-dialog.schema.js"
     },
     "./confirm-dialog/variables": {
       "types": "./dist/components/confirm-dialog/confirm-dialog.variables.d.ts",
-      "svelte": "./src/components/confirm-dialog/confirm-dialog.variables.ts"
+      "svelte": "./src/components/confirm-dialog/confirm-dialog.variables.ts",
+      "node": "./dist/server/components/confirm-dialog/confirm-dialog.variables.js",
+      "default": "./dist/components/confirm-dialog/confirm-dialog.variables.js"
     },
     "./confirm-dialog/styles": {
       "default": "./dist/components/confirm-dialog/confirm-dialog.css"
@@ -735,11 +867,15 @@
     },
     "./connection-indicator/schema": {
       "types": "./dist/components/connection-indicator/connection-indicator.schema.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts"
+      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.schema.js",
+      "default": "./dist/components/connection-indicator/connection-indicator.schema.js"
     },
     "./connection-indicator/variables": {
       "types": "./dist/components/connection-indicator/connection-indicator.variables.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts"
+      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.variables.js",
+      "default": "./dist/components/connection-indicator/connection-indicator.variables.js"
     },
     "./connection-indicator/styles": {
       "default": "./dist/components/connection-indicator/connection-indicator.css"
@@ -752,11 +888,15 @@
     },
     "./container/schema": {
       "types": "./dist/components/container/container.schema.d.ts",
-      "svelte": "./src/components/container/container.schema.ts"
+      "svelte": "./src/components/container/container.schema.ts",
+      "node": "./dist/server/components/container/container.schema.js",
+      "default": "./dist/components/container/container.schema.js"
     },
     "./container/variables": {
       "types": "./dist/components/container/container.variables.d.ts",
-      "svelte": "./src/components/container/container.variables.ts"
+      "svelte": "./src/components/container/container.variables.ts",
+      "node": "./dist/server/components/container/container.variables.js",
+      "default": "./dist/components/container/container.variables.js"
     },
     "./container/styles": {
       "default": "./dist/components/container/container.css"
@@ -773,11 +913,15 @@
     },
     "./context-menu/schema": {
       "types": "./dist/components/context-menu/context-menu.schema.d.ts",
-      "svelte": "./src/components/context-menu/context-menu.schema.ts"
+      "svelte": "./src/components/context-menu/context-menu.schema.ts",
+      "node": "./dist/server/components/context-menu/context-menu.schema.js",
+      "default": "./dist/components/context-menu/context-menu.schema.js"
     },
     "./context-menu/variables": {
       "types": "./dist/components/context-menu/context-menu.variables.d.ts",
-      "svelte": "./src/components/context-menu/context-menu.variables.ts"
+      "svelte": "./src/components/context-menu/context-menu.variables.ts",
+      "node": "./dist/server/components/context-menu/context-menu.variables.js",
+      "default": "./dist/components/context-menu/context-menu.variables.js"
     },
     "./context-menu/styles": {
       "default": "./dist/components/context-menu/context-menu.css"
@@ -794,11 +938,15 @@
     },
     "./context-menu-trigger/schema": {
       "types": "./dist/components/context-menu-trigger/context-menu-trigger.schema.d.ts",
-      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.schema.ts"
+      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.schema.ts",
+      "node": "./dist/server/components/context-menu-trigger/context-menu-trigger.schema.js",
+      "default": "./dist/components/context-menu-trigger/context-menu-trigger.schema.js"
     },
     "./context-menu-trigger/variables": {
       "types": "./dist/components/context-menu-trigger/context-menu-trigger.variables.d.ts",
-      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.variables.ts"
+      "svelte": "./src/components/context-menu-trigger/context-menu-trigger.variables.ts",
+      "node": "./dist/server/components/context-menu-trigger/context-menu-trigger.variables.js",
+      "default": "./dist/components/context-menu-trigger/context-menu-trigger.variables.js"
     },
     "./copy-button": {
       "types": "./dist/components/copy-button/index.d.ts",
@@ -808,11 +956,15 @@
     },
     "./copy-button/schema": {
       "types": "./dist/components/copy-button/copy-button.schema.d.ts",
-      "svelte": "./src/components/copy-button/copy-button.schema.ts"
+      "svelte": "./src/components/copy-button/copy-button.schema.ts",
+      "node": "./dist/server/components/copy-button/copy-button.schema.js",
+      "default": "./dist/components/copy-button/copy-button.schema.js"
     },
     "./copy-button/variables": {
       "types": "./dist/components/copy-button/copy-button.variables.d.ts",
-      "svelte": "./src/components/copy-button/copy-button.variables.ts"
+      "svelte": "./src/components/copy-button/copy-button.variables.ts",
+      "node": "./dist/server/components/copy-button/copy-button.variables.js",
+      "default": "./dist/components/copy-button/copy-button.variables.js"
     },
     "./copy-button/styles": {
       "default": "./dist/components/copy-button/copy-button.css"
@@ -829,11 +981,15 @@
     },
     "./data-list/schema": {
       "types": "./dist/components/data-list/data-list.schema.d.ts",
-      "svelte": "./src/components/data-list/data-list.schema.ts"
+      "svelte": "./src/components/data-list/data-list.schema.ts",
+      "node": "./dist/server/components/data-list/data-list.schema.js",
+      "default": "./dist/components/data-list/data-list.schema.js"
     },
     "./data-list/variables": {
       "types": "./dist/components/data-list/data-list.variables.d.ts",
-      "svelte": "./src/components/data-list/data-list.variables.ts"
+      "svelte": "./src/components/data-list/data-list.variables.ts",
+      "node": "./dist/server/components/data-list/data-list.variables.js",
+      "default": "./dist/components/data-list/data-list.variables.js"
     },
     "./data-list/styles": {
       "default": "./dist/components/data-list/data-list.css"
@@ -850,11 +1006,15 @@
     },
     "./description-list/schema": {
       "types": "./dist/components/description-list/description-list.schema.d.ts",
-      "svelte": "./src/components/description-list/description-list.schema.ts"
+      "svelte": "./src/components/description-list/description-list.schema.ts",
+      "node": "./dist/server/components/description-list/description-list.schema.js",
+      "default": "./dist/components/description-list/description-list.schema.js"
     },
     "./description-list/variables": {
       "types": "./dist/components/description-list/description-list.variables.d.ts",
-      "svelte": "./src/components/description-list/description-list.variables.ts"
+      "svelte": "./src/components/description-list/description-list.variables.ts",
+      "node": "./dist/server/components/description-list/description-list.variables.js",
+      "default": "./dist/components/description-list/description-list.variables.js"
     },
     "./description-list/styles": {
       "default": "./dist/components/description-list/description-list.css"
@@ -867,11 +1027,15 @@
     },
     "./diff-statistics/schema": {
       "types": "./dist/components/diff-statistics/diff-statistics.schema.d.ts",
-      "svelte": "./src/components/diff-statistics/diff-statistics.schema.ts"
+      "svelte": "./src/components/diff-statistics/diff-statistics.schema.ts",
+      "node": "./dist/server/components/diff-statistics/diff-statistics.schema.js",
+      "default": "./dist/components/diff-statistics/diff-statistics.schema.js"
     },
     "./diff-statistics/variables": {
       "types": "./dist/components/diff-statistics/diff-statistics.variables.d.ts",
-      "svelte": "./src/components/diff-statistics/diff-statistics.variables.ts"
+      "svelte": "./src/components/diff-statistics/diff-statistics.variables.ts",
+      "node": "./dist/server/components/diff-statistics/diff-statistics.variables.js",
+      "default": "./dist/components/diff-statistics/diff-statistics.variables.js"
     },
     "./diff-statistics/styles": {
       "default": "./dist/components/diff-statistics/diff-statistics.css"
@@ -888,11 +1052,15 @@
     },
     "./diff-viewer/schema": {
       "types": "./dist/components/diff-viewer/diff-viewer.schema.d.ts",
-      "svelte": "./src/components/diff-viewer/diff-viewer.schema.ts"
+      "svelte": "./src/components/diff-viewer/diff-viewer.schema.ts",
+      "node": "./dist/server/components/diff-viewer/diff-viewer.schema.js",
+      "default": "./dist/components/diff-viewer/diff-viewer.schema.js"
     },
     "./diff-viewer/variables": {
       "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts",
-      "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts"
+      "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
+      "node": "./dist/server/components/diff-viewer/diff-viewer.variables.js",
+      "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
     },
     "./diff-viewer/examples": {
       "import": "./src/components/diff-viewer/diff-viewer.examples.json",
@@ -906,11 +1074,15 @@
     },
     "./divider/schema": {
       "types": "./dist/components/divider/divider.schema.d.ts",
-      "svelte": "./src/components/divider/divider.schema.ts"
+      "svelte": "./src/components/divider/divider.schema.ts",
+      "node": "./dist/server/components/divider/divider.schema.js",
+      "default": "./dist/components/divider/divider.schema.js"
     },
     "./divider/variables": {
       "types": "./dist/components/divider/divider.variables.d.ts",
-      "svelte": "./src/components/divider/divider.variables.ts"
+      "svelte": "./src/components/divider/divider.variables.ts",
+      "node": "./dist/server/components/divider/divider.variables.js",
+      "default": "./dist/components/divider/divider.variables.js"
     },
     "./divider/styles": {
       "default": "./dist/components/divider/divider.css"
@@ -927,11 +1099,15 @@
     },
     "./drawer/schema": {
       "types": "./dist/components/drawer/drawer.schema.d.ts",
-      "svelte": "./src/components/drawer/drawer.schema.ts"
+      "svelte": "./src/components/drawer/drawer.schema.ts",
+      "node": "./dist/server/components/drawer/drawer.schema.js",
+      "default": "./dist/components/drawer/drawer.schema.js"
     },
     "./drawer/variables": {
       "types": "./dist/components/drawer/drawer.variables.d.ts",
-      "svelte": "./src/components/drawer/drawer.variables.ts"
+      "svelte": "./src/components/drawer/drawer.variables.ts",
+      "node": "./dist/server/components/drawer/drawer.variables.js",
+      "default": "./dist/components/drawer/drawer.variables.js"
     },
     "./drawer/styles": {
       "default": "./dist/components/drawer/drawer.css"
@@ -948,11 +1124,15 @@
     },
     "./dropdown/schema": {
       "types": "./dist/components/dropdown/dropdown.schema.d.ts",
-      "svelte": "./src/components/dropdown/dropdown.schema.ts"
+      "svelte": "./src/components/dropdown/dropdown.schema.ts",
+      "node": "./dist/server/components/dropdown/dropdown.schema.js",
+      "default": "./dist/components/dropdown/dropdown.schema.js"
     },
     "./dropdown/variables": {
       "types": "./dist/components/dropdown/dropdown.variables.d.ts",
-      "svelte": "./src/components/dropdown/dropdown.variables.ts"
+      "svelte": "./src/components/dropdown/dropdown.variables.ts",
+      "node": "./dist/server/components/dropdown/dropdown.variables.js",
+      "default": "./dist/components/dropdown/dropdown.variables.js"
     },
     "./dropdown/styles": {
       "default": "./dist/components/dropdown/dropdown.css"
@@ -969,11 +1149,15 @@
     },
     "./dropdown-group/schema": {
       "types": "./dist/components/dropdown-group/dropdown-group.schema.d.ts",
-      "svelte": "./src/components/dropdown-group/dropdown-group.schema.ts"
+      "svelte": "./src/components/dropdown-group/dropdown-group.schema.ts",
+      "node": "./dist/server/components/dropdown-group/dropdown-group.schema.js",
+      "default": "./dist/components/dropdown-group/dropdown-group.schema.js"
     },
     "./dropdown-group/variables": {
       "types": "./dist/components/dropdown-group/dropdown-group.variables.d.ts",
-      "svelte": "./src/components/dropdown-group/dropdown-group.variables.ts"
+      "svelte": "./src/components/dropdown-group/dropdown-group.variables.ts",
+      "node": "./dist/server/components/dropdown-group/dropdown-group.variables.js",
+      "default": "./dist/components/dropdown-group/dropdown-group.variables.js"
     },
     "./dropdown-item": {
       "types": "./dist/components/dropdown-item/index.d.ts",
@@ -983,11 +1167,15 @@
     },
     "./dropdown-item/schema": {
       "types": "./dist/components/dropdown-item/dropdown-item.schema.d.ts",
-      "svelte": "./src/components/dropdown-item/dropdown-item.schema.ts"
+      "svelte": "./src/components/dropdown-item/dropdown-item.schema.ts",
+      "node": "./dist/server/components/dropdown-item/dropdown-item.schema.js",
+      "default": "./dist/components/dropdown-item/dropdown-item.schema.js"
     },
     "./dropdown-item/variables": {
       "types": "./dist/components/dropdown-item/dropdown-item.variables.d.ts",
-      "svelte": "./src/components/dropdown-item/dropdown-item.variables.ts"
+      "svelte": "./src/components/dropdown-item/dropdown-item.variables.ts",
+      "node": "./dist/server/components/dropdown-item/dropdown-item.variables.js",
+      "default": "./dist/components/dropdown-item/dropdown-item.variables.js"
     },
     "./dropdown-label": {
       "types": "./dist/components/dropdown-label/index.d.ts",
@@ -997,11 +1185,15 @@
     },
     "./dropdown-label/schema": {
       "types": "./dist/components/dropdown-label/dropdown-label.schema.d.ts",
-      "svelte": "./src/components/dropdown-label/dropdown-label.schema.ts"
+      "svelte": "./src/components/dropdown-label/dropdown-label.schema.ts",
+      "node": "./dist/server/components/dropdown-label/dropdown-label.schema.js",
+      "default": "./dist/components/dropdown-label/dropdown-label.schema.js"
     },
     "./dropdown-label/variables": {
       "types": "./dist/components/dropdown-label/dropdown-label.variables.d.ts",
-      "svelte": "./src/components/dropdown-label/dropdown-label.variables.ts"
+      "svelte": "./src/components/dropdown-label/dropdown-label.variables.ts",
+      "node": "./dist/server/components/dropdown-label/dropdown-label.variables.js",
+      "default": "./dist/components/dropdown-label/dropdown-label.variables.js"
     },
     "./dropdown-menu": {
       "types": "./dist/components/dropdown-menu/index.d.ts",
@@ -1011,11 +1203,15 @@
     },
     "./dropdown-menu/schema": {
       "types": "./dist/components/dropdown-menu/dropdown-menu.schema.d.ts",
-      "svelte": "./src/components/dropdown-menu/dropdown-menu.schema.ts"
+      "svelte": "./src/components/dropdown-menu/dropdown-menu.schema.ts",
+      "node": "./dist/server/components/dropdown-menu/dropdown-menu.schema.js",
+      "default": "./dist/components/dropdown-menu/dropdown-menu.schema.js"
     },
     "./dropdown-menu/variables": {
       "types": "./dist/components/dropdown-menu/dropdown-menu.variables.d.ts",
-      "svelte": "./src/components/dropdown-menu/dropdown-menu.variables.ts"
+      "svelte": "./src/components/dropdown-menu/dropdown-menu.variables.ts",
+      "node": "./dist/server/components/dropdown-menu/dropdown-menu.variables.js",
+      "default": "./dist/components/dropdown-menu/dropdown-menu.variables.js"
     },
     "./dropdown-separator": {
       "types": "./dist/components/dropdown-separator/index.d.ts",
@@ -1025,11 +1221,15 @@
     },
     "./dropdown-separator/schema": {
       "types": "./dist/components/dropdown-separator/dropdown-separator.schema.d.ts",
-      "svelte": "./src/components/dropdown-separator/dropdown-separator.schema.ts"
+      "svelte": "./src/components/dropdown-separator/dropdown-separator.schema.ts",
+      "node": "./dist/server/components/dropdown-separator/dropdown-separator.schema.js",
+      "default": "./dist/components/dropdown-separator/dropdown-separator.schema.js"
     },
     "./dropdown-separator/variables": {
       "types": "./dist/components/dropdown-separator/dropdown-separator.variables.d.ts",
-      "svelte": "./src/components/dropdown-separator/dropdown-separator.variables.ts"
+      "svelte": "./src/components/dropdown-separator/dropdown-separator.variables.ts",
+      "node": "./dist/server/components/dropdown-separator/dropdown-separator.variables.js",
+      "default": "./dist/components/dropdown-separator/dropdown-separator.variables.js"
     },
     "./dropdown-trigger": {
       "types": "./dist/components/dropdown-trigger/index.d.ts",
@@ -1039,11 +1239,15 @@
     },
     "./dropdown-trigger/schema": {
       "types": "./dist/components/dropdown-trigger/dropdown-trigger.schema.d.ts",
-      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.schema.ts"
+      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.schema.ts",
+      "node": "./dist/server/components/dropdown-trigger/dropdown-trigger.schema.js",
+      "default": "./dist/components/dropdown-trigger/dropdown-trigger.schema.js"
     },
     "./dropdown-trigger/variables": {
       "types": "./dist/components/dropdown-trigger/dropdown-trigger.variables.d.ts",
-      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.variables.ts"
+      "svelte": "./src/components/dropdown-trigger/dropdown-trigger.variables.ts",
+      "node": "./dist/server/components/dropdown-trigger/dropdown-trigger.variables.js",
+      "default": "./dist/components/dropdown-trigger/dropdown-trigger.variables.js"
     },
     "./empty-state": {
       "types": "./dist/components/empty-state/index.d.ts",
@@ -1053,11 +1257,15 @@
     },
     "./empty-state/schema": {
       "types": "./dist/components/empty-state/empty-state.schema.d.ts",
-      "svelte": "./src/components/empty-state/empty-state.schema.ts"
+      "svelte": "./src/components/empty-state/empty-state.schema.ts",
+      "node": "./dist/server/components/empty-state/empty-state.schema.js",
+      "default": "./dist/components/empty-state/empty-state.schema.js"
     },
     "./empty-state/variables": {
       "types": "./dist/components/empty-state/empty-state.variables.d.ts",
-      "svelte": "./src/components/empty-state/empty-state.variables.ts"
+      "svelte": "./src/components/empty-state/empty-state.variables.ts",
+      "node": "./dist/server/components/empty-state/empty-state.variables.js",
+      "default": "./dist/components/empty-state/empty-state.variables.js"
     },
     "./empty-state/styles": {
       "default": "./dist/components/empty-state/empty-state.css"
@@ -1074,11 +1282,15 @@
     },
     "./feed/schema": {
       "types": "./dist/components/feed/feed.schema.d.ts",
-      "svelte": "./src/components/feed/feed.schema.ts"
+      "svelte": "./src/components/feed/feed.schema.ts",
+      "node": "./dist/server/components/feed/feed.schema.js",
+      "default": "./dist/components/feed/feed.schema.js"
     },
     "./feed/variables": {
       "types": "./dist/components/feed/feed.variables.d.ts",
-      "svelte": "./src/components/feed/feed.variables.ts"
+      "svelte": "./src/components/feed/feed.variables.ts",
+      "node": "./dist/server/components/feed/feed.variables.js",
+      "default": "./dist/components/feed/feed.variables.js"
     },
     "./feed/styles": {
       "default": "./dist/components/feed/feed.css"
@@ -1095,11 +1307,15 @@
     },
     "./feed-event/schema": {
       "types": "./dist/components/feed-event/feed-event.schema.d.ts",
-      "svelte": "./src/components/feed-event/feed-event.schema.ts"
+      "svelte": "./src/components/feed-event/feed-event.schema.ts",
+      "node": "./dist/server/components/feed-event/feed-event.schema.js",
+      "default": "./dist/components/feed-event/feed-event.schema.js"
     },
     "./feed-event/variables": {
       "types": "./dist/components/feed-event/feed-event.variables.d.ts",
-      "svelte": "./src/components/feed-event/feed-event.variables.ts"
+      "svelte": "./src/components/feed-event/feed-event.variables.ts",
+      "node": "./dist/server/components/feed-event/feed-event.variables.js",
+      "default": "./dist/components/feed-event/feed-event.variables.js"
     },
     "./file-upload": {
       "types": "./dist/components/file-upload/index.d.ts",
@@ -1109,11 +1325,15 @@
     },
     "./file-upload/schema": {
       "types": "./dist/components/file-upload/file-upload.schema.d.ts",
-      "svelte": "./src/components/file-upload/file-upload.schema.ts"
+      "svelte": "./src/components/file-upload/file-upload.schema.ts",
+      "node": "./dist/server/components/file-upload/file-upload.schema.js",
+      "default": "./dist/components/file-upload/file-upload.schema.js"
     },
     "./file-upload/variables": {
       "types": "./dist/components/file-upload/file-upload.variables.d.ts",
-      "svelte": "./src/components/file-upload/file-upload.variables.ts"
+      "svelte": "./src/components/file-upload/file-upload.variables.ts",
+      "node": "./dist/server/components/file-upload/file-upload.variables.js",
+      "default": "./dist/components/file-upload/file-upload.variables.js"
     },
     "./file-upload/styles": {
       "default": "./dist/components/file-upload/file-upload.css"
@@ -1126,11 +1346,15 @@
     },
     "./focus-trap/schema": {
       "types": "./dist/components/focus-trap/focus-trap.schema.d.ts",
-      "svelte": "./src/components/focus-trap/focus-trap.schema.ts"
+      "svelte": "./src/components/focus-trap/focus-trap.schema.ts",
+      "node": "./dist/server/components/focus-trap/focus-trap.schema.js",
+      "default": "./dist/components/focus-trap/focus-trap.schema.js"
     },
     "./focus-trap/variables": {
       "types": "./dist/components/focus-trap/focus-trap.variables.d.ts",
-      "svelte": "./src/components/focus-trap/focus-trap.variables.ts"
+      "svelte": "./src/components/focus-trap/focus-trap.variables.ts",
+      "node": "./dist/server/components/focus-trap/focus-trap.variables.js",
+      "default": "./dist/components/focus-trap/focus-trap.variables.js"
     },
     "./focus-trap/examples": {
       "import": "./src/components/focus-trap/focus-trap.examples.json",
@@ -1144,11 +1368,15 @@
     },
     "./form-field/schema": {
       "types": "./dist/components/form-field/form-field.schema.d.ts",
-      "svelte": "./src/components/form-field/form-field.schema.ts"
+      "svelte": "./src/components/form-field/form-field.schema.ts",
+      "node": "./dist/server/components/form-field/form-field.schema.js",
+      "default": "./dist/components/form-field/form-field.schema.js"
     },
     "./form-field/variables": {
       "types": "./dist/components/form-field/form-field.variables.d.ts",
-      "svelte": "./src/components/form-field/form-field.variables.ts"
+      "svelte": "./src/components/form-field/form-field.variables.ts",
+      "node": "./dist/server/components/form-field/form-field.variables.js",
+      "default": "./dist/components/form-field/form-field.variables.js"
     },
     "./form-field/styles": {
       "default": "./dist/components/form-field/form-field.css"
@@ -1165,11 +1393,15 @@
     },
     "./form-section/schema": {
       "types": "./dist/components/form-section/form-section.schema.d.ts",
-      "svelte": "./src/components/form-section/form-section.schema.ts"
+      "svelte": "./src/components/form-section/form-section.schema.ts",
+      "node": "./dist/server/components/form-section/form-section.schema.js",
+      "default": "./dist/components/form-section/form-section.schema.js"
     },
     "./form-section/variables": {
       "types": "./dist/components/form-section/form-section.variables.d.ts",
-      "svelte": "./src/components/form-section/form-section.variables.ts"
+      "svelte": "./src/components/form-section/form-section.variables.ts",
+      "node": "./dist/server/components/form-section/form-section.variables.js",
+      "default": "./dist/components/form-section/form-section.variables.js"
     },
     "./form-section/styles": {
       "default": "./dist/components/form-section/form-section.css"
@@ -1186,11 +1418,15 @@
     },
     "./grid-list/schema": {
       "types": "./dist/components/grid-list/grid-list.schema.d.ts",
-      "svelte": "./src/components/grid-list/grid-list.schema.ts"
+      "svelte": "./src/components/grid-list/grid-list.schema.ts",
+      "node": "./dist/server/components/grid-list/grid-list.schema.js",
+      "default": "./dist/components/grid-list/grid-list.schema.js"
     },
     "./grid-list/variables": {
       "types": "./dist/components/grid-list/grid-list.variables.d.ts",
-      "svelte": "./src/components/grid-list/grid-list.variables.ts"
+      "svelte": "./src/components/grid-list/grid-list.variables.ts",
+      "node": "./dist/server/components/grid-list/grid-list.variables.js",
+      "default": "./dist/components/grid-list/grid-list.variables.js"
     },
     "./grid-list/styles": {
       "default": "./dist/components/grid-list/grid-list.css"
@@ -1207,11 +1443,15 @@
     },
     "./grid-list-item/schema": {
       "types": "./dist/components/grid-list-item/grid-list-item.schema.d.ts",
-      "svelte": "./src/components/grid-list-item/grid-list-item.schema.ts"
+      "svelte": "./src/components/grid-list-item/grid-list-item.schema.ts",
+      "node": "./dist/server/components/grid-list-item/grid-list-item.schema.js",
+      "default": "./dist/components/grid-list-item/grid-list-item.schema.js"
     },
     "./grid-list-item/variables": {
       "types": "./dist/components/grid-list-item/grid-list-item.variables.d.ts",
-      "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts"
+      "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts",
+      "node": "./dist/server/components/grid-list-item/grid-list-item.variables.js",
+      "default": "./dist/components/grid-list-item/grid-list-item.variables.js"
     },
     "./hover-card": {
       "types": "./dist/components/hover-card/index.d.ts",
@@ -1221,11 +1461,15 @@
     },
     "./hover-card/schema": {
       "types": "./dist/components/hover-card/hover-card.schema.d.ts",
-      "svelte": "./src/components/hover-card/hover-card.schema.ts"
+      "svelte": "./src/components/hover-card/hover-card.schema.ts",
+      "node": "./dist/server/components/hover-card/hover-card.schema.js",
+      "default": "./dist/components/hover-card/hover-card.schema.js"
     },
     "./hover-card/variables": {
       "types": "./dist/components/hover-card/hover-card.variables.d.ts",
-      "svelte": "./src/components/hover-card/hover-card.variables.ts"
+      "svelte": "./src/components/hover-card/hover-card.variables.ts",
+      "node": "./dist/server/components/hover-card/hover-card.variables.js",
+      "default": "./dist/components/hover-card/hover-card.variables.js"
     },
     "./hover-card/styles": {
       "default": "./dist/components/hover-card/hover-card.css"
@@ -1242,11 +1486,15 @@
     },
     "./image/schema": {
       "types": "./dist/components/image/image.schema.d.ts",
-      "svelte": "./src/components/image/image.schema.ts"
+      "svelte": "./src/components/image/image.schema.ts",
+      "node": "./dist/server/components/image/image.schema.js",
+      "default": "./dist/components/image/image.schema.js"
     },
     "./image/variables": {
       "types": "./dist/components/image/image.variables.d.ts",
-      "svelte": "./src/components/image/image.variables.ts"
+      "svelte": "./src/components/image/image.variables.ts",
+      "node": "./dist/server/components/image/image.variables.js",
+      "default": "./dist/components/image/image.variables.js"
     },
     "./image/styles": {
       "default": "./dist/components/image/image.css"
@@ -1259,11 +1507,15 @@
     },
     "./inline/schema": {
       "types": "./dist/components/inline/inline.schema.d.ts",
-      "svelte": "./src/components/inline/inline.schema.ts"
+      "svelte": "./src/components/inline/inline.schema.ts",
+      "node": "./dist/server/components/inline/inline.schema.js",
+      "default": "./dist/components/inline/inline.schema.js"
     },
     "./inline/variables": {
       "types": "./dist/components/inline/inline.variables.d.ts",
-      "svelte": "./src/components/inline/inline.variables.ts"
+      "svelte": "./src/components/inline/inline.variables.ts",
+      "node": "./dist/server/components/inline/inline.variables.js",
+      "default": "./dist/components/inline/inline.variables.js"
     },
     "./inline/styles": {
       "default": "./dist/components/inline/inline.css"
@@ -1280,11 +1532,15 @@
     },
     "./input/schema": {
       "types": "./dist/components/input/input.schema.d.ts",
-      "svelte": "./src/components/input/input.schema.ts"
+      "svelte": "./src/components/input/input.schema.ts",
+      "node": "./dist/server/components/input/input.schema.js",
+      "default": "./dist/components/input/input.schema.js"
     },
     "./input/variables": {
       "types": "./dist/components/input/input.variables.d.ts",
-      "svelte": "./src/components/input/input.variables.ts"
+      "svelte": "./src/components/input/input.variables.ts",
+      "node": "./dist/server/components/input/input.variables.js",
+      "default": "./dist/components/input/input.variables.js"
     },
     "./input/styles": {
       "default": "./dist/components/input/input.css"
@@ -1305,11 +1561,15 @@
     },
     "./json-schema-editor/schema": {
       "types": "./dist/components/json-schema-editor/json-schema-editor.schema.d.ts",
-      "svelte": "./src/components/json-schema-editor/json-schema-editor.schema.ts"
+      "svelte": "./src/components/json-schema-editor/json-schema-editor.schema.ts",
+      "node": "./dist/server/components/json-schema-editor/json-schema-editor.schema.js",
+      "default": "./dist/components/json-schema-editor/json-schema-editor.schema.js"
     },
     "./json-schema-editor/variables": {
       "types": "./dist/components/json-schema-editor/json-schema-editor.variables.d.ts",
-      "svelte": "./src/components/json-schema-editor/json-schema-editor.variables.ts"
+      "svelte": "./src/components/json-schema-editor/json-schema-editor.variables.ts",
+      "node": "./dist/server/components/json-schema-editor/json-schema-editor.variables.js",
+      "default": "./dist/components/json-schema-editor/json-schema-editor.variables.js"
     },
     "./json-schema-editor/styles": {
       "default": "./dist/components/json-schema-editor/json-schema-editor.css"
@@ -1326,11 +1586,15 @@
     },
     "./json-viewer/schema": {
       "types": "./dist/components/json-viewer/json-viewer.schema.d.ts",
-      "svelte": "./src/components/json-viewer/json-viewer.schema.ts"
+      "svelte": "./src/components/json-viewer/json-viewer.schema.ts",
+      "node": "./dist/server/components/json-viewer/json-viewer.schema.js",
+      "default": "./dist/components/json-viewer/json-viewer.schema.js"
     },
     "./json-viewer/variables": {
       "types": "./dist/components/json-viewer/json-viewer.variables.d.ts",
-      "svelte": "./src/components/json-viewer/json-viewer.variables.ts"
+      "svelte": "./src/components/json-viewer/json-viewer.variables.ts",
+      "node": "./dist/server/components/json-viewer/json-viewer.variables.js",
+      "default": "./dist/components/json-viewer/json-viewer.variables.js"
     },
     "./json-viewer/styles": {
       "default": "./dist/components/json-viewer/json-viewer.css"
@@ -1343,11 +1607,15 @@
     },
     "./kanban-board/schema": {
       "types": "./dist/components/kanban-board/kanban-board.schema.d.ts",
-      "svelte": "./src/components/kanban-board/kanban-board.schema.ts"
+      "svelte": "./src/components/kanban-board/kanban-board.schema.ts",
+      "node": "./dist/server/components/kanban-board/kanban-board.schema.js",
+      "default": "./dist/components/kanban-board/kanban-board.schema.js"
     },
     "./kanban-board/variables": {
       "types": "./dist/components/kanban-board/kanban-board.variables.d.ts",
-      "svelte": "./src/components/kanban-board/kanban-board.variables.ts"
+      "svelte": "./src/components/kanban-board/kanban-board.variables.ts",
+      "node": "./dist/server/components/kanban-board/kanban-board.variables.js",
+      "default": "./dist/components/kanban-board/kanban-board.variables.js"
     },
     "./kanban-board/styles": {
       "default": "./dist/components/kanban-board/kanban-board.css"
@@ -1364,11 +1632,15 @@
     },
     "./kbd/schema": {
       "types": "./dist/components/kbd/kbd.schema.d.ts",
-      "svelte": "./src/components/kbd/kbd.schema.ts"
+      "svelte": "./src/components/kbd/kbd.schema.ts",
+      "node": "./dist/server/components/kbd/kbd.schema.js",
+      "default": "./dist/components/kbd/kbd.schema.js"
     },
     "./kbd/variables": {
       "types": "./dist/components/kbd/kbd.variables.d.ts",
-      "svelte": "./src/components/kbd/kbd.variables.ts"
+      "svelte": "./src/components/kbd/kbd.variables.ts",
+      "node": "./dist/server/components/kbd/kbd.variables.js",
+      "default": "./dist/components/kbd/kbd.variables.js"
     },
     "./kbd/styles": {
       "default": "./dist/components/kbd/kbd.css"
@@ -1385,11 +1657,15 @@
     },
     "./label/schema": {
       "types": "./dist/components/label/label.schema.d.ts",
-      "svelte": "./src/components/label/label.schema.ts"
+      "svelte": "./src/components/label/label.schema.ts",
+      "node": "./dist/server/components/label/label.schema.js",
+      "default": "./dist/components/label/label.schema.js"
     },
     "./label/variables": {
       "types": "./dist/components/label/label.variables.d.ts",
-      "svelte": "./src/components/label/label.variables.ts"
+      "svelte": "./src/components/label/label.variables.ts",
+      "node": "./dist/server/components/label/label.variables.js",
+      "default": "./dist/components/label/label.variables.js"
     },
     "./label/styles": {
       "default": "./dist/components/label/label.css"
@@ -1402,11 +1678,15 @@
     },
     "./line-chart/schema": {
       "types": "./dist/components/line-chart/line-chart.schema.d.ts",
-      "svelte": "./src/components/line-chart/line-chart.schema.ts"
+      "svelte": "./src/components/line-chart/line-chart.schema.ts",
+      "node": "./dist/server/components/line-chart/line-chart.schema.js",
+      "default": "./dist/components/line-chart/line-chart.schema.js"
     },
     "./line-chart/variables": {
       "types": "./dist/components/line-chart/line-chart.variables.d.ts",
-      "svelte": "./src/components/line-chart/line-chart.variables.ts"
+      "svelte": "./src/components/line-chart/line-chart.variables.ts",
+      "node": "./dist/server/components/line-chart/line-chart.variables.js",
+      "default": "./dist/components/line-chart/line-chart.variables.js"
     },
     "./line-chart/styles": {
       "default": "./dist/components/line-chart/line-chart.css"
@@ -1423,11 +1703,15 @@
     },
     "./load-more/schema": {
       "types": "./dist/components/load-more/load-more.schema.d.ts",
-      "svelte": "./src/components/load-more/load-more.schema.ts"
+      "svelte": "./src/components/load-more/load-more.schema.ts",
+      "node": "./dist/server/components/load-more/load-more.schema.js",
+      "default": "./dist/components/load-more/load-more.schema.js"
     },
     "./load-more/variables": {
       "types": "./dist/components/load-more/load-more.variables.d.ts",
-      "svelte": "./src/components/load-more/load-more.variables.ts"
+      "svelte": "./src/components/load-more/load-more.variables.ts",
+      "node": "./dist/server/components/load-more/load-more.variables.js",
+      "default": "./dist/components/load-more/load-more.variables.js"
     },
     "./load-more/styles": {
       "default": "./dist/components/load-more/load-more.css"
@@ -1444,11 +1728,15 @@
     },
     "./markdown-editor/schema": {
       "types": "./dist/components/markdown-editor/markdown-editor.schema.d.ts",
-      "svelte": "./src/components/markdown-editor/markdown-editor.schema.ts"
+      "svelte": "./src/components/markdown-editor/markdown-editor.schema.ts",
+      "node": "./dist/server/components/markdown-editor/markdown-editor.schema.js",
+      "default": "./dist/components/markdown-editor/markdown-editor.schema.js"
     },
     "./markdown-editor/variables": {
       "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts",
-      "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts"
+      "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts",
+      "node": "./dist/server/components/markdown-editor/markdown-editor.variables.js",
+      "default": "./dist/components/markdown-editor/markdown-editor.variables.js"
     },
     "./markdown-editor/examples": {
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
@@ -1462,11 +1750,15 @@
     },
     "./menu-bar/schema": {
       "types": "./dist/components/menu-bar/menu-bar.schema.d.ts",
-      "svelte": "./src/components/menu-bar/menu-bar.schema.ts"
+      "svelte": "./src/components/menu-bar/menu-bar.schema.ts",
+      "node": "./dist/server/components/menu-bar/menu-bar.schema.js",
+      "default": "./dist/components/menu-bar/menu-bar.schema.js"
     },
     "./menu-bar/variables": {
       "types": "./dist/components/menu-bar/menu-bar.variables.d.ts",
-      "svelte": "./src/components/menu-bar/menu-bar.variables.ts"
+      "svelte": "./src/components/menu-bar/menu-bar.variables.ts",
+      "node": "./dist/server/components/menu-bar/menu-bar.variables.js",
+      "default": "./dist/components/menu-bar/menu-bar.variables.js"
     },
     "./menu-bar/styles": {
       "default": "./dist/components/menu-bar/menu-bar.css"
@@ -1483,11 +1775,15 @@
     },
     "./message/schema": {
       "types": "./dist/components/message/message.schema.d.ts",
-      "svelte": "./src/components/message/message.schema.ts"
+      "svelte": "./src/components/message/message.schema.ts",
+      "node": "./dist/server/components/message/message.schema.js",
+      "default": "./dist/components/message/message.schema.js"
     },
     "./message/variables": {
       "types": "./dist/components/message/message.variables.d.ts",
-      "svelte": "./src/components/message/message.variables.ts"
+      "svelte": "./src/components/message/message.variables.ts",
+      "node": "./dist/server/components/message/message.variables.js",
+      "default": "./dist/components/message/message.variables.js"
     },
     "./message/styles": {
       "default": "./dist/components/message/message.css"
@@ -1500,11 +1796,15 @@
     },
     "./modal/schema": {
       "types": "./dist/components/modal/modal.schema.d.ts",
-      "svelte": "./src/components/modal/modal.schema.ts"
+      "svelte": "./src/components/modal/modal.schema.ts",
+      "node": "./dist/server/components/modal/modal.schema.js",
+      "default": "./dist/components/modal/modal.schema.js"
     },
     "./modal/variables": {
       "types": "./dist/components/modal/modal.variables.d.ts",
-      "svelte": "./src/components/modal/modal.variables.ts"
+      "svelte": "./src/components/modal/modal.variables.ts",
+      "node": "./dist/server/components/modal/modal.variables.js",
+      "default": "./dist/components/modal/modal.variables.js"
     },
     "./modal/styles": {
       "default": "./dist/components/modal/modal.css"
@@ -1525,11 +1825,15 @@
     },
     "./navigation-bar/schema": {
       "types": "./dist/components/navigation-bar/navigation-bar.schema.d.ts",
-      "svelte": "./src/components/navigation-bar/navigation-bar.schema.ts"
+      "svelte": "./src/components/navigation-bar/navigation-bar.schema.ts",
+      "node": "./dist/server/components/navigation-bar/navigation-bar.schema.js",
+      "default": "./dist/components/navigation-bar/navigation-bar.schema.js"
     },
     "./navigation-bar/variables": {
       "types": "./dist/components/navigation-bar/navigation-bar.variables.d.ts",
-      "svelte": "./src/components/navigation-bar/navigation-bar.variables.ts"
+      "svelte": "./src/components/navigation-bar/navigation-bar.variables.ts",
+      "node": "./dist/server/components/navigation-bar/navigation-bar.variables.js",
+      "default": "./dist/components/navigation-bar/navigation-bar.variables.js"
     },
     "./navigation-bar/styles": {
       "default": "./dist/components/navigation-bar/navigation-bar.css"
@@ -1546,11 +1850,15 @@
     },
     "./navigation-item/schema": {
       "types": "./dist/components/navigation-item/navigation-item.schema.d.ts",
-      "svelte": "./src/components/navigation-item/navigation-item.schema.ts"
+      "svelte": "./src/components/navigation-item/navigation-item.schema.ts",
+      "node": "./dist/server/components/navigation-item/navigation-item.schema.js",
+      "default": "./dist/components/navigation-item/navigation-item.schema.js"
     },
     "./navigation-item/variables": {
       "types": "./dist/components/navigation-item/navigation-item.variables.d.ts",
-      "svelte": "./src/components/navigation-item/navigation-item.variables.ts"
+      "svelte": "./src/components/navigation-item/navigation-item.variables.ts",
+      "node": "./dist/server/components/navigation-item/navigation-item.variables.js",
+      "default": "./dist/components/navigation-item/navigation-item.variables.js"
     },
     "./navigation-item/styles": {
       "default": "./dist/components/navigation-item/navigation-item.css"
@@ -1563,11 +1871,15 @@
     },
     "./number-input/schema": {
       "types": "./dist/components/number-input/number-input.schema.d.ts",
-      "svelte": "./src/components/number-input/number-input.schema.ts"
+      "svelte": "./src/components/number-input/number-input.schema.ts",
+      "node": "./dist/server/components/number-input/number-input.schema.js",
+      "default": "./dist/components/number-input/number-input.schema.js"
     },
     "./number-input/variables": {
       "types": "./dist/components/number-input/number-input.variables.d.ts",
-      "svelte": "./src/components/number-input/number-input.variables.ts"
+      "svelte": "./src/components/number-input/number-input.variables.ts",
+      "node": "./dist/server/components/number-input/number-input.variables.js",
+      "default": "./dist/components/number-input/number-input.variables.js"
     },
     "./number-input/styles": {
       "default": "./dist/components/number-input/number-input.css"
@@ -1580,11 +1892,15 @@
     },
     "./page-layout/schema": {
       "types": "./dist/components/page-layout/page-layout.schema.d.ts",
-      "svelte": "./src/components/page-layout/page-layout.schema.ts"
+      "svelte": "./src/components/page-layout/page-layout.schema.ts",
+      "node": "./dist/server/components/page-layout/page-layout.schema.js",
+      "default": "./dist/components/page-layout/page-layout.schema.js"
     },
     "./page-layout/variables": {
       "types": "./dist/components/page-layout/page-layout.variables.d.ts",
-      "svelte": "./src/components/page-layout/page-layout.variables.ts"
+      "svelte": "./src/components/page-layout/page-layout.variables.ts",
+      "node": "./dist/server/components/page-layout/page-layout.variables.js",
+      "default": "./dist/components/page-layout/page-layout.variables.js"
     },
     "./page-layout/styles": {
       "default": "./dist/components/page-layout/page-layout.css"
@@ -1601,11 +1917,15 @@
     },
     "./pagination/schema": {
       "types": "./dist/components/pagination/pagination.schema.d.ts",
-      "svelte": "./src/components/pagination/pagination.schema.ts"
+      "svelte": "./src/components/pagination/pagination.schema.ts",
+      "node": "./dist/server/components/pagination/pagination.schema.js",
+      "default": "./dist/components/pagination/pagination.schema.js"
     },
     "./pagination/variables": {
       "types": "./dist/components/pagination/pagination.variables.d.ts",
-      "svelte": "./src/components/pagination/pagination.variables.ts"
+      "svelte": "./src/components/pagination/pagination.variables.ts",
+      "node": "./dist/server/components/pagination/pagination.variables.js",
+      "default": "./dist/components/pagination/pagination.variables.js"
     },
     "./pagination/styles": {
       "default": "./dist/components/pagination/pagination.css"
@@ -1622,11 +1942,15 @@
     },
     "./phone-input/schema": {
       "types": "./dist/components/phone-input/phone-input.schema.d.ts",
-      "svelte": "./src/components/phone-input/phone-input.schema.ts"
+      "svelte": "./src/components/phone-input/phone-input.schema.ts",
+      "node": "./dist/server/components/phone-input/phone-input.schema.js",
+      "default": "./dist/components/phone-input/phone-input.schema.js"
     },
     "./phone-input/variables": {
       "types": "./dist/components/phone-input/phone-input.variables.d.ts",
-      "svelte": "./src/components/phone-input/phone-input.variables.ts"
+      "svelte": "./src/components/phone-input/phone-input.variables.ts",
+      "node": "./dist/server/components/phone-input/phone-input.variables.js",
+      "default": "./dist/components/phone-input/phone-input.variables.js"
     },
     "./phone-input/styles": {
       "default": "./dist/components/phone-input/phone-input.css"
@@ -1643,11 +1967,15 @@
     },
     "./pin-input/schema": {
       "types": "./dist/components/pin-input/pin-input.schema.d.ts",
-      "svelte": "./src/components/pin-input/pin-input.schema.ts"
+      "svelte": "./src/components/pin-input/pin-input.schema.ts",
+      "node": "./dist/server/components/pin-input/pin-input.schema.js",
+      "default": "./dist/components/pin-input/pin-input.schema.js"
     },
     "./pin-input/variables": {
       "types": "./dist/components/pin-input/pin-input.variables.d.ts",
-      "svelte": "./src/components/pin-input/pin-input.variables.ts"
+      "svelte": "./src/components/pin-input/pin-input.variables.ts",
+      "node": "./dist/server/components/pin-input/pin-input.variables.js",
+      "default": "./dist/components/pin-input/pin-input.variables.js"
     },
     "./pin-input/styles": {
       "default": "./dist/components/pin-input/pin-input.css"
@@ -1664,11 +1992,15 @@
     },
     "./popover/schema": {
       "types": "./dist/components/popover/popover.schema.d.ts",
-      "svelte": "./src/components/popover/popover.schema.ts"
+      "svelte": "./src/components/popover/popover.schema.ts",
+      "node": "./dist/server/components/popover/popover.schema.js",
+      "default": "./dist/components/popover/popover.schema.js"
     },
     "./popover/variables": {
       "types": "./dist/components/popover/popover.variables.d.ts",
-      "svelte": "./src/components/popover/popover.variables.ts"
+      "svelte": "./src/components/popover/popover.variables.ts",
+      "node": "./dist/server/components/popover/popover.variables.js",
+      "default": "./dist/components/popover/popover.variables.js"
     },
     "./popover/styles": {
       "default": "./dist/components/popover/popover.css"
@@ -1685,11 +2017,15 @@
     },
     "./portal/schema": {
       "types": "./dist/components/portal/portal.schema.d.ts",
-      "svelte": "./src/components/portal/portal.schema.ts"
+      "svelte": "./src/components/portal/portal.schema.ts",
+      "node": "./dist/server/components/portal/portal.schema.js",
+      "default": "./dist/components/portal/portal.schema.js"
     },
     "./portal/variables": {
       "types": "./dist/components/portal/portal.variables.d.ts",
-      "svelte": "./src/components/portal/portal.variables.ts"
+      "svelte": "./src/components/portal/portal.variables.ts",
+      "node": "./dist/server/components/portal/portal.variables.js",
+      "default": "./dist/components/portal/portal.variables.js"
     },
     "./portal/examples": {
       "import": "./src/components/portal/portal.examples.json",
@@ -1703,11 +2039,15 @@
     },
     "./progress/schema": {
       "types": "./dist/components/progress/progress.schema.d.ts",
-      "svelte": "./src/components/progress/progress.schema.ts"
+      "svelte": "./src/components/progress/progress.schema.ts",
+      "node": "./dist/server/components/progress/progress.schema.js",
+      "default": "./dist/components/progress/progress.schema.js"
     },
     "./progress/variables": {
       "types": "./dist/components/progress/progress.variables.d.ts",
-      "svelte": "./src/components/progress/progress.variables.ts"
+      "svelte": "./src/components/progress/progress.variables.ts",
+      "node": "./dist/server/components/progress/progress.variables.js",
+      "default": "./dist/components/progress/progress.variables.js"
     },
     "./progress/styles": {
       "default": "./dist/components/progress/progress.css"
@@ -1724,11 +2064,15 @@
     },
     "./radio/schema": {
       "types": "./dist/components/radio/radio.schema.d.ts",
-      "svelte": "./src/components/radio/radio.schema.ts"
+      "svelte": "./src/components/radio/radio.schema.ts",
+      "node": "./dist/server/components/radio/radio.schema.js",
+      "default": "./dist/components/radio/radio.schema.js"
     },
     "./radio/variables": {
       "types": "./dist/components/radio/radio.variables.d.ts",
-      "svelte": "./src/components/radio/radio.variables.ts"
+      "svelte": "./src/components/radio/radio.variables.ts",
+      "node": "./dist/server/components/radio/radio.variables.js",
+      "default": "./dist/components/radio/radio.variables.js"
     },
     "./radio/styles": {
       "default": "./dist/components/radio/radio.css"
@@ -1741,11 +2085,15 @@
     },
     "./radio-group/schema": {
       "types": "./dist/components/radio-group/radio-group.schema.d.ts",
-      "svelte": "./src/components/radio-group/radio-group.schema.ts"
+      "svelte": "./src/components/radio-group/radio-group.schema.ts",
+      "node": "./dist/server/components/radio-group/radio-group.schema.js",
+      "default": "./dist/components/radio-group/radio-group.schema.js"
     },
     "./radio-group/variables": {
       "types": "./dist/components/radio-group/radio-group.variables.d.ts",
-      "svelte": "./src/components/radio-group/radio-group.variables.ts"
+      "svelte": "./src/components/radio-group/radio-group.variables.ts",
+      "node": "./dist/server/components/radio-group/radio-group.variables.js",
+      "default": "./dist/components/radio-group/radio-group.variables.js"
     },
     "./radio-group/styles": {
       "default": "./dist/components/radio-group/radio-group.css"
@@ -1762,11 +2110,15 @@
     },
     "./rating/schema": {
       "types": "./dist/components/rating/rating.schema.d.ts",
-      "svelte": "./src/components/rating/rating.schema.ts"
+      "svelte": "./src/components/rating/rating.schema.ts",
+      "node": "./dist/server/components/rating/rating.schema.js",
+      "default": "./dist/components/rating/rating.schema.js"
     },
     "./rating/variables": {
       "types": "./dist/components/rating/rating.variables.d.ts",
-      "svelte": "./src/components/rating/rating.variables.ts"
+      "svelte": "./src/components/rating/rating.variables.ts",
+      "node": "./dist/server/components/rating/rating.variables.js",
+      "default": "./dist/components/rating/rating.variables.js"
     },
     "./rating/styles": {
       "default": "./dist/components/rating/rating.css"
@@ -1783,11 +2135,15 @@
     },
     "./resizable-panels/schema": {
       "types": "./dist/components/resizable-panels/resizable-panels.schema.d.ts",
-      "svelte": "./src/components/resizable-panels/resizable-panels.schema.ts"
+      "svelte": "./src/components/resizable-panels/resizable-panels.schema.ts",
+      "node": "./dist/server/components/resizable-panels/resizable-panels.schema.js",
+      "default": "./dist/components/resizable-panels/resizable-panels.schema.js"
     },
     "./resizable-panels/variables": {
       "types": "./dist/components/resizable-panels/resizable-panels.variables.d.ts",
-      "svelte": "./src/components/resizable-panels/resizable-panels.variables.ts"
+      "svelte": "./src/components/resizable-panels/resizable-panels.variables.ts",
+      "node": "./dist/server/components/resizable-panels/resizable-panels.variables.js",
+      "default": "./dist/components/resizable-panels/resizable-panels.variables.js"
     },
     "./resizable-panels/styles": {
       "default": "./dist/components/resizable-panels/resizable-panels.css"
@@ -1804,11 +2160,15 @@
     },
     "./review-editor/schema": {
       "types": "./dist/components/review-editor/review-editor.schema.d.ts",
-      "svelte": "./src/components/review-editor/review-editor.schema.ts"
+      "svelte": "./src/components/review-editor/review-editor.schema.ts",
+      "node": "./dist/server/components/review-editor/review-editor.schema.js",
+      "default": "./dist/components/review-editor/review-editor.schema.js"
     },
     "./review-editor/variables": {
       "types": "./dist/components/review-editor/review-editor.variables.d.ts",
-      "svelte": "./src/components/review-editor/review-editor.variables.ts"
+      "svelte": "./src/components/review-editor/review-editor.variables.ts",
+      "node": "./dist/server/components/review-editor/review-editor.variables.js",
+      "default": "./dist/components/review-editor/review-editor.variables.js"
     },
     "./review-editor/styles": {
       "default": "./dist/components/review-editor/review-editor.css"
@@ -1825,11 +2185,15 @@
     },
     "./scroll-area/schema": {
       "types": "./dist/components/scroll-area/scroll-area.schema.d.ts",
-      "svelte": "./src/components/scroll-area/scroll-area.schema.ts"
+      "svelte": "./src/components/scroll-area/scroll-area.schema.ts",
+      "node": "./dist/server/components/scroll-area/scroll-area.schema.js",
+      "default": "./dist/components/scroll-area/scroll-area.schema.js"
     },
     "./scroll-area/variables": {
       "types": "./dist/components/scroll-area/scroll-area.variables.d.ts",
-      "svelte": "./src/components/scroll-area/scroll-area.variables.ts"
+      "svelte": "./src/components/scroll-area/scroll-area.variables.ts",
+      "node": "./dist/server/components/scroll-area/scroll-area.variables.js",
+      "default": "./dist/components/scroll-area/scroll-area.variables.js"
     },
     "./scroll-area/styles": {
       "default": "./dist/components/scroll-area/scroll-area.css"
@@ -1846,11 +2210,15 @@
     },
     "./search-field/schema": {
       "types": "./dist/components/search-field/search-field.schema.d.ts",
-      "svelte": "./src/components/search-field/search-field.schema.ts"
+      "svelte": "./src/components/search-field/search-field.schema.ts",
+      "node": "./dist/server/components/search-field/search-field.schema.js",
+      "default": "./dist/components/search-field/search-field.schema.js"
     },
     "./search-field/variables": {
       "types": "./dist/components/search-field/search-field.variables.d.ts",
-      "svelte": "./src/components/search-field/search-field.variables.ts"
+      "svelte": "./src/components/search-field/search-field.variables.ts",
+      "node": "./dist/server/components/search-field/search-field.variables.js",
+      "default": "./dist/components/search-field/search-field.variables.js"
     },
     "./search-field/styles": {
       "default": "./dist/components/search-field/search-field.css"
@@ -1863,11 +2231,15 @@
     },
     "./section-heading/schema": {
       "types": "./dist/components/section-heading/section-heading.schema.d.ts",
-      "svelte": "./src/components/section-heading/section-heading.schema.ts"
+      "svelte": "./src/components/section-heading/section-heading.schema.ts",
+      "node": "./dist/server/components/section-heading/section-heading.schema.js",
+      "default": "./dist/components/section-heading/section-heading.schema.js"
     },
     "./section-heading/variables": {
       "types": "./dist/components/section-heading/section-heading.variables.d.ts",
-      "svelte": "./src/components/section-heading/section-heading.variables.ts"
+      "svelte": "./src/components/section-heading/section-heading.variables.ts",
+      "node": "./dist/server/components/section-heading/section-heading.variables.js",
+      "default": "./dist/components/section-heading/section-heading.variables.js"
     },
     "./section-heading/styles": {
       "default": "./dist/components/section-heading/section-heading.css"
@@ -1884,11 +2256,15 @@
     },
     "./segment/schema": {
       "types": "./dist/components/segment/segment.schema.d.ts",
-      "svelte": "./src/components/segment/segment.schema.ts"
+      "svelte": "./src/components/segment/segment.schema.ts",
+      "node": "./dist/server/components/segment/segment.schema.js",
+      "default": "./dist/components/segment/segment.schema.js"
     },
     "./segment/variables": {
       "types": "./dist/components/segment/segment.variables.d.ts",
-      "svelte": "./src/components/segment/segment.variables.ts"
+      "svelte": "./src/components/segment/segment.variables.ts",
+      "node": "./dist/server/components/segment/segment.variables.js",
+      "default": "./dist/components/segment/segment.variables.js"
     },
     "./segmented-control": {
       "types": "./dist/components/segmented-control/index.d.ts",
@@ -1898,11 +2274,15 @@
     },
     "./segmented-control/schema": {
       "types": "./dist/components/segmented-control/segmented-control.schema.d.ts",
-      "svelte": "./src/components/segmented-control/segmented-control.schema.ts"
+      "svelte": "./src/components/segmented-control/segmented-control.schema.ts",
+      "node": "./dist/server/components/segmented-control/segmented-control.schema.js",
+      "default": "./dist/components/segmented-control/segmented-control.schema.js"
     },
     "./segmented-control/variables": {
       "types": "./dist/components/segmented-control/segmented-control.variables.d.ts",
-      "svelte": "./src/components/segmented-control/segmented-control.variables.ts"
+      "svelte": "./src/components/segmented-control/segmented-control.variables.ts",
+      "node": "./dist/server/components/segmented-control/segmented-control.variables.js",
+      "default": "./dist/components/segmented-control/segmented-control.variables.js"
     },
     "./segmented-control/styles": {
       "default": "./dist/components/segmented-control/segmented-control.css"
@@ -1919,11 +2299,15 @@
     },
     "./select/schema": {
       "types": "./dist/components/select/select.schema.d.ts",
-      "svelte": "./src/components/select/select.schema.ts"
+      "svelte": "./src/components/select/select.schema.ts",
+      "node": "./dist/server/components/select/select.schema.js",
+      "default": "./dist/components/select/select.schema.js"
     },
     "./select/variables": {
       "types": "./dist/components/select/select.variables.d.ts",
-      "svelte": "./src/components/select/select.variables.ts"
+      "svelte": "./src/components/select/select.variables.ts",
+      "node": "./dist/server/components/select/select.variables.js",
+      "default": "./dist/components/select/select.variables.js"
     },
     "./select/styles": {
       "default": "./dist/components/select/select.css"
@@ -1940,11 +2324,15 @@
     },
     "./selection-popover/schema": {
       "types": "./dist/components/selection-popover/selection-popover.schema.d.ts",
-      "svelte": "./src/components/selection-popover/selection-popover.schema.ts"
+      "svelte": "./src/components/selection-popover/selection-popover.schema.ts",
+      "node": "./dist/server/components/selection-popover/selection-popover.schema.js",
+      "default": "./dist/components/selection-popover/selection-popover.schema.js"
     },
     "./selection-popover/variables": {
       "types": "./dist/components/selection-popover/selection-popover.variables.d.ts",
-      "svelte": "./src/components/selection-popover/selection-popover.variables.ts"
+      "svelte": "./src/components/selection-popover/selection-popover.variables.ts",
+      "node": "./dist/server/components/selection-popover/selection-popover.variables.js",
+      "default": "./dist/components/selection-popover/selection-popover.variables.js"
     },
     "./selection-popover/styles": {
       "default": "./dist/components/selection-popover/selection-popover.css"
@@ -1961,11 +2349,15 @@
     },
     "./sheet/schema": {
       "types": "./dist/components/sheet/sheet.schema.d.ts",
-      "svelte": "./src/components/sheet/sheet.schema.ts"
+      "svelte": "./src/components/sheet/sheet.schema.ts",
+      "node": "./dist/server/components/sheet/sheet.schema.js",
+      "default": "./dist/components/sheet/sheet.schema.js"
     },
     "./sheet/variables": {
       "types": "./dist/components/sheet/sheet.variables.d.ts",
-      "svelte": "./src/components/sheet/sheet.variables.ts"
+      "svelte": "./src/components/sheet/sheet.variables.ts",
+      "node": "./dist/server/components/sheet/sheet.variables.js",
+      "default": "./dist/components/sheet/sheet.variables.js"
     },
     "./sheet/styles": {
       "default": "./dist/components/sheet/sheet.css"
@@ -1982,11 +2374,15 @@
     },
     "./side-navigation/schema": {
       "types": "./dist/components/side-navigation/side-navigation.schema.d.ts",
-      "svelte": "./src/components/side-navigation/side-navigation.schema.ts"
+      "svelte": "./src/components/side-navigation/side-navigation.schema.ts",
+      "node": "./dist/server/components/side-navigation/side-navigation.schema.js",
+      "default": "./dist/components/side-navigation/side-navigation.schema.js"
     },
     "./side-navigation/variables": {
       "types": "./dist/components/side-navigation/side-navigation.variables.d.ts",
-      "svelte": "./src/components/side-navigation/side-navigation.variables.ts"
+      "svelte": "./src/components/side-navigation/side-navigation.variables.ts",
+      "node": "./dist/server/components/side-navigation/side-navigation.variables.js",
+      "default": "./dist/components/side-navigation/side-navigation.variables.js"
     },
     "./side-navigation/styles": {
       "default": "./dist/components/side-navigation/side-navigation.css"
@@ -2003,11 +2399,15 @@
     },
     "./side-navigation-group/schema": {
       "types": "./dist/components/side-navigation-group/side-navigation-group.schema.d.ts",
-      "svelte": "./src/components/side-navigation-group/side-navigation-group.schema.ts"
+      "svelte": "./src/components/side-navigation-group/side-navigation-group.schema.ts",
+      "node": "./dist/server/components/side-navigation-group/side-navigation-group.schema.js",
+      "default": "./dist/components/side-navigation-group/side-navigation-group.schema.js"
     },
     "./side-navigation-group/variables": {
       "types": "./dist/components/side-navigation-group/side-navigation-group.variables.d.ts",
-      "svelte": "./src/components/side-navigation-group/side-navigation-group.variables.ts"
+      "svelte": "./src/components/side-navigation-group/side-navigation-group.variables.ts",
+      "node": "./dist/server/components/side-navigation-group/side-navigation-group.variables.js",
+      "default": "./dist/components/side-navigation-group/side-navigation-group.variables.js"
     },
     "./side-navigation-group/styles": {
       "default": "./dist/components/side-navigation-group/side-navigation-group.css"
@@ -2020,11 +2420,15 @@
     },
     "./side-navigation-item/schema": {
       "types": "./dist/components/side-navigation-item/side-navigation-item.schema.d.ts",
-      "svelte": "./src/components/side-navigation-item/side-navigation-item.schema.ts"
+      "svelte": "./src/components/side-navigation-item/side-navigation-item.schema.ts",
+      "node": "./dist/server/components/side-navigation-item/side-navigation-item.schema.js",
+      "default": "./dist/components/side-navigation-item/side-navigation-item.schema.js"
     },
     "./side-navigation-item/variables": {
       "types": "./dist/components/side-navigation-item/side-navigation-item.variables.d.ts",
-      "svelte": "./src/components/side-navigation-item/side-navigation-item.variables.ts"
+      "svelte": "./src/components/side-navigation-item/side-navigation-item.variables.ts",
+      "node": "./dist/server/components/side-navigation-item/side-navigation-item.variables.js",
+      "default": "./dist/components/side-navigation-item/side-navigation-item.variables.js"
     },
     "./sidebar": {
       "types": "./dist/components/sidebar/index.d.ts",
@@ -2034,11 +2438,15 @@
     },
     "./sidebar/schema": {
       "types": "./dist/components/sidebar/sidebar.schema.d.ts",
-      "svelte": "./src/components/sidebar/sidebar.schema.ts"
+      "svelte": "./src/components/sidebar/sidebar.schema.ts",
+      "node": "./dist/server/components/sidebar/sidebar.schema.js",
+      "default": "./dist/components/sidebar/sidebar.schema.js"
     },
     "./sidebar/variables": {
       "types": "./dist/components/sidebar/sidebar.variables.d.ts",
-      "svelte": "./src/components/sidebar/sidebar.variables.ts"
+      "svelte": "./src/components/sidebar/sidebar.variables.ts",
+      "node": "./dist/server/components/sidebar/sidebar.variables.js",
+      "default": "./dist/components/sidebar/sidebar.variables.js"
     },
     "./sidebar/styles": {
       "default": "./dist/components/sidebar/sidebar.css"
@@ -2055,11 +2463,15 @@
     },
     "./skeleton/schema": {
       "types": "./dist/components/skeleton/skeleton.schema.d.ts",
-      "svelte": "./src/components/skeleton/skeleton.schema.ts"
+      "svelte": "./src/components/skeleton/skeleton.schema.ts",
+      "node": "./dist/server/components/skeleton/skeleton.schema.js",
+      "default": "./dist/components/skeleton/skeleton.schema.js"
     },
     "./skeleton/variables": {
       "types": "./dist/components/skeleton/skeleton.variables.d.ts",
-      "svelte": "./src/components/skeleton/skeleton.variables.ts"
+      "svelte": "./src/components/skeleton/skeleton.variables.ts",
+      "node": "./dist/server/components/skeleton/skeleton.variables.js",
+      "default": "./dist/components/skeleton/skeleton.variables.js"
     },
     "./skeleton/styles": {
       "default": "./dist/components/skeleton/skeleton.css"
@@ -2076,11 +2488,15 @@
     },
     "./slider/schema": {
       "types": "./dist/components/slider/slider.schema.d.ts",
-      "svelte": "./src/components/slider/slider.schema.ts"
+      "svelte": "./src/components/slider/slider.schema.ts",
+      "node": "./dist/server/components/slider/slider.schema.js",
+      "default": "./dist/components/slider/slider.schema.js"
     },
     "./slider/variables": {
       "types": "./dist/components/slider/slider.variables.d.ts",
-      "svelte": "./src/components/slider/slider.variables.ts"
+      "svelte": "./src/components/slider/slider.variables.ts",
+      "node": "./dist/server/components/slider/slider.variables.js",
+      "default": "./dist/components/slider/slider.variables.js"
     },
     "./slider/styles": {
       "default": "./dist/components/slider/slider.css"
@@ -2097,11 +2513,15 @@
     },
     "./sortable-list/schema": {
       "types": "./dist/components/sortable-list/sortable-list.schema.d.ts",
-      "svelte": "./src/components/sortable-list/sortable-list.schema.ts"
+      "svelte": "./src/components/sortable-list/sortable-list.schema.ts",
+      "node": "./dist/server/components/sortable-list/sortable-list.schema.js",
+      "default": "./dist/components/sortable-list/sortable-list.schema.js"
     },
     "./sortable-list/variables": {
       "types": "./dist/components/sortable-list/sortable-list.variables.d.ts",
-      "svelte": "./src/components/sortable-list/sortable-list.variables.ts"
+      "svelte": "./src/components/sortable-list/sortable-list.variables.ts",
+      "node": "./dist/server/components/sortable-list/sortable-list.variables.js",
+      "default": "./dist/components/sortable-list/sortable-list.variables.js"
     },
     "./sortable-list/styles": {
       "default": "./dist/components/sortable-list/sortable-list.css"
@@ -2114,11 +2534,15 @@
     },
     "./spacer/schema": {
       "types": "./dist/components/spacer/spacer.schema.d.ts",
-      "svelte": "./src/components/spacer/spacer.schema.ts"
+      "svelte": "./src/components/spacer/spacer.schema.ts",
+      "node": "./dist/server/components/spacer/spacer.schema.js",
+      "default": "./dist/components/spacer/spacer.schema.js"
     },
     "./spacer/variables": {
       "types": "./dist/components/spacer/spacer.variables.d.ts",
-      "svelte": "./src/components/spacer/spacer.variables.ts"
+      "svelte": "./src/components/spacer/spacer.variables.ts",
+      "node": "./dist/server/components/spacer/spacer.variables.js",
+      "default": "./dist/components/spacer/spacer.variables.js"
     },
     "./spacer/styles": {
       "default": "./dist/components/spacer/spacer.css"
@@ -2135,11 +2559,15 @@
     },
     "./spinner/schema": {
       "types": "./dist/components/spinner/spinner.schema.d.ts",
-      "svelte": "./src/components/spinner/spinner.schema.ts"
+      "svelte": "./src/components/spinner/spinner.schema.ts",
+      "node": "./dist/server/components/spinner/spinner.schema.js",
+      "default": "./dist/components/spinner/spinner.schema.js"
     },
     "./spinner/variables": {
       "types": "./dist/components/spinner/spinner.variables.d.ts",
-      "svelte": "./src/components/spinner/spinner.variables.ts"
+      "svelte": "./src/components/spinner/spinner.variables.ts",
+      "node": "./dist/server/components/spinner/spinner.variables.js",
+      "default": "./dist/components/spinner/spinner.variables.js"
     },
     "./spinner/styles": {
       "default": "./dist/components/spinner/spinner.css"
@@ -2156,11 +2584,15 @@
     },
     "./stack/schema": {
       "types": "./dist/components/stack/stack.schema.d.ts",
-      "svelte": "./src/components/stack/stack.schema.ts"
+      "svelte": "./src/components/stack/stack.schema.ts",
+      "node": "./dist/server/components/stack/stack.schema.js",
+      "default": "./dist/components/stack/stack.schema.js"
     },
     "./stack/variables": {
       "types": "./dist/components/stack/stack.variables.d.ts",
-      "svelte": "./src/components/stack/stack.variables.ts"
+      "svelte": "./src/components/stack/stack.variables.ts",
+      "node": "./dist/server/components/stack/stack.variables.js",
+      "default": "./dist/components/stack/stack.variables.js"
     },
     "./stack/styles": {
       "default": "./dist/components/stack/stack.css"
@@ -2177,11 +2609,15 @@
     },
     "./stacked-list-item/schema": {
       "types": "./dist/components/stacked-list-item/stacked-list-item.schema.d.ts",
-      "svelte": "./src/components/stacked-list-item/stacked-list-item.schema.ts"
+      "svelte": "./src/components/stacked-list-item/stacked-list-item.schema.ts",
+      "node": "./dist/server/components/stacked-list-item/stacked-list-item.schema.js",
+      "default": "./dist/components/stacked-list-item/stacked-list-item.schema.js"
     },
     "./stacked-list-item/variables": {
       "types": "./dist/components/stacked-list-item/stacked-list-item.variables.d.ts",
-      "svelte": "./src/components/stacked-list-item/stacked-list-item.variables.ts"
+      "svelte": "./src/components/stacked-list-item/stacked-list-item.variables.ts",
+      "node": "./dist/server/components/stacked-list-item/stacked-list-item.variables.js",
+      "default": "./dist/components/stacked-list-item/stacked-list-item.variables.js"
     },
     "./stacked-list-item/styles": {
       "default": "./dist/components/stacked-list-item/stacked-list-item.css"
@@ -2194,11 +2630,15 @@
     },
     "./stat/schema": {
       "types": "./dist/components/stat/stat.schema.d.ts",
-      "svelte": "./src/components/stat/stat.schema.ts"
+      "svelte": "./src/components/stat/stat.schema.ts",
+      "node": "./dist/server/components/stat/stat.schema.js",
+      "default": "./dist/components/stat/stat.schema.js"
     },
     "./stat/variables": {
       "types": "./dist/components/stat/stat.variables.d.ts",
-      "svelte": "./src/components/stat/stat.variables.ts"
+      "svelte": "./src/components/stat/stat.variables.ts",
+      "node": "./dist/server/components/stat/stat.variables.js",
+      "default": "./dist/components/stat/stat.variables.js"
     },
     "./stat/styles": {
       "default": "./dist/components/stat/stat.css"
@@ -2211,11 +2651,15 @@
     },
     "./stat-group/schema": {
       "types": "./dist/components/stat-group/stat-group.schema.d.ts",
-      "svelte": "./src/components/stat-group/stat-group.schema.ts"
+      "svelte": "./src/components/stat-group/stat-group.schema.ts",
+      "node": "./dist/server/components/stat-group/stat-group.schema.js",
+      "default": "./dist/components/stat-group/stat-group.schema.js"
     },
     "./stat-group/variables": {
       "types": "./dist/components/stat-group/stat-group.variables.d.ts",
-      "svelte": "./src/components/stat-group/stat-group.variables.ts"
+      "svelte": "./src/components/stat-group/stat-group.variables.ts",
+      "node": "./dist/server/components/stat-group/stat-group.variables.js",
+      "default": "./dist/components/stat-group/stat-group.variables.js"
     },
     "./stat-group/styles": {
       "default": "./dist/components/stat-group/stat-group.css"
@@ -2232,11 +2676,15 @@
     },
     "./status-dot/schema": {
       "types": "./dist/components/status-dot/status-dot.schema.d.ts",
-      "svelte": "./src/components/status-dot/status-dot.schema.ts"
+      "svelte": "./src/components/status-dot/status-dot.schema.ts",
+      "node": "./dist/server/components/status-dot/status-dot.schema.js",
+      "default": "./dist/components/status-dot/status-dot.schema.js"
     },
     "./status-dot/variables": {
       "types": "./dist/components/status-dot/status-dot.variables.d.ts",
-      "svelte": "./src/components/status-dot/status-dot.variables.ts"
+      "svelte": "./src/components/status-dot/status-dot.variables.ts",
+      "node": "./dist/server/components/status-dot/status-dot.variables.js",
+      "default": "./dist/components/status-dot/status-dot.variables.js"
     },
     "./status-dot/styles": {
       "default": "./dist/components/status-dot/status-dot.css"
@@ -2249,11 +2697,15 @@
     },
     "./steps/schema": {
       "types": "./dist/components/steps/steps.schema.d.ts",
-      "svelte": "./src/components/steps/steps.schema.ts"
+      "svelte": "./src/components/steps/steps.schema.ts",
+      "node": "./dist/server/components/steps/steps.schema.js",
+      "default": "./dist/components/steps/steps.schema.js"
     },
     "./steps/variables": {
       "types": "./dist/components/steps/steps.variables.d.ts",
-      "svelte": "./src/components/steps/steps.variables.ts"
+      "svelte": "./src/components/steps/steps.variables.ts",
+      "node": "./dist/server/components/steps/steps.variables.js",
+      "default": "./dist/components/steps/steps.variables.js"
     },
     "./steps/styles": {
       "default": "./dist/components/steps/steps.css"
@@ -2270,11 +2722,15 @@
     },
     "./surface/schema": {
       "types": "./dist/components/surface/surface.schema.d.ts",
-      "svelte": "./src/components/surface/surface.schema.ts"
+      "svelte": "./src/components/surface/surface.schema.ts",
+      "node": "./dist/server/components/surface/surface.schema.js",
+      "default": "./dist/components/surface/surface.schema.js"
     },
     "./surface/variables": {
       "types": "./dist/components/surface/surface.variables.d.ts",
-      "svelte": "./src/components/surface/surface.variables.ts"
+      "svelte": "./src/components/surface/surface.variables.ts",
+      "node": "./dist/server/components/surface/surface.variables.js",
+      "default": "./dist/components/surface/surface.variables.js"
     },
     "./surface/styles": {
       "default": "./dist/components/surface/surface.css"
@@ -2291,11 +2747,15 @@
     },
     "./tab/schema": {
       "types": "./dist/components/tab/tab.schema.d.ts",
-      "svelte": "./src/components/tab/tab.schema.ts"
+      "svelte": "./src/components/tab/tab.schema.ts",
+      "node": "./dist/server/components/tab/tab.schema.js",
+      "default": "./dist/components/tab/tab.schema.js"
     },
     "./tab/variables": {
       "types": "./dist/components/tab/tab.variables.d.ts",
-      "svelte": "./src/components/tab/tab.variables.ts"
+      "svelte": "./src/components/tab/tab.variables.ts",
+      "node": "./dist/server/components/tab/tab.variables.js",
+      "default": "./dist/components/tab/tab.variables.js"
     },
     "./tab/styles": {
       "default": "./dist/components/tab/tab.css"
@@ -2308,11 +2768,15 @@
     },
     "./tab-list/schema": {
       "types": "./dist/components/tab-list/tab-list.schema.d.ts",
-      "svelte": "./src/components/tab-list/tab-list.schema.ts"
+      "svelte": "./src/components/tab-list/tab-list.schema.ts",
+      "node": "./dist/server/components/tab-list/tab-list.schema.js",
+      "default": "./dist/components/tab-list/tab-list.schema.js"
     },
     "./tab-list/variables": {
       "types": "./dist/components/tab-list/tab-list.variables.d.ts",
-      "svelte": "./src/components/tab-list/tab-list.variables.ts"
+      "svelte": "./src/components/tab-list/tab-list.variables.ts",
+      "node": "./dist/server/components/tab-list/tab-list.variables.js",
+      "default": "./dist/components/tab-list/tab-list.variables.js"
     },
     "./tab-list/styles": {
       "default": "./dist/components/tab-list/tab-list.css"
@@ -2325,11 +2789,15 @@
     },
     "./tab-panel/schema": {
       "types": "./dist/components/tab-panel/tab-panel.schema.d.ts",
-      "svelte": "./src/components/tab-panel/tab-panel.schema.ts"
+      "svelte": "./src/components/tab-panel/tab-panel.schema.ts",
+      "node": "./dist/server/components/tab-panel/tab-panel.schema.js",
+      "default": "./dist/components/tab-panel/tab-panel.schema.js"
     },
     "./tab-panel/variables": {
       "types": "./dist/components/tab-panel/tab-panel.variables.d.ts",
-      "svelte": "./src/components/tab-panel/tab-panel.variables.ts"
+      "svelte": "./src/components/tab-panel/tab-panel.variables.ts",
+      "node": "./dist/server/components/tab-panel/tab-panel.variables.js",
+      "default": "./dist/components/tab-panel/tab-panel.variables.js"
     },
     "./tab-panel/styles": {
       "default": "./dist/components/tab-panel/tab-panel.css"
@@ -2342,11 +2810,15 @@
     },
     "./table/schema": {
       "types": "./dist/components/table/table.schema.d.ts",
-      "svelte": "./src/components/table/table.schema.ts"
+      "svelte": "./src/components/table/table.schema.ts",
+      "node": "./dist/server/components/table/table.schema.js",
+      "default": "./dist/components/table/table.schema.js"
     },
     "./table/variables": {
       "types": "./dist/components/table/table.variables.d.ts",
-      "svelte": "./src/components/table/table.variables.ts"
+      "svelte": "./src/components/table/table.variables.ts",
+      "node": "./dist/server/components/table/table.variables.js",
+      "default": "./dist/components/table/table.variables.js"
     },
     "./table/styles": {
       "default": "./dist/components/table/table.css"
@@ -2363,11 +2835,15 @@
     },
     "./table-body/schema": {
       "types": "./dist/components/table-body/table-body.schema.d.ts",
-      "svelte": "./src/components/table-body/table-body.schema.ts"
+      "svelte": "./src/components/table-body/table-body.schema.ts",
+      "node": "./dist/server/components/table-body/table-body.schema.js",
+      "default": "./dist/components/table-body/table-body.schema.js"
     },
     "./table-body/variables": {
       "types": "./dist/components/table-body/table-body.variables.d.ts",
-      "svelte": "./src/components/table-body/table-body.variables.ts"
+      "svelte": "./src/components/table-body/table-body.variables.ts",
+      "node": "./dist/server/components/table-body/table-body.variables.js",
+      "default": "./dist/components/table-body/table-body.variables.js"
     },
     "./table-body/styles": {
       "default": "./dist/components/table-body/table-body.css"
@@ -2380,11 +2856,15 @@
     },
     "./table-cell/schema": {
       "types": "./dist/components/table-cell/table-cell.schema.d.ts",
-      "svelte": "./src/components/table-cell/table-cell.schema.ts"
+      "svelte": "./src/components/table-cell/table-cell.schema.ts",
+      "node": "./dist/server/components/table-cell/table-cell.schema.js",
+      "default": "./dist/components/table-cell/table-cell.schema.js"
     },
     "./table-cell/variables": {
       "types": "./dist/components/table-cell/table-cell.variables.d.ts",
-      "svelte": "./src/components/table-cell/table-cell.variables.ts"
+      "svelte": "./src/components/table-cell/table-cell.variables.ts",
+      "node": "./dist/server/components/table-cell/table-cell.variables.js",
+      "default": "./dist/components/table-cell/table-cell.variables.js"
     },
     "./table-cell/styles": {
       "default": "./dist/components/table-cell/table-cell.css"
@@ -2397,11 +2877,15 @@
     },
     "./table-header/schema": {
       "types": "./dist/components/table-header/table-header.schema.d.ts",
-      "svelte": "./src/components/table-header/table-header.schema.ts"
+      "svelte": "./src/components/table-header/table-header.schema.ts",
+      "node": "./dist/server/components/table-header/table-header.schema.js",
+      "default": "./dist/components/table-header/table-header.schema.js"
     },
     "./table-header/variables": {
       "types": "./dist/components/table-header/table-header.variables.d.ts",
-      "svelte": "./src/components/table-header/table-header.variables.ts"
+      "svelte": "./src/components/table-header/table-header.variables.ts",
+      "node": "./dist/server/components/table-header/table-header.variables.js",
+      "default": "./dist/components/table-header/table-header.variables.js"
     },
     "./table-header/styles": {
       "default": "./dist/components/table-header/table-header.css"
@@ -2414,11 +2898,15 @@
     },
     "./table-header-cell/schema": {
       "types": "./dist/components/table-header-cell/table-header-cell.schema.d.ts",
-      "svelte": "./src/components/table-header-cell/table-header-cell.schema.ts"
+      "svelte": "./src/components/table-header-cell/table-header-cell.schema.ts",
+      "node": "./dist/server/components/table-header-cell/table-header-cell.schema.js",
+      "default": "./dist/components/table-header-cell/table-header-cell.schema.js"
     },
     "./table-header-cell/variables": {
       "types": "./dist/components/table-header-cell/table-header-cell.variables.d.ts",
-      "svelte": "./src/components/table-header-cell/table-header-cell.variables.ts"
+      "svelte": "./src/components/table-header-cell/table-header-cell.variables.ts",
+      "node": "./dist/server/components/table-header-cell/table-header-cell.variables.js",
+      "default": "./dist/components/table-header-cell/table-header-cell.variables.js"
     },
     "./table-header-cell/styles": {
       "default": "./dist/components/table-header-cell/table-header-cell.css"
@@ -2431,11 +2919,15 @@
     },
     "./table-row/schema": {
       "types": "./dist/components/table-row/table-row.schema.d.ts",
-      "svelte": "./src/components/table-row/table-row.schema.ts"
+      "svelte": "./src/components/table-row/table-row.schema.ts",
+      "node": "./dist/server/components/table-row/table-row.schema.js",
+      "default": "./dist/components/table-row/table-row.schema.js"
     },
     "./table-row/variables": {
       "types": "./dist/components/table-row/table-row.variables.d.ts",
-      "svelte": "./src/components/table-row/table-row.variables.ts"
+      "svelte": "./src/components/table-row/table-row.variables.ts",
+      "node": "./dist/server/components/table-row/table-row.variables.js",
+      "default": "./dist/components/table-row/table-row.variables.js"
     },
     "./table-row/styles": {
       "default": "./dist/components/table-row/table-row.css"
@@ -2448,11 +2940,15 @@
     },
     "./tabs/schema": {
       "types": "./dist/components/tabs/tabs.schema.d.ts",
-      "svelte": "./src/components/tabs/tabs.schema.ts"
+      "svelte": "./src/components/tabs/tabs.schema.ts",
+      "node": "./dist/server/components/tabs/tabs.schema.js",
+      "default": "./dist/components/tabs/tabs.schema.js"
     },
     "./tabs/variables": {
       "types": "./dist/components/tabs/tabs.variables.d.ts",
-      "svelte": "./src/components/tabs/tabs.variables.ts"
+      "svelte": "./src/components/tabs/tabs.variables.ts",
+      "node": "./dist/server/components/tabs/tabs.variables.js",
+      "default": "./dist/components/tabs/tabs.variables.js"
     },
     "./tabs/styles": {
       "default": "./dist/components/tabs/tabs.css"
@@ -2469,11 +2965,15 @@
     },
     "./tag-input/schema": {
       "types": "./dist/components/tag-input/tag-input.schema.d.ts",
-      "svelte": "./src/components/tag-input/tag-input.schema.ts"
+      "svelte": "./src/components/tag-input/tag-input.schema.ts",
+      "node": "./dist/server/components/tag-input/tag-input.schema.js",
+      "default": "./dist/components/tag-input/tag-input.schema.js"
     },
     "./tag-input/variables": {
       "types": "./dist/components/tag-input/tag-input.variables.d.ts",
-      "svelte": "./src/components/tag-input/tag-input.variables.ts"
+      "svelte": "./src/components/tag-input/tag-input.variables.ts",
+      "node": "./dist/server/components/tag-input/tag-input.variables.js",
+      "default": "./dist/components/tag-input/tag-input.variables.js"
     },
     "./tag-input/styles": {
       "default": "./dist/components/tag-input/tag-input.css"
@@ -2490,11 +2990,15 @@
     },
     "./textarea/schema": {
       "types": "./dist/components/textarea/textarea.schema.d.ts",
-      "svelte": "./src/components/textarea/textarea.schema.ts"
+      "svelte": "./src/components/textarea/textarea.schema.ts",
+      "node": "./dist/server/components/textarea/textarea.schema.js",
+      "default": "./dist/components/textarea/textarea.schema.js"
     },
     "./textarea/variables": {
       "types": "./dist/components/textarea/textarea.variables.d.ts",
-      "svelte": "./src/components/textarea/textarea.variables.ts"
+      "svelte": "./src/components/textarea/textarea.variables.ts",
+      "node": "./dist/server/components/textarea/textarea.variables.js",
+      "default": "./dist/components/textarea/textarea.variables.js"
     },
     "./textarea/styles": {
       "default": "./dist/components/textarea/textarea.css"
@@ -2511,11 +3015,15 @@
     },
     "./time-picker/schema": {
       "types": "./dist/components/time-picker/time-picker.schema.d.ts",
-      "svelte": "./src/components/time-picker/time-picker.schema.ts"
+      "svelte": "./src/components/time-picker/time-picker.schema.ts",
+      "node": "./dist/server/components/time-picker/time-picker.schema.js",
+      "default": "./dist/components/time-picker/time-picker.schema.js"
     },
     "./time-picker/variables": {
       "types": "./dist/components/time-picker/time-picker.variables.d.ts",
-      "svelte": "./src/components/time-picker/time-picker.variables.ts"
+      "svelte": "./src/components/time-picker/time-picker.variables.ts",
+      "node": "./dist/server/components/time-picker/time-picker.variables.js",
+      "default": "./dist/components/time-picker/time-picker.variables.js"
     },
     "./time-picker/styles": {
       "default": "./dist/components/time-picker/time-picker.css"
@@ -2532,11 +3040,15 @@
     },
     "./timeline/schema": {
       "types": "./dist/components/timeline/timeline.schema.d.ts",
-      "svelte": "./src/components/timeline/timeline.schema.ts"
+      "svelte": "./src/components/timeline/timeline.schema.ts",
+      "node": "./dist/server/components/timeline/timeline.schema.js",
+      "default": "./dist/components/timeline/timeline.schema.js"
     },
     "./timeline/variables": {
       "types": "./dist/components/timeline/timeline.variables.d.ts",
-      "svelte": "./src/components/timeline/timeline.variables.ts"
+      "svelte": "./src/components/timeline/timeline.variables.ts",
+      "node": "./dist/server/components/timeline/timeline.variables.js",
+      "default": "./dist/components/timeline/timeline.variables.js"
     },
     "./timeline/styles": {
       "default": "./dist/components/timeline/timeline.css"
@@ -2553,11 +3065,15 @@
     },
     "./timeline-item/schema": {
       "types": "./dist/components/timeline-item/timeline-item.schema.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.schema.ts"
+      "svelte": "./src/components/timeline-item/timeline-item.schema.ts",
+      "node": "./dist/server/components/timeline-item/timeline-item.schema.js",
+      "default": "./dist/components/timeline-item/timeline-item.schema.js"
     },
     "./timeline-item/variables": {
       "types": "./dist/components/timeline-item/timeline-item.variables.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.variables.ts"
+      "svelte": "./src/components/timeline-item/timeline-item.variables.ts",
+      "node": "./dist/server/components/timeline-item/timeline-item.variables.js",
+      "default": "./dist/components/timeline-item/timeline-item.variables.js"
     },
     "./timeline-item/styles": {
       "default": "./dist/components/timeline-item/timeline-item.css"
@@ -2570,11 +3086,15 @@
     },
     "./toast-region/schema": {
       "types": "./dist/components/toast-region/toast-region.schema.d.ts",
-      "svelte": "./src/components/toast-region/toast-region.schema.ts"
+      "svelte": "./src/components/toast-region/toast-region.schema.ts",
+      "node": "./dist/server/components/toast-region/toast-region.schema.js",
+      "default": "./dist/components/toast-region/toast-region.schema.js"
     },
     "./toast-region/variables": {
       "types": "./dist/components/toast-region/toast-region.variables.d.ts",
-      "svelte": "./src/components/toast-region/toast-region.variables.ts"
+      "svelte": "./src/components/toast-region/toast-region.variables.ts",
+      "node": "./dist/server/components/toast-region/toast-region.variables.js",
+      "default": "./dist/components/toast-region/toast-region.variables.js"
     },
     "./toast-region/styles": {
       "default": "./dist/components/toast-region/toast-region.css"
@@ -2591,11 +3111,15 @@
     },
     "./toggle/schema": {
       "types": "./dist/components/toggle/toggle.schema.d.ts",
-      "svelte": "./src/components/toggle/toggle.schema.ts"
+      "svelte": "./src/components/toggle/toggle.schema.ts",
+      "node": "./dist/server/components/toggle/toggle.schema.js",
+      "default": "./dist/components/toggle/toggle.schema.js"
     },
     "./toggle/variables": {
       "types": "./dist/components/toggle/toggle.variables.d.ts",
-      "svelte": "./src/components/toggle/toggle.variables.ts"
+      "svelte": "./src/components/toggle/toggle.variables.ts",
+      "node": "./dist/server/components/toggle/toggle.variables.js",
+      "default": "./dist/components/toggle/toggle.variables.js"
     },
     "./toggle/styles": {
       "default": "./dist/components/toggle/toggle.css"
@@ -2612,11 +3136,15 @@
     },
     "./toolbar/schema": {
       "types": "./dist/components/toolbar/toolbar.schema.d.ts",
-      "svelte": "./src/components/toolbar/toolbar.schema.ts"
+      "svelte": "./src/components/toolbar/toolbar.schema.ts",
+      "node": "./dist/server/components/toolbar/toolbar.schema.js",
+      "default": "./dist/components/toolbar/toolbar.schema.js"
     },
     "./toolbar/variables": {
       "types": "./dist/components/toolbar/toolbar.variables.d.ts",
-      "svelte": "./src/components/toolbar/toolbar.variables.ts"
+      "svelte": "./src/components/toolbar/toolbar.variables.ts",
+      "node": "./dist/server/components/toolbar/toolbar.variables.js",
+      "default": "./dist/components/toolbar/toolbar.variables.js"
     },
     "./toolbar/styles": {
       "default": "./dist/components/toolbar/toolbar.css"
@@ -2633,11 +3161,15 @@
     },
     "./tooltip/schema": {
       "types": "./dist/components/tooltip/tooltip.schema.d.ts",
-      "svelte": "./src/components/tooltip/tooltip.schema.ts"
+      "svelte": "./src/components/tooltip/tooltip.schema.ts",
+      "node": "./dist/server/components/tooltip/tooltip.schema.js",
+      "default": "./dist/components/tooltip/tooltip.schema.js"
     },
     "./tooltip/variables": {
       "types": "./dist/components/tooltip/tooltip.variables.d.ts",
-      "svelte": "./src/components/tooltip/tooltip.variables.ts"
+      "svelte": "./src/components/tooltip/tooltip.variables.ts",
+      "node": "./dist/server/components/tooltip/tooltip.variables.js",
+      "default": "./dist/components/tooltip/tooltip.variables.js"
     },
     "./tooltip/styles": {
       "default": "./dist/components/tooltip/tooltip.css"
@@ -2654,11 +3186,15 @@
     },
     "./transition/schema": {
       "types": "./dist/components/transition/transition.schema.d.ts",
-      "svelte": "./src/components/transition/transition.schema.ts"
+      "svelte": "./src/components/transition/transition.schema.ts",
+      "node": "./dist/server/components/transition/transition.schema.js",
+      "default": "./dist/components/transition/transition.schema.js"
     },
     "./transition/variables": {
       "types": "./dist/components/transition/transition.variables.d.ts",
-      "svelte": "./src/components/transition/transition.variables.ts"
+      "svelte": "./src/components/transition/transition.variables.ts",
+      "node": "./dist/server/components/transition/transition.variables.js",
+      "default": "./dist/components/transition/transition.variables.js"
     },
     "./transition/examples": {
       "import": "./src/components/transition/transition.examples.json",
@@ -2672,11 +3208,15 @@
     },
     "./tree/schema": {
       "types": "./dist/components/tree/tree.schema.d.ts",
-      "svelte": "./src/components/tree/tree.schema.ts"
+      "svelte": "./src/components/tree/tree.schema.ts",
+      "node": "./dist/server/components/tree/tree.schema.js",
+      "default": "./dist/components/tree/tree.schema.js"
     },
     "./tree/variables": {
       "types": "./dist/components/tree/tree.variables.d.ts",
-      "svelte": "./src/components/tree/tree.variables.ts"
+      "svelte": "./src/components/tree/tree.variables.ts",
+      "node": "./dist/server/components/tree/tree.variables.js",
+      "default": "./dist/components/tree/tree.variables.js"
     },
     "./tree/styles": {
       "default": "./dist/components/tree/tree.css"
@@ -2693,11 +3233,15 @@
     },
     "./tree-item/schema": {
       "types": "./dist/components/tree-item/tree-item.schema.d.ts",
-      "svelte": "./src/components/tree-item/tree-item.schema.ts"
+      "svelte": "./src/components/tree-item/tree-item.schema.ts",
+      "node": "./dist/server/components/tree-item/tree-item.schema.js",
+      "default": "./dist/components/tree-item/tree-item.schema.js"
     },
     "./tree-item/variables": {
       "types": "./dist/components/tree-item/tree-item.variables.d.ts",
-      "svelte": "./src/components/tree-item/tree-item.variables.ts"
+      "svelte": "./src/components/tree-item/tree-item.variables.ts",
+      "node": "./dist/server/components/tree-item/tree-item.variables.js",
+      "default": "./dist/components/tree-item/tree-item.variables.js"
     },
     "./tree-select-all": {
       "types": "./dist/components/tree-select-all/index.d.ts",
@@ -2707,11 +3251,15 @@
     },
     "./tree-select-all/schema": {
       "types": "./dist/components/tree-select-all/tree-select-all.schema.d.ts",
-      "svelte": "./src/components/tree-select-all/tree-select-all.schema.ts"
+      "svelte": "./src/components/tree-select-all/tree-select-all.schema.ts",
+      "node": "./dist/server/components/tree-select-all/tree-select-all.schema.js",
+      "default": "./dist/components/tree-select-all/tree-select-all.schema.js"
     },
     "./tree-select-all/variables": {
       "types": "./dist/components/tree-select-all/tree-select-all.variables.d.ts",
-      "svelte": "./src/components/tree-select-all/tree-select-all.variables.ts"
+      "svelte": "./src/components/tree-select-all/tree-select-all.variables.ts",
+      "node": "./dist/server/components/tree-select-all/tree-select-all.variables.js",
+      "default": "./dist/components/tree-select-all/tree-select-all.variables.js"
     },
     "./tree-select-all/styles": {
       "default": "./dist/components/tree-select-all/tree-select-all.css"
@@ -2724,11 +3272,15 @@
     },
     "./visually-hidden/schema": {
       "types": "./dist/components/visually-hidden/visually-hidden.schema.d.ts",
-      "svelte": "./src/components/visually-hidden/visually-hidden.schema.ts"
+      "svelte": "./src/components/visually-hidden/visually-hidden.schema.ts",
+      "node": "./dist/server/components/visually-hidden/visually-hidden.schema.js",
+      "default": "./dist/components/visually-hidden/visually-hidden.schema.js"
     },
     "./visually-hidden/variables": {
       "types": "./dist/components/visually-hidden/visually-hidden.variables.d.ts",
-      "svelte": "./src/components/visually-hidden/visually-hidden.variables.ts"
+      "svelte": "./src/components/visually-hidden/visually-hidden.variables.ts",
+      "node": "./dist/server/components/visually-hidden/visually-hidden.variables.js",
+      "default": "./dist/components/visually-hidden/visually-hidden.variables.js"
     },
     "./visually-hidden/examples": {
       "import": "./src/components/visually-hidden/visually-hidden.examples.json",
@@ -2922,11 +3474,15 @@
     },
     "./experimental/connection-indicator/schema": {
       "types": "./dist/components/connection-indicator/connection-indicator.schema.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts"
+      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.schema.js",
+      "default": "./dist/components/connection-indicator/connection-indicator.schema.js"
     },
     "./experimental/connection-indicator/variables": {
       "types": "./dist/components/connection-indicator/connection-indicator.variables.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts"
+      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.variables.js",
+      "default": "./dist/components/connection-indicator/connection-indicator.variables.js"
     },
     "./experimental/connection-indicator/styles": {
       "default": "./dist/components/connection-indicator/connection-indicator.css"
@@ -2939,11 +3495,15 @@
     },
     "./experimental/json-viewer/schema": {
       "types": "./dist/components/json-viewer/json-viewer.schema.d.ts",
-      "svelte": "./src/components/json-viewer/json-viewer.schema.ts"
+      "svelte": "./src/components/json-viewer/json-viewer.schema.ts",
+      "node": "./dist/server/components/json-viewer/json-viewer.schema.js",
+      "default": "./dist/components/json-viewer/json-viewer.schema.js"
     },
     "./experimental/json-viewer/variables": {
       "types": "./dist/components/json-viewer/json-viewer.variables.d.ts",
-      "svelte": "./src/components/json-viewer/json-viewer.variables.ts"
+      "svelte": "./src/components/json-viewer/json-viewer.variables.ts",
+      "node": "./dist/server/components/json-viewer/json-viewer.variables.js",
+      "default": "./dist/components/json-viewer/json-viewer.variables.js"
     },
     "./experimental/json-viewer/styles": {
       "default": "./dist/components/json-viewer/json-viewer.css"
@@ -2956,11 +3516,15 @@
     },
     "./experimental/message/schema": {
       "types": "./dist/components/message/message.schema.d.ts",
-      "svelte": "./src/components/message/message.schema.ts"
+      "svelte": "./src/components/message/message.schema.ts",
+      "node": "./dist/server/components/message/message.schema.js",
+      "default": "./dist/components/message/message.schema.js"
     },
     "./experimental/message/variables": {
       "types": "./dist/components/message/message.variables.d.ts",
-      "svelte": "./src/components/message/message.variables.ts"
+      "svelte": "./src/components/message/message.variables.ts",
+      "node": "./dist/server/components/message/message.variables.js",
+      "default": "./dist/components/message/message.variables.js"
     },
     "./experimental/message/styles": {
       "default": "./dist/components/message/message.css"
@@ -2973,11 +3537,15 @@
     },
     "./experimental/timeline/schema": {
       "types": "./dist/components/timeline/timeline.schema.d.ts",
-      "svelte": "./src/components/timeline/timeline.schema.ts"
+      "svelte": "./src/components/timeline/timeline.schema.ts",
+      "node": "./dist/server/components/timeline/timeline.schema.js",
+      "default": "./dist/components/timeline/timeline.schema.js"
     },
     "./experimental/timeline/variables": {
       "types": "./dist/components/timeline/timeline.variables.d.ts",
-      "svelte": "./src/components/timeline/timeline.variables.ts"
+      "svelte": "./src/components/timeline/timeline.variables.ts",
+      "node": "./dist/server/components/timeline/timeline.variables.js",
+      "default": "./dist/components/timeline/timeline.variables.js"
     },
     "./experimental/timeline/styles": {
       "default": "./dist/components/timeline/timeline.css"
@@ -2994,11 +3562,15 @@
     },
     "./experimental/timeline-item/schema": {
       "types": "./dist/components/timeline-item/timeline-item.schema.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.schema.ts"
+      "svelte": "./src/components/timeline-item/timeline-item.schema.ts",
+      "node": "./dist/server/components/timeline-item/timeline-item.schema.js",
+      "default": "./dist/components/timeline-item/timeline-item.schema.js"
     },
     "./experimental/timeline-item/variables": {
       "types": "./dist/components/timeline-item/timeline-item.variables.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.variables.ts"
+      "svelte": "./src/components/timeline-item/timeline-item.variables.ts",
+      "node": "./dist/server/components/timeline-item/timeline-item.variables.js",
+      "default": "./dist/components/timeline-item/timeline-item.variables.js"
     },
     "./experimental/timeline-item/styles": {
       "default": "./dist/components/timeline-item/timeline-item.css"
@@ -3029,7 +3601,9 @@
     "src/highlighters/**/*.ts",
     "!src/highlighters/**/*.test.ts",
     "!src/highlighters/**/*.spec.ts",
-    "README.md"
+    "README.md",
+    "components.json",
+    "examples-exclusions.json"
   ],
   "scripts": {
     "build": "bun run scripts/build.ts",

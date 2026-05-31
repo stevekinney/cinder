@@ -205,3 +205,66 @@ describe('warn side-effect: base absent triggers console.warn exactly once', () 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Consumer fixture (task ad7ea1e7)
+//
+// Models the two consumer import sequences end-to-end through the guard's real
+// exported logic, so the "import cinder/styles first" rule has fixture coverage
+// at the consumer boundary — not just at the `isBaseLoaded` primitive.
+//
+// A real consumer's app entry is one of:
+//
+//   BAD  — component style imported WITHOUT the base:
+//     import 'cinder/styles/guard';
+//     import 'cinder/button/styles';   // a stylesheet is attached, but
+//                                       // `--cinder-base-loaded` is never set
+//
+//   GOOD — base imported first:
+//     import 'cinder/styles';          // sets `--cinder-base-loaded: 1`
+//     import 'cinder/styles/guard';
+//     import 'cinder/button/styles';
+//
+// The guard must warn for the BAD sequence and stay silent for the GOOD one.
+// `styleSheetsLength: 1` represents the component stylesheet the consumer
+// imported; `baseLoadedValue` is whether `cinder/styles` ran (`'1'`) or not
+// (`''`).
+// ---------------------------------------------------------------------------
+
+describe('consumer fixture: component style imported without the base', () => {
+  test('BAD sequence — component style without `cinder/styles` → guard warns once', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '', warnSpy });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(MISSING_BASE_WARNING);
+  });
+
+  test('GOOD sequence — `cinder/styles` imported first → guard stays silent', () => {
+    const warnSpy = mock(() => {});
+    simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '1', warnSpy });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test("the warning points the consumer at the fix (`import 'cinder/styles'` first)", () => {
+    expect(MISSING_BASE_WARNING).toContain("import 'cinder/styles'");
+    expect(MISSING_BASE_WARNING).toContain('cinder/<component>/styles');
+  });
+
+  // Package-boundary tripwire: the simulation above would keep passing even if
+  // the guard stopped being wired into the package. Assert the real export
+  // surface the BAD/GOOD sequences depend on actually exists, so deleting
+  // `cinder/styles/guard`, the base `cinder/styles`, or a component `/styles`
+  // subpath fails here. The base stylesheet's `--cinder-base-loaded` marker
+  // itself is covered in css-tree-shake.test.ts.
+  test('the package exports the entry points the guard sequence relies on', async () => {
+    const packageManifest = (await import('../../package.json', {
+      with: { type: 'json' },
+    })) as unknown as { default: { exports: Record<string, unknown> } };
+    const { exports } = packageManifest.default;
+    // The base that sets the marker, the guard module, and at least one
+    // per-component style subpath must all be exported.
+    expect(exports['./styles']).toBeDefined();
+    expect(exports['./styles/guard']).toBeDefined();
+    expect(exports['./button/styles']).toBeDefined();
+  });
+});

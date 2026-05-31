@@ -1,16 +1,10 @@
 import type { Page } from '@playwright/test';
 
-// TODO: Replace this local definition with the import from '../fixtures/fixture-schema.ts'
-// once P2a lands. The shape must remain compatible: { action, target: { testId }, key? }.
-/**
- * A single interaction step that can be applied to a Playwright page.
- * The `key` field is only meaningful when `action` is `'press'`.
- */
-export type InteractionStep = {
-  action: 'focus' | 'click' | 'hover' | 'press';
-  target: { testId: string };
-  key?: string;
-};
+// The canonical `InteractionStep` lives in `fixture-schema.ts` (inferred from the
+// Zod `InteractionStepSchema` that validates fixture `interact` arrays). The
+// shape — `{ action, target: { testId }, key? }` — is identical, so this module
+// consumes the single source of truth rather than duplicating it.
+import type { InteractionStep } from './fixture-schema.ts';
 
 /**
  * Thrown when no element with the given `data-testid` can be found on the page.

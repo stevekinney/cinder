@@ -183,54 +183,47 @@ subpaths you fetch next.
 type ButtonSchema = typeof import('cinder/button/schema').default;
 ```
 
-`cinder/<name>/schema` and `cinder/<name>/variables` are **type-only metadata
-modules**. They ship `types` + `svelte` conditions only — no `node`/`default`
-runtime condition, because the build emits no `.schema.js`/`.variables.js`. The
-default export is a **value** (`declare const _default: ComponentSchema`), so
-reach its type with `typeof`. Take it through `import(...)` as shown above, or
-off the namespace binding of an `import type * as`:
+`cinder/<name>/schema` and `cinder/<name>/variables` are full runtime entry
+points. They ship the four-condition shape (`types` + `svelte` + `node` +
+`default`): the build compiles each `<name>.schema.ts` / `<name>.variables.ts`
+to its own JS, so a plain Node or Vite (non-Svelte) consumer can import the
+default-exported value directly:
 
 ```ts
+import buttonSchema from 'cinder/button/schema';
+import buttonVariables from 'cinder/button/variables';
+```
+
+`buttonSchema` is a JSON Schema draft 2020-12 document (required props, prop
+types, enum values, and defaults); `buttonVariables` is the component's CSS
+custom-property names. To reach the **type** instead of the value, use `typeof`
+on the default export through `import(...)` or an `import type * as` namespace
+binding:
+
+```ts
+type ButtonSchema = typeof import('cinder/button/schema').default;
+
 import type * as ButtonSchemaModule from 'cinder/button/schema';
-type ButtonSchema = typeof ButtonSchemaModule.default;
+type ButtonSchemaToo = typeof ButtonSchemaModule.default;
 ```
 
 > [!WARNING]
-> Do **not** use a default-only `import type ButtonSchemaModule from '…'`. The failure
-> mode depends on your `moduleResolution`: under `bundler`, `node16`, or
-> `nodenext`-with-ESM-interop it errors with `TS2339: Property 'default' does not exist
-on type 'ComponentSchema'`; under `nodenext`'s CJS interop path it silently widens
-> `typeof ButtonSchemaModule.default` to `any`—no error, but you lose the schema type
-> entirely. Either way the default-import form is wrong. Use `import type * as` (namespace
-> import) to bind the module namespace, where `.default` correctly refers to the
-> default-exported value under every resolver.
+> Do **not** use a default-only `import type ButtonSchemaModule from '…'` to
+> reach the _type_. The failure mode depends on your `moduleResolution`.
+> Under `bundler`, `node16`, or `nodenext`-with-ESM-interop it errors with
+> `TS2339: Property 'default' does not exist on type 'ComponentSchema'`.
+> Under `nodenext`'s CJS interop path it silently widens the default type to
+> `any`. For the runtime _value_ a plain
+> `import buttonSchema from 'cinder/button/schema'` is correct; the namespace
+> form is only needed when you want the `typeof` type.
 
-The resulting type describes a JSON Schema draft 2020-12 document: required
-props, prop types, enum values, and defaults are all there.
-
-> [!WARNING]
-> Do not `import` these for their runtime value from a plain Node or Vite
-> (non-Svelte) consumer. Because there is no `default` condition, the runtime
-> resolver throws `ERR_PACKAGE_PATH_NOT_EXPORTED`. That is intentional — these
-> subpaths are metadata, not runtime entry points.
-
-If you genuinely need the schema as a runtime **value** (e.g. to feed a form
-generator or validator), read the JSON sidecar that ships alongside the module.
-Anchor the path off the package root — resolve `cinder/package.json` (which _is_
-an export) and join to the sidecar so you never hardcode a `node_modules` layout:
-
-```ts
-import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const packageRoot = dirname(fileURLToPath(import.meta.resolve('cinder/package.json')));
-const sidecar = join(packageRoot, 'src/components/button/button.schema.json');
-const buttonSchema = JSON.parse(await readFile(sidecar, 'utf-8'));
-```
+A JSON sidecar (`<name>.schema.json` / `<name>.variables.json`) still ships
+alongside each module for tooling that prefers reading raw JSON off disk, but
+importing the subpath is the simpler path now that it carries a runtime
+`default` condition.
 
 The authoritative, machine-readable index for every component is `cinder/manifest`
-(step 1) — prefer it over hand-resolving sidecar paths whenever you can.
+(step 1) — prefer it whenever you can.
 
 **3. Fetch the cross-prop constraints — when `hasConstraints` is true.**
 

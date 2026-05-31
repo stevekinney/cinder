@@ -40,6 +40,24 @@ function componentEntrypoint(component: ComponentDiscovery): string {
 }
 
 /**
+ * Build the absolute path to a component's `<name>.schema.ts` /
+ * `<name>.variables.ts` metadata source. These compile to standalone JS
+ * entrypoints (`<name>.schema.js` / `<name>.variables.js`) so the
+ * `cinder/<name>/schema` and `cinder/<name>/variables` subpaths are runtime
+ * entry points (their `node`/`default` export conditions resolve to real files).
+ * Every discovered component ships both, so callers list these unconditionally.
+ */
+function componentMetadataEntrypoints(component: ComponentDiscovery): string[] {
+  const directory = component.isExperimental
+    ? `${sourceRoot}/components/experimental/${component.name}`
+    : `${sourceRoot}/components/${component.name}`;
+  return [
+    `${directory}/${component.name}.schema.ts`,
+    `${directory}/${component.name}.variables.ts`,
+  ];
+}
+
+/**
  * Per-component CSS sidecar location under `src/`. Not every component has a
  * sidecar — domain-suite components (`chat`, `markdown-editor`, etc.) inject
  * styles directly, and several smaller composition components have no styles
@@ -199,6 +217,14 @@ if (!serverBuildResult.success) {
 
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
 
+// Per-component schema/variables metadata sources compile to their own JS so
+// `cinder/<name>/schema` and `cinder/<name>/variables` are runtime entry points.
+// Listed for both the browser and server builds so the `default` and `node`
+// export conditions each resolve to a real file.
+const perComponentMetadataEntrypoints = components.flatMap((component) =>
+  componentMetadataEntrypoints(component),
+);
+
 /**
  * Static sub-paths cinder exposes outside the `components/` tree. Today this
  * is the first-party Shiki adapter at `cinder/highlighters/shiki` and the
@@ -229,6 +255,7 @@ const deprecatedAliasEntrypoints = DEPRECATED_EXPERIMENTAL_ALIASES.map(
 const browserEntrypoints = [
   `${sourceRoot}/index.ts`,
   ...perComponentEntrypoints,
+  ...perComponentMetadataEntrypoints,
   ...staticSubpathEntrypoints,
   ...deprecatedAliasEntrypoints,
 ];
@@ -286,6 +313,7 @@ if (!browserBuildResult.success) {
 const perComponentServerBuildResult = await Bun.build({
   entrypoints: [
     ...perComponentEntrypoints,
+    ...perComponentMetadataEntrypoints,
     ...staticSubpathEntrypoints,
     ...deprecatedAliasEntrypoints,
   ],
@@ -621,6 +649,16 @@ for (const component of components) {
       ? `${distributionDirectory}/server/components/experimental/${component.name}/index.js`
       : `${distributionDirectory}/server/components/${component.name}/index.js`,
   );
+  // Schema/variables metadata JS — both builds. These back the `node`/`default`
+  // export conditions for `cinder/<name>/schema` and `cinder/<name>/variables`.
+  const serverDirectory = component.isExperimental
+    ? `${distributionDirectory}/server/components/experimental/${component.name}`
+    : `${distributionDirectory}/server/components/${component.name}`;
+  for (const metadataKind of ['schema', 'variables'] as const) {
+    expectedPaths.push(`${directory}/${component.name}.${metadataKind}.js`);
+    expectedPaths.push(`${directory}/${component.name}.${metadataKind}.d.ts`);
+    expectedPaths.push(`${serverDirectory}/${component.name}.${metadataKind}.js`);
+  }
   if (existsSync(componentCssSource(component))) {
     expectedPaths.push(componentCssDestination(component));
   }
