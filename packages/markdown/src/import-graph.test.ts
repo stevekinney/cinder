@@ -32,9 +32,10 @@
  * the two ways an edge could otherwise hide a dependency —
  *   1. it FAILS LOUDLY on any internal edge (relative or `@cinder/*`) it cannot
  *      follow, and
- *   2. it BANS computed dynamic imports (`import(variable)` / interpolated
- *      `` import(`…${x}…`) ``) in guarded source, since those are invisible to
- *      static analysis (see `assertNoComputedImport`).
+ *   2. it BANS computed dynamic imports AND computed `require(...)` calls
+ *      (`import(variable)`, `require('a'+b)`, interpolated `` import(`…${x}…`) ``)
+ *      in guarded source, since those are invisible to static analysis (see
+ *      `assertNoComputedImport`).
  * Within cinder's source it is actually STRICTER than the old bundle-text grep:
  * it sees the import even when the bundler would have tree-shaken or renamed the
  * telltale string.
@@ -211,30 +212,41 @@ function scanRuntimeImports(filePath: string): string[] {
   return specifiers;
 }
 
-// Ban any dynamic `import()` whose specifier is NOT a plain string literal or a
-// no-substitution template — those are the only forms `scanImports` (and any
-// static analysis) can follow. Anything else — `import(variable)`,
-// `import('a' + b)`, `import(\`./\${x}\`)`, `import(cond ? a : c)` — is a computed
-// specifier that could hide a rendering dependency at runtime.
+// Ban any dynamic `import(...)` OR `require(...)` whose specifier is NOT a plain
+// string literal or a no-substitution template — those are the only forms
+// `scanImports` (and any static analysis) can follow. `scanImports` reports both
+// `dynamic-import` and `require-call` entries, so both have the SAME blind spot:
+// a computed specifier — `import(variable)`, `require('a' + b)`,
+// `import(\`./\${x}\`)`, `require(cond ? a : c)` — could hide a rendering
+// dependency at runtime while being invisible to the traversal.
 //
 // This uses a real TypeScript AST rather than a regex: a textual scan both MISSES
 // computed expressions that begin with a literal (`import('a' + name)`) and
-// FALSE-POSITIVES on `import(` text inside comments or strings. The AST sees only
-// genuine `import(...)` call expressions and inspects the actual first argument.
+// FALSE-POSITIVES on `import(`/`require(` text inside comments or strings. The AST
+// sees only genuine call expressions and inspects the actual first argument.
 function assertNoComputedImport(filePath: string, code: string): void {
   const sourceFile = ts.createSourceFile(filePath, code, ts.ScriptTarget.Latest, true);
   const offenders: string[] = [];
 
+  const isDynamicImport = (node: ts.CallExpression): boolean =>
+    node.expression.kind === ts.SyntaxKind.ImportKeyword;
+  // A bare `require(...)` call (require as a plain identifier, not `foo.require`).
+  const isRequireCall = (node: ts.CallExpression): boolean =>
+    ts.isIdentifier(node.expression) && node.expression.text === 'require';
+
   const visit = (node: ts.Node): void => {
     if (
       ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments.length > 0
+      node.arguments.length > 0 &&
+      (isDynamicImport(node) || isRequireCall(node))
     ) {
       const specifier = node.arguments[0]!;
       const isFollowable =
         ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier);
-      if (!isFollowable) offenders.push(specifier.getText(sourceFile));
+      if (!isFollowable) {
+        const kind = isRequireCall(node) ? 'require' : 'import';
+        offenders.push(`${kind}(${specifier.getText(sourceFile)})`);
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -242,10 +254,10 @@ function assertNoComputedImport(filePath: string, code: string): void {
 
   if (offenders.length > 0) {
     throw new Error(
-      `Computed dynamic import(s) found in "${filePath}": ${offenders.join(', ')}. A guarded ` +
-        `module must use only string-literal dynamic imports (import('pkg')) so the leanness ` +
-        `traversal can follow them — a computed specifier is invisible to static analysis and ` +
-        `could hide a rendering dependency. Use a literal, or restructure.`,
+      `Computed dynamic import/require found in "${filePath}": ${offenders.join(', ')}. A guarded ` +
+        `module must use only string-literal dynamic imports/requires so the leanness traversal can ` +
+        `follow them — a computed specifier is invisible to static analysis and could hide a ` +
+        `rendering dependency. Use a literal, or restructure.`,
     );
   }
 }
@@ -429,10 +441,15 @@ describe('import-graph leanness', () => {
       expect(() =>
         assertNoComputedImport('ok.ts', `import { x } from './x.js';\nexport * from './y.js';`),
       ).not.toThrow();
-      // Not dynamic imports at all — must NOT false-positive (the AST sees these
-      // for what they are: an identifier, a member call, a comment, a string).
+      // Literal require() is followable too (scanImports reports require-call).
+      expect(() =>
+        assertNoComputedImport('ok.ts', `const x = require('rehype-katex');`),
+      ).not.toThrow();
+      // Not dynamic imports/requires at all — must NOT false-positive (the AST
+      // sees these for what they are: an identifier, member calls, a comment, a string).
       expect(() => assertNoComputedImport('ok.ts', `const reimport = (f) => f;`)).not.toThrow();
       expect(() => assertNoComputedImport('ok.ts', `obj.import(thing);`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `mod.require(thing);`)).not.toThrow();
       expect(() =>
         assertNoComputedImport('ok.ts', `// do not write import(renderer)\nconst s = "import(x)";`),
       ).not.toThrow();
@@ -440,15 +457,22 @@ describe('import-graph leanness', () => {
       // bare variable, string concatenation, interpolated template, conditional.
       expect(() =>
         assertNoComputedImport('bad.ts', `const r = 'rehype-katex';\nawait import(r);`),
-      ).toThrow(/Computed dynamic import/);
+      ).toThrow(/Computed dynamic import\/require/);
       expect(() => assertNoComputedImport('bad.ts', `await import('rehype-' + name);`)).toThrow(
-        /Computed dynamic import/,
+        /Computed dynamic import\/require/,
       );
       expect(() => assertNoComputedImport('bad.ts', `await import(\`./\${name}.js\`);`)).toThrow(
-        /Computed dynamic import/,
+        /Computed dynamic import\/require/,
       );
       expect(() => assertNoComputedImport('bad.ts', `await import(flag ? 'a' : 'b');`)).toThrow(
-        /Computed dynamic import/,
+        /Computed dynamic import\/require/,
+      );
+      // Computed require() has the same blind spot and must throw too.
+      expect(() => assertNoComputedImport('bad.ts', `const x = require(pkgName);`)).toThrow(
+        /Computed dynamic import\/require/,
+      );
+      expect(() => assertNoComputedImport('bad.ts', `const x = require('rehype-' + n);`)).toThrow(
+        /Computed dynamic import\/require/,
       );
     });
   });
