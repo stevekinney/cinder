@@ -27,7 +27,7 @@
 /// <reference lib="dom" />
 
 import { unlinkSync } from 'node:fs';
-import { rm, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -245,11 +245,18 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         }
       }
       container.remove();
-      // Remove the temp SSR file we created next to the source and deregister
-      // it from the exit-handler safety net. Best-effort — failures don't break
-      // the test, just leave a stray file the exit handler will sweep later.
-      pendingTempFiles.delete(file);
-      void rm(file, { force: true }).catch(() => {});
+      // Remove the temp SSR file we created next to the source, then deregister
+      // it from the exit-handler safety net. Unlink SYNCHRONOUSLY and deregister
+      // only AFTER removal: an async rm() + immediate deregister would lose the
+      // file if rm() failed or the process exited before it settled (the exit
+      // handler skips already-deregistered paths). Best-effort — a unlink failure
+      // doesn't break the test; the path stays registered for the exit sweep.
+      try {
+        unlinkSync(file);
+        pendingTempFiles.delete(file);
+      } catch {
+        // Leave it registered so the exit-handler safety net still sweeps it.
+      }
     },
   };
 }

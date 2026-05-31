@@ -87,7 +87,10 @@ describe('renderThenHydrate', () => {
     expect(registered.every((path) => existsSync(path))).toBe(false);
     expect(__tempFileRegistryForTests.paths.size).toBe(0);
 
-    // The orphaned container is harmless to leave, but tidy it for the suite.
-    result.container.remove();
+    // The safety net is proven. Now run the real cleanup() to unmount the
+    // component instance (not just remove the container) so its effects and
+    // listeners don't leak into later tests. The temp file is already gone, so
+    // cleanup()'s own unlink is a harmless no-op.
+    result.cleanup();
   });
 });
