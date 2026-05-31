@@ -351,6 +351,49 @@ describe('ContextMenu', () => {
     expect(region.contains(document.activeElement)).toBe(true);
   });
 
+  test('keyboard navigation drives the role=menu items: ArrowDown/ArrowUp move, Enter selects, Escape closes', async () => {
+    const { container, getByRole, getAllByRole, queryByRole } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    triggerButton.focus();
+
+    // Open the floating menu from the pointer location.
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    // The overlay exposes a role=menu with role=menuitem children, and focus
+    // lands on the first enabled item.
+    const menu = await waitFor(() => getByRole('menu'));
+    const items = getAllByRole('menuitem');
+    expect(items.length).toBe(4);
+    expect(menu.contains(getByRole('menuitem', { name: 'Open' }))).toBe(true);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
+    });
+
+    // ArrowDown skips the disabled item and lands on the next enabled one.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Rename' }));
+
+    // ArrowUp moves focus back up to the first enabled item.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
+
+    // Enter on the focused item selects it and closes the menu.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Rename' }));
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+
+    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+    expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');
+
+    // Re-open, then Escape closes the menu and restores focus to the trigger.
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => getByRole('menu'));
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+    expect(region.contains(document.activeElement)).toBe(true);
+  });
+
   test('keyboard context menu keys open at the focused target edge', async () => {
     const { container } = render(ContextMenuHarness);
     const button = container.querySelector('.context-menu-button') as HTMLButtonElement;
