@@ -17,9 +17,13 @@ import { describe, expect, it } from 'bun:test';
 import {
   assertNoForbiddenExportKeys,
   computeExports,
+  computeFiles,
   computeRootExport,
+  EXPLICIT_ROOT_FILE_ENTRIES,
   FORBIDDEN_EXPORT_KEY_PATTERN,
   orderedExportEntry,
+  rootLevelExportTargets,
+  STATIC_FILES_GLOBS,
   stylesGuardExport,
 } from './generate-exports.ts';
 
@@ -68,45 +72,44 @@ describe('computeExports', () => {
     expect(Object.keys(out['./button']!)).toEqual(['types', 'svelte', 'node', 'default']);
   });
 
-  it('emits source+types only for /schema and /variables (no JS is built)', () => {
+  it('emits the four-condition runtime shape for /schema and /variables', () => {
     const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
       svelte: './src/components/button/button.schema.ts',
+      node: './dist/server/components/button/button.schema.js',
+      default: './dist/components/button/button.schema.js',
     });
     expect(out['./button/variables']).toEqual({
       types: './dist/components/button/button.variables.d.ts',
       svelte: './src/components/button/button.variables.ts',
+      node: './dist/server/components/button/button.variables.js',
+      default: './dist/components/button/button.variables.js',
     });
   });
 
-  // Tripwire (the inverse of the test above). The schema/variables subpaths are
-  // metadata, not runtime entry points: the build emits no `.schema.js` /
-  // `.variables.js`, so there is no target a runtime condition could point at.
-  // Adding `node`/`default`/`import` here would advertise a runtime export that
-  // resolves to a non-existent file — the exact regression task 4176c51c was
-  // filed against. The manifest-consumer fixture positively asserts these throw
-  // ERR_PACKAGE_PATH_NOT_EXPORTED at Node runtime; this unit test pins the same
-  // contract at the generator so a stray `default` is caught before it ships.
-  it('never emits a runtime condition on /schema or /variables', () => {
+  // Task 4176c51c: schema/variables are runtime entry points. The build compiles
+  // each `<name>.schema.ts` / `<name>.variables.ts` to its own JS, so a plain
+  // Node/Vite consumer resolving `cinder/<name>/schema` under the `default`
+  // condition gets a real module — no ERR_PACKAGE_PATH_NOT_EXPORTED. This test
+  // pins the `default` (and `node`) condition at the generator so a regression
+  // that drops the runtime condition is caught before it ships. The
+  // manifest-consumer fixture asserts the same at Node runtime.
+  it('emits a default (and node) runtime condition on every /schema and /variables export', () => {
     const out = computeExports([
       { name: 'button', isExperimental: false, hasCss: false },
       { name: 'lab', isExperimental: true, hasCss: false },
     ]);
-    const runtimeConditions = ['node', 'default', 'import'] as const;
-    for (const key of [
-      './button/schema',
-      './button/variables',
-      './experimental/lab/schema',
-      './experimental/lab/variables',
-    ]) {
+    const metadataKeys = Object.keys(out).filter(
+      (key) => key.endsWith('/schema') || key.endsWith('/variables'),
+    );
+    expect(metadataKeys.length).toBeGreaterThan(0);
+    for (const key of metadataKeys) {
       const entry = out[key]!;
-      expect(entry).toBeDefined();
-      for (const condition of runtimeConditions) {
-        expect(entry).not.toHaveProperty(condition);
-      }
-      // Only the type-narrowing conditions are present.
-      expect(Object.keys(entry)).toEqual(['types', 'svelte']);
+      expect(entry).toHaveProperty('default');
+      expect(entry).toHaveProperty('node');
+      // Full four-condition shape in the canonical order.
+      expect(Object.keys(entry)).toEqual(['types', 'svelte', 'node', 'default']);
     }
   });
 
@@ -214,5 +217,90 @@ describe('assertNoForbiddenExportKeys', () => {
     expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./template')).toBe(false);
     expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./temporal')).toBe(false);
     expect(FORBIDDEN_EXPORT_KEY_PATTERN.test('./testament')).toBe(false);
+  });
+});
+
+describe('rootLevelExportTargets', () => {
+  it('collects root-level artifact targets and excludes package.json', () => {
+    const targets = rootLevelExportTargets({
+      '.': { default: './dist/index.js' },
+      './manifest': { import: './components.json', default: './components.json' },
+      './package.json': './package.json',
+      './button/styles': { default: './dist/components/button/button.css' },
+      './styles': { default: './src/styles/index.css' },
+    });
+    expect(targets.toSorted()).toEqual(['components.json']);
+  });
+
+  it('ignores non-root and non-relative targets', () => {
+    const targets = rootLevelExportTargets({
+      './button': {
+        types: './dist/components/button/index.d.ts',
+        default: './dist/components/button/index.js',
+      },
+    });
+    // Every target has a directory segment, so nothing is root-level.
+    expect(targets).toEqual([]);
+  });
+});
+
+describe('computeFiles', () => {
+  const exportsWithManifest = {
+    './manifest': { import: './components.json', default: './components.json' },
+    './package.json': './package.json',
+  };
+
+  it('keeps the static globs verbatim and in order at the front', () => {
+    const files = computeFiles(exportsWithManifest);
+    expect(files.slice(0, STATIC_FILES_GLOBS.length)).toEqual([...STATIC_FILES_GLOBS]);
+  });
+
+  it('appends both explicit root JSON entries', () => {
+    const files = computeFiles(exportsWithManifest);
+    expect(files).toContain('components.json');
+    expect(files).toContain('examples-exclusions.json');
+  });
+
+  it('appends computed root entries alphabetically after the static globs', () => {
+    const files = computeFiles(exportsWithManifest);
+    const appended = files.slice(STATIC_FILES_GLOBS.length);
+    // explicit entries: components.json, examples-exclusions.json — already sorted.
+    expect(appended).toEqual(['components.json', 'examples-exclusions.json']);
+  });
+
+  it('dedupes a root export target that also appears in the explicit entries', () => {
+    // `components.json` is both an explicit entry AND a root-level export target.
+    const files = computeFiles(exportsWithManifest);
+    const occurrences = files.filter((entry) => entry === 'components.json');
+    expect(occurrences).toHaveLength(1);
+  });
+
+  it('does not flatten into explicit per-component paths', () => {
+    const files = computeFiles(exportsWithManifest);
+    // No entry should reference a concrete component directory path.
+    expect(files.some((entry) => entry.startsWith('dist/components/'))).toBe(false);
+    expect(files.some((entry) => entry.startsWith('src/components/accordion'))).toBe(false);
+  });
+
+  it('includes a new root-level artifact the exports reference but the globs do not cover', () => {
+    const files = computeFiles(
+      {
+        ...exportsWithManifest,
+        './extra': { import: './extra-artifact.json', default: './extra-artifact.json' },
+      },
+      STATIC_FILES_GLOBS,
+      EXPLICIT_ROOT_FILE_ENTRIES,
+    );
+    const appended = files.slice(STATIC_FILES_GLOBS.length);
+    expect(appended).toEqual([
+      'components.json',
+      'examples-exclusions.json',
+      'extra-artifact.json',
+    ]);
+  });
+
+  it('does not duplicate a root artifact already covered by a static glob', () => {
+    const files = computeFiles({ './foo': { default: './foo.json' } }, ['dist', 'foo.json'], []);
+    expect(files.filter((entry) => entry === 'foo.json')).toHaveLength(1);
   });
 });

@@ -3,8 +3,8 @@
  * `src/components/`. Each component contributes up to six subpaths:
  *
  *   ./<name>             → component (types/svelte/node/default conditions)
- *   ./<name>/schema      → schema module (types + svelte only)
- *   ./<name>/variables   → variables module (types + svelte only)
+ *   ./<name>/schema      → schema module (types/svelte/node/default conditions)
+ *   ./<name>/variables   → variables module (types/svelte/node/default conditions)
  *   ./<name>/styles      → layer-wrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
@@ -278,6 +278,7 @@ export function computeDeprecatedExperimentalAliases(
     // component, so they resolve at the promoted (non-experimental) location.
     const newSrcDir = `./src/components/${name}`;
     const newDistDir = `./dist/components/${name}`;
+    const newServerDistDir = `./dist/server/components/${name}`;
 
     out[aliasPrefix] = orderedExportEntry({
       types: `${shimDistDir}/index.d.ts`,
@@ -286,13 +287,21 @@ export function computeDeprecatedExperimentalAliases(
       default: `${shimDistDir}/index.js`,
     });
 
+    // Schema/variables are runtime entry points (see computeExports). The
+    // promoted component's `<name>.schema.ts` / `.variables.ts` are compiled by
+    // the build at the non-experimental location, so the alias's `node`/`default`
+    // conditions resolve there too.
     out[`${aliasPrefix}/schema`] = orderedExportEntry({
       types: `${newDistDir}/${name}.schema.d.ts`,
       svelte: `${newSrcDir}/${name}.schema.ts`,
+      node: `${newServerDistDir}/${name}.schema.js`,
+      default: `${newDistDir}/${name}.schema.js`,
     });
     out[`${aliasPrefix}/variables`] = orderedExportEntry({
       types: `${newDistDir}/${name}.variables.d.ts`,
       svelte: `${newSrcDir}/${name}.variables.ts`,
+      node: `${newServerDistDir}/${name}.variables.js`,
+      default: `${newDistDir}/${name}.variables.js`,
     });
 
     if (hasCss) {
@@ -358,31 +367,35 @@ export function computeExports(
       default: `${distDir}/index.js`,
     });
 
-    // Schema and variables modules ship as source + types only. They are
-    // metadata, not runtime entry points; no JS is emitted for them (the build
-    // produces only `.schema.d.ts` / `.variables.d.ts`, never `.schema.js`), so
-    // there is no target a `node`/`default`/`import` condition could point at.
+    // Schema and variables modules are full four-condition runtime entry
+    // points, exactly like the component barrel. Each ships:
+    //   • `types`   → `<name>.schema.d.ts` / `<name>.variables.d.ts`
+    //   • `svelte`  → the `.ts` source (so in-repo Svelte tooling resolves source)
+    //   • `node`    → the per-component SSR build `<name>.schema.js`
+    //   • `default` → the per-component browser build `<name>.schema.js`
     //
-    // This is a deliberate contract, NOT a missing-`default` bug: adding a
-    // runtime condition here would advertise an export that resolves to a
-    // non-existent file. A Node/Vite consumer that resolves the default
-    // condition therefore gets `ERR_PACKAGE_PATH_NOT_EXPORTED` — by design.
-    //   • The unit test "never emits a runtime condition on /schema or
-    //     /variables" (generate-exports.test.ts) pins this at the generator.
-    //   • The manifest-consumer fixture (fixtures/manifest-consumer/check.mjs)
-    //     positively asserts the throw against the packed tarball at runtime.
-    //   • AGENTS.md § Discovery recipe documents the type-only contract and the
-    //     runtime escape hatch (read the `<name>.schema.json` sidecar) for the
-    //     rare consumer that genuinely needs the JSON value at runtime.
-    // If schema/variables ever become runtime entry points, all three must move
-    // together.
+    // The build (scripts/build.ts) compiles each `<name>.schema.ts` /
+    // `<name>.variables.ts` as its own browser + server entrypoint, so the
+    // `node`/`default` targets resolve to real files. A plain Node or Vite
+    // consumer can therefore `import schema from 'cinder/<name>/schema'` and get
+    // the default-exported JSON Schema value at runtime — no
+    // `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+    //
+    // The unit test "emits a runtime condition on /schema and /variables"
+    // (generate-exports.test.ts) and the manifest-consumer fixture
+    // (fixtures/manifest-consumer/check.mjs) both pin this runtime-resolvable
+    // contract.
     out[`${prefix}/schema`] = orderedExportEntry({
       types: `${distDir}/${name}.schema.d.ts`,
       svelte: `${srcDir}/${name}.schema.ts`,
+      node: `${serverDistDir}/${name}.schema.js`,
+      default: `${distDir}/${name}.schema.js`,
     });
     out[`${prefix}/variables`] = orderedExportEntry({
       types: `${distDir}/${name}.variables.d.ts`,
       svelte: `${srcDir}/${name}.variables.ts`,
+      node: `${serverDistDir}/${name}.variables.js`,
+      default: `${distDir}/${name}.variables.js`,
     });
 
     // Per-component CSS sidecar — layer-WRAPPED (the sidecar self-declares
@@ -452,7 +465,115 @@ export function assertNoForbiddenExportKeys(
 
 interface PackageJson {
   exports: Record<string, ExportEntry | JsonExportEntry | string>;
+  files: string[];
   [key: string]: unknown;
+}
+
+/**
+ * The static `files` globs the package always ships, listed verbatim and in
+ * order. The generator preserves these exactly (it does NOT flatten them into
+ * hundreds of explicit per-component paths) and appends any computed root-level
+ * artifact entries after them. Keep this in sync with the publishable source
+ * surface — it is the single source of truth for the static portion of
+ * `package.json#files`.
+ */
+export const STATIC_FILES_GLOBS: readonly string[] = [
+  'dist',
+  'src/index.ts',
+  'src/schema-types.ts',
+  'src/components/**/*.ts',
+  '!src/components/**/*.test.ts',
+  '!src/components/**/*.spec.ts',
+  'src/components/**/*.svelte',
+  'src/components/**/*.json',
+  'src/components/**/*.md',
+  '!src/components/**/*.a11y.md',
+  'src/components/**/*.css',
+  'src/_internal/**/*.ts',
+  '!src/_internal/**/*.test.ts',
+  'src/styles/**/*.css',
+  'src/styles/base-guard.ts',
+  'src/components/icons/index.ts',
+  'src/utilities/**/*.ts',
+  '!src/utilities/**/*.test.ts',
+  'src/highlighters/**/*.ts',
+  '!src/highlighters/**/*.test.ts',
+  '!src/highlighters/**/*.spec.ts',
+  'README.md',
+];
+
+/**
+ * Root-level JSON artifacts the package must always ship explicitly. They live
+ * at the package root (no directory prefix), so none of the `dist`/`src/**`
+ * globs cover them:
+ *   • `components.json`          — the machine-readable manifest (`./manifest` export target).
+ *   • `examples-exclusions.json` — read by `generate-component-examples.ts`.
+ * `package.json` is intentionally NOT listed: npm always publishes it.
+ */
+export const EXPLICIT_ROOT_FILE_ENTRIES: readonly string[] = [
+  'components.json',
+  'examples-exclusions.json',
+];
+
+/**
+ * A static `files` glob "covers" a root-level artifact path when the glob would
+ * already publish that exact file. Our static globs only ever match inside
+ * `dist/`, `src/`, or the exact file `README.md`, so a root-level `*.json`
+ * artifact is covered only when a glob names it verbatim. This conservative
+ * check is enough to dedupe `computeFiles`'s root-entry computation against the
+ * static globs without pulling in a full glob engine.
+ */
+function isRootArtifactGlobCovered(rootArtifact: string, globs: readonly string[]): boolean {
+  return globs.includes(rootArtifact);
+}
+
+/**
+ * Extract the set of root-level artifact paths (e.g. `components.json`) that the
+ * exports map points at. A "root-level" target has no directory segment after
+ * the leading `./`. `package.json` is excluded because npm always publishes it
+ * and listing it in `files` is redundant.
+ */
+export function rootLevelExportTargets(
+  exportsMap: Record<string, ExportEntry | JsonExportEntry | string>,
+): string[] {
+  const out = new Set<string>();
+  for (const value of Object.values(exportsMap)) {
+    const targets = typeof value === 'string' ? [value] : Object.values(value);
+    for (const target of targets) {
+      if (typeof target !== 'string') continue;
+      if (!target.startsWith('./')) continue;
+      const rest = target.slice(2);
+      if (rest.length === 0 || rest.includes('/')) continue; // not root-level
+      if (rest === 'package.json') continue; // always published by npm
+      out.add(rest);
+    }
+  }
+  return [...out];
+}
+
+/**
+ * Compute the canonical `package.json#files` array: the static globs verbatim,
+ * followed by the computed root-level artifact entries appended in deterministic
+ * (alphabetical) order. The computed set is the union of the explicit root
+ * entries and any root-level artifact path the exports map references that the
+ * static globs do not already cover — deduped, then sorted.
+ *
+ * This extends (never replaces) the static globs and never flattens the
+ * per-component tree into explicit paths.
+ */
+export function computeFiles(
+  exportsMap: Record<string, ExportEntry | JsonExportEntry | string>,
+  staticGlobs: readonly string[] = STATIC_FILES_GLOBS,
+  explicitRootEntries: readonly string[] = EXPLICIT_ROOT_FILE_ENTRIES,
+): string[] {
+  const computedRoots = new Set<string>(explicitRootEntries);
+  for (const target of rootLevelExportTargets(exportsMap)) {
+    if (!isRootArtifactGlobCovered(target, staticGlobs)) {
+      computedRoots.add(target);
+    }
+  }
+  const appended = [...computedRoots].toSorted((a, b) => a.localeCompare(b));
+  return [...staticGlobs, ...appended];
 }
 
 async function main(): Promise<void> {
@@ -504,6 +625,64 @@ async function main(): Promise<void> {
       );
       process.exit(1);
     }
+  }
+
+  /**
+   * Build the next exports map in deterministic order:
+   *   1. `.` (root, four-condition shape)
+   *   2. `./package.json` self-export
+   *   3. `./styles*` reserved entries (canonical, base-first)
+   *   4. `./styles/guard` dev-only base-loaded guard
+   *   5. `./highlighters/shiki`
+   *   6. computed component subpaths (incl. /examples, /constraints when present)
+   *   7. preserved legacy flat component subpaths (partial-migration window)
+   *
+   * Shared by both check and generate mode so the `files` array is computed from
+   * the SAME exports map the generator would write — a newly-added root artifact
+   * export is therefore reflected in `files` the very run it lands.
+   */
+  function buildNextExports(): Record<string, ExportEntry | JsonExportEntry | string> {
+    const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
+    next[ROOT_KEY] = rootExport;
+    next[PACKAGE_JSON_KEY] = './package.json';
+    for (const [key, cssPath] of RESERVED_STYLES_ENTRIES) {
+      next[key] = stylesExport(cssPath);
+    }
+    next[STYLES_GUARD_KEY] = stylesGuardExport();
+    next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
+
+    // Preserve legacy flat component subpaths whose component still exists as
+    // a flat .svelte file (not yet migrated to a directory).
+    const migratedNames = new Set(
+      components.map((c) => (c.isExperimental ? `./experimental/${c.name}` : `./${c.name}`)),
+    );
+    const legacy: Record<string, ExportEntry | JsonExportEntry | string> = {};
+    for (const [key, entry] of Object.entries(packageJson.exports)) {
+      if (RESERVED_KEYS.has(key)) continue;
+      if (migratedNames.has(key)) continue;
+      // Deprecated experimental aliases own their `./experimental/<name>` keys
+      // via `computed`; never let a stale verbatim copy survive as "legacy".
+      if (key in computed) continue;
+      if (
+        key.endsWith('/schema') ||
+        key.endsWith('/variables') ||
+        key.endsWith('/styles') ||
+        key.endsWith('/examples') ||
+        key.endsWith('/constraints')
+      )
+        continue;
+      if (key === './manifest') continue;
+      const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
+      if (flatPattern.test(key)) legacy[key] = entry;
+    }
+
+    for (const [key, entry] of Object.entries(computed)) {
+      next[key] = entry;
+    }
+    for (const [key, entry] of Object.entries(legacy)) {
+      next[key] = entry;
+    }
+    return next;
   }
 
   if (checkMode) {
@@ -585,6 +764,27 @@ async function main(): Promise<void> {
     // The forbidden-key guard already ran at the top of main() against
     // packageJson.exports; we don't need to repeat it here.
 
+    // `files` drift: the on-disk array must equal the computed one exactly. The
+    // computed `files` is derived from the COMPUTED exports map (`next` below in
+    // generate mode) so a freshly-added root artifact export is reflected the
+    // same run it lands. We surface each missing/extra root entry distinctly so
+    // the failure points at the precise drift rather than a wall of globs.
+    const expectedFiles = computeFiles(buildNextExports());
+    const actualFiles = packageJson.files ?? [];
+    if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
+      const actualSet = new Set(actualFiles);
+      const expectedSet = new Set(expectedFiles);
+      const missing = expectedFiles.filter((entry) => !actualSet.has(entry));
+      const extra = actualFiles.filter((entry) => !expectedSet.has(entry));
+      if (missing.length === 0 && extra.length === 0) {
+        // Same membership, wrong order — report the ordering drift explicitly.
+        issues.push('files entries are out of order; run `bun run exports:generate` to fix');
+      } else {
+        for (const entry of missing) issues.push(`Missing files entry: "${entry}"`);
+        for (const entry of extra) issues.push(`Extra files entry: "${entry}"`);
+      }
+    }
+
     if (issues.length > 0) {
       process.stderr.write(
         'exports:check — drift detected. Run `bun run exports:generate` to fix:\n',
@@ -597,58 +797,14 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Generate mode: build the next exports map in deterministic order:
-  //   1. `.` (root, four-condition shape)
-  //   2. `./package.json` self-export
-  //   3. `./styles*` reserved entries (canonical, base-first)
-  //   4. `./styles/guard` dev-only base-loaded guard
-  //   5. `./highlighters/shiki`
-  //   6. computed component subpaths (incl. /examples, /constraints when present)
-  //   7. preserved legacy flat component subpaths (partial-migration window)
-  const next: Record<string, ExportEntry | JsonExportEntry | string> = {};
-  next[ROOT_KEY] = rootExport;
-  next[PACKAGE_JSON_KEY] = './package.json';
-  for (const [key, cssPath] of RESERVED_STYLES_ENTRIES) {
-    next[key] = stylesExport(cssPath);
-  }
-  next[STYLES_GUARD_KEY] = stylesGuardExport();
-  next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
-
-  // Preserve legacy flat component subpaths whose component still exists as
-  // a flat .svelte file (not yet migrated to a directory).
-  const migratedNames = new Set(
-    components.map((c) => (c.isExperimental ? `./experimental/${c.name}` : `./${c.name}`)),
-  );
-  const legacy: Record<string, ExportEntry | JsonExportEntry | string> = {};
-  for (const [key, entry] of Object.entries(packageJson.exports)) {
-    if (RESERVED_KEYS.has(key)) continue;
-    if (migratedNames.has(key)) continue;
-    // Deprecated experimental aliases own their `./experimental/<name>` keys
-    // via `computed`; never let a stale verbatim copy survive as "legacy".
-    if (key in computed) continue;
-    if (
-      key.endsWith('/schema') ||
-      key.endsWith('/variables') ||
-      key.endsWith('/styles') ||
-      key.endsWith('/examples') ||
-      key.endsWith('/constraints')
-    )
-      continue;
-    if (key === './manifest') continue;
-    const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
-    if (flatPattern.test(key)) legacy[key] = entry;
-  }
-
-  for (const [key, entry] of Object.entries(computed)) {
-    next[key] = entry;
-  }
-  for (const [key, entry] of Object.entries(legacy)) {
-    next[key] = entry;
-  }
+  // Generate mode: build the next exports map (shared with check mode) and the
+  // computed `files` array, then write both back to package.json.
+  const next = buildNextExports();
 
   assertNoForbiddenExportKeys(next, FORBIDDEN_EXPORT_KEY_PATTERN, upstreamAllowList);
 
   packageJson.exports = next;
+  packageJson.files = computeFiles(next);
   await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 
   // Emit (or refresh) the generated re-export source files. They are part of
@@ -661,7 +817,8 @@ async function main(): Promise<void> {
 
   process.stdout.write(
     `exports:generate — wrote ${Object.keys(computed).length} computed subpaths ` +
-      `(${components.length} components, ${upstreamReexports.length} upstream re-exports)\n`,
+      `(${components.length} components, ${upstreamReexports.length} upstream re-exports) ` +
+      `and ${packageJson.files.length} files entries\n`,
   );
 }
 

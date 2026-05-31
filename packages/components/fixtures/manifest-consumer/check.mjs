@@ -16,13 +16,13 @@
  *      AND CJS `createRequire().resolve`, and the resolved target exists and is
  *      non-empty. The two resolvers can pick different export conditions, so we
  *      check both.
- *   3. The `schema`/`variables` subpaths are TYPE+SVELTE-only by the generator's
- *      explicit design (no runtime JS is emitted — see generate-exports.ts).
- *      We assert their declaration (`types`) target exists in the tarball, and
- *      we POSITIVELY assert that Node default runtime resolution of them THROWS
- *      `ERR_PACKAGE_PATH_NOT_EXPORTED`. That makes the current intentional
- *      limitation a tested contract: if task 4176c51c later makes these runtime
- *      entry points, this assertion goes red and the fixture must be updated.
+ *   3. The `schema`/`variables` subpaths are full runtime entry points (task
+ *      4176c51c): the build compiles each `<name>.schema.ts` / `.variables.ts`
+ *      to its own JS, so the `node`/`default` export conditions resolve to real
+ *      files. We assert their declaration (`types`) target exists in the tarball
+ *      AND that Node default runtime resolution of them succeeds via BOTH the
+ *      ESM and CJS resolvers — a plain Node/Vite consumer can therefore import
+ *      `cinder/<name>/schema` for its default-exported JSON Schema value.
  *   4. Two-way export <-> manifest consistency: every runtime artifact the
  *      manifest advertises has a matching package export, and every per-component
  *      export the package ships is accounted for by the manifest (or the
@@ -92,49 +92,6 @@ function assertRuntimeResolvable(specifier) {
     assertResolvedTargetUsable(`${specifier} [cjs]`, cjsResolved);
   } catch (error) {
     record(`${specifier} [cjs]: require.resolve threw — ${error.code ?? error.message}`);
-  }
-}
-
-/**
- * Assert a specifier is NOT runtime-resolvable under the default condition.
- *
- * This is a deliberate TRIPWIRE, not a bug check. The schema/variables subpaths
- * ship `types` + `svelte` conditions only — no `node`/`default` and no runtime
- * JS — by `generate-exports.ts` design (they are metadata, not runtime entry
- * points). Resolving them under Node's default condition therefore throws.
- *
- * If task 4176c51c (or any change) later makes schema/variables runtime entry
- * points, this assertion goes RED — that is the signal to update this fixture
- * to assert runtime resolution instead of asserting it throws.
- *
- * We require ERR_PACKAGE_PATH_NOT_EXPORTED specifically — it proves the runtime
- * condition is ABSENT from the package's exports map. We deliberately do NOT
- * accept ERR_MODULE_NOT_FOUND: that code means the subpath IS runtime-exported
- * but resolves to a missing file — a different, broken contract that this
- * tripwire must NOT silently tolerate. Any other outcome — a successful
- * resolve, or a different error code — fails.
- */
-function assertNotRuntimeResolvable(specifier, reason) {
-  for (const [resolverLabel, resolve] of [
-    ['esm', (s) => import.meta.resolve(s)],
-    ['cjs', (s) => require.resolve(s)],
-  ]) {
-    let resolved;
-    try {
-      resolved = resolve(specifier);
-    } catch (error) {
-      if (error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') continue; // expected tripwire state
-      record(
-        `${specifier} [${resolverLabel}]: expected ERR_PACKAGE_PATH_NOT_EXPORTED (no runtime ` +
-          `condition in the exports map) but got ${error.code ?? error.message}`,
-      );
-      continue;
-    }
-    record(
-      `${specifier} [${resolverLabel}]: expected NOT to resolve (${reason}) but resolved to ${resolved}. ` +
-        `This is the task-4176c51c tripwire: if schema/variables intentionally became runtime entry ` +
-        `points, update manifest-consumer to assert runtime resolution instead of non-resolution.`,
-    );
   }
 }
 
@@ -220,8 +177,9 @@ for (const component of manifest.components) {
   assertRuntimeResolvable(importSpecifier);
   expectedComponentExportKeys.add(specifierToExportKey(importSpecifier));
 
-  // 2b. schema + variables: type/svelte-only by design. The `types` target must
-  //     exist in the tarball, but runtime default resolution must NOT resolve.
+  // 2b. schema + variables: full runtime entry points (task 4176c51c). The
+  //     `types` declaration target must exist AND the subpath must runtime-resolve
+  //     via both the ESM and CJS resolvers.
   for (const metadataKey of ['schema', 'variables']) {
     const specifier = artifacts[metadataKey];
     // Accumulate (don't throw) so one malformed component doesn't mask the rest.
@@ -243,18 +201,13 @@ for (const component of manifest.components) {
       if (typeof typesTarget !== 'string') {
         record(`${id}: export "${exportKey}" has no string "types" condition`);
       } else {
-        assertResolvedTargetUsable(
-          `${specifier} [types]`,
-          packageRelativeToAbsolute(typesTarget),
-        );
+        assertResolvedTargetUsable(`${specifier} [types]`, packageRelativeToAbsolute(typesTarget));
       }
     }
 
-    // The tripwire: these subpaths intentionally do not runtime-resolve today.
-    assertNotRuntimeResolvable(
-      specifier,
-      `${metadataKey} is type/svelte-only by generate-exports.ts design`,
-    );
+    // Runtime entry point: the default-exported JSON Schema / variables value
+    // must be importable from a plain Node/Vite consumer.
+    assertRuntimeResolvable(specifier);
   }
 
   // 2c. examples + constraints: JSON sidecars — genuine runtime entry points
@@ -263,7 +216,9 @@ for (const component of manifest.components) {
     const specifier = artifacts[sidecarKey];
     if (specifier === undefined) continue; // not all components ship these
     if (specifier !== `${importSpecifier}/${sidecarKey}`) {
-      record(`${id}: artifacts.${sidecarKey} ("${specifier}") must equal import + "/${sidecarKey}"`);
+      record(
+        `${id}: artifacts.${sidecarKey} ("${specifier}") must equal import + "/${sidecarKey}"`,
+      );
       continue;
     }
     assertRuntimeResolvable(specifier);
@@ -330,7 +285,7 @@ if (failures.length > 0) {
 
 process.stdout.write(
   `manifest-consumer OK — verified ${manifest.components.length} components ` +
-    `(import + examples/constraints/styles runtime-resolvable via ESM+CJS; ` +
-    `schema/variables type-target present and intentionally not runtime-resolvable; ` +
+    `(import + schema/variables/examples/constraints/styles runtime-resolvable via ESM+CJS; ` +
+    `schema/variables type-target present; ` +
     `two-way export↔manifest consistency holds).\n`,
 );
