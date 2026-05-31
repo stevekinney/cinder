@@ -1,8 +1,13 @@
 /// <reference lib="dom" />
+import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+
+// Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toHaveAttribute).
+// The cast satisfies Bun's extend signature while preserving the full matcher set at runtime.
+expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
@@ -131,16 +136,29 @@ describe('HoverCard', () => {
     expect(container.querySelector('.cinder-hover-card')).toBeNull();
   });
 
-  test('Escape closes an open hover card', async () => {
-    render(HoverCard, {
+  test('Escape dismisses the open card and exposes tooltip role + aria-describedby wiring', async () => {
+    const { container } = render(HoverCard, {
       props: {
         open: true,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
     });
+    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
 
-    await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+    // The portaled card carries the read-only tooltip role and is referenced by the
+    // trigger via aria-describedby — never aria-label or aria-expanded (no focusable content).
+    await waitFor(() => {
+      const card = queryHoverCard();
+      expect(card).not.toBeNull();
+      expect(card).toHaveAttribute('role', 'tooltip');
+      expect(card).not.toHaveAttribute('aria-label');
+    });
+    const card = queryHoverCard() as HTMLElement;
+    expect(wrapper).toHaveAttribute('aria-describedby', card.id);
+    expect(wrapper).not.toHaveAttribute('aria-expanded');
+
+    // A document-level Escape keydown dismisses the card while it is open.
     await fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(queryHoverCard()).toBeNull());

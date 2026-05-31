@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Hover-and-focus triggered rich preview card for non-interactive contextual content.
    * @tag overlay
    * @tag hover
