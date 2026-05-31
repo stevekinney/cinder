@@ -248,9 +248,9 @@ describe('Toggle — form participation', () => {
   });
 
   test('hidden input defaults its submitted value to "on"', () => {
-    // For a checkbox the submitted value is the `value` DOM *property*. Svelte
-    // omits the attribute when it equals the native default ("on"), so assert on
-    // the property — that is exactly what a form submission would carry.
+    // Form submission reads the input's `value` DOM *property*, which defaults to
+    // the native checkbox default "on" when no explicit value is passed. We assert
+    // the property (not the attribute) because that is exactly what FormData carries.
     const { container } = render(Toggle, {
       props: { id: 'tf3', checked: false, label: 'Notifications', name: 'notifications' },
     });
