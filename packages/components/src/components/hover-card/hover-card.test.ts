@@ -146,7 +146,9 @@ describe('HoverCard', () => {
     // Query by role (the accessibility contract) rather than a CSS selector.
     const card = await screen.findByRole('tooltip');
     expect(card.getAttribute('aria-label')).toBeNull();
-    expect(wrapper.getAttribute('aria-describedby')).toBe(card.id);
+    // aria-describedby may be a space-separated id list (card id + a description
+    // id when `description` is set), so assert containment, not strict equality.
+    expect(wrapper.getAttribute('aria-describedby')).toContain(card.id);
     expect(wrapper.getAttribute('aria-expanded')).toBeNull();
 
     // A document-level Escape keydown dismisses the card while it is open.

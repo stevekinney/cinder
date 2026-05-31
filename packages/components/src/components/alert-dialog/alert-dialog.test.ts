@@ -154,9 +154,15 @@ describe('AlertDialog', () => {
     const description = dialog.querySelector(`#${describedBy}`);
     expect(description?.textContent).toContain('Sign in again');
 
-    // Keyboard: pressing Escape and the native dialog cancel it triggers must NOT
-    // dismiss a sticky alert dialog — the acknowledgement is mandatory.
+    // Keyboard contract for a sticky alert dialog: acknowledgement is mandatory,
+    // so neither an Escape keydown nor the native dialog `cancel` it triggers may
+    // dismiss it. Assert BOTH paths are inert and the dialog stays open.
     await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    expect(openValue).toBe(true); // Escape keydown alone does not close it.
+    expect(getByRole('alertdialog')).toBe(dialog);
+
+    // The platform fires `cancel` on the native <dialog> for Escape; AlertDialog
+    // passes dismissOnEscape={false}, so its handler preventDefault()s and keeps open.
     const cancelEvent = new Event('cancel', { cancelable: true });
     await fireEvent(dialog, cancelEvent);
     expect(cancelEvent.defaultPrevented).toBe(true);

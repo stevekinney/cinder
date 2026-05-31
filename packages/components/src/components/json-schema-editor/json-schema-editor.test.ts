@@ -18,9 +18,8 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render, screen, within } = await import('@testing-library/svelte');
-const { default: JsonSchemaEditorImplementation } = await import(
-  './json-schema-editor-impl.svelte'
-);
+const { default: JsonSchemaEditorImplementation } =
+  await import('./json-schema-editor-impl.svelte');
 
 // ---------------------------------------------------------------------------
 // Source-contract: Diff tab semantic changed-state indicator
@@ -86,9 +85,11 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
    * real Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z handlers on the `role="region"`
    * landmark and asserts the undo/redo toolbar state moves accordingly.
    *
-   * happy-dom reports a Mac `navigator.platform`, so the editor's shortcut
-   * router (see `json-schema-editor-impl.svelte`) keys off `metaKey`; the test
-   * mirrors the platform the handler actually sees.
+   * The editor's shortcut router (see `json-schema-editor-impl.svelte`) keys off
+   * `metaKey` on Mac and `ctrlKey` elsewhere. The test reads `navigator.platform`
+   * and fires the matching modifier so the shortcut genuinely fires regardless of
+   * the test environment — a platform mismatch would otherwise silently no-op the
+   * keydown and let the assertions pass for the wrong reason.
    */
   test('Cmd+Z / Shift+Cmd+Z on the editor region undo and redo a committed edit', async () => {
     render(JsonSchemaEditorImplementation, {
@@ -117,7 +118,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     expect(undoButton?.hasAttribute('disabled')).toBe(true);
 
     // Commit a real edit through the JSON view so history records a step.
-    const textarea = screen.getByRole('textbox', { name: 'JSON' }) as HTMLTextAreaElement;
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, {
       target: { value: JSON.stringify({ type: 'object', title: 'Changed' }) },
     });
@@ -132,14 +133,25 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     // The committed edit makes undo available.
     expect(undoButton?.hasAttribute('disabled')).toBe(false);
 
-    // Keyboard call: Cmd+Z on the region triggers the editor undo handler.
-    await fireEvent.keyDown(region, { key: 'z', metaKey: true });
+    // Use the platform's primary modifier so the shortcut fires regardless of the
+    // test environment's navigator.platform — otherwise a non-Mac harness would
+    // silently no-op the keydown and the assertions could pass for the wrong reason.
+    const primaryModifier: { metaKey: true } | { ctrlKey: true } = /Mac|iP(hone|ad|od)/.test(
+      navigator.platform,
+    )
+      ? { metaKey: true }
+      : { ctrlKey: true };
+
+    // Keyboard call: undo shortcut on the region triggers the editor undo handler.
+    // The dual assertion (undo disabled AND redo enabled) cannot be satisfied by a
+    // no-op keydown, which would leave redo disabled.
+    await fireEvent.keyDown(region, { key: 'z', ...primaryModifier });
     await flushEffects();
     expect(undoButton?.hasAttribute('disabled')).toBe(true);
     expect(redoButton?.hasAttribute('disabled')).toBe(false);
 
-    // Shift+Cmd+Z redoes the same edit.
-    await fireEvent.keyDown(region, { key: 'z', metaKey: true, shiftKey: true });
+    // Redo shortcut (Shift + primary modifier + z) redoes the same edit.
+    await fireEvent.keyDown(region, { key: 'z', ...primaryModifier, shiftKey: true });
     await flushEffects();
     expect(undoButton?.hasAttribute('disabled')).toBe(false);
     expect(redoButton?.hasAttribute('disabled')).toBe(true);
