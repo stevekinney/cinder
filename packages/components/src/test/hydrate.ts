@@ -166,7 +166,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   // would orphan the file until process exit — the exact leak this helper exists
   // to prevent.
   let ssrHtml = '';
-  let container: HTMLElement;
+  let container: HTMLElement | undefined;
   const warnings: string[] = [];
   let instance: Record<string, unknown> | undefined;
   try {
@@ -209,10 +209,19 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
       console.warn = originalWarn;
     }
   } catch (error) {
-    // Pre-return failure: remove the temp file and deregister it so it doesn't
-    // linger in the registry, then rethrow for the test to observe.
+    // Pre-return failure. Remove the SSR container if it made it into the DOM,
+    // or it would orphan markup that contaminates later tests. Then unlink the
+    // temp file SYNCHRONOUSLY and only deregister it AFTER removal — an async
+    // rm() + immediate deregister would lose the file if the process exited
+    // before the rm settled (the exit handler skips deregistered paths). Finally
+    // rethrow for the test to observe.
+    container?.remove();
+    try {
+      unlinkSync(file);
+    } catch {
+      // Already gone — ignore.
+    }
     pendingTempFiles.delete(file);
-    void rm(file, { force: true }).catch(() => {});
     throw error;
   }
 
