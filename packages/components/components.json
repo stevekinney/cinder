@@ -3360,8 +3360,8 @@
         "Flipping a single setting on or off with immediate effect such as notifications or dark mode."
       ],
       "avoidWhen": [
-        "Selecting zero or more options inside a form submission — use checkbox instead.",
-        "Picking one option from a small fixed set — use segmented-control instead."
+        "Picking one option from a small fixed set — use segmented-control instead.",
+        "Collecting a deferred boolean (agreement, opt-in) in a Submit-style form — a switch implies immediate effect; use checkbox instead."
       ],
       "related": ["checkbox", "segmented-control"],
       "hasConstraints": false,

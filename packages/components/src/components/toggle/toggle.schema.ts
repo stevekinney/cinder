@@ -27,6 +27,21 @@ const schema = {
       description:
         'Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts.',
     },
+    name: {
+      type: 'string',
+      description:
+        'Form field name. When set, a hidden checkbox mirrors `checked` so the toggle\nparticipates in native form submission. Omit for purely client-side toggles\n(no hidden input is rendered, so there is zero overhead).',
+    },
+    value: {
+      type: 'string',
+      description:
+        "Value submitted for the hidden checkbox when `checked` and `name` is set.\nMirrors native checkbox semantics: the pair `name=value` is sent only while\nchecked. Defaults to `'on'`. Ignored when `name` is unset.",
+    },
+    form: {
+      type: 'string',
+      description:
+        'Associates the hidden checkbox with a form by id, matching the native\n`form` attribute. Lets the toggle submit with a form it is not nested in.\nIgnored when `name` is unset.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-toggle` on the switch button.',

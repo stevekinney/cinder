@@ -24,6 +24,24 @@ export type ToggleProps = {
   disabled?: boolean;
   /** Visually hide the rendered label while keeping it as the accessible name. Use for icon-only or inline contexts. */
   hideLabel?: boolean;
+  /**
+   * Form field name. When set, a hidden checkbox mirrors `checked` so the toggle
+   * participates in native form submission. Omit for purely client-side toggles
+   * (no hidden input is rendered, so there is zero overhead).
+   */
+  name?: string;
+  /**
+   * Value submitted for the hidden checkbox when `checked` and `name` is set.
+   * Mirrors native checkbox semantics: the pair `name=value` is sent only while
+   * checked. Defaults to `'on'`. Ignored when `name` is unset.
+   */
+  value?: string;
+  /**
+   * Associates the hidden checkbox with a form by id, matching the native
+   * `form` attribute. Lets the toggle submit with a form it is not nested in.
+   * Ignored when `name` is unset.
+   */
+  form?: string;
   /** Additional class names merged with `.cinder-toggle` on the switch button. */
   class?: string;
 };
