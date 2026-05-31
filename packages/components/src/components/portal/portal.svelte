@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Headless portal primitive that moves a subtree into a target element while preserving inline rendering as an explicit opt-out.
    * @tag overlay
    * @tag utilities

@@ -130,6 +130,48 @@ describe('AlertDialog', () => {
     expect(openValue).toBe(false);
   });
 
+  test('exposes alertdialog role with described content and ignores Escape keydown', async () => {
+    let openValue = true;
+    const { getByRole } = render(AlertDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+
+    // Role + ARIA wiring: a modal alertdialog with an accessible name (from the
+    // title) whose description is announced. Querying by name also guards the
+    // aria-labelledby wiring — a broken name would fail the role+name lookup.
+    const dialog = getByRole('alertdialog', { name: 'Session expired' });
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    const describedBy = dialog.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    const description = dialog.querySelector(`#${describedBy}`);
+    expect(description?.textContent).toContain('Sign in again');
+
+    // Keyboard contract for a sticky alert dialog: acknowledgement is mandatory,
+    // so neither an Escape keydown nor the native dialog `cancel` it triggers may
+    // dismiss it. Assert BOTH paths are inert and the dialog stays open.
+    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    expect(openValue).toBe(true); // Escape keydown alone does not close it.
+    expect(getByRole('alertdialog')).toBe(dialog);
+
+    // The platform fires `cancel` on the native <dialog> for Escape; AlertDialog
+    // passes dismissOnEscape={false}, so its handler preventDefault()s and keeps open.
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(true);
+    expect(getByRole('alertdialog')).toBe(dialog);
+  });
+
   test('destructive alert dialog defaults focus to cancel when present', () => {
     const { container } = render(AlertDialog, {
       props: {

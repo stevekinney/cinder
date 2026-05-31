@@ -33,7 +33,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: shiftSpy,
 }));
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: HoverCard } = await import('./hover-card.svelte');
 
 const triggerSnippet = createRawSnippet(() => ({
@@ -131,16 +131,27 @@ describe('HoverCard', () => {
     expect(container.querySelector('.cinder-hover-card')).toBeNull();
   });
 
-  test('Escape closes an open hover card', async () => {
-    render(HoverCard, {
+  test('Escape dismisses the open card and exposes tooltip role + aria-describedby wiring', async () => {
+    const { container } = render(HoverCard, {
       props: {
         open: true,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
     });
+    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
 
-    await waitFor(() => expect(queryHoverCard()).not.toBeNull());
+    // The portaled card carries the read-only tooltip role and is referenced by the
+    // trigger via aria-describedby — never aria-label or aria-expanded (no focusable content).
+    // Query by role (the accessibility contract) rather than a CSS selector.
+    const card = await screen.findByRole('tooltip');
+    expect(card.getAttribute('aria-label')).toBeNull();
+    // aria-describedby may be a space-separated id list (card id + a description
+    // id when `description` is set), so assert containment, not strict equality.
+    expect(wrapper.getAttribute('aria-describedby')).toContain(card.id);
+    expect(wrapper.getAttribute('aria-expanded')).toBeNull();
+
+    // A document-level Escape keydown dismisses the card while it is open.
     await fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(queryHoverCard()).toBeNull());

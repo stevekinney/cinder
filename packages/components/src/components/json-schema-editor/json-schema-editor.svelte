@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category form
-   * @status beta
+   * @status stable
    * @purpose Multi-view editor for authoring JSON Schema documents with form, raw JSON, and diff modes plus undo history and validation.
    * @tag form
    * @tag editor

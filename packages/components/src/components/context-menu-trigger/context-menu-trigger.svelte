@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Compose-only trigger region that opens a context-menu on right-click or touch long-press.
    * @tag overlay
    * @tag menu

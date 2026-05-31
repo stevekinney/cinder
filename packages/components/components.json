@@ -146,7 +146,7 @@
       "import": "cinder/alert-dialog",
       "exportName": "AlertDialog",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.",
       "tags": ["overlay", "dialog"],
       "useWhen": [
@@ -960,7 +960,7 @@
       "import": "cinder/context-menu",
       "exportName": "ContextMenu",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Right-click and long-press menu positioned at the user's pointer while reusing dropdown menu parts.",
       "tags": ["overlay", "menu"],
       "useWhen": [
@@ -986,7 +986,7 @@
       "import": "cinder/context-menu-trigger",
       "exportName": "ContextMenuTrigger",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Compose-only trigger region that opens a context-menu on right-click or touch long-press.",
       "tags": ["overlay", "menu"],
       "useWhen": [
@@ -1477,7 +1477,7 @@
       "import": "cinder/focus-trap",
       "exportName": "FocusTrap",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Headless focus-trap primitive that keeps Tab navigation within a container and restores focus on teardown.",
       "tags": ["overlay", "accessibility"],
       "useWhen": [
@@ -1596,7 +1596,7 @@
       "import": "cinder/hover-card",
       "exportName": "HoverCard",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Hover-and-focus triggered rich preview card for non-interactive contextual content.",
       "tags": ["overlay", "hover"],
       "useWhen": [
@@ -1700,7 +1700,7 @@
       "import": "cinder/json-schema-editor",
       "exportName": "JsonSchemaEditor",
       "category": "form",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Multi-view editor for authoring JSON Schema documents with form, raw JSON, and diff modes plus undo history and validation.",
       "tags": ["form", "editor"],
       "useWhen": [
@@ -2183,7 +2183,7 @@
       "import": "cinder/portal",
       "exportName": "Portal",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Headless portal primitive that moves a subtree into a target element while preserving inline rendering as an explicit opt-out.",
       "tags": ["overlay", "utilities"],
       "useWhen": [
@@ -3429,7 +3429,7 @@
       "import": "cinder/transition",
       "exportName": "Transition",
       "category": "overlay",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Headless mount-coordination primitives for CSS-driven presence state and Svelte transition functions.",
       "tags": ["overlay", "motion"],
       "useWhen": [

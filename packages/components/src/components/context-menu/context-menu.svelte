@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Right-click and long-press menu positioned at the user's pointer while reusing dropdown menu parts.
    * @tag overlay
    * @tag menu
