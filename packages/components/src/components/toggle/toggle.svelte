@@ -52,7 +52,7 @@
   >
     <span aria-hidden="true" class="cinder-toggle__thumb"></span>
   </button>
-  {#if name !== undefined}
+  {#if name}
     <!--
       Form participation: a hidden, non-interactive checkbox mirrors `checked` so
       the toggle submits with a native form. The <button> stays the only thing
@@ -68,7 +68,7 @@
       {value}
       {form}
       {disabled}
-      {checked}
+      bind:checked
       style="position:absolute;opacity:0;pointer-events:none;"
     />
   {/if}

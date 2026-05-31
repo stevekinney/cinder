@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import type { ComponentProps } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -319,6 +320,93 @@ describe('Toggle — form participation', () => {
     });
     const input = container.querySelector('input[type="checkbox"]');
     expect(input?.getAttribute('form')).toBe('settings-form');
+  });
+
+  // The feature's actual contract is native form serialization. We render the
+  // toggle INTO a real <form> and assert the hidden input is form-associated and
+  // carries the exact properties a browser's FormData reads (`name`, live
+  // `.checked` and `.value` DOM properties, `disabled`). We assert the DOM
+  // properties rather than `new FormData(form)` because happy-dom's FormData
+  // serializer does not pick up a checkbox nested under wrapper elements (it
+  // returns null even though `input.form === form` and `input.checked` is true);
+  // the properties below ARE what a real browser serializes, so this proves the
+  // contract without depending on the test environment's FormData implementation.
+  function renderInForm(props: ComponentProps<typeof Toggle>) {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const result = render(Toggle, { target: form, props });
+    const input = form.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    return { form, input, ...result, teardown: () => form.remove() };
+  }
+
+  test('checked toggle: input is form-associated and submits name=on', () => {
+    const { form, input, teardown } = renderInForm({
+      id: 'tf10',
+      checked: true,
+      label: 'Notifications',
+      name: 'notifications',
+    });
+    try {
+      expect(input.form).toBe(form); // associated with THIS form → included in submission
+      expect(input.name).toBe('notifications');
+      expect(input.checked).toBe(true); // checked → field is submitted
+      expect(input.value).toBe('on'); // default submitted value
+      expect(input.disabled).toBe(false);
+    } finally {
+      teardown();
+    }
+  });
+
+  test('checked toggle carries a custom submitted value', () => {
+    const { input, teardown } = renderInForm({
+      id: 'tf11',
+      checked: true,
+      label: 'Notifications',
+      name: 'notifications',
+      value: 'enabled',
+    });
+    try {
+      expect(input.checked).toBe(true);
+      expect(input.value).toBe('enabled');
+    } finally {
+      teardown();
+    }
+  });
+
+  test('unchecked toggle: input is present but checked=false (omitted from submission)', () => {
+    const { input, teardown } = renderInForm({
+      id: 'tf12',
+      checked: false,
+      label: 'Notifications',
+      name: 'notifications',
+    });
+    try {
+      expect(input.checked).toBe(false); // unchecked checkboxes are omitted from FormData
+    } finally {
+      teardown();
+    }
+  });
+
+  // Note: the click→input.checked-tracks assertion (which proves `bind:checked`
+  // updates the live property, not just the initial attribute) is covered by the
+  // "hidden input tracks checked after a click" test above using the standard
+  // render. fireEvent.click does not propagate through testing-library's
+  // `target: <form>` mount, so it is asserted there, not here.
+
+  test('disabled toggle: hidden input is disabled (excluded from submission) even when checked', () => {
+    const { input, teardown } = renderInForm({
+      id: 'tf14',
+      checked: true,
+      label: 'Notifications',
+      name: 'notifications',
+      disabled: true,
+    });
+    try {
+      expect(input.disabled).toBe(true); // disabled controls are excluded from FormData
+      expect(input.checked).toBe(true);
+    } finally {
+      teardown();
+    }
   });
 });
 
