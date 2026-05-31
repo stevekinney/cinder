@@ -8,8 +8,8 @@ name: deploy-playground
 #                       access to the encrypted secrets and the job is skipped.
 #
 # The playground is a Bun.serve server that builds Svelte bundles on the fly
-# (no SvelteKit, no Vite). On Vercel it runs as a single Bun Function — see
-# packages/playground/api/index.ts and
+# (no SvelteKit, no Vite). On Vercel it is served as a pre-rendered static site — see
+# packages/playground/scripts/static-export.ts (pre-render) and
 # packages/playground/vercel.json.
 #
 # One-time setup (token, org id, project id, project root directory) is
