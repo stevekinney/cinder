@@ -86,7 +86,7 @@ The full site is rendered at build time (≈90s for ~90 components / ~1500 files
 Nothing below is performed by this repository or its workflows. A maintainer with Vercel access must do it once:
 
 1. **Create the Vercel project.** In the Vercel dashboard, import this Git repository as a new project (or run `bunx vercel link` locally from the repo root and follow the prompts).
-2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root, because `cinder` is a `workspace:*` dependency). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the function's `includeFiles` glob reaches up into `../components`, and that toggle must be on for those files to be available during the build.
+2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root, because `cinder` is a `workspace:*` dependency). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the static-export build reads component sources from `../components` at build time, and that toggle must be on for those files to be available during the build.
 3. **Capture the three deploy secrets** and add them to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions):
 
    | Secret              | Where it comes from                                                                                |
@@ -119,10 +119,10 @@ The build step is runtime-safe to run on any machine with Bun:
 
 ```bash
 cd packages/playground
-bun run vercel-build   # smoke-imports api/index.ts and writes public/
+bun run vercel-build   # pre-renders every route into public/
 ```
 
-It does not contact Vercel or deploy anything — it only proves the function entry loads.
+It does not contact Vercel or deploy anything — it just produces the static `public/` directory locally so you can inspect or serve it.
 
 ## Commits and pull requests
 

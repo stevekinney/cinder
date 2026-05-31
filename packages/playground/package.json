@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch run src/playground-server.ts",
-    "lint": "oxlint src/ api/ scripts/",
-    "lint:fix": "oxlint --fix src/ api/ scripts/",
+    "lint": "oxlint src/ scripts/",
+    "lint:fix": "oxlint --fix src/ scripts/",
     "test": "bun run scripts/run-tests.ts",
     "typecheck": "tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run src/validate-playground.ts",

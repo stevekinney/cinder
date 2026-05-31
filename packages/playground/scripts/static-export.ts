@@ -144,6 +144,63 @@ async function renderJsBundleGraph(entryPath: string): Promise<void> {
   }
 }
 
+/**
+ * Resolve a CSS `@import` specifier (relative, e.g. `./tokens.css` or
+ * `./components/button.css`) against the importing stylesheet's URL into a
+ * root-relative path. Returns null for non-relative/absolute specifiers (none
+ * are emitted by the cinder stylesheets, but be defensive).
+ */
+function resolveCssImport(fromUrl: string, specifier: string): string | null {
+  if (!specifier.startsWith('.')) return specifier.startsWith('/') ? specifier : null;
+  // Strip query/fragment, resolve `./` and `../` against the importer's dir.
+  const base = fromUrl.slice(0, fromUrl.lastIndexOf('/') + 1);
+  const segments = `${base}${specifier}`.split('/');
+  const out: string[] = [];
+  for (const segment of segments) {
+    if (segment === '.' || segment === '') continue;
+    if (segment === '..') out.pop();
+    else out.push(segment);
+  }
+  return `/${out.join('/')}`;
+}
+
+/**
+ * Pull the `@import` target URLs from a stylesheet, resolved to root-relative
+ * paths. The cinder aggregators (`/styles/all.css`, `/styles/index.css`) import
+ * tokens/foundation/utilities and `components.css`, which in turn imports every
+ * per-component `/components/<name>.css` — none of which the HTML references
+ * directly, so they must be followed here or they 404 and the site renders
+ * unstyled.
+ */
+function cssImportUrlsFrom(fromUrl: string, css: string): string[] {
+  const urls = new Set<string>();
+  // @import './x.css';  @import "./x.css" layer(...);  @import url(./x.css);
+  const importRule = /@import\s+(?:url\(\s*)?["']?([^"')\s]+\.css)["']?/g;
+  let match: RegExpExecArray | null;
+  while ((match = importRule.exec(css)) !== null) {
+    const resolved = resolveCssImport(fromUrl, match[1]!);
+    if (resolved !== null) urls.add(resolved);
+  }
+  return [...urls];
+}
+
+/**
+ * Render a CSS entry and recursively render every stylesheet it `@import`s
+ * (and their imports) until the graph is exhausted — mirroring the JS chunk
+ * graph so the full `@import` cascade is materialized as static files.
+ */
+async function renderCssGraph(entryPath: string): Promise<void> {
+  const queue = [entryPath];
+  while (queue.length > 0) {
+    const path = queue.shift()!;
+    const css = await render(path);
+    if (css === null) continue;
+    for (const importUrl of cssImportUrlsFrom(path, css)) {
+      if (!rendered.has(importUrl)) queue.push(importUrl);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
@@ -184,9 +241,15 @@ async function main(): Promise<void> {
     if (shellHtml !== null) collect(shellHtml);
   }
 
-  // Now render every CSS/asset the pages referenced (styles + per-component CSS).
+  // Now render every CSS/asset the pages referenced. A stylesheet is rendered
+  // through the CSS graph so its `@import` cascade (tokens → foundation →
+  // components.css → every per-component CSS → utilities) is materialized too —
+  // those imported files are referenced by no HTML, so without this they 404
+  // and the deployed site renders unstyled.
   for (const url of assetUrls) {
-    if (!rendered.has(url)) await render(url);
+    if (rendered.has(url)) continue;
+    if (url.endsWith('.css')) await renderCssGraph(url);
+    else await render(url);
   }
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
