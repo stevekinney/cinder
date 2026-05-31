@@ -299,13 +299,17 @@ describe('Toggle — form participation', () => {
     expect(input.checked).toBe(true);
   });
 
-  test('hidden input is removed from the tab order and a11y tree', () => {
+  test('hidden input uses the `hidden` attribute (non-focusable, out of the a11y tree)', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf8', checked: false, label: 'Notifications', name: 'notifications' },
     });
-    const input = container.querySelector('input[type="checkbox"]');
-    expect(input?.getAttribute('tabindex')).toBe('-1');
-    expect(input?.getAttribute('aria-hidden')).toBe('true');
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    // `hidden` (display:none) makes the control genuinely non-focusable and absent
+    // from the accessibility tree — no aria-hidden-focus violation. It must NOT
+    // carry aria-hidden/tabindex (those would imply a focusable-but-hidden element).
+    expect(input.hidden).toBe(true);
+    expect(input.hasAttribute('aria-hidden')).toBe(false);
+    expect(input.hasAttribute('tabindex')).toBe(false);
   });
 
   test('form prop associates the hidden input with a form by id', () => {
@@ -320,6 +324,29 @@ describe('Toggle — form participation', () => {
     });
     const input = container.querySelector('input[type="checkbox"]');
     expect(input?.getAttribute('form')).toBe('settings-form');
+  });
+
+  test('form prop associates the input with an EXTERNAL form by id (real association)', () => {
+    const externalForm = document.createElement('form');
+    externalForm.id = 'external-settings-form';
+    document.body.appendChild(externalForm);
+    try {
+      // Render the toggle OUTSIDE the form; the `form` attribute must associate
+      // the hidden input with the external form so it submits with it.
+      const { container } = render(Toggle, {
+        props: {
+          id: 'tf9b',
+          checked: true,
+          label: 'Notifications',
+          name: 'notifications',
+          form: 'external-settings-form',
+        },
+      });
+      const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      expect(input.form).toBe(externalForm);
+    } finally {
+      externalForm.remove();
+    }
   });
 
   // The feature's actual contract is native form serialization. We render the

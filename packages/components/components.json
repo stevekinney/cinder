@@ -3359,7 +3359,10 @@
       "useWhen": [
         "Flipping a single setting on or off with immediate effect such as notifications or dark mode."
       ],
-      "avoidWhen": ["Picking one option from a small fixed set — use segmented-control instead."],
+      "avoidWhen": [
+        "Picking one option from a small fixed set — use segmented-control instead.",
+        "Collecting a deferred boolean (agreement, opt-in) in a Submit-style form — a switch implies immediate effect; use checkbox instead."
+      ],
       "related": ["checkbox", "segmented-control"],
       "hasConstraints": false,
       "hasExamples": true,
