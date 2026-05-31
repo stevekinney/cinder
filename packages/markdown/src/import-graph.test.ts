@@ -155,7 +155,28 @@ function resolveRelative(importer: string, specifier: string): string | undefine
   return undefined;
 }
 
-/** Runtime import specifiers in a source file (type-only imports excluded). */
+/**
+ * Runtime import specifiers in a source file.
+ *
+ * `scanImports` returns `import-statement` (static `import`/`export … from`,
+ * including `export * from`), `dynamic-import` (`import('…')`), and
+ * `require-call` entries, and EXCLUDES `import type` / `export type`. We keep ALL
+ * of those kinds deliberately:
+ *   - `export * from`/`export { } from` are exactly the accidental re-exports
+ *     this leanness guard exists to catch — they must be followed.
+ *   - a `dynamic-import` is still a real bundle dependency (it ships in the
+ *     artifact), so we treat it as reachable. This is also load-bearing for the
+ *     sanity check: @cinder/markdown/rendering reaches `remark-math` /
+ *     `rehype-katex` only via dynamic imports in render.ts. If a future Bun
+ *     dropped dynamic imports from scanImports, the sanity check would fail
+ *     loudly (rendering subpath stops reaching them) rather than silently
+ *     weakening the leanness tests — which is the safe failure direction.
+ *
+ * LIMITATION: a COMPUTED dynamic import (`import(someVariable)`) is invisible to
+ * static analysis and cannot be followed. None exist in @cinder/markdown source;
+ * if one is ever introduced to conditionally load a rendering package, this test
+ * (like any static or bundle-grep approach) could not catch it.
+ */
 function scanRuntimeImports(filePath: string): string[] {
   const cached = scanCache.get(filePath);
   if (cached) return cached;
