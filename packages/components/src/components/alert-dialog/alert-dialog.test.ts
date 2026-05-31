@@ -130,6 +130,40 @@ describe('AlertDialog', () => {
     expect(openValue).toBe(false);
   });
 
+  test('exposes alertdialog role with described content and ignores Escape keydown', async () => {
+    let openValue = true;
+    const { getByRole } = render(AlertDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+
+    // Role + ARIA wiring: a modal alertdialog whose description is announced.
+    const dialog = getByRole('alertdialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    const describedBy = dialog.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    const description = dialog.querySelector(`#${describedBy}`);
+    expect(description?.textContent).toContain('Sign in again');
+
+    // Keyboard: pressing Escape and the native dialog cancel it triggers must NOT
+    // dismiss a sticky alert dialog — the acknowledgement is mandatory.
+    await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(true);
+    expect(getByRole('alertdialog')).toBe(dialog);
+  });
+
   test('destructive alert dialog defaults focus to cancel when present', () => {
     const { container } = render(AlertDialog, {
       props: {

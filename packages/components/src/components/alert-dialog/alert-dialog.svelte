@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category overlay
-   * @status beta
+   * @status stable
    * @purpose Sticky alert dialog for urgent acknowledgement that cannot be dismissed by backdrop click or Escape.
    * @tag overlay
    * @tag dialog
