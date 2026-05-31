@@ -8,6 +8,7 @@
  * the Phase 1 form controls too.
  */
 
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
@@ -16,7 +17,7 @@ import { setupHappyDom } from './happy-dom.ts';
 
 setupHappyDom();
 
-const { renderThenHydrate } = await import('./hydrate.ts');
+const { renderThenHydrate, __tempFileRegistryForTests } = await import('./hydrate.ts');
 const { default: Input } = await import('../components/input/input.svelte');
 
 const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
@@ -63,5 +64,30 @@ describe('renderThenHydrate', () => {
     } finally {
       result.cleanup();
     }
+  });
+
+  test('exit-handler safety net unlinks temp files when cleanup() is skipped', async () => {
+    // Deliberately do NOT call result.cleanup() — simulate a test that throws
+    // or a process interruption before per-test cleanup runs.
+    const result = await renderThenHydrate(Input, INPUT_SOURCE, {
+      id: 'hydrate-orphan',
+      value: '',
+      label: 'Orphan',
+    });
+
+    // The temp SSR module is on disk and registered for exit cleanup.
+    const registered = [...__tempFileRegistryForTests.paths];
+    expect(registered.length).toBeGreaterThan(0);
+    expect(registered.every((path) => existsSync(path))).toBe(true);
+
+    // Run exactly what the process-exit handler runs.
+    __tempFileRegistryForTests.runExitCleanup();
+
+    // Every registered temp file is gone and the registry is drained.
+    expect(registered.every((path) => existsSync(path))).toBe(false);
+    expect(__tempFileRegistryForTests.paths.size).toBe(0);
+
+    // The orphaned container is harmless to leave, but tidy it for the suite.
+    result.container.remove();
   });
 });

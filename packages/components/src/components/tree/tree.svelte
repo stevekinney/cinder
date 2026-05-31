@@ -416,6 +416,7 @@
 
     <div
       role="tree"
+      tabindex="-1"
       class={classNames('cinder-tree', className)}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
@@ -429,6 +430,7 @@
 {:else}
   <div
     role="tree"
+    tabindex="-1"
     class={classNames('cinder-tree', className)}
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledBy}

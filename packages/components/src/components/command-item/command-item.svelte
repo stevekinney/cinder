@@ -44,8 +44,9 @@
 
   const commandList = getCommandListContext();
   // Type-level mode marker: CommandPalette items own activation, while
-  // CommandMenu items can opt into parent-owned activation.
-  void selectionMode;
+  // CommandMenu items can opt into parent-owned activation. Read untracked
+  // because this is a one-time discard, not a reactive dependency.
+  void untrack(() => selectionMode);
 
   // Stable id assigned by the palette on registration.
   let itemId = $state<string | null>(null);

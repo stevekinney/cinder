@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { TableRowProps } from './table-row.types.ts';
-  import { getContext } from 'svelte';
+  import { getContext, untrack } from 'svelte';
 
   import {
     TABLE_CONTEXT_KEY,
@@ -47,22 +47,25 @@
     TABLE_HEADER_SELECTION_CONTEXT_KEY,
   );
 
-  // Validate body rows when selection is enabled.
+  // Validate body rows when selection is enabled. This is a one-time mount-time
+  // guard, so the prop reads are untracked.
   if (selectionEnabled && section === 'body') {
-    const hasDisabled = selectionDisabled === true;
-    if (!hasDisabled) {
-      // All three must be present — reject partial trios.
-      const hasSelected = selected !== undefined;
-      const hasOnChange = onSelectedChange !== undefined;
-      const hasLabel = selectionLabel !== undefined;
-      if (!hasSelected || !hasOnChange || !hasLabel) {
-        throw new Error(
-          '[Cinder] TableRow: when Table.selectable is true, each body row must supply ' +
-            'selected + onSelectedChange + selectionLabel together, or set selectionDisabled={true}. ' +
-            `Missing: ${[!hasSelected && 'selected', !hasOnChange && 'onSelectedChange', !hasLabel && 'selectionLabel'].filter(Boolean).join(', ')}.`,
-        );
+    untrack(() => {
+      const hasDisabled = selectionDisabled === true;
+      if (!hasDisabled) {
+        // All three must be present — reject partial trios.
+        const hasSelected = selected !== undefined;
+        const hasOnChange = onSelectedChange !== undefined;
+        const hasLabel = selectionLabel !== undefined;
+        if (!hasSelected || !hasOnChange || !hasLabel) {
+          throw new Error(
+            '[Cinder] TableRow: when Table.selectable is true, each body row must supply ' +
+              'selected + onSelectedChange + selectionLabel together, or set selectionDisabled={true}. ' +
+              `Missing: ${[!hasSelected && 'selected', !hasOnChange && 'onSelectedChange', !hasLabel && 'selectionLabel'].filter(Boolean).join(', ')}.`,
+          );
+        }
       }
-    }
+    });
   }
 
   // Warn when a row is rendered directly under Table (no section context) with selection on.

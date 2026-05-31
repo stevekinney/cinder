@@ -1,19 +1,9 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
-
-const originalConsoleWarn = console.warn;
-
-beforeEach(() => {
-  console.warn = () => {};
-});
-
-afterEach(() => {
-  console.warn = originalConsoleWarn;
-});
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: ColorSwatchPicker } = await import('./color-swatch-picker.svelte');
@@ -480,20 +470,28 @@ describe('ColorSwatchPicker empty palette', () => {
 });
 
 describe('ColorSwatchPicker duplicate palette', () => {
-  test('only first matching swatch receives aria-selected', () => {
-    const colors = [
-      { color: '#ff0000', name: 'Red 1' },
-      { color: '#ff0000', name: 'Red 2' },
-      { color: '#0000ff' },
-    ];
-    const { container } = render(ColorSwatchPicker, {
-      colors,
-      label: 'Colors',
-      defaultValue: '#ff0000',
-    });
-    const options = toArray(container.querySelectorAll('[role="option"]'));
-    expect(options[0].getAttribute('aria-selected')).toBe('true');
-    expect(options[1].getAttribute('aria-selected')).toBe('false');
+  test('only first matching swatch receives aria-selected (and warns in dev)', () => {
+    // A duplicate palette intentionally trips the dev warning. Scope the spy to
+    // this test so incidental warnings elsewhere still fail their tests.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const colors = [
+        { color: '#ff0000', name: 'Red 1' },
+        { color: '#ff0000', name: 'Red 2' },
+        { color: '#0000ff' },
+      ];
+      const { container } = render(ColorSwatchPicker, {
+        colors,
+        label: 'Colors',
+        defaultValue: '#ff0000',
+      });
+      const options = toArray(container.querySelectorAll('[role="option"]'));
+      expect(options[0].getAttribute('aria-selected')).toBe('true');
+      expect(options[1].getAttribute('aria-selected')).toBe('false');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate color values'));
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 

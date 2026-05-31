@@ -42,6 +42,15 @@
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));
 </script>
 
+<!--
+  `aria-invalid` on the <fieldset> (implicit role=group) is a deliberate,
+  best-effort supplemental signal — see checkbox-group.a11y.md. ARIA does not
+  formally list aria-invalid for role=group, but the error is the primary
+  signal via the visible aria-live region referenced by aria-describedby, and
+  per-control invalidity is set on each <Checkbox> directly. The lint rule is a
+  false positive for this documented, tested tradeoff.
+-->
+<!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset
   class={cn('cinder-checkbox-group', className)}
   {disabled}

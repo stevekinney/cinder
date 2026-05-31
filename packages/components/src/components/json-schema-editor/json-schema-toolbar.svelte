@@ -139,6 +139,7 @@
 <div
   class={classNames('cinder-jse-toolbar', className)}
   role="toolbar"
+  tabindex="-1"
   aria-label="Schema editor actions"
   onkeydown={handleKeydown}
 >

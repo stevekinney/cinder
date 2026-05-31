@@ -78,8 +78,11 @@ describe('Portal', () => {
       disabled: false,
     });
 
-    expect(result.ssrHtml).not.toContain('Portaled child');
-    result.cleanup();
+    try {
+      expect(result.ssrHtml).not.toContain('Portaled child');
+    } finally {
+      result.cleanup();
+    }
   });
 
   test('retargets when the target prop changes after mount', async () => {

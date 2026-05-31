@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -83,6 +84,10 @@ function queryTooltip(): HTMLElement | null {
   return document.body.querySelector('[role="tooltip"]');
 }
 
+// Tooltip schedules show/hide via setTimeout; track timers per test so a
+// component that forgets to clear its pending timer on unmount is caught here.
+let timers: ReturnType<typeof trackTimers>;
+
 beforeEach(() => {
   computePositionResult = {
     x: 16,
@@ -92,10 +97,13 @@ beforeEach(() => {
   computePositionShouldReject = false;
   deferComputePosition = false;
   deferredResolvers = [];
+  timers = trackTimers();
 });
 
 afterEach(() => {
   cleanup();
+  const leaked = timers.active();
+  timers.release();
   computePositionSpy.mockClear();
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
@@ -103,6 +111,7 @@ afterEach(() => {
   flipSpy.mockClear();
   shiftSpy.mockClear();
   offsetSpy.mockClear();
+  expectNoLeakedTimers(leaked);
 });
 
 describe('Tooltip', () => {

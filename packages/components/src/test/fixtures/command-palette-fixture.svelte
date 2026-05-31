@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CommandItem from '../../components/command-item/command-item.svelte';
   import CommandPalette from '../../components/command-palette/command-palette.svelte';
 
@@ -32,8 +33,8 @@
     onSelected,
   }: CommandPaletteFixtureProps = $props();
 
-  let open = $state(initialOpen);
-  let query = $state(initialQuery);
+  let open = $state(untrack(() => initialOpen));
+  let query = $state(untrack(() => initialQuery));
   let triggerRef: HTMLButtonElement | null = $state(null);
 
   const visibleItems = $derived(

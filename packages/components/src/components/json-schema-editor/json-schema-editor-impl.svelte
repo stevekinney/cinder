@@ -56,6 +56,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import Badge from '../badge/badge.svelte';
@@ -91,16 +92,22 @@
   // mutable props (readonly, draftOverride, callback handlers) are kept in
   // sync after mount via the $effects below — without that, parents passing
   // inline lambdas would have their handlers captured stale at construction.
-  const stateOptions: Parameters<typeof createEditorState>[0] = {
-    schema,
-    readonly,
-    onchange: (event) => onchange?.(event),
-    onrevert: (event) => onrevert?.(event),
-    onvalidate: (result) => onvalidate?.(result),
-  };
-  if (original !== undefined) stateOptions.original = original;
-  if (maxHistory !== undefined) stateOptions.maxHistory = maxHistory;
-  if (draftOverride !== undefined) stateOptions.draftOverride = draftOverride;
+  // The container is built exactly once; read the seed props untracked so this
+  // construction never becomes a reactive dependency. Later prop changes are
+  // applied through the $effects below (readonly/draftOverride) and schemaKey.
+  const stateOptions: Parameters<typeof createEditorState>[0] = untrack(() => {
+    const options: Parameters<typeof createEditorState>[0] = {
+      schema,
+      readonly,
+      onchange: (event) => onchange?.(event),
+      onrevert: (event) => onrevert?.(event),
+      onvalidate: (result) => onvalidate?.(result),
+    };
+    if (original !== undefined) options.original = original;
+    if (maxHistory !== undefined) options.maxHistory = maxHistory;
+    if (draftOverride !== undefined) options.draftOverride = draftOverride;
+    return options;
+  });
 
   const state = createEditorState(stateOptions);
 
@@ -108,8 +115,8 @@
   // We track the last applied value locally so the effect only calls the
   // setter on real prop transitions — without that, the effect re-runs on
   // every reactive read inside setReadonly/setDraftOverride and loops.
-  let lastReadonly = readonly;
-  let lastDraftOverride: JsonSchemaKnownDraft | undefined = draftOverride;
+  let lastReadonly = untrack(() => readonly);
+  let lastDraftOverride: JsonSchemaKnownDraft | undefined = untrack(() => draftOverride);
   $effect(() => {
     if (readonly !== lastReadonly) {
       lastReadonly = readonly;
@@ -132,7 +139,7 @@
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
   // reload on initial mount (state was already seeded above) or on re-renders
   // that don't change the key.
-  let lastSchemaKey: string | undefined = schemaKey;
+  let lastSchemaKey: string | undefined = untrack(() => schemaKey);
   $effect(() => {
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
@@ -187,6 +194,14 @@
   }
 </script>
 
+<!--
+  The keydown handler implements editor-wide undo/redo shortcuts (Cmd/Ctrl+Z,
+  Shift+Z, Y). It listens on the region landmark and acts on keystrokes that
+  bubble up from the focusable editor surfaces (form fields, JSON textarea,
+  diff view) inside it, so the noninteractive-element-interactions rule is a
+  false positive — `role="region"` is the correct landmark for the editor.
+-->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   {id}
   class={classNames('cinder-jse', className)}

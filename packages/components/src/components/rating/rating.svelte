@@ -327,6 +327,7 @@
     <div
       class="cinder-rating"
       role="radiogroup"
+      tabindex="-1"
       aria-labelledby={resolvedGroupLabelledBy}
       aria-label={groupAriaLabel}
       aria-describedby={describedBy}

@@ -18,6 +18,7 @@
 <script lang="ts">
   import type { PinInputProps } from './pin-input.types.ts';
   import { DEV } from 'esm-env';
+  import { untrack } from 'svelte';
 
   import {
     ariaInvalid,
@@ -76,7 +77,9 @@
   // Internal segment state. Synced whenever the joined view drifts from the
   // current normalized value; never fires `onchange` because that represents
   // prop synchronization, not user input.
-  let segments = $state<string[]>(Array.from({ length: normalizedLength }, () => ''));
+  let segments = $state<string[]>(
+    Array.from({ length: untrack(() => normalizedLength) }, () => ''),
+  );
 
   function writeSegmentsFromValue(next: string): void {
     const filtered = filterValue(next);
@@ -288,6 +291,14 @@
     </span>
   {/if}
 
+  <!--
+    aria-invalid on the role="group" wrapper is a deliberate, tested signal:
+    pin-input.test.ts asserts it lives on the group (not the segments, to avoid
+    screen-reader double-announcement) with the visible error referenced via
+    aria-describedby. ARIA does not list aria-invalid for role=group, so the
+    lint rule is a false positive for this documented tradeoff.
+  -->
+  <!-- svelte-ignore a11y_role_supports_aria_props -->
   <div
     class="cinder-pin-input"
     role="group"

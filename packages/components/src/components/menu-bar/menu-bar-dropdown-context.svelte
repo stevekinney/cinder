@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { setContext } from 'svelte';
+  import { setContext, untrack } from 'svelte';
 
   import {
     DROPDOWN_CONTEXT,
@@ -20,10 +20,24 @@
 
   const { context, registerMenu, registerTrigger, setOpen, children }: Props = $props();
 
-  setContext(DROPDOWN_CONTEXT, context);
-  setContext(DROPDOWN_REGISTER, registerMenu);
-  setContext(DROPDOWN_REGISTER_TRIGGER, registerTrigger);
-  setContext(DROPDOWN_SET_OPEN, setOpen);
+  // Context is established once at setup; read the bridge values untracked so
+  // they are not treated as reactive dependencies.
+  setContext(
+    DROPDOWN_CONTEXT,
+    untrack(() => context),
+  );
+  setContext(
+    DROPDOWN_REGISTER,
+    untrack(() => registerMenu),
+  );
+  setContext(
+    DROPDOWN_REGISTER_TRIGGER,
+    untrack(() => registerTrigger),
+  );
+  setContext(
+    DROPDOWN_SET_OPEN,
+    untrack(() => setOpen),
+  );
 </script>
 
 {@render children()}

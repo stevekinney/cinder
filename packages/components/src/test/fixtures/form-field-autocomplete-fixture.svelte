@@ -29,23 +29,23 @@
     suggestionSource = () => [],
   }: Props = $props();
 
-  const formFieldProps = {
+  const formFieldProps = $derived({
     id: fieldId,
     label: fieldLabel,
     ...(fieldDescription !== undefined ? { description: fieldDescription } : {}),
     ...(fieldError !== undefined ? { error: fieldError } : {}),
     ...(disabled ? { disabled: true } : {}),
     ...(required ? { required: true } : {}),
-  };
+  });
 
-  const resolvedAutocompleteProps = {
+  const resolvedAutocompleteProps = $derived({
     id: fieldId,
     value,
     suggestionSource,
     placeholder: 'Start typing',
     ...(controlError !== undefined ? { error: controlError } : {}),
     ...autocompleteProps,
-  };
+  });
 </script>
 
 <FormField {...formFieldProps}>

@@ -52,6 +52,12 @@ When `left`/`right` carries semantic placement (e.g. `data-placement="left"` sel
 - Component browser tests live in `packages/testing` and run under Playwright (`bun run test:browser`).
 - Every fix should land with a regression test.
 
+### Coverage ratchet
+
+`packages/components` enforces a coverage floor through `coverageThreshold` in `packages/components/bunfig.toml`. The package `validate` script runs `test:coverage`, so the floor is checked in CI and in the pre-commit hook — a change that drops coverage below the floor fails the gate.
+
+The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `bunfig.toml` to the new measured floor in the same change. Never lower them to make a red gate pass — fix the missing coverage instead. To read the current numbers, run `bun run test:coverage` from `packages/components` and look at the `All files` row.
+
 ## Main Branch Health
 
 After `.github/workflows/main-green.yaml` lands on `main`, `main-green / workspace-gates` is the central default-branch signal for the same workspace gates developers run locally:

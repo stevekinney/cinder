@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { ColorPickerProps } from './color-picker.types.ts';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor, pickContrastColor } from '../../utilities/color-luminance.ts';
@@ -144,12 +144,18 @@
     alphaValue = alpha ? next.a : 1;
   }
 
+  // Snapshot the seed props once. Initialization reads only the mount-time
+  // values; the controlled-sync effect (below) handles later `value` changes.
+  const initialValue = untrack(() => value);
+  const initialDefaultValue = untrack(() => defaultValue);
+  const initialAlpha = untrack(() => alpha);
+
   // Initialize from defaultValue (only when uncontrolled).
-  if (value === undefined && defaultValue) {
-    const parsed = parseToHsla(defaultValue);
+  if (initialValue === undefined && initialDefaultValue) {
+    const parsed = parseToHsla(initialDefaultValue);
     if (parsed) {
       applyHsla(parsed);
-      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, initialAlpha);
     } else {
       hue = 0;
       saturation = 0;
@@ -158,11 +164,11 @@
       internalValue = '';
       lastEmittedHex = '';
     }
-  } else if (value !== undefined) {
-    const parsed = parseToHsla(value);
+  } else if (initialValue !== undefined) {
+    const parsed = parseToHsla(initialValue);
     if (parsed) {
       applyHsla(parsed);
-      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha);
+      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, initialAlpha);
     } else {
       hue = 0;
       saturation = 0;
@@ -592,7 +598,8 @@
   role="group"
   id={pickerId}
 >
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     bind:this={gradientElement}
     id={gradientId}

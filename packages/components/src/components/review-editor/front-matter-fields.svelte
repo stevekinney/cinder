@@ -9,6 +9,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { parseFrontMatter, validateFrontMatter } from 'cinder/markdown/pipeline';
   import Checkbox from '../checkbox/checkbox.svelte';
   import Input from '../input/input.svelte';
@@ -21,7 +22,7 @@
   const hasParsedFields = $derived(data !== null && entries.length > 0);
   const shouldShowRawYaml = $derived(!hasParsedFields && raw !== null);
 
-  let rawDraft = $state(raw ?? '');
+  let rawDraft = $state(untrack(() => raw) ?? '');
   let rawError = $state<string | undefined>();
   let lastRaw = $state<string | null>(null);
   let complexDrafts = $state<Record<string, string>>({});

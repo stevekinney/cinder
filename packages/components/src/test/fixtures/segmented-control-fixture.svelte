@@ -32,6 +32,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Segment from '../../components/segment/segment.svelte';
   import SegmentedControl from '../../components/segmented-control/segmented-control.svelte';
 
@@ -57,7 +58,7 @@
     rest = {},
   }: FixtureProps = $props();
 
-  void onValueChange;
+  void untrack(() => onValueChange);
 </script>
 
 <!--

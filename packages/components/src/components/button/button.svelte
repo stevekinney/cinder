@@ -86,30 +86,34 @@
   // destructured. TypeScript can't narrow a destructured remainder per branch, so each
   // template arm casts `rest` to the attribute shape its element actually accepts. The cast
   // is safe because the `#if href !== undefined` discriminant has already chosen the branch.
-  // These stay as plain `const` casts (not `$derived`) because they're type-level renames —
-  // the underlying `rest` object is itself reactive, so consumers see prop changes flow through.
-  const anchorAttributes = rest as Omit<
-    HTMLAnchorAttributes,
-    | 'class'
-    | 'href'
-    | 'tabindex'
-    | 'onclick'
-    | 'aria-disabled'
-    | 'aria-busy'
-    | 'aria-label'
-    | 'aria-labelledby'
-  >;
-  const buttonAttributes = rest as Omit<
-    HTMLButtonAttributes,
-    | 'class'
-    | 'type'
-    | 'disabled'
-    | 'onclick'
-    | 'aria-disabled'
-    | 'aria-busy'
-    | 'aria-label'
-    | 'aria-labelledby'
-  >;
+  // These are `$derived` so the read of `rest` stays reactive and consumer prop changes
+  // flow through to the rendered attributes.
+  const anchorAttributes = $derived(
+    rest as Omit<
+      HTMLAnchorAttributes,
+      | 'class'
+      | 'href'
+      | 'tabindex'
+      | 'onclick'
+      | 'aria-disabled'
+      | 'aria-busy'
+      | 'aria-label'
+      | 'aria-labelledby'
+    >,
+  );
+  const buttonAttributes = $derived(
+    rest as Omit<
+      HTMLButtonAttributes,
+      | 'class'
+      | 'type'
+      | 'disabled'
+      | 'onclick'
+      | 'aria-disabled'
+      | 'aria-busy'
+      | 'aria-label'
+      | 'aria-labelledby'
+    >,
+  );
 
   // Branch-specific prop reads still need `$derived` because `loading` prop flips must
   // propagate to `disabled` / `tabindex` attributes.

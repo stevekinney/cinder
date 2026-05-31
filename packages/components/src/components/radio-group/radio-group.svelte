@@ -69,6 +69,14 @@
   });
 </script>
 
+<!--
+  `aria-invalid` on the <fieldset> (implicit role=group) is a deliberate
+  best-effort supplemental signal; per-radio invalidity is also set on each
+  <input type="radio"> via context, and the visible error is referenced through
+  aria-describedby. ARIA does not formally list aria-invalid for role=group, so
+  the lint rule is a false positive for this documented, tested tradeoff.
+-->
+<!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset
   class={cn('cinder-radio-group', className)}
   aria-invalid={ariaInvalid(!!error)}

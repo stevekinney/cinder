@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
+  import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
@@ -43,7 +44,8 @@
   }: ColorFieldProps = $props();
 
   // Mode is captured once at mount. Runtime mode switches are unsupported.
-  const isControlled = value !== undefined;
+  // Read untracked: the mode discriminant must not become a reactive dependency.
+  const isControlled = untrack(() => value) !== undefined;
 
   type RgbaParts = { r: number; g: number; b: number; a: number };
 
@@ -115,16 +117,21 @@
 
   // ── Initialization ──────────────────────────────────────────────────────
 
+  // Snapshot the seed props once. Initialization reads only the mount-time
+  // value; the controlled-sync effect (below) handles later prop changes.
+  const initialValue = untrack(() => value);
+  const initialDefaultValue = untrack(() => defaultValue);
+
   if (isControlled) {
-    if (value !== undefined && value !== '') {
-      const trimmedInitial = value.trim();
+    if (initialValue !== undefined && initialValue !== '') {
+      const trimmedInitial = initialValue.trim();
       if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
         const parsed = parseColor(trimmedInitial);
         if (parsed !== null) {
           seedFromParts(parsed);
-          lastReconciledValue = value;
+          lastReconciledValue = initialValue;
         } else {
-          visibleText = value;
+          visibleText = initialValue;
           committedHex = '';
           committedRgba = null;
           parseError = defaultErrorMessage();
@@ -133,14 +140,14 @@
         // Externally-supplied value violates the `formats` gate — preserve the
         // visible text verbatim and surface a parse error, matching the
         // documented contract.
-        visibleText = value;
+        visibleText = initialValue;
         committedHex = '';
         committedRgba = null;
         parseError = defaultErrorMessage();
       }
     }
-  } else if (defaultValue !== undefined && defaultValue !== '') {
-    const trimmedDefault = defaultValue.trim();
+  } else if (initialDefaultValue !== undefined && initialDefaultValue !== '') {
+    const trimmedDefault = initialDefaultValue.trim();
     if (trimmedDefault !== '' && passesFormatGate(trimmedDefault)) {
       const parsed = parseColor(trimmedDefault);
       if (parsed !== null) {

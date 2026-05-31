@@ -26,6 +26,7 @@
 
 /// <reference lib="dom" />
 
+import { unlinkSync } from 'node:fs';
 import { rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -34,6 +35,58 @@ import { hydrate, type Component } from 'svelte';
 import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from './happy-dom.ts';
+
+/**
+ * Every temp SSR module this helper writes is registered here. The per-test
+ * `cleanup()` removes its own file and deregisters it; the process-exit handler
+ * below is the safety net that synchronously unlinks anything still registered
+ * if a test throws or the process is interrupted before `cleanup()` runs.
+ */
+const pendingTempFiles = new Set<string>();
+
+let exitHandlersRegistered = false;
+
+/** Synchronously remove every still-registered temp file. Safe to call twice. */
+function cleanupRegisteredTempFiles(): void {
+  for (const path of pendingTempFiles) {
+    try {
+      unlinkSync(path);
+    } catch {
+      // Already gone (per-test cleanup beat us to it) — ignore.
+    }
+    pendingTempFiles.delete(path);
+  }
+}
+
+/**
+ * Install process-exit / signal handlers exactly once. The `exit` handler must
+ * be fully synchronous (Node ignores async work during exit), so it uses
+ * `unlinkSync`. SIGINT/SIGTERM clean up, then re-raise the default behaviour so
+ * the process still terminates.
+ */
+function ensureExitHandlersRegistered(): void {
+  if (exitHandlersRegistered) return;
+  exitHandlersRegistered = true;
+
+  process.on('exit', cleanupRegisteredTempFiles);
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => {
+      cleanupRegisteredTempFiles();
+      // Restore default disposition and re-raise so exit codes stay correct.
+      process.removeAllListeners(signal);
+      process.kill(process.pid, signal);
+    });
+  }
+}
+
+/**
+ * Test-only accessors for the temp-file registry. Exposed so `hydrate.test.ts`
+ * can verify the exit-handler safety net without actually exiting the process.
+ */
+export const __tempFileRegistryForTests = {
+  paths: pendingTempFiles,
+  runExitCleanup: cleanupRegisteredTempFiles,
+};
 
 /** Result of a single render-then-hydrate pass. */
 export type HydrateResult = {
@@ -97,6 +150,8 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   const sourceDir = dirname(sourcePath);
   const ssrFileName = `.cinder-ssr-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`;
   const file = join(sourceDir, ssrFileName);
+  ensureExitHandlersRegistered();
+  pendingTempFiles.add(file);
   await writeFile(file, serverCode, 'utf-8');
 
   // The SSR module's default export is a server-only render function whose
@@ -159,8 +214,10 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         }
       }
       container.remove();
-      // Remove the temp SSR file we created next to the source. Best-effort —
-      // failures don't break the test, just leave a stray file.
+      // Remove the temp SSR file we created next to the source and deregister
+      // it from the exit-handler safety net. Best-effort — failures don't break
+      // the test, just leave a stray file the exit handler will sweep later.
+      pendingTempFiles.delete(file);
       void rm(file, { force: true }).catch(() => {});
     },
   };

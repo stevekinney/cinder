@@ -38,8 +38,8 @@
   // Derive both ids from `value` so TabPanel can independently compute the
   // same id without coordinating through context. Consumers can still override
   // the tab id via the `id` prop; the panel id stays deterministic.
-  const tabId = id ?? `cinder-tab-${value}`;
-  const panelId = `cinder-tab-panel-${value}`;
+  const tabId = $derived(id ?? `cinder-tab-${value}`);
+  const panelId = $derived(`cinder-tab-panel-${value}`);
 
   const isActive = $derived(tabs.isActive(value));
   const isFocusable = $derived(tabs.isFocusable(value));

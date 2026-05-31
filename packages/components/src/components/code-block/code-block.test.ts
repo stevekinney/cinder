@@ -1,24 +1,10 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
-
-const originalConsoleWarn = console.warn;
-const warnings: unknown[][] = [];
-
-beforeEach(() => {
-  warnings.length = 0;
-  console.warn = (...args: unknown[]) => {
-    warnings.push(args);
-  };
-});
-
-afterEach(() => {
-  console.warn = originalConsoleWarn;
-});
 
 // The default-highlighter seam is the single module CodeBlock imports to reach
 // Shiki. Mocking THIS exact specifier (never the public `cinder/highlighters/shiki`
@@ -40,9 +26,25 @@ mock.module('./code-block-default-highlighter.ts', () => ({
 const { render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
 
+// CodeBlock emits a dev warning when a highlighter throws / fails to load (it
+// then falls back to escaped plain code). Several tests exercise that path on
+// purpose, so we spy (rather than blanket-silence) and assert in afterEach that
+// every warning is that known fallback message — any UNEXPECTED warning fails.
+const KNOWN_CODE_BLOCK_WARNING = '[cinder/CodeBlock] highlight failed';
+let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
+
 beforeEach(() => {
   loadDefaultHighlighter.mockClear();
   defaultHighlighterImpl = (code) => `<pre class="shiki shiki-default"><code>${code}</code></pre>`;
+  warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  const unexpected = warnSpy.mock.calls
+    .map((args) => args.map(String).join(' '))
+    .filter((message) => !message.includes(KNOWN_CODE_BLOCK_WARNING));
+  warnSpy.mockRestore();
+  expect(unexpected).toEqual([]);
 });
 
 /** A custom highlighter that tags its output so we can assert it ran. */
@@ -127,9 +129,9 @@ describe('CodeBlock — automatic highlighting (bundled default)', () => {
       );
     });
     // Dev warning fired, mentions the language, but NEVER the code content
-    // (code blocks may contain secrets).
-    expect(warnings.length).toBeGreaterThan(0);
-    const flattened = warnings.flat().map(String).join(' ');
+    // (code blocks may contain secrets). Read from the module-level spy.
+    expect(warnSpy).toHaveBeenCalled();
+    const flattened = warnSpy.mock.calls.flat().map(String).join(' ');
     expect(flattened).toContain('language "js"');
     expect(flattened).not.toContain('p@ss');
     expect(flattened).not.toContain('secret');

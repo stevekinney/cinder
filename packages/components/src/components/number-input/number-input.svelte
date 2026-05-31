@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { NumberInputProps } from './number-input.types.ts';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   import {
     ariaInvalid,
@@ -63,9 +63,12 @@
   let requiredEmptyError = $state(false);
 
   // Seed the bindable from defaultValue when the parent didn't supply a value.
-  if (value === null && defaultValue !== null) {
-    value = defaultValue;
-  }
+  // Read untracked: this is a one-time mount seed, not a reactive sync.
+  untrack(() => {
+    if (value === null && defaultValue !== null) {
+      value = defaultValue;
+    }
+  });
 
   onMount(() => {
     hasMounted = true;
@@ -233,7 +236,7 @@
   const parentValueSignature = $derived(
     `${value ?? ''}|${resolvedLocale}|${JSON.stringify(format ?? null)}`,
   );
-  let lastSeenParentSignature = parentValueSignature;
+  let lastSeenParentSignature = untrack(() => parentValueSignature);
   $effect(() => {
     const signature = parentValueSignature;
     if (signature === lastSeenParentSignature) return;

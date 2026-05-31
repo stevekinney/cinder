@@ -6,6 +6,7 @@ import { afterEach, describe, expect, jest, test } from 'bun:test';
 import { _resetEscapeStack, pushEscapeHandler } from '../../_internal/overlay.ts';
 import type { ToastApi } from '../../_internal/toast-context.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -527,6 +528,30 @@ describe('useToast api', () => {
 
     expect(jest.getTimerCount()).toBe(0);
     expect(document.body.textContent ?? '').not.toContain('Saved');
+  });
+
+  // Real-timer counterpart to the deterministic leak test above: tracks the
+  // global setTimeout/setInterval table directly (no fake timers) so a toast
+  // that schedules an auto-dismiss timer must clear it on unmount.
+  test('unmounting the region leaves no real auto-dismiss timer pending', async () => {
+    const timers = trackTimers();
+    try {
+      let api: ToastApi | null = null;
+      const { unmount } = render(Wrapper, {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      });
+      await waitFor(() => expect(api).not.toBeNull());
+      api!.show('Heads up', { duration: 10_000 });
+      await tick();
+
+      unmount();
+      await tick();
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
   });
 
   test('action fires once and dismisses by default even when not otherwise dismissible', async () => {
