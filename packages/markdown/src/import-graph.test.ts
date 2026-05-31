@@ -55,6 +55,8 @@ import { describe, expect, it } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
+import ts from 'typescript';
+
 // Rendering-only packages that cinder's source imports DIRECTLY. A lean subpath
 // must not reach any of these; the rendering subpath must reach all of them.
 // Matched as exact package names or scoped-package prefixes (e.g. any
@@ -209,27 +211,41 @@ function scanRuntimeImports(filePath: string): string[] {
   return specifiers;
 }
 
-// A real `import(` call whose first argument is NOT a plain string literal — a
-// computed specifier the traversal could not follow. `scanImports` reports a
-// plain `'…'` / `"…"` / non-interpolated `` `…` `` import (followable) but NOT a
-// variable or an interpolated `` `…${x}…` `` (invisible). So we ban the two
-// invisible forms:
-//   (a) `import(` followed by a first char that is not a quote → a bare
-//       expression like `import(name)` or `import(cond ? a : b)`.
-//   (b) `import(` followed by a backtick whose contents contain `${` → an
-//       interpolated template.
-// `import` must not be preceded by an identifier char (so `reimport(` / `.import(`
-// don't trip it). `import type` and `import {…}` statements aren't `import(`.
-const COMPUTED_IMPORT_BARE = /(?<![\w.$])import\s*\(\s*(?!['"`])/;
-const COMPUTED_IMPORT_TEMPLATE = /(?<![\w.$])import\s*\(\s*`[^`]*\$\{/;
-
+// Ban any dynamic `import()` whose specifier is NOT a plain string literal or a
+// no-substitution template — those are the only forms `scanImports` (and any
+// static analysis) can follow. Anything else — `import(variable)`,
+// `import('a' + b)`, `import(\`./\${x}\`)`, `import(cond ? a : c)` — is a computed
+// specifier that could hide a rendering dependency at runtime.
+//
+// This uses a real TypeScript AST rather than a regex: a textual scan both MISSES
+// computed expressions that begin with a literal (`import('a' + name)`) and
+// FALSE-POSITIVES on `import(` text inside comments or strings. The AST sees only
+// genuine `import(...)` call expressions and inspects the actual first argument.
 function assertNoComputedImport(filePath: string, code: string): void {
-  if (COMPUTED_IMPORT_BARE.test(code) || COMPUTED_IMPORT_TEMPLATE.test(code)) {
+  const sourceFile = ts.createSourceFile(filePath, code, ts.ScriptTarget.Latest, true);
+  const offenders: string[] = [];
+
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments.length > 0
+    ) {
+      const specifier = node.arguments[0]!;
+      const isFollowable =
+        ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier);
+      if (!isFollowable) offenders.push(specifier.getText(sourceFile));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  if (offenders.length > 0) {
     throw new Error(
-      `Computed dynamic import found in "${filePath}". A guarded module must use only ` +
-        `string-literal dynamic imports (import('pkg')) so the leanness traversal can follow ` +
-        `them — a computed import(variable) or interpolated import(\`…\${x}…\`) is invisible to ` +
-        `static analysis and could hide a rendering dependency. Use a literal, or restructure.`,
+      `Computed dynamic import(s) found in "${filePath}": ${offenders.join(', ')}. A guarded ` +
+        `module must use only string-literal dynamic imports (import('pkg')) so the leanness ` +
+        `traversal can follow them — a computed specifier is invisible to static analysis and ` +
+        `could hide a rendering dependency. Use a literal, or restructure.`,
     );
   }
 }
@@ -405,20 +421,33 @@ describe('import-graph leanness', () => {
       expect(computed).not.toContain('rehype-katex'); // the invisible case the ban covers
     });
 
-    it('assertNoComputedImport throws on a computed import and accepts a literal one', () => {
-      // Literal forms are fine — the traversal can follow them.
+    it('assertNoComputedImport allows only literal specifiers and catches every computed shape', () => {
+      // Followable forms — string literal, no-substitution template, static
+      // statements — are fine.
       expect(() => assertNoComputedImport('ok.ts', `await import('rehype-katex');`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `await import(\`./plain.js\`);`)).not.toThrow();
       expect(() =>
         assertNoComputedImport('ok.ts', `import { x } from './x.js';\nexport * from './y.js';`),
       ).not.toThrow();
-      // These must NOT be mistaken for computed dynamic imports.
+      // Not dynamic imports at all — must NOT false-positive (the AST sees these
+      // for what they are: an identifier, a member call, a comment, a string).
       expect(() => assertNoComputedImport('ok.ts', `const reimport = (f) => f;`)).not.toThrow();
       expect(() => assertNoComputedImport('ok.ts', `obj.import(thing);`)).not.toThrow();
-      // Computed specifiers must throw.
+      expect(() =>
+        assertNoComputedImport('ok.ts', `// do not write import(renderer)\nconst s = "import(x)";`),
+      ).not.toThrow();
+      // Every computed shape must throw — including the ones a regex bypass missed:
+      // bare variable, string concatenation, interpolated template, conditional.
       expect(() =>
         assertNoComputedImport('bad.ts', `const r = 'rehype-katex';\nawait import(r);`),
       ).toThrow(/Computed dynamic import/);
+      expect(() => assertNoComputedImport('bad.ts', `await import('rehype-' + name);`)).toThrow(
+        /Computed dynamic import/,
+      );
       expect(() => assertNoComputedImport('bad.ts', `await import(\`./\${name}.js\`);`)).toThrow(
+        /Computed dynamic import/,
+      );
+      expect(() => assertNoComputedImport('bad.ts', `await import(flag ? 'a' : 'b');`)).toThrow(
         /Computed dynamic import/,
       );
     });
