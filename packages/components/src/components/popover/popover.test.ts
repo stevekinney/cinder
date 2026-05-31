@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -84,7 +84,16 @@ function attachScratch(node: HTMLElement): void {
   document.body.appendChild(node);
 }
 
-const originalConsoleWarn = console.warn;
+// Popover emits dev-only guidance warnings (see popover.svelte). Several tests
+// open the popover in configurations that intentionally trip them, so we spy
+// (rather than blanket-silence) and assert in afterEach that every warning
+// matches one of these known patterns — any UNEXPECTED warning fails the test.
+const KNOWN_POPOVER_WARNINGS = [
+  'open without a trigger anchor',
+  'role="dialog" without `label` or `ariaLabelledby`',
+  'role="listbox" only sets the surface role',
+];
+let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
 
 beforeEach(() => {
   deferComputePosition = false;
@@ -95,7 +104,7 @@ beforeEach(() => {
     placement: 'bottom-start',
     middlewareData: {},
   };
-  console.warn = () => {};
+  warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -112,7 +121,17 @@ afterEach(() => {
   shiftSpy.mockClear();
   offsetSpy.mockClear();
   _resetEscapeStack();
-  console.warn = originalConsoleWarn;
+
+  const unexpected = warnSpy.mock.calls
+    .map((args) => args.map(String).join(' '))
+    .filter((message) => !KNOWN_POPOVER_WARNINGS.some((known) => message.includes(known)));
+  // Restore in `finally` so an unexpected-warning failure can't leave
+  // `console.warn` patched for every subsequent test in the suite.
+  try {
+    expect(unexpected).toEqual([]);
+  } finally {
+    warnSpy.mockRestore();
+  }
 });
 
 // ---------------------------------------------------------------------------

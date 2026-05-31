@@ -91,26 +91,8 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([]);
  */
 const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
   'command-item', // TODO: add tests and remove from allow-list
-  'context-menu-trigger', // TODO: add tests and remove from allow-list
-  'dropdown-group', // TODO: add tests and remove from allow-list
-  'dropdown-item', // TODO: add tests and remove from allow-list
-  'dropdown-label', // TODO: add tests and remove from allow-list
-  'dropdown-menu', // TODO: add tests and remove from allow-list
-  'dropdown-separator', // TODO: add tests and remove from allow-list
-  'dropdown-trigger', // TODO: add tests and remove from allow-list
   'markdown-editor', // TODO: add tests and remove from allow-list
-  'radio', // TODO: add tests and remove from allow-list
   'review-editor', // TODO: add tests and remove from allow-list
-  'segment', // TODO: add tests and remove from allow-list
-  'tab', // TODO: add tests and remove from allow-list
-  'tab-list', // TODO: add tests and remove from allow-list
-  'tab-panel', // TODO: add tests and remove from allow-list
-  'table-body', // TODO: add tests and remove from allow-list
-  'table-cell', // TODO: add tests and remove from allow-list
-  'table-header', // TODO: add tests and remove from allow-list
-  'table-row', // TODO: add tests and remove from allow-list
-  'tree-item', // TODO: add tests and remove from allow-list
-  'tree-select-all', // TODO: add tests and remove from allow-list
 ]);
 
 /**

@@ -23,6 +23,7 @@
 
 <script lang="ts">
   import type { SliderProps, SliderValue } from './slider.types.ts';
+  import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -111,7 +112,7 @@
   // Normalize at construction so the stored state never carries an
   // out-of-bounds or inverted-tuple value, even before the first commit.
   let uncontrolledInternal = $state<SliderValue>(
-    normalizeValueForMode(defaultValue ?? (mode === 'range' ? [min, max] : min)),
+    untrack(() => normalizeValueForMode(defaultValue ?? (mode === 'range' ? [min, max] : min))),
   );
 
   // Controlled flag and current value. When `value` is provided we read

@@ -214,8 +214,16 @@
       so the menu lands beside the trigger even after the popover API promotes the menu
       into the top layer (where percent-based offsets would otherwise resolve against the viewport).
     -->
+    <!--
+      Presentational delegation wrapper: the consumer's focusable trigger child
+      is the real interactive element (it receives aria-haspopup / aria-expanded
+      / aria-controls via the effect above). Keyboard activation works through
+      that child — Enter/Space fire a native click that bubbles here — so this
+      wrapper only needs role="presentation" to stay out of the a11y tree.
+    -->
     <div
       class="cinder-dropdown__trigger"
+      role="presentation"
       bind:this={triggerWrapper}
       style={`anchor-name: --${menuId};`}
       onclick={() => (open = !open)}

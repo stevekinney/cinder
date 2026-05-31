@@ -8,33 +8,51 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: PinInput } = await import('./pin-input.svelte');
 
+/**
+ * Render PinInput with a default accessible name so the dev `No accessible name
+ * source` warning does not flood the test output. If the test already supplies
+ * a name source (`label`, `aria-label`, or `aria-labelledby`), it is preserved
+ * untouched so name-resolution tests still exercise the real precedence.
+ *
+ * Mirrors the render(PinInput, { props }) shape so call sites only swap the
+ * function name.
+ */
+function renderPin(options: {
+  props: { id: string; value: string } & Record<string, unknown>;
+}): ReturnType<typeof render> {
+  const { props } = options;
+  const hasName = 'label' in props || 'aria-label' in props || 'aria-labelledby' in props;
+  const resolvedProps = hasName ? props : { ...props, 'aria-label': 'Code' };
+  return render(PinInput, { props: resolvedProps });
+}
+
 function segments(container: Element): HTMLInputElement[] {
   return Array.from(container.querySelectorAll<HTMLInputElement>('input[data-cinder-pin-segment]'));
 }
 
 describe('PinInput rendering', () => {
   test('renders 6 segments by default', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '' } });
+    const { container } = renderPin({ props: { id: 'otp', value: '' } });
     expect(segments(container)).toHaveLength(6);
   });
 
   test('honors configurable length', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 4 } });
     expect(segments(container)).toHaveLength(4);
   });
 
   test('clamps length below 1 to 1', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 0 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 0 } });
     expect(segments(container)).toHaveLength(1);
   });
 
   test('clamps length above 12 to 12', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 99 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 99 } });
     expect(segments(container)).toHaveLength(12);
   });
 
   test('group has role="group" and references the label', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', label: 'Verification code' },
     });
     const group = container.querySelector('[role="group"]')!;
@@ -46,7 +64,7 @@ describe('PinInput rendering', () => {
   });
 
   test('falls back to aria-label when no other name source is supplied', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', 'aria-label': 'Security code' },
     });
     const group = container.querySelector('[role="group"]')!;
@@ -55,7 +73,7 @@ describe('PinInput rendering', () => {
   });
 
   test('each segment has a unique visually hidden position label', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', length: 3, label: 'Code' },
     });
     const ids = ['otp-segment-0-label', 'otp-segment-1-label', 'otp-segment-2-label'];
@@ -67,10 +85,10 @@ describe('PinInput rendering', () => {
   });
 
   test('renders hidden input only when name is provided', () => {
-    const { container: noName } = render(PinInput, { props: { id: 'a', value: '' } });
+    const { container: noName } = renderPin({ props: { id: 'a', value: '' } });
     expect(noName.querySelector('input[type="hidden"]')).toBeNull();
 
-    const { container: withName } = render(PinInput, {
+    const { container: withName } = renderPin({
       props: { id: 'b', value: '123', name: 'otp' },
     });
     const hidden = withName.querySelector<HTMLInputElement>('input[type="hidden"]')!;
@@ -80,7 +98,7 @@ describe('PinInput rendering', () => {
   });
 
   test('first segment carries the one-time-code autocomplete hint', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '' } });
+    const { container } = renderPin({ props: { id: 'otp', value: '' } });
     const all = segments(container);
     expect(all[0]?.getAttribute('autocomplete')).toBe('one-time-code');
     expect(all[1]?.getAttribute('autocomplete')).toBe('off');
@@ -89,20 +107,20 @@ describe('PinInput rendering', () => {
 
 describe('PinInput numeric filtering', () => {
   test('filters non-digits in numeric mode on initial value', () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: 'a1b2c3' } });
+    const { container } = renderPin({ props: { id: 'otp', value: 'a1b2c3' } });
     const all = segments(container);
     expect(all.map((segment) => segment.value).join('')).toBe('123');
   });
 
   test('rejects typed letters in numeric mode', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '' } });
+    const { container } = renderPin({ props: { id: 'otp', value: '' } });
     const first = segments(container)[0]!;
     await fireEvent.input(first, { target: { value: 'a' } });
     expect(first.value).toBe('');
   });
 
   test('accepts typed digits in numeric mode and auto-advances', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 4 } });
     const all = segments(container);
     await fireEvent.input(all[0]!, { target: { value: '1' } });
     expect(all[0]!.value).toBe('1');
@@ -112,7 +130,7 @@ describe('PinInput numeric filtering', () => {
 
 describe('PinInput alphanumeric mode', () => {
   test('accepts letters and digits', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: 'ab12!@cd', mode: 'alphanumeric', length: 6 },
     });
     const all = segments(container);
@@ -122,7 +140,7 @@ describe('PinInput alphanumeric mode', () => {
 
 describe('PinInput keyboard navigation', () => {
   test('Backspace on empty segment moves focus back and clears previous', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '12', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '12', length: 4 } });
     const all = segments(container);
     all[2]!.focus();
     await fireEvent.keyDown(all[2]!, { key: 'Backspace' });
@@ -131,7 +149,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('Backspace on filled segment clears it without moving focus', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '12', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '12', length: 4 } });
     const all = segments(container);
     all[1]!.focus();
     await fireEvent.keyDown(all[1]!, { key: 'Backspace' });
@@ -140,7 +158,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('arrow keys navigate between segments', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '12', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '12', length: 4 } });
     const all = segments(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'ArrowRight' });
@@ -150,7 +168,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('ArrowLeft on the first segment does not wrap or move focus', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '12', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '12', length: 4 } });
     const all = segments(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'ArrowLeft' });
@@ -158,7 +176,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('ArrowRight on the last segment does not wrap or move focus', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '1234', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '1234', length: 4 } });
     const all = segments(container);
     all[3]!.focus();
     await fireEvent.keyDown(all[3]!, { key: 'ArrowRight' });
@@ -166,7 +184,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('Home focuses the first segment from any position', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '1234', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '1234', length: 4 } });
     const all = segments(container);
     all[2]!.focus();
     await fireEvent.keyDown(all[2]!, { key: 'Home' });
@@ -174,7 +192,7 @@ describe('PinInput keyboard navigation', () => {
   });
 
   test('End focuses the last segment from any position', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '1', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '1', length: 4 } });
     const all = segments(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'End' });
@@ -184,7 +202,7 @@ describe('PinInput keyboard navigation', () => {
 
 describe('PinInput paste and autofill', () => {
   test('paste distributes characters across segments from the focused one', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 6 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 6 } });
     const all = segments(container);
     all[0]!.focus();
     const data = new DataTransfer();
@@ -194,7 +212,7 @@ describe('PinInput paste and autofill', () => {
   });
 
   test('multi-character autofill into first segment distributes across', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '', length: 4 } });
     const all = segments(container);
     await fireEvent.input(all[0]!, { target: { value: '4321' } });
     expect(all.map((segment) => segment.value).join('')).toBe('4321');
@@ -203,7 +221,7 @@ describe('PinInput paste and autofill', () => {
 
 describe('PinInput masked mode', () => {
   test('renders type="password" segments but emits raw value', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '1234', masked: true, length: 4 },
     });
     const all = segments(container);
@@ -218,7 +236,7 @@ describe('PinInput masked mode', () => {
 
 describe('PinInput error / disabled / required', () => {
   test('error sets aria-invalid on the group and renders message', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', error: 'Invalid code', length: 3 },
     });
     const group = container.querySelector<HTMLElement>('[role="group"]');
@@ -232,7 +250,7 @@ describe('PinInput error / disabled / required', () => {
   });
 
   test('description wires aria-describedby on every segment', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', description: 'Enter the 6-digit code we sent you.' },
     });
     const all = segments(container);
@@ -242,7 +260,7 @@ describe('PinInput error / disabled / required', () => {
   });
 
   test('disabled disables every segment and the hidden input', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '1', name: 'otp', disabled: true },
     });
     const all = segments(container);
@@ -255,7 +273,7 @@ describe('PinInput error / disabled / required', () => {
 describe('PinInput onchange', () => {
   test('fires for user-initiated input', async () => {
     const onchange = mock((_value: string) => {});
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', length: 4, onchange },
     });
     const all = segments(container);
@@ -265,7 +283,7 @@ describe('PinInput onchange', () => {
 
   test('fires for paste', async () => {
     const onchange = mock((_value: string) => {});
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', length: 4, onchange },
     });
     const all = segments(container);
@@ -278,7 +296,7 @@ describe('PinInput onchange', () => {
 
   test('does not fire on external value prop synchronization', async () => {
     const onchange = mock((_value: string) => {});
-    const { rerender } = render(PinInput, {
+    const { rerender } = renderPin({
       props: { id: 'otp', value: '', length: 4, onchange },
     });
     await rerender({ id: 'otp', value: '12', length: 4, onchange });
@@ -288,7 +306,7 @@ describe('PinInput onchange', () => {
 
 describe('PinInput accessibility wiring', () => {
   test('Backspace on the first segment does not move focus away', async () => {
-    const { container } = render(PinInput, { props: { id: 'otp', value: '1', length: 4 } });
+    const { container } = renderPin({ props: { id: 'otp', value: '1', length: 4 } });
     const all = segments(container);
     all[0]!.focus();
     await fireEvent.keyDown(all[0]!, { key: 'Backspace' });
@@ -296,7 +314,7 @@ describe('PinInput accessibility wiring', () => {
   });
 
   test('description + error compose into a single aria-describedby on every segment', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: {
         id: 'otp',
         value: '',
@@ -313,7 +331,7 @@ describe('PinInput accessibility wiring', () => {
   });
 
   test('aria-required is announced on every segment, not on the group', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', required: true },
     });
     const all = segments(container);
@@ -323,7 +341,7 @@ describe('PinInput accessibility wiring', () => {
   });
 
   test('aria-label-only group falls back to per-segment aria-label (no aria-labelledby)', () => {
-    const { container } = render(PinInput, {
+    const { container } = renderPin({
       props: { id: 'otp', value: '', 'aria-label': 'Security code' },
     });
     const all = segments(container);

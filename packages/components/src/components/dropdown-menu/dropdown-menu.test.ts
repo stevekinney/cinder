@@ -1,0 +1,41 @@
+/// <reference lib="dom" />
+import { describe, expect, test } from 'bun:test';
+import { createRawSnippet } from 'svelte';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+
+setupHappyDom();
+
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
+
+describe('DropdownMenu', () => {
+  test('throws when rendered outside a Dropdown', () => {
+    expect(() =>
+      render(DropdownMenu, {
+        props: {
+          children: createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} })),
+        },
+      }),
+    ).toThrow(/must be used within a Dropdown/);
+  });
+
+  test('is absent until the trigger opens it, then renders with role="menu"', async () => {
+    const { container } = render(Fixture);
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+    expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
+  });
+
+  test('ArrowDown moves focus to the next menu item once open', async () => {
+    const { container } = render(Fixture);
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+  });
+});

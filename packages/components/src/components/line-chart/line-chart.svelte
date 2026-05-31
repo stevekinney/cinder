@@ -289,6 +289,7 @@
         {#if model.targets.length > 0}
           <rect
             class="cinder-line-chart__hit-surface"
+            role="presentation"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
             onpointermove={activateByPointer}

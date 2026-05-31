@@ -58,10 +58,10 @@
     onclick gives click-to-toggle. toggle() is disabled-guarded, so clicking the
     label of a disabled toggle is a no-op.
   -->
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <span
     id={labelId}
     class="cinder-toggle-field__label"
+    role="presentation"
     data-hidden={hideLabel || undefined}
     data-disabled={disabled || undefined}
     onclick={toggle}

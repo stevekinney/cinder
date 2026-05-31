@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { DEV } from 'esm-env';
 
   import { cn } from '../../utilities/class-names.ts';
@@ -38,7 +38,9 @@
     indicator,
   }: ColorSwatchPickerProps = $props();
 
-  let internalValue = $state(defaultValue ?? '');
+  // Seeded once from `defaultValue` for the uncontrolled case; later selection
+  // changes flow through user interaction, not the prop.
+  let internalValue = $state(untrack(() => defaultValue) ?? '');
   const selected = $derived(value ?? internalValue);
 
   // Track focus index driven by user interaction. null = derive from selection.
@@ -162,6 +164,13 @@
     {@const isDisabled = swatch.disabled === true}
     {@const contrastColor = pickContrastColor(swatch.color)}
     {@const alpha = hasAlpha(swatch.color)}
+    <!--
+      Listbox pattern: keyboard activation (Enter/Space) and roving navigation
+      are handled once on the role="listbox" container above, where the focused
+      role="option" delegates its keydown by bubbling. Per-option click is a
+      pointer convenience, so the colocated-keydown lint rule is a false positive.
+    -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <li
       role="option"
       aria-selected={isSelected}

@@ -15,7 +15,7 @@
 
 <script lang="ts">
   import type { TableHeaderProps } from './table-header.types.ts';
-  import { getContext, setContext } from 'svelte';
+  import { getContext, setContext, untrack } from 'svelte';
 
   import {
     TABLE_CONTEXT_KEY,
@@ -41,9 +41,10 @@
   const table = getContext<TableContext | undefined>(TABLE_CONTEXT_KEY);
   const selectionEnabled = table?.selectionEnabled ?? false;
 
+  // One-time mount-time guard; read the props untracked.
   if (
     selectionEnabled &&
-    (allSelected === undefined || someSelected === undefined || !onSelectAll)
+    untrack(() => allSelected === undefined || someSelected === undefined || !onSelectAll)
   ) {
     throw new Error(
       '[Cinder] TableHeader: `allSelected`, `someSelected`, and `onSelectAll` are required when Table.selectable is true.',

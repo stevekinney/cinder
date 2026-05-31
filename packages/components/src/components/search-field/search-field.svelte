@@ -16,6 +16,7 @@
 
 <script lang="ts">
   import { DEV } from 'esm-env';
+  import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import { Search, X } from '../icons/index.ts';
@@ -45,7 +46,7 @@
   const resolvedId = $derived(id ?? context?.controlId);
 
   let inputElement = $state<HTMLInputElement | null>(null);
-  let uncontrolledValue = $state(defaultValue ?? '');
+  let uncontrolledValue = $state(untrack(() => defaultValue) ?? '');
 
   const isControlled = $derived(value !== undefined);
   const currentValue = $derived(isControlled ? (value ?? '') : uncontrolledValue);

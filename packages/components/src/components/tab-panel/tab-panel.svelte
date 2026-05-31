@@ -36,8 +36,8 @@
   // parent's registry. Tab uses the same default id pattern unless the
   // consumer supplies a custom `id` prop, in which case the consumer is
   // responsible for setting `aria-labelledby` on their own.
-  const panelId = `cinder-tab-panel-${value}`;
-  const labelledBy = `cinder-tab-${value}`;
+  const panelId = $derived(`cinder-tab-panel-${value}`);
+  const labelledBy = $derived(`cinder-tab-${value}`);
 </script>
 
 {#if isActive}

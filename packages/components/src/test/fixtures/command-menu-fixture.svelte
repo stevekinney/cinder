@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CommandItem from '../../components/command-item/command-item.svelte';
   import CommandMenu from '../../components/command-menu/command-menu.svelte';
 
@@ -20,9 +21,9 @@
   };
 
   const props: Props = $props();
-  const initialValue = props.initialValue ?? '/a';
-  const initialQuery = props.initialQuery ?? '';
-  const initialOpen = props.initialOpen ?? true;
+  const initialValue = untrack(() => props.initialValue) ?? '/a';
+  const initialQuery = untrack(() => props.initialQuery) ?? '';
+  const initialOpen = untrack(() => props.initialOpen) ?? true;
   const commandItems = $derived(
     props.items ?? [
       { value: 'alpha', label: 'Alpha' },

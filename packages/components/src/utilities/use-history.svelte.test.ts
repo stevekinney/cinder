@@ -1,19 +1,23 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import { useHistory } from './use-history.svelte.ts';
 
+/**
+ * Runs `run` while Svelte's internal `$state.snapshot` clone warning/error is
+ * suppressed via scoped spies. Only the paths that deliberately commit a
+ * non-cloneable value (a function) trip this, and the real assertion is the
+ * thrown error — not the incidental Svelte log. Spies are restored afterward so
+ * unexpected warnings in other tests still surface.
+ */
 function withSilencedSvelteSnapshotWarning(run: () => void) {
-  const originalError = console.error;
-  const originalWarn = console.warn;
-
-  console.error = () => {};
-  console.warn = () => {};
+  const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+  const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 
   try {
     run();
   } finally {
-    console.error = originalError;
-    console.warn = originalWarn;
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   }
 }
 

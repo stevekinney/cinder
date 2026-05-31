@@ -20,6 +20,7 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom';
+  import { untrack } from 'svelte';
   import { cn } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
 
@@ -55,7 +56,9 @@
   let wrapperElement: HTMLSpanElement | undefined = $state();
   let tooltipElement: HTMLSpanElement | undefined = $state();
   let anchorElement = $state<HTMLElement | null>(null);
-  let computedPlacement = $state<Placement>(placement);
+  // Seeded once from the initial `placement`; the position effect (below) keeps
+  // it in sync as the prop or floating-ui's flip result changes.
+  let computedPlacement = $state<Placement>(untrack(() => placement));
   let positionStyle = $state('');
   let positionReady = $state(false);
   const isTooltipExposed = $derived(visible && positionReady);
@@ -228,8 +231,15 @@
   });
 </script>
 
+<!--
+  Presentational positioning wrapper. The hover/focus handlers only toggle
+  tooltip visibility; the accessible tooltip semantics live on the role="tooltip"
+  span below and the consumer's trigger child. role="presentation" keeps this
+  wrapper out of the accessibility tree.
+-->
 <span
   class={cn('cinder-tooltip-wrapper', className)}
+  role="presentation"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   onfocusin={handleFocusIn}

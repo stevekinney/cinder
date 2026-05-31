@@ -26,7 +26,8 @@
 
 /// <reference lib="dom" />
 
-import { rm, writeFile } from 'node:fs/promises';
+import { unlinkSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -34,6 +35,65 @@ import { hydrate, type Component } from 'svelte';
 import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from './happy-dom.ts';
+
+/**
+ * Every temp SSR module this helper writes is registered here. The per-test
+ * `cleanup()` removes its own file and deregisters it; the process-exit handler
+ * below is the safety net that synchronously unlinks anything still registered
+ * if a test throws or the process is interrupted before `cleanup()` runs.
+ */
+const pendingTempFiles = new Set<string>();
+
+let exitHandlersRegistered = false;
+
+/** Synchronously remove every still-registered temp file. Safe to call twice. */
+function cleanupRegisteredTempFiles(): void {
+  for (const path of pendingTempFiles) {
+    try {
+      unlinkSync(path);
+    } catch {
+      // Already gone (per-test cleanup beat us to it) — ignore.
+    }
+    pendingTempFiles.delete(path);
+  }
+}
+
+/**
+ * Install process-exit / signal handlers exactly once. The `exit` handler must
+ * be fully synchronous (Node ignores async work during exit), so it uses
+ * `unlinkSync`. SIGINT/SIGTERM clean up, then re-raise the default behaviour so
+ * the process still terminates.
+ */
+function ensureExitHandlersRegistered(): void {
+  if (exitHandlersRegistered) return;
+  exitHandlersRegistered = true;
+
+  process.on('exit', cleanupRegisteredTempFiles);
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    // Install a *named* handler and, on fire, remove only this handler before
+    // re-raising — `process.removeAllListeners(signal)` would wipe unrelated
+    // signal handlers owned by the test runner or other infrastructure.
+    const handler = () => {
+      cleanupRegisteredTempFiles();
+      process.off(signal, handler);
+      // Re-raise so the default disposition runs and exit codes stay correct.
+      process.kill(process.pid, signal);
+    };
+    process.on(signal, handler);
+  }
+}
+
+/**
+ * Test-only accessors for the temp-file registry. Exposed so `hydrate.test.ts`
+ * can verify the exit-handler safety net without actually exiting the process.
+ */
+export const __tempFileRegistryForTests: {
+  paths: ReadonlySet<string>;
+  runExitCleanup: () => void;
+} = {
+  paths: pendingTempFiles,
+  runExitCleanup: cleanupRegisteredTempFiles,
+};
 
 /** Result of a single render-then-hydrate pass. */
 export type HydrateResult = {
@@ -97,46 +157,72 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   const sourceDir = dirname(sourcePath);
   const ssrFileName = `.cinder-ssr-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`;
   const file = join(sourceDir, ssrFileName);
-  await writeFile(file, serverCode, 'utf-8');
+  ensureExitHandlersRegistered();
+  pendingTempFiles.add(file);
 
-  // The SSR module's default export is a server-only render function whose
-  // shape (`($$renderer, $$props) => void`) doesn't match the public
-  // `Component<Props>` type. `svelte/server.render` accepts both shapes at
-  // runtime; we route through `unknown` because the public types are too
-  // narrow to express the dual-target reality.
-  const ssrModule = (await import(file)) as { default: unknown };
-
-  const { render } = (await import('svelte/server')) as typeof import('svelte/server');
-  const originalDocument = globalThis.document;
-  const originalWindow = globalThis.window;
-  globalThis.document = undefined as unknown as Document;
-  globalThis.window = undefined as unknown as Window & typeof globalThis;
+  // Everything from the temp-file write through the hydrate is wrapped so that
+  // any failure BEFORE we return a `cleanup()` to the caller still removes and
+  // deregisters the temp file. Without this, a throw in import/render/hydrate
+  // would orphan the file until process exit — the exact leak this helper exists
+  // to prevent.
   let ssrHtml = '';
-  try {
-    ssrHtml = render(ssrModule.default as Component<Props>, { props }).body;
-  } finally {
-    globalThis.document = originalDocument;
-    globalThis.window = originalWindow;
-  }
-
-  const container = document.createElement('div');
-  container.innerHTML = ssrHtml;
-  document.body.appendChild(container);
-
+  let container: HTMLElement | undefined;
   const warnings: string[] = [];
-  const originalWarn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    warnings.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
-  };
-
   let instance: Record<string, unknown> | undefined;
   try {
-    instance = hydrate(clientComponent, {
-      target: container,
-      props,
-    }) as Record<string, unknown>;
-  } finally {
-    console.warn = originalWarn;
+    await writeFile(file, serverCode, 'utf-8');
+
+    // The SSR module's default export is a server-only render function whose
+    // shape (`($$renderer, $$props) => void`) doesn't match the public
+    // `Component<Props>` type. `svelte/server.render` accepts both shapes at
+    // runtime; we route through `unknown` because the public types are too
+    // narrow to express the dual-target reality.
+    const ssrModule = (await import(file)) as { default: unknown };
+
+    const { render } = (await import('svelte/server')) as typeof import('svelte/server');
+    const originalDocument = globalThis.document;
+    const originalWindow = globalThis.window;
+    globalThis.document = undefined as unknown as Document;
+    globalThis.window = undefined as unknown as Window & typeof globalThis;
+    try {
+      ssrHtml = render(ssrModule.default as Component<Props>, { props }).body;
+    } finally {
+      globalThis.document = originalDocument;
+      globalThis.window = originalWindow;
+    }
+
+    container = document.createElement('div');
+    container.innerHTML = ssrHtml;
+    document.body.appendChild(container);
+
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    };
+
+    try {
+      instance = hydrate(clientComponent, {
+        target: container,
+        props,
+      }) as Record<string, unknown>;
+    } finally {
+      console.warn = originalWarn;
+    }
+  } catch (error) {
+    // Pre-return failure. Remove the SSR container if it made it into the DOM,
+    // or it would orphan markup that contaminates later tests. Then unlink the
+    // temp file SYNCHRONOUSLY and only deregister it AFTER removal — an async
+    // rm() + immediate deregister would lose the file if the process exited
+    // before the rm settled (the exit handler skips deregistered paths). Finally
+    // rethrow for the test to observe.
+    container?.remove();
+    try {
+      unlinkSync(file);
+    } catch {
+      // Already gone — ignore.
+    }
+    pendingTempFiles.delete(file);
+    throw error;
   }
 
   return {
@@ -159,9 +245,18 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         }
       }
       container.remove();
-      // Remove the temp SSR file we created next to the source. Best-effort —
-      // failures don't break the test, just leave a stray file.
-      void rm(file, { force: true }).catch(() => {});
+      // Remove the temp SSR file we created next to the source, then deregister
+      // it from the exit-handler safety net. Unlink SYNCHRONOUSLY and deregister
+      // only AFTER removal: an async rm() + immediate deregister would lose the
+      // file if rm() failed or the process exited before it settled (the exit
+      // handler skips already-deregistered paths). Best-effort — a unlink failure
+      // doesn't break the test; the path stays registered for the exit sweep.
+      try {
+        unlinkSync(file);
+        pendingTempFiles.delete(file);
+      } catch {
+        // Leave it registered so the exit-handler safety net still sweeps it.
+      }
     },
   };
 }

@@ -43,7 +43,7 @@
     'aria-describedby': consumerDescribedBy,
   }: ComboboxProps<T> = $props();
 
-  const listboxId = `${id}-listbox`;
+  const listboxId = $derived(`${id}-listbox`);
   const descriptionId = $derived(describeId(id, !!description));
   // errId only included in aria-describedby when error is active.
   const errId = $derived(buildErrorId(id, !!error));

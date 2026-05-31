@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts" generics="Item">
+  import { untrack } from 'svelte';
   import { cn } from '../../utilities/class-names.ts';
   import {
     SortableController,
@@ -41,10 +42,12 @@
   }: SortableListProps<Item> = $props();
 
   const announcer = useAnnouncer({ clearDelay: 5000 });
-  const controller = new SortableController<Item>({
-    announce: (msg) => announcer.announce(msg),
-    ...(announcements !== undefined ? { announcements } : {}),
-  });
+  const controller = new SortableController<Item>(
+    untrack(() => ({
+      announce: (msg: string) => announcer.announce(msg),
+      ...(announcements !== undefined ? { announcements } : {}),
+    })),
+  );
 
   const instructionsId = useId('cinder-sortable-instructions');
 

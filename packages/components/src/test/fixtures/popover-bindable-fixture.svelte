@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Popover from '../../components/popover/popover.svelte';
   import type { PopoverProps } from '../../components/popover/popover.types.ts';
 
@@ -19,15 +20,15 @@
     role,
   }: Props = $props();
 
-  let open = $state(initialOpen);
+  let open = $state(untrack(() => initialOpen));
 
-  const popoverProps = {
+  const popoverProps = $derived({
     ...(focusManagement !== undefined ? { focusManagement } : {}),
     ...(triggerRef !== null ? { triggerRef } : {}),
     ...(wireTriggerAria !== undefined ? { wireTriggerAria } : {}),
     ...(id !== undefined ? { id } : {}),
     ...(role !== undefined ? { role } : {}),
-  };
+  });
 </script>
 
 <div>

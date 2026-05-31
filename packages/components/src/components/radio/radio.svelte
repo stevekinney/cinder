@@ -63,6 +63,13 @@
   data-has-description={description ? '' : undefined}
 >
   <span class="cinder-radio-row__control">
+    <!--
+      aria-invalid mirrors the group's validity onto the native radio so screen
+      readers announce invalidity on focus. It is a global ARIA state and the
+      standard way to mark form-control validity; the implicit-role lint rule
+      does not list it for role=radio, but applying it here is correct.
+    -->
+    <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
     <input
       {id}
       type="radio"

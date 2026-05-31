@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { untrack } from 'svelte';
 
   import Tree from './tree/tree.svelte';
   import type { TreeSelectionMode } from './tree/tree.types.ts';
@@ -18,8 +19,8 @@
     children: Snippet;
   } = $props();
 
-  let expandedIds = $state<string[]>(initialExpandedIds);
-  let selectedIds = $state<string[]>(initialSelectedIds);
+  let expandedIds = $state<string[]>(untrack(() => initialExpandedIds));
+  let selectedIds = $state<string[]>(untrack(() => initialSelectedIds));
 </script>
 
 <Tree

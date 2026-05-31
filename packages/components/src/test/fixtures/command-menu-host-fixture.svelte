@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CommandItem from '../../components/command-item/command-item.svelte';
   import CommandMenu from '../../components/command-menu/command-menu.svelte';
   import { detectTrigger } from '../../components/command-menu/command-menu-trigger.ts';
@@ -12,7 +13,7 @@
   };
 
   const props: Props = $props();
-  const fieldKind = props.fieldKind ?? 'textarea';
+  const fieldKind = untrack(() => props.fieldKind) ?? 'textarea';
   const onSelected = $derived(props.onSelected ?? (() => {}));
   const onDismissed = $derived(props.onDismissed ?? (() => {}));
 

@@ -14,6 +14,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { useToast } from '../../utilities/use-toast.ts';
 
   let { onReady, onInitialize }: ToastProbeProps = $props();
@@ -21,7 +22,7 @@
   // useToast() must run during this component's setup, when getContext walks
   // the parent chain and finds ToastRegion's context.
   const api = useToast();
-  onInitialize?.(api);
+  untrack(() => onInitialize)?.(api);
   // Hand the api to the test once mounted.
   $effect(() => {
     onReady(api);

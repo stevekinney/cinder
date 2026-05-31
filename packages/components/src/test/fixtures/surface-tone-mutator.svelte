@@ -12,14 +12,14 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   import Surface from '../../components/surface/surface.svelte';
   import SurfaceContextProbe from './surface-context-probe.svelte';
 
   let { initial, onReady, testid = 'mutator-probe', children }: SurfaceToneMutatorProps = $props();
 
-  let tone = $state<SurfaceTone>(initial);
+  let tone = $state<SurfaceTone>(untrack(() => initial));
 
   onMount(() => {
     onReady({

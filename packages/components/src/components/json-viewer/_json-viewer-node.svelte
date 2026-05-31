@@ -13,6 +13,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Self from './_json-viewer-node.svelte';
   import { cn } from '../../utilities/class-names.ts';
 
@@ -22,7 +23,8 @@
   const isArray = $derived(Array.isArray(value));
   const tooDeep = $derived(depth >= maxDepth);
 
-  let collapsed = $state(depth >= initialDepth);
+  // Seeded once from the initial depth vs. the configured initialDepth.
+  let collapsed = $state(untrack(() => depth >= initialDepth));
 
   const entries = $derived.by(() => {
     if (!isObject || tooDeep) return [];

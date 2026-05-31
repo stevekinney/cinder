@@ -435,6 +435,14 @@
     </span>
   {/if}
 
+  <!--
+    aria-invalid / aria-required on the role="group" wrapper are a deliberate
+    supplemental signal and are ALSO set on the inner <select> and <input>
+    (where they are formally supported and tested). The visible error is
+    referenced via aria-describedby. ARIA does not list these states for
+    role=group, so the lint rule is a false positive for this tested tradeoff.
+  -->
+  <!-- svelte-ignore a11y_role_supports_aria_props -->
   <div
     class="cinder-phone-input"
     role="group"
