@@ -249,4 +249,22 @@ describe('consumer fixture: component style imported without the base', () => {
     expect(MISSING_BASE_WARNING).toContain("import 'cinder/styles'");
     expect(MISSING_BASE_WARNING).toContain('cinder/<component>/styles');
   });
+
+  // Package-boundary tripwire: the simulation above would keep passing even if
+  // the guard stopped being wired into the package. Assert the real export
+  // surface the BAD/GOOD sequences depend on actually exists, so deleting
+  // `cinder/styles/guard`, the base `cinder/styles`, or a component `/styles`
+  // subpath fails here. The base stylesheet's `--cinder-base-loaded` marker
+  // itself is covered in css-tree-shake.test.ts.
+  test('the package exports the entry points the guard sequence relies on', async () => {
+    const packageManifest = (await import('../../package.json', {
+      with: { type: 'json' },
+    })) as unknown as { default: { exports: Record<string, unknown> } };
+    const { exports } = packageManifest.default;
+    // The base that sets the marker, the guard module, and at least one
+    // per-component style subpath must all be exported.
+    expect(exports['./styles']).toBeDefined();
+    expect(exports['./styles/guard']).toBeDefined();
+    expect(exports['./button/styles']).toBeDefined();
+  });
 });

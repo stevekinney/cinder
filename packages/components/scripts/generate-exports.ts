@@ -572,7 +572,9 @@ export function computeFiles(
       computedRoots.add(target);
     }
   }
-  const appended = [...computedRoots].toSorted((a, b) => a.localeCompare(b));
+  // Bytewise (not localeCompare) so the generated order is identical on every
+  // machine regardless of locale/ICU — the generator's output must be stable.
+  const appended = [...computedRoots].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   return [...staticGlobs, ...appended];
 }
 

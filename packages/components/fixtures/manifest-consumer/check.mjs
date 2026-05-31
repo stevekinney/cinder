@@ -203,6 +203,22 @@ for (const component of manifest.components) {
       } else {
         assertResolvedTargetUsable(`${specifier} [types]`, packageRelativeToAbsolute(typesTarget));
       }
+      // The resolver only ever selects ONE condition (node wins for both ESM and
+      // CJS here), so assertRuntimeResolvable never touches the `default` target.
+      // Assert BOTH the `node` and `default` runtime targets exist on disk — a
+      // missing `default` build artifact would 404 for a plain Vite/bundler
+      // consumer that resolves `default` while the fixture stayed green.
+      for (const condition of ['node', 'default']) {
+        const target = exportEntry[condition];
+        if (typeof target !== 'string') {
+          record(`${id}: export "${exportKey}" has no string "${condition}" condition`);
+        } else {
+          assertResolvedTargetUsable(
+            `${specifier} [${condition}]`,
+            packageRelativeToAbsolute(target),
+          );
+        }
+      }
     }
 
     // Runtime entry point: the default-exported JSON Schema / variables value
