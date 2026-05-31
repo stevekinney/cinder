@@ -1,13 +1,8 @@
 /// <reference lib="dom" />
-import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-
-// Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toHaveAttribute).
-// The cast satisfies Bun's extend signature while preserving the full matcher set at runtime.
-expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
@@ -38,7 +33,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: shiftSpy,
 }));
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: HoverCard } = await import('./hover-card.svelte');
 
 const triggerSnippet = createRawSnippet(() => ({
@@ -148,15 +143,11 @@ describe('HoverCard', () => {
 
     // The portaled card carries the read-only tooltip role and is referenced by the
     // trigger via aria-describedby — never aria-label or aria-expanded (no focusable content).
-    await waitFor(() => {
-      const card = queryHoverCard();
-      expect(card).not.toBeNull();
-      expect(card).toHaveAttribute('role', 'tooltip');
-      expect(card).not.toHaveAttribute('aria-label');
-    });
-    const card = queryHoverCard() as HTMLElement;
-    expect(wrapper).toHaveAttribute('aria-describedby', card.id);
-    expect(wrapper).not.toHaveAttribute('aria-expanded');
+    // Query by role (the accessibility contract) rather than a CSS selector.
+    const card = await screen.findByRole('tooltip');
+    expect(card.getAttribute('aria-label')).toBeNull();
+    expect(wrapper.getAttribute('aria-describedby')).toBe(card.id);
+    expect(wrapper.getAttribute('aria-expanded')).toBeNull();
 
     // A document-level Escape keydown dismisses the card while it is open.
     await fireEvent.keyDown(document, { key: 'Escape' });
