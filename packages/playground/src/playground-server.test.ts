@@ -13,8 +13,13 @@ import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import type { ComponentManifest } from './analyze.ts';
+import {
+  PORT,
+  createHttpServerOnAvailablePort,
+  handleRequest,
+  triggerReload,
+} from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
-import { PORT, createHttpServerOnAvailablePort, handleRequest, triggerReload } from './server.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';

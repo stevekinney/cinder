@@ -15,7 +15,7 @@
 import { join } from 'node:path';
 
 import { discoverComponents } from './discover.ts';
-import { type PlaygroundServer, PORT, startServer, triggerReload } from './server.ts';
+import { type PlaygroundServer, PORT, startServer, triggerReload } from './playground-server.ts';
 
 class PlaygroundValidationError extends Error {
   constructor(message: string) {

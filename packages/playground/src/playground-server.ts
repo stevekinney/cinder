@@ -144,9 +144,12 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
   if (isEntryName) return undefined;
 
   // Search every map *except* the requesting family's own (already checked).
-  for (const otherFamily of Object.keys(allMaps) as ArtifactFamily[]) {
-    if (otherFamily === family) continue;
-    const hit = allMaps[otherFamily].get(path);
+  // Iterate entries so the value is the typed Map directly — no narrowing cast
+  // on Object.keys (which is typed `string[]`, not `ArtifactFamily[]`).
+  const ownMap = allMaps[family];
+  for (const [, map] of Object.entries(allMaps)) {
+    if (map === ownMap) continue;
+    const hit = map.get(path);
     if (hit !== undefined) return hit;
   }
   return undefined;
