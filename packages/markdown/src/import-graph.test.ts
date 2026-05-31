@@ -28,12 +28,16 @@
  * does NOT traverse into node_modules, so it would not catch a third-party
  * wrapper that itself pulls in `rehype-katex`. That tradeoff is deliberate and
  * safe here: cinder controls its own direct dependencies, every rendering package
- * cinder could import is in FORBIDDEN_RENDERING_PACKAGES, and the traversal FAILS
- * LOUDLY on any internal edge (relative or `@cinder/*`) it cannot follow — so a
- * rendering dependency can never hide behind a silently-dropped edge. Within
- * cinder's source it is actually STRICTER than the old bundle-text grep: it sees
- * the import even when the bundler would have tree-shaken or renamed the telltale
- * string.
+ * cinder could import is in FORBIDDEN_RENDERING_PACKAGES, and the traversal closes
+ * the two ways an edge could otherwise hide a dependency —
+ *   1. it FAILS LOUDLY on any internal edge (relative or `@cinder/*`) it cannot
+ *      follow, and
+ *   2. it BANS computed dynamic imports (`import(variable)` / interpolated
+ *      `` import(`…${x}…`) ``) in guarded source, since those are invisible to
+ *      static analysis (see `assertNoComputedImport`).
+ * Within cinder's source it is actually STRICTER than the old bundle-text grep:
+ * it sees the import even when the bundler would have tree-shaken or renamed the
+ * telltale string.
  *
  * Categories:
  *
@@ -190,18 +194,44 @@ function resolveRelative(importer: string, specifier: string): string | undefine
  *     loudly (rendering subpath stops reaching them) rather than silently
  *     weakening the leanness tests — which is the safe failure direction.
  *
- * LIMITATION: a COMPUTED dynamic import (`import(someVariable)`) is invisible to
- * static analysis and cannot be followed. None exist in @cinder/markdown source;
- * if one is ever introduced to conditionally load a rendering package, this test
- * (like any static or bundle-grep approach) could not catch it.
+ * COMPUTED dynamic imports (`import(someVariable)`) are invisible to static
+ * analysis and cannot be followed — so rather than silently accept that blind
+ * spot, the traversal BANS them in guarded source (see `assertNoComputedImport`).
+ * A guarded file must use only string-literal dynamic imports, which we CAN see.
  */
 function scanRuntimeImports(filePath: string): string[] {
   const cached = scanCache.get(filePath);
   if (cached) return cached;
   const code = readFileSync(filePath, 'utf-8');
+  assertNoComputedImport(filePath, code);
   const specifiers = transpiler.scanImports(code).map((entry) => entry.path);
   scanCache.set(filePath, specifiers);
   return specifiers;
+}
+
+// A real `import(` call whose first argument is NOT a plain string literal — a
+// computed specifier the traversal could not follow. `scanImports` reports a
+// plain `'…'` / `"…"` / non-interpolated `` `…` `` import (followable) but NOT a
+// variable or an interpolated `` `…${x}…` `` (invisible). So we ban the two
+// invisible forms:
+//   (a) `import(` followed by a first char that is not a quote → a bare
+//       expression like `import(name)` or `import(cond ? a : b)`.
+//   (b) `import(` followed by a backtick whose contents contain `${` → an
+//       interpolated template.
+// `import` must not be preceded by an identifier char (so `reimport(` / `.import(`
+// don't trip it). `import type` and `import {…}` statements aren't `import(`.
+const COMPUTED_IMPORT_BARE = /(?<![\w.$])import\s*\(\s*(?!['"`])/;
+const COMPUTED_IMPORT_TEMPLATE = /(?<![\w.$])import\s*\(\s*`[^`]*\$\{/;
+
+function assertNoComputedImport(filePath: string, code: string): void {
+  if (COMPUTED_IMPORT_BARE.test(code) || COMPUTED_IMPORT_TEMPLATE.test(code)) {
+    throw new Error(
+      `Computed dynamic import found in "${filePath}". A guarded module must use only ` +
+        `string-literal dynamic imports (import('pkg')) so the leanness traversal can follow ` +
+        `them — a computed import(variable) or interpolated import(\`…\${x}…\`) is invisible to ` +
+        `static analysis and could hide a rendering dependency. Use a literal, or restructure.`,
+    );
+  }
 }
 
 /**
@@ -358,28 +388,39 @@ describe('import-graph leanness', () => {
     });
   });
 
-  describe('known limitation: computed dynamic imports are invisible (documented)', () => {
-    // This guards against a SILENT regression in our own assumptions, not in
-    // cinder source: it pins the fact that `scanImports` sees a string-literal
-    // dynamic import but NOT a computed one. If a future Bun started resolving
-    // computed imports (or stopped seeing literal ones), this test changes and
-    // forces us to revisit the traversal's completeness. cinder source contains
-    // no computed dynamic imports today; if one is ever added to conditionally
-    // load a rendering package, neither this static traversal nor the old
-    // bundle-grep could catch it — hence it is called out, not silently ignored.
+  describe('computed dynamic imports are banned in guarded source (not just documented)', () => {
+    // The blind spot — `import(variable)` is invisible to scanImports — is not
+    // merely documented; the traversal BANS it. These tests pin both halves:
+    // (1) scanImports really cannot see a computed specifier (so the ban is the
+    // only thing standing between us and a false negative), and (2) the ban's
+    // detector actually fires on the computed form and stays quiet on the literal
+    // form that the traversal CAN follow.
     it('scanImports sees a literal dynamic import but not a computed one', () => {
       const probe = new Bun.Transpiler({ loader: 'ts' });
       const literal = probe.scanImports(`await import('rehype-katex');`).map((entry) => entry.path);
       const computed = probe
         .scanImports(`const renderer = 'rehype-katex';\nawait import(renderer);`)
         .map((entry) => entry.path);
-
-      // A literal specifier IS seen — so a real `import('rehype-katex')` in source
-      // would be caught by the leanness traversal.
       expect(literal).toContain('rehype-katex');
-      // A computed specifier is NOT seen — the documented blind spot. If this ever
-      // flips, revisit the traversal and this file's header note.
-      expect(computed).not.toContain('rehype-katex');
+      expect(computed).not.toContain('rehype-katex'); // the invisible case the ban covers
+    });
+
+    it('assertNoComputedImport throws on a computed import and accepts a literal one', () => {
+      // Literal forms are fine — the traversal can follow them.
+      expect(() => assertNoComputedImport('ok.ts', `await import('rehype-katex');`)).not.toThrow();
+      expect(() =>
+        assertNoComputedImport('ok.ts', `import { x } from './x.js';\nexport * from './y.js';`),
+      ).not.toThrow();
+      // These must NOT be mistaken for computed dynamic imports.
+      expect(() => assertNoComputedImport('ok.ts', `const reimport = (f) => f;`)).not.toThrow();
+      expect(() => assertNoComputedImport('ok.ts', `obj.import(thing);`)).not.toThrow();
+      // Computed specifiers must throw.
+      expect(() =>
+        assertNoComputedImport('bad.ts', `const r = 'rehype-katex';\nawait import(r);`),
+      ).toThrow(/Computed dynamic import/);
+      expect(() => assertNoComputedImport('bad.ts', `await import(\`./\${name}.js\`);`)).toThrow(
+        /Computed dynamic import/,
+      );
     });
   });
 });
