@@ -751,6 +751,7 @@ describe('/page/:name', () => {
       /src="([^"]*\/fixture-bundle\/fixture-input-disabled-[^"]+\.js)"/,
     );
     expect(scriptMatch).not.toBeNull();
+    expect(scriptMatch![1]).toContain(`fixture-input-disabled-${hash}-`);
 
     const bundleResponse = await handleRequest(req(scriptMatch![1]!));
     expect(bundleResponse.status).toBe(200);

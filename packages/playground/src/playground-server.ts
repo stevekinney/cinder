@@ -829,7 +829,7 @@ function fixtureEntryKey(
   fixtureName: string,
   fixtureContentHash: string,
 ): string {
-  return `fixture-${componentName}-${fixtureName}-${fixtureContentHash.slice(0, 12)}`;
+  return `fixture-${componentName}-${fixtureName}-${fixtureContentHash}`;
 }
 
 function fixtureCacheKey(
