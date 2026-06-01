@@ -1,151 +1,132 @@
 /**
- * Compute the set of component slugs touched by a diff, or signal that the
- * full matrix must run.
+ * Decide which component test scope a diff requires: the full matrix, or a
+ * filtered slug list covering the changed components AND every component that
+ * (transitively) depends on them.
  *
- * Reads newline-separated file paths from stdin (the output of
- * `git diff --name-only <base>..HEAD`) and either writes to `$GITHUB_OUTPUT`
- * (when present, for CI consumption) or prints the decision as `key=value`
- * lines to stdout (for local debugging).
+ * Reads newline-separated changed file paths from stdin (the output of
+ * `git diff --name-only <base>..HEAD`) and either appends `mode=`/`components=`
+ * to `$GITHUB_OUTPUT` (CI) or prints them to stdout (local debugging).
  *
- * The decision is `mode=full` when:
+ * The real dependency logic lives in
+ * `packages/components/scripts/component-graph.ts` — a pure, file-level import
+ * graph. This script is the thin CLI adapter: it loads the source files and
+ * known slugs, classifies the diff, and emits the decision in the format the
+ * `browser-tests.yaml` `scope` job expects.
  *
- *   - any changed file falls outside the "safe" per-component scope (shared
- *     utilities, `_internal/*` helpers, the playground server, sibling
- *     `editor` / `markdown` / `commentary` / `diff` packages, etc.) — these
- *     can affect every component's bundle, and
- *   - any file under `packages/testing/` other than this narrow allow-list:
- *     the README and this script's own files. Test fixtures, the Playwright
- *     config, and helper modules all affect every test, so changes there
- *     force the full matrix.
+ * Scope is `full` whenever anything is uncertain (a shared/harness/config
+ * change, a deletion, a computed dynamic import, an ambiguous resolution, or a
+ * closure that reaches an unknown slug) — a missed edge silently skips a test,
+ * which is strictly worse than a redundant full run. It is `filtered` only when
+ * every changed file maps cleanly to a known component slug or its dependents.
  *
- * It is `mode=filtered` with a comma-separated, sorted `components` list when
- * every non-ignorable changed file maps to a known component slug — which
- * is verified against the set of `*.svelte` filenames currently living in
- * `packages/components/src/components/`. Slugs that don't exist there
- * (deleted components, or cross-cutting example directories like
- * `packages/playground/src/examples/shared/` that happen to match the
- * extraction regex) trigger a fallback to full so the spec file's own
- * unknown-slug guard never has to throw at suite-load time.
- *
- * Designed for CI: invoked from `.github/workflows/browser-tests.yaml` to
- * decide whether to set `CINDER_TEST_COMPONENTS` for the Playwright suite.
+ * Beyond component source, two diff categories also map to slugs directly:
+ *   - `packages/playground/src/examples/<slug>/…` — a component's playground
+ *     example feeds its rendered fixture, so an example change retests `<slug>`.
+ * Everything the graph cannot place falls through to `computeScope`, which
+ * force-fulls on anything it cannot map.
  */
 
-import { readdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const componentFilePattern =
-  /^packages\/components\/src\/components\/([a-z0-9][a-z0-9-]*)\.(svelte|a11y\.md|test\.ts|type-test\.ts)$/;
-const exampleFilePattern = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
+import {
+  computeScope,
+  loadKnownSlugs,
+  loadSourceFiles,
+  type ScopeDecision,
+} from '../../components/scripts/component-graph.ts';
 
-/**
- * Files that don't affect component bundles or the test harness, and can be
- * ignored when deciding scope. Touching only these falls through to "no
- * components changed" and the caller drops to `mode=full` to keep main
- * branches safe. Kept deliberately narrow: anything that could change how
- * tests run (fixtures, Playwright config, manifest helpers) must force the
- * full matrix.
- */
-const ignorablePatterns: readonly RegExp[] = [
-  /^\.github\/workflows\/browser-tests\.yaml$/,
-  /^packages\/testing\/README\.md$/,
-  /^packages\/testing\/scripts\/changed-components\.(ts|test\.ts)$/,
-  /^README\.md$/,
-  /^\.gitignore$/,
-];
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+// scripts/ → packages/testing → packages → repo root
+const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
+
+/** `packages/playground/src/examples/<slug>/…` → `<slug>`. */
+const examplePattern = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
 
 export type Decision =
   | { mode: 'full'; reason: string }
   | { mode: 'filtered'; components: string[] };
 
 /**
- * Decide whether the suite should run in full or filtered mode based on a
- * list of changed file paths.
+ * Decide scope from a list of changed file paths.
  *
- * @param changedFiles - newline-stripped file paths from `git diff --name-only`.
- * @param knownSlugs - the set of component slugs derived from the
- *   `packages/components/src/components/*.svelte` source tree. When omitted,
- *   slug validation is skipped (used by unit tests for the
- *   path-classification logic in isolation).
+ * Pure-ish: the source-file map and known-slug set are injected so unit tests
+ * exercise the classification without the filesystem. `deletedFiles` lists the
+ * changed paths that no longer exist on disk (deletions/renames) — those force
+ * full because the current-state graph cannot know who depended on them.
+ *
+ * @param changedFiles - newline-stripped paths from `git diff --name-only`.
+ * @param sourceFiles - the scanned source set (repo-relative POSIX path → text).
+ * @param knownSlugs - component slugs derived from the source tree.
+ * @param deletedFiles - changed paths absent on disk.
  */
-export function decide(changedFiles: string[], knownSlugs?: ReadonlySet<string>): Decision {
-  const slugs = new Set<string>();
+export function decide(
+  changedFiles: string[],
+  sourceFiles: ReadonlyMap<string, string>,
+  knownSlugs: ReadonlySet<string>,
+  deletedFiles: string[] = [],
+): Decision {
+  const cleaned = changedFiles.map((line) => line.trim()).filter((line) => line.length > 0);
 
-  for (const raw of changedFiles) {
-    const path = raw.trim();
-    if (path.length === 0) continue;
-
-    if (ignorablePatterns.some((pattern) => pattern.test(path))) continue;
-
-    const componentMatch = componentFilePattern.exec(path);
-    if (componentMatch && componentMatch[1] !== undefined) {
-      slugs.add(componentMatch[1]);
-      continue;
-    }
-
-    const exampleMatch = exampleFilePattern.exec(path);
-    if (exampleMatch && exampleMatch[1] !== undefined) {
-      slugs.add(exampleMatch[1]);
-      continue;
-    }
-
-    return {
-      mode: 'full',
-      reason: `Changed file outside per-component scope: ${path}`,
-    };
-  }
-
-  if (slugs.size === 0) {
-    return { mode: 'full', reason: 'No component-scoped changes detected.' };
-  }
-
-  if (knownSlugs !== undefined) {
-    const unknown = [...slugs].filter((slug) => !knownSlugs.has(slug));
-    if (unknown.length > 0) {
-      return {
-        mode: 'full',
-        reason: `Extracted slug(s) not present in manifest: ${unknown.toSorted().join(', ')}`,
-      };
+  // Example changes map directly to a slug. Collect them, and hand the rest to
+  // the graph. An example for an UNKNOWN slug forces full (mirrors the graph's
+  // unknown-slug guard) rather than silently inventing a slug.
+  const exampleSlugs = new Set<string>();
+  const nonExampleChanges: string[] = [];
+  for (const path of cleaned) {
+    const match = examplePattern.exec(path);
+    if (match?.[1] !== undefined) {
+      if (!knownSlugs.has(match[1])) {
+        return { mode: 'full', reason: `example for unknown slug: ${path}` };
+      }
+      exampleSlugs.add(match[1]);
+    } else {
+      nonExampleChanges.push(path);
     }
   }
 
-  return { mode: 'filtered', components: [...slugs].toSorted() };
+  const graphDecision: ScopeDecision = computeScope({
+    changedFiles: nonExampleChanges,
+    deletedFiles,
+    sourceFiles,
+    knownSlugs,
+  });
+
+  if (graphDecision.mode === 'full') {
+    // If the ONLY changes were examples (the graph saw nothing to map and said
+    // "no component-mapped changes"), the example slugs are still a valid
+    // filtered scope. Any other full reason (real force-full trigger) wins.
+    if (exampleSlugs.size > 0 && graphDecision.reason === 'no component-mapped changes detected') {
+      return { mode: 'filtered', components: [...exampleSlugs].toSorted() };
+    }
+    return { mode: 'full', reason: graphDecision.reason };
+  }
+
+  const components = new Set<string>([...graphDecision.slugs, ...exampleSlugs]);
+  return { mode: 'filtered', components: [...components].toSorted() };
 }
 
 /**
- * Discover known component slugs by reading the components source directory
- * directly. The playground manifest is built lazily and is not available at
- * the point the scope job runs in CI (no test setup has happened yet), so
- * the source tree is the only reliable slug source at decision time.
- *
- * Slugs are derived from `<slug>.svelte` filenames under
- * `packages/components/src/components/`, mirroring the discovery logic the
- * playground itself uses. Files prefixed with `_` (test harnesses, private
- * helpers) and known non-component conventions are skipped.
+ * Partition the raw changed-file list into (all, deleted). A path is "deleted"
+ * when it does not exist on disk at HEAD — the working tree CI checked out.
  */
-async function loadKnownSlugs(): Promise<ReadonlySet<string>> {
-  const here = dirname(fileURLToPath(import.meta.url));
-  // scripts/ → ../../components/src/components
-  const componentsDirectory = resolve(here, '..', '..', 'components', 'src', 'components');
-  const entries = await readdir(componentsDirectory);
-  const slugs = new Set<string>();
-  for (const entry of entries) {
-    if (!entry.endsWith('.svelte')) continue;
-    if (entry.startsWith('_')) continue;
-    slugs.add(entry.slice(0, -'.svelte'.length));
+function partitionDeleted(changedFiles: string[]): { all: string[]; deleted: string[] } {
+  const all: string[] = [];
+  const deleted: string[] = [];
+  for (const raw of changedFiles) {
+    const path = raw.trim();
+    if (path.length === 0) continue;
+    all.push(path);
+    if (!existsSync(join(workspaceRoot, path))) deleted.push(path);
   }
-  return slugs;
+  return { all, deleted };
 }
 
 async function emit(decision: Decision): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
-  // Always write both `mode` and `components` so the workflow's downstream
-  // expressions can read `needs.scope.outputs.components` unconditionally.
-  // Full-mode runs emit an empty `components=` value.
   const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
-  const lines = [`mode=${decision.mode}`, `components=${componentsValue}`, ''];
-  const payload = lines.join('\n');
+  const payload = [`mode=${decision.mode}`, `components=${componentsValue}`, ''].join('\n');
 
   if (githubOutput !== undefined && githubOutput.length > 0) {
     const { appendFile } = await import('node:fs/promises');
@@ -155,7 +136,7 @@ async function emit(decision: Decision): Promise<void> {
   }
 
   if (decision.mode === 'full') {
-    process.stderr.write(`changed-components: ${decision.reason}\n`);
+    process.stderr.write(`changed-components: full — ${decision.reason}\n`);
   } else {
     process.stderr.write(
       `changed-components: ${decision.components.length} component(s): ${decision.components.join(', ')}\n`,
@@ -165,9 +146,9 @@ async function emit(decision: Decision): Promise<void> {
 
 async function main(): Promise<void> {
   const input = await Bun.stdin.text();
-  const lines = input.split('\n');
-  const knownSlugs = await loadKnownSlugs();
-  const decision = decide(lines, knownSlugs);
+  const { all, deleted } = partitionDeleted(input.split('\n'));
+  const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
+  const decision = decide(all, sourceFiles, knownSlugs, deleted);
   await emit(decision);
 }
 
