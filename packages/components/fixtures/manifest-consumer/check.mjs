@@ -267,15 +267,33 @@ assertRuntimeResolvable('cinder/styles');
 //    the manifest-derived expected set; anything else is an orphan.
 // ---------------------------------------------------------------------------
 
+// Experimental deprecation-alias exports: `./experimental/<name>` and its
+// `/schema`, `/variables`, `/styles`, `/examples`, and `/constraints` subpaths
+// are generated shims that re-export a component promoted out of `experimental/`
+// to the top level. They are legitimate package exports the manifest does not
+// enumerate — but only when the promoted target `./<name>` is itself a real
+// component export. An `experimental/*` alias whose base is NOT a known export is
+// a genuine orphan (a stale or typo'd alias), so we validate the relationship
+// rather than blanket-skipping the whole namespace.
+const EXPERIMENTAL_ALIAS_PATTERN =
+  /^\.\/experimental\/([a-z0-9][a-z0-9-]*)(\/(?:schema|variables|styles|examples|constraints))?$/;
+function isValidExperimentalAlias(key) {
+  const match = EXPERIMENTAL_ALIAS_PATTERN.exec(key);
+  if (match === null) return false;
+  const promotedKey = `./${match[1]}${match[2] ?? ''}`;
+  // The promoted target must be the exact manifest-derived component export, not
+  // merely any package export or any component base export. Checking only the
+  // base would wrongly accept stale sidecar aliases such as
+  // `./experimental/foo/examples` when `./foo/examples` is not published.
+  return expectedComponentExportKeys.has(promotedKey);
+}
+
 const orphanExports = [];
 for (const key of exportKeys) {
   if (allowedNonComponentExportKeys.has(key)) continue;
   if (expectedComponentExportKeys.has(key)) continue;
-  const experimentalAliasMatch = /^\.\/experimental\/([^/]+)(\/.*)?$/.exec(key);
-  if (experimentalAliasMatch) {
-    const promotedExportKey = `./${experimentalAliasMatch[1]}${experimentalAliasMatch[2] ?? ''}`;
-    if (expectedComponentExportKeys.has(promotedExportKey)) continue;
-  }
+  // Experimental deprecation aliases that point at a real promoted component.
+  if (isValidExperimentalAlias(key)) continue;
   // Upstream re-export sub-paths (cinder/markdown/*, cinder/diff/*, etc.) are
   // not component exports and are validated by node-consumer; skip them here.
   if (
