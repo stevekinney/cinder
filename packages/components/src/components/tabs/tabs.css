@@ -16,6 +16,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-4);
+    min-inline-size: 0;
+    container-type: inline-size;
+    container-name: cinder-tabs;
   }
 
   .cinder-tabs[data-cinder-orientation='vertical'] {
@@ -30,6 +33,9 @@
     display: flex;
     gap: var(--cinder-space-1);
     border-bottom: 1px solid var(--cinder-border-muted);
+    min-inline-size: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 
   .cinder-tab-list[data-cinder-orientation='vertical'] {
@@ -142,6 +148,19 @@
     flex: 1 1 auto;
     padding: var(--cinder-space-2) 0;
     outline: none;
+  }
+
+  @container cinder-tabs (max-width: 30rem) {
+    .cinder-tabs[data-cinder-orientation='vertical'] {
+      flex-direction: column;
+    }
+
+    .cinder-tabs[data-cinder-orientation='vertical'] .cinder-tab-list {
+      flex-direction: row;
+      border-inline-end: none;
+      border-bottom: 1px solid var(--cinder-border-muted);
+      align-self: stretch;
+    }
   }
 
   .cinder-tab-panel:focus-visible {

@@ -129,6 +129,11 @@ function expectDropdownSurfaceRecipe(styles: ReturnType<typeof readSurfaceStyles
   }
 }
 
+function renderCompoundDropdown() {
+  const result = render(DropdownCompoundFixture);
+  return { ...result, container: document.body };
+}
+
 describe('Dropdown', () => {
   test('trigger renders', () => {
     const { container } = render(Dropdown, {
@@ -250,7 +255,7 @@ describe('Dropdown', () => {
   });
 
   test('compound trigger wires menu ARIA to the button', () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     const trigger = container.querySelector('.trigger');
     expect(trigger?.getAttribute('aria-haspopup')).toBe('menu');
@@ -259,7 +264,7 @@ describe('Dropdown', () => {
   });
 
   test('compound trigger renders a trailing caret by default', () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     const caret = container.querySelector('.trigger .cinder-dropdown-trigger__caret');
     expect(caret).not.toBeNull();
@@ -315,7 +320,7 @@ describe('Dropdown', () => {
   });
 
   test('compound menu renders labels, separators, and items', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
 
@@ -327,7 +332,7 @@ describe('Dropdown', () => {
   });
 
   test('compound fallback menu focuses the first enabled item when opened', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
 
@@ -337,7 +342,7 @@ describe('Dropdown', () => {
   });
 
   test('compound fallback menu restores focus to trigger on Escape', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -358,7 +363,7 @@ describe('Dropdown', () => {
     // menu), the menu's onkeydown does not fire because the event path does
     // not traverse the menu element. The parent dropdown's handler must
     // fall back to closeCompoundMenu/focusCompoundTrigger.
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -385,7 +390,7 @@ describe('Dropdown', () => {
     // lands on the trigger exactly once and that the menu is gone — the
     // observable failure mode of the double-call would be subtle, but at
     // minimum this guards against regression of the parent-handler split.
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -412,7 +417,7 @@ describe('Dropdown', () => {
   });
 
   test('compound item click closes the menu and invokes onclick', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
     await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
@@ -420,8 +425,21 @@ describe('Dropdown', () => {
     expect(container.querySelector('output')?.textContent).toBe('copy');
   });
 
+  test('clicking portaled compound menu chrome stays inside the dropdown', async () => {
+    const { container } = renderCompoundDropdown();
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => {
+      expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
+    });
+
+    await fireEvent.click(document.body.querySelector('.cinder-dropdown-label') as HTMLElement);
+
+    expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
+  });
+
   test('grouped menu exposes aria-labelledby boundaries', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
 
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
 
@@ -438,7 +456,7 @@ describe('Dropdown', () => {
   });
 
   test('ArrowDown and ArrowUp move across grouped menu boundaries', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -454,7 +472,7 @@ describe('Dropdown', () => {
   });
 
   test('Home and End land on the first and last enabled grouped menu items', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -470,7 +488,7 @@ describe('Dropdown', () => {
   });
 
   test('ArrowUp from the first item wraps to the last item', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -483,7 +501,7 @@ describe('Dropdown', () => {
   });
 
   test('ArrowDown from the last item wraps to the first item', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -499,7 +517,7 @@ describe('Dropdown', () => {
   });
 
   test('Enter activates the focused menu item and closes the menu', async () => {
-    const { container } = render(DropdownCompoundFixture);
+    const { container } = renderCompoundDropdown();
     const trigger = container.querySelector('.trigger') as HTMLElement;
 
     await fireEvent.click(trigger);
@@ -574,8 +592,8 @@ describe('Dropdown', () => {
       document.body.appendChild(componentDropdown.container);
       await fireEvent.click(componentDropdown.container.querySelector('.trigger') as HTMLElement);
 
-      const componentMenu = componentDropdown.container.querySelector(
-        '.cinder-dropdown-menu',
+      const componentMenu = document.body.querySelector(
+        '#actions-menu-menu.cinder-dropdown-menu',
       ) as HTMLElement;
       expect(componentMenu).not.toBeNull();
 
@@ -604,5 +622,12 @@ describe('Dropdown', () => {
     expect(css).toContain('box-shadow: var(--cinder-shadow-lg');
     expect(css).not.toContain('border-radius: var(--cinder-radius-lg);');
     expect(css).not.toContain('color-mix(in oklch, var(--cinder-text) 8%');
+  });
+
+  test('fixed-position fallback clears legacy absolute insets', async () => {
+    const css = await readDropdownCss();
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[data-cinder-position-ready\]\s*\{[^}]*inset:\s*auto;/,
+    );
   });
 });

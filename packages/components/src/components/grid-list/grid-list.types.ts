@@ -7,7 +7,7 @@ export type GridListProps = Omit<HTMLAttributes<HTMLUListElement>, 'role'> & {
    * argument to `minmax()` inside a `repeat(auto-fill, ...)` track.
    * Default: `"16rem"`. Empty string is treated as unset.
    */
-  columns?: string;
+  minColumnWidth?: string;
   /** Extra class names merged with `cinder-grid-list`. */
   class?: string;
   /** Items — typically `GridListItem` instances. */

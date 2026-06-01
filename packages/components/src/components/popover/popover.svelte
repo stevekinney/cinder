@@ -17,6 +17,7 @@
     PopoverPlacement,
     PopoverProps,
     PopoverRole,
+    PopoverWidthMode,
   } from './popover.types.ts';
 </script>
 
@@ -24,19 +25,12 @@
   import type { PopoverProps } from './popover.types.ts';
   import { onDestroy, untrack } from 'svelte';
   import { DEV } from 'esm-env';
+  import type { Placement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useId } from '../../utilities/use-id.ts';
-  import {
-    computePosition,
-    autoUpdate,
-    flip,
-    shift,
-    offset as offsetMw,
-    arrow as arrowMw,
-  } from '@floating-ui/dom';
-  import type { Placement } from '@floating-ui/dom';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -53,6 +47,7 @@
     role = 'dialog',
     focusManagement = 'panel',
     wireTriggerAria = true,
+    widthMode = 'content',
     class: className,
   }: PopoverProps = $props();
 
@@ -76,10 +71,6 @@
   const generatedPanelId = useId('cinder-popover');
   const panelId = $derived(panelIdProp ?? generatedPanelId);
 
-  // Typed as floating-ui's full Placement union because flip() may resolve to
-  // values outside the public PopoverPlacement input subset.
-  let computedPlacement = $state<Placement>('bottom-start');
-
   const anchorElement = $derived<HTMLElement | null>(
     triggerRef && triggerRef.isConnected
       ? triggerRef
@@ -92,10 +83,6 @@
   // mounted gates the panel render so SSR emits empty markup regardless of
   // open. See _internal/OVERLAY-POLICY.md ("SSR rule").
   let mounted = $state(false);
-  let positionReady = $state(false);
-  let positionStyle = $state('');
-  let arrowStyle = $state('');
-
   let capturedFocus: HTMLElement | null = null;
   let resolvedAnchorAtOpen: HTMLElement | null = null;
   let pendingInitialFocus = $state(false);
@@ -110,6 +97,17 @@
     target: () => document.body,
     inheritAttributes: true,
     source: () => anchorElement ?? null,
+  });
+
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => anchorElement,
+    panel: () => panelElement,
+    arrow: () => arrowElement,
+    placement: () => placement as Placement,
+    offset: () => offset,
+    showArrow: () => showArrow,
+    widthMode: () => widthMode,
   });
 
   $effect(() => {
@@ -181,64 +179,6 @@
       }
       capturedFocus = null;
       resolvedAnchorAtOpen = null;
-      positionReady = false;
-      positionStyle = '';
-      arrowStyle = '';
-      computedPlacement = placement;
-    };
-  });
-
-  // Effect: positioning lifecycle. Reads `open`, `anchorElement`, `panelElement`,
-  // `arrowElement`, `placement`, `offset`, `showArrow`. Restarts autoUpdate on
-  // any change; moves initial focus inline once the first compute resolves.
-  $effect(() => {
-    if (!open) return;
-    if (!anchorElement || !panelElement) return;
-
-    const anchor = anchorElement;
-    const panel = panelElement;
-    const arrowEl = arrowElement;
-    const placementSnap = placement;
-    const off = offset;
-    const arrowEnabled = showArrow;
-    let cancelled = false;
-    // Generation counter discards out-of-order results: autoUpdate can invoke
-    // the callback multiple times in flight, and an older computePosition
-    // resolution must not overwrite a newer one's positionStyle.
-    let generation = 0;
-
-    const middleware = [
-      offsetMw(off),
-      flip(),
-      shift({ padding: 8 }),
-      ...(arrowEnabled && arrowEl ? [arrowMw({ element: arrowEl })] : []),
-    ];
-
-    const stop = autoUpdate(anchor, panel, async () => {
-      if (cancelled) return;
-      const myGeneration = ++generation;
-      const result = await computePosition(anchor, panel, {
-        placement: placementSnap,
-        middleware,
-        strategy: 'fixed',
-      });
-      if (cancelled || myGeneration !== generation) return;
-      positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
-      computedPlacement = result.placement;
-      arrowStyle = '';
-      if (arrowEnabled && result.middlewareData.arrow) {
-        const { x, y } = result.middlewareData.arrow;
-        arrowStyle = `${x != null ? `left: ${x}px;` : ''}${y != null ? `top: ${y}px;` : ''}`;
-      }
-      positionReady = true;
-    });
-
-    return () => {
-      cancelled = true;
-      stop();
-      positionReady = false;
-      positionStyle = '';
-      arrowStyle = '';
     };
   });
 
@@ -248,7 +188,15 @@
   $effect(() => {
     if (isDestroyed) return;
     if (openSessionFocusManagement !== 'panel') return;
-    if (!open || !panelElement || !anchorElement || !positionReady || !pendingInitialFocus) return;
+    if (
+      !open ||
+      !panelElement ||
+      !anchorElement ||
+      !anchoredOverlay.positionReady ||
+      !pendingInitialFocus
+    ) {
+      return;
+    }
     moveFocusIntoPanel();
     pendingInitialFocus = false;
   });
@@ -325,11 +273,11 @@
     {role}
     aria-label={resolvedAriaLabel}
     aria-labelledby={ariaLabelledby}
-    aria-hidden={positionReady ? undefined : 'true'}
-    class={classNames('cinder-popover', className)}
-    data-cinder-placement={computedPlacement}
-    data-cinder-position-ready={positionReady}
-    style={positionStyle}
+    aria-hidden={anchoredOverlay.positionReady ? undefined : 'true'}
+    class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
+    data-cinder-placement={anchoredOverlay.resolvedPlacement}
+    data-cinder-position-ready={anchoredOverlay.positionReady}
+    style={anchoredOverlay.positionStyle}
     tabindex="-1"
   >
     {@render children()}
@@ -338,7 +286,7 @@
         bind:this={arrowElement}
         class="cinder-popover__arrow"
         aria-hidden="true"
-        style={arrowStyle}
+        style={anchoredOverlay.arrowStyle}
       ></span>
     {/if}
   </div>

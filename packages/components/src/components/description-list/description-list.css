@@ -65,6 +65,18 @@
     gap: var(--cinder-space-3);
   }
 
+  @supports (grid-template-columns: subgrid) {
+    .cinder-description-list[data-cinder-variant='two-column'] {
+      display: grid;
+      grid-template-columns: minmax(8rem, 1fr) 3fr;
+    }
+
+    .cinder-description-list[data-cinder-variant='two-column'] .cinder-description-list__row {
+      grid-template-columns: subgrid;
+      grid-column: 1 / -1;
+    }
+  }
+
   /* Collapse two-column to stacked at narrow container widths. */
   @container (max-width: 28rem) {
     .cinder-description-list[data-cinder-variant='two-column'] .cinder-description-list__row {

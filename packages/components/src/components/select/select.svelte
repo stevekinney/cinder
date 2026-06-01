@@ -17,12 +17,8 @@
 
 <script lang="ts" generics="T extends string = string">
   import type { SelectProps } from './select.types.ts';
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
+  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
@@ -32,19 +28,33 @@
     label,
     description,
     error,
-    required = false,
-    disabled = false,
+    required,
+    disabled,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
   }: SelectProps<T> = $props();
 
-  const descriptionId = $derived(describeId(id, !!description));
-  // errId is only included in aria-describedby when error is active — the element
-  // itself lives permanently in the DOM (always-present live region pattern).
-  const errId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
+  const context = getFormFieldContext();
+  const field = $derived(
+    resolveFieldControl({
+      id,
+      generatedId: id,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'select',
+      consumerDescribedBy,
+      consumerInvalid,
+      required,
+      disabled,
+    }),
+  );
+
+  const stableLocalErrorId = $derived(
+    context?.errorId === `${field.id}-error` ? `${field.id}-select-error` : `${field.id}-error`,
+  );
 
   // Guard runs only in the browser after mount so SSR render doesn't pollute
   // server output with warnings. $effect never runs on the server in Svelte 5.
@@ -63,24 +73,24 @@
     {#if options.length === 0}
       <select
         {id}
-        class="cinder-select"
-        {disabled}
-        {required}
+        class="cinder-_input-frame cinder-select"
+        disabled={field.disabled}
+        required={field.required}
         data-cinder-empty="true"
         {...rest}
-        aria-describedby={describedBy}
-        aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+        aria-describedby={field.describedBy}
+        aria-invalid={field.ariaInvalid}
       ></select>
     {:else}
       <select
         {id}
-        class="cinder-select"
-        {disabled}
-        {required}
+        class="cinder-_input-frame cinder-select"
+        disabled={field.disabled}
+        required={field.required}
         bind:value
         {...rest}
-        aria-describedby={describedBy}
-        aria-invalid={ariaInvalid(!!error) ?? consumerInvalid}
+        aria-describedby={field.describedBy}
+        aria-invalid={field.ariaInvalid}
       >
         {#each options as option (option.value)}
           <option value={option.value} disabled={option.disabled}>{option.label}</option>
@@ -90,12 +100,12 @@
     <span class="cinder-select-field__chevron" aria-hidden="true"></span>
   </span>
   {#if description}
-    <p id={descriptionId} class="cinder-select-field__description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-select-field__description">{description}</p>
   {/if}
   <!-- Always in DOM so the live region is registered before text is injected;
        freshly-mounted aria-live nodes are not reliably announced by NVDA/JAWS. -->
   <p
-    id="{id}-error"
+    id={field.ownErrorId ?? stableLocalErrorId}
     class="cinder-select-field__error"
     aria-live="polite"
     data-cinder-error={!!error || undefined}

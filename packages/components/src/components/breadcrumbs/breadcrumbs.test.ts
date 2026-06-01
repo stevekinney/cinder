@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -7,6 +8,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Breadcrumbs } = await import('./breadcrumbs.svelte');
+
+const breadcrumbsCss = readFileSync(new URL('./breadcrumbs.css', import.meta.url), 'utf8');
 
 const items = [
   { label: 'Home', href: '/' },
@@ -59,5 +62,15 @@ describe('Breadcrumbs', () => {
   test('custom label overrides aria-label', () => {
     const { container } = render(Breadcrumbs, { items, label: 'Path' });
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Path');
+  });
+
+  test('narrow container query preserves middle crumb links instead of hiding them', () => {
+    const containerQuery = breadcrumbsCss.match(
+      /@container cinder-breadcrumbs \(max-width: 24rem\) \{[\s\S]*?\n  \}/,
+    )?.[0];
+
+    expect(containerQuery).toBeDefined();
+    expect(containerQuery).not.toContain('display: none');
+    expect(containerQuery).toContain('max-inline-size');
   });
 });

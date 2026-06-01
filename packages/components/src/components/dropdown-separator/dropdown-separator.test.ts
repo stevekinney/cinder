@@ -19,7 +19,7 @@ describe('DropdownSeparator', () => {
   test('appears between groups inside an open menu', async () => {
     const { container } = render(Fixture);
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
-    expect(container.querySelector('[role="menu"] [role="separator"]')).not.toBeNull();
+    await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
+    expect(document.body.querySelector('[role="menu"] [role="separator"]')).not.toBeNull();
   });
 });

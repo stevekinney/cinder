@@ -72,9 +72,9 @@ Locally, `bun run --filter='@cinder/testing' test:browser:update` regenerates ba
 
 ### Coverage ratchet
 
-`packages/components` enforces a coverage floor through `coverageThreshold` in `packages/components/bunfig.toml`. The package `validate` script runs `test:coverage`, so the floor is checked in CI and in the pre-commit hook — a change that drops coverage below the floor fails the gate.
+`packages/components` enforces coverage floors through `packages/components/coverage-ratchet.json` and `packages/components/scripts/check-coverage-ratchet.ts`. The package `validate` script runs `test:coverage`, so the floor is checked in CI and in the pre-commit hook — a change that drops coverage below the floor fails the gate.
 
-The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `bunfig.toml` to the new measured floor in the same change. Never lower them to make a red gate pass — fix the missing coverage instead. To read the current numbers, run `bun run test:coverage` from `packages/components` and look at the `All files` row.
+The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `coverage-ratchet.json` to the new measured floor in the same change. Never lower them to make a red gate pass — fix the missing coverage instead. To read the current numbers, run `bun run test:coverage` from `packages/components`; `lines` follows the file-weighted `All files` line coverage, and `functions` follows the LCOV aggregate function coverage.
 
 ## Main Branch Health
 

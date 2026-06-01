@@ -71,6 +71,7 @@
   type="button"
   role="menuitem"
   class={classNames(
+    'cinder-_option-row',
     'cinder-dropdown-item',
     inset && 'cinder-dropdown-item--inset',
     customClassName,

@@ -40,15 +40,15 @@ describe('GridList', () => {
     expect(list?.getAttribute('role')).toBe('list');
   });
 
-  test('columns prop drives the CSS custom property', () => {
+  test('minColumnWidth prop drives the CSS custom property', () => {
     const { container } = render(GridList, {
-      props: { columns: '20rem', children: textSnippet('') },
+      props: { minColumnWidth: '20rem', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
     expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('20rem');
   });
 
-  test('no columns → no inline custom property', () => {
+  test('no minColumnWidth → no inline custom property', () => {
     const { container } = render(GridList, {
       props: { children: textSnippet('') },
     });
@@ -56,9 +56,9 @@ describe('GridList', () => {
     expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
   });
 
-  test('empty-string columns is treated as unset', () => {
+  test('empty-string minColumnWidth is treated as unset', () => {
     const { container } = render(GridList, {
-      props: { columns: '', children: textSnippet('') },
+      props: { minColumnWidth: '', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
     expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');

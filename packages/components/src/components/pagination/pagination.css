@@ -9,6 +9,8 @@
     justify-content: space-between;
     gap: var(--cinder-space-4);
     flex-wrap: wrap;
+    container-type: inline-size;
+    container-name: cinder-pagination;
   }
 
   /* ----------------------------------------
@@ -151,7 +153,7 @@
  * to avoid overflow; prev/next remain accessible
  * ---------------------------------------- */
 
-  @media (max-width: 480px) {
+  @container cinder-pagination (max-width: 30rem) {
     .cinder-pagination__pages {
       display: none;
     }

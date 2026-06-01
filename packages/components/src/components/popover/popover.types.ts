@@ -19,6 +19,7 @@ export type PopoverPlacement =
   | 'bottom-end';
 export type PopoverRole = 'dialog' | 'group' | 'listbox';
 export type PopoverFocusManagement = 'panel' | 'preserve';
+export type PopoverWidthMode = 'content' | 'match-anchor' | 'menu' | 'none';
 export type PopoverProps = {
   /** Optional panel id. Defaults to a generated `cinder-popover-*` id. */
   id?: string;
@@ -46,6 +47,8 @@ export type PopoverProps = {
   focusManagement?: PopoverFocusManagement;
   /** Whether Popover owns trigger ARIA wiring. Default `true`. */
   wireTriggerAria?: boolean;
+  /** Floating panel width strategy. Default `'content'`. */
+  widthMode?: PopoverWidthMode;
   /** Extra class merged onto `.cinder-popover`. */
   class?: string;
 };

@@ -19,7 +19,7 @@
   description="Where should we send your order?"
   columns={2}
 >
-  <FormField id="street" label="Street address" class="cinder-form-section__span-2">
+  <FormField id="street" label="Street address">
     <Input id="street" bind:value={street} placeholder="123 Main St" />
   </FormField>
   <FormField id="city" label="City">

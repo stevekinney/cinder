@@ -29,7 +29,8 @@
 </script>
 
 <script lang="ts">
-  import { innerWidth, innerHeight } from 'svelte/reactivity/window';
+  import type { Placement, VirtualElement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -57,41 +58,30 @@
 
   const isReadonly = $derived(mode === 'readonly');
 
-  /**
-   * Popover dimensions for positioning calculations.
-   * These are defined as CSS custom properties in the style block to keep
-   * the JS constants and CSS in sync. The values here must match the CSS.
-   */
-  const POPOVER_WIDTH = 360;
-  const POPOVER_MIN_HEIGHT = 200;
-  /** Viewport margin to keep popover from touching edges */
-  const VIEWPORT_MARGIN = 16;
-
-  // Calculate popover style based on position
-  // Uses reactive innerWidth/innerHeight so position updates on window resize
-  const popoverStyle = $derived.by(() => {
-    if (!position) return '';
-
-    const viewportWidth = innerWidth.current;
-    const viewportHeight = innerHeight.current;
-
-    // If dimensions not yet available, use a safe position
-    if (viewportWidth == null || viewportHeight == null) {
-      const x = Math.max(VIEWPORT_MARGIN, position.x);
-      const y = Math.max(VIEWPORT_MARGIN, position.y);
-      return `left: ${x}px; top: ${y}px;`;
-    }
-
-    // Clamp position to keep popover visible within viewport
-    const x = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(position.x, viewportWidth - POPOVER_WIDTH - VIEWPORT_MARGIN),
-    );
-    const y = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(position.y, viewportHeight - POPOVER_MIN_HEIGHT - VIEWPORT_MARGIN),
-    );
-    return `left: ${x}px; top: ${y}px;`;
+  let popoverElement = $state<HTMLDivElement | null>(null);
+  const virtualAnchor = $derived.by<VirtualElement | null>(() => {
+    if (!position) return null;
+    return {
+      getBoundingClientRect: () =>
+        ({
+          x: position.x,
+          y: position.y,
+          top: position.y,
+          left: position.x,
+          right: position.x,
+          bottom: position.y,
+          width: 0,
+          height: 0,
+        }) as DOMRect,
+    };
+  });
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => Boolean(position),
+    anchor: () => virtualAnchor,
+    panel: () => popoverElement,
+    placement: () => 'right-start' as Placement,
+    offset: () => 8,
+    widthMode: () => 'content',
   });
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -131,14 +121,17 @@
 </script>
 
 <div
+  bind:this={popoverElement}
   {id}
   role="dialog"
   aria-modal="true"
   aria-labelledby="{id}-title"
   tabindex="-1"
   class={classNames('thread-popover', className)}
-  style={popoverStyle}
-  {@attach createFocusTrap()}
+  style={anchoredOverlay.positionStyle}
+  data-position-ready={anchoredOverlay.positionReady}
+  inert={!anchoredOverlay.positionReady ? true : undefined}
+  {@attach createFocusTrap({ active: () => anchoredOverlay.positionReady })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >

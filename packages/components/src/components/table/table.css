@@ -23,6 +23,18 @@
     background: var(--cinder-surface);
   }
 
+  .cinder-table-scroll {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cinder-table-scroll > .cinder-table {
+    min-inline-size: max-content;
+  }
+
   .cinder-table__caption {
     caption-side: top;
     text-align: left;
@@ -53,7 +65,7 @@
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
     border-bottom: 1px solid var(--cinder-border-muted);
-    white-space: nowrap;
+    text-wrap: balance;
   }
 
   .cinder-table__header-cell[aria-sort='ascending'],
@@ -116,6 +128,7 @@
     width: 100%;
     text-align: inherit;
     border-radius: var(--cinder-radius-sm);
+    white-space: nowrap;
     /* position: relative is required so z-index applies when :focus-visible fires */
     position: relative;
   }
