@@ -24,10 +24,8 @@
     dataTableClass,
     formatNumericValue,
     legendVisible,
-    nearestTarget,
-    toggleSeriesId,
-    type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
+  import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
   import type { LineChartProps } from './line-chart.types.ts';
@@ -55,20 +53,16 @@
   const generatedId = useId('cinder-line-chart');
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
-  let measuredWidth = $state(640);
+
+  // Shared interaction state — pointer/keyboard targets and resize measurement.
+  // Pointer axis defaults to 'x', which is correct for line/area charts.
+  const interaction = new ChartInteraction();
+
   let rootElement = $state<HTMLElement>();
-  let pointerTarget = $state<ChartTarget | undefined>();
-  let focusedTarget = $state<ChartTarget | undefined>();
-  const activeTarget = $derived(focusedTarget ?? pointerTarget);
 
   $effect(() => {
-    if (!rootElement || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      measuredWidth = Math.max(1, Math.round(entry.contentRect.width));
-    });
-    observer.observe(rootElement);
-    return () => observer.disconnect();
+    if (!rootElement) return;
+    return interaction.observeResize(rootElement);
   });
 
   const model = $derived(
@@ -76,7 +70,7 @@
       componentId: 'line-chart',
       series,
       hiddenSeriesIds,
-      width: measuredWidth,
+      width: interaction.measuredWidth,
       height,
       xAxis,
       yAxis,
@@ -91,7 +85,7 @@
       ? `${rootId}-table-guidance`
       : undefined,
   );
-  const activeTargetId = $derived(activeTarget ? `${rootId}-active-target` : undefined);
+  const activeTargetId = $derived(interaction.activeTarget ? `${rootId}-active-target` : undefined);
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -102,77 +96,9 @@
     );
   });
 
-  function includesTarget(candidate: ChartTarget | undefined): boolean {
-    return Boolean(candidate && model.targets.some((target) => target.id === candidate.id));
-  }
-
   $effect(() => {
-    if (loading || model.empty) {
-      pointerTarget = undefined;
-      focusedTarget = undefined;
-      return;
-    }
-    if (!includesTarget(pointerTarget)) pointerTarget = undefined;
-    if (!includesTarget(focusedTarget)) focusedTarget = undefined;
+    interaction.clearStaleTargets(loading, model.empty, model.targets);
   });
-
-  function toggleSeries(seriesId: string): void {
-    hiddenSeriesIds = toggleSeriesId(hiddenSeriesIds, seriesId);
-  }
-
-  function activateByPointer(event: PointerEvent): void {
-    if (!(event.currentTarget instanceof SVGRectElement)) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    pointerTarget = nearestTarget(
-      model.targets,
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-    );
-  }
-
-  function focusTarget(targetId: string | undefined): void {
-    if (!rootElement || !targetId) return;
-    // Move DOM focus so focus-visible, aria-describedby, and the focused
-    // node's aria-label all attach to the new target, not the previous one.
-    const next = rootElement.querySelector<SVGGraphicsElement>(
-      `[data-cinder-target-id="${CSS.escape(targetId)}"]`,
-    );
-    next?.focus();
-  }
-
-  function activateByKeyboard(event: KeyboardEvent): void {
-    if (!keyboardEnabled) return;
-    const currentTargetId =
-      event.currentTarget instanceof Element
-        ? event.currentTarget.getAttribute('data-cinder-target-id')
-        : undefined;
-    const currentIndex = Math.max(
-      0,
-      model.targets.findIndex((target) => target.id === (currentTargetId ?? focusedTarget?.id)),
-    );
-    if (event.key === 'Escape') {
-      focusedTarget = undefined;
-      event.preventDefault();
-      return;
-    }
-    const keyOffsets: Record<string, number> = {
-      ArrowRight: 1,
-      ArrowDown: 1,
-      ArrowLeft: -1,
-      ArrowUp: -1,
-    };
-    let next: ChartTarget | undefined;
-    if (event.key === 'Home') next = model.targets[0];
-    else if (event.key === 'End') next = model.targets.at(-1);
-    else if (event.key in keyOffsets) {
-      const nextIndex =
-        (currentIndex + (keyOffsets[event.key] ?? 0) + model.targets.length) % model.targets.length;
-      next = model.targets[nextIndex] ?? activeTarget;
-    } else return;
-    focusedTarget = next;
-    event.preventDefault();
-    focusTarget(next?.id);
-  }
 </script>
 
 <figure
@@ -193,7 +119,7 @@
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
-          onclick={() => toggleSeries(item.id)}
+          onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
         >
           <span style:background={item.color ?? chartPaletteColor(index)}></span>{item.label}
         </button>
@@ -216,7 +142,7 @@
       </div>
     {/if}
     <svg
-      viewBox={`0 0 ${measuredWidth} ${height}`}
+      viewBox={`0 0 ${interaction.measuredWidth} ${height}`}
       aria-hidden={loading || model.empty ? 'true' : undefined}
       aria-labelledby={!loading && !model.empty ? `${rootId}-svg-title` : undefined}
     >
@@ -255,6 +181,7 @@
             text-anchor="middle">{tick.label}</text
           >
         {/each}
+        <!-- Series-specific rendering: connected line paths + data points. -->
         {#each model.normalizedSeries as item}
           {#if !item.hidden && item.path}
             <path
@@ -279,11 +206,12 @@
             {/each}
           {/if}
         {/each}
-        {#if activeTarget}
+        {#if interaction.activeTarget}
+          <!-- Vertical crosshair — line charts always use a vertical indicator. -->
           <line
             class="cinder-line-chart__crosshair"
-            x1={activeTarget.x}
-            x2={activeTarget.x}
+            x1={interaction.activeTarget.x}
+            x2={interaction.activeTarget.x}
             y1="0"
             y2={model.geometry.plotHeight}
             aria-hidden="true"
@@ -295,11 +223,12 @@
             role="presentation"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
-            onpointermove={activateByPointer}
-            onpointerleave={() => (pointerTarget = undefined)}
+            onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
+            onpointerleave={() => interaction.clearPointerTarget()}
           />
           {#if keyboardEnabled}
             {#each model.targets as target (target.id)}
+              <!-- Line charts use circle focus targets centered on the data point. -->
               <circle
                 class="cinder-line-chart__focus-target"
                 cx={target.x}
@@ -309,26 +238,34 @@
                 role="button"
                 data-cinder-target-id={target.id}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
-                onfocus={() => (focusedTarget = target)}
-                onblur={() => (focusedTarget = undefined)}
-                onkeydown={activateByKeyboard}
+                aria-describedby={interaction.activeTarget?.id === target.id
+                  ? `${rootId}-tooltip`
+                  : undefined}
+                onfocus={() => (interaction.focusedTarget = target)}
+                onblur={() => (interaction.focusedTarget = undefined)}
+                onkeydown={(event) =>
+                  interaction.activateByKeyboard(
+                    event,
+                    rootElement!,
+                    model.targets,
+                    keyboardEnabled,
+                  )}
               />
             {/each}
           {/if}
         {/if}
       </g>
     </svg>
-    {#if activeTarget}
+    {#if interaction.activeTarget}
       <div
         id="{rootId}-tooltip"
         role="tooltip"
         class="cinder-line-chart__tooltip"
-        style:left="{model.geometry.marginLeft + activeTarget.x}px"
-        style:top="{model.geometry.marginTop + activeTarget.y}px"
+        style:left="{model.geometry.marginLeft + interaction.activeTarget.x}px"
+        style:top="{model.geometry.marginTop + interaction.activeTarget.y}px"
       >
-        <strong>{activeTarget.seriesLabel}</strong>
-        <span>{activeTarget.xLabel}: {activeTarget.valueLabel}</span>
+        <strong>{interaction.activeTarget.seriesLabel}</strong>
+        <span>{interaction.activeTarget.xLabel}: {interaction.activeTarget.valueLabel}</span>
       </div>
     {/if}
   </div>
@@ -347,7 +284,7 @@
       >
       <tbody>
         {#each model.tableRows as row}
-          <tr id={activeTarget?.id === row.id ? activeTargetId : undefined}
+          <tr id={interaction.activeTarget?.id === row.id ? activeTargetId : undefined}
             ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
             ></tr
           >
@@ -362,7 +299,7 @@
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
-          onclick={() => toggleSeries(item.id)}
+          onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
         >
           <span style:background={item.color ?? chartPaletteColor(index)}></span>{item.label}
         </button>
