@@ -1,6 +1,19 @@
 # ConfirmDialog
 
-Pre-wired modal dialog with confirm and cancel actions for destructive or irreversible operations.
+Pre-wired modal dialog for user-initiated binary decisions: "proceed" or "cancel". Focus defaults to the cancel button — the industry-standard guard against accidental destructive confirms.
+
+## Dialog model
+
+ConfirmDialog is one of three dialog-level components:
+
+- **`Modal`** — generic shell for rich content and forms. Use when the interaction requires more than two actions or rich body content.
+- **`ConfirmDialog`** — this component. Preset for user-initiated yes/no decisions. Escape, backdrop click, and the close-X all fire `oncancel`.
+- **`AlertDialog`** — preset for urgent blocking acknowledgements. Cannot be dismissed by Escape or backdrop click. No close button. The user _must_ click an action button.
+
+The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the interruption:
+
+- ConfirmDialog is for user-initiated actions that need a safety gate ("You clicked Delete — are you sure?"). Escape is a safe exit; cancel is the default focus.
+- AlertDialog is for system-initiated or out-of-band urgency ("Your session expired", "This action affects others"). Escape is blocked; acknowledgement is mandatory.
 
 ## When to use
 
@@ -12,11 +25,13 @@ Pre-wired modal dialog with confirm and cancel actions for destructive or irreve
 
 - When the dialog body needs rich content (lists, markup, multiple paragraphs) — compose [`Modal`](../modal/README.md) directly instead, since `aria-describedby` collapses to a single continuous string for screen readers.
 - When more than two actions are needed — use [`Modal`](../modal/README.md) with a custom `footer` snippet.
+- When the dialog is triggered by a system event or out-of-band condition requiring mandatory acknowledgement — use [`AlertDialog`](../alert-dialog/README.md) instead.
 - Non-blocking notifications — use a toast or inline alert that does not interrupt the flow.
 
 ## Related components
 
 - [`Modal`](../modal/README.md) — the underlying primitive; use directly when you need more control over content or actions.
+- [`AlertDialog`](../alert-dialog/README.md) — sticky blocking acknowledgement; cannot be dismissed by Escape or backdrop click.
 
 ## Usage
 

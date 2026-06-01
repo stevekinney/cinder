@@ -1,8 +1,16 @@
 # ConfirmDialog Accessibility
 
+## Dialog model
+
+ConfirmDialog is one of three dialog-level components. For the general dialog contract see [`Modal`](../modal/modal.a11y.md); for the sticky blocking variant see [`AlertDialog`](../alert-dialog/alert-dialog.a11y.md).
+
 ## Role Inheritance
 
-`ConfirmDialog` has no own `role`. It inherits `role="dialog"` and `aria-modal="true"` from the underlying `<Modal>`. The `dialog` role is used intentionally — not `alertdialog`. `alertdialog` is reserved for assertive, time-sensitive interruptions (system errors, process failures); user-initiated confirmation prompts are non-urgent. Consumers who need `alertdialog` for a confirm triggered by an out-of-band system event should compose `<Modal>` directly.
+`ConfirmDialog` has no own `role`. It inherits `role="dialog"` and `aria-modal="true"` from the underlying `<Modal>`. The `dialog` role is used intentionally — not `alertdialog`.
+
+`alertdialog` is reserved for system-initiated urgency where dismissal without acting is incorrect (session expiry, process failures, actions affecting other users). User-initiated confirmation prompts are non-urgent: the user can press Escape to reconsider without consequence. Overusing `alertdialog` for routine confirmations degrades its effectiveness as an urgency signal.
+
+Use `AlertDialog` when the dialog is triggered by a system event, affects other users, or requires mandatory acknowledgement. Use `ConfirmDialog` when the user voluntarily initiated the action and Escape is a valid "never mind."
 
 ## ARIA Attributes
 

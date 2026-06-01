@@ -1,11 +1,29 @@
 # Modal Accessibility
 
+## Dialog model
+
+Modal is the generic shell. For specialised contracts see:
+
+- [`ConfirmDialog`](../confirm-dialog/confirm-dialog.a11y.md) — inherits `role="dialog"` from Modal; defaults cancel-button focus; the safe choice for binary decisions.
+- [`AlertDialog`](../alert-dialog/alert-dialog.a11y.md) — renders Modal with `role="alertdialog"`, `dismissOnBackdropClick={false}`, `dismissOnEscape={false}`, and no close button.
+
 ## ARIA Roles and Attributes
 
 - The native `<dialog>` element carries an implicit `role="dialog"`.
 - `aria-modal="true"` is set explicitly so screen readers that do not natively understand `<dialog>` know to restrict their virtual browse to the modal's content.
 - `aria-labelledby` points to the `<h2>` title element, giving the dialog an accessible name announced when the dialog opens.
 - **`describedById` prop**: When provided, the value is applied as `aria-describedby` on the underlying `<dialog>`. Pass the `id` of a short, plain-text description element (typically a `<p>` in the modal body). This causes supporting screen readers to announce the description immediately after the dialog role and title. When omitted, no `aria-describedby` attribute is emitted — never pass an empty string. For long or richly structured body content, do not use `describedById`; screen readers announce the entire referenced text as one continuous run.
+
+## `role="alertdialog"` escape hatch
+
+Modal accepts `role="alertdialog"`. Use this only when the dialog content requires richer composition than `AlertDialog`'s plain-text `description` prop allows. When composing `role="alertdialog"` on Modal directly, you must:
+
+1. Set `dismissOnBackdropClick={false}` — the `alertdialog` contract requires the user to take an explicit action.
+2. Set `dismissOnEscape={false}` — same reason; the user must not be able to dismiss without acknowledging.
+3. Set `showCloseButton={false}` — a close-X contradicts the blocking intent.
+4. Provide `describedById` referencing a description element in the modal body — `aria-describedby` is required on `alertdialog` so assistive technology announces the urgent condition.
+
+If the content fits `AlertDialog`'s plain-text `description` constraint, prefer `AlertDialog` over composing Modal + `role="alertdialog"` manually.
 
 ## Keyboard Interactions
 

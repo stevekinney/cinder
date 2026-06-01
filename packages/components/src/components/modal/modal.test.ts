@@ -751,4 +751,93 @@ describe('Modal', () => {
     expect(cancelEvent.defaultPrevented).toBe(true);
     expect(openValue).toBe(true);
   });
+
+  // Dialog-model boundary tests
+  // These tests document the public contract separating Modal (generic shell),
+  // ConfirmDialog (user-initiated binary decision), and AlertDialog (urgent
+  // blocking acknowledgement). They also guard the alertdialog escape hatch.
+
+  test('default Modal is dismissable by Escape — unlike AlertDialog', async () => {
+    // Modal defaults dismissOnEscape=true. This test documents the contrast with
+    // AlertDialog, which passes dismissOnEscape={false} and cannot be Escape-dismissed.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Generic modal',
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    // Default Modal allows Escape (dismissOnEscape=true) — open becomes false.
+    expect(openValue).toBe(false);
+  });
+
+  test('default Modal is dismissable by backdrop click — unlike AlertDialog', async () => {
+    // Modal defaults dismissOnBackdropClick=true. This test documents the contrast
+    // with AlertDialog, which passes dismissOnBackdropClick={false}.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Generic modal',
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent.click(dialog);
+    expect(openValue).toBe(false);
+  });
+
+  test('role="alertdialog" with both dismiss flags off is the sticky alertdialog contract', async () => {
+    // Documents the manual composition required when using Modal's role="alertdialog"
+    // escape hatch: both dismiss flags must be false to satisfy the alertdialog contract.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Session expired',
+        role: 'alertdialog',
+        describedById: 'manual-desc',
+        dismissOnBackdropClick: false,
+        dismissOnEscape: false,
+        showCloseButton: false,
+        children: emptySnippet,
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog?.getAttribute('role')).toBe('alertdialog');
+
+    // Neither Escape (native cancel event) nor backdrop click should dismiss.
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(true);
+
+    await fireEvent.click(dialog);
+    expect(openValue).toBe(true);
+
+    // No close button rendered when showCloseButton=false.
+    expect(container.querySelector('.cinder-modal__close')).toBeNull();
+  });
 });

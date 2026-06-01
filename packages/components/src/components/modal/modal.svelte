@@ -3,14 +3,16 @@
    * @cinder
    * @category overlay
    * @status stable
-   * @purpose Centered modal dialog built on the native dialog element with focus capture, restoration, and dismissal handling.
+   * @purpose Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal handling.
    * @tag overlay
    * @tag dialog
-   * @useWhen Interrupting the user for a focused task or decision that blocks the rest of the page.
-   * @useWhen Confirming a destructive action where the user must explicitly acknowledge before proceeding.
+   * @useWhen Presenting rich or structured content that requires user interaction before returning to the page — forms, multi-step wizards, detail views.
+   * @useWhen Collecting structured input (forms, multi-field workflows) inside an overlay.
+   * @avoidWhen Only a two-action confirm/cancel prompt is needed — use confirm-dialog instead.
+   * @avoidWhen An urgent blocking acknowledgement is needed — use alert-dialog instead.
    * @avoidWhen Showing side-anchored navigation or settings — use a drawer instead.
    * @avoidWhen Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead.
-   * @related drawer, sheet, popover, confirm-dialog
+   * @related confirm-dialog, alert-dialog, drawer, sheet, popover
    */
   export type { ModalProps } from './modal.types.ts';
 </script>
