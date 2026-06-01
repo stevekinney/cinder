@@ -281,8 +281,13 @@ describe('ColorPicker swatch keyboard nav', () => {
         captured = color;
       },
     });
-    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
-    await fireEvent.keyDown(options[2]!, { key: 'Enter' });
+    // ColorSwatchPicker's keyboard handler lives on the listbox ul and uses
+    // roving-tabindex focus tracking. Navigate to the third swatch with
+    // ArrowRight twice, then confirm selection with Enter.
+    const listbox = q(container, '[role="listbox"]');
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
     expect(captured).toBe('#0000ff');
   });
 
@@ -522,5 +527,123 @@ describe('ColorPicker disabled', () => {
     const before = hue.getAttribute('aria-valuenow');
     await fireEvent.keyDown(hue, { key: 'ArrowRight' });
     expect(hue.getAttribute('aria-valuenow')).toBe(before);
+  });
+});
+
+describe('ColorPicker layout: alpha-enabled state', () => {
+  test('renders all controls when alpha=true: gradient, hue, alpha, footer, no swatches', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#ff000080', alpha: true });
+    expect(q(container, '[role="application"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__hue')).toBeTruthy();
+    expect(q(container, '[aria-label="Alpha"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__footer')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__preview')).toBeTruthy();
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('footer hex value shows the 8-char hex when alpha=true', () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ff000080',
+      alpha: true,
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe(hidden.value);
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+
+  test('alpha-enabled swatches render and are selectable', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: true,
+      swatches: ['#ff000080', '#00ff0080'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options.length).toBe(2);
+    await fireEvent.click(options[0]!);
+    expect(captured).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+});
+
+describe('ColorPicker layout: no-swatches state', () => {
+  test('renders without a listbox when no swatches are provided', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#3b82f6' });
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    // Controls still present
+    expect(q(container, '[role="application"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__hue')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__footer')).toBeTruthy();
+  });
+
+  test('footer shows hex value without swatches', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#3b82f6', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe(hidden.value);
+  });
+
+  test('footer shows dash placeholder when no color is set', () => {
+    const { container } = render(ColorPicker, {});
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe('—');
+  });
+});
+
+describe('ColorPicker composition: ColorSwatchPicker integration', () => {
+  test('swatch selection via ColorSwatchPicker updates the hidden input', async () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      name: 'p',
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[1]!);
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#22c55e');
+  });
+
+  test('swatch selection via ColorSwatchPicker fires onchange', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[2]!);
+    expect(captured).toBe('#3b82f6');
+  });
+
+  test('ColorSwatchPicker reflects selected state from gradient/slider pick', async () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ef4444',
+      swatches: ['#ef4444', '#22c55e'],
+    });
+    // The swatch matching the current color should be selected.
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('swatch keyboard navigation: ArrowRight then Enter selects a swatch', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const listbox = q(container, '[role="listbox"]');
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(captured).toBe('#22c55e');
   });
 });

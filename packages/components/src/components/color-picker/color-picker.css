@@ -4,23 +4,13 @@
  * ======================================== */
 
   .cinder-color-picker {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      'gradient gradient'
-      'hue preview'
-      'alpha preview'
-      'swatches swatches';
+    container-type: inline-size;
+    container-name: cinder-color-picker;
+    display: flex;
+    flex-direction: column;
     gap: var(--cinder-space-2);
     width: 100%;
     max-width: 280px;
-  }
-
-  .cinder-color-picker:not([data-cinder-alpha]) {
-    grid-template-areas:
-      'gradient gradient'
-      'hue preview'
-      'swatches swatches';
   }
 
   .cinder-color-picker[data-cinder-disabled] {
@@ -31,7 +21,6 @@
   /* ── 2D gradient ──────────────────────────────────────────────────────── */
 
   .cinder-color-picker__gradient {
-    grid-area: gradient;
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
@@ -45,8 +34,8 @@
   }
 
   .cinder-color-picker__gradient:focus-visible {
-    outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   .cinder-color-picker__gradient-handle {
@@ -72,7 +61,6 @@
   }
 
   .cinder-color-picker__hue {
-    grid-area: hue;
     background: linear-gradient(
       to right,
       hsl(0, 100%, 50%),
@@ -86,7 +74,6 @@
   }
 
   .cinder-color-picker__alpha {
-    grid-area: alpha;
     /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
     background-color: #fff;
     background-image:
@@ -111,8 +98,8 @@
 
   .cinder-color-picker__hue:focus-visible,
   .cinder-color-picker__alpha:focus-visible {
-    outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   .cinder-color-picker__hue-thumb,
@@ -129,16 +116,21 @@
     pointer-events: none;
   }
 
-  /* ── Preview ──────────────────────────────────────────────────────────── */
+  /* ── Footer row: preview chip + hex value ─────────────────────────────── */
+
+  .cinder-color-picker__footer {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
 
   .cinder-color-picker__preview {
-    grid-area: preview;
-    width: 36px;
-    height: 36px;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background-color: var(--cinder-color-picker-preview, transparent);
-    align-self: center;
-    justify-self: center;
+    border: 1px solid var(--cinder-border, rgba(0, 0, 0, 0.1));
   }
 
   .cinder-color-picker__preview[data-cinder-alpha] {
@@ -167,51 +159,22 @@
       -4px 0;
   }
 
-  /* ── Swatches ─────────────────────────────────────────────────────────── */
+  .cinder-color-picker__hex-value {
+    font-family: var(--cinder-font-mono, monospace);
+    font-size: var(--cinder-text-xs, 0.75rem);
+    color: var(--cinder-text-secondary, currentColor);
+    line-height: 1;
+    user-select: all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Swatches (via ColorSwatchPicker composition) ─────────────────────── */
 
   .cinder-color-picker__swatches {
-    grid-area: swatches;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--cinder-space-2, 8px);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .cinder-color-picker__swatch {
-    align-items: center;
-    display: inline-flex;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    cursor: pointer;
-    background-color: var(--cinder-color-picker-swatch);
-    border: 1px solid var(--cinder-border, rgba(0, 0, 0, 0.1));
-    outline: none;
-  }
-
-  .cinder-color-picker__swatch[data-cinder-selected] {
-    border-color: color-mix(in srgb, var(--cinder-border, rgba(0, 0, 0, 0.1)) 20%, currentColor);
-    box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
-  }
-
-  .cinder-color-picker__swatch:focus-visible {
-    outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
-    outline-offset: 2px;
-  }
-
-  .cinder-color-picker__swatch-indicator {
-    display: inline-flex;
-    inline-size: 0.75rem;
-    block-size: 0.75rem;
-    pointer-events: none;
-  }
-
-  .cinder-color-picker__swatch-indicator :global(svg) {
-    inline-size: 100%;
-    block-size: 100%;
+    /* No extra rules needed — ColorSwatchPicker's own CSS handles layout/sizing.
+       This class exists as a composition hook for consumers who need to override. */
   }
 
   @media (forced-colors: active) {
@@ -220,9 +183,7 @@
     .cinder-color-picker__hue:focus,
     .cinder-color-picker__hue:focus-visible,
     .cinder-color-picker__alpha:focus,
-    .cinder-color-picker__alpha:focus-visible,
-    .cinder-color-picker__swatch:focus,
-    .cinder-color-picker__swatch:focus-visible {
+    .cinder-color-picker__alpha:focus-visible {
       outline: 3px solid Highlight;
       outline-offset: 2px;
     }
