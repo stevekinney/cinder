@@ -1,6 +1,6 @@
 # DropdownSeparator
 
-A DropdownSeparator component. Replace this sentence with a one-line purpose statement once the migration settles.
+Visual divider between groups of items within a dropdown menu.
 
 ## Usage
 

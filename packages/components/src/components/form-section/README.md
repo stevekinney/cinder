@@ -1,6 +1,6 @@
 # FormSection
 
-A FormSection component. Replace this sentence with a one-line purpose statement once the migration settles.
+Groups related form fields under a heading with optional description and layout control.
 
 ## Usage
 

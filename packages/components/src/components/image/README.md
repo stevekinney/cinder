@@ -1,6 +1,6 @@
 # Image
 
-A Image component. Replace this sentence with a one-line purpose statement once the migration settles.
+Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallback support.
 
 ## Usage
 

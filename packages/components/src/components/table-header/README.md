@@ -1,6 +1,6 @@
 # TableHeader
 
-A TableHeader component. Replace this sentence with a one-line purpose statement once the migration settles.
+thead wrapper that contains the column header row of a table.
 
 ## Usage
 

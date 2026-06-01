@@ -1,6 +1,6 @@
 # NavigationBar
 
-A NavigationBar component. Replace this sentence with a one-line purpose statement once the migration settles.
+Top-level horizontal navigation bar for primary site or app destinations.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # Table
 
-A Table component. Replace this sentence with a one-line purpose statement once the migration settles.
+Full data table with header, body, and optional footer for structured tabular content.
 
 ## Usage
 

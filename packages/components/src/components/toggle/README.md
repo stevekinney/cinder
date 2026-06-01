@@ -1,6 +1,6 @@
 # Toggle
 
-A Toggle component. Replace this sentence with a one-line purpose statement once the migration settles.
+On/off switch input for binary settings, presented as a sliding pill control.
 
 ## Usage
 

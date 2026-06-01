@@ -1,6 +1,6 @@
 # Label
 
-A Label component. Replace this sentence with a one-line purpose statement once the migration settles.
+Accessible form label that associates descriptive text with its input element.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # Callout
 
-A Callout component. Replace this sentence with a one-line purpose statement once the migration settles.
+Inline highlight block for tips, warnings, or contextual notes within content flow.
 
 ## Usage
 

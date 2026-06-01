@@ -1,6 +1,6 @@
 # Feed
 
-A Feed component. Replace this sentence with a one-line purpose statement once the migration settles.
+Scrollable chronological list of activity events with optional load-more pagination.
 
 ## Usage
 

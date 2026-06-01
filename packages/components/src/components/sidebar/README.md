@@ -1,6 +1,6 @@
 # Sidebar
 
-A Sidebar component. Replace this sentence with a one-line purpose statement once the migration settles.
+Persistent side panel that houses navigation, filters, or supplementary page content.
 
 ## Usage
 

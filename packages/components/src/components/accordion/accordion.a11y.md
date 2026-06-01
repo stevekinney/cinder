@@ -13,9 +13,8 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 
 ### AccordionItem panel
 
-- `role="region"` — marks the panel as a landmark region so users can navigate to it by landmark. A region landmark requires an accessible name; this is supplied via `aria-labelledby`.
-- `aria-labelledby="{id}-header"` — associates the panel with its header button, giving the region landmark an accessible name derived from the visible title text.
-- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`.
+- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`. This link is sufficient for assistive technologies to navigate from the trigger to its controlled content.
+- `role="region"` is intentionally **omitted**. The WAI-ARIA APG notes that applying `role="region"` to every accordion panel pollutes the page's landmark list, making landmark navigation harder for screen reader users. The `aria-controls` / `aria-expanded` pairing on the header button provides the machine-readable contract without inflating the landmark count.
 
 ### Disabled items
 

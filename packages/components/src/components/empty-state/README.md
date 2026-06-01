@@ -1,6 +1,6 @@
 # EmptyState
 
-A EmptyState component. Replace this sentence with a one-line purpose statement once the migration settles.
+Placeholder layout for zero-data views, with optional illustration, heading, and action.
 
 ## Usage
 

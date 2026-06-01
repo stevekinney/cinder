@@ -1,6 +1,6 @@
 # Combobox
 
-A Combobox component. Replace this sentence with a one-line purpose statement once the migration settles.
+Filterable dropdown that combines a text input with a selectable option list.
 
 ## Usage
 

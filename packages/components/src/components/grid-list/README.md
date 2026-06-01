@@ -1,6 +1,6 @@
 # GridList
 
-A GridList component. Replace this sentence with a one-line purpose statement once the migration settles.
+Accessible grid of selectable items with keyboard navigation and selection management.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # TabPanel
 
-A TabPanel component. Replace this sentence with a one-line purpose statement once the migration settles.
+Content region associated with a tab trigger; shown when its tab is active.
 
 ## Usage
 

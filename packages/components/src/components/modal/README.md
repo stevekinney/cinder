@@ -1,6 +1,26 @@
 # Modal
 
-A Modal component. Replace this sentence with a one-line purpose statement once the migration settles.
+Blocking overlay dialog that demands user attention before returning to the page.
+
+## When to use
+
+- Confirming or completing a focused task that requires user input before proceeding (e.g. editing a record, selecting a file).
+- Displaying a warning or prompt that must be acknowledged before the user can continue.
+- Presenting a contained workflow (such as a multi-step form) that should not navigate away from the current page.
+
+## When not to use
+
+- Navigation — use a page transition or router link instead. Modals break the browser's back-button mental model.
+- Persistent side content — use a [`Drawer`](../drawer/README.md) or [`Sidebar`](../sidebar/README.md) so the content stays visible while the user works.
+- Simple confirm/cancel prompts — use [`ConfirmDialog`](../confirm-dialog/README.md) for the pre-wired two-action pattern.
+- Displaying information that does not require a decision — use a [`Popover`](../popover/README.md) or inline content instead.
+
+## Related components
+
+- [`ConfirmDialog`](../confirm-dialog/README.md) — pre-wired confirm/cancel variant built on Modal.
+- [`Drawer`](../drawer/README.md) — side-anchored overlay for supplementary content.
+- [`Sheet`](../sheet/README.md) — bottom-anchored overlay for mobile-style interactions.
+- [`Popover`](../popover/README.md) — non-blocking floating panel for contextual content.
 
 ## Usage
 

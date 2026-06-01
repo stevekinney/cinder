@@ -1,6 +1,6 @@
 # SideNavigation
 
-A SideNavigation component. Replace this sentence with a one-line purpose statement once the migration settles.
+Vertical navigation panel for secondary or hierarchical app destinations.
 
 ## Usage
 

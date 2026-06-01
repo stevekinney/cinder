@@ -1,6 +1,6 @@
 # ColorSwatchPicker
 
-A ColorSwatchPicker component. Replace this sentence with a one-line purpose statement once the migration settles.
+Presents a fixed palette of color swatches for constrained color selection.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # NumberInput
 
-A NumberInput component. Replace this sentence with a one-line purpose statement once the migration settles.
+Numeric text input with increment and decrement stepper controls.
 
 ## Usage
 

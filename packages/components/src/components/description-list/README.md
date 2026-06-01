@@ -1,6 +1,6 @@
 # DescriptionList
 
-A DescriptionList component. Replace this sentence with a one-line purpose statement once the migration settles.
+Semantic dl/dt/dd list for term–description pairs such as metadata or attributes.
 
 ## Usage
 

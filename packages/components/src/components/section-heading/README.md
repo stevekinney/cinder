@@ -1,6 +1,6 @@
 # SectionHeading
 
-A SectionHeading component. Replace this sentence with a one-line purpose statement once the migration settles.
+Styled heading element that visually separates and titles a content section.
 
 ## Usage
 

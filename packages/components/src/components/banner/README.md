@@ -1,6 +1,6 @@
 # Banner
 
-A Banner component. Replace this sentence with a one-line purpose statement once the migration settles.
+Full-width announcement strip for page-level alerts, promotions, or system messages.
 
 ## Usage
 

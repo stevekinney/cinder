@@ -1,6 +1,6 @@
 # Radio
 
-A Radio component. Replace this sentence with a one-line purpose statement once the migration settles.
+Single radio button option within a radio group for mutually exclusive selection.
 
 ## Usage
 

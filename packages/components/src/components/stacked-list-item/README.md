@@ -1,6 +1,6 @@
 # StackedListItem
 
-A StackedListItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Single row within a stacked list, typically pairing a label with metadata or an action.
 
 ## Usage
 

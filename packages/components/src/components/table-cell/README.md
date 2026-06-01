@@ -1,6 +1,6 @@
 # TableCell
 
-A TableCell component. Replace this sentence with a one-line purpose statement once the migration settles.
+Standard td cell within a table row for displaying a single data value.
 
 ## Usage
 

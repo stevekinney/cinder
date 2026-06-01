@@ -1,6 +1,6 @@
 # Dropdown
 
-A Dropdown component. Replace this sentence with a one-line purpose statement once the migration settles.
+Composite dropdown root that coordinates the trigger, menu, and item subcomponents.
 
 ## Usage
 

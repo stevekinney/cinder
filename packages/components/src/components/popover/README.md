@@ -1,6 +1,6 @@
 # Popover
 
-A Popover component. Replace this sentence with a one-line purpose statement once the migration settles.
+Non-blocking floating panel anchored to a trigger element for contextual content.
 
 ## Usage
 

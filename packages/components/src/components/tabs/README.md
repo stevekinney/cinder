@@ -1,6 +1,6 @@
 # Tabs
 
-A Tabs component. Replace this sentence with a one-line purpose statement once the migration settles.
+Composite tabs root that coordinates tab list, tab triggers, and their content panels.
 
 ## Usage
 

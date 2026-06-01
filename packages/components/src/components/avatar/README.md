@@ -1,6 +1,6 @@
 # Avatar
 
-A Avatar component. Replace this sentence with a one-line purpose statement once the migration settles.
+Displays a user's profile photo, initials, or fallback icon at a consistent size.
 
 ## Usage
 

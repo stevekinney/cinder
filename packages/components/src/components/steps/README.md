@@ -1,6 +1,6 @@
 # Steps
 
-A Steps component. Replace this sentence with a one-line purpose statement once the migration settles.
+Horizontal or vertical step indicator for multi-step wizards and onboarding flows.
 
 ## Usage
 

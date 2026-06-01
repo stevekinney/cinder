@@ -1,6 +1,6 @@
 # FormField
 
-A FormField component. Replace this sentence with a one-line purpose statement once the migration settles.
+Wraps an input, label, and helper or error text into a cohesive accessible field unit.
 
 ## Usage
 

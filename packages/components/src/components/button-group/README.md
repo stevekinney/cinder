@@ -1,6 +1,6 @@
 # ButtonGroup
 
-A ButtonGroup component. Replace this sentence with a one-line purpose statement once the migration settles.
+Clusters related action buttons into a unified visual group with shared borders.
 
 ## Usage
 

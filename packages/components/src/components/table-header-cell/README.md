@@ -1,6 +1,6 @@
 # TableHeaderCell
 
-A TableHeaderCell component. Replace this sentence with a one-line purpose statement once the migration settles.
+th cell within a table header row, supporting sort indicators and column labels.
 
 ## Usage
 

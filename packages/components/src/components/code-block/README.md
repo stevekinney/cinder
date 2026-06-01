@@ -1,6 +1,6 @@
 # CodeBlock
 
-A CodeBlock component. Replace this sentence with a one-line purpose statement once the migration settles.
+Renders syntax-highlighted source code with optional copy and line display controls.
 
 ## Usage
 
