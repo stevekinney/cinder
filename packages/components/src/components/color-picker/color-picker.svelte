@@ -668,7 +668,7 @@
   {#if normalizedSwatchColors.length > 0}
     <ColorSwatchPicker
       colors={normalizedSwatchColors}
-      {...internalValue !== '' ? { value: currentHex.toLowerCase() } : {}}
+      value={internalValue !== '' ? currentHex.toLowerCase() : ''}
       label="Color swatches"
       size="sm"
       {disabled}

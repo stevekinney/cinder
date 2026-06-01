@@ -209,6 +209,99 @@ describe('ColorPicker invalid input', () => {
   });
 });
 
+describe('ColorPicker swatch controlled-state invariant (regression: conditional spread bug)', () => {
+  test('clearing value to "" deselects the previously-selected swatch', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#00ff00',
+      swatches: ['#ff0000', '#00ff00', '#0000ff'],
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[1]!.hasAttribute('data-cinder-selected')).toBe(true);
+
+    await rerender({ value: '', swatches: ['#ff0000', '#00ff00', '#0000ff'] });
+    await tick();
+
+    // After clearing, no swatch should be visually selected.
+    const optionsAfter = container.querySelectorAll<HTMLElement>('[role="option"]');
+    for (const option of optionsAfter) {
+      expect(option.getAttribute('aria-selected')).toBe('false');
+      expect(option.hasAttribute('data-cinder-selected')).toBe(false);
+    }
+  });
+
+  test('clicking an unparseable swatch when ColorPicker has no value does not mark it selected', async () => {
+    // This is the exact desync scenario: ColorPicker.internalValue === '',
+    // so before the fix the conditional spread omitted `value` and ColorSwatchPicker
+    // fell into uncontrolled mode — letting the click stick visually inside the child.
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      // No value or defaultValue: ColorPicker starts with internalValue === ''.
+      swatches: ['not-a-color', '#00ff00'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+
+    // Confirm: neither swatch selected to start.
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+
+    // Click the unparseable swatch.
+    await fireEvent.click(options[0]!);
+
+    // The unparseable click must not fire onchange and must not leave the
+    // swatch appearing selected — the child's selected state must remain a
+    // pure function of ColorPicker's value (which is still empty).
+    expect(captured).toBe('');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[0]!.hasAttribute('data-cinder-selected')).toBe(false);
+  });
+
+  test('after form reset to empty, clicking an unparseable swatch does not mark it selected', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+
+    const { container } = render(ColorPicker, {
+      target: form,
+      props: {
+        // No defaultValue: reset brings ColorPicker back to internalValue === ''.
+        swatches: ['not-a-color', '#00ff00'],
+        name: 'p',
+      },
+    });
+    await tick();
+
+    // Adjust value via hue so internalValue becomes non-empty.
+    const hue = q(container, '[aria-label="Hue"]');
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    const hiddenBefore = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hiddenBefore.value).not.toBe('');
+
+    // Reset the form — brings ColorPicker back to internalValue === ''.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('');
+
+    // Now click the unparseable swatch — it must not stick.
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[0]!.hasAttribute('data-cinder-selected')).toBe(false);
+
+    document.body.removeChild(form);
+  });
+});
+
 describe('ColorPicker swatch alpha stripping', () => {
   test('alpha=false: alpha-bearing swatch emits plain #rrggbb (alpha stripped)', async () => {
     let captured = '';
