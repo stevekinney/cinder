@@ -182,13 +182,14 @@ export function renderShell(
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal
          box/margin/padding reset below can never beat component styles. This
-         declaration runs before /styles/index.css so the reset slot is reserved
-         at the bottom of the cascade — index.css then registers the rest of the
-         order (cinder.tokens, foundation, components, utilities) which all come
-         later and therefore win over the reset. */
+         declaration runs before /styles/shell.css so the reset slot is reserved
+         at the bottom of the cascade — shell.css then registers the rest of the
+         order (cinder.tokens, foundation, components, utilities) and imports the
+         Cinder component styles used by the shell, all of which come later and
+         therefore win over the reset. */
       @layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
     </style>
-    <link rel="stylesheet" href="/styles/index.css" />
+    <link rel="stylesheet" href="/styles/shell.css" />
     <style>
       @layer cinder.reset {
         *, *::before, *::after {

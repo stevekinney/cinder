@@ -76,7 +76,14 @@ describe('renderShell', () => {
     expect(html).toContain('id="cinder-initial"');
   });
 
-  it('registers cinder.reset layer before /styles/index.css so component CSS wins', () => {
+  it('loads the shell CSS bundle for Cinder components used by the shell', () => {
+    const html = renderShell('button', ['button']);
+    expect(html).toContain('href="/styles/shell.css"');
+    expect(html).not.toContain('href="/styles/all.css"');
+    expect(html).not.toContain('href="/styles/index.css"');
+  });
+
+  it('registers cinder.reset layer before /styles/shell.css so component CSS wins', () => {
     // Regression: when the universal `* { padding: 0 }` reset was unlayered
     // it beat every cinder.components layered rule, leaving SegmentedControl,
     // NumberInput, Card, Accordion all rendered without padding in the shell.
@@ -86,7 +93,7 @@ describe('renderShell', () => {
     const html = renderShell('button', ['button']);
     const layerDeclaration =
       '@layer cinder.reset, cinder.tokens, cinder.foundation, cinder.components, cinder.utilities';
-    const stylesheetLink = '<link rel="stylesheet" href="/styles/index.css"';
+    const stylesheetLink = '<link rel="stylesheet" href="/styles/shell.css"';
     const layerIndex = html.indexOf(layerDeclaration);
     const linkIndex = html.indexOf(stylesheetLink);
     expect(layerIndex).toBeGreaterThan(-1);

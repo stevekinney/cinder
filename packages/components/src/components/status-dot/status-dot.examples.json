@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "status-dot",
+  "import": "cinder/status-dot",
+  "examples": [
+    {
+      "id": "label-and-size",
+      "title": "Status dot label and size",
+      "description": "Visible label toggle and sm vs md sizes.",
+      "code": "<script lang=\"ts\">\n  import { StatusDot } from 'cinder/status-dot';\n</script>\n\n<div class=\"example-preview-column\">\n  <div class=\"example-preview-row\">\n    <StatusDot status=\"online\" label=\"Online\" showLabel={true} />\n    <StatusDot status=\"offline\" label=\"Offline\" showLabel={true} />\n    <StatusDot status=\"pending\" label=\"Pending\" showLabel={true} />\n  </div>\n  <div class=\"example-preview-row\" style=\"align-items: center;\">\n    <StatusDot status=\"online\" label=\"Small\" size=\"sm\" showLabel={true} />\n    <StatusDot status=\"online\" label=\"Medium\" size=\"md\" showLabel={true} />\n  </div>\n</div>\n"
+    },
+    {
+      "id": "statuses",
+      "title": "Status dot statuses",
+      "description": "All six semantic status values.",
+      "code": "<script lang=\"ts\">\n  import { StatusDot } from 'cinder/status-dot';\n</script>\n\n<div class=\"example-preview-row\">\n  <StatusDot status=\"online\" label=\"Online\" />\n  <StatusDot status=\"offline\" label=\"Offline\" />\n  <StatusDot status=\"warning\" label=\"Warning\" />\n  <StatusDot status=\"error\" label=\"Error\" />\n  <StatusDot status=\"pending\" label=\"Pending\" />\n  <StatusDot status=\"neutral\" label=\"Neutral\" />\n</div>\n"
+    }
+  ]
+}

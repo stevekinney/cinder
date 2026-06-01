@@ -53,6 +53,55 @@ function req(path: string, options?: RequestInit): Request {
   return new Request(`http://localhost:${PORT}${path}`, options);
 }
 
+function cssImportUrlsFrom(cssUrl: string, css: string): string[] {
+  const urls = new Set<string>();
+  const importRule = /@import\s+(?:url\(\s*)?["']?([^"')\s]+\.css)["']?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = importRule.exec(css)) !== null) {
+    const specifier = match[1]!;
+    if (specifier.startsWith('/')) {
+      urls.add(specifier);
+      continue;
+    }
+    if (!specifier.startsWith('.')) continue;
+
+    urls.add(new URL(specifier, `http://localhost:${PORT}${cssUrl}`).pathname);
+  }
+
+  return [...urls];
+}
+
+function shellStylesheetUrl(html: string): string {
+  const match = html.match(/<link rel="stylesheet" href="([^"]+)" \/>/);
+  if (match === null) throw new Error('Shell HTML did not contain a stylesheet link');
+  return match[1]!;
+}
+
+async function reachableCssFrom(entryUrl: string): Promise<{ css: string; urls: Set<string> }> {
+  const queue = [entryUrl];
+  const visited = new Set<string>();
+  const parts: string[] = [];
+
+  while (queue.length > 0) {
+    const url = queue.shift()!;
+    if (visited.has(url)) continue;
+    visited.add(url);
+
+    const response = await handleRequest(req(url));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')?.startsWith('text/css')).toBe(true);
+    const css = await response.text();
+    parts.push(`/* ${url} */\n${css}`);
+
+    for (const importUrl of cssImportUrlsFrom(url, css)) {
+      if (!visited.has(importUrl)) queue.push(importUrl);
+    }
+  }
+
+  return { css: parts.join('\n'), urls: visited };
+}
+
 function reservePort(start: number): ReturnType<typeof Bun.serve> {
   for (let port = start; port < start + 100; port++) {
     try {
@@ -153,6 +202,43 @@ describe('/c/:name', () => {
     expect(payload.component).toBe('button');
     expect(payload.components).toContain('button');
     expect(payload.components).toContain('avatar');
+  });
+
+  it('loads the shell CSS bundle so Cinder shell chrome is styled', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+    expect(shellStylesheetUrl(html)).toBe('/styles/shell.css');
+    expect(html).not.toContain('href="/styles/all.css"');
+    expect(html).not.toContain('href="/styles/index.css"');
+  });
+
+  it('makes component CSS for shell primitives reachable from the shell stylesheet', async () => {
+    const shellResponse = await handleRequest(req('/c/button'));
+    const shellHtml = await shellResponse.text();
+    const stylesheetUrl = shellStylesheetUrl(shellHtml);
+    const { css, urls } = await reachableCssFrom(stylesheetUrl);
+
+    expect(urls.has('/styles/shell.css')).toBe(true);
+    expect(urls.has('/styles/index.css')).toBe(true);
+    expect(urls.has('/styles/components.css')).toBe(false);
+    expect(urls.has('/components/toolbar/toolbar.css')).toBe(true);
+    expect(urls.has('/components/segmented-control/segmented-control.css')).toBe(true);
+    expect(urls.has('/components/button/button.css')).toBe(true);
+    expect(urls.has('/components/input/input.css')).toBe(true);
+    expect(urls.has('/components/number-input/number-input.css')).toBe(true);
+    expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
+
+    for (const selector of [
+      '.cinder-toolbar',
+      '.cinder-segmented-control',
+      '.cinder-button',
+      '.cinder-input',
+      '.cinder-number-input',
+      '.cinder-side-navigation',
+      '.cinder-side-navigation__list',
+    ]) {
+      expect(css).toContain(selector);
+    }
   });
 
   it('returns 404 for an unknown component', async () => {

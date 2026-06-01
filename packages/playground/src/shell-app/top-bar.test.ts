@@ -94,6 +94,24 @@ function liveRegion(container: HTMLElement): HTMLElement {
 }
 
 describe('top-bar open-in-new-tab button', () => {
+  test('renders Cinder chrome hooks required by the shell stylesheet', async () => {
+    const store = new PreviewStore('button');
+    store.previewWidth = 375;
+    const { container, unmount } = render(TopBarFixture, { store });
+    await tick();
+
+    expect(container.querySelector('.cinder-toolbar')).not.toBeNull();
+    expect(container.querySelectorAll('.cinder-toolbar__group').length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelector('.cinder-toolbar__spacer')).not.toBeNull();
+    expect(container.querySelectorAll('.cinder-segmented-control').length).toBeGreaterThanOrEqual(
+      2,
+    );
+    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelector('input.cinder-input')).not.toBeNull();
+
+    unmount();
+  });
+
   test('renders the button when a component is selected', async () => {
     const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
     await tick();
@@ -143,7 +161,7 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container as HTMLElement, 'Dark theme').click();
+    buttonByText(container, 'Dark theme').click();
     await tick();
 
     expect(themeCalls).toEqual(['dark']);
@@ -159,7 +177,7 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container as HTMLElement, 'Light theme').click();
+    buttonByText(container, 'Light theme').click();
     await tick();
 
     expect(themeCalls).toEqual(['light']);
@@ -172,12 +190,12 @@ describe('top-bar announcements', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    const region = liveRegion(container as HTMLElement);
+    const region = liveRegion(container);
     expect(region.textContent?.trim()).toBe('');
 
     // Toggling the checkerboard button triggers announce(). The 50 ms
     // empty-then-set gap means the message is NOT yet present right after.
-    buttonByLabel(container as HTMLElement, 'Show transparency grid').click();
+    buttonByLabel(container, 'Show transparency grid').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
@@ -192,16 +210,16 @@ describe('top-bar announcements', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    const region = liveRegion(container as HTMLElement);
+    const region = liveRegion(container);
 
-    buttonByLabel(container as HTMLElement, 'Show transparency grid').click();
+    buttonByLabel(container, 'Show transparency grid').click();
     await wait(80);
     await tick();
     expect(region.textContent?.trim()).toBe('Checkerboard background on');
 
     // Toggle again — off this time. The region clears immediately, then fills
     // with the new message after the gap.
-    buttonByLabel(container as HTMLElement, 'Show transparency grid').click();
+    buttonByLabel(container, 'Show transparency grid').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
