@@ -24,10 +24,8 @@
     dataTableClass,
     formatNumericValue,
     legendVisible,
-    nearestTarget,
-    toggleSeriesId,
-    type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
+  import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
@@ -59,20 +57,21 @@
   const generatedId = useId('cinder-bar-chart');
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
-  let measuredWidth = $state(640);
+
+  // Bar chart interaction: pointer axis switches with orientation.
+  // Vertical bars snap to x-buckets; horizontal bars snap to y-buckets.
+  // A reactive getter is passed so the same instance follows orientation
+  // changes without resetting measuredWidth — intentionally different from
+  // line/area charts which always use pointer axis 'x'.
+  const interaction = new ChartInteraction({
+    pointerAxis: () => (orientation === 'vertical' ? 'x' : 'y'),
+  });
+
   let rootElement = $state<HTMLElement>();
-  let pointerTarget = $state<ChartTarget | undefined>();
-  let focusedTarget = $state<ChartTarget | undefined>();
-  const activeTarget = $derived(focusedTarget ?? pointerTarget);
 
   $effect(() => {
-    if (!rootElement || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      measuredWidth = Math.max(1, Math.round(entry.contentRect.width));
-    });
-    observer.observe(rootElement);
-    return () => observer.disconnect();
+    if (!rootElement) return;
+    return interaction.observeResize(rootElement);
   });
 
   const model = $derived(
@@ -81,7 +80,7 @@
       categoryKey,
       series,
       hiddenSeriesIds,
-      width: measuredWidth,
+      width: interaction.measuredWidth,
       height,
       orientation,
       mode,
@@ -108,79 +107,9 @@
     );
   });
 
-  function includesTarget(candidate: ChartTarget | undefined): boolean {
-    return Boolean(candidate && model.targets.some((target) => target.id === candidate.id));
-  }
-
   $effect(() => {
-    if (loading || model.empty) {
-      pointerTarget = undefined;
-      focusedTarget = undefined;
-      return;
-    }
-    if (!includesTarget(pointerTarget)) pointerTarget = undefined;
-    if (!includesTarget(focusedTarget)) focusedTarget = undefined;
+    interaction.clearStaleTargets(loading, model.empty, model.targets);
   });
-
-  function toggleSeries(seriesId: string): void {
-    hiddenSeriesIds = toggleSeriesId(hiddenSeriesIds, seriesId);
-  }
-
-  function activateByPointer(event: PointerEvent): void {
-    if (!(event.currentTarget instanceof SVGRectElement)) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    pointerTarget = nearestTarget(
-      model.targets,
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-      orientation === 'vertical' ? 'x' : 'y',
-    );
-  }
-
-  function focusTarget(targetId: string | undefined): void {
-    if (!rootElement || !targetId) return;
-    // Move DOM focus so :focus-visible, aria-describedby, and the focused
-    // node's aria-label all attach to the new target, not the previous one.
-    const next = rootElement.querySelector<SVGGraphicsElement>(
-      `[data-cinder-target-id="${CSS.escape(targetId)}"]`,
-    );
-    next?.focus();
-  }
-
-  function activateByKeyboard(event: KeyboardEvent): void {
-    if (!keyboardEnabled) return;
-    const currentTargetId =
-      event.currentTarget instanceof Element
-        ? event.currentTarget.getAttribute('data-cinder-target-id')
-        : undefined;
-    const currentIndex = Math.max(
-      0,
-      model.targets.findIndex((target) => target.id === (currentTargetId ?? focusedTarget?.id)),
-    );
-    if (event.key === 'Escape') {
-      focusedTarget = undefined;
-      event.preventDefault();
-      return;
-    }
-    const offsets: Record<string, number> = {
-      ArrowRight: 1,
-      ArrowDown: 1,
-      ArrowLeft: -1,
-      ArrowUp: -1,
-    };
-    let next: ChartTarget | undefined;
-    if (event.key === 'Home') next = model.targets[0];
-    else if (event.key === 'End') next = model.targets.at(-1);
-    else if (event.key in offsets)
-      next =
-        model.targets[
-          (currentIndex + (offsets[event.key] ?? 0) + model.targets.length) % model.targets.length
-        ] ?? activeTarget;
-    else return;
-    focusedTarget = next;
-    event.preventDefault();
-    focusTarget(next?.id);
-  }
 </script>
 
 <figure
@@ -202,7 +131,7 @@
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
-          onclick={() => toggleSeries(item.id)}
+          onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
           ><span style:background={item.color ?? chartPaletteColor(index)}
           ></span>{item.label}</button
         >
@@ -224,7 +153,7 @@
       </div>
     {/if}
     <svg
-      viewBox={`0 0 ${measuredWidth} ${height}`}
+      viewBox={`0 0 ${interaction.measuredWidth} ${height}`}
       aria-hidden={loading || model.empty ? 'true' : undefined}
       aria-labelledby={!loading && !model.empty ? `${rootId}-svg-title` : undefined}
     >
@@ -233,6 +162,12 @@
       {/if}
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
         {#each model.yTicks as tick, index}
+          <!--
+            Bar chart tick positions depend on orientation:
+            - Vertical: y-axis labels appear left of the chart (same as line/area).
+            - Horizontal: value labels appear along the bottom x-axis instead.
+            This is intentionally different from line/area chart tick rendering.
+          -->
           <text
             class="cinder-bar-chart__tick-label"
             x={orientation === 'vertical'
@@ -251,6 +186,7 @@
             })}</text
           >
         {/each}
+        <!-- Series-specific rendering: rectangular bars. -->
         {#each model.bars as bar}
           <rect
             class="cinder-bar-chart__bar"
@@ -265,6 +201,11 @@
           />
         {/each}
         {#each model.categoryTicks as tick}
+          <!--
+            Category axis labels differ by orientation:
+            - Vertical: labels appear below bars (middle-anchored x, no baseline).
+            - Horizontal: labels appear left of bars (end-anchored x, middle baseline).
+          -->
           <text
             class="cinder-bar-chart__tick-label"
             x={tick.x}
@@ -273,12 +214,19 @@
             dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}>{tick.label}</text
           >
         {/each}
-        {#if activeTarget}
+        {#if interaction.activeTarget}
+          <!--
+            Bar chart crosshair direction depends on orientation:
+            - Vertical bars: vertical crosshair through the active bar's x position.
+            - Horizontal bars: horizontal crosshair through the active bar's y position.
+            This is intentionally different from line/area charts which always draw a
+            vertical crosshair.
+          -->
           {#if orientation === 'vertical'}
             <line
               class="cinder-bar-chart__crosshair"
-              x1={activeTarget.x}
-              x2={activeTarget.x}
+              x1={interaction.activeTarget.x}
+              x2={interaction.activeTarget.x}
               y1="0"
               y2={model.geometry.plotHeight}
               aria-hidden="true"
@@ -288,8 +236,8 @@
               class="cinder-bar-chart__crosshair"
               x1="0"
               x2={model.geometry.plotWidth}
-              y1={activeTarget.y}
-              y2={activeTarget.y}
+              y1={interaction.activeTarget.y}
+              y2={interaction.activeTarget.y}
               aria-hidden="true"
             />
           {/if}
@@ -300,11 +248,16 @@
             role="presentation"
             width={model.geometry.plotWidth}
             height={model.geometry.plotHeight}
-            onpointermove={activateByPointer}
-            onpointerleave={() => (pointerTarget = undefined)}
+            onpointermove={(event) => interaction.activateByPointer(event, model.targets)}
+            onpointerleave={() => interaction.clearPointerTarget()}
           />
           {#if keyboardEnabled}
             {#each model.targets as target (target.id)}
+              <!--
+                Bar chart uses rect focus targets centered on each bar, not circle targets.
+                Circles are suitable for point-based charts (line/area); rects match the
+                bar geometry and produce better hit areas for bar-shaped data points.
+              -->
               <rect
                 class="cinder-bar-chart__focus-target"
                 x={(target.x ?? 0) - 6}
@@ -315,25 +268,33 @@
                 role="button"
                 data-cinder-target-id={target.id}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
-                aria-describedby={activeTarget?.id === target.id ? `${rootId}-tooltip` : undefined}
-                onfocus={() => (focusedTarget = target)}
-                onblur={() => (focusedTarget = undefined)}
-                onkeydown={activateByKeyboard}
+                aria-describedby={interaction.activeTarget?.id === target.id
+                  ? `${rootId}-tooltip`
+                  : undefined}
+                onfocus={() => (interaction.focusedTarget = target)}
+                onblur={() => (interaction.focusedTarget = undefined)}
+                onkeydown={(event) =>
+                  interaction.activateByKeyboard(
+                    event,
+                    rootElement!,
+                    model.targets,
+                    keyboardEnabled,
+                  )}
               />
             {/each}
           {/if}
         {/if}
       </g>
     </svg>
-    {#if activeTarget}<div
+    {#if interaction.activeTarget}<div
         id="{rootId}-tooltip"
         role="tooltip"
         class="cinder-bar-chart__tooltip"
-        style:left="{model.geometry.marginLeft + activeTarget.x}px"
-        style:top="{model.geometry.marginTop + activeTarget.y}px"
+        style:left="{model.geometry.marginLeft + interaction.activeTarget.x}px"
+        style:top="{model.geometry.marginTop + interaction.activeTarget.y}px"
       >
-        <strong>{activeTarget.seriesLabel}</strong><span
-          >{activeTarget.xLabel}: {activeTarget.valueLabel}</span
+        <strong>{interaction.activeTarget.seriesLabel}</strong><span
+          >{interaction.activeTarget.xLabel}: {interaction.activeTarget.valueLabel}</span
         >
       </div>{/if}
   </div>
@@ -341,6 +302,11 @@
       Use the data table to inspect this chart with a keyboard.
     </p>{/if}
   {#if hasDataTable}
+    <!--
+      Bar chart data table uses Category/Series/Value columns rather than
+      Series/X/Value (line/area). This reflects that bar charts are category-
+      primary: each row is one category, with each series as a column value.
+    -->
     <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
       <caption>{dataTableCaption ?? label}</caption>
       <thead
@@ -366,7 +332,7 @@
         <button
           type="button"
           aria-pressed={!hiddenSeriesIds.includes(item.id)}
-          onclick={() => toggleSeries(item.id)}
+          onclick={() => (hiddenSeriesIds = interaction.toggleSeries(hiddenSeriesIds, item.id))}
           ><span style:background={item.color ?? chartPaletteColor(index)}
           ></span>{item.label}</button
         >
