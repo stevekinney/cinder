@@ -30,6 +30,7 @@ import type { BuildArtifact } from 'bun';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
 import {
+  COMPOSE_ONLY_COMPONENTS,
   discoverComponents,
   discoverExamples,
   discoverSidebarComponents,
@@ -884,7 +885,13 @@ async function getManifests(): Promise<ComponentManifest[]> {
   // Reuse the in-flight promise so concurrent callers don't each start analyzeAll().
   manifestPromise ??= analyzeAll(join(COMPONENTS_ROOT, 'src', 'components'));
   try {
-    manifestCache = await manifestPromise;
+    const all = await manifestPromise;
+    // Exclude compose-only leaves (Table.Cell, Tabs.List, Dropdown.Label, …):
+    // they only render meaningfully inside a parent and have no standalone
+    // `.example.svelte`, so a standalone page renders "No examples found" — which
+    // also times out the Playwright sweep's `#app > *` wait. They are demonstrated
+    // on their parent's page (mirrors discoverSidebarComponents).
+    manifestCache = all.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
     return manifestCache;
   } finally {
     manifestPromise = null;
