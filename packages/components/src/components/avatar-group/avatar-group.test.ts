@@ -246,6 +246,16 @@ describe('AvatarGroup', () => {
     });
   });
 
+  test('named avatar triggers carry role="img" so aria-label is valid', () => {
+    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
+
+    const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
+    for (const trigger of triggers) {
+      expect(trigger.getAttribute('role')).toBe('img');
+      expect(trigger.getAttribute('aria-label')).toBeTruthy();
+    }
+  });
+
   test('shows a named avatar tooltip on focus and hides it on Escape', async () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 1) });
 

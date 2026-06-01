@@ -321,6 +321,7 @@
           class="cinder-tag-input__chip"
           role="option"
           aria-selected="true"
+          aria-label={`${tag}, press Backspace or Delete to remove`}
           tabindex={focusedChipIndex === index ? 0 : -1}
           onfocus={() => {
             handleChipFocus(index);
@@ -333,20 +334,17 @@
           }}
         >
           <span class="cinder-tag-input__chip-label">{tag}</span>
-          <button
-            type="button"
-            class="cinder-tag-input__remove"
-            tabindex="-1"
-            aria-label={`Remove ${tag}`}
-            disabled={resolvedDisabled || resolvedReadonly}
-            onclick={(event) => {
-              event.stopPropagation();
-              removeTag(index);
-              focusAfterRemove(index);
-            }}
-          >
-            <span aria-hidden="true">×</span>
-          </button>
+          {#if !resolvedDisabled && !resolvedReadonly}
+            <span
+              class="cinder-tag-input__remove"
+              aria-hidden="true"
+              onclick={(event) => {
+                event.stopPropagation();
+                removeTag(index);
+                focusAfterRemove(index);
+              }}>×</span
+            >
+          {/if}
         </li>
       {/each}
     </ul>

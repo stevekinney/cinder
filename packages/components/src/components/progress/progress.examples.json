@@ -7,19 +7,19 @@
       "id": "basic",
       "title": "Determinate progress",
       "description": "A progress bar with a known value out of 100.",
-      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Progress value={50} />\n  <Progress value={75} />\n  <Progress value={100} />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Progress value={50} ariaLabel=\"File upload: 50% complete\" />\n  <Progress value={75} ariaLabel=\"File upload: 75% complete\" />\n  <Progress value={100} ariaLabel=\"File upload: 100% complete\" />\n</div>\n"
     },
     {
       "id": "indeterminate",
       "title": "Indeterminate progress",
       "description": "When value is omitted the bar loops; reduced-motion users see a static surface.",
-      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Progress />\n  <Progress variant=\"ring\" size=\"lg\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Progress ariaLabel=\"Loading\" />\n  <Progress variant=\"ring\" size=\"lg\" ariaLabel=\"Loading\" />\n</div>\n"
     },
     {
       "id": "with-label",
       "title": "Progress with label",
       "description": "Custom label text is exposed via aria-valuetext for screen readers.",
-      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.4rem;\">\n  <span>Uploading photo (3 of 5)</span>\n  <Progress value={60} label=\"Uploading photo, 60 percent complete\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Progress } from 'cinder/progress';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.4rem;\">\n  <span id=\"upload-progress-label\">Uploading photo (3 of 5)</span>\n  <Progress\n    value={60}\n    label=\"Uploading photo, 60 percent complete\"\n    ariaLabelledby=\"upload-progress-label\"\n  />\n</div>\n"
     }
   ]
 }

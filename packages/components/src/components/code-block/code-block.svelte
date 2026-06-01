@@ -122,12 +122,26 @@
        element Svelte can replace in place. -->
   <svelte:boundary>
     {#if highlighted !== null}
-      <div class="cinder-code-block__highlighted">{@html highlighted}</div>
+      <!-- tabindex="0" makes this scroll container keyboard-reachable so
+           keyboard-only users can scroll long highlighted code snippets
+           (WCAG 2.1 SC 2.1.1; axe scrollable-region-focusable). The div
+           owns overflow-x: auto in CSS; the inner shiki <pre> is set to
+           overflow-x: visible so there is exactly one focusable scroll region.
+           aria-label + role="region" expose the scroll region to assistive
+           technology as a landmark with an accessible name. -->
+      <div class="cinder-code-block__highlighted" tabindex="0" role="region" aria-label="Code">
+        {@html highlighted}
+      </div>
     {:else}
-      <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>
+      <!-- tabindex="0" makes the plain-code scroll container keyboard-reachable. -->
+      <pre class="cinder-code-block__pre" tabindex="0"><code class="cinder-code-block__code"
+          >{code}</code
+        ></pre>
     {/if}
     {#snippet failed()}
-      <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code></pre>
+      <pre class="cinder-code-block__pre" tabindex="0"><code class="cinder-code-block__code"
+          >{code}</code
+        ></pre>
     {/snippet}
   </svelte:boundary>
 </div>

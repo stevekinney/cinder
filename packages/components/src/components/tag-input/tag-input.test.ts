@@ -69,25 +69,43 @@ describe('TagInput rendering', () => {
     expect(hiddenInputs.map((input) => input.value)).toEqual(['Svelte', 'Bun']);
   });
 
-  test('remove buttons expose the required aria-label', () => {
+  test('the remove control is a decorative span with aria-hidden, not a focusable button', () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte'] },
     });
 
-    const removeButton = container.querySelector('.cinder-tag-input__remove');
-    expect(removeButton?.getAttribute('aria-label')).toBe('Remove Svelte');
-    expect(removeButton?.getAttribute('tabindex')).toBe('-1');
+    const removeSpan = container.querySelector('.cinder-tag-input__remove');
+    expect(removeSpan?.tagName.toLowerCase()).toBe('span');
+    expect(removeSpan?.getAttribute('aria-hidden')).toBe('true');
+    expect(removeSpan?.hasAttribute('tabindex')).toBe(false);
   });
 
-  test('readonly forwards to the input and disables remove buttons', () => {
+  test('each option carries an aria-label describing the keyboard removal shortcut', () => {
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte'] },
+    });
+
+    const option = getOptions(container)[0]!;
+    expect(option.getAttribute('aria-label')).toBe('Svelte, press Backspace or Delete to remove');
+  });
+
+  test('readonly hides the remove control entirely and keeps the input read-only', () => {
     const { container } = render(TagInput, {
       props: { readonly: true, defaultValue: ['Svelte'] },
     });
 
     expect(getInput(container).readOnly).toBe(true);
-    expect(container.querySelector<HTMLButtonElement>('.cinder-tag-input__remove')?.disabled).toBe(
-      true,
-    );
+    // In readonly mode the remove span is not rendered at all.
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
+  });
+
+  test('disabled hides the remove control entirely and keeps the input disabled', () => {
+    const { container } = render(TagInput, {
+      props: { disabled: true, defaultValue: ['Svelte'] },
+    });
+
+    expect(getInput(container).disabled).toBe(true);
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
   });
 
   test('standalone aria-label applies to both the input and the listbox', () => {
@@ -287,13 +305,13 @@ describe('TagInput keyboard removal and navigation', () => {
     expect(document.activeElement).toBe(input);
   });
 
-  test('clicking the remove button removes the chip and focuses the previous chip', async () => {
+  test('clicking the remove span removes the chip and focuses the previous chip', async () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte', 'Bun'] },
     });
 
     const removeButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>('.cinder-tag-input__remove'),
+      container.querySelectorAll<HTMLElement>('.cinder-tag-input__remove'),
     );
     await fireEvent.click(removeButtons[1]!);
 
@@ -323,8 +341,8 @@ describe('TagInput keyboard removal and navigation', () => {
     expect(document.activeElement).toBe(firstOption);
     expect(getOptions(container)).toHaveLength(2);
 
-    await fireEvent.click(container.querySelector('.cinder-tag-input__remove')!);
-    expect(getOptions(container)).toHaveLength(2);
+    // In readonly mode the remove control is not rendered at all.
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
   });
 });
 

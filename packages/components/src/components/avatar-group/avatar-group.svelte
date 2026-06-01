@@ -133,9 +133,14 @@
     >
       {#if item.trimmedName}
         <Tooltip text={item.trimmedName} describe={false}>
-          <!-- Focusable tooltip disclosure target; not an actionable control. -->
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <span class="cinder-avatar-group__trigger" tabindex="0" aria-label={item.trimmedName}>
+          <!-- Focusable labeled avatar image. role="img" makes aria-label valid and -->
+          <!-- conveys that this element presents a named image, not an actionable control. -->
+          <span
+            class="cinder-avatar-group__trigger"
+            role="img"
+            tabindex="0"
+            aria-label={item.trimmedName}
+          >
             <Avatar
               {...avatarSourceProps(item.avatar.src)}
               name={item.trimmedName}

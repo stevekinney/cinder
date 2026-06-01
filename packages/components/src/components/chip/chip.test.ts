@@ -361,6 +361,37 @@ describe('Chip', () => {
   });
 });
 
+// Source-level guard for the disabled-chip contrast fix. The disabled label must
+// resolve to --cinder-text-disabled (4.61:1 on --cinder-surface-inset) AND must
+// not be trapped under a parent `opacity` that would composite it down — opacity
+// halving the disabled token is exactly the bug this guards against (the label
+// can never be more opaque than its ancestor, so a root opacity:0.5 dragged the
+// resolved label to ~1.9:1 and failed axe color-contrast).
+describe('Chip disabled-label contrast guard', () => {
+  const css = readFileSync(new URL('./chip.css', import.meta.url), 'utf8');
+
+  test('disabled chip label uses the --cinder-text-disabled token (both paths)', () => {
+    const block = css.match(
+      /\.cinder-chip\[data-cinder-disabled\]\s*\.cinder-chip__label,\s*button\.cinder-chip:disabled\s*\.cinder-chip__label[\s\S]*?\{[^}]*\}/,
+    )?.[0];
+    expect(block).toBeDefined();
+    expect(block).toContain('color: var(--cinder-text-disabled)');
+  });
+
+  test('the disabled chip root does NOT use opacity (would trap the label below AA)', () => {
+    // Mute is expressed via color tokens, never a root opacity that composites
+    // the label down. The two disabled-root selectors share one combined rule
+    // (`button.cinder-chip:disabled, .cinder-chip[data-cinder-disabled] { … }`).
+    // Assert no `opacity:` declaration appears in that rule body. The label and
+    // icon rules below it set their own colors and are matched separately.
+    const disabledRoot = css.match(
+      /button\.cinder-chip:disabled,\s*\.cinder-chip\[data-cinder-disabled\]\s*\{[^}]*\}/,
+    )?.[0];
+    expect(disabledRoot).toBeDefined();
+    expect(disabledRoot).not.toContain('opacity');
+  });
+});
+
 // Source-level guard: pressed semantic chips must pair the solid accent
 // background with its readable *-contrast foreground token, never the soft
 // `*-bg` tint that rendered unreadable. Asserting `aria-pressed` alone would

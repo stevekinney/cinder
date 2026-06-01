@@ -185,18 +185,38 @@
  * Disabled state
  * ---------------------------------------- */
 
-  button.cinder-chip:disabled {
-    opacity: 0.5;
+  /* Disabled visual is expressed with muted COLOR tokens, not `opacity`.
+   * A root `opacity: 0.5` creates a stacking context the children composite
+   * THROUGH — so the label can never be more opaque than its parent, and the
+   * disabled-text token (4.61:1 on its own) gets halved to ~1.9:1 and fails
+   * WCAG AA. Muting per-property instead lets the label keep full contrast
+   * via --cinder-text-disabled while the border/background still read as
+   * disabled. Covers both the removable/display path (data-cinder-disabled)
+   * and the toggle-button path (native :disabled). */
+  button.cinder-chip:disabled,
+  .cinder-chip[data-cinder-disabled] {
     cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
   }
 
   .cinder-chip__remove:disabled {
     cursor: not-allowed;
   }
 
-  .cinder-chip[data-cinder-disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .cinder-chip[data-cinder-disabled] .cinder-chip__label,
+  button.cinder-chip:disabled .cinder-chip__label {
+    color: var(--cinder-text-disabled);
+  }
+
+  /* Icons and the remove affordance carry the muted treatment so the chip still
+   * reads as disabled even though the label stays at full contrast. */
+  .cinder-chip[data-cinder-disabled] .cinder-chip__icon,
+  button.cinder-chip:disabled .cinder-chip__icon,
+  .cinder-chip[data-cinder-disabled] .cinder-chip__remove,
+  button.cinder-chip:disabled .cinder-chip__remove {
+    color: var(--cinder-text-disabled);
+    opacity: 0.6;
   }
 
   /* ----------------------------------------

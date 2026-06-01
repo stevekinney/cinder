@@ -24,6 +24,16 @@ const schema = {
       type: 'string',
       description: 'Human-readable status, exposed as `aria-valuetext`.',
     },
+    ariaLabel: {
+      type: 'string',
+      description:
+        'Accessible name applied directly to the progressbar element when no\nvisible label element is present in the page.',
+    },
+    ariaLabelledby: {
+      type: 'string',
+      description:
+        'Id of a visible element that serves as the accessible name for the\nprogressbar. Prefer this over `ariaLabel` when a visible label exists.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-progress`.',

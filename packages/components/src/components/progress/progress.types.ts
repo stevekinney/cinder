@@ -7,6 +7,10 @@ export type ProgressSize = 'sm' | 'md' | 'lg';
  * Indeterminate progress omits `value` (or passes `undefined`); the
  * component renders a looping animation under normal motion preferences
  * and a static surface under `prefers-reduced-motion: reduce`.
+ *
+ * Every progressbar must have an accessible name. Provide one via:
+ * - `ariaLabel` — a direct string label when no visible label element exists.
+ * - `ariaLabelledby` — the `id` of a visible label element in the page.
  */
 export type ProgressProps = {
   /** Current progress value. Omit for indeterminate. */
@@ -19,6 +23,16 @@ export type ProgressProps = {
   size?: ProgressSize;
   /** Human-readable status, exposed as `aria-valuetext`. */
   label?: string;
+  /**
+   * Accessible name applied directly to the progressbar element when no
+   * visible label element is present in the page.
+   */
+  ariaLabel?: string;
+  /**
+   * Id of a visible element that serves as the accessible name for the
+   * progressbar. Prefer this over `ariaLabel` when a visible label exists.
+   */
+  ariaLabelledby?: string;
   /** Additional class names merged with `.cinder-progress`. */
   class?: string;
 };
