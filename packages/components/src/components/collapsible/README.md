@@ -43,7 +43,7 @@ The `trigger` prop is either a string or a snippet receiving `{ open, disabled }
 - The panel is removed from the DOM when closed (standard disclosure behavior). `aria-controls` is emitted only while the panel exists, so it never references a missing element. Each open panel registers as a named `region` landmark — on a page with many open Collapsibles, weigh that against landmark-navigation noise.
 - Height animation collapses to zero duration under `prefers-reduced-motion: reduce`, and the chevron rotation transition is disabled in CSS.
 
-For multiple coordinated sections, use [`Accordion`](../accordion/README.md) instead.
+For multiple coordinated sections where opening one may close others, use [`Accordion`](../accordion/README.md) instead. See [`collapsible.a11y.md`](./collapsible.a11y.md) for a detailed comparison of when to use each pattern.
 
 ## Props
 
