@@ -12,8 +12,8 @@
   let isOpen = $state(false);
   let lastSubmitted = $state<string | null>(null);
 
-  function toggle(): void {
-    isOpen = !isOpen;
+  function openPopover(): void {
+    isOpen = true;
   }
 
   function handleClose(): void {
@@ -36,10 +36,11 @@
   </p>
 
   <Button
-    label={isOpen ? 'Hide popover' : 'Show popover'}
+    label="Open popover"
     aria-expanded={isOpen}
     aria-controls={popoverId}
-    onclick={toggle}
+    disabled={isOpen}
+    onclick={openPopover}
   />
 </div>
 

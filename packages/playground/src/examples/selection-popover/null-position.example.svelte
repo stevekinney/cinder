@@ -34,11 +34,6 @@
   function restorePosition(): void {
     position = demonstrationPosition;
   }
-
-  function handleClose(): void {
-    isOpen = false;
-    position = null;
-  }
 </script>
 
 <div style="max-width: 36rem;">
@@ -49,7 +44,8 @@
     <em>Clear position</em>
     to set <code>position=null</code> while leaving
     <code>open=true</code> — the popover disappears because the component calls
-    <code>hidePopover()</code> when position is null.
+    <code>hidePopover()</code> when position is null. Use <em>Restore position</em> to bring it back
+    without changing <code>open</code>.
   </p>
 
   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
@@ -63,4 +59,4 @@
   </p>
 </div>
 
-<SelectionPopover id={popoverId} open={isOpen} {position} onclose={handleClose} />
+<SelectionPopover id={popoverId} open={isOpen} {position} />
