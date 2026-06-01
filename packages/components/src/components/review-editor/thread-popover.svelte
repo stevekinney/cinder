@@ -128,7 +128,8 @@
   class={classNames('thread-popover', className)}
   style={anchoredOverlay.positionStyle}
   data-position-ready={anchoredOverlay.positionReady}
-  {@attach createFocusTrap()}
+  inert={!anchoredOverlay.positionReady ? true : undefined}
+  {@attach createFocusTrap({ active: () => anchoredOverlay.positionReady })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >

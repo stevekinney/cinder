@@ -74,7 +74,7 @@ end_of_record
 
     const averages = computeCoverageAverages(parseLcovRecords(weightedFixture));
     expect(averages.functions).toBe(51);
-    expect(averages.lines).toBeCloseTo(75.2525);
+    expect(averages.lines).toBe(51);
     expect(averages.functionsFound).toBe(100);
     expect(averages.linesFound).toBe(100);
   });

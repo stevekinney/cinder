@@ -99,9 +99,7 @@ export function computeCoverageAverages(records: CoverageRecord[]): CoverageAver
     functions: percentage(functionsHit, functionsFound),
     functionsFound,
     functionsHit,
-    lines: averagePercentage(
-      records.map((record) => percentage(record.linesHit, record.linesFound)),
-    ),
+    lines: percentage(linesHit, linesFound),
     linesFound,
     linesHit,
   };
@@ -109,10 +107,6 @@ export function computeCoverageAverages(records: CoverageRecord[]): CoverageAver
 
 function percentage(hit: number, found: number): number {
   return found === 0 ? 100 : (hit / found) * 100;
-}
-
-function averagePercentage(percentages: number[]): number {
-  return percentages.reduce((sum, value) => sum + value, 0) / percentages.length;
 }
 
 export function coverageFailures(
