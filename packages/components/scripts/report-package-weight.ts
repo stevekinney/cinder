@@ -171,21 +171,24 @@ async function main(): Promise<void> {
   const check = process.argv.includes('--check');
   const json = process.argv.includes('--json');
   const useExistingTarball = process.argv.includes('--existing-tarball');
-  let tarballPath: string;
-  if (useExistingTarball) {
-    tarballPath = await existingTarballPath();
-  } else {
-    const packedArtifact = await packForPublish();
-    tarballPath = packedArtifact.tarballPath;
+  try {
+    let tarballPath: string;
+    if (useExistingTarball) {
+      tarballPath = await existingTarballPath();
+    } else {
+      const packedArtifact = await packForPublish();
+      tarballPath = packedArtifact.tarballPath;
+    }
+    const report = await buildReport(tarballPath);
+    if (json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      printReport(report);
+    }
+    if (check) assertBudgets(report);
+  } finally {
+    await rm(inspectionDirectory, { recursive: true, force: true }).catch(() => {});
   }
-  const report = await buildReport(tarballPath);
-  if (json) {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  } else {
-    printReport(report);
-  }
-  if (check) assertBudgets(report);
-  await rm(inspectionDirectory, { recursive: true, force: true }).catch(() => {});
 }
 
 if (import.meta.main) {

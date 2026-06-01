@@ -691,7 +691,9 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       .cwd(fixtureDirectory)
       .nothrow();
     if (checkResult.exitCode !== 0) {
-      fail(`svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout.toString()}`);
+      fail(
+        `svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+      );
     }
 
     const viteBuildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();

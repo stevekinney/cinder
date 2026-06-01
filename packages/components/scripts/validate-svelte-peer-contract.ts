@@ -1,3 +1,4 @@
+import { Glob } from 'bun';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +13,7 @@ export const sveltePeerContract = {
   workspace: '~5.55.0',
   latest: '^5',
   peerRange: '>=5.55.0 <6',
+  legacyPeerRange: '>=5.55.0 <5.56.0',
 } as const;
 
 type PackageManifest = {
@@ -30,39 +32,62 @@ function fail(message: string): never {
 }
 
 async function assertDocumentationMentionsContract(): Promise<void> {
-  const readme = await Bun.file(join(workspaceRoot, 'README.md')).text();
-  const agents = await Bun.file(join(packageRoot, 'AGENTS.md')).text();
-  for (const [label, content] of [
-    ['README.md', readme],
-    ['packages/components/AGENTS.md', agents],
-  ] as const) {
+  const requiredDocumentationFiles = [
+    'README.md',
+    'packages/components/AGENTS.md',
+    'docs/theming.md',
+  ] as const;
+  for (const relativePath of requiredDocumentationFiles) {
+    const content = await Bun.file(join(workspaceRoot, relativePath)).text();
     if (!content.includes(sveltePeerContract.peerRange)) {
-      fail(`${label} does not document the Svelte peer range ${sveltePeerContract.peerRange}`);
+      fail(
+        `${relativePath} does not document the Svelte peer range ${sveltePeerContract.peerRange}`,
+      );
     }
     if (!content.includes(sveltePeerContract.minimum)) {
-      fail(`${label} does not document the minimum Svelte version ${sveltePeerContract.minimum}`);
+      fail(
+        `${relativePath} does not document the minimum Svelte version ${sveltePeerContract.minimum}`,
+      );
+    }
+  }
+
+  const documentationGlob = new Glob('{README.md,docs/**/*.md,packages/components/AGENTS.md}');
+  for await (const relativePath of documentationGlob.scan({ cwd: workspaceRoot })) {
+    const content = await Bun.file(join(workspaceRoot, relativePath)).text();
+    if (content.includes(sveltePeerContract.legacyPeerRange)) {
+      fail(
+        `${relativePath} still documents the old Svelte peer range ${sveltePeerContract.legacyPeerRange}`,
+      );
     }
   }
 }
 
 async function main(): Promise<void> {
-  const manifest = await readJsonFile<PackageManifest>(join(packageRoot, 'package.json'));
+  const packageManifestPaths = [
+    'packages/components/package.json',
+    'packages/commentary/package.json',
+    'packages/editor/package.json',
+  ] as const;
+  for (const relativePath of packageManifestPaths) {
+    const manifest = await readJsonFile<PackageManifest>(join(workspaceRoot, relativePath));
+    const peerRange = manifest.peerDependencies?.['svelte'];
+    const devRange = manifest.devDependencies?.['svelte'];
+    if (peerRange !== sveltePeerContract.peerRange) {
+      fail(
+        `${relativePath} peerDependencies.svelte is ${peerRange ?? '<missing>'}; expected ${sveltePeerContract.peerRange}`,
+      );
+    }
+    if (devRange !== sveltePeerContract.workspace) {
+      fail(
+        `${relativePath} devDependencies.svelte is ${devRange ?? '<missing>'}; expected ${sveltePeerContract.workspace}`,
+      );
+    }
+  }
+
   const componentsManifest = await readJsonFile<ComponentsManifest>(
     join(packageRoot, 'components.json'),
   );
-  const peerRange = manifest.peerDependencies?.['svelte'];
-  const devRange = manifest.devDependencies?.['svelte'];
   const frameworkVersionRange = componentsManifest.package?.frameworkVersionRange;
-  if (peerRange !== sveltePeerContract.peerRange) {
-    fail(
-      `peerDependencies.svelte is ${peerRange ?? '<missing>'}; expected ${sveltePeerContract.peerRange}`,
-    );
-  }
-  if (devRange !== sveltePeerContract.workspace) {
-    fail(
-      `devDependencies.svelte is ${devRange ?? '<missing>'}; expected ${sveltePeerContract.workspace}`,
-    );
-  }
   if (frameworkVersionRange !== sveltePeerContract.peerRange) {
     fail(
       `components.json package.frameworkVersionRange is ${frameworkVersionRange ?? '<missing>'}; expected ${sveltePeerContract.peerRange}`,
