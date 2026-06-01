@@ -23,8 +23,9 @@ test.describe('--cinder-ease-spring token', () => {
   test('resolves on the modal element and drives a non-default timing curve', async ({ page }) => {
     await page.goto('/page/modal', { waitUntil: 'load' });
 
-    // The basic example renders a trigger button labelled "Open modal".
-    await page.getByRole('button', { name: 'Open modal' }).first().click();
+    // The basic example renders a trigger button that opens a generic modal
+    // (an "Invite teammate" form); click it to open the modal.
+    await page.getByRole('button', { name: 'Invite teammate' }).first().click();
 
     const modal = page.locator('.cinder-modal').first();
     await expect(modal).toBeVisible();
