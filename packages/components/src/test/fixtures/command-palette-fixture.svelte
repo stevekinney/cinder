@@ -37,11 +37,15 @@
   let query = $state(untrack(() => initialQuery));
   let triggerRef: HTMLButtonElement | null = $state(null);
 
-  const visibleItems = $derived(
-    filterItems
-      ? items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
-      : items,
-  );
+  // Filter using the value the `items` snippet receives (`{ query }`), exactly
+  // like the basic/grouped playground examples do. This is the pattern the bug
+  // was about — the examples previously ignored the snippet parameter — so the
+  // regression tests must exercise the snippet argument, not an outer binding.
+  function matching(snippetQuery: string): CommandPaletteFixtureItem[] {
+    if (!filterItems) return items;
+    const needle = snippetQuery.toLowerCase();
+    return items.filter((item) => item.label.toLowerCase().includes(needle));
+  }
 </script>
 
 <button
@@ -92,8 +96,8 @@
   {triggerRef}
   {...onClosed !== undefined ? { onclose: onClosed } : {}}
 >
-  {#snippet items()}
-    {#each visibleItems as item (item.value)}
+  {#snippet items({ query: snippetQuery })}
+    {#each matching(snippetQuery) as item (item.value)}
       <CommandItem
         value={item.value}
         {...item.disabled !== undefined ? { disabled: item.disabled } : {}}

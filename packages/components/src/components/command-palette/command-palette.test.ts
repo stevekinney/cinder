@@ -751,11 +751,12 @@ describe('CommandPalette — visual contract', () => {
 
 // ── Consumer-owned filtering ───────────────────────────────────────────────
 //
-// These tests guard the searchable-example contract: when a consumer passes
-// `filterItems` (mirrors the pattern used in basic/grouped examples), typing a
-// query that does not match an item must remove that item from the DOM.
-// A failure here means the items snippet is ignoring the `query` param —
-// exactly the bug described in ticket a3975cd6.
+// These tests guard the searchable-example contract. With `filterItems`, the
+// fixture filters INSIDE its `{#snippet items({ query })}` using the snippet's
+// `query` argument — exactly the pattern the basic/grouped examples use. Typing a
+// query that does not match an item must remove that item from the DOM. A failure
+// here means the items snippet is ignoring its `query` parameter, which was the
+// original "search does nothing" bug (MVP task: CommandPalette real search).
 
 describe('CommandPalette — consumer-owned filtering', () => {
   test('items matching the query remain visible', async () => {
