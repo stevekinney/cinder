@@ -102,10 +102,18 @@ for (const entry of entries) {
               description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
             });
 
-            // Record the screenshot taxonomy so the contact-sheet tooling can
-            // group captures by intent (visual contract vs interaction state
-            // vs primitive composition vs documentation). The fixture schema
-            // resolves `category` to a default when omitted.
+            // Record the screenshot taxonomy so the (future) contact-sheet
+            // tooling can group captures by intent (visual contract vs
+            // interaction state vs primitive composition vs documentation).
+            //
+            // NOTE: today this resolves to 'visual-contract' for EVERY capture,
+            // because the manifest pipeline (prepare-manifest.ts →
+            // ComponentEntry.fixtures) does not yet carry `category`/`interact`,
+            // so the sweep only ever sees the synthesized `default` fixture.
+            // Threading category/interact through the manifest — so interaction
+            // fixtures annotate as 'interaction-state' — is part of the deferred
+            // fixture-rendering pipeline (see task b5af46f8). The annotation is
+            // wired now so it goes live for free once that pipeline lands.
             const category =
               'category' in fixture && typeof fixture.category === 'string'
                 ? fixture.category
