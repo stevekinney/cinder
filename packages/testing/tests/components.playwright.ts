@@ -7,6 +7,7 @@ import { runAxe } from '../src/helpers/axe.ts';
 import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
 import { applyInteractions } from '../src/helpers/interact.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
+import { writeScreenshotMetadata } from '../src/helpers/screenshot-metadata.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 test.describe('server identity', () => {
@@ -157,6 +158,77 @@ const entries = applyComponentFilter(allEntries, filterSlugs);
 /** The synthesised default fixture used when a component has no explicit fixture list. */
 const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
 
+function fixtureRoute(route: string, fixtureName: string, fixtureContentHash?: string): string {
+  if (fixtureName === 'default') return route;
+  if (fixtureContentHash === undefined) {
+    throw new Error(`Visual fixture "${fixtureName}" is missing fixtureContentHash.`);
+  }
+  const params = new URLSearchParams({ fixture: fixtureName });
+  params.set('fixtureContentHash', fixtureContentHash);
+  return `${route}?${params.toString()}`;
+}
+
+test.describe('fixture manifest metadata', () => {
+  test('embeds fixture metadata and content hashes without fixture props', () => {
+    const input = allEntries.find((entry) => entry.slug === 'input');
+    expect(input).toBeDefined();
+    const focused = input?.fixtures?.find((fixture) => fixture.name === 'focused');
+    expect(focused).toBeDefined();
+    expect(focused?.fixtureContentHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(focused?.category).toBe('interaction-state');
+    expect(focused?.interact).toEqual([{ action: 'focus', target: { label: 'Focused input' } }]);
+    expect(Object.hasOwn(focused ?? {}, 'props')).toBe(false);
+  });
+});
+
+test.describe('fixture interaction rendering', () => {
+  test('focused input fixture reaches document.activeElement', async ({ componentPage }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'input');
+    const fixture = entry?.fixtures?.find((candidate) => candidate.name === 'focused');
+    expect(entry).toBeDefined();
+    expect(fixture).toBeDefined();
+
+    const page = await componentPage.open({
+      entry: entry!,
+      theme: 'light',
+      viewport: VIEWPORTS.find((viewport) => viewport.name === 'desktop')!,
+      fixtureName: fixture!.name,
+      fixtureContentHash: fixture!.fixtureContentHash,
+    });
+
+    await applyInteractions(page, fixture!.interact ?? [], {
+      component: entry!.slug,
+      fixture: fixture!.name,
+    });
+
+    await expect(page.getByLabel('Focused input')).toBeFocused();
+  });
+
+  test('dropdown interaction fixture exposes the opened menu surface', async ({
+    componentPage,
+  }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'dropdown');
+    const fixture = entry?.fixtures?.find((candidate) => candidate.name === 'opened-by-trigger');
+    expect(entry).toBeDefined();
+    expect(fixture).toBeDefined();
+
+    const page = await componentPage.open({
+      entry: entry!,
+      theme: 'light',
+      viewport: VIEWPORTS.find((viewport) => viewport.name === 'desktop')!,
+      fixtureName: fixture!.name,
+      fixtureContentHash: fixture!.fixtureContentHash,
+    });
+
+    await applyInteractions(page, fixture!.interact ?? [], {
+      component: entry!.slug,
+      fixture: fixture!.name,
+    });
+
+    await expect(page.getByRole('menu')).toBeVisible();
+  });
+});
+
 for (const entry of entries) {
   test.describe(entry.name, () => {
     // Use the entry's explicit fixture list when provided; otherwise synthesise a
@@ -174,7 +246,14 @@ for (const entry of entries) {
             // default state.
             const openArgs =
               fixture.name !== 'default'
-                ? ({ entry, theme, viewport, fixtureName: fixture.name } as const)
+                ? ({
+                    entry,
+                    theme,
+                    viewport,
+                    fixtureName: fixture.name,
+                    fixtureContentHash:
+                      'fixtureContentHash' in fixture ? fixture.fixtureContentHash : undefined,
+                  } as const)
                 : ({ entry, theme, viewport } as const);
             const page = await componentPage.open(openArgs);
 
@@ -184,6 +263,9 @@ for (const entry of entries) {
               viewport: viewport.name,
               fixture: fixture.name,
             };
+            const fixtureContentHash =
+              'fixtureContentHash' in fixture ? fixture.fixtureContentHash : undefined;
+            const route = fixtureRoute(entry.route, fixture.name, fixtureContentHash);
 
             // Apply interaction steps (e.g. click trigger, focus input) before
             // capture so the screenshot shows the post-interaction state.
@@ -192,7 +274,10 @@ for (const entry of entries) {
               Array.isArray(fixture.interact) &&
               fixture.interact.length > 0
             ) {
-              await applyInteractions(page, fixture.interact);
+              await applyInteractions(page, fixture.interact, {
+                component: entry.slug,
+                fixture: fixture.name,
+              });
             }
 
             const buckets = await runAxe(page, key);
@@ -202,18 +287,8 @@ for (const entry of entries) {
               description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
             });
 
-            // Record the screenshot taxonomy so the (future) contact-sheet
-            // tooling can group captures by intent (visual contract vs
-            // interaction state vs primitive composition vs documentation).
-            //
-            // NOTE: today this resolves to 'visual-contract' for EVERY capture,
-            // because the manifest pipeline (prepare-manifest.ts →
-            // ComponentEntry.fixtures) does not yet carry `category`/`interact`,
-            // so the sweep only ever sees the synthesized `default` fixture.
-            // Threading category/interact through the manifest — so interaction
-            // fixtures annotate as 'interaction-state' — is part of the deferred
-            // fixture-rendering pipeline (see task b5af46f8). The annotation is
-            // wired now so it goes live for free once that pipeline lands.
+            // Record the screenshot taxonomy so contact sheets can group
+            // captures by intent.
             const category =
               'category' in fixture && typeof fixture.category === 'string'
                 ? fixture.category
@@ -225,6 +300,18 @@ for (const entry of entries) {
             const masks =
               'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
             await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
+            await writeScreenshotMetadata({
+              key,
+              component: entry.name,
+              category,
+              route,
+              fixtureContentHash,
+              interact:
+                'interact' in fixture && Array.isArray(fixture.interact)
+                  ? fixture.interact
+                  : undefined,
+              mask: masks,
+            });
 
             // Accessibility gate: `critical` and `serious` violations fail the
             // sweep; `moderate`/`minor` stay annotation-only (recorded above).

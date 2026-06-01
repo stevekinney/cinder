@@ -1,13 +1,13 @@
 /**
  * Visual-regression fixtures for Accordion.
  *
- * The `children` snippet (the AccordionItem list) is supplied by the
- * playground's fixture adapter — this file declares only the configuration
- * props that affect rendered state.
+ * Accordion requires composed Accordion.Item children, so these variants render
+ * through a host fixture and keep the state knobs as JSON props.
  */
 export default [
   {
     name: 'collapsed',
+    host: './accordion.fixture.svelte',
     props: {
       multiple: false,
       expandedIds: [],
@@ -15,6 +15,7 @@ export default [
   },
   {
     name: 'single-expanded',
+    host: './accordion.fixture.svelte',
     props: {
       multiple: false,
       expandedIds: ['item-1'],
@@ -22,6 +23,7 @@ export default [
   },
   {
     name: 'multiple-expanded',
+    host: './accordion.fixture.svelte',
     props: {
       multiple: true,
       expandedIds: ['item-1', 'item-3'],

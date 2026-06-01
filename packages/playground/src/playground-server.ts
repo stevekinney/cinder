@@ -25,9 +25,20 @@
 
 import { randomUUID } from 'node:crypto';
 import { rmSync, watch, type FSWatcher } from 'node:fs';
-import { dirname, isAbsolute, join, relative as relativePath } from 'node:path';
+import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
 
 import type { BuildArtifact } from 'bun';
+import {
+  componentSourcePath,
+  findFixture,
+  loadFixtureFile,
+  resolveFixtureFilePath,
+  resolveFixtureHostPath,
+} from '../../components/scripts/lib/visual-fixtures/loader.ts';
+import {
+  fixtureRenderMode,
+  type VisualFixture,
+} from '../../components/scripts/lib/visual-fixtures/schema.ts';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
 import {
@@ -91,13 +102,16 @@ const shellEntryByName = new Map<string, string>();
 const pageArtifactByPath = new Map<string, string>();
 const shellArtifactByPath = new Map<string, string>();
 const scenarioArtifactByPath = new Map<string, string>();
+const fixtureEntryByKey = new Map<string, string>();
+const fixtureArtifactByPath = new Map<string, string>();
+const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
  * Family identifier used by `findArtifactForFamily` to constrain which
  * artifacts a given route may serve. Each family corresponds to one of the
  * three artifact maps.
  */
-type ArtifactFamily = 'page' | 'shell' | 'scenario';
+type ArtifactFamily = 'page' | 'shell' | 'scenario' | 'fixture';
 
 /**
  * Prefixes that identify a hashed entry artifact for each bundle family.
@@ -112,6 +126,7 @@ const ENTRY_PREFIXES: Record<ArtifactFamily, string> = {
   page: 'page-',
   shell: 'shell-',
   scenario: 'bundle-',
+  fixture: 'fixture-',
 };
 
 /**
@@ -133,6 +148,7 @@ function findArtifactForFamily(family: ArtifactFamily, path: string): string | u
     page: pageArtifactByPath,
     shell: shellArtifactByPath,
     scenario: scenarioArtifactByPath,
+    fixture: fixtureArtifactByPath,
   };
   const ownHit = allMaps[family].get(path);
   if (ownHit !== undefined) return ownHit;
@@ -173,6 +189,7 @@ const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
  * behind the same URL, and the hot-reload flow depends on the browser refetching.
  */
 const NO_STORE_CACHE_CONTROL = 'no-store';
+const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 
 /** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
@@ -356,6 +373,9 @@ async function repopulateBundleCaches(
   // rebuilt on next view-source toggle.
   bundleEntryByKey.clear();
   scenarioArtifactByPath.clear();
+  fixtureEntryByKey.clear();
+  fixtureArtifactByPath.clear();
+  fixtureBuildPromiseByKey.clear();
 
   if (shellBuildSucceeded) {
     shellEntryByName.clear();
@@ -538,6 +558,7 @@ const PUBLIC_PATH_BY_FAMILY: Record<ArtifactFamily, string> = {
   page: '/page-bundle/',
   shell: '/shell-bundle/',
   scenario: '/page-bundle/',
+  fixture: '/fixture-bundle/',
 };
 
 /**
@@ -798,6 +819,132 @@ async function buildPageBundle(
   return entry.entryCode;
 }
 
+function relativeImportSpecifier(fromDirectory: string, targetPath: string): string {
+  const relative = relativePath(fromDirectory, targetPath).replaceAll(sep, '/');
+  return relative.startsWith('.') ? relative : `./${relative}`;
+}
+
+function fixtureEntryKey(
+  componentName: string,
+  fixtureName: string,
+  fixtureContentHash: string,
+): string {
+  return `fixture-${componentName}-${fixtureName}-${fixtureContentHash}`;
+}
+
+function fixtureCacheKey(
+  componentName: string,
+  fixture: VisualFixture,
+  fixtureContentHash: string,
+): string {
+  return `${componentName}/${fixture.name}/${fixtureRenderMode(fixture)}/${fixtureContentHash}`;
+}
+
+async function compileFixtureBundleArtifacts(
+  componentName: string,
+  fixture: VisualFixture,
+  fixtureContentHash: string,
+  componentOrHostPath: string,
+): Promise<{ entryPath: string; entryCode: string; artifacts: Map<string, string> } | null> {
+  const entryBasename = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
+  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
+  const propsTempPath = join(entryTempDir, `${entryBasename}-props.ts`);
+  const componentImport = relativeImportSpecifier(entryTempDir, componentOrHostPath);
+  const fixtureProps = 'props' in fixture && fixture.props !== undefined ? fixture.props : {};
+
+  const entrySource = `import { flushSync, mount } from 'svelte';
+
+import Component from ${JSON.stringify(componentImport)};
+import props from './${entryBasename}-props.ts';
+
+const target = document.getElementById('app');
+if (target === null) {
+  throw new Error('[cinder playground] #app target not found');
+}
+
+mount(Component, { target, props });
+flushSync();
+`;
+
+  try {
+    await Bun.write(entryTempPath, entrySource);
+    await Bun.write(
+      propsTempPath,
+      `const props = ${JSON.stringify(fixtureProps)} as const;\nexport default props;\n`,
+    );
+
+    const result = await Bun.build({
+      entrypoints: [entryTempPath],
+      publicPath: PUBLIC_PATH_BY_FAMILY.fixture,
+      ...SHARED_BUILD_OPTIONS,
+    });
+
+    if (!result.success) {
+      console.error(
+        `[playground] fixture bundle failed for ${componentName}/${fixture.name}:`,
+        result.logs,
+      );
+      return null;
+    }
+
+    const entry = await collectBuildArtifacts(result.outputs);
+    if (entry === null) {
+      console.error(
+        `[playground] fixture bundle for ${componentName}/${fixture.name} produced no entry chunk`,
+      );
+      return null;
+    }
+
+    return entry;
+  } finally {
+    rmSync(entryTempDir, { recursive: true, force: true });
+  }
+}
+
+async function buildFixtureBundle(
+  componentName: string,
+  fixture: VisualFixture,
+  fixtureContentHash: string,
+  componentOrHostPath: string,
+): Promise<string | null> {
+  const entryKey = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
+  const cachedEntryPath = fixtureEntryByKey.get(entryKey);
+  if (cachedEntryPath) {
+    const cached = fixtureArtifactByPath.get(cachedEntryPath);
+    if (cached !== undefined) return cachedEntryPath;
+  }
+
+  const cacheKey = fixtureCacheKey(componentName, fixture, fixtureContentHash);
+  const existing = fixtureBuildPromiseByKey.get(cacheKey);
+  if (existing !== undefined) return existing;
+
+  const buildPromise = (async () => {
+    const generationAtStart = rebuildGeneration;
+    const entry = await compileFixtureBundleArtifacts(
+      componentName,
+      fixture,
+      fixtureContentHash,
+      componentOrHostPath,
+    );
+    if (entry === null) return null;
+
+    if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+      for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
+      fixtureEntryByKey.set(entryKey, entry.entryPath);
+      return entry.entryPath;
+    }
+    return null;
+  })();
+
+  fixtureBuildPromiseByKey.set(cacheKey, buildPromise);
+  try {
+    return await buildPromise;
+  } finally {
+    fixtureBuildPromiseByKey.delete(cacheKey);
+  }
+}
+
 /**
  * Compile the playground shell SPA bundle without mutating cache state.
  *
@@ -1017,6 +1164,141 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
 </html>`;
 }
 
+function renderFixturePageHtml(
+  componentName: string,
+  fixtureName: string,
+  snapshotMode: boolean,
+  scriptSource: string,
+): string {
+  const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
+  const styleTag = snapshotModeStyleTag(snapshotMode);
+
+  return `<!DOCTYPE html>
+<html lang="en"${htmlAttribute}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${componentName} / ${fixtureName} — cinder playground</title>
+    <link rel="stylesheet" href="/styles/all.css" />
+    <script>${PRE_PAINT_THEME_SCRIPT}</script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; min-height: 100%; }
+      body {
+        background-color: var(--cinder-bg);
+        color: var(--cinder-text);
+        font-family: var(--cinder-font-sans);
+        font-size: var(--cinder-text-base);
+        line-height: var(--cinder-leading-normal);
+        padding: var(--cinder-space-6);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        body {
+          transition: background 0.1s, color 0.1s;
+        }
+      }
+      #app { display: contents; }
+      body[data-cinder-bg="checker"] {
+        --cinder-checker-square: light-dark(oklch(89% 0 0), oklch(30% 0.01 245));
+        background-image:
+          linear-gradient(45deg, var(--cinder-checker-square) 25%, transparent 25%),
+          linear-gradient(-45deg, var(--cinder-checker-square) 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, var(--cinder-checker-square) 75%),
+          linear-gradient(-45deg, transparent 75%, var(--cinder-checker-square) 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+        background-color: var(--cinder-surface);
+      }
+    </style>${styleTag ? `\n    ${styleTag}` : ''}
+    <script>
+      window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin) return;
+        var data = event.data;
+        if (!data || typeof data !== 'object') return;
+        if (typeof data.type !== 'string' || data.type.indexOf('cinder:') !== 0) return;
+        if (data.type === 'cinder:set-theme') {
+          if (data.value === 'light' || data.value === 'dark') {
+            document.documentElement.style.colorScheme = data.value;
+            document.documentElement.dataset.cinderTheme = data.value;
+          } else if (data.value === 'system') {
+            document.documentElement.style.colorScheme = '';
+            document.documentElement.dataset.cinderTheme = 'system';
+          }
+        } else if (data.type === 'cinder:set-background') {
+          if (data.value === 'surface' || data.value === 'checker') {
+            document.body.dataset.cinderBg = data.value;
+          }
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="${scriptSource}"></script>
+  </body>
+</html>`;
+}
+
+async function renderFixturePageResponse(
+  componentName: string,
+  fixtureName: string,
+  snapshotMode: boolean,
+  expectedFixtureContentHash: string,
+): Promise<Response> {
+  const fixturesRoot = join(COMPONENTS_ROOT, 'src', 'components');
+  const fixtureFilePath = resolveFixtureFilePath(componentName, fixturesRoot);
+  let fixtureFile;
+  try {
+    await awaitWarmCache();
+    fixtureFile = await loadFixtureFile(fixtureFilePath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(`Invalid fixture file for "${componentName}":\n${message}`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
+
+  if (fixtureFile === null) return notFound(`Fixture file for "${componentName}" not found`);
+  if (expectedFixtureContentHash !== fixtureFile.contentHash) {
+    return new Response(
+      `Fixture manifest drift for "${componentName}": expected ${expectedFixtureContentHash}, found ${fixtureFile.contentHash}`,
+      { status: 409, headers: { 'Content-Type': 'text/plain' } },
+    );
+  }
+
+  const fixture = findFixture(fixtureFile, fixtureName);
+  if (fixture === undefined) {
+    return notFound(`Fixture "${fixtureName}" not found for "${componentName}"`);
+  }
+
+  const componentOrHostPath =
+    fixtureRenderMode(fixture) === 'host'
+      ? resolveFixtureHostPath(fixtureFile, fixture)
+      : componentSourcePath(componentName);
+
+  const fixtureEntryPath = await buildFixtureBundle(
+    componentName,
+    fixture,
+    fixtureFile.contentHash,
+    componentOrHostPath,
+  );
+  if (fixtureEntryPath === null) {
+    return new Response(`Fixture "${componentName}/${fixtureName}" failed to build`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
+
+  const scriptSource = `/fixture-bundle/${fixtureEntryPath}`;
+  return new Response(
+    renderFixturePageHtml(componentName, fixtureName, snapshotMode, scriptSource),
+    {
+      headers: { 'Content-Type': 'text/html' },
+    },
+  );
+}
+
 /** Verify a path segment is a safe identifier (no path traversal). */
 function isSafeSegment(segment: string): boolean {
   return /^[a-z0-9][a-z0-9-]*$/.test(segment);
@@ -1025,6 +1307,11 @@ function isSafeSegment(segment: string): boolean {
 /** Build a plain-text 404 response. */
 function notFound(message = 'Not Found'): Response {
   return new Response(message, { status: 404, headers: { 'Content-Type': 'text/plain' } });
+}
+
+/** Build a plain-text 400 response. */
+function badRequest(message: string): Response {
+  return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
 /** Main request handler — exported for testing. */
@@ -1170,6 +1457,25 @@ export async function handleRequest(request: Request): Promise<Response> {
     });
   }
 
+  // GET /fixture-bundle/<filename>.js — fixture-page entry and chunks.
+  const fixtureBundleMatch = pathname.match(/^\/fixture-bundle\/([A-Za-z0-9_-]+)\.js$/);
+  if (fixtureBundleMatch) {
+    await awaitWarmCache();
+    const filename = fixtureBundleMatch[1]!;
+    const directHit = findArtifactForFamily('fixture', `${filename}.js`);
+    if (directHit !== undefined) {
+      return new Response(directHit, {
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Cache-Control': IMMUTABLE_CACHE_CONTROL,
+        },
+      });
+    }
+
+    if (!isSafeSegment(filename)) return notFound();
+    return notFound(`Fixture bundle "${filename}" not found`);
+  }
+
   // GET /shell-bundle/<filename>.js — same shape as /page-bundle/*:
   //   1. `/shell-bundle/shell.js` is the unhashed entry URL the scaffold
   //      script tag requests; we resolve it to the hashed entry artifact via
@@ -1246,6 +1552,23 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
     const snapshotModeActive = isSnapshotMode(url.searchParams);
+    const fixtureName = url.searchParams.get('fixture');
+    if (fixtureName !== null) {
+      if (!isSafeSegment(fixtureName)) return notFound();
+      const fixtureContentHash = url.searchParams.get('fixtureContentHash');
+      if (fixtureContentHash === null) {
+        return badRequest('fixtureContentHash is required for fixture routes');
+      }
+      if (!SHA256_HEX_PATTERN.test(fixtureContentHash)) {
+        return badRequest('fixtureContentHash must be a 64-character lowercase sha256 hash');
+      }
+      return await renderFixturePageResponse(
+        componentName,
+        fixtureName,
+        snapshotModeActive,
+        fixtureContentHash,
+      );
+    }
     const html = await renderComponentPage(componentName, snapshotModeActive);
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }

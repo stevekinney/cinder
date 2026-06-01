@@ -7,8 +7,15 @@ export type OpenArgs = {
   entry: ComponentEntry;
   theme: Theme;
   viewport: Viewport;
-  /** Fixture name to request from the playground via `?fixture=<name>`. Omit for the synthesized default. */
+  /**
+   * Visual fixture name to request from the playground when paired with
+   * fixtureContentHash. Older callers pass this field as an example scenario
+   * label; those stay on the examples page unless the name exists in the
+   * manifest fixture metadata.
+   */
   fixtureName?: string | undefined;
+  /** Fixture file content hash from the cached manifest, used by the playground to detect drift. */
+  fixtureContentHash?: string | undefined;
 };
 export type ComponentPage = {
   open(args: OpenArgs): Promise<Page>;
@@ -17,17 +24,36 @@ export type ComponentPage = {
 type Fixtures = { componentPage: ComponentPage };
 
 /**
- * Builds the playground URL for a component route with snapshot mode and an
- * optional fixture selection. Always sets `?snapshot=1`; appends
- * `&fixture=<name>` when a non-default fixture name is provided.
+ * Builds the playground URL for a component route with snapshot mode. Visual
+ * fixture routes require both the fixture name and matching hash; legacy
+ * example-scenario labels stay on the examples page.
  */
-function buildRoute(route: string, fixtureName?: string): string {
+function buildRoute(
+  entry: ComponentEntry,
+  fixtureName?: string,
+  fixtureContentHash?: string,
+): string {
+  const route = entry.route;
   const [path, existingSearch] = route.split('?') as [string, string | undefined];
   const params = new URLSearchParams(existingSearch ?? '');
   params.set('snapshot', '1');
-  if (fixtureName !== undefined && fixtureName !== 'default') {
-    params.set('fixture', fixtureName);
+
+  if (
+    fixtureContentHash !== undefined &&
+    (fixtureName === undefined || fixtureName === 'default')
+  ) {
+    throw new Error('fixtureContentHash requires a non-default fixtureName.');
   }
+
+  if (fixtureName !== undefined && fixtureName !== 'default') {
+    if (fixtureContentHash !== undefined) {
+      params.set('fixture', fixtureName);
+      params.set('fixtureContentHash', fixtureContentHash);
+    } else if (entry.fixtures?.some((fixture) => fixture.name === fixtureName) === true) {
+      throw new Error(`Visual fixture "${entry.slug}/${fixtureName}" requires fixtureContentHash.`);
+    }
+  }
+
   return `${path}?${params.toString()}`;
 }
 
@@ -36,7 +62,7 @@ export const test = base.extend<Fixtures>({
     const contexts: BrowserContext[] = [];
 
     const componentPage: ComponentPage = {
-      async open({ entry, theme, viewport, fixtureName }) {
+      async open({ entry, theme, viewport, fixtureName, fixtureContentHash }) {
         const context = await browser.newContext({
           ...themeContextOptions(theme),
           viewport: { width: viewport.width, height: viewport.height },
@@ -59,7 +85,9 @@ export const test = base.extend<Fixtures>({
         // data-snapshot-mode on <html>. This is the Phase 1 determinism
         // foundation — all visual captures go through snapshot mode so
         // screenshots are stable across repeated runs.
-        await page.goto(buildRoute(entry.route, fixtureName), { waitUntil: 'load' });
+        await page.goto(buildRoute(entry, fixtureName, fixtureContentHash), {
+          waitUntil: 'load',
+        });
         // Post-#39 (chunk-[hash].js naming), all components — including the
         // Milkdown-backed editors (Chat, MarkdownEditor, ReviewEditor) —
         // mount in single-digit seconds on the CI runner. 20s leaves

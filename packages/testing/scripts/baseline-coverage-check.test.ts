@@ -14,6 +14,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ManifestFixtureEntry } from '../src/helpers/manifest.ts';
 import { applyBaselineComponentFilter, findMissingBaselines } from './baseline-coverage-check.ts';
 
 // ---------------------------------------------------------------------------
@@ -50,12 +51,21 @@ type FakeEntry = {
   name: string;
   slug: string;
   route: string;
-  fixtures?: Array<{ name: string }>;
+  fixtures?: ManifestFixtureEntry[];
 };
 
-function makeEntry(slug: string, fixtures?: Array<{ name: string }>): FakeEntry {
+function makeFixture(name: string): ManifestFixtureEntry {
+  return {
+    name,
+    mode: 'direct',
+    fixtureContentHash: '0'.repeat(64),
+    category: 'visual-contract',
+  };
+}
+
+function makeEntry(slug: string, fixtures?: string[]): FakeEntry {
   if (fixtures !== undefined) {
-    return { name: slug, slug, route: `/page/${slug}`, fixtures };
+    return { name: slug, slug, route: `/page/${slug}`, fixtures: fixtures.map(makeFixture) };
   }
   return { name: slug, slug, route: `/page/${slug}` };
 }
@@ -93,7 +103,7 @@ describe('findMissingBaselines — all baselines present', () => {
   });
 
   it('returns an empty array for a component with explicit fixtures', () => {
-    const entries = [makeEntry('badge', [{ name: 'open' }, { name: 'closed' }])];
+    const entries = [makeEntry('badge', ['open', 'closed'])];
 
     for (const theme of ['light', 'dark']) {
       for (const viewport of ['mobile', 'tablet', 'desktop']) {
@@ -161,7 +171,7 @@ describe('findMissingBaselines — some baselines missing', () => {
   });
 
   it('reports missing per-fixture entries for a component with explicit fixtures', () => {
-    const entries = [makeEntry('badge', [{ name: 'open' }, { name: 'closed' }])];
+    const entries = [makeEntry('badge', ['open', 'closed'])];
 
     // Write only the 'open' snapshots, not 'closed'
     for (const theme of ['light', 'dark']) {

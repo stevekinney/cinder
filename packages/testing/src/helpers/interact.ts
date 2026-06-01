@@ -1,10 +1,70 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
-// The canonical `InteractionStep` lives in `fixture-schema.ts` (inferred from the
-// Zod `InteractionStepSchema` that validates fixture `interact` arrays). The
-// shape — `{ action, target: { testId }, key? }` — is identical, so this module
-// consumes the single source of truth rather than duplicating it.
-import type { InteractionStep } from './fixture-schema.ts';
+// The canonical `InteractionStep` lives in the neutral visual-fixture schema.
+// The runner consumes the single source of truth rather than duplicating it.
+import type { InteractionStep } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+
+export type InteractionContext = {
+  component?: string;
+  fixture?: string;
+};
+
+function contextPrefix(context: InteractionContext | undefined): string {
+  const component = context?.component;
+  const fixture = context?.fixture;
+  if (component !== undefined && fixture !== undefined) return `${component}/${fixture}: `;
+  if (component !== undefined) return `${component}: `;
+  if (fixture !== undefined) return `fixture ${fixture}: `;
+  return '';
+}
+
+type TargetKind = 'testId' | 'label' | 'role';
+
+function hasOwnStringValue(target: Record<string, unknown>, key: TargetKind): boolean {
+  return Object.hasOwn(target, key) && typeof target[key] === 'string';
+}
+
+function targetKind(
+  step: InteractionStep,
+  index: number,
+  context: InteractionContext | undefined,
+): TargetKind {
+  const { target } = step;
+  if (target === null || typeof target !== 'object') {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  const record = target as Record<string, unknown>;
+  const kinds = (['testId', 'label', 'role'] as const).filter((kind) =>
+    hasOwnStringValue(record, kind),
+  );
+
+  if (kinds.length !== 1) {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  return kinds[0]!;
+}
+
+function targetDescription(step: InteractionStep): string {
+  const { target } = step;
+  if ('testId' in target) return `testId "${target.testId}"`;
+  if ('label' in target) return `label "${target.label}"`;
+  const name = target.name !== undefined ? ` named "${target.name}"` : '';
+  return `role "${target.role}"${name}`;
+}
+
+export class InvalidInteractionTargetError extends Error {
+  readonly step: number;
+
+  constructor(step: number, context?: InteractionContext) {
+    super(
+      `${contextPrefix(context)}Step ${step}: target must provide exactly one of role, label, or testId.`,
+    );
+    this.name = 'InvalidInteractionTargetError';
+    this.step = step;
+  }
+}
 
 /**
  * Thrown when no element with the given `data-testid` can be found on the page.
@@ -15,8 +75,8 @@ export class MissingTestIdError extends Error {
   /** The zero-based index of the step that failed. */
   readonly step: number;
 
-  constructor(testId: string, step: number) {
-    super(`Step ${step}: no element found with [data-testid="${testId}"].`);
+  constructor(testId: string, step: number, context?: InteractionContext) {
+    super(`${contextPrefix(context)}Step ${step}: no element found with testId "${testId}".`);
     this.name = 'MissingTestIdError';
     this.testId = testId;
     this.step = step;
@@ -36,9 +96,9 @@ export class AmbiguousTestIdError extends Error {
   /** The number of matching elements that were found. */
   readonly count: number;
 
-  constructor(testId: string, count: number, step: number) {
+  constructor(testId: string, count: number, step: number, context?: InteractionContext) {
     super(
-      `Step ${step}: [data-testid="${testId}"] matched ${count} elements — testIds must be unique.`,
+      `${contextPrefix(context)}Step ${step}: testId "${testId}" matched ${count} elements; targets must be unique.`,
     );
     this.name = 'AmbiguousTestIdError';
     this.testId = testId;
@@ -47,12 +107,116 @@ export class AmbiguousTestIdError extends Error {
   }
 }
 
+export class MissingInteractionTargetError extends Error {
+  readonly step: number;
+
+  constructor(description: string, step: number, context?: InteractionContext) {
+    super(`${contextPrefix(context)}Step ${step}: no element found for ${description}.`);
+    this.name = 'MissingInteractionTargetError';
+    this.step = step;
+  }
+}
+
+export class AmbiguousInteractionTargetError extends Error {
+  readonly step: number;
+  readonly count: number;
+
+  constructor(description: string, count: number, step: number, context?: InteractionContext) {
+    super(
+      `${contextPrefix(context)}Step ${step}: ${description} matched ${count} elements; targets must be unique.`,
+    );
+    this.name = 'AmbiguousInteractionTargetError';
+    this.step = step;
+    this.count = count;
+  }
+}
+
+export class HiddenInteractionTargetError extends Error {
+  readonly step: number;
+
+  constructor(description: string, step: number, context?: InteractionContext) {
+    super(`${contextPrefix(context)}Step ${step}: ${description} is not visible.`);
+    this.name = 'HiddenInteractionTargetError';
+    this.step = step;
+  }
+}
+
+export class DisabledInteractionTargetError extends Error {
+  readonly step: number;
+
+  constructor(description: string, step: number, context?: InteractionContext) {
+    super(`${contextPrefix(context)}Step ${step}: ${description} is disabled.`);
+    this.name = 'DisabledInteractionTargetError';
+    this.step = step;
+  }
+}
+
+function locatorForStep(
+  page: Page,
+  step: InteractionStep,
+  index: number,
+  context: InteractionContext | undefined,
+): Locator {
+  const { target } = step;
+  const kind = targetKind(step, index, context);
+  if (kind === 'testId' && 'testId' in target) return page.getByTestId(target.testId);
+  if (kind === 'label' && 'label' in target) {
+    return page.getByLabel(target.label, target.exact !== undefined ? { exact: target.exact } : {});
+  }
+
+  if (!('role' in target)) {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  const options =
+    target.name !== undefined || target.exact !== undefined
+      ? {
+          ...(target.name !== undefined ? { name: target.name } : {}),
+          ...(target.exact !== undefined ? { exact: target.exact } : {}),
+        }
+      : {};
+  return page.getByRole(target.role as Parameters<Page['getByRole']>[0], options);
+}
+
+async function assertResolvable(
+  locator: Locator,
+  step: InteractionStep,
+  index: number,
+  context: InteractionContext | undefined,
+): Promise<void> {
+  const description = targetDescription(step);
+  const count = await locator.count();
+
+  if (count === 0) {
+    if ('testId' in step.target) throw new MissingTestIdError(step.target.testId, index, context);
+    throw new MissingInteractionTargetError(description, index, context);
+  }
+
+  if (count > 1) {
+    if ('testId' in step.target) {
+      throw new AmbiguousTestIdError(step.target.testId, count, index, context);
+    }
+    throw new AmbiguousInteractionTargetError(description, count, index, context);
+  }
+
+  if (!(await locator.isVisible())) {
+    throw new HiddenInteractionTargetError(description, index, context);
+  }
+
+  if (
+    (step.action === 'focus' || step.action === 'click' || step.action === 'press') &&
+    !(await locator.isEnabled())
+  ) {
+    throw new DisabledInteractionTargetError(description, index, context);
+  }
+}
+
 /**
  * Execute a sequence of interaction steps against a Playwright `Page` in order.
  *
- * Each step is resolved by locating `[data-testid="<step.target.testId>"]`.
- * Selector strings are intentionally unsupported — all targeting must go through
- * `data-testid` so tests remain decoupled from visual structure.
+ * Each step is resolved through a user-facing role/name or label locator when
+ * possible, with `data-testid` available for fixture-owned hooks. Raw selector
+ * strings are intentionally unsupported so fixture targeting stays stable.
  *
  * @throws {MissingTestIdError} when a testId resolves to zero elements.
  * @throws {AmbiguousTestIdError} when a testId resolves to more than one element.
@@ -61,23 +225,12 @@ export class AmbiguousTestIdError extends Error {
 export async function applyInteractions(
   page: Page,
   steps: readonly InteractionStep[],
+  context?: InteractionContext,
 ): Promise<void> {
   let index = 0;
   for (const step of steps) {
-    const { testId } = step.target;
-    // Use getByTestId() rather than interpolating into a CSS selector — testId
-    // values containing quotes or brackets would break selector parsing.
-    const locator = page.getByTestId(testId);
-
-    const count = await locator.count();
-
-    if (count === 0) {
-      throw new MissingTestIdError(testId, index);
-    }
-
-    if (count > 1) {
-      throw new AmbiguousTestIdError(testId, count, index);
-    }
+    const locator = locatorForStep(page, step, index, context);
+    await assertResolvable(locator, step, index, context);
 
     switch (step.action) {
       case 'focus':
@@ -94,7 +247,9 @@ export async function applyInteractions(
 
       case 'press': {
         if (step.key === undefined || step.key === '') {
-          throw new Error(`Step ${index}: action 'press' requires a non-empty 'key' field.`);
+          throw new Error(
+            `${contextPrefix(context)}Step ${index}: action 'press' requires a non-empty 'key' field.`,
+          );
         }
         await locator.press(step.key);
         break;

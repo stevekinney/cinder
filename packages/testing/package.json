@@ -2,10 +2,8 @@
   "name": "@cinder/testing",
   "private": true,
   "type": "module",
-  "exports": {
-    "./fixture-schema": "./src/helpers/fixture-schema.ts"
-  },
   "scripts": {
+    "contact-sheets": "bun run scripts/generate-contact-sheets.ts",
     "install-browsers": "playwright install chromium",
     "install-browsers:ci": "playwright install --with-deps chromium",
     "report": "playwright show-report ./playwright-report",

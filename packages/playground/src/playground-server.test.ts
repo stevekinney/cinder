@@ -10,8 +10,13 @@
  */
 
 import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
-import { join } from 'node:path';
+import { rm, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
+import {
+  loadFixtureFile,
+  resolveFixtureFilePath,
+} from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
@@ -24,6 +29,7 @@ import { jsonForScriptTag } from './render-shell.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
+const COMPONENTS_ROOT = resolve(import.meta.dirname, '..', '..', 'components', 'src', 'components');
 const COMPOSE_ONLY_FIXTURE_COMPONENT = Array.from(COMPOSE_ONLY_COMPONENTS)[0]!;
 const FIXTURE_PATH = join(
   import.meta.dirname,
@@ -128,6 +134,12 @@ function tryReservePort(port: number): ReturnType<typeof Bun.serve> | null {
     if (errorWithCode.code === 'EADDRINUSE') return null;
     throw error;
   }
+}
+
+async function fixtureContentHash(componentName: string): Promise<string> {
+  const fixtureFile = await loadFixtureFile(resolveFixtureFilePath(componentName, COMPONENTS_ROOT));
+  if (fixtureFile === null) throw new Error(`Fixture file for ${componentName} is missing`);
+  return fixtureFile.contentHash;
 }
 
 describe('port selection', () => {
@@ -717,6 +729,123 @@ describe('/page/:name', () => {
       );
     expect(guardMatch).not.toBeNull();
   });
+
+  it('keeps the no-fixture route on the examples page path', async () => {
+    const response = await handleRequest(req('/page/input'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('window.__CINDER_EXAMPLES__');
+    expect(html).toContain('/page-bundle/input.js');
+    expect(html).not.toContain('/fixture-bundle/');
+  });
+
+  it('renders a direct JSON fixture route through the fixture bundle family', async () => {
+    const hash = await fixtureContentHash('input');
+    const response = await handleRequest(
+      req(`/page/input?fixture=disabled&fixtureContentHash=${hash}&snapshot=1`),
+    );
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('data-snapshot-mode');
+    const scriptMatch = html.match(
+      /src="([^"]*\/fixture-bundle\/fixture-input-disabled-[^"]+\.js)"/,
+    );
+    expect(scriptMatch).not.toBeNull();
+    expect(scriptMatch![1]).toContain(`fixture-input-disabled-${hash}-`);
+
+    const bundleResponse = await handleRequest(req(scriptMatch![1]!));
+    expect(bundleResponse.status).toBe(200);
+    const bundle = await bundleResponse.text();
+    expect(bundle).toContain('Disabled value');
+  }, 30_000);
+
+  it('renders a host fixture route through the fixture bundle family', async () => {
+    const hash = await fixtureContentHash('tabs');
+    const response = await handleRequest(
+      req(`/page/tabs?fixture=overview&fixtureContentHash=${hash}`),
+    );
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    const scriptMatch = html.match(
+      /src="([^"]*\/fixture-bundle\/fixture-tabs-overview-[^"]+\.js)"/,
+    );
+    expect(scriptMatch).not.toBeNull();
+
+    const bundleResponse = await handleRequest(req(scriptMatch![1]!));
+    expect(bundleResponse.status).toBe(200);
+    const bundle = await bundleResponse.text();
+    expect(bundle).toContain('Project sections');
+  }, 30_000);
+
+  it('returns 404 for a missing fixture name', async () => {
+    const hash = await fixtureContentHash('input');
+    const response = await handleRequest(
+      req(`/page/input?fixture=does-not-exist&fixtureContentHash=${hash}`),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 400 when a fixture route omits fixtureContentHash', async () => {
+    const response = await handleRequest(req('/page/input?fixture=disabled'));
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 400 when fixtureContentHash is malformed', async () => {
+    const response = await handleRequest(
+      req('/page/input?fixture=disabled&fixtureContentHash=stale-hash'),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 409 when fixtureContentHash does not match the fixture file', async () => {
+    const response = await handleRequest(
+      req(`/page/input?fixture=disabled&fixtureContentHash=${'0'.repeat(64)}`),
+    );
+    expect(response.status).toBe(409);
+  });
+
+  it('returns 500 for a malformed fixture file', async () => {
+    const malformedFixturePath = resolve(COMPONENTS_ROOT, 'avatar', 'avatar-fixtures.ts');
+    await writeFile(
+      malformedFixturePath,
+      "export default [{ name: 'bad', props: { onClick: () => undefined } }];\n",
+    );
+    try {
+      const response = await handleRequest(
+        req(`/page/avatar?fixture=bad&fixtureContentHash=${'a'.repeat(64)}`),
+      );
+      expect(response.status).toBe(500);
+      expect(await response.text()).toContain('Invalid fixture file');
+    } finally {
+      await rm(malformedFixturePath, { force: true });
+    }
+  });
+
+  it('serves all chunks referenced by concurrent fixture route requests', async () => {
+    const hash = await fixtureContentHash('dropdown');
+    const path = `/page/dropdown?fixture=opened-by-trigger&fixtureContentHash=${hash}`;
+    const [first, second] = await Promise.all([handleRequest(req(path)), handleRequest(req(path))]);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    const html = await first.text();
+    const scriptMatch = html.match(
+      /src="([^"]*\/fixture-bundle\/fixture-dropdown-opened-by-trigger-[^"]+\.js)"/,
+    );
+    expect(scriptMatch).not.toBeNull();
+
+    const entryResponse = await handleRequest(req(scriptMatch![1]!));
+    expect(entryResponse.status).toBe(200);
+    const entry = await entryResponse.text();
+    const chunkUrls = Array.from(
+      entry.matchAll(/\/fixture-bundle\/[A-Za-z0-9_-]+-[a-z0-9]{8,}\.js/g),
+      (match) => match[0],
+    );
+    for (const chunkUrl of new Set(chunkUrls)) {
+      const chunkResponse = await handleRequest(req(chunkUrl));
+      expect(chunkResponse.status).toBe(200);
+      expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
+    }
+  }, 30_000);
 });
 
 // ---------------------------------------------------------------------------

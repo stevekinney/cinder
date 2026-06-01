@@ -1,13 +1,13 @@
 /**
  * Visual-regression fixtures for Modal.
  *
- * Snippet props (`children`, `footer`) are provided by the playground's
- * fixture adapter — these JSON entries declare only the non-snippet
- * configuration each variant needs.
+ * Modal requires children/footer snippets, so these variants render through a
+ * host fixture and keep the non-snippet configuration as JSON props.
  */
 export default [
   {
     name: 'open',
+    host: './modal.fixture.svelte',
     props: {
       open: true,
       title: 'Open dialog',
@@ -15,6 +15,7 @@ export default [
   },
   {
     name: 'open-with-description',
+    host: './modal.fixture.svelte',
     props: {
       open: true,
       title: 'Open dialog with description',
@@ -23,6 +24,7 @@ export default [
   },
   {
     name: 'closed',
+    host: './modal.fixture.svelte',
     props: {
       open: false,
       title: 'Closed dialog',
