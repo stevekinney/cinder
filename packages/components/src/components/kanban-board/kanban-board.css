@@ -199,8 +199,8 @@
     position: fixed;
     top: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
     left: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
-    inline-size: var(--preview-width, auto);
-    block-size: var(--preview-height, auto);
+    width: var(--preview-width, auto);
+    height: var(--preview-height, auto);
     z-index: var(--cinder-z-drag-preview, 9999);
     pointer-events: none;
     box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
