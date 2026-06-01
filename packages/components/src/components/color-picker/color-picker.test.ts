@@ -186,6 +186,73 @@ describe('ColorPicker invalid input', () => {
     expect(options[0]?.getAttribute('aria-selected')).toBe('false');
     expect(options[1]?.querySelector('svg')).toBeTruthy();
   });
+
+  test('clicking an unparseable swatch does not change value or show selected', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#00ff00',
+      swatches: ['not-a-color', '#00ff00'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // No callback fired, no value change, invalid swatch never becomes selected.
+    expect(captured).toBe('');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#00ff00');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+  });
+});
+
+describe('ColorPicker swatch alpha stripping', () => {
+  test('alpha=false: alpha-bearing swatch emits plain #rrggbb (alpha stripped)', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: false,
+      swatches: ['#ff000080'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // Alpha-disabled picker must strip the alpha channel from the emitted value.
+    expect(captured).toBe('#ff0000');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#ff0000');
+    // 6-char hex only, no alpha suffix.
+    expect(captured).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  test('alpha=true: alpha-bearing swatch emits 8-char #rrggbbaa', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: true,
+      swatches: ['#ff000080'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // Alpha-enabled picker must preserve the alpha channel in the emitted value.
+    expect(captured).toMatch(/^#ff0000[0-9a-f]{2}$/);
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe(captured);
+  });
 });
 
 describe('ColorPicker hue slider keyboard', () => {

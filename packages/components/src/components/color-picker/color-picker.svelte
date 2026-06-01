@@ -16,7 +16,10 @@
 
 <script lang="ts">
   import type { ColorPickerProps } from './color-picker.types.ts';
-  import type { ColorSwatch } from '../color-swatch-picker/color-swatch-picker.types.ts';
+  import type {
+    ColorSwatch,
+    ColorSwatchPickerProps,
+  } from '../color-swatch-picker/color-swatch-picker.types.ts';
   import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -484,7 +487,9 @@
 
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
 
-  function handleSwatchChange(selectedColor: string): void {
+  function handleSwatchChange(
+    selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onchange']>>[0],
+  ): void {
     if (disabled) return;
     const parsed = parseToHsla(selectedColor);
     if (!parsed) return;
