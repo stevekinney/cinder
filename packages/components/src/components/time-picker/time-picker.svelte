@@ -17,7 +17,7 @@
 <script lang="ts">
   import type { TimePickerProps } from './time-picker.types.ts';
   import type { TimeParts } from '../../_internal/time-parts.ts';
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { DEV } from 'esm-env';
 
   import {
@@ -283,11 +283,28 @@
     periodFocusIndex = displayHour.period === 'PM' ? 1 : 0;
   }
 
+  // Handle for the post-open focus timer so it can be cleared if the picker is
+  // re-opened or destroyed before it fires — otherwise unmounting during the
+  // open-focus window leaks a timer that wakes a destroyed component.
+  let openFocusTimer: ReturnType<typeof setTimeout> | undefined;
+
   async function focusSelectedHourAfterOpen(): Promise<void> {
     await tick();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Yield one macrotask so the popover's options are laid out before focusing.
+    // Stored + cleared (here and in onDestroy) so an unmount mid-window leaks no timer.
+    if (openFocusTimer !== undefined) clearTimeout(openFocusTimer);
+    await new Promise<void>((resolve) => {
+      openFocusTimer = setTimeout(() => {
+        openFocusTimer = undefined;
+        resolve();
+      }, 0);
+    });
     hourOptionElements[hourFocusIndex]?.focus();
   }
+
+  onDestroy(() => {
+    if (openFocusTimer !== undefined) clearTimeout(openFocusTimer);
+  });
 
   function handleToggleClick(): void {
     if (resolvedDisabled) return;
