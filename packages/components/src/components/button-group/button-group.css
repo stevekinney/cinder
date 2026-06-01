@@ -39,9 +39,12 @@
     min-block-size: 100%;
   }
 
-  /* Elevate the hovered/focused participant so its focus ring paints over
-   adjacent buttons' borders and is never clipped. */
-  .cinder-button-group > [data-cinder-button-group-item]:where(:hover, :focus-within) {
+  /* Elevate the highlighted participant so its focus ring paints over adjacent
+   buttons' borders and is never clipped. Kept in sync with the seam-suppression
+   selectors below — every state that suppresses a seam (:hover, :active,
+   :focus-within) also elevates, so the highlighted surface is never cut or
+   under-painted by a neighbor. */
+  .cinder-button-group > [data-cinder-button-group-item]:where(:hover, :active, :focus-within) {
     z-index: 1;
   }
 

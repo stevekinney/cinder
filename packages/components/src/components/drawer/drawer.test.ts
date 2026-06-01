@@ -1010,6 +1010,41 @@ describe('Drawer slide direction lifecycle', () => {
     await finishCloseTransition(container);
     expect(container.querySelector('.cinder-drawer__panel')).toBeNull();
   });
+
+  // Same-tick open + side change: a consumer that does `open = true; side = 'left'`
+  // in one event handler batches both writes into a single reactive update. The
+  // open-handling effect must read the NEW side when it snapshots activeSide, so
+  // the fresh panel slides from the correct edge.
+  test('open=false→true with a simultaneous side change snapshots the new side', async () => {
+    let openValue = false;
+    let sideValue: 'left' | 'right' = 'right';
+
+    const props = () => ({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    const { container, rerender } = render(Drawer, { props: props() });
+    expect(container.querySelector('.cinder-drawer__panel')).toBeNull();
+
+    // Flip both atomically before the single rerender (one reactive batch).
+    openValue = true;
+    sideValue = 'left';
+    await rerender(props());
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+  });
 });
 
 // The drawer's <dialog> is gated behind a `hydrated` $state set inside an
