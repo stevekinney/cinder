@@ -160,6 +160,7 @@ const DOCKER_ENVIRONMENT: NodeJS.ProcessEnv = {
   CINDER_PLAYWRIGHT_VERSION: '1.60.0',
   PLAYWRIGHT_DOCKER: '1',
 };
+const KNOWN_SLUGS = new Set(['badge', 'button', 'popover']);
 
 describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
   it('passes when the baseline exists inside the canonical Docker image', () => {
@@ -226,11 +227,11 @@ describe('isScreenshotInComponentScope', () => {
   });
 
   it('includes screenshots whose slug is in scope', () => {
-    expect(isScreenshotInComponentScope('button', 'button,badge')).toBe(true);
+    expect(isScreenshotInComponentScope('button', 'button,badge', KNOWN_SLUGS)).toBe(true);
   });
 
   it('excludes screenshots outside a scoped visual-regression run', () => {
-    expect(isScreenshotInComponentScope('popover', 'button')).toBe(false);
+    expect(isScreenshotInComponentScope('popover', 'button', KNOWN_SLUGS)).toBe(false);
   });
 
   it('throws when the component scope references an unknown slug', () => {
