@@ -134,9 +134,8 @@ describe('FormSection rendering — section (default)', () => {
     expect(root?.classList.contains('custom-section')).toBe(true);
   });
 
-  test('span-2 utility is defined for multi-column grids', () => {
-    expect(formSectionStyles).toContain('.cinder-form-section__span-2');
-    expect(formSectionStyles).toContain('grid-column: span 2');
+  test('does not ship an undocumented span utility', () => {
+    expect(formSectionStyles).not.toContain('.cinder-form-section__span-2');
   });
 });
 

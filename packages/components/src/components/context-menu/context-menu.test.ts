@@ -17,12 +17,15 @@ const autoUpdateSpy = mock((_reference: unknown, _menu: HTMLElement, update: () 
   return autoUpdateTeardown;
 });
 const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
+const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
 const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () => ({}) }));
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
   autoUpdate: autoUpdateSpy,
   computePosition: computePositionSpy,
   flip: flipSpy,
+  offset: offsetSpy,
   shift: shiftSpy,
 }));
 
@@ -38,6 +41,7 @@ beforeEach(() => {
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
   flipSpy.mockClear();
+  offsetSpy.mockClear();
   shiftSpy.mockClear();
 });
 
@@ -62,6 +66,26 @@ describe('ContextMenu', () => {
     });
     expect(autoUpdateSpy).toHaveBeenCalled();
     expect(computePositionSpy).toHaveBeenCalled();
+  });
+
+  test('fallback menu portals virtual-anchor surfaces before they are positioned', async () => {
+    computePositionSpy.mockImplementationOnce(async () => {
+      throw new Error('detached panel');
+    });
+    const { container } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => {
+      const menu = queryMenu();
+      expect(menu).not.toBeNull();
+      expect(menu?.parentElement).toBe(document.body);
+      expect(menu?.getAttribute('data-cinder-position-ready')).toBe('false');
+      expect(menu?.getAttribute('data-cinder-requested-x')).toBe('24');
+      expect(menu?.getAttribute('data-cinder-requested-y')).toBe('36');
+      expect(menu?.getAttribute('style')).toBeNull();
+    });
   });
 
   test('consumer trigger handlers do not replace core context-menu handlers', async () => {

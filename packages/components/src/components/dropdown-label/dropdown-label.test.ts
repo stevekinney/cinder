@@ -11,8 +11,8 @@ const { default: Fixture } = await import('../../test/fixtures/dropdown-compound
 async function openMenu() {
   const result = render(Fixture);
   await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
-  await waitFor(() => expect(result.container.querySelector('[role="menu"]')).not.toBeNull());
-  return result;
+  await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
+  return { ...result, container: document.body };
 }
 
 describe('DropdownLabel', () => {

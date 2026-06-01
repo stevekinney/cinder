@@ -19,7 +19,8 @@
   import type { CopyButtonProps } from './copy-button.types.ts';
   import { onDestroy } from 'svelte';
 
-  import { Check, Copy } from '../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
+  import Copy from 'lucide-svelte/icons/copy';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { cn } from '../../utilities/class-names.ts';
 

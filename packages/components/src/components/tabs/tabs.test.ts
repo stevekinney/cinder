@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -9,6 +10,8 @@ const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
 const { default: TrailingWrapper } =
   await import('../../test/fixtures/tabs-trailing-fixture.svelte');
+
+const tabsCss = readFileSync(new URL('./tabs.css', import.meta.url), 'utf8');
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
@@ -57,6 +60,17 @@ describe('Tabs ARIA structure', () => {
     const tab = container.querySelector('[role="tab"][aria-selected="true"]');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.getAttribute('aria-labelledby')).toBe(tab?.getAttribute('id'));
+  });
+});
+
+describe('Tabs responsive CSS', () => {
+  test('vertical tab layout collapses through a component container query', () => {
+    expect(tabsCss).toContain('container-name: cinder-tabs;');
+    expect(tabsCss).toContain('@container cinder-tabs (max-width: 30rem)');
+    expect(tabsCss).not.toContain('@media (max-width: 30rem)');
+    expect(tabsCss).toMatch(
+      /@container cinder-tabs \(max-width: 30rem\)[\s\S]*?\.cinder-tabs\[data-cinder-orientation='vertical'\][\s\S]*?flex-direction:\s*column;/,
+    );
   });
 });
 

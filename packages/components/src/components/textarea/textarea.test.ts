@@ -10,7 +10,13 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Textarea } = await import('./textarea.svelte');
+const { default: FormFieldTextareaFixture } =
+  await import('../../test/fixtures/form-field-textarea-fixture.svelte');
 const { resolveMaximumLength } = await import('../textarea-count.ts');
+
+function idsIn(container: Element): string[] {
+  return Array.from(container.querySelectorAll('[id]'), (element) => element.id);
+}
 
 describe('Textarea', () => {
   test('renders with required id', () => {
@@ -243,6 +249,70 @@ describe('Textarea — character count', () => {
     // The textarea element value updates via DOM but the prop-bound counter
     // may or may not update depending on binding. We assert the textarea DOM value changed.
     expect(textarea.value).toBe('hi there');
+  });
+});
+
+describe('Textarea context inheritance from FormField', () => {
+  test('inherits FormField state when local description and error are absent', () => {
+    const { container } = render(FormFieldTextareaFixture, {
+      props: {
+        fieldId: 'ctx-textarea',
+        fieldLabel: 'Textarea label',
+        fieldDescription: 'Field helper',
+        fieldError: 'Field error',
+        fieldRequired: true,
+        fieldDisabled: true,
+      },
+    });
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea.getAttribute('aria-describedby')).toBe(
+      'ctx-textarea-description ctx-textarea-error',
+    );
+    expect(textarea.getAttribute('aria-invalid')).toBe('true');
+    expect(textarea.required).toBe(true);
+    expect(textarea.disabled).toBe(true);
+  });
+
+  test('local Textarea description and error use distinct ids and compose with FormField context', () => {
+    const { container } = render(FormFieldTextareaFixture, {
+      props: {
+        fieldId: 'ctx-textarea',
+        fieldLabel: 'Textarea label',
+        fieldDescription: 'Field helper',
+        fieldError: 'Field error',
+        textareaDescription: 'Textarea helper',
+        textareaError: 'Textarea error',
+      },
+    });
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea.getAttribute('aria-describedby')).toBe(
+      'ctx-textarea-textarea-description ctx-textarea-textarea-error ctx-textarea-description ctx-textarea-error',
+    );
+    expect(textarea.getAttribute('aria-invalid')).toBe('true');
+    expect(container.querySelector('#ctx-textarea-textarea-description')?.textContent).toContain(
+      'Textarea helper',
+    );
+    expect(container.querySelector('#ctx-textarea-textarea-error')?.textContent).toContain(
+      'Textarea error',
+    );
+    expect(idsIn(container).filter((id) => id === 'ctx-textarea-error')).toHaveLength(1);
+    expect(idsIn(container).filter((id) => id === 'ctx-textarea-textarea-error')).toHaveLength(1);
+  });
+
+  test('explicit Textarea disabled false overrides FormField context', () => {
+    const { container } = render(FormFieldTextareaFixture, {
+      props: {
+        fieldId: 'ctx-textarea',
+        fieldLabel: 'Textarea label',
+        fieldDisabled: true,
+        textareaDisabled: false,
+      },
+    });
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea.disabled).toBe(false);
   });
 });
 

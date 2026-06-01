@@ -26,6 +26,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import Popover from '../popover/popover.svelte';
 
   let {
     id,
@@ -72,6 +73,7 @@
 
   let open = $state(false);
   let activeIndex = $state(-1);
+  let inputElement = $state<HTMLInputElement | null>(null);
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -166,6 +168,7 @@
 
   <div class="cinder-combobox__control" data-cinder-open={open || undefined}>
     <input
+      bind:this={inputElement}
       {id}
       type="text"
       role="combobox"
@@ -190,38 +193,54 @@
   </div>
 
   {#if open && filteredOptions.length > 0}
-    <ul id={listboxId} role="listbox" class="cinder-combobox__listbox">
-      {#each filteredOptions as option, index (option.value)}
-        <li
-          id="{id}-option-{index}"
-          role="option"
-          class="cinder-combobox__option"
-          aria-selected={value === option.value}
-          aria-disabled={option.disabled || undefined}
-          aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
-          data-cinder-active={index === activeIndex || undefined}
-          onmousedown={(event) => {
-            // mousedown rather than click so the option fires before the
-            // input's blur cancels the popover.
-            event.preventDefault();
-            selectOption(option);
-          }}
-          onmouseenter={() => {
-            activeIndex = index;
-          }}
-        >
-          {#if option.avatar?.trim()}
-            <img class="cinder-combobox__option-avatar" src={option.avatar} alt="" loading="lazy" />
-          {/if}
-          <span class="cinder-combobox__option-text">
-            <span class="cinder-combobox__option-label">{option.label}</span>
-            {#if option.description}
-              <span class="cinder-combobox__option-description">{option.description}</span>
+    <Popover
+      bind:open
+      id={listboxId}
+      triggerRef={inputElement}
+      role="listbox"
+      focusManagement="preserve"
+      wireTriggerAria={false}
+      widthMode="match-anchor"
+      class="cinder-combobox__panel"
+    >
+      <ul role="presentation" class="cinder-combobox__listbox">
+        {#each filteredOptions as option, index (option.value)}
+          <li
+            id="{id}-option-{index}"
+            role="option"
+            class="cinder-_option-row cinder-combobox__option"
+            aria-selected={value === option.value}
+            aria-disabled={option.disabled || undefined}
+            aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
+            data-cinder-active={index === activeIndex || undefined}
+            onmousedown={(event) => {
+              // mousedown rather than click so the option fires before the
+              // input's blur cancels the popover.
+              event.preventDefault();
+              selectOption(option);
+            }}
+            onmouseenter={() => {
+              activeIndex = index;
+            }}
+          >
+            {#if option.avatar?.trim()}
+              <img
+                class="cinder-combobox__option-avatar"
+                src={option.avatar}
+                alt=""
+                loading="lazy"
+              />
             {/if}
-          </span>
-        </li>
-      {/each}
-    </ul>
+            <span class="cinder-combobox__option-text">
+              <span class="cinder-combobox__option-label">{option.label}</span>
+              {#if option.description}
+                <span class="cinder-combobox__option-description">{option.description}</span>
+              {/if}
+            </span>
+          </li>
+        {/each}
+      </ul>
+    </Popover>
   {/if}
 
   <!-- Always in DOM so screen readers hear "No results" when text is injected.

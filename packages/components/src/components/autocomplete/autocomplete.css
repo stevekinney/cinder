@@ -42,7 +42,6 @@
   }
 
   .cinder-autocomplete__panel {
-    min-width: min(24rem, calc(100vw - 2rem));
     padding: var(--cinder-space-1);
   }
 

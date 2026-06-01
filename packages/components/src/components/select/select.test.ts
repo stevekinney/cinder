@@ -18,6 +18,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Select } = await import('./select.svelte');
+const { default: FormFieldSelectFixture } =
+  await import('../../test/fixtures/form-field-select-fixture.svelte');
 
 const defaultOptions = [
   { value: 'a', label: 'Option A' },
@@ -29,6 +31,10 @@ function readSelectStyles(): string {
   // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
   // getComputedStyle. Inner declarations are unchanged.
   return stripCinderComponentsLayer(readFileSync(new URL('./select.css', import.meta.url), 'utf8'));
+}
+
+function idsIn(container: Element): string[] {
+  return Array.from(container.querySelectorAll('[id]'), (element) => element.id);
 }
 
 describe('Select', () => {
@@ -259,6 +265,72 @@ describe('Select field-control contract', () => {
     expect(readSelectStyles()).toContain(
       '.cinder-select-field__error:not([data-cinder-error]) {\n  position: absolute;',
     );
+  });
+});
+
+describe('Select context inheritance from FormField', () => {
+  test('inherits FormField state when local description and error are absent', () => {
+    const { container } = render(FormFieldSelectFixture, {
+      props: {
+        fieldId: 'ctx-select',
+        fieldLabel: 'Select label',
+        fieldDescription: 'Field helper',
+        fieldError: 'Field error',
+        fieldRequired: true,
+        fieldDisabled: true,
+      },
+    });
+
+    const select = container.querySelector('select') as HTMLSelectElement;
+    expect(select.getAttribute('aria-describedby')).toBe('ctx-select-description ctx-select-error');
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+    expect(select.required).toBe(true);
+    expect(select.disabled).toBe(true);
+    expect(idsIn(container).filter((id) => id === 'ctx-select-error')).toHaveLength(1);
+  });
+
+  test('local Select description and error use distinct ids and compose with FormField context', () => {
+    const { container } = render(FormFieldSelectFixture, {
+      props: {
+        fieldId: 'ctx-select',
+        fieldLabel: 'Select label',
+        fieldDescription: 'Field helper',
+        fieldError: 'Field error',
+        selectDescription: 'Select helper',
+        selectError: 'Select error',
+      },
+    });
+
+    const select = container.querySelector('select') as HTMLSelectElement;
+    expect(select.getAttribute('aria-describedby')).toBe(
+      'ctx-select-select-description ctx-select-select-error ctx-select-description ctx-select-error',
+    );
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+    expect(container.querySelector('#ctx-select-select-description')?.textContent).toContain(
+      'Select helper',
+    );
+    expect(container.querySelector('#ctx-select-select-error')?.textContent).toContain(
+      'Select error',
+    );
+    expect(idsIn(container).filter((id) => id === 'ctx-select-error')).toHaveLength(1);
+    expect(idsIn(container).filter((id) => id === 'ctx-select-select-error')).toHaveLength(1);
+  });
+
+  test('explicit Select required and disabled false override FormField context', () => {
+    const { container } = render(FormFieldSelectFixture, {
+      props: {
+        fieldId: 'ctx-select',
+        fieldLabel: 'Select label',
+        fieldRequired: true,
+        fieldDisabled: true,
+        selectRequired: false,
+        selectDisabled: false,
+      },
+    });
+
+    const select = container.querySelector('select') as HTMLSelectElement;
+    expect(select.required).toBe(false);
+    expect(select.disabled).toBe(false);
   });
 });
 

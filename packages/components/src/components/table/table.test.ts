@@ -559,6 +559,13 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     expect(rule?.style.position).toBe('relative');
   });
 
+  test('scroll wrapper owns horizontal overflow without changing table semantics', () => {
+    const wrapperRule = injectTableCssAndFind('.cinder-table-scroll');
+    const tableRule = injectTableCssAndFind('.cinder-table-scroll > .cinder-table');
+    expect(wrapperRule?.style.overflowX).toBe('auto');
+    expect(tableRule?.style.minInlineSize).toBe('max-content');
+  });
+
   test('right-aligned sortable headers justify the sort button content to the end', () => {
     const rule = injectTableCssAndFind(
       ".cinder-table__header-cell[data-cinder-align='right'] .cinder-table__sort-button",

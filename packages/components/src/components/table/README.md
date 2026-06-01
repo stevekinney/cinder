@@ -18,25 +18,31 @@ the namespace API: `Table.Header`, `Table.HeaderCell`, `Table.Body`,
   ];
 </script>
 
-<Table caption="Recent contributors">
-  <Table.Header>
-    <Table.Row>
-      <Table.HeaderCell>Name</Table.HeaderCell>
-      <Table.HeaderCell>Role</Table.HeaderCell>
-      <Table.HeaderCell>Commits</Table.HeaderCell>
-    </Table.Row>
-  </Table.Header>
-  <Table.Body>
-    {#each people as person (person.name)}
+<div class="cinder-table-scroll">
+  <Table caption="Recent contributors">
+    <Table.Header>
       <Table.Row>
-        <Table.Cell>{person.name}</Table.Cell>
-        <Table.Cell>{person.role}</Table.Cell>
-        <Table.Cell align="right">{person.commits}</Table.Cell>
+        <Table.HeaderCell>Name</Table.HeaderCell>
+        <Table.HeaderCell>Role</Table.HeaderCell>
+        <Table.HeaderCell>Commits</Table.HeaderCell>
       </Table.Row>
-    {/each}
-  </Table.Body>
-</Table>
+    </Table.Header>
+    <Table.Body>
+      {#each people as person (person.name)}
+        <Table.Row>
+          <Table.Cell>{person.name}</Table.Cell>
+          <Table.Cell>{person.role}</Table.Cell>
+          <Table.Cell align="right">{person.commits}</Table.Cell>
+        </Table.Row>
+      {/each}
+    </Table.Body>
+  </Table>
+</div>
 ```
+
+Wrap dense or unknown-width tables in `.cinder-table-scroll`. The Table root
+stays a native `<table>`; the wrapper owns horizontal overflow when the
+available component width is too narrow.
 
 The leaves remain importable individually for à-la-carte builds — see
 `cinder/table-body`, `cinder/table-cell`, `cinder/table-header`,

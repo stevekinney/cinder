@@ -462,6 +462,7 @@
   role="listbox"
   focusManagement="preserve"
   wireTriggerAria={false}
+  widthMode="match-anchor"
   class="cinder-autocomplete__panel"
 >
   {#if loading}
@@ -469,7 +470,7 @@
       id={`${resolvedId}-status-loading`}
       role="option"
       tabindex="-1"
-      class="cinder-autocomplete__option cinder-autocomplete__status"
+      class="cinder-_option-row cinder-autocomplete__option cinder-autocomplete__status"
       aria-selected="false"
       aria-disabled="true"
     >
@@ -480,7 +481,7 @@
       id={`${resolvedId}-status-empty`}
       role="option"
       tabindex="-1"
-      class="cinder-autocomplete__option cinder-autocomplete__status"
+      class="cinder-_option-row cinder-autocomplete__option cinder-autocomplete__status"
       aria-selected="false"
       aria-disabled="true"
     >
@@ -494,7 +495,7 @@
         id={`${resolvedId}-option-${index}`}
         role="option"
         tabindex="-1"
-        class="cinder-autocomplete__option"
+        class="cinder-_option-row cinder-autocomplete__option"
         aria-selected={index === activeIndex}
         aria-disabled={suggestion.disabled || undefined}
         data-cinder-active={index === activeIndex || undefined}

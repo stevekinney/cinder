@@ -10,7 +10,7 @@ expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render: renderIntoContainer, fireEvent } = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
 
 const fruits = [
@@ -25,6 +25,11 @@ function readComboboxStyles(): string {
   return stripCinderComponentsLayer(
     readFileSync(new URL('./combobox.css', import.meta.url), 'utf8'),
   );
+}
+
+function render(...args: Parameters<typeof renderIntoContainer>) {
+  const result = renderIntoContainer(...args);
+  return { ...result, container: document.body };
 }
 
 describe('Combobox', () => {

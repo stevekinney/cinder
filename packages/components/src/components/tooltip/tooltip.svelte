@@ -19,10 +19,10 @@
   import type { TooltipProps } from './tooltip.types.ts';
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
-  import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom';
-  import { untrack } from 'svelte';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { cn } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
 
   let {
     text,
@@ -56,12 +56,6 @@
   let wrapperElement: HTMLSpanElement | undefined = $state();
   let tooltipElement: HTMLSpanElement | undefined = $state();
   let anchorElement = $state<HTMLElement | null>(null);
-  // Seeded once from the initial `placement`; the position effect (below) keeps
-  // it in sync as the prop or floating-ui's flip result changes.
-  let computedPlacement = $state<Placement>(untrack(() => placement));
-  let positionStyle = $state('');
-  let positionReady = $state(false);
-  const isTooltipExposed = $derived(visible && positionReady);
 
   function show() {
     clearTimeout(showTimer);
@@ -153,80 +147,27 @@
     };
   };
 
-  const portalTooltipToDocumentBody: Attachment<HTMLSpanElement> = (element) => {
-    tooltipElement = element;
-    const inheritedRoot = anchorElement ?? wrapperElement ?? element.parentElement ?? undefined;
-    const inheritedDirection = inheritedRoot?.closest<HTMLElement>('[dir]')?.getAttribute('dir');
-    if (inheritedDirection) {
-      element.setAttribute('dir', inheritedDirection);
-    }
-    const inheritedTheme = inheritedRoot
-      ?.closest<HTMLElement>('[data-cinder-theme]')
-      ?.getAttribute('data-cinder-theme');
-    if (inheritedTheme) {
-      element.setAttribute('data-cinder-theme', inheritedTheme);
-    }
-    document.body.appendChild(element);
+  const tooltipPortalAttachment = createPortalAttachment({
+    target: () => document.body,
+    source: () => anchorElement ?? wrapperElement ?? null,
+    inheritAttributes: true,
+  });
 
-    return () => {
-      if (tooltipElement === element) tooltipElement = undefined;
-      element.remove();
-    };
-  };
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => visible,
+    anchor: () => anchorElement,
+    panel: () => tooltipElement,
+    placement: () => placement as Placement,
+    offset: () => 8,
+    widthMode: () => 'none',
+  });
+  const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   $effect(() => {
     if (!visible && !hasPendingShow) return;
     document.addEventListener('keydown', handleKeydown);
     return () => {
       document.removeEventListener('keydown', handleKeydown);
-    };
-  });
-
-  $effect(() => {
-    if (!visible) {
-      computedPlacement = placement;
-      positionStyle = '';
-      positionReady = false;
-      return;
-    }
-    if (!anchorElement || !tooltipElement) return;
-
-    const anchor = anchorElement;
-    const tooltip = tooltipElement;
-    const placementSnapshot = placement;
-    let cancelled = false;
-    let generation = 0;
-
-    const updatePosition = async () => {
-      const myGeneration = ++generation;
-      try {
-        const result = await computePosition(anchor, tooltip, {
-          placement: placementSnapshot,
-          middleware: [offset(8), flip(), shift({ padding: 8 })],
-          strategy: 'fixed',
-        });
-        if (cancelled || myGeneration !== generation) return;
-        positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
-        computedPlacement = result.placement;
-        positionReady = true;
-      } catch {
-        if (cancelled || myGeneration !== generation) return;
-        positionStyle = '';
-        computedPlacement = placementSnapshot;
-        positionReady = false;
-      }
-    };
-
-    const stopAutoUpdate = autoUpdate(anchor, tooltip, () => {
-      void updatePosition();
-    });
-
-    return () => {
-      cancelled = true;
-      stopAutoUpdate();
-      positionStyle = '';
-      computedPlacement = placementSnapshot;
-      positionReady = false;
     };
   });
 </script>
@@ -244,20 +185,21 @@
   onmouseleave={handleMouseLeave}
   onfocusin={handleFocusIn}
   onfocusout={handleFocusOut}
-  data-cinder-placement={visible ? computedPlacement : placement}
+  data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
   {@attach attachWrapper}
 >
   {@render children()}
 
   <span
     id={tooltipId}
+    bind:this={tooltipElement}
     role="tooltip"
     class="cinder-tooltip"
     aria-hidden={!isTooltipExposed}
-    data-cinder-placement={visible ? computedPlacement : placement}
-    data-cinder-position-ready={positionReady}
-    style={positionStyle}
-    {@attach portalTooltipToDocumentBody}
+    data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
+    data-cinder-position-ready={anchoredOverlay.positionReady}
+    style={anchoredOverlay.positionStyle}
+    {@attach tooltipPortalAttachment}
   >
     {text}
   </span>

@@ -695,6 +695,10 @@
     "./color-field/styles": {
       "default": "./dist/components/color-field/color-field.css"
     },
+    "./color-field/examples": {
+      "import": "./src/components/color-field/color-field.examples.json",
+      "default": "./src/components/color-field/color-field.examples.json"
+    },
     "./color-picker": {
       "types": "./dist/components/color-picker/index.d.ts",
       "svelte": "./src/components/color-picker/index.ts",
@@ -1018,6 +1022,10 @@
     },
     "./description-list/styles": {
       "default": "./dist/components/description-list/description-list.css"
+    },
+    "./description-list/examples": {
+      "import": "./src/components/description-list/description-list.examples.json",
+      "default": "./src/components/description-list/description-list.examples.json"
     },
     "./diff-statistics": {
       "types": "./dist/components/diff-statistics/index.d.ts",
@@ -1787,6 +1795,10 @@
     },
     "./message/styles": {
       "default": "./dist/components/message/message.css"
+    },
+    "./message/examples": {
+      "import": "./src/components/message/message.examples.json",
+      "default": "./src/components/message/message.examples.json"
     },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
@@ -2688,6 +2700,10 @@
     },
     "./status-dot/styles": {
       "default": "./dist/components/status-dot/status-dot.css"
+    },
+    "./status-dot/examples": {
+      "import": "./src/components/status-dot/status-dot.examples.json",
+      "default": "./src/components/status-dot/status-dot.examples.json"
     },
     "./steps": {
       "types": "./dist/components/steps/index.d.ts",
@@ -3620,14 +3636,18 @@
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json && bun run check:no-cycle-imports",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "prepack": "bun run build",
+    "package:weight": "bun run scripts/report-package-weight.ts",
+    "package:weight:check": "bun run scripts/report-package-weight.ts --check",
     "prepare": "cd ../.. && husky",
     "prepublishOnly": "bun run validate && bun run build",
+    "publish:release": "bun run scripts/publish-release.ts",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1",
     "test:changed": "bun run scripts/test-changed.ts",
-    "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage",
+    "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage --coverage-reporter=lcov && bun run scripts/check-coverage-ratchet.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
-    "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run validate:workflow && bun run validate:consumer",
+    "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
+    "validate:svelte-peer": "bun run scripts/validate-svelte-peer-contract.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },
@@ -3692,7 +3712,7 @@
     "typescript": "^5.9.0"
   },
   "peerDependencies": {
-    "svelte": ">=5.55.0 <5.56.0"
+    "svelte": ">=5.55.0 <6"
   },
   "engines": {
     "bun": ">=1.3.0"

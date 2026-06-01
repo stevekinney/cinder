@@ -30,20 +30,16 @@
 </script>
 
 <script lang="ts">
-  import {
-    computePosition,
-    autoUpdate,
-    flip,
-    shift,
-    offset as offsetMiddleware,
-  } from '@floating-ui/dom';
-  import type { VirtualElement } from '@floating-ui/dom';
+  import type { Placement, VirtualElement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../../utilities/class-names.ts';
   import { createFocusTrap } from '../../focus-trap/index.ts';
   import { createClickOutside } from '../../../utilities/attachments.ts';
   import Button from '../../button/button.svelte';
   import Input from '../../input/input.svelte';
-  import { Link, Unlink, X } from '../../icons/index.ts';
+  import Link from 'lucide-svelte/icons/link';
+  import Unlink from 'lucide-svelte/icons/unlink';
+  import X from 'lucide-svelte/icons/x';
 
   let {
     id,
@@ -58,43 +54,14 @@
     onremove,
   }: LinkPopoverProps = $props();
 
-  // Floating UI positioning state
   let popoverElement = $state<HTMLDivElement | null>(null);
-  let positionReady = $state(false);
-  let positionStyle = $state('');
-
-  // Positioning effect: runs autoUpdate when anchorElement and popoverElement are available.
-  // Cleaned up on unmount or anchor change.
-  $effect(() => {
-    const anchor = anchorElement as HTMLElement | VirtualElement | null;
-    const panel = popoverElement;
-
-    if (!anchor || !panel) {
-      positionReady = false;
-      positionStyle = '';
-      return;
-    }
-
-    let cancelled = false;
-
-    const stop = autoUpdate(anchor, panel, async () => {
-      if (cancelled) return;
-      const result = await computePosition(anchor, panel, {
-        placement: 'bottom-start',
-        strategy: 'fixed',
-        middleware: [offsetMiddleware(8), flip(), shift({ padding: 8 })],
-      });
-      if (cancelled) return;
-      positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
-      positionReady = true;
-    });
-
-    return () => {
-      cancelled = true;
-      stop();
-      positionReady = false;
-      positionStyle = '';
-    };
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => Boolean(anchorElement),
+    anchor: () => anchorElement as HTMLElement | VirtualElement | null,
+    panel: () => popoverElement,
+    placement: () => 'bottom-start' as Placement,
+    offset: () => 8,
+    widthMode: () => 'content',
   });
 
   // Form state (reset by $effect when popover opens)
@@ -209,10 +176,10 @@
   aria-labelledby={`${id}-title`}
   tabindex="-1"
   class={classNames('link-popover', className)}
-  style={anchorElement ? positionStyle : undefined}
-  data-position-ready={anchorElement ? positionReady : undefined}
-  inert={anchorElement && !positionReady ? true : undefined}
-  {@attach createFocusTrap({ active: () => !anchorElement || positionReady })}
+  style={anchorElement ? anchoredOverlay.positionStyle : undefined}
+  data-position-ready={anchorElement ? anchoredOverlay.positionReady : undefined}
+  inert={anchorElement && !anchoredOverlay.positionReady ? true : undefined}
+  {@attach createFocusTrap({ active: () => !anchorElement || anchoredOverlay.positionReady })}
   {@attach createClickOutside({ handler: () => onclose?.() })}
   onkeydown={handleKeyDown}
 >

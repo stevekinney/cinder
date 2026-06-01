@@ -52,7 +52,10 @@
   import { copyToClipboard } from '../../../utilities/clipboard.ts';
   import { stringify } from '../../../utilities/stringify.ts';
   import { getMessageText, getMessageParts } from '../utilities/utilities.js';
-  import { Copy, Check, RotateCcw, Pencil } from '../../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
+  import Copy from 'lucide-svelte/icons/copy';
+  import Pencil from 'lucide-svelte/icons/pencil';
+  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
   import MessageContent from './message-content.svelte';
   import MessageAttachments from './message-attachments.svelte';
   import ToolCallGroup from './tool-call-group.svelte';

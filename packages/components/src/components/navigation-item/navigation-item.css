@@ -113,23 +113,8 @@
     background-color: var(--cinder-surface-inset);
   }
 
-  /* ----------------------------------------
- * Mobile variant — stacked full-width layout
- * Breakpoint: 47.99rem (~767px). No breakpoint token exists in this
- * package yet; extract to a shared token in a follow-up task.
- * ---------------------------------------- */
-
-  @media (max-width: 47.99rem) {
-    .cinder-navigation-item[data-variant='mobile'] {
-      display: flex;
-      inline-size: 100%;
-      justify-content: flex-start;
-      padding-block: var(--cinder-space-3);
-    }
-  }
-
-  @media (forced-colors: active) and (max-width: 47.99rem) {
-    .cinder-navigation-item[data-variant='mobile']:focus-visible {
+  @media (forced-colors: active) {
+    .cinder-navigation-item:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
     }

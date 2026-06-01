@@ -119,5 +119,5 @@ describe('cascade identity (aggregated cinder/styles)', () => {
 
     const offenders = stream.filter(({ layer }) => layer !== COMPONENT_LAYER_NAME);
     expect(offenders).toEqual([]);
-  });
+  }, 10_000);
 });

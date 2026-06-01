@@ -1,6 +1,6 @@
 # GridList
 
-Accessible grid of selectable items with keyboard navigation and selection management.
+GridList lays out homogeneous card-like list items in responsive auto-fit columns.
 
 ## Usage
 
@@ -12,7 +12,7 @@ Accessible grid of selectable items with keyboard navigation and selection manag
   import { GridList } from 'cinder/grid-list';
 </script>
 
-<GridList columns="14rem" aria-label="Projects">
+<GridList minColumnWidth="14rem" aria-label="Projects">
   <GridList.Item>
     {#snippet title()}<strong>Phoenix</strong>{/snippet}
     {#snippet subtitle()}<span>Reactive runtime experiments.</span>{/snippet}
@@ -30,11 +30,11 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                                                                                                                                                     |
-| ---------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `columns`  | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first argument to `minmax()` inside a `repeat(auto-fill, ...)` track. Default: `"16rem"`. Empty string is treated as unset. |
-| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                      |
-| `class`    | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                         |
+| Prop             | Type       | Required | Default | Description                                                                                                                                                                                                                                                     |
+| ---------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minColumnWidth` | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first argument to `minmax()` inside a `repeat(auto-fill, ...)` track. Default: `"16rem"`. Empty string is treated as unset. |
+| `children`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                      |
+| `class`          | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                         |
 
 <!-- generated:props:end -->
 

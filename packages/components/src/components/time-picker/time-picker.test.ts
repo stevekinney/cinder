@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -328,5 +329,60 @@ describe('TimePicker', () => {
 
     expect(picker.getAttribute('aria-describedby') ?? '').toContain('appointment-time-description');
     expect(picker.required).toBe(true);
+  });
+
+  test('unmounting while the post-open focus timer is pending leaves no leaked timer', async () => {
+    // Opening the popover schedules a setTimeout(_, 0) in focusSelectedHourAfterOpen
+    // to focus the selected hour after the options lay out. Unmounting inside that
+    // window must clear the timer (onDestroy) so it never wakes a destroyed
+    // component. We unmount synchronously after opening, before the 0ms timer fires.
+    const timers = trackTimers();
+    try {
+      const { container, unmount } = render(TimePicker, {
+        id: 'appointment-time',
+        label: 'Appointment time',
+        value: '09:30',
+      });
+
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.keyDown(input, { key: 'ArrowDown' }); // opens popover → schedules the focus timer
+      await tick(); // let the open $effect run and schedule the setTimeout, still pending
+
+      unmount(); // onDestroy(clearTimeout) must clear the pending focus timer
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
+  });
+
+  test('re-opening while a focus timer is pending settles cleanly and leaves no leaked timer', async () => {
+    // Rapid close/re-open cancels the first open's focus timer mid-flight. The
+    // cancel must settle the first call's awaited promise (no permanently
+    // suspended async path) AND leave no leaked timer. If the abandoned promise
+    // could hang, this test would hang; completing is the proof it settles.
+    const timers = trackTimers();
+    try {
+      const { getByLabelText, unmount } = render(TimePicker, {
+        id: 'appointment-time',
+        label: 'Appointment time',
+        value: '09:30',
+      });
+      const toggle = getByLabelText('Choose time');
+
+      await fireEvent.click(toggle); // open → schedules focus timer #1
+      await tick();
+      await fireEvent.click(toggle); // close
+      await fireEvent.click(toggle); // re-open → cancels #1, schedules #2
+      await tick();
+      await waitForPopoverFocus(); // let timer #2 fire and focus land
+
+      // Tear down and confirm no timer (and no abandoned resolver) is left over.
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await Promise.resolve();
+      unmount();
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
   });
 });

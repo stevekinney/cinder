@@ -86,8 +86,11 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: bun run scripts/verify-release-version.ts
 
-      - name: Build package
-        run: bun run --filter=cinder build
+      - name: Validate package artifact
+        run: bun run --filter=cinder validate:consumer
+
+      - name: Check package artifact budget
+        run: bun run --filter=cinder package:weight:check -- --existing-tarball
 
       # Break-glass publish. Authentication uses NPM_TOKEN intentionally
       # (the same secret release.yaml uses) rather than npm trusted
@@ -96,9 +99,8 @@ jobs:
       # Provenance is still emitted via NPM_CONFIG_PROVENANCE and the
       # `id-token: write` permission on this job.
       - name: Publish to npm
-        working-directory: packages/components
         env:
           NPM_CONFIG_PROVENANCE: 'true'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish
+        run: bun run --filter=cinder publish:release -- --skip-validation

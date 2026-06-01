@@ -66,7 +66,7 @@
 
   .cinder-time-picker__popover {
     padding: var(--cinder-space-3);
-    min-width: 18rem;
+    inline-size: min(18rem, calc(100vw - var(--cinder-space-4)));
   }
 
   .cinder-time-picker__columns {

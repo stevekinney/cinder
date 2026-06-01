@@ -23,7 +23,7 @@
 </script>
 
 <script lang="ts">
-  import { ChevronDown } from '../../icons/index.ts';
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
 
   let {
     showJumpButton,

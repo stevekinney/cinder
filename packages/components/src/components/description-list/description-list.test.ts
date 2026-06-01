@@ -176,6 +176,15 @@ describe('DescriptionList', () => {
     );
   });
 
+  test('two-column layout uses subgrid progressively and collapses by container width', async () => {
+    const css = await Bun.file(`${import.meta.dir}/description-list.css`).text();
+
+    expect(css).toContain('@supports (grid-template-columns: subgrid)');
+    expect(css).toContain('grid-template-columns: subgrid;');
+    expect(css).toContain('@container (max-width: 28rem)');
+    expect(css).toMatch(/@container \(max-width: 28rem\)[\s\S]*?grid-template-columns:\s*1fr;/);
+  });
+
   test('<dl> content model: only row divs as direct children, each with exactly dt then dd', () => {
     const { container } = render(DescriptionList, { items: sampleItems });
     const dl = container.querySelector('.cinder-description-list')!;

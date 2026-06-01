@@ -19,7 +19,8 @@
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import { Search, X } from '../icons/index.ts';
+  import Search from 'lucide-svelte/icons/search';
+  import X from 'lucide-svelte/icons/x';
   import type { SearchFieldProps } from './search-field.types.ts';
   import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';

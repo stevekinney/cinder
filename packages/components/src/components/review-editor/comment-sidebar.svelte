@@ -24,7 +24,12 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { truncate } from '../../utilities/truncate.ts';
-  import { MessageSquare, MoreHorizontal, Trash2, Plus, FileText, X } from '../icons/index.ts';
+  import FileText from 'lucide-svelte/icons/file-text';
+  import MessageSquare from 'lucide-svelte/icons/message-square';
+  import MoreHorizontal from 'lucide-svelte/icons/more-horizontal';
+  import Plus from 'lucide-svelte/icons/plus';
+  import Trash2 from 'lucide-svelte/icons/trash-2';
+  import X from 'lucide-svelte/icons/x';
   import { getVisibleComments, isDocumentAnchor } from 'cinder/commentary/comments';
   import Button from '../button/button.svelte';
   import Dropdown from '../dropdown/dropdown.svelte';

@@ -91,6 +91,6 @@
     "typescript": "^5.9.0"
   },
   "peerDependencies": {
-    "svelte": ">=5.55.0 <5.56.0"
+    "svelte": ">=5.55.0 <6"
   }
 }

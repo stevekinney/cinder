@@ -7,7 +7,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-1-5);
-    inline-size: max-content;
+    inline-size: min(100%, max-content);
   }
 
   .cinder-pin-input-field__label {
@@ -29,6 +29,8 @@
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+    max-inline-size: 100%;
   }
 
   .cinder-pin-input__segment {
@@ -63,7 +65,7 @@
     border-color: var(--cinder-border-strong);
   }
 
-  .cinder-pin-input__segment[aria-invalid='true'] {
+  .cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment {
     border-color: var(--cinder-danger);
   }
 
