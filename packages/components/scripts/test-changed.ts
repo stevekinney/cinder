@@ -90,6 +90,14 @@ export function parseEnvSlugs(raw: string | undefined): string[] {
 
 /** Resolve the scope decision: env var first, else `git diff` against the base. */
 async function resolveScope(baseRef: string): Promise<ScopeDecision> {
+  // CI sets CINDER_TEST_MODE explicitly. `full` short-circuits to the full
+  // suite WITHOUT touching git — the CI checkout is shallow, so the git-diff
+  // fallback below would be unreliable there. This makes "CI says full" an
+  // explicit signal rather than inferring it from an empty component list.
+  if (process.env['CINDER_TEST_MODE'] === 'full') {
+    return { mode: 'full', reason: 'CINDER_TEST_MODE=full' };
+  }
+
   const envSlugs = parseEnvSlugs(process.env['CINDER_TEST_COMPONENTS']);
   if (envSlugs.length > 0) {
     // CI already computed the scope; trust it. Validate against known slugs so a

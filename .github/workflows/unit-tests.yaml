@@ -42,8 +42,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: unit-tests-${{ github.ref }}
-  cancel-in-progress: true
+  # PR runs cancel each other (superseded by a new push to the same PR). Push-to-main
+  # runs each get a unique group (keyed by SHA) so a rapid follow-up merge never cancels
+  # the in-flight full-suite safety-net run.
+  group: unit-tests-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   BUN_VERSION: 1.3.13
@@ -52,6 +55,7 @@ jobs:
   scope:
     # Compute the scoped slug set for a pull request. Non-PR events run full.
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       mode: ${{ steps.decide.outputs.mode }}
       components: ${{ steps.decide.outputs.components }}
@@ -83,7 +87,10 @@ jobs:
             exit 0
           fi
 
-          changed=$(git diff --name-only "origin/${BASE_REF}..HEAD")
+          # Three-dot: diff against the merge base, so only the PR's own changes
+          # are considered (not commits that landed on the base since the fork).
+          # Matches test-changed.ts's local behavior.
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
           echo "Changed files:"
           printf '%s\n' "$changed"
 
@@ -120,8 +127,10 @@ jobs:
         # (and the ~11-min playground suite would otherwise tax every PR).
         # Per-package dependency scoping is the deferred follow-up.
         env:
-          # Empty when mode=full → test-changed.ts runs the full suite.
-          # Comma-separated slug list when filtered → scoped to those dirs.
+          # CINDER_TEST_MODE is the explicit signal: `full` → test-changed.ts runs
+          # the full suite without touching git (the checkout here is shallow).
+          # `filtered` → CINDER_TEST_COMPONENTS carries the scoped slug list.
+          CINDER_TEST_MODE: ${{ needs.scope.outputs.mode }}
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: |
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then

@@ -75,11 +75,17 @@ export function isTestFile(repoRelativePath: string): boolean {
 }
 
 /**
- * The ONLY known-safe computed dynamic imports in component source. Both load
- * a temp SSR module written to disk at test time — they never create a
- * component→component edge — and live in the always-run `src/test/**` bucket.
- * Keyed by repo-relative POSIX path. {@link assertNoUnmodellableImports}
- * fails if a computed import appears anywhere NOT in this set.
+ * The ONLY known-safe computed dynamic imports. Both load a temp SSR module
+ * written to disk at test time — they never create a component→component edge.
+ * Keyed by repo-relative POSIX path.
+ *
+ * INVARIANT: every entry MUST be under `packages/components/src/test/`, which
+ * itself force-fulls when changed (see {@link pathForceFullReason}). This keeps
+ * the allow-list strictly test-harness-scoped: it exists only so the GLOBAL
+ * unmodellable scan in {@link computeScope} does not force-full on every run for
+ * these dormant harness imports — it can NEVER be used to wave through a
+ * computed import in real component source (that still force-fulls). The
+ * invariant is enforced by a unit test and by {@link assertNoUnmodellableImports}.
  */
 export const UNMODELLABLE_IMPORT_ALLOWLIST: ReadonlySet<string> = new Set([
   'packages/components/src/test/hydrate.ts',
@@ -203,7 +209,7 @@ export function extractImports(content: string): ExtractedImports {
 
 export type ResolveResult =
   | { kind: 'resolved'; path: string }
-  | { kind: 'ambiguous'; candidates: string[] }
+  | { kind: 'ambiguous'; candidates: readonly string[] }
   | { kind: 'external' };
 
 /**
@@ -249,8 +255,17 @@ export function resolveCandidates(absoluteBase: string): string[] {
   return candidates;
 }
 
+/** Compound extensions checked before the generic single-dot fallback. */
+const COMPOUND_EXTENSIONS = ['.svelte.ts', '.svelte.tsx'] as const;
+
 function extensionOf(path: string): string {
   const base = path.slice(path.lastIndexOf('/') + 1);
+  // `button.svelte.ts` must report `.svelte.ts`, not `.ts` — otherwise an
+  // explicit `./button.svelte.ts` specifier would skip the extensionless probe
+  // that generates the `.svelte.ts` candidate.
+  for (const compound of COMPOUND_EXTENSIONS) {
+    if (base.endsWith(compound)) return compound;
+  }
   const dot = base.lastIndexOf('.');
   return dot <= 0 ? '' : base.slice(dot);
 }
@@ -366,18 +381,12 @@ export function buildImportGraph(
         back.add(file);
         reverse.set(result.path, back);
       } else if (result.kind === 'ambiguous') {
+        // Record the file as ambiguous. We do NOT synthesize reverse edges for
+        // the candidates: any ambiguous import in the scanned graph forces a
+        // full run globally (see computeScope step 3), so the closure never
+        // needs to "reach" this file. Keeping the graph free of speculative
+        // edges keeps it an honest model of the real imports.
         ambiguousFiles.add(file);
-        // CRITICAL: add a reverse edge from EVERY ambiguous candidate to this
-        // file. Without it, a change to one candidate would never reach this
-        // importing file in the dependents BFS, so the `ambiguousInClosure`
-        // guard could not fire and the file would be silently dropped. With
-        // the edges, any candidate's change reaches this file, the guard
-        // detects the ambiguity, and the run force-fulls — the safe outcome.
-        for (const candidate of result.candidates) {
-          const back = reverse.get(candidate) ?? new Set<string>();
-          back.add(file);
-          reverse.set(candidate, back);
-        }
       }
     }
   }
@@ -437,8 +446,19 @@ export function pathForceFullReason(repoRelativePath: string): string | null {
   // default — a scoper bug must not be able to under-test the very PR that
   // introduced it.
   if (path.startsWith('packages/testing/')) {
-    if (path === 'packages/testing/README.md') return null;
+    // Markdown in the testing package (README, auto-generated CHANGELOG) cannot
+    // affect test behavior.
+    if (/\.(md|mdx)$/.test(path)) return null;
     return `testing-harness change: ${path}`;
+  }
+
+  // The components package's SHARED test harness (`src/test/**`: lifecycle
+  // helpers, render/hydrate utilities) is imported by component tests but is
+  // excluded from the import graph, so it has no reverse edges to map. A change
+  // there can affect EVERY component test, so force full rather than let it be
+  // silently dropped when co-changed with a single component.
+  if (path.startsWith('packages/components/src/test/')) {
+    return `shared test-harness change: ${path}`;
   }
 
   // Lockfile / runtime config / TS config: can change resolution for everything.
@@ -482,7 +502,7 @@ export function pathForceFullReason(repoRelativePath: string): string | null {
 
 export type ScopeDecision =
   | { mode: 'full'; reason: string }
-  | { mode: 'filtered'; slugs: string[] };
+  | { mode: 'filtered'; slugs: readonly string[] };
 
 export type ComputeScopeOptions = {
   /** Repo-relative POSIX paths of files the diff touched. */
@@ -529,7 +549,12 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
     };
   }
 
-  // 3. Globally-unsafe computed imports.
+  // 3. Globally-unsafe edges force full, regardless of what changed. Both
+  //    represent edges the graph could not model, so ANY closure built from
+  //    this graph might be incomplete — the only safe response is full.
+  //    Handling them globally (rather than only when reached in the closure)
+  //    also lets us avoid synthesizing speculative reverse edges for ambiguous
+  //    imports: we never need the closure to "reach" them.
   const graph = buildImportGraph(sourceFiles);
   const offendingUnmodellable = [...graph.unmodellableFiles].filter(
     (file) => !UNMODELLABLE_IMPORT_ALLOWLIST.has(file),
@@ -538,6 +563,12 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
     return {
       mode: 'full',
       reason: `computed dynamic import (unmodellable edge) in: ${offendingUnmodellable.toSorted().join(', ')}`,
+    };
+  }
+  if (graph.ambiguousFiles.size > 0) {
+    return {
+      mode: 'full',
+      reason: `ambiguous import (unresolvable edge) in: ${[...graph.ambiguousFiles].toSorted().join(', ')}`,
     };
   }
 
@@ -575,18 +606,9 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
     return { mode: 'full', reason: `unaccounted changed file: ${file}` };
   }
 
-  // 4. Dependents closure → slugs.
+  // 4. Dependents closure → slugs. (Ambiguity is already handled globally in
+  //    step 3, so the closure here is built from a fully-modelled graph.)
   const closure = dependentsClosure(graph, closureSeeds);
-
-  // Ambiguous import on any file in the closure → full (we refused to guess its
-  // edges, so the closure may be incomplete).
-  const ambiguousInClosure = [...closure].filter((file) => graph.ambiguousFiles.has(file));
-  if (ambiguousInClosure.length > 0) {
-    return {
-      mode: 'full',
-      reason: `ambiguous import on closure file(s): ${ambiguousInClosure.toSorted().join(', ')}`,
-    };
-  }
 
   const slugs = new Set<string>(directSlugs);
   for (const file of closure) {
@@ -654,7 +676,6 @@ function isTraceableSharedModule(repoRelativePath: string): boolean {
     path.startsWith('packages/components/src/schemas/') ||
     path.startsWith('packages/components/src/highlighters/') ||
     path === 'packages/components/src/schema-types.ts' ||
-    path.startsWith('packages/components/src/test/') ||
     path.startsWith('packages/editor/src/') ||
     path.startsWith('packages/markdown/src/') ||
     path.startsWith('packages/diff/src/') ||

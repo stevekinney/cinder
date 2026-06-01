@@ -103,6 +103,30 @@ describe('changed-components decide()', () => {
     const result = decide(['', `${C}/badge/badge.svelte`, '  '], sourceFiles, knownSlugs);
     expect(result).toEqual({ mode: 'filtered', components: ['badge'] });
   });
+
+  it('forces full when an example is co-changed with a real force-full trigger', () => {
+    // The example slug must NOT rescue a genuine force-full (e.g. lockfile). This
+    // pins the string-match branch in decide() that distinguishes "no component
+    // changes" (example wins) from a real force-full reason (full wins).
+    const result = decide(
+      ['packages/playground/src/examples/accordion/basic.example.svelte', 'bun.lock'],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result.mode).toBe('full');
+  });
+
+  it('filters to the example slug when the only co-change is an ignorable doc', () => {
+    const result = decide(
+      [
+        'packages/playground/src/examples/accordion/basic.example.svelte',
+        'packages/playground/README.md',
+      ],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: ['accordion'] });
+  });
 });
 
 // ---------------------------------------------------------------------------

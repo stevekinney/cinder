@@ -11,6 +11,7 @@ import {
   pathForceFullReason,
   resolveImport,
   slugForFile,
+  UNMODELLABLE_IMPORT_ALLOWLIST,
   type ComputeScopeOptions,
 } from './component-graph.ts';
 
@@ -185,6 +186,22 @@ describe('resolveImport', () => {
     const fromX = 'packages/components/src/components/x/x.svelte';
     const result = resolveImport(fromX, './foo', (p) => p === a || p === b);
     expect(result.kind).toBe('ambiguous');
+  });
+
+  it('rewrites .mjs specifiers to .mts on disk', () => {
+    const target = 'packages/components/src/utilities/helpers.mts';
+    const result = resolveImport(from, '../../utilities/helpers.mjs', (p) => p === target);
+    expect(result).toEqual({ kind: 'resolved', path: target });
+  });
+
+  it('resolves an explicit .svelte.ts specifier as-is (compound extension)', () => {
+    const target = 'packages/components/src/utilities/use-history.svelte.ts';
+    const result = resolveImport(
+      from,
+      '../../utilities/use-history.svelte.ts',
+      (p) => p === target,
+    );
+    expect(result).toEqual({ kind: 'resolved', path: target });
   });
 
   it('returns external when nothing resolves on disk', () => {
@@ -467,22 +484,34 @@ describe('computeScope', () => {
     expect(decision).toEqual({ mode: 'filtered', slugs: ['badge'] });
   });
 
-  it('force-fulls an ambiguous import via reverse edges when a candidate changes', () => {
+  it('force-fulls globally when ANY ambiguous import exists in the graph', () => {
     // card imports '../button/button' (extensionless); both button.ts and
-    // button.svelte exist → ambiguous. A change to button.svelte must reach card
-    // through the ambiguous reverse edges and force full.
+    // button.svelte exist → ambiguous. Any ambiguous import in the scanned graph
+    // forces full (the closure could be incomplete), even when the changed file
+    // is unrelated to it.
     const ambiguous = new Map<string, string>([
       [`${C}/button/button.ts`, `export const x = 1;`],
       [`${C}/button/button.svelte`, `<script>export let y = 1;</script>`],
       [`${C}/card/card.svelte`, `<script>import Button from '../button/button';</script>`],
+      [`${C}/badge/badge.svelte`, `<script>let z = 1;</script>`],
     ]);
     const decision = computeScope({
-      changedFiles: [`${C}/button/button.svelte`],
+      changedFiles: [`${C}/badge/badge.svelte`], // unrelated to the ambiguous import
       sourceFiles: ambiguous,
-      knownSlugs: new Set(['button', 'card']),
+      knownSlugs: new Set(['button', 'card', 'badge']),
     });
     expect(decision.mode).toBe('full');
     expect((decision as { reason: string }).reason).toContain('ambiguous');
+  });
+
+  it('force-fulls when the shared test harness (src/test) changes', () => {
+    const decision = computeScope(
+      base({
+        changedFiles: ['packages/components/src/test/lifecycle.ts', `${C}/badge/badge.svelte`],
+      }),
+    );
+    expect(decision.mode).toBe('full');
+    expect((decision as { reason: string }).reason).toContain('test-harness');
   });
 });
 
@@ -494,6 +523,12 @@ describe('no-unmodellable-imports guard (real tree)', () => {
   it('the harness allow-list is exhaustive — no stray computed imports', async () => {
     const files = await loadSourceFiles();
     expect(() => assertNoUnmodellableImports(files)).not.toThrow();
+  });
+
+  it('every allow-list entry is under src/test/ (cannot wave through component source)', () => {
+    for (const entry of UNMODELLABLE_IMPORT_ALLOWLIST) {
+      expect(entry.startsWith('packages/components/src/test/')).toBe(true);
+    }
   });
 
   it('discovers a sane number of component slugs', async () => {

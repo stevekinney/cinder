@@ -97,7 +97,9 @@ jobs:
             exit 0
           fi
 
-          changed=$(git diff --name-only "origin/${BASE_REF}..HEAD")
+          # Three-dot: diff against the merge base, so only the PR's own changes
+          # are considered (not commits that landed on the base since the fork).
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
           echo "Changed files:"
           printf '%s\n' "$changed"
 
