@@ -695,6 +695,10 @@
     "./color-field/styles": {
       "default": "./dist/components/color-field/color-field.css"
     },
+    "./color-field/examples": {
+      "import": "./src/components/color-field/color-field.examples.json",
+      "default": "./src/components/color-field/color-field.examples.json"
+    },
     "./color-picker": {
       "types": "./dist/components/color-picker/index.d.ts",
       "svelte": "./src/components/color-picker/index.ts",
@@ -1018,6 +1022,10 @@
     },
     "./description-list/styles": {
       "default": "./dist/components/description-list/description-list.css"
+    },
+    "./description-list/examples": {
+      "import": "./src/components/description-list/description-list.examples.json",
+      "default": "./src/components/description-list/description-list.examples.json"
     },
     "./diff-statistics": {
       "types": "./dist/components/diff-statistics/index.d.ts",
@@ -1787,6 +1795,10 @@
     },
     "./message/styles": {
       "default": "./dist/components/message/message.css"
+    },
+    "./message/examples": {
+      "import": "./src/components/message/message.examples.json",
+      "default": "./src/components/message/message.examples.json"
     },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
@@ -2688,6 +2700,10 @@
     },
     "./status-dot/styles": {
       "default": "./dist/components/status-dot/status-dot.css"
+    },
+    "./status-dot/examples": {
+      "import": "./src/components/status-dot/status-dot.examples.json",
+      "default": "./src/components/status-dot/status-dot.examples.json"
     },
     "./steps": {
       "types": "./dist/components/steps/index.d.ts",

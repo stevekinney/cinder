@@ -641,10 +641,7 @@ async function runSveltePeerCompatibilityFixture(
   process.stdout.write(
     `[validate-consumers] step: svelte peer compatibility (${label}: ${svelteVersion})…\n`,
   );
-  const restoreManifest =
-    svelteVersion === undefined
-      ? injectTarballIntoFixture(fixtureDirectory)
-      : injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
     await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
