@@ -10,10 +10,10 @@ import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 test.describe('server identity', () => {
-  test('cached manifest matches live /api/manifest', async ({ request }) => {
+  test('cached manifest matches live standalone manifest', async ({ request }) => {
     // `request` honors playwright.config.ts's `use.baseURL`, which resolves
     // via `src/helpers/playground-url.ts`.
-    const response = await request.get('/api/manifest');
+    const response = await request.get('/api/manifest?standalone=1');
     expect(response.ok()).toBeTruthy();
 
     const live = (await response.json()) as Array<{ name: string; kebabName: string }>;
@@ -201,6 +201,24 @@ for (const entry of entries) {
               type: 'axe',
               description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
             });
+
+            // Record the screenshot taxonomy so the (future) contact-sheet
+            // tooling can group captures by intent (visual contract vs
+            // interaction state vs primitive composition vs documentation).
+            //
+            // NOTE: today this resolves to 'visual-contract' for EVERY capture,
+            // because the manifest pipeline (prepare-manifest.ts →
+            // ComponentEntry.fixtures) does not yet carry `category`/`interact`,
+            // so the sweep only ever sees the synthesized `default` fixture.
+            // Threading category/interact through the manifest — so interaction
+            // fixtures annotate as 'interaction-state' — is part of the deferred
+            // fixture-rendering pipeline (see task b5af46f8). The annotation is
+            // wired now so it goes live for free once that pipeline lands.
+            const category =
+              'category' in fixture && typeof fixture.category === 'string'
+                ? fixture.category
+                : 'visual-contract';
+            test.info().annotations.push({ type: 'category', description: category });
 
             // Pass mask rules from the fixture so toHaveScreenshot can exclude
             // dynamic regions from the pixel comparison.

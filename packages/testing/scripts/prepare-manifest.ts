@@ -18,7 +18,7 @@ type RawManifestEntry = {
 };
 
 async function main(): Promise<void> {
-  const response = await fetch(`${PLAYGROUND_URL}/api/manifest`);
+  const response = await fetch(`${PLAYGROUND_URL}/api/manifest?standalone=1`);
   if (!response.ok) {
     throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
   }
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
 
   if (raw.length === 0) {
     throw new Error(
-      `Manifest at ${PLAYGROUND_URL}/api/manifest returned zero entries. The playground discovered no components.`,
+      `Manifest at ${PLAYGROUND_URL}/api/manifest?standalone=1 returned zero entries. The playground discovered no standalone components.`,
     );
   }
 

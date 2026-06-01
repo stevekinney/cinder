@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 93-entry product gate', async () => {
+  it('keeps the sidebar at or below the 97-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -215,10 +215,14 @@ describe('discoverSidebarComponents', () => {
     // the overlay variants (alert-dialog, context-menu, hover-card) plus
     // ContextMenu and inline-command additions landed the deduped sidebar at
     // 92. Promoting Timeline out of experimental/ into the main tree — it
-    // ships playground examples, so it now surfaces in the sidebar — lands it
-    // at 93 distinct families, measured empirically via discoverSidebarComponents().
+    // ships playground examples, so it now surfaces in the sidebar — landed it
+    // at 93. The Playwright-sweep stabilization (task 27cd940c) added the four
+    // missing examples for standalone components that were rendering "No
+    // examples found" and timing out the sweep — status-dot, message,
+    // description-list, color-field — surfacing them in the sidebar and landing
+    // it at 97 distinct families, measured empirically via discoverSidebarComponents().
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(93);
+    expect(sidebar.length).toBeLessThanOrEqual(97);
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

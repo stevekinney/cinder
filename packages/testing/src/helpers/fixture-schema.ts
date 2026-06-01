@@ -40,6 +40,34 @@ export const MASK_REASONS = [
 /** Closed enum of supported interaction actions. */
 export const INTERACTION_ACTIONS = ['focus', 'click', 'hover', 'press'] as const;
 
+/**
+ * Screenshot taxonomy — the kind of review artifact a fixture produces. Lets
+ * reviewers (and the contact-sheet tooling) tell a component's canonical visual
+ * contract apart from a documentation page, a primitive shown only in a
+ * composition, or an interaction-state capture.
+ *
+ *   - `visual-contract`: the component's own default/canonical rendered states.
+ *   - `primitive-composition`: a low-level primitive shown inside the smallest
+ *     realistic composition that proves it works (it has no meaningful
+ *     standalone visual).
+ *   - `interaction-state`: a capture taken AFTER `interact` steps — hover,
+ *     focus, selected/current, open, disabled — where brand/usability lives.
+ *   - `documentation`: playground chrome / doc-oriented pages, not a component
+ *     visual contract.
+ *
+ * When a fixture omits `category`, the schema resolves it from the fixture
+ * shape: `interaction-state` if it has `interact` steps, otherwise
+ * `visual-contract` (see {@link VisualFixtureSchema}).
+ */
+export const FIXTURE_CATEGORIES = [
+  'visual-contract',
+  'primitive-composition',
+  'interaction-state',
+  'documentation',
+] as const;
+
+export type FixtureCategory = (typeof FIXTURE_CATEGORIES)[number];
+
 // ---------------------------------------------------------------------------
 // JsonValue — recursive schema, plain objects only
 // ---------------------------------------------------------------------------
@@ -107,23 +135,38 @@ const MaskRuleSchema = z.object({
  * - `interact`: optional ordered list of interaction steps to perform before
  *   capturing the snapshot.
  * - `mask`: optional list of regions to hide during pixel comparison.
+ * - `category`: the screenshot-taxonomy bucket (see {@link FIXTURE_CATEGORIES}).
+ *   Defaults to `interaction-state` when the fixture has `interact` steps,
+ *   otherwise `visual-contract`.
  */
-export const VisualFixtureSchema = z.object({
-  name: z
-    .string()
-    .regex(FIXTURE_NAME_PATTERN, {
-      message: `Fixture name must match ${String(FIXTURE_NAME_PATTERN)} (lowercase kebab-case starting with a letter)`,
-    })
-    .max(FIXTURE_NAME_MAX_LENGTH, {
-      message: `Fixture name must not exceed ${FIXTURE_NAME_MAX_LENGTH} characters`,
-    })
-    .refine((value) => !(RESERVED_FIXTURE_NAMES as readonly string[]).includes(value), {
-      message: `Fixture name '${RESERVED_FIXTURE_NAMES.join("', '")}' is reserved`,
-    }),
-  props: JsonValueSchema,
-  interact: z.array(InteractionStepSchema).optional(),
-  mask: z.array(MaskRuleSchema).optional(),
-});
+export const VisualFixtureSchema = z
+  .object({
+    name: z
+      .string()
+      .regex(FIXTURE_NAME_PATTERN, {
+        message: `Fixture name must match ${String(FIXTURE_NAME_PATTERN)} (lowercase kebab-case starting with a letter)`,
+      })
+      .max(FIXTURE_NAME_MAX_LENGTH, {
+        message: `Fixture name must not exceed ${FIXTURE_NAME_MAX_LENGTH} characters`,
+      })
+      .refine((value) => !(RESERVED_FIXTURE_NAMES as readonly string[]).includes(value), {
+        message: `Fixture name '${RESERVED_FIXTURE_NAMES.join("', '")}' is reserved`,
+      }),
+    props: JsonValueSchema,
+    interact: z.array(InteractionStepSchema).optional(),
+    mask: z.array(MaskRuleSchema).optional(),
+    category: z.enum(FIXTURE_CATEGORIES).optional(),
+  })
+  .transform((fixture) => ({
+    ...fixture,
+    // Resolve the taxonomy default: an interaction fixture is an
+    // interaction-state capture unless it says otherwise.
+    category:
+      fixture.category ??
+      (fixture.interact && fixture.interact.length > 0
+        ? ('interaction-state' as const)
+        : ('visual-contract' as const)),
+  }));
 
 /**
  * Zod schema for the optional metadata constant exported alongside a fixture
