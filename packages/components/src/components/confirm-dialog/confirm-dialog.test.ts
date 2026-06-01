@@ -475,4 +475,79 @@ describe('ConfirmDialog', () => {
     await fireEvent.click(cancelBtn);
     expect(openValue).toBe(false);
   });
+
+  // Dialog-model boundary tests
+  // These document the public contract distinguishing ConfirmDialog from AlertDialog.
+  // They will fail if ConfirmDialog loses the cancel-first focus default or if the
+  // component is made to behave like a sticky alertdialog.
+
+  test('boundary: ConfirmDialog defaults focus to the cancel button on open (default cancelLabel)', () => {
+    // cancelLabel defaults to "Cancel" — verify autofocus goes to cancel without providing it.
+    const { container } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete account?',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+      },
+    });
+    const [cancelBtn, confirmBtn] = footerButtons(container);
+    expect(cancelBtn.autofocus).toBe(true);
+    expect(confirmBtn.autofocus).toBeFalsy();
+  });
+
+  test('boundary: ConfirmDialog IS dismissable by Escape (native cancel event fires oncancel)', async () => {
+    let cancelCount = 0;
+    let openValue = true;
+    const { container } = render(ConfirmDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Delete account?',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+        oncancel: () => {
+          cancelCount++;
+        },
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    await tick();
+    // Unlike AlertDialog, ConfirmDialog allows Escape — open becomes false.
+    expect(openValue).toBe(false);
+    expect(cancelCount).toBe(1);
+  });
+
+  test('boundary: ConfirmDialog IS dismissable by backdrop click (fires oncancel)', async () => {
+    let cancelCount = 0;
+    let openValue = true;
+    const { container } = render(ConfirmDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Delete account?',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+        oncancel: () => {
+          cancelCount++;
+        },
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent.click(dialog);
+    await tick();
+    // Unlike AlertDialog, ConfirmDialog allows backdrop dismiss.
+    expect(openValue).toBe(false);
+    expect(cancelCount).toBe(1);
+  });
 });
