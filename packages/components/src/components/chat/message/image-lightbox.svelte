@@ -18,7 +18,9 @@
 
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { X, ChevronLeft, ChevronRight } from '../../icons/index.ts';
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import X from 'lucide-svelte/icons/x';
   import { createFocusTrap } from '../../focus-trap/index.ts';
   import { bodyScrollLock } from '../../../utilities/attachments.ts';
 

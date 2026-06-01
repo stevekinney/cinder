@@ -15,7 +15,7 @@
     "build": "bun run --filter=cinder build",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
-    "changeset:publish:dry": "bun run --filter=cinder build && cd packages/components && npm publish --dry-run",
+    "changeset:publish:dry": "bun run --filter=cinder validate:consumer && bun run --filter=cinder publish:release -- --dry-run --skip-validation",
     "changeset:version": "changeset version",
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",

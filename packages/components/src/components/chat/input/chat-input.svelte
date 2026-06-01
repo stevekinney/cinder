@@ -85,7 +85,10 @@
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
   import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
-  import { ArrowUp, Paperclip, Square, X } from '../../icons/index.ts';
+  import ArrowUp from 'lucide-svelte/icons/arrow-up';
+  import Paperclip from 'lucide-svelte/icons/paperclip';
+  import Square from 'lucide-svelte/icons/square';
+  import X from 'lucide-svelte/icons/x';
   import Button from '../../button/button.svelte';
   import MarkdownEditor from '../../markdown-editor/markdown-editor.svelte';
   import { deriveAttachmentKind } from './attachment-kind.js';

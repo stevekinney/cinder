@@ -13,7 +13,7 @@ sections:
 ## Using cinder in your app
 
 `cinder` is a Svelte 5 component library — roughly 100 accessible primitives
-plus a few opinionated domain suites. It targets Svelte `>=5.55 <5.56` and is
+plus a few opinionated domain suites. It targets Svelte `>=5.55.0 <6` and is
 SSR-safe out of the box. Everything ships with a JSON Schema, CSS variable
 list, and (where it matters) a constraints sidecar and runnable examples.
 

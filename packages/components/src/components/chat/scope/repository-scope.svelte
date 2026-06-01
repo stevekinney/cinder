@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import { FolderGit2 } from '../../icons/index.ts';
+  import FolderGit2 from 'lucide-svelte/icons/folder-git-2';
   import Badge from '../../badge/badge.svelte';
   import EmptyState from '../../empty-state/empty-state.svelte';
   import { classNames } from '../../../utilities/class-names.ts';

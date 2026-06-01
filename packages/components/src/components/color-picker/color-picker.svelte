@@ -21,7 +21,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { useId } from '../../utilities/use-id.ts';
-  import { Check } from '../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
 
   let {
     value = $bindable(),

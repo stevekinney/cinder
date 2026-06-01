@@ -36,7 +36,10 @@
 
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
-  import { Search, ChevronUp, ChevronDown, X } from '../../icons/index.ts';
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import ChevronUp from 'lucide-svelte/icons/chevron-up';
+  import Search from 'lucide-svelte/icons/search';
+  import X from 'lucide-svelte/icons/x';
 
   let {
     instanceId,

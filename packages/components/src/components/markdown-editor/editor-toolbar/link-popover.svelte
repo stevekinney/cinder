@@ -37,7 +37,9 @@
   import { createClickOutside } from '../../../utilities/attachments.ts';
   import Button from '../../button/button.svelte';
   import Input from '../../input/input.svelte';
-  import { Link, Unlink, X } from '../../icons/index.ts';
+  import Link from 'lucide-svelte/icons/link';
+  import Unlink from 'lucide-svelte/icons/unlink';
+  import X from 'lucide-svelte/icons/x';
 
   let {
     id,

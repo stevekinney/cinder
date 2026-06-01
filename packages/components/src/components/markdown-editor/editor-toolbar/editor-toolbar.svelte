@@ -37,22 +37,20 @@
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
   import { classNames } from '../../../utilities/class-names.ts';
-  import {
-    Bold,
-    Italic,
-    Code,
-    Strikethrough,
-    Link,
-    List,
-    ListOrdered,
-    Quote,
-    Pilcrow,
-    Heading1,
-    Heading2,
-    Heading3,
-    Undo2,
-    Redo2,
-  } from '../../icons/index.ts';
+  import Bold from 'lucide-svelte/icons/bold';
+  import Code from 'lucide-svelte/icons/code';
+  import Heading1 from 'lucide-svelte/icons/heading-1';
+  import Heading2 from 'lucide-svelte/icons/heading-2';
+  import Heading3 from 'lucide-svelte/icons/heading-3';
+  import Italic from 'lucide-svelte/icons/italic';
+  import Link from 'lucide-svelte/icons/link';
+  import List from 'lucide-svelte/icons/list';
+  import ListOrdered from 'lucide-svelte/icons/list-ordered';
+  import Pilcrow from 'lucide-svelte/icons/pilcrow';
+  import Quote from 'lucide-svelte/icons/quote';
+  import Redo2 from 'lucide-svelte/icons/redo-2';
+  import Strikethrough from 'lucide-svelte/icons/strikethrough';
+  import Undo2 from 'lucide-svelte/icons/undo-2';
 
   import {
     toggleBold,

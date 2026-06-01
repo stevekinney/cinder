@@ -38,7 +38,9 @@
   import { isDocumentAnchor } from 'cinder/commentary/comments';
   import CommentList from './comment-list.svelte';
   import CommentComposer from './comment-composer.svelte';
-  import { X, Trash2, FileText } from '../icons/index.ts';
+  import FileText from 'lucide-svelte/icons/file-text';
+  import Trash2 from 'lucide-svelte/icons/trash-2';
+  import X from 'lucide-svelte/icons/x';
 
   let {
     id,

@@ -36,7 +36,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '../button/button.svelte';
-  import { RotateCcw } from '../icons/index.ts';
+  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
   import Surface from '../surface/surface.svelte';
   import { createDiffController } from './diff-controller.svelte';
   import DiffFrontMatter from './diff-front-matter.svelte';

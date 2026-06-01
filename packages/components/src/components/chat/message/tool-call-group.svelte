@@ -17,7 +17,10 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { stringify } from '../../../utilities/stringify.ts';
-  import { Check, ChevronDown, MoreHorizontal, X } from '../../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import MoreHorizontal from 'lucide-svelte/icons/more-horizontal';
+  import X from 'lucide-svelte/icons/x';
   import ToolPayloadCode from './tool-payload-code.svelte';
 
   let {

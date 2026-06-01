@@ -30,7 +30,9 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import { ChevronDown, ChevronUp, FileText } from '../icons/index.ts';
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import ChevronUp from 'lucide-svelte/icons/chevron-up';
+  import FileText from 'lucide-svelte/icons/file-text';
 
   let {
     stats,
