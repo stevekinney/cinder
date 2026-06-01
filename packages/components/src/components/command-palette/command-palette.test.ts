@@ -748,3 +748,64 @@ describe('CommandPalette — visual contract', () => {
     );
   });
 });
+
+// ── Consumer-owned filtering ───────────────────────────────────────────────
+//
+// These tests guard the searchable-example contract: when a consumer passes
+// `filterItems` (mirrors the pattern used in basic/grouped examples), typing a
+// query that does not match an item must remove that item from the DOM.
+// A failure here means the items snippet is ignoring the `query` param —
+// exactly the bug described in ticket a3975cd6.
+
+describe('CommandPalette — consumer-owned filtering', () => {
+  test('items matching the query remain visible', async () => {
+    const { container } = render(CommandPaletteFixture, {
+      filterItems: true,
+    });
+    await settleCommandPalette();
+
+    // "Alpha" and "Gamma" are the enabled items; both contain 'a' / 'A'.
+    await fireEvent.click(container.querySelector('[data-testid="command-palette-query-a"]')!);
+    await settleCommandPalette();
+
+    const options = container.querySelectorAll('[role="option"]');
+    const labels = Array.from(options).map((el) => el.textContent?.trim());
+    expect(labels).toContain('Alpha');
+    expect(labels).toContain('Gamma');
+  });
+
+  test('items that do not match the query are removed from the DOM', async () => {
+    const { container } = render(CommandPaletteFixture, {
+      filterItems: true,
+    });
+    await settleCommandPalette();
+
+    // Query 'z' matches none of Alpha / Beta / Gamma.
+    await fireEvent.click(container.querySelector('[data-testid="command-palette-query-z"]')!);
+    await settleCommandPalette();
+
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(0);
+  });
+
+  test('query that partially matches leaves only matching items in the DOM', async () => {
+    const { container } = render(CommandPaletteFixture, {
+      filterItems: true,
+      items: [
+        { value: 'settings', label: 'Open settings' },
+        { value: 'sign-out', label: 'Sign out' },
+        { value: 'new-file', label: 'New file' },
+      ],
+    });
+    await settleCommandPalette();
+
+    // Set query to 'set' — only 'Open settings' should survive.
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'set' } });
+    await settleCommandPalette();
+
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(1);
+    expect(options[0]?.textContent?.trim()).toBe('Open settings');
+  });
+});
