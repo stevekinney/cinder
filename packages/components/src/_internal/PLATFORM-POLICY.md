@@ -1,29 +1,21 @@
 # Cinder Platform Feature Policy
 
-Cinder already leans on modern CSS and HTML primitives — `@layer`, `<dialog>`,
-`inert`, the Popover API, CSS Anchor Positioning, container queries,
-`field-sizing`, `accent-color`, `subgrid`, `content-visibility`,
-`@starting-style`, and `text-wrap` all appear in the source. What was missing was
-a single rule that tells a component author **when a feature is the default, when
-it must be guarded as progressive enhancement, and when it must not carry core
-behavior**. Without that rule, one overlay reaches for the native Popover API
-while another hand-rolls geometry; one component uses container queries while a
-sibling repeats viewport breakpoints. This document is the shared answer so
-individual components and their `.a11y.md` files don't each re-litigate browser
-support.
+**Container width, not viewport width. Native top-layer over hand-rolled
+geometry.** Those are the two rules every component author must internalize (the
+[full statements](#the-two-rules-every-component-author-must-internalize) are
+below). This document is the classification system that backs them: it decides
+which modern CSS and HTML feature carries correctness, which is progressive
+enhancement, and which Cinder avoids for now — so components and their `.a11y.md`
+files don't each re-litigate browser support.
 
-This policy is the umbrella. Three companion policies already cover slices and
-remain authoritative for their domain — this document classifies the features
-and points at them:
-
-- [`OVERLAY-POLICY.md`](./OVERLAY-POLICY.md) — `<dialog>`, Popover API, CSS Anchor
-  Positioning, `inert`, top-layer, focus, escape, scroll-lock for overlays.
-- [`RESPONSIVE-POLICY.md`](./RESPONSIVE-POLICY.md) — container queries vs. viewport
-  queries.
-- [`NATIVE-FORM-POLICY.md`](./NATIVE-FORM-POLICY.md) — `field-sizing`,
-  `accent-color`, dialog forms, native validation pseudo-classes.
-- [`../../../../docs/focus-ring-policy.md`](../../../../docs/focus-ring-policy.md) —
-  the focus-ring token recipe and forced-colors fallback.
+It is the umbrella over three companion policies, which remain authoritative for
+their domain: [`OVERLAY-POLICY.md`](./OVERLAY-POLICY.md) (`<dialog>`, Popover API,
+CSS Anchor Positioning, `inert`, top-layer, focus, escape, scroll-lock),
+[`RESPONSIVE-POLICY.md`](./RESPONSIVE-POLICY.md) (container vs. viewport queries),
+[`NATIVE-FORM-POLICY.md`](./NATIVE-FORM-POLICY.md) (`field-sizing`, `accent-color`,
+dialog forms, native validation pseudo-classes), and
+[`../../../../docs/focus-ring-policy.md`](../../../../docs/focus-ring-policy.md)
+(the focus-ring token recipe and forced-colors fallback).
 
 ## Support tiers
 
@@ -63,10 +55,11 @@ whether the feature may carry correctness or only enhancement.
 | Native validation pseudo-classes (`:invalid`, `:user-invalid`)        | 2          | Low-priority fallback only. Explicit Cinder error state + `aria-invalid` always wins.                                                                                                                          | `NATIVE-FORM-POLICY.md` |
 | `@scope`                                                              | 3          | Not adopted. `@layer` + class scoping covers our needs; revisit when support broadens.                                                                                                                         | —                       |
 
-`light-dark()` and `color-mix()` are theming primitives governed by the token
-system (`tokens-base.css` / `docs/theming.md`), not component-level feature
-choices — components consume `--cinder-*` tokens rather than calling these
-functions directly.
+`light-dark()` and `color-mix()` are deliberately absent from the table: they are
+theming primitives owned by the token system (`tokens-base.css` / `docs/theming.md`),
+not component-level feature decisions. A component must never `@supports`-detect or
+call them directly — it consumes `--cinder-*` tokens and lets the token layer decide
+how those resolve per theme.
 
 ## The two rules every component author must internalize
 
