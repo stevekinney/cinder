@@ -26,7 +26,17 @@ function getPackFileName(identity: PackageManifest): string {
 async function validateConsumerArtifact(): Promise<void> {
   const validationResult = await $`bun run validate:consumer`.cwd(packageRoot).nothrow();
   if (validationResult.exitCode !== 0) {
-    throw new Error(`validate:consumer failed with exit ${validationResult.exitCode}`);
+    const stdout = validationResult.stdout.toString().trim();
+    const stderr = validationResult.stderr.toString().trim();
+    throw new Error(
+      [
+        `validate:consumer failed with exit ${validationResult.exitCode}`,
+        stdout.length > 0 ? `stdout:\n${stdout}` : undefined,
+        stderr.length > 0 ? `stderr:\n${stderr}` : undefined,
+      ]
+        .filter((line): line is string => line !== undefined)
+        .join('\n\n'),
+    );
   }
 }
 
