@@ -50,7 +50,7 @@ test.describe('table scroll recipe', () => {
     const tableCss = readFileSync(
       new URL('../../components/src/components/table/table.css', import.meta.url),
       'utf8',
-    );
+    ).replaceAll(/^@import\s+[^;]+;\s*$/gm, '');
 
     await page.setContent(`
       <style>
