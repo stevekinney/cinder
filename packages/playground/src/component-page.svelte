@@ -414,6 +414,16 @@
     gap: var(--cinder-space-4);
   }
 
+  /* Column counterpart to -row: stacks example variants vertically. Same
+     scoping rationale (:global inner selector, .example-preview anchor) so the
+     helper stays confined to the preview surface. */
+  .example-preview :global(.example-preview-column) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cinder-space-4);
+  }
+
   .source-loading,
   .source-error {
     margin: 0;

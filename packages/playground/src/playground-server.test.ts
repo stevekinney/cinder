@@ -768,8 +768,11 @@ describe('/api/manifest/:name', () => {
 
   it('returns parsed JSON for a compose-only component by name', async () => {
     const response = await handleRequest(req(`/api/manifest/${COMPOSE_ONLY_FIXTURE_COMPONENT}`));
-    const result = (await response.json()) as ComponentManifest;
+    // Assert status BEFORE consuming the body: a 404 is a text/plain response,
+    // so calling response.json() first would throw an opaque JSON parse error
+    // and mask the real "expected 200, got 404" failure.
     expect(response.status).toBe(200);
+    const result = (await response.json()) as ComponentManifest;
     expect(result.kebabName).toBe(COMPOSE_ONLY_FIXTURE_COMPONENT);
   }, 30_000);
 
