@@ -36,6 +36,24 @@ describe('coverage ratchet check', () => {
     });
   });
 
+  test('allows recovery metadata alongside active thresholds', () => {
+    expect(
+      parseCoverageThresholds(
+        JSON.stringify({
+          lines: 0.37,
+          functions: 0.81,
+          lineFloorRecoveryPlan: {
+            target: 0.65,
+            reviewBy: '2026-06-14',
+          },
+        }),
+      ),
+    ).toEqual({
+      lines: 0.37,
+      functions: 0.81,
+    });
+  });
+
   test('rejects missing threshold properties', () => {
     expect(() => parseCoverageThresholds(JSON.stringify({ lines: 0.65 }))).toThrow(
       'coverage-ratchet.json must define numeric lines and functions thresholds.',

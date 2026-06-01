@@ -7,7 +7,7 @@
   };
 
   let { open = false }: FixtureProps = $props();
-  let menuOpen = $derived(open);
+  let menuOpen = $state(open);
 </script>
 
 <div class="dropdown-fixture">

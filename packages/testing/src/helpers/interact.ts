@@ -14,7 +14,7 @@ function contextPrefix(context: InteractionContext | undefined): string {
   const fixture = context?.fixture;
   if (component !== undefined && fixture !== undefined) return `${component}/${fixture}: `;
   if (component !== undefined) return `${component}: `;
-  if (fixture !== undefined) return `${fixture}: `;
+  if (fixture !== undefined) return `fixture ${fixture}: `;
   return '';
 }
 

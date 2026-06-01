@@ -929,11 +929,12 @@ async function buildFixtureBundle(
     );
     if (entry === null) return null;
 
-    for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
     if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+      for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
       fixtureEntryByKey.set(entryKey, entry.entryPath);
+      return entry.entryPath;
     }
-    return entry.entryPath;
+    return null;
   })();
 
   fixtureBuildPromiseByKey.set(cacheKey, buildPromise);
@@ -1248,6 +1249,7 @@ async function renderFixturePageResponse(
   const fixtureFilePath = resolveFixtureFilePath(componentName, fixturesRoot);
   let fixtureFile;
   try {
+    await awaitWarmCache();
     fixtureFile = await loadFixtureFile(fixtureFilePath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1471,16 +1473,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     }
 
     if (!isSafeSegment(filename)) return notFound();
-    const entryPath = fixtureEntryByKey.get(filename);
-    if (entryPath === undefined) return notFound(`Fixture bundle "${filename}" not found`);
-    const code = fixtureArtifactByPath.get(entryPath);
-    if (code === undefined) return notFound(`Fixture bundle "${filename}" failed to build`);
-    return new Response(code, {
-      headers: {
-        'Content-Type': 'application/javascript',
-        'Cache-Control': NO_STORE_CACHE_CONTROL,
-      },
-    });
+    return notFound(`Fixture bundle "${filename}" not found`);
   }
 
   // GET /shell-bundle/<filename>.js — same shape as /page-bundle/*:

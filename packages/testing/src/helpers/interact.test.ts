@@ -98,6 +98,18 @@ describe('runtime defence against non-testId targets', () => {
   });
 });
 
+describe('interaction error context', () => {
+  it('labels fixture-only context explicitly', async () => {
+    const page = createMockPage({ missing: createMockLocator(0) });
+
+    await expect(
+      applyInteractions(page as never, [{ action: 'click', target: { testId: 'missing' } }], {
+        fixture: 'focused',
+      }),
+    ).rejects.toThrow('fixture focused: Step 0: no element found with testId "missing".');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Happy paths
 // ---------------------------------------------------------------------------
