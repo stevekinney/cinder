@@ -5,6 +5,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { SelectionPopoverPosition } from 'cinder/selection-popover';
   import { SelectionPopover } from 'cinder/selection-popover';
 
@@ -16,8 +17,15 @@
   let comments = $state<Comment[]>([]);
 
   /**
+   * A bound reference to the text surface element.
+   * Used in the document-level selectionchange handler to scope
+   * selection detection to this element's subtree.
+   */
+  let surfaceElement = $state<HTMLElement | null>(null);
+
+  /**
    * Compute a viewport-relative anchor from the current Selection.
-   * Returns null when there is no non-collapsed selection inside the text surface.
+   * Returns null when there is no non-collapsed selection inside the surface.
    */
   function getSelectionAnchor(surface: HTMLElement): SelectionPopoverPosition | null {
     const selection = window.getSelection();
@@ -33,17 +41,27 @@
     };
   }
 
-  function handleSelectionChange(event: Event): void {
-    const surface = event.currentTarget as HTMLElement;
-    const anchor = getSelectionAnchor(surface);
-    if (anchor) {
-      position = anchor;
-      isOpen = true;
-    } else {
-      isOpen = false;
-      position = null;
+  /**
+   * `selectionchange` fires on document, not on elements.
+   * Register at document level and scope to the surface via
+   * the bound surfaceElement reference.
+   */
+  onMount(() => {
+    function handleSelectionChange(): void {
+      if (!surfaceElement) return;
+      const anchor = getSelectionAnchor(surfaceElement);
+      if (anchor) {
+        position = anchor;
+        isOpen = true;
+      } else {
+        isOpen = false;
+        position = null;
+      }
     }
-  }
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  });
 
   function handleClose(): void {
     isOpen = false;
@@ -56,10 +74,9 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <article
+  bind:this={surfaceElement}
   style="max-width: 36rem; line-height: 1.6; user-select: text; cursor: text;"
-  onselectionchange={handleSelectionChange}
 >
   <p style="margin: 0 0 0.75rem;">
     The <strong>SelectionPopover</strong> appears near highlighted text — its

@@ -22,6 +22,7 @@ The component clamps the rendered position to a 16px viewport margin automatical
 
 ```svelte
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { SelectionPopoverPosition } from 'cinder/selection-popover';
   import { SelectionPopover } from 'cinder/selection-popover';
 
@@ -31,20 +32,36 @@ The component clamps the rendered position to a 16px viewport margin automatical
   let position = $state<SelectionPopoverPosition | null>(null);
   let comments = $state<Comment[]>([]);
 
-  function handleSelectionChange(event: Event): void {
-    const surface = event.currentTarget as HTMLElement;
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-      isOpen = false;
-      position = null;
-      return;
+  /**
+   * Bound reference to the text surface element.
+   * `selectionchange` is a document-level event — the handler uses this
+   * reference to scope detection to selections inside the surface only.
+   */
+  let surfaceElement = $state<HTMLElement | null>(null);
+
+  onMount(() => {
+    function handleSelectionChange(): void {
+      if (!surfaceElement) return;
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        isOpen = false;
+        position = null;
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      if (!surfaceElement.contains(range.commonAncestorContainer)) {
+        isOpen = false;
+        position = null;
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      position = { x: rect.left + rect.width / 2, y: rect.top };
+      isOpen = true;
     }
-    const range = selection.getRangeAt(0);
-    if (!surface.contains(range.commonAncestorContainer)) return;
-    const rect = range.getBoundingClientRect();
-    position = { x: rect.left + rect.width / 2, y: rect.top };
-    isOpen = true;
-  }
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  });
 
   function handleClose(): void {
     isOpen = false;
@@ -57,8 +74,7 @@ The component clamps the rendered position to a 16px viewport margin automatical
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<article onselectionchange={handleSelectionChange}>
+<article bind:this={surfaceElement}>
   <p>Select text in this paragraph to comment on it.</p>
 </article>
 

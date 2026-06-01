@@ -1,10 +1,11 @@
 <script lang="ts" module>
   export const title = 'Keyboard submit after selection';
   export const description =
-    'Select text to open the composer, then press Cmd+Enter or Ctrl+Enter to submit. The composer collapses back to the icon — the popover does not stay expanded.';
+    'Select text (by mouse or keyboard) to open the composer, then press Cmd+Enter or Ctrl+Enter to submit. The composer collapses back to the icon — the popover does not stay expanded.';
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { SelectionPopoverPosition } from 'cinder/selection-popover';
   import { SelectionPopover } from 'cinder/selection-popover';
 
@@ -12,6 +13,13 @@
   let isOpen = $state(false);
   let position = $state<SelectionPopoverPosition | null>(null);
   let lastSubmitted = $state<string | null>(null);
+
+  /**
+   * A bound reference to the text surface element.
+   * Used in the document-level selectionchange handler to scope
+   * selection detection to this element's subtree.
+   */
+  let surfaceElement = $state<HTMLElement | null>(null);
 
   function getSelectionAnchor(surface: HTMLElement): SelectionPopoverPosition | null {
     const selection = window.getSelection();
@@ -27,17 +35,31 @@
     };
   }
 
-  function handleSelectionChange(event: Event): void {
-    const surface = event.currentTarget as HTMLElement;
-    const anchor = getSelectionAnchor(surface);
-    if (anchor) {
-      position = anchor;
-      isOpen = true;
-    } else {
-      isOpen = false;
-      position = null;
+  /**
+   * `selectionchange` fires on document, not on elements.
+   * Register at document level and scope to the surface via
+   * the bound surfaceElement reference.
+   *
+   * Keyboard selection (Shift+Arrow, Shift+Home, Shift+End, etc.) fires
+   * selectionchange just like mouse-driven selection — so keyboard users
+   * get the same popover trigger without any extra wiring.
+   */
+  onMount(() => {
+    function handleSelectionChange(): void {
+      if (!surfaceElement) return;
+      const anchor = getSelectionAnchor(surfaceElement);
+      if (anchor) {
+        position = anchor;
+        isOpen = true;
+      } else {
+        isOpen = false;
+        position = null;
+      }
     }
-  }
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  });
 
   function handleClose(): void {
     isOpen = false;
@@ -50,16 +72,16 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <article
+  bind:this={surfaceElement}
   style="max-width: 36rem; line-height: 1.6; user-select: text; cursor: text;"
-  onselectionchange={handleSelectionChange}
 >
   <p style="margin: 0;">
-    Select text in this paragraph to open the comment popover. Click the comment icon to expand the
-    composer, type a note, then press <kbd>Cmd</kbd>+<kbd>Enter</kbd> (macOS) or
-    <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (Windows/Linux) to submit. The composer collapses back to the icon
-    after submission — the popover does not stay expanded.
+    Select text in this paragraph to open the comment popover — both mouse drag and keyboard
+    selection (hold <kbd>Shift</kbd> while pressing arrow keys, <kbd>Home</kbd>, or <kbd>End</kbd>)
+    trigger the popover. Click the comment icon to expand the composer, type a note, then press
+    <kbd>Cmd</kbd>+<kbd>Enter</kbd> (macOS) or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (Windows/Linux) to submit.
+    The composer collapses back to the icon after submission — the popover does not stay expanded.
   </p>
 </article>
 
