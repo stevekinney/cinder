@@ -200,6 +200,8 @@ describe('count-based baseline — the grandfathering identity', () => {
 });
 
 describe('scan — live inventory against the real source tree', () => {
+  // scan() reads every .css/.svelte/.ts file under src; under full-suite parallel
+  // load that I/O can exceed the 5s default, so give it explicit headroom.
   test('reports usage for every classified probe and only real viewport flags', async () => {
     const { counts, viewportFlags } = await scan();
 
@@ -223,5 +225,5 @@ describe('scan — live inventory against the real source tree', () => {
       expect(flag.lineNumber).toBeGreaterThan(0);
       expect(VIEWPORT_WIDTH_MEDIA.test(flag.query)).toBe(true);
     }
-  });
+  }, 30_000);
 });
