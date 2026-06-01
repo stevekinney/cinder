@@ -13,6 +13,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import type { ComponentManifest } from './analyze.ts';
+import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
   createHttpServerOnAvailablePort,
@@ -23,6 +24,7 @@ import { jsonForScriptTag } from './render-shell.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
+const COMPOSE_ONLY_FIXTURE_COMPONENT = Array.from(COMPOSE_ONLY_COMPONENTS)[0]!;
 const FIXTURE_PATH = join(
   import.meta.dirname,
   'examples',
@@ -726,6 +728,28 @@ describe('/api/manifest', () => {
     const button = manifests.find((entry) => entry.kebabName === 'button');
     expect(button).toBeDefined();
   }, 30_000);
+
+  it('includes compose-only leaves in the canonical /api/manifest', async () => {
+    // The full manifest keeps compose-only leaves so direct /page/<name> routes
+    // and the static export (which fetch /api/manifest/<name> by name) still
+    // resolve them. The Playwright sweep uses ?standalone=1 to drop them.
+    const response = await handleRequest(req('/api/manifest'));
+    const manifests = (await response.json()) as ComponentManifest[];
+    const manifestNames = new Set(manifests.map((entry) => entry.kebabName));
+    expect(manifestNames.has(COMPOSE_ONLY_FIXTURE_COMPONENT)).toBe(true);
+  }, 30_000);
+
+  it('excludes compose-only leaves from /api/manifest?standalone=1', async () => {
+    // ?standalone=1 is the Playwright-sweep input: compose-only leaves are
+    // covered through their parent examples, so a standalone page for them would
+    // render "No examples found" and time out the sweep's `#app > *` wait.
+    const response = await handleRequest(req('/api/manifest?standalone=1'));
+    const manifests = (await response.json()) as ComponentManifest[];
+    const manifestNames = new Set(manifests.map((entry) => entry.kebabName));
+    for (const componentName of COMPOSE_ONLY_COMPONENTS) {
+      expect(manifestNames.has(componentName)).toBe(false);
+    }
+  }, 30_000);
 });
 
 describe('/api/manifest/:name', () => {
@@ -740,6 +764,13 @@ describe('/api/manifest/:name', () => {
     const result = (await response.json()) as ComponentManifest;
     expect(result.name).toBe('Button');
     expect(result.kebabName).toBe('button');
+  }, 30_000);
+
+  it('returns parsed JSON for a compose-only component by name', async () => {
+    const response = await handleRequest(req(`/api/manifest/${COMPOSE_ONLY_FIXTURE_COMPONENT}`));
+    const result = (await response.json()) as ComponentManifest;
+    expect(response.status).toBe(200);
+    expect(result.kebabName).toBe(COMPOSE_ONLY_FIXTURE_COMPONENT);
   }, 30_000);
 
   it('returns 404 for an unknown component', async () => {

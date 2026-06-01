@@ -885,17 +885,21 @@ async function getManifests(): Promise<ComponentManifest[]> {
   // Reuse the in-flight promise so concurrent callers don't each start analyzeAll().
   manifestPromise ??= analyzeAll(join(COMPONENTS_ROOT, 'src', 'components'));
   try {
-    const all = await manifestPromise;
-    // Exclude compose-only leaves (Table.Cell, Tabs.List, Dropdown.Label, …):
-    // they only render meaningfully inside a parent and have no standalone
-    // `.example.svelte`, so a standalone page renders "No examples found" — which
-    // also times out the Playwright sweep's `#app > *` wait. They are demonstrated
-    // on their parent's page (mirrors discoverSidebarComponents).
-    manifestCache = all.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
+    manifestCache = await manifestPromise;
     return manifestCache;
   } finally {
     manifestPromise = null;
   }
+}
+
+/**
+ * Return only components that have meaningful standalone screenshot pages.
+ * Compose-only leaves still belong in the canonical manifest API because
+ * direct pages and static export fetch their prop manifests by name.
+ */
+async function getStandaloneManifests(): Promise<ComponentManifest[]> {
+  const manifests = await getManifests();
+  return manifests.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
 }
 
 /**
@@ -1201,10 +1205,16 @@ export async function handleRequest(request: Request): Promise<Response> {
     });
   }
 
-  // GET /api/manifest — full manifest array
+  // GET /api/manifest — full manifest array.
+  // Add ?standalone=1 for the Playwright sweep input, where compose-only
+  // leaves are covered through their parent examples instead of standalone
+  // pages that would render "No examples found".
   if (pathname === '/api/manifest') {
     await awaitWarmCache();
-    const manifests = await getManifests();
+    const manifests =
+      url.searchParams.get('standalone') === '1'
+        ? await getStandaloneManifests()
+        : await getManifests();
     return new Response(JSON.stringify(manifests), {
       headers: { 'Content-Type': 'application/json' },
     });

@@ -9,10 +9,10 @@ import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 test.describe('server identity', () => {
-  test('cached manifest matches live /api/manifest', async ({ request }) => {
+  test('cached manifest matches live standalone manifest', async ({ request }) => {
     // `request` honors playwright.config.ts's `use.baseURL`, which resolves
     // via `src/helpers/playground-url.ts`.
-    const response = await request.get('/api/manifest');
+    const response = await request.get('/api/manifest?standalone=1');
     expect(response.ok()).toBeTruthy();
 
     const live = (await response.json()) as Array<{ name: string; kebabName: string }>;
