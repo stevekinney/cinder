@@ -58,8 +58,8 @@ jobs:
       - name: Validate workspace
         run: bun run validate
 
-      - name: Build package
-        run: bun run build
+      - name: Check package artifact budget
+        run: bun run --filter=cinder package:weight:check
 
       - name: Create Release Pull Request or publish to npm
         if: github.event_name == 'push'
@@ -76,11 +76,8 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
 
-      # Diagnostic dry-run: `npm publish --dry-run` from the cinder
-      # workspace. No NPM_TOKEN — the registry is not contacted, so
-      # withholding credentials here keeps blast radius tight if a
-      # contributor dispatches the workflow. Provenance is opt-in via
-      # publishConfig and only attests on real publishes anyway.
+      # Diagnostic dry-run: publish the same staged tarball that
+      # validate:consumer installs into the fixture apps.
       - name: Publish (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run changeset:publish:dry

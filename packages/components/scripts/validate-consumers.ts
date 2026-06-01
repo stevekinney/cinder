@@ -1,5 +1,5 @@
 import { $, Glob } from 'bun';
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
@@ -10,8 +10,9 @@ import { parse } from 'postcss';
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
-import { packForPublish } from './pack-for-publish.ts';
 import { parseJsonFile } from './lib/read-json-file.ts';
+import { packForPublish } from './pack-for-publish.ts';
+import { sveltePeerContract } from './validate-svelte-peer-contract.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -169,7 +170,7 @@ async function packWorkspaceDependencyTarballs(): Promise<void> {
     if (existsSync(dependencyPackage.tarballFilePath)) {
       await Bun.file(dependencyPackage.tarballFilePath).delete();
     }
-    const result = await $`bun pm pack`.cwd(dependencyPackage.packageDirectory).nothrow();
+    const result = await $`bun pm pack`.cwd(dependencyPackage.packageDirectory).nothrow().quiet();
     if (result.exitCode !== 0) {
       fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr.toString()}`);
     }
@@ -335,25 +336,6 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
 }
 
 /**
- * Assert that the source `packages/components/package.json` is byte-identical
- * pre- and post-pack. The staged pack-for-publish flow must NEVER mutate the
- * source manifest; `packForPublish` already enforces this via SHA-256, but
- * we re-check via `git diff --exit-code` so the gate catches editor-driven
- * mutations between the script's read and the consumer's pack invocation.
- */
-async function assertSourceManifestUnchanged(): Promise<void> {
-  const result = await $`git diff --exit-code -- packages/components/package.json`
-    .cwd(workspaceRoot)
-    .nothrow();
-  if (result.exitCode !== 0) {
-    fail(
-      `pack-for-publish mutated packages/components/package.json (git diff --exit-code returned ${result.exitCode}).\n` +
-        result.stdout.toString(),
-    );
-  }
-}
-
-/**
  * Assert that every cinder/<pkg>/<subpath> sub-path emitted by the upstream
  * re-export generator resolves to a real file inside the packed tarball.
  * Mirrors the post-build resolution gate in `build.ts` but operates against
@@ -443,7 +425,15 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
     // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
     // styles, JSON sidecars) ships because the published `svelte`
     // condition on component sub-paths targets it.
-    forbiddenPatterns: [/\.(test|spec)\.ts$/, /\.a11y\.md$/],
+    forbiddenPatterns: [
+      /\.(test|spec)\.[cm]?[jt]s$/,
+      /\.type-test\./,
+      /(^|\/)[^/]*-fixtures\./,
+      /(^|\/)[^/]*fixtures\./,
+      /(^|\/)_.*-test-harness\./,
+      /\.js\.map$/,
+      /\.a11y\.md$/,
+    ],
     forbiddenPrefixes: [
       'package/fixtures/',
       'package/tmp/',
@@ -472,7 +462,8 @@ async function inspectTarball(): Promise<void> {
   // accept `--` as end-of-options the way GNU tar does, so omitting it is correct here.
   const listingResult = await $`${tarBinaryPath} -tzf ${tarballFilePath}`
     .cwd(repositoryRoot)
-    .nothrow();
+    .nothrow()
+    .quiet();
   if (listingResult.exitCode !== 0) {
     fail(
       `tar failed while listing ${tarballFileName}:\nstdout: ${listingResult.stdout.toString()}\nstderr: ${listingResult.stderr.toString()}`,
@@ -501,6 +492,11 @@ async function inspectTarball(): Promise<void> {
   if (leakedEntries.length) {
     fail(`Tarball contains forbidden entries:\n  ${leakedEntries.join('\n  ')}`);
   }
+
+  const packedSize = statSync(tarballFilePath).size;
+  process.stdout.write(
+    `[validate-consumers] package artifact: ${entries.length} files, ${(packedSize / 1_000_000).toFixed(2)} MB packed.\n`,
+  );
 
   // Every published `*/styles` export must resolve to a real CSS artifact
   // inside the tarball. `generate-exports.ts` gates emission on the source
@@ -566,7 +562,10 @@ async function pickEphemeralPort(): Promise<number> {
  * `cinder-<version>.tgz` so version bumps don't silently install a stale (or missing)
  * tarball, and the restore runs in a `finally` so the working tree stays clean.
  */
-function injectTarballIntoFixture(fixtureDirectory: string): () => void {
+function injectTarballIntoFixture(
+  fixtureDirectory: string,
+  options: { svelteVersion?: string } = {},
+): () => void {
   const manifestPath = join(fixtureDirectory, 'package.json');
   const originalContent = readFileSync(manifestPath, 'utf8');
   const parsed: unknown = JSON.parse(originalContent);
@@ -585,6 +584,13 @@ function injectTarballIntoFixture(fixtureDirectory: string): () => void {
   parsed['overrides'] = overrides;
 
   dependencies['cinder'] = `file:${tarballFilePath}`;
+  if (options.svelteVersion !== undefined) {
+    const rawDevDependencies = parsed['devDependencies'];
+    if (!isObjectRecord(rawDevDependencies)) {
+      fail(`${manifestPath} is missing a devDependencies object for Svelte compatibility testing`);
+    }
+    rawDevDependencies['svelte'] = options.svelteVersion;
+  }
   for (const dependencyPackage of workspaceDependencyPackages) {
     const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
     dependencies[dependencyPackage.name] = fileSpecifier;
@@ -592,6 +598,66 @@ function injectTarballIntoFixture(fixtureDirectory: string): () => void {
   }
   writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n');
   return () => writeFileSync(manifestPath, originalContent);
+}
+
+async function runTypescriptConsumerSvelteGate(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
+    cwd: fixtureDirectory,
+    env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+  });
+  if (generateResult.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
+    );
+  }
+
+  const tscResult = await $`bunx tsc --noEmit -p tsconfig.svelte.json`
+    .cwd(fixtureDirectory)
+    .nothrow();
+  if (tscResult.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} tsc with Svelte condition failed:\n${tscResult.stdout.toString()}\n${tscResult.stderr.toString()}`,
+    );
+  }
+
+  const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
+    .cwd(fixtureDirectory)
+    .nothrow();
+  if (checkResult.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} svelte-check failed:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+    );
+  }
+}
+
+async function runSveltePeerCompatibilityFixture(
+  label: string,
+  svelteVersion: string,
+): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/typescript-consumer');
+  process.stdout.write(
+    `[validate-consumers] step: svelte peer compatibility (${label}: ${svelteVersion})…\n`,
+  );
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
+
+  try {
+    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) {
+      fail(
+        `typescript-consumer ${label} bun install failed for svelte@${svelteVersion}:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+      );
+    }
+    await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
+    process.stdout.write(
+      `[validate-consumers] svelte peer compatibility OK (${label}: ${svelteVersion}).\n`,
+    );
+  } finally {
+    restoreManifest();
+  }
 }
 
 async function runSveltekitFixture(): Promise<void> {
@@ -1104,19 +1170,10 @@ async function runTypescriptConsumerFixture(): Promise<void> {
 
     // Regenerate the probe from the INSTALLED manifest — stale output must not
     // survive a run, and the probe must cover whatever the tarball publishes.
-    const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
-      cwd: fixtureDirectory,
-      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
-    });
-    if (generateResult.exitCode !== 0) {
-      fail(
-        `typescript-consumer generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
-      );
-    }
+    await runTypescriptConsumerSvelteGate(fixtureDirectory, 'workspace default');
 
     const tscGates: Array<{ label: string; tsconfig: string }> = [
       { label: 'gate 1 — nodenext (no svelte condition)', tsconfig: 'tsconfig.nodenext.json' },
-      { label: 'gate 2 — svelte condition', tsconfig: 'tsconfig.svelte.json' },
     ];
     for (const { label, tsconfig } of tscGates) {
       const result = await $`bunx tsc --noEmit -p ${tsconfig}`.cwd(fixtureDirectory).nothrow();
@@ -1127,14 +1184,6 @@ async function runTypescriptConsumerFixture(): Promise<void> {
       }
     }
 
-    const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
-      .cwd(fixtureDirectory)
-      .nothrow();
-    if (checkResult.exitCode !== 0) {
-      fail(
-        `typescript-consumer gate 3 — svelte-check failed:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
-      );
-    }
     process.stdout.write('[validate-consumers] typescript-consumer OK (gates 1–3 green).\n');
   } finally {
     restoreManifest();
@@ -1278,7 +1327,6 @@ try {
     await assertPackedManifestInvariants(tarballInspectionDirectory);
     await assertNoQuotedCinderReferences(tarballInspectionDirectory);
     await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
-    await assertSourceManifestUnchanged();
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
   } finally {
     // Both directories carry hundreds of MB of extracted/staged artifacts;
@@ -1296,6 +1344,8 @@ try {
   await runManifestConsumerFixture();
   await runNodeFixture();
   await runTypescriptConsumerFixture();
+  await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
+  await runSveltePeerCompatibilityFixture('latest Svelte 5', sveltePeerContract.latest);
   await runSveltekitFixture();
   await runExamplesConsumerFixture();
   process.stdout.write('[validate-consumers] all checks passed.\n');

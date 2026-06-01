@@ -18,7 +18,7 @@
 <script lang="ts">
   import type { StepsProps } from './steps.types.ts';
   import { cn } from '../../utilities/class-names.ts';
-  import { Check } from '../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
 
   let {
     steps,

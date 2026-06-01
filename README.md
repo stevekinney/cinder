@@ -107,9 +107,9 @@ unchanged — deprecation of those forms is out of scope for this change.
 
 ### Peer-dependency policy
 
-`peerDependencies: { "svelte": ">=5.55.0 <5.56.0" }`
+`peerDependencies: { "svelte": ">=5.55.0 <6" }`
 
-cinder's compiled server output is coupled to the Svelte minor it was built against. Every cinder release pins exactly one Svelte minor. When Svelte ships a new minor, cinder bumps its own minor in lockstep.
+Cinder supports Svelte 5 from `5.55.0` through the latest stable Svelte 5 release. `validate:consumer` proves that contract against three Svelte lenses: the minimum supported version (`5.55.0`), the workspace version (`~5.55.0`), and the latest Svelte 5 version resolved by `svelte@^5`. The release gate fails if the peer range, workspace version, matrix, or documentation drift.
 
 ### Styles
 
@@ -170,6 +170,9 @@ bun run exports:generate       # regenerate package.json#exports from src/compon
 bun run exports:check          # assert exports are in sync (non-zero on drift)
 bun run validate:workflow      # isolated lint-staged simulation
 bun run validate:consumer      # build → pack → tarball check → sveltekit + node fixtures
+bun run validate:svelte-peer   # assert peer range, matrix, and docs agree
+bun run package:weight         # report packed size, file count, and largest entries
+bun run package:weight:check   # enforce package artifact budgets
 bun run validate               # all of the above
 ```
 
@@ -220,7 +223,9 @@ dist/
 └── components/{all-21-components}.svelte.d.ts  (svelte2tsx output)
 ```
 
-The published tarball (`bun pm pack`) contains `dist/`, `src/index.ts`, `src/components/**/*.svelte`, `src/styles/**/*.css`, the four generic utilities, and `README.md`. Fixtures, tests, `.a11y.md` files, `scripts/`, and `_internal/` components are excluded. `validate:consumer` asserts both expected and forbidden paths.
+The published tarball is produced by `packages/components/scripts/pack-for-publish.ts`, not by raw `npm publish` from the package directory. `validate:consumer`, `bun run changeset:publish:dry`, the Changesets release workflow, and the manual break-glass workflow all use that same staged artifact. The staged manifest strips private `@cinder/*` workspace dependencies, rewrites upstream re-export subpaths to real `dist/` files, and removes scripts before `npm publish <tarball>`.
+
+The artifact contains `dist/`, Svelte-facing component source, style sidecars, JSON sidecars, highlighter source, the public utilities used by components, `components.json`, and package documentation. Fixtures, tests, type-test files, generated test harnesses, source maps, `.a11y.md` files, scripts, and temporary directories are excluded. `validate:consumer` asserts both expected and forbidden paths, and `package:weight:check` enforces the packed-size, unpacked-size, file-count, and largest-entry budgets before release.
 
 ## Phase 5 decision log
 
@@ -277,7 +282,7 @@ The replacement gate is a quality signal—it requires a real Cinder component r
 
 ### Domain-suite tier
 
-The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives—chat surfaces, diff viewers, markdown editors, review editors. They ship under `cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from 'cinder/chat'`). They are tree-shaken: a consumer that imports only `cinder/button` does not pay for ProseMirror, remark, or shiki. Install size grows; runtime cost does not.
+The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives—chat surfaces, diff viewers, markdown editors, review editors. They ship under `cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from 'cinder/chat'`). They are tree-shaken: a consumer that imports only `cinder/button` does not bundle ProseMirror, remark, or shiki. All runtime dependencies still install with the main package today; moving heavy suites to optional peer dependencies or secondary packages requires a separate package-boundary task.
 
 **Domain-suite admission rule**: requested by **at least one reference consumer** with the heavy peer-dep chain accepted by both Cinder maintainers and that consumer. The single-consumer threshold (vs the multi-consumer threshold for stable) is intentional—these components are too specialized to expect uniform demand, but too valuable to leave in consuming apps to re-implement.
 

@@ -10,7 +10,8 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { formatBytes } from '../../../utilities/format-bytes.ts';
-  import { FileCode, FileText } from '../../icons/index.ts';
+  import FileCode from 'lucide-svelte/icons/file-code';
+  import FileText from 'lucide-svelte/icons/file-text';
 
   let { attachment, class: className }: ChatAttachmentPreviewProps = $props();
 

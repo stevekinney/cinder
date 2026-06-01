@@ -22,7 +22,7 @@
   import { cn } from '../../utilities/class-names.ts';
   import { hasAlpha, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
-  import { Check } from '../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
 
   let {
     value,

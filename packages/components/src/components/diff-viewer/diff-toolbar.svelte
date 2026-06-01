@@ -44,7 +44,10 @@
   import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import Spinner from '../spinner/spinner.svelte';
-  import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw } from '../icons/index.ts';
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import RefreshCw from 'lucide-svelte/icons/refresh-cw';
+  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
 
   let {
     viewMode = $bindable<ViewMode>('unified'),

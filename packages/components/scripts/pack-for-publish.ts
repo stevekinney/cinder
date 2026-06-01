@@ -215,12 +215,23 @@ function buildPublishedManifest(
   // ships test infra.
   published.files = [
     'dist',
+    '!dist/**/*.js.map',
+    '!dist/**/*.type-test.*',
+    '!dist/**/*-fixtures.*',
+    '!dist/**/*fixtures.*',
+    '!dist/**/_*-test-harness.*',
+    '!dist/**/test/**',
     'src/index.ts',
     'src/schema-types.ts',
     'src/components/**/*.ts',
     '!src/components/**/*.test.ts',
     '!src/components/**/*.spec.ts',
+    '!src/components/**/*.type-test.ts',
+    '!src/components/**/*-fixtures.ts',
+    '!src/components/**/*fixtures.ts',
+    '!src/components/**/_*-test-harness.svelte',
     'src/components/**/*.svelte',
+    '!src/components/**/*.type-test.svelte',
     'src/components/**/*.json',
     'src/components/**/*.css',
     'src/components/**/*.md',
@@ -279,10 +290,12 @@ async function stageFiles(manifest: SourceManifest): Promise<void> {
   await mkdir(stagingRoot, { recursive: true });
 
   const filesField = manifest.files ?? [];
+  const excludedPatterns = filesField
+    .filter((pattern) => pattern.startsWith('!'))
+    .map((pattern) => pattern.slice(1));
   for (const pattern of filesField) {
     if (pattern.startsWith('!')) {
-      // Negative patterns are honored later by `bun pm pack` reading the
-      // staged `files` field directly; nothing to stage from them.
+      // Applied after positive staging below.
       continue;
     }
     // Patterns can be plain paths, directories, or globs. Resolve each into
@@ -300,6 +313,13 @@ async function stageFiles(manifest: SourceManifest): Promise<void> {
       continue;
     }
     await copyIntoStaging(pattern);
+  }
+
+  for (const pattern of excludedPatterns) {
+    const glob = new Glob(pattern);
+    for await (const relative of glob.scan({ cwd: stagingRoot })) {
+      await rm(join(stagingRoot, relative), { force: true, recursive: true });
+    }
   }
 
   // Always include README and LICENSE if present, regardless of `files`.
@@ -353,7 +373,10 @@ export async function packForPublish(): Promise<PackForPublishResult> {
     await Bun.file(tarballPath).delete();
   }
 
-  const result = await $`bun pm pack --destination ${packageRoot}`.cwd(stagingRoot).nothrow();
+  const result = await $`bun pm pack --destination ${packageRoot}`
+    .cwd(stagingRoot)
+    .nothrow()
+    .quiet();
   if (result.exitCode !== 0) {
     throw new Error(`bun pm pack failed: ${result.stderr.toString()}`);
   }

@@ -22,7 +22,8 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { formatRelativeTime } from '../../utilities/format-date.ts';
   import Button from '../button/button.svelte';
-  import { Pencil, Trash2 } from '../icons/index.ts';
+  import Pencil from 'lucide-svelte/icons/pencil';
+  import Trash2 from 'lucide-svelte/icons/trash-2';
 
   let {
     comments,

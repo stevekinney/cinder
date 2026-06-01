@@ -144,8 +144,11 @@ const allowedNonComponentExportKeys = new Set([
   './package.json',
   './manifest',
   './styles',
+  './styles/all',
   './styles/tokens',
   './styles/foundation',
+  './styles/utilities',
+  './styles/guard',
   './highlighters/shiki',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.
@@ -268,6 +271,11 @@ const orphanExports = [];
 for (const key of exportKeys) {
   if (allowedNonComponentExportKeys.has(key)) continue;
   if (expectedComponentExportKeys.has(key)) continue;
+  const experimentalAliasMatch = /^\.\/experimental\/([^/]+)(\/.*)?$/.exec(key);
+  if (experimentalAliasMatch) {
+    const promotedExportKey = `./${experimentalAliasMatch[1]}${experimentalAliasMatch[2] ?? ''}`;
+    if (expectedComponentExportKeys.has(promotedExportKey)) continue;
+  }
   // Upstream re-export sub-paths (cinder/markdown/*, cinder/diff/*, etc.) are
   // not component exports and are validated by node-consumer; skip them here.
   if (

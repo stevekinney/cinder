@@ -298,6 +298,39 @@ describe('runHookCommand', () => {
       await unrelated.exited;
     }
   });
+
+  it('does not hang when a finished command leaves a descendant holding captured output open', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-hook-stream-cleanup-'));
+    const pidFile = join(directory, 'child.pid');
+    let childPid: number | undefined;
+
+    const parentScript = `
+      const child = Bun.spawn(["bun", "-e", "setInterval(() => {}, 1000)"], {
+        stdin: "ignore",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      await Bun.write(Bun.env.CHILD_PID_FILE, String(child.pid));
+      process.exit(0);
+    `;
+
+    try {
+      const result = await runHookCommand('bun', ['-e', parentScript], {
+        environment: { CHILD_PID_FILE: pidFile },
+        stderr: 'pipe',
+        stdout: 'pipe',
+      });
+
+      const childPidText = await readFile(pidFile, 'utf8');
+      childPid = Number(childPidText.trim());
+
+      expect(result.exitCode).toBe(0);
+      await waitForProcessExit(childPid);
+    } finally {
+      if (childPid !== undefined) killProcessGroup(childPid);
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
 });
 
 describe('isSourceFile', () => {

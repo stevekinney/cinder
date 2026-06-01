@@ -225,36 +225,30 @@ async function runFull(): Promise<boolean> {
   for (const script of SCRIPTS) console.log(`  <root> ${script}`);
   let ok = true;
   const failures: GateFailure[] = [];
-  let fullOutput = '';
   for (const script of SCRIPTS) {
     info(`Running ${script}…`);
-    // Capture output so a failure can be summarized and logged like the scoped
-    // path; the captured streams are still echoed to the terminal.
+    // The full-suite path can produce very large output. Stream it directly so
+    // Bun never keeps the hook alive waiting on captured pipe readers after the
+    // command has exited.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
-      stderr: 'pipe',
-      stdout: 'pipe',
+      stderr: 'inherit',
+      stdout: 'inherit',
     });
-    if (result.stdout.length > 0) await Bun.write(Bun.stdout, result.stdout);
-    if (result.stderr.length > 0) await Bun.write(Bun.stderr, result.stderr);
-    fullOutput += `\n\n===== ${script} =====\n\n${result.stdout}${result.stderr}`;
     if (result.exitCode === 0) {
       success(`${script} passed`);
     } else {
       error(`${script} failed`);
-      const combined = `${result.stdout}\n${result.stderr}`;
       failures.push({
         script,
-        scope: inferFailureScope(combined),
-        lines: summarizeFailures(combined),
+        scope: 'workspace',
+        lines: [`bun run ${script} exited with code ${result.exitCode}`],
       });
       ok = false;
     }
   }
   if (!ok) {
-    const logPath = await writePrePushLog(fullOutput);
     for (const line of formatFailureSummary(failures)) error(line);
-    error(`Full pre-push output: ${logPath}`);
     error('Pre-push validation failed.');
     error(
       'Run `bun run lint && bun run typecheck && bun run test`, fix the failures, and push again.',

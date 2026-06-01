@@ -27,7 +27,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { Check } from '../../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
   import Dropdown from '../../dropdown/dropdown.svelte';
   import DropdownTrigger from '../../dropdown-trigger/dropdown-trigger.svelte';
   import DropdownMenu from '../../dropdown-menu/dropdown-menu.svelte';

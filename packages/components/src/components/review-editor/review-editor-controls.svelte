@@ -46,7 +46,11 @@
   import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import DiffStatistics from '../diff-statistics/diff-statistics.svelte';
-  import { FileText, GitBranch, MessageSquare, Pencil, RotateCcw } from '../icons/index.ts';
+  import FileText from 'lucide-svelte/icons/file-text';
+  import GitBranch from 'lucide-svelte/icons/git-branch';
+  import MessageSquare from 'lucide-svelte/icons/message-square';
+  import Pencil from 'lucide-svelte/icons/pencil';
+  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
 
   let {
     id,

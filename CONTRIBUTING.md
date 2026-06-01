@@ -146,4 +146,8 @@ bun x changeset
 
 Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summary, and commit the generated file under `.changeset/`. The release workflow (`.github/workflows/release.yaml`) consumes pending changesets to open a "Version Packages" pull request; merging that PR publishes to npm with provenance.
 
+The npm artifact has one source of truth: `packages/components/scripts/pack-for-publish.ts`. Consumer validation, release dry-runs, the Changesets publish path, and the manual break-glass workflow all publish or inspect the staged tarball from that script. Do not publish from raw `packages/components/package.json`; that source manifest contains workspace-only development dependencies and scripts that are intentionally stripped from the released artifact.
+
+Before a release, `bun run --filter=cinder validate:consumer` installs the staged tarball into consumer fixtures, runs the Svelte peer compatibility matrix (`5.55.0`, workspace `~5.55.0`, latest `svelte@^5`), and checks tarball hygiene. `bun run --filter=cinder package:weight:check` reports packed size, unpacked size, file count, largest entry directories, and largest files, then fails on budget drift.
+
 Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.

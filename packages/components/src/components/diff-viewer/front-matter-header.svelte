@@ -32,7 +32,9 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
-  import { ChevronDown, ChevronRight, FileText } from '../icons/index.ts';
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import FileText from 'lucide-svelte/icons/file-text';
 
   let {
     id,

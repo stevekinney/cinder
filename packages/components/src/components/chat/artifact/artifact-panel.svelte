@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-  import { X } from '../../icons/index.ts';
+  import X from 'lucide-svelte/icons/x';
 
   let { instanceId = 'artifact', title, onclose, children }: ArtifactPanelProps = $props();
 

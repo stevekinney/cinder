@@ -25,7 +25,10 @@
   import DropdownItem from '../../dropdown-item/dropdown-item.svelte';
   import DropdownMenu from '../../dropdown-menu/dropdown-menu.svelte';
   import DropdownTrigger from '../../dropdown-trigger/dropdown-trigger.svelte';
-  import { Check, Copy, FileCode, FileText } from '../../icons/index.ts';
+  import Check from 'lucide-svelte/icons/check';
+  import Copy from 'lucide-svelte/icons/copy';
+  import FileCode from 'lucide-svelte/icons/file-code';
+  import FileText from 'lucide-svelte/icons/file-text';
   import { getMessages } from 'conversationalist';
   import { messagesToMarkdown } from '../utilities';
 
