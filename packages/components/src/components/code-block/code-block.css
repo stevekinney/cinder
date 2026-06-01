@@ -46,7 +46,10 @@
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
     color: var(--cinder-text);
-    background: var(--cinder-surface-inset);
+    /* Use near-white in light mode so github-light token colors (e.g. #d73a49
+     * keyword red) clear 4.5:1 WCAG AA. In dark mode keep the deep inset so
+     * github-dark tokens maintain contrast on a very dark surface. */
+    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
   }
 
   .cinder-code-block__code {
@@ -57,16 +60,65 @@
   .cinder-code-block :where(pre.shiki) {
     margin: 0 !important;
     padding: var(--cinder-space-3) var(--cinder-space-4) !important;
-    overflow-x: auto;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
-    background: var(--cinder-surface-inset) !important;
+    /* Same light/dark split as the plain __pre — near-white in light for
+     * github-light contrast, deep inset in dark for github-dark contrast. */
+    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset)) !important;
   }
 
   .cinder-code-block :where(pre.shiki code) {
     font-family: inherit;
     font-size: inherit;
+  }
+
+  /* ── Dark-theme Shiki dual-theme fix ─────────────────────────────────────
+   * Shiki's dual-theme output emits inline styles on every token span with
+   * BOTH the light value (`color: #24292E`) and the dark value
+   * (`--shiki-dark: #E1E4E8`). Without a CSS rule that swaps `color` to
+   * `var(--shiki-dark)` in dark mode, token spans show their light color
+   * (#24292e near-black, #d73a49 keyword red) against a dark surface — ratios
+   * as low as 1.38 — failing axe color-contrast.
+   *
+   * Cover the two cases in which a cinder dark theme is active. Both anchor on
+   * `[data-cinder-theme=…]` — the authoritative signal cinder sets on the
+   * document element (render-shell.ts) and the only theme anchor the
+   * component-CSS-sidecar lint accepts (`:root`/`[data-theme]` are
+   * foundation-layer selectors it rejects):
+   *   1. An explicit dark choice: `[data-cinder-theme="dark"]`.
+   *   2. The system choice resolving to dark: `[data-cinder-theme="system"]`
+   *      under `@media (prefers-color-scheme: dark)`.
+   * ──────────────────────────────────────────────────────────────────────── */
+
+  /* `!important` is required: Shiki writes the light color as an INLINE style
+   * (`style="color:#24292E"`) on every span, and an inline declaration beats a
+   * stylesheet rule on specificity. Without `!important` the light color wins in
+   * dark mode and the override is silently a no-op (contrast as low as 1.38).
+   * We override ONLY the foreground — the span background stays transparent so
+   * the dark `--cinder-surface-inset` forced on the <pre> shows through. (An
+   * earlier attempt set `background-color: var(--shiki-dark-bg)` here, which
+   * repainted each span with Shiki's own dark bg `#24292e` and re-broke contrast
+   * against the github-dark red — dropped.)
+   *
+   * The selectors anchor on `[data-cinder-theme=...]` — the authoritative theme
+   * signal cinder sets on the document element (see render-shell.ts). That
+   * `data-cinder-` namespace is also what the component-CSS-sidecar lint accepts
+   * as a scope anchor; a `:root`/`[data-theme]` prefix is a foundation-layer
+   * selector and is (correctly) rejected here. */
+
+  /* Explicit dark choice. */
+  [data-cinder-theme='dark'] .cinder-code-block :where(pre.shiki) span {
+    color: var(--shiki-dark, inherit) !important;
+  }
+
+  /* System choice that resolves to dark via the OS preference. cinder sets
+   * `data-cinder-theme="system"` and leaves `color-scheme: light dark` to follow
+   * `prefers-color-scheme`, so we mirror that here for the inline-style swap. */
+  @media (prefers-color-scheme: dark) {
+    [data-cinder-theme='system'] .cinder-code-block :where(pre.shiki) span {
+      color: var(--shiki-dark, inherit) !important;
+    }
   }
 
   /* Compact, borderless copy button when nested inside a code block header.
@@ -106,9 +158,29 @@
   /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
    Svelte appends new nodes alongside the old when an `{@html}` value changes
    between two non-null strings unless it sits inside a stable parent element.
-   Purely structural: `display: contents` so it never affects layout. Target
-   the inner `<pre>` (Shiki-emitted) for styling, not this wrapper. */
+   This div is also the keyboard-accessible scroll container for the highlighted
+   code (tabindex="0" is set in the template). The inner shiki <pre> must NOT
+   independently scroll — overflow is owned here so keyboard users reach the
+   scroll region via a single focusable element. */
   .cinder-code-block__highlighted {
-    display: contents;
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* The shiki <pre> must NOT own a scroll port — the parent
+   .cinder-code-block__highlighted is the single keyboard-reachable scroll
+   region (axe scrollable-region-focusable wants one, not a nested pair). But it
+   MUST still contribute its full content width to the parent's scrollable
+   overflow, or long lines get clipped and become unreachable. So: let the pre
+   grow to its intrinsic width (`width: max-content`, floored at `min-width:
+   100%` so short code still fills the box) and clip its own (now non-existent)
+   overflow. Because the element is sized to its content, `clip` is a no-op on
+   the pre itself, while the wider-than-viewport pre makes the PARENT scroll.
+   (Plain `overflow-x: clip` alone clipped the overflow out of existence so the
+   parent never became scrollable — verified in-browser.) */
+  .cinder-code-block__highlighted :where(pre.shiki) {
+    width: max-content;
+    min-width: 100%;
+    overflow-x: clip;
   }
 }

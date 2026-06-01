@@ -83,15 +83,19 @@
     cursor: default;
   }
 
-  .cinder-tag-input__chip:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
+  /* The remove <button> carries the roving tabindex, so the focus ring lives on
+     it. The box-shadow IS the visible indicator; outline is suppressed (the
+     forced-colors block below restores a real outline where box-shadow is
+     ignored). */
+  .cinder-tag-input__remove:focus-visible {
+    outline: none;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
-    .cinder-tag-input__chip:focus-visible {
+    .cinder-tag-input__remove:focus-visible {
       outline: var(--cinder-ring-width) solid Highlight;
       outline-offset: 1px;
     }
@@ -134,10 +138,6 @@
       color: var(--cinder-text);
       background: color-mix(in oklch, var(--cinder-text), transparent 92%);
     }
-  }
-
-  .cinder-tag-input__remove:focus-visible {
-    outline: none;
   }
 
   .cinder-tag-input__remove:disabled {

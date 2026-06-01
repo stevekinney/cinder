@@ -8,7 +8,7 @@
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-  <Progress value={50} />
-  <Progress value={75} />
-  <Progress value={100} />
+  <Progress value={50} ariaLabel="File upload: 50% complete" />
+  <Progress value={75} ariaLabel="File upload: 75% complete" />
+  <Progress value={100} ariaLabel="File upload: 100% complete" />
 </div>

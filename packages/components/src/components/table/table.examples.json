@@ -13,7 +13,7 @@
       "id": "empty",
       "title": "Empty table",
       "description": "A table with no body rows still renders the header and caption.",
-      "code": "<script lang=\"ts\">\n  import { Table } from 'cinder/table';\n</script>\n\n<Table caption=\"Recent contributors (none yet)\">\n  <Table.Header>\n    <Table.Row>\n      <Table.HeaderCell>Name</Table.HeaderCell>\n      <Table.HeaderCell>Role</Table.HeaderCell>\n      <Table.HeaderCell align=\"right\">Commits</Table.HeaderCell>\n    </Table.Row>\n  </Table.Header>\n  <Table.Body>\n    <Table.Row>\n      <Table.Cell>\n        <span style=\"color: #888; font-style: italic;\"\n          >No contributors yet — invite your team to get started.</span\n        >\n      </Table.Cell>\n      <Table.Cell>—</Table.Cell>\n      <Table.Cell align=\"right\">0</Table.Cell>\n    </Table.Row>\n  </Table.Body>\n</Table>\n"
+      "code": "<script lang=\"ts\">\n  import { Table } from 'cinder/table';\n</script>\n\n<Table caption=\"Recent contributors (none yet)\">\n  <Table.Header>\n    <Table.Row>\n      <Table.HeaderCell>Name</Table.HeaderCell>\n      <Table.HeaderCell>Role</Table.HeaderCell>\n      <Table.HeaderCell align=\"right\">Commits</Table.HeaderCell>\n    </Table.Row>\n  </Table.Header>\n  <Table.Body>\n    <Table.Row>\n      <Table.Cell>\n        <span style=\"color: var(--cinder-text-muted); font-style: italic;\"\n          >No contributors yet — invite your team to get started.</span\n        >\n      </Table.Cell>\n      <Table.Cell>—</Table.Cell>\n      <Table.Cell align=\"right\">0</Table.Cell>\n    </Table.Row>\n  </Table.Body>\n</Table>\n"
     },
     {
       "id": "selection",

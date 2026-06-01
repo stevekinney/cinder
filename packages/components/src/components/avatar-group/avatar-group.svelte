@@ -133,9 +133,22 @@
     >
       {#if item.trimmedName}
         <Tooltip text={item.trimmedName} describe={false}>
-          <!-- Focusable tooltip disclosure target; not an actionable control. -->
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <span class="cinder-avatar-group__trigger" tabindex="0" aria-label={item.trimmedName}>
+          <!-- role="img" is the honest semantic: a NAMED composite image, not an
+               action control. The trigger only reveals a name tooltip on focus/
+               hover — it has no onclick/Enter/Space activation, so role="button"
+               would be a false affordance (announces "button" but does nothing →
+               WCAG 4.1.2). img takes its name from the author, so aria-label is
+               valid here (no aria-prohibited-attr). tabindex="0" on a non-
+               interactive role is permitted by ARIA and is purposeful: it gives
+               keyboard users the same name-disclosure pointer users get on hover.
+               The inner <Avatar> uses alt="" so its image doesn't double-name the
+               composite. -->
+          <span
+            class="cinder-avatar-group__trigger"
+            role="img"
+            tabindex="0"
+            aria-label={item.trimmedName}
+          >
             <Avatar
               {...avatarSourceProps(item.avatar.src)}
               name={item.trimmedName}
