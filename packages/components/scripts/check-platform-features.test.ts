@@ -7,6 +7,7 @@ import {
   findRegressions,
   findViewportMediaQueries,
   flagKey,
+  isTestPath,
   matchedProbesForLine,
   parseBaseline,
   scan,
@@ -95,6 +96,28 @@ describe('stripCssComments', () => {
   test('removes single-line and multi-line block comments', () => {
     expect(stripCssComments('a /* x */ b').trim()).toBe('a   b'.trim());
     expect(stripCssComments('/* @media (min-width: 1px) */').trim()).toBe('');
+  });
+
+  test('preserves newline count so downstream line numbers do not drift', () => {
+    const source = '/* line one\nline two\nline three */\n@media (min-width: 640px) {}';
+    // The 3-line comment must leave its 2 internal newlines intact.
+    expect(stripCssComments(source).split('\n')).toHaveLength(source.split('\n').length);
+    // And the @media query must still report its true source line (4).
+    expect(findViewportMediaQueries(source)[0]!.lineNumber).toBe(4);
+  });
+});
+
+describe('isTestPath — inventory excludes test fixtures', () => {
+  test('matches test/spec files and __tests__ dirs', () => {
+    expect(isTestPath('components/x/x.test.ts')).toBe(true);
+    expect(isTestPath('components/x/x.spec.tsx')).toBe(true);
+    expect(isTestPath('components/__tests__/x.ts')).toBe(true);
+  });
+
+  test('does not match real component sources', () => {
+    expect(isTestPath('components/x/x.ts')).toBe(false);
+    expect(isTestPath('components/x/x.svelte')).toBe(false);
+    expect(isTestPath('components/x/x.css')).toBe(false);
   });
 });
 

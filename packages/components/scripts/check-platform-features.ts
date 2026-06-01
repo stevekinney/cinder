@@ -113,6 +113,13 @@ export const VIEWPORT_WIDTH_MEDIA =
 export type FeatureCount = { feature: string; tier: 1 | 2 | 3; count: number };
 export type Flag = { filePath: string; lineNumber: number; query: string };
 
+/** True for test/spec sources, which should not count toward the usage inventory. */
+export function isTestPath(relativePath: string): boolean {
+  return (
+    /(?:^|\/)__tests__\//.test(relativePath) || /\.(?:test|spec)\.[cm]?tsx?$/.test(relativePath)
+  );
+}
+
 /** Returns the probe indices whose pattern matches `line` for `relativePath`. */
 export function matchedProbesForLine(relativePath: string, line: string): number[] {
   const matched: number[] = [];
@@ -125,9 +132,16 @@ export function matchedProbesForLine(relativePath: string, line: string): number
   return matched;
 }
 
-/** Strips `/* … *​/` CSS comments (including multi-line) from a stylesheet body. */
+/**
+ * Strips `/* … *​/` CSS comments (including multi-line) from a stylesheet body,
+ * preserving the newline count of each removed comment so line numbers computed
+ * against the result still map to the original source.
+ */
 export function stripCssComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  return source.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
+    const newlines = comment.match(/\n/g)?.length ?? 0;
+    return ' ' + '\n'.repeat(newlines);
+  });
 }
 
 /**
@@ -166,6 +180,10 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
 
   const allFiles = new Glob('**/*.{css,svelte,ts}');
   for await (const relativePath of allFiles.scan({ cwd: componentsSource })) {
+    // The inventory reflects real component usage, not test fixtures: a probe like
+    // `inert` or `showPopover` matches strings/identifiers in test files and would
+    // overstate adoption. Skip test/spec sources.
+    if (isTestPath(relativePath)) continue;
     const filePath = join(componentsSource, relativePath);
     const content = await Bun.file(filePath).text();
 
