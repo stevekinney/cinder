@@ -186,6 +186,166 @@ describe('ColorPicker invalid input', () => {
     expect(options[0]?.getAttribute('aria-selected')).toBe('false');
     expect(options[1]?.querySelector('svg')).toBeTruthy();
   });
+
+  test('clicking an unparseable swatch does not change value or show selected', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#00ff00',
+      swatches: ['not-a-color', '#00ff00'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // No callback fired, no value change, invalid swatch never becomes selected.
+    expect(captured).toBe('');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#00ff00');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+  });
+});
+
+describe('ColorPicker swatch controlled-state invariant (regression: conditional spread bug)', () => {
+  test('clearing value to "" deselects the previously-selected swatch', async () => {
+    const { container, rerender } = render(ColorPicker, {
+      value: '#00ff00',
+      swatches: ['#ff0000', '#00ff00', '#0000ff'],
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[1]!.hasAttribute('data-cinder-selected')).toBe(true);
+
+    await rerender({ value: '', swatches: ['#ff0000', '#00ff00', '#0000ff'] });
+    await tick();
+
+    // After clearing, no swatch should be visually selected.
+    const optionsAfter = container.querySelectorAll<HTMLElement>('[role="option"]');
+    for (const option of optionsAfter) {
+      expect(option.getAttribute('aria-selected')).toBe('false');
+      expect(option.hasAttribute('data-cinder-selected')).toBe(false);
+    }
+  });
+
+  test('clicking an unparseable swatch when ColorPicker has no value does not mark it selected', async () => {
+    // This is the exact desync scenario: ColorPicker.internalValue === '',
+    // so before the fix the conditional spread omitted `value` and ColorSwatchPicker
+    // fell into uncontrolled mode — letting the click stick visually inside the child.
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      // No value or defaultValue: ColorPicker starts with internalValue === ''.
+      swatches: ['not-a-color', '#00ff00'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+
+    // Confirm: neither swatch selected to start.
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+
+    // Click the unparseable swatch.
+    await fireEvent.click(options[0]!);
+
+    // The unparseable click must not fire onchange and must not leave the
+    // swatch appearing selected — the child's selected state must remain a
+    // pure function of ColorPicker's value (which is still empty).
+    expect(captured).toBe('');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[0]!.hasAttribute('data-cinder-selected')).toBe(false);
+  });
+
+  test('after form reset to empty, clicking an unparseable swatch does not mark it selected', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+
+    const { container } = render(ColorPicker, {
+      target: form,
+      props: {
+        // No defaultValue: reset brings ColorPicker back to internalValue === ''.
+        swatches: ['not-a-color', '#00ff00'],
+        name: 'p',
+      },
+    });
+    await tick();
+
+    // Adjust value via hue so internalValue becomes non-empty.
+    const hue = q(container, '[aria-label="Hue"]');
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    const hiddenBefore = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hiddenBefore.value).not.toBe('');
+
+    // Reset the form — brings ColorPicker back to internalValue === ''.
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('');
+
+    // Now click the unparseable swatch — it must not stick.
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[0]!.hasAttribute('data-cinder-selected')).toBe(false);
+
+    document.body.removeChild(form);
+  });
+});
+
+describe('ColorPicker swatch alpha stripping', () => {
+  test('alpha=false: alpha-bearing swatch emits plain #rrggbb (alpha stripped)', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: false,
+      swatches: ['#ff000080'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // Alpha-disabled picker must strip the alpha channel from the emitted value.
+    expect(captured).toBe('#ff0000');
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#ff0000');
+    // 6-char hex only, no alpha suffix.
+    expect(captured).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  test('alpha=true: alpha-bearing swatch emits 8-char #rrggbbaa', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: true,
+      swatches: ['#ff000080'],
+      name: 'p',
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // Alpha-enabled picker must preserve the alpha channel in the emitted value.
+    expect(captured).toMatch(/^#ff0000[0-9a-f]{2}$/);
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe(captured);
+  });
 });
 
 describe('ColorPicker hue slider keyboard', () => {
@@ -281,8 +441,13 @@ describe('ColorPicker swatch keyboard nav', () => {
         captured = color;
       },
     });
-    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
-    await fireEvent.keyDown(options[2]!, { key: 'Enter' });
+    // ColorSwatchPicker's keyboard handler lives on the listbox ul and uses
+    // roving-tabindex focus tracking. Navigate to the third swatch with
+    // ArrowRight twice, then confirm selection with Enter.
+    const listbox = q(container, '[role="listbox"]');
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
     expect(captured).toBe('#0000ff');
   });
 
@@ -522,5 +687,123 @@ describe('ColorPicker disabled', () => {
     const before = hue.getAttribute('aria-valuenow');
     await fireEvent.keyDown(hue, { key: 'ArrowRight' });
     expect(hue.getAttribute('aria-valuenow')).toBe(before);
+  });
+});
+
+describe('ColorPicker layout: alpha-enabled state', () => {
+  test('renders all controls when alpha=true: gradient, hue, alpha, footer, no swatches', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#ff000080', alpha: true });
+    expect(q(container, '[role="application"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__hue')).toBeTruthy();
+    expect(q(container, '[aria-label="Alpha"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__footer')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__preview')).toBeTruthy();
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('footer hex value shows the 8-char hex when alpha=true', () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ff000080',
+      alpha: true,
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe(hidden.value);
+    expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+
+  test('alpha-enabled swatches render and are selectable', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      alpha: true,
+      swatches: ['#ff000080', '#00ff0080'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options.length).toBe(2);
+    await fireEvent.click(options[0]!);
+    expect(captured).toMatch(/^#ff0000[0-9a-f]{2}$/);
+  });
+});
+
+describe('ColorPicker layout: no-swatches state', () => {
+  test('renders without a listbox when no swatches are provided', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#3b82f6' });
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    // Controls still present
+    expect(q(container, '[role="application"]')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__hue')).toBeTruthy();
+    expect(q(container, '.cinder-color-picker__footer')).toBeTruthy();
+  });
+
+  test('footer shows hex value without swatches', () => {
+    const { container } = render(ColorPicker, { defaultValue: '#3b82f6', name: 'p' });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe(hidden.value);
+  });
+
+  test('footer shows dash placeholder when no color is set', () => {
+    const { container } = render(ColorPicker, {});
+    const hexText = q(container, '.cinder-color-picker__hex-value');
+    expect(hexText.textContent?.trim()).toBe('—');
+  });
+});
+
+describe('ColorPicker composition: ColorSwatchPicker integration', () => {
+  test('swatch selection via ColorSwatchPicker updates the hidden input', async () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      name: 'p',
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[1]!);
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('#22c55e');
+  });
+
+  test('swatch selection via ColorSwatchPicker fires onchange', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[2]!);
+    expect(captured).toBe('#3b82f6');
+  });
+
+  test('ColorSwatchPicker reflects selected state from gradient/slider pick', async () => {
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ef4444',
+      swatches: ['#ef4444', '#22c55e'],
+    });
+    // The swatch matching the current color should be selected.
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('swatch keyboard navigation: ArrowRight then Enter selects a swatch', async () => {
+    let captured = '';
+    const { container } = render(ColorPicker, {
+      defaultValue: '#ffffff',
+      swatches: ['#ef4444', '#22c55e', '#3b82f6'],
+      onchange: (color: string) => {
+        captured = color;
+      },
+    });
+    const listbox = q(container, '[role="listbox"]');
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(captured).toBe('#22c55e');
   });
 });

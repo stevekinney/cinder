@@ -16,12 +16,16 @@
 
 <script lang="ts">
   import type { ColorPickerProps } from './color-picker.types.ts';
+  import type {
+    ColorSwatch,
+    ColorSwatchPickerProps,
+  } from '../color-swatch-picker/color-swatch-picker.types.ts';
   import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { parseColor, pickContrastColor } from '../../utilities/color-luminance.ts';
+  import { parseColor } from '../../utilities/color-luminance.ts';
   import { useId } from '../../utilities/use-id.ts';
-  import Check from 'lucide-svelte/icons/check';
+  import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
 
   let {
     value = $bindable(),
@@ -40,7 +44,6 @@
   const gradientId = `${pickerId}-gradient`;
   const hueId = `${pickerId}-hue`;
   const alphaId = `${pickerId}-alpha`;
-  const swatchesId = `${pickerId}-swatches`;
   const previewId = `${pickerId}-preview`;
 
   type Hsla = { h: number; s: number; l: number; a: number };
@@ -124,17 +127,6 @@
     if (!parsed) return null;
     const { h, s, l } = rgbToHsl(parsed.r, parsed.g, parsed.b);
     return { h: normalizeHue(h), s, l, a: parsed.a };
-  }
-
-  /**
-   * Canonicalize a swatch string to the same hex format the picker emits, so
-   * aria-selected matches regardless of input syntax (#0f0 vs #00ff00 vs rgb()).
-   * Returns null when the swatch is unparseable.
-   */
-  function normalizeSwatch(swatch: string): string | null {
-    const parsed = parseToHsla(swatch);
-    if (!parsed) return null;
-    return formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha).toLowerCase();
   }
 
   function applyHsla(next: Hsla): void {
@@ -467,57 +459,43 @@
     }
   }
 
-  // ── Swatch list ─────────────────────────────────────────────────────────
+  // ── Swatch composition ──────────────────────────────────────────────────
 
   const swatchList = $derived(swatches ?? []);
-  let swatchFocusIndex: number | null = $state(null);
-  let swatchRefs: (HTMLLIElement | null)[] = $state([]);
+
+  /**
+   * Canonicalize a swatch string to the same hex format the picker emits, so
+   * value-matching in ColorSwatchPicker works regardless of input syntax
+   * (#0f0 vs #00ff00 vs rgb()). Returns null when the swatch is unparseable.
+   */
+  function normalizeSwatch(swatch: string): string | null {
+    const parsed = parseToHsla(swatch);
+    if (!parsed) return null;
+    return formatHex(parsed.h, parsed.s, parsed.l, parsed.a, alpha).toLowerCase();
+  }
+
+  /**
+   * Pre-normalized swatches mapped to the ColorSwatch shape that ColorSwatchPicker
+   * expects. Entries that fail `normalizeSwatch` keep their original string as the
+   * color: a CSS-valid-but-non-normalizable value still paints its swatch background,
+   * while a truly invalid value (e.g. `not-a-color`) paints nothing — either way it
+   * never matches the selected value, so it can never show as selected or be committed.
+   */
+  const normalizedSwatchColors = $derived<ColorSwatch[]>(
+    swatchList.map((swatch) => ({
+      color: normalizeSwatch(swatch) ?? swatch,
+    })),
+  );
 
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
 
-  function selectSwatch(index: number, reason: 'input' | 'change'): void {
+  function handleSwatchChange(
+    selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onchange']>>[0],
+  ): void {
     if (disabled) return;
-    const next = swatchList[index];
-    if (!next) return;
-    const parsed = parseToHsla(next);
+    const parsed = parseToHsla(selectedColor);
     if (!parsed) return;
-    commitFromHsla(parsed, reason);
-  }
-
-  async function focusSwatch(index: number): Promise<void> {
-    swatchFocusIndex = index;
-    await tick();
-    swatchRefs[index]?.focus();
-  }
-
-  function handleSwatchKeydown(event: KeyboardEvent, index: number): void {
-    if (disabled) return;
-    const lastIndex = swatchList.length - 1;
-    switch (event.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        event.preventDefault();
-        void focusSwatch(index === lastIndex ? 0 : index + 1);
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        event.preventDefault();
-        void focusSwatch(index === 0 ? lastIndex : index - 1);
-        break;
-      case 'Home':
-        event.preventDefault();
-        void focusSwatch(0);
-        break;
-      case 'End':
-        event.preventDefault();
-        void focusSwatch(lastIndex);
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        selectSwatch(index, 'change');
-        break;
-    }
+    commitFromHsla(parsed, 'change');
   }
 
   // ── Form reset ──────────────────────────────────────────────────────────
@@ -674,48 +652,31 @@
     </div>
   {/if}
 
-  <div
-    id={previewId}
-    role="img"
-    class="cinder-color-picker__preview"
-    data-cinder-alpha={alpha ? '' : undefined}
-    aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
-    style="--cinder-color-picker-preview: {previewColor};"
-  ></div>
+  <!-- Footer row: preview chip + current hex value -->
+  <div class="cinder-color-picker__footer">
+    <div
+      id={previewId}
+      role="img"
+      class="cinder-color-picker__preview"
+      data-cinder-alpha={alpha ? '' : undefined}
+      aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
+      style="--cinder-color-picker-preview: {previewColor};"
+    ></div>
+    <span class="cinder-color-picker__hex-value" aria-hidden="true">
+      {internalValue || '—'}
+    </span>
+  </div>
 
-  {#if swatchList.length > 0}
-    <ul
-      id={swatchesId}
-      role="listbox"
-      aria-label="Color swatches"
-      aria-disabled={disabled ? 'true' : undefined}
+  {#if normalizedSwatchColors.length > 0}
+    <ColorSwatchPicker
+      colors={normalizedSwatchColors}
+      value={internalValue !== '' ? currentHex.toLowerCase() : ''}
+      label="Color swatches"
+      size="sm"
+      {disabled}
       class="cinder-color-picker__swatches"
-    >
-      {#each swatchList as swatch, index (swatch + index)}
-        {@const normalized = normalizeSwatch(swatch)}
-        {@const isSelected =
-          internalValue !== '' && normalized !== null && normalized === currentHex.toLowerCase()}
-        {@const contrastColor = pickContrastColor(swatch)}
-        <li
-          bind:this={swatchRefs[index]}
-          role="option"
-          aria-selected={isSelected}
-          aria-label={`Color ${swatch}`}
-          tabindex={(swatchFocusIndex ?? 0) === index && !disabled ? 0 : -1}
-          class="cinder-color-picker__swatch"
-          data-cinder-selected={isSelected ? '' : undefined}
-          style="--cinder-color-picker-swatch: {swatch};"
-          onclick={() => selectSwatch(index, 'change')}
-          onkeydown={(event) => handleSwatchKeydown(event, index)}
-        >
-          {#if isSelected}
-            <span class="cinder-color-picker__swatch-indicator" style="color: {contrastColor}">
-              <Check aria-hidden="true" />
-            </span>
-          {/if}
-        </li>
-      {/each}
-    </ul>
+      onchange={handleSwatchChange}
+    />
   {/if}
 
   {#if name}

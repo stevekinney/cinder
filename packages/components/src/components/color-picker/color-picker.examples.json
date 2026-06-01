@@ -4,10 +4,22 @@
   "import": "cinder/color-picker",
   "examples": [
     {
+      "id": "alpha",
+      "title": "Color picker with alpha",
+      "description": "Alpha slider enabled: emits an 8-character hex value. The footer row shows the full #rrggbbaa string.",
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from 'cinder/color-picker';\n\n  const swatches = ['#ef444480', '#22c55e80', '#3b82f680'];\n</script>\n\n<ColorPicker defaultValue=\"#3b82f680\" label=\"Color with opacity\" alpha {swatches} />\n"
+    },
+    {
       "id": "basic",
       "title": "Basic color picker",
       "description": "A color picker with preset swatches where the selected swatch shows a persistent check indicator without looking keyboard-focused.",
       "code": "<script lang=\"ts\">\n  import { ColorPicker } from 'cinder/color-picker';\n\n  const swatches = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];\n</script>\n\n<ColorPicker defaultValue=\"#22c55e\" label=\"Accent color\" {swatches} />\n"
+    },
+    {
+      "id": "no-swatches",
+      "title": "Color picker without swatches",
+      "description": "Omitting the swatches prop renders only the gradient, sliders, and footer row — useful when a freeform pick without preset guidance is needed.",
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from 'cinder/color-picker';\n</script>\n\n<ColorPicker defaultValue=\"#6366f1\" label=\"Custom color\" />\n"
     }
   ]
 }

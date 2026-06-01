@@ -93,8 +93,12 @@ test.describe('a11y regressions', () => {
     });
 
     const rootSelector = '#example-mount-basic';
+    // ColorPicker now composes ColorSwatchPicker for its preset swatches, so the
+    // selected swatch renders ColorSwatchPicker's markup: a role="option" with
+    // data-cinder-selected and a nested indicator <svg>. The a11y contract is
+    // unchanged — the selected swatch shows a visible indicator without being focused.
     const selectedSwatch = page
-      .locator('.cinder-color-picker__swatch[data-cinder-selected]')
+      .locator('.cinder-color-swatch-picker__swatch[data-cinder-selected]')
       .first();
     await expect(selectedSwatch).toBeVisible();
     await expect(selectedSwatch.locator('svg')).toHaveCount(1);
