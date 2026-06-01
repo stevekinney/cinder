@@ -21,6 +21,16 @@
     padding-inline-end: calc(var(--cinder-space-10) + var(--cinder-space-2));
   }
 
+  /*
+   * Suppress the browser's native calendar-picker indicator so only the Cinder
+   * toggle button is visible. The <input type="time"> stays the source of truth
+   * for value, min/max/step, typed entry, and form participation — only the
+   * redundant visual affordance for the native picker is hidden.
+   */
+  .cinder-time-picker__input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
   .cinder-time-picker__toggle {
     position: absolute;
     inset-block: var(--cinder-space-1);
@@ -65,6 +75,8 @@
   }
 
   .cinder-time-picker__popover {
+    container-type: inline-size;
+    container-name: cinder-time-picker-popover;
     padding: var(--cinder-space-3);
     inline-size: min(18rem, calc(100vw - var(--cinder-space-4)));
   }
@@ -73,6 +85,15 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(4rem, 1fr));
     gap: var(--cinder-space-3);
+  }
+
+  /* On very narrow containers (e.g. 375px mobile viewport) the column grid
+   * shrinks proportionally so all columns remain visible without clipping. */
+  @container cinder-time-picker-popover (max-width: 15rem) {
+    .cinder-time-picker__columns {
+      grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
+      gap: var(--cinder-space-2);
+    }
   }
 
   .cinder-time-picker__column {
