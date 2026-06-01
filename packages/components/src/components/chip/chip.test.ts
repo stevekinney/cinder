@@ -382,11 +382,15 @@ describe('Chip disabled-label contrast guard', () => {
     // Mute is expressed via color tokens, never a root opacity that composites
     // the label down. The two disabled-root selectors share one combined rule
     // (`button.cinder-chip:disabled, .cinder-chip[data-cinder-disabled] { … }`).
-    // Assert no `opacity:` declaration appears in that rule body. The label and
-    // icon rules below it set their own colors and are matched separately.
-    const disabledRoot = css.match(
-      /button\.cinder-chip:disabled,\s*\.cinder-chip\[data-cinder-disabled\]\s*\{[^}]*\}/,
-    )?.[0];
+    // Match either selector order — grouped-selector order is cosmetic and a
+    // formatter could swap it without changing behavior. Assert no `opacity:`
+    // declaration appears in that rule body; the label and icon rules below it
+    // set their own colors and are matched separately.
+    const buttonFirst =
+      /button\.cinder-chip:disabled,\s*\.cinder-chip\[data-cinder-disabled\]\s*\{[^}]*\}/;
+    const attrFirst =
+      /\.cinder-chip\[data-cinder-disabled\],\s*button\.cinder-chip:disabled\s*\{[^}]*\}/;
+    const disabledRoot = (css.match(buttonFirst) ?? css.match(attrFirst))?.[0];
     expect(disabledRoot).toBeDefined();
     expect(disabledRoot).not.toContain('opacity');
   });

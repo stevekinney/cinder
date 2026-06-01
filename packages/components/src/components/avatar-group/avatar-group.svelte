@@ -133,11 +133,14 @@
     >
       {#if item.trimmedName}
         <Tooltip text={item.trimmedName} describe={false}>
-          <!-- Focusable labeled avatar image. role="img" makes aria-label valid and -->
-          <!-- conveys that this element presents a named image, not an actionable control. -->
+          <!-- The trigger is keyboard-focusable and reveals a tooltip on focus/hover,
+               so it is an interactive control, not a static image. role="button" makes
+               aria-label valid AND announces an actionable affordance — role="img" (a
+               non-interactive leaf role) would announce "image" on a focus stop with no
+               explanation of why it is focusable. -->
           <span
             class="cinder-avatar-group__trigger"
-            role="img"
+            role="button"
             tabindex="0"
             aria-label={item.trimmedName}
           >

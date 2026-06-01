@@ -246,14 +246,31 @@ describe('AvatarGroup', () => {
     });
   });
 
-  test('named avatar triggers carry role="img" so aria-label is valid', () => {
+  test('named avatar triggers carry role="button" so aria-label is valid', () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
     const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
     for (const trigger of triggers) {
-      expect(trigger.getAttribute('role')).toBe('img');
+      // The trigger is a focus-activated tooltip control, so role="button" (an
+      // interactive role) is correct — not role="img" (a non-interactive leaf
+      // role that would announce "image" on a focus stop with no affordance).
+      expect(trigger.getAttribute('role')).toBe('button');
       expect(trigger.getAttribute('aria-label')).toBeTruthy();
     }
+  });
+
+  test('unnamed avatar triggers carry neither role nor aria-label (no unnamed control)', () => {
+    // An avatar with no name still renders a trigger span, but it is NOT
+    // keyboard focusable and carries no role="button"/aria-label pair — so there
+    // is no interactive control lacking an accessible name.
+    const { container } = render(AvatarGroup, {
+      avatars: [{ name: '', src: 'https://example.test/a.png' }],
+    });
+    const trigger = container.querySelector('.cinder-avatar-group__trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.getAttribute('role')).toBeNull();
+    expect(trigger?.getAttribute('aria-label')).toBeNull();
+    expect(trigger?.hasAttribute('tabindex')).toBe(false);
   });
 
   test('shows a named avatar tooltip on focus and hides it on Escape', async () => {

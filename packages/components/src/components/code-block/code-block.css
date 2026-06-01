@@ -80,13 +80,14 @@
    * (#24292e near-black, #d73a49 keyword red) against a dark surface — ratios
    * as low as 1.38 — failing axe color-contrast.
    *
-   * Cover all three cases in which a cinder dark theme is active:
-   *   1. An explicit `[data-cinder-theme="dark"]` set by the playground (or any
-   *      consumer that follows the cinder data attribute convention).
-   *   2. An explicit `[data-theme="dark"]` set by tokens-base.css helpers or
-   *      direct consumer usage.
-   *   3. `prefers-color-scheme: dark` (system preference) when no explicit
-   *      light/forced-system override is present.
+   * Cover the two cases in which a cinder dark theme is active. Both anchor on
+   * `[data-cinder-theme=…]` — the authoritative signal cinder sets on the
+   * document element (render-shell.ts) and the only theme anchor the
+   * component-CSS-sidecar lint accepts (`:root`/`[data-theme]` are
+   * foundation-layer selectors it rejects):
+   *   1. An explicit dark choice: `[data-cinder-theme="dark"]`.
+   *   2. The system choice resolving to dark: `[data-cinder-theme="system"]`
+   *      under `@media (prefers-color-scheme: dark)`.
    * ──────────────────────────────────────────────────────────────────────── */
 
   /* `!important` is required: Shiki writes the light color as an INLINE style
@@ -167,8 +168,11 @@
 
   /* Suppress the shiki <pre>'s own scroll since .cinder-code-block__highlighted
    owns the scroll container (axe scrollable-region-focusable requires only one
-   keyboard-reachable scroll region, not a nested pair). */
+   keyboard-reachable scroll region, not a nested pair). `clip` (not `visible`)
+   is used because a `visible` child of an overflow-x:auto parent is coerced
+   back to `auto` by the UA — `clip` is not, so the inner pre reliably never
+   establishes its own scroll port. */
   .cinder-code-block__highlighted :where(pre.shiki) {
-    overflow-x: visible;
+    overflow-x: clip;
   }
 }

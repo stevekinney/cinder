@@ -125,11 +125,12 @@
       <!-- tabindex="0" makes this scroll container keyboard-reachable so
            keyboard-only users can scroll long highlighted code snippets
            (WCAG 2.1 SC 2.1.1; axe scrollable-region-focusable). The div
-           owns overflow-x: auto in CSS; the inner shiki <pre> is set to
-           overflow-x: visible so there is exactly one focusable scroll region.
-           aria-label + role="region" expose the scroll region to assistive
-           technology as a landmark with an accessible name. -->
-      <div class="cinder-code-block__highlighted" tabindex="0" role="region" aria-label="Code">
+           owns overflow-x: auto in CSS; the inner shiki <pre> is clipped
+           so there is exactly one focusable scroll region. No role="region":
+           a landmark per code block would flood landmark navigation with
+           identically-named "Code" regions on docs pages with many snippets —
+           tabindex alone satisfies the keyboard-scroll requirement. -->
+      <div class="cinder-code-block__highlighted" tabindex="0">
         {@html highlighted}
       </div>
     {:else}

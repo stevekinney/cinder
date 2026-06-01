@@ -83,7 +83,10 @@
     cursor: default;
   }
 
-  .cinder-tag-input__chip:focus-visible {
+  /* The remove <button> carries the roving tabindex, so the focus ring lives on
+     it. The button styling further down sets layout; this rule supplies the
+     visible focus indicator. */
+  .cinder-tag-input__remove:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
@@ -91,7 +94,7 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-tag-input__chip:focus-visible {
+    .cinder-tag-input__remove:focus-visible {
       outline: var(--cinder-ring-width) solid Highlight;
       outline-offset: 1px;
     }

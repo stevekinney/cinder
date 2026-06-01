@@ -255,6 +255,28 @@ describe('evaluateAxeGate', () => {
     }
   });
 
+  it('surfaces only the un-allowed violation when a bucket mixes allowed and un-allowed rules', () => {
+    // Exercises the `unallowed` FILTER: the bucket contains both a tolerated
+    // rule (`color-contrast`) and a new regression (`label`). The gate must
+    // fail, but surface ONLY the un-allowed `label` — the tolerated contrast
+    // violation must not appear in the failure list or message. A single-
+    // violation bucket cannot catch a bug where the filter returns everything,
+    // since there `unallowed === violations`; this two-violation case can.
+    const buckets = makeBuckets({
+      serious: [makeViolation('color-contrast', 'serious'), makeViolation('label', 'serious')],
+    });
+    const allowList: AxeAllowEntry[] = [
+      { slug: 'button', ruleIds: ['color-contrast'], reason: 'contrast only, tracked in #42' },
+    ];
+    const decision = evaluateAxeGate(KEY, buckets, allowList);
+    expect(decision.status).toBe('fail');
+    if (decision.status === 'fail') {
+      expect(decision.violations.map((violation) => violation.id)).toEqual(['label']);
+      expect(decision.message).toContain('label');
+      expect(decision.message).not.toContain('color-contrast');
+    }
+  });
+
   it('does not treat moderate/minor violations as blocking', () => {
     const buckets = makeBuckets({
       moderate: [makeViolation('region', 'moderate')],
