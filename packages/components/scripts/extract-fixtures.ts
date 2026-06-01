@@ -56,11 +56,42 @@ function sha256(contents: string): string {
   return createHash('sha256').update(contents).digest('hex');
 }
 
+export function resolveFixtureHostPath(entry: FixtureFileEntry, fixture: VisualFixture): string {
+  if (fixtureRenderMode(fixture) !== 'host') {
+    throw new Error(`[${entry.componentName}] Fixture '${fixture.name}' is not a host fixture`);
+  }
+  if (typeof fixture.host !== 'string') {
+    throw new Error(`[${entry.componentName}] Fixture '${fixture.name}' host is missing`);
+  }
+
+  if (!fixture.host.startsWith('./')) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host must be a relative './*.fixture.svelte' path`,
+    );
+  }
+
+  if (!fixture.host.endsWith('.fixture.svelte')) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must end in .fixture.svelte`,
+    );
+  }
+
+  const componentDirectory = dirname(entry.sourcePath);
+  const hostPath = resolve(componentDirectory, fixture.host);
+  const relativeHostPath = relative(componentDirectory, hostPath);
+  if (relativeHostPath.startsWith('..') || isAbsolute(relativeHostPath)) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must stay inside the component directory`,
+    );
+  }
+
+  return hostPath;
+}
+
 async function fixtureContentHash(
   entry: FixtureFileEntry,
   fixtureFileContents: string,
 ): Promise<string> {
-  const componentDirectory = dirname(entry.sourcePath);
   const hostInputs: Array<{ path: string; contents: string }> = [];
   const seenHosts = new Set<string>();
 
@@ -70,7 +101,7 @@ async function fixtureContentHash(
     if (seenHosts.has(fixture.host)) continue;
 
     seenHosts.add(fixture.host);
-    const hostPath = resolve(componentDirectory, fixture.host);
+    const hostPath = resolveFixtureHostPath(entry, fixture);
     hostInputs.push({
       path: fixture.host.replaceAll('\\', '/'),
       contents: await Bun.file(hostPath).text(),
@@ -90,34 +121,12 @@ async function fixtureContentHash(
 
 function validateHostFixtures(entry: FixtureFileEntry): string[] {
   const violations: string[] = [];
-  const componentDirectory = dirname(entry.sourcePath);
   for (const fixture of entry.fixtures) {
     if (fixtureRenderMode(fixture) !== 'host') continue;
-    if (typeof fixture.host !== 'string') {
-      violations.push(`[${entry.componentName}] Fixture '${fixture.name}' host is missing`);
-      continue;
-    }
-
-    if (!fixture.host.startsWith('./')) {
-      violations.push(
-        `[${entry.componentName}] Fixture '${fixture.name}' host must be a relative './*.fixture.svelte' path`,
-      );
-      continue;
-    }
-
-    if (!fixture.host.endsWith('.fixture.svelte')) {
-      violations.push(
-        `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must end in .fixture.svelte`,
-      );
-      continue;
-    }
-
-    const hostPath = resolve(componentDirectory, fixture.host);
-    const relativeHostPath = relative(componentDirectory, hostPath);
-    if (relativeHostPath.startsWith('..') || isAbsolute(relativeHostPath)) {
-      violations.push(
-        `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must stay inside the component directory`,
-      );
+    try {
+      resolveFixtureHostPath(entry, fixture);
+    } catch (error: unknown) {
+      violations.push(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -566,7 +575,7 @@ export async function loadFixtureFile(sourcePath: string): Promise<FileParseResu
   for (const fixture of result.entry.fixtures) {
     if (fixtureRenderMode(fixture) !== 'host') continue;
     if (typeof fixture.host !== 'string') continue;
-    const hostPath = resolve(dirname(result.entry.sourcePath), fixture.host);
+    const hostPath = resolveFixtureHostPath(result.entry, fixture);
     if (!(await Bun.file(hostPath).exists())) {
       return {
         kind: 'violations',

@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
   loadFixtureFile as loadStaticFixtureFile,
   resolveFixtureFilePath as resolveStaticFixtureFilePath,
+  resolveFixtureHostPath as resolveStaticFixtureHostPath,
   type FixtureFileEntry,
 } from '../../extract-fixtures.ts';
 import {
@@ -64,38 +64,7 @@ export function findFixture(
 }
 
 export function resolveFixtureHostPath(entry: LoadedFixtureFile, fixture: VisualFixture): string {
-  if (fixtureRenderMode(fixture) !== 'host') {
-    throw new Error(`[${entry.componentName}] Fixture '${fixture.name}' is not a host fixture.`);
-  }
-  if (typeof fixture.host !== 'string') {
-    throw new Error(`[${entry.componentName}] Fixture '${fixture.name}' host is missing.`);
-  }
-
-  if (!fixture.host.startsWith('./')) {
-    throw new Error(
-      `[${entry.componentName}] Fixture '${fixture.name}' host must be a relative './*.fixture.svelte' path.`,
-    );
-  }
-  if (!fixture.host.endsWith('.fixture.svelte')) {
-    throw new Error(
-      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must end in .fixture.svelte.`,
-    );
-  }
-
-  const componentDirectory = dirname(entry.sourcePath);
-  const hostPath = resolve(componentDirectory, fixture.host);
-  const relativeHostPath = relative(componentDirectory, hostPath);
-  if (relativeHostPath.startsWith('..') || isAbsolute(relativeHostPath)) {
-    throw new Error(
-      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must stay inside the component directory.`,
-    );
-  }
-  if (!existsSync(hostPath)) {
-    throw new Error(
-      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' does not exist.`,
-    );
-  }
-  return hostPath;
+  return resolveStaticFixtureHostPath(entry, fixture);
 }
 
 export function componentSourcePath(slug: string): string {
