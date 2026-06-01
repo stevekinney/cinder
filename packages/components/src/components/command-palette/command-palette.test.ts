@@ -786,6 +786,11 @@ describe('CommandPalette — consumer-owned filtering', () => {
 
     const options = container.querySelectorAll('[role="option"]');
     expect(options).toHaveLength(0);
+
+    // A no-match query must surface the empty state, not just a blank list.
+    const emptyEl = container.querySelector('.cinder-command-palette__empty');
+    expect(emptyEl).not.toBeNull();
+    expect(emptyEl?.textContent?.trim()).toBe('No results');
   });
 
   test('query that partially matches leaves only matching items in the DOM', async () => {
