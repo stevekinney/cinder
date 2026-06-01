@@ -52,6 +52,24 @@ When `left`/`right` carries semantic placement (e.g. `data-placement="left"` sel
 - Component browser tests live in `packages/testing` and run under Playwright (`bun run test:browser`).
 - Every fix should land with a regression test.
 
+### Visual regression
+
+The Playwright sweep can compare each component screenshot against a committed baseline PNG. The mode is controlled by the `CINDER_VISUAL_DIFF` environment variable, surfaced as the `mode` input on the `browser-tests` workflow's manual dispatch:
+
+- **`off`** (default) — screenshots are captured and uploaded as artifacts, but never compared. This is the current PR-gating default: visual diffs do not block PRs.
+- **`report`** — screenshots are compared against baselines; mismatches are summarized in the job summary and a sticky PR comment, but the run still passes (soak mode).
+- **`block`** — mismatches fail the job. **A missing baseline is a hard error in this mode**, so `block` cannot be enabled until a baseline set is committed.
+
+> [!IMPORTANT]
+> `block` mode is wired but **not yet active on PRs**, because no baselines are committed (`packages/testing/snapshots/` is empty). Flipping the PR-gating default to `block` before committing baselines would red every PR. Commit baselines first (below), then enable `block` in a single-line follow-up.
+
+**When a visual change is intentional**, regenerate the baselines rather than fighting the diff:
+
+1. Trigger the `browser-tests` workflow manually (`workflow_dispatch`) with `update_baselines=true`, `source_ref` set to your branch, and `base_ref` set to the branch the snapshot PR should target. The `update-baselines` job renders inside the canonical Playwright Docker image (so PNGs match CI byte-for-byte) and opens a snapshot-only follow-up PR.
+2. Review and merge that snapshot PR alongside your change.
+
+Locally, `bun run --filter='@cinder/testing' test:browser:update` regenerates baselines on your machine, but only the Docker-rendered PNGs from the workflow are authoritative for CI comparison — local PNGs differ by platform/font rendering and should not be committed.
+
 ### Coverage ratchet
 
 `packages/components` enforces a coverage floor through `coverageThreshold` in `packages/components/bunfig.toml`. The package `validate` script runs `test:coverage`, so the floor is checked in CI and in the pre-commit hook — a change that drops coverage below the floor fails the gate.

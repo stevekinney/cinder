@@ -144,8 +144,11 @@ const allowedNonComponentExportKeys = new Set([
   './package.json',
   './manifest',
   './styles',
+  './styles/all',
   './styles/tokens',
   './styles/foundation',
+  './styles/utilities',
+  './styles/guard',
   './highlighters/shiki',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.
@@ -264,10 +267,30 @@ assertRuntimeResolvable('cinder/styles');
 //    the manifest-derived expected set; anything else is an orphan.
 // ---------------------------------------------------------------------------
 
+// Experimental deprecation-alias exports: `./experimental/<name>` (and its
+// `/schema`, `/variables`, `/styles` subpaths) are generated shims that
+// re-export a component promoted out of `experimental/` to the top level. They
+// are legitimate package exports the manifest does not enumerate — but only
+// when the promoted target `./<name>` is itself a real component export. An
+// `experimental/*` alias whose base is NOT a known export is a genuine orphan
+// (a stale or typo'd alias), so we validate the relationship rather than
+// blanket-skipping the whole namespace.
+const EXPERIMENTAL_ALIAS_PATTERN =
+  /^\.\/experimental\/([a-z0-9][a-z0-9-]*)(?:\/(?:schema|variables|styles|examples|constraints))?$/;
+function isValidExperimentalAlias(key) {
+  const match = EXPERIMENTAL_ALIAS_PATTERN.exec(key);
+  if (match === null) return false;
+  const promotedBase = `./${match[1]}`;
+  // The promoted target must ship as a real top-level component export.
+  return expectedComponentExportKeys.has(promotedBase) || exportKeys.has(promotedBase);
+}
+
 const orphanExports = [];
 for (const key of exportKeys) {
   if (allowedNonComponentExportKeys.has(key)) continue;
   if (expectedComponentExportKeys.has(key)) continue;
+  // Experimental deprecation aliases that point at a real promoted component.
+  if (isValidExperimentalAlias(key)) continue;
   // Upstream re-export sub-paths (cinder/markdown/*, cinder/diff/*, etc.) are
   // not component exports and are validated by node-consumer; skip them here.
   if (
