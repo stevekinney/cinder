@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -149,5 +150,25 @@ describe('CopyButton', () => {
     await waitFor(() => {
       expect(button.textContent?.trim()).toBe('Copied');
     });
+  });
+
+  test('unmounting after a copy leaves no pending reset timer', async () => {
+    // handleClick schedules a setTimeout(confirmDuration) to flip `copied`
+    // back to false. onDestroy must clear it — otherwise the callback fires
+    // against an unmounted component. Tracks the real timer table directly.
+    mockClipboard();
+    const timers = trackTimers();
+    try {
+      const { container, unmount } = render(CopyButton, { value: 'hi', confirmDuration: 10_000 });
+      const button = container.querySelector('button') as HTMLButtonElement;
+      await fireEvent.click(button);
+      await waitFor(() => expect(button.getAttribute('aria-label')).toBe('Copied'));
+
+      // The reset timer is now pending (confirmDuration is far in the future).
+      unmount();
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
   });
 });

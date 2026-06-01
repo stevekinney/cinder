@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -73,6 +74,27 @@ afterEach(() => {
 });
 
 describe('HoverCard', () => {
+  test('unmounting while an open timer is pending leaves no leaked timer', async () => {
+    const timers = trackTimers();
+    try {
+      const { container, unmount } = render(HoverCard, {
+        props: {
+          description: 'Preview',
+          openDelay: 10_000, // far in the future so the timer is still pending at unmount
+          trigger: triggerSnippet,
+          children: textSnippet('Preview'),
+        },
+      });
+      const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+      await fireEvent.mouseEnter(wrapper); // schedules openTimer via scheduleOpen
+
+      unmount(); // onDestroy(clearTimers) must clear it
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
+  });
+
   test('focus opens a portaled hover card and wires ARIA from the trigger wrapper', async () => {
     const { container } = render(HoverCard, {
       props: {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -79,5 +80,27 @@ describe('ContextMenuTrigger', () => {
     const menu = await screen.findByRole('menu');
     expect(menu).not.toBeNull();
     expect(menu.getAttribute('aria-orientation')).toBe('vertical');
+  });
+
+  // Regression test: handlePointerdown schedules longPressTimer when the pointer
+  // type is "touch". onDestroy must call clearLongPress() so the timer does not
+  // outlive the component. Use a very large longPressDelay so the timer is still
+  // pending at the moment unmount() is called.
+  test('unmounting after a touch pointerdown leaves no pending long-press timer', () => {
+    const timers = trackTimers();
+    try {
+      const { container, unmount } = render(Harness, { longPressDelay: 60_000 });
+      const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+
+      // A touch pointerdown is the exact event that schedules longPressTimer
+      // (handlePointerdown guards on event.pointerType === 'touch').
+      fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 50, clientY: 50 });
+
+      // Unmount before the 60-second timer fires — onDestroy must clear it.
+      unmount();
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
   });
 });

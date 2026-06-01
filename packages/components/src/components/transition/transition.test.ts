@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -278,6 +279,50 @@ describe('Presence', () => {
 
       expect(exitCount).toBe(0);
     } finally {
+      globalThis.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('unmounting during exit leaves no pending exitTimer', async () => {
+    // Regression: presence.svelte schedules exitTimer = setTimeout(..., requiredElapsed + 34)
+    // inside a requestAnimationFrame when the exit transition duration is non-zero. The timer
+    // must be cleared via clearExitTimer() during onDestroy (via the $effect cleanup). If it
+    // leaks, the callback fires against a torn-down component.
+    //
+    // To force the timer path we need a non-zero requiredElapsed, which getPresenceExitDuration
+    // derives from getComputedStyle. We stub it to return a long duration (10 s) so the timer
+    // is still pending at the point we unmount — allowing us to assert no leak.
+    const originalGetComputedStyle = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        transitionDuration: '10000ms',
+        transitionDelay: '0ms',
+        animationDuration: '',
+        animationDelay: '',
+        animationIterationCount: '',
+      }) as CSSStyleDeclaration) as typeof getComputedStyle;
+
+    const timers = trackTimers();
+    try {
+      const { rerender, unmount } = render(Presence, {
+        props: {
+          present: true,
+          children: transitionChildren,
+        },
+      });
+
+      await tick();
+      await rerender({ present: false, children: transitionChildren });
+
+      // Let the exitFrame rAF fire so exitTimer gets scheduled (10 000 + 34 ms from now).
+      await waitForAnimationFrame();
+
+      // Unmount before the timer fires — cleanupLifecycle() must clear it.
+      unmount();
+
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
       globalThis.getComputedStyle = originalGetComputedStyle;
     }
   });

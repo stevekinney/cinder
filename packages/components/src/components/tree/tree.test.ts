@@ -4,6 +4,7 @@ import type { Snippet } from 'svelte';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
@@ -1923,6 +1924,36 @@ describe('Tree — typeahead', () => {
     await fireEvent.keyDown(banana, { key: 'a' });
     const apple = treeItem(container, 'Apple');
     expect(apple?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('unmounting before the reset timer fires leaves no leaked timer', async () => {
+    // handleTypeahead schedules a 500 ms setTimeout to clear typeaheadBuffer.
+    // The $effect cleanup in tree.svelte must clearTimeout on destroy —
+    // otherwise the callback fires against an unmounted component.
+    const timers = trackTimers();
+    try {
+      const { container, unmount } = render(Tree, {
+        props: {
+          'aria-label': 'T',
+          children: treeItemsSnippet([
+            { id: 'banana', label: 'Banana' },
+            { id: 'apple', label: 'Apple' },
+          ]),
+        },
+      });
+
+      // Fire a single printable-character keydown on the first treeitem to
+      // trigger handleTypeahead, which schedules typeaheadTimer = setTimeout(..., 500).
+      const firstItem = treeItem(container, 'Banana') as HTMLElement;
+      firstItem.focus();
+      await fireEvent.keyDown(firstItem, { key: 'a' });
+
+      // Unmount immediately — the 500 ms timer is still pending.
+      unmount();
+      expectNoLeakedTimers(timers.active());
+    } finally {
+      timers.release();
+    }
   });
 
   test('disableTypeahead prevents typeahead from moving focus', async () => {
