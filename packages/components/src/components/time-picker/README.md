@@ -10,7 +10,7 @@ A plain `<input type="time">` works, but its native picker surface differs signi
 - **Consistent picker surface** — the scroll-list popover behaves identically across browsers, with the same keyboard navigation, hour-cycle display, and optional seconds column.
 - **Locale-aware hour cycles** — the `locale` and `hourCycle` props resolve the correct h11/h12/h23/h24 cycle for any locale, whereas the native picker always uses the OS locale.
 
-TimePicker intentionally hides the browser's native picker indicator (the `::calendar-picker-indicator` pseudo-element) so only the Cinder toggle button is visible. The `<input type="time">` element stays in place as the value source: it still accepts direct keyboard entry, enforces `min`/`max`/`step`, participates in form submission, and surfaces native validation. Only the redundant visual affordance for the native picker surface is suppressed.
+TimePicker intentionally hides the browser's native picker indicator (the `::-webkit-calendar-picker-indicator` pseudo-element, present in Chromium and WebKit) so only the Cinder toggle button is visible. The `<input type="time">` element stays in place as the value source: it still accepts direct keyboard entry, enforces `min`/`max`/`step`, participates in form submission, and surfaces native validation. Only the redundant visual affordance for the native picker surface is suppressed.
 
 ## Usage
 

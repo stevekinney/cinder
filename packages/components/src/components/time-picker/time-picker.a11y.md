@@ -7,7 +7,7 @@
 
 ## Native indicator suppression
 
-Chrome and other WebKit-based browsers render a clock icon inside `<input type="time">` as a `::calendar-picker-indicator` pseudo-element that opens the browser's own native time picker. TimePicker intentionally suppresses this indicator with:
+Chromium and WebKit browsers render a clock icon inside `<input type="time">` as a `::-webkit-calendar-picker-indicator` pseudo-element that opens the browser's own native time picker. Firefox does not expose this pseudo-element. TimePicker intentionally suppresses this indicator with:
 
 ```css
 .cinder-time-picker__input::-webkit-calendar-picker-indicator {
