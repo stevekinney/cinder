@@ -43,10 +43,29 @@
    * Keyboard selection (Shift+Arrow, Shift+Home, Shift+End, etc.) fires
    * selectionchange just like mouse-driven selection — so keyboard users
    * get the same popover trigger without any extra wiring.
+   *
+   * Guard: when the selection collapses because the user clicked inside the
+   * popover (e.g. the "Add comment" button or the textarea), do NOT close the
+   * popover mid-interaction.  Two checks mirror the production review-editor
+   * pattern:
+   *
+   *   1. Focus containment — document.activeElement is inside the popover root.
+   *      Covers the common case and all non-Safari browsers.
+   *
+   *   2. data-cinder-expanded attribute — the SelectionPopover component sets
+   *      this on its root element while the comment form is open.  Safari does
+   *      not move focus to buttons on click, so the focus check alone would
+   *      miss that case.
    */
   onMount(() => {
     function handleSelectionChange(): void {
       if (!surfaceElement) return;
+
+      // Don't close the popover while the user is interacting with it.
+      const popoverElement = document.getElementById(popoverId);
+      if (popoverElement?.contains(document.activeElement)) return;
+      if (popoverElement?.hasAttribute('data-cinder-expanded')) return;
+
       const anchor = getSelectionAnchor(surfaceElement);
       if (anchor) {
         position = anchor;
