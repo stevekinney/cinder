@@ -9,7 +9,8 @@
 </script>
 
 <div class="example-preview-row" style="align-items: center;">
-  <code style="padding: 0.25rem 0.5rem; background: #f4f4f4; border-radius: 4px;"
+  <code
+    style="padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text); border-radius: 4px;"
     >npx cinder install</code
   >
   <CopyButton value="npx cinder install" label="Copy install command" />

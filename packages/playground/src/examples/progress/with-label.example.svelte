@@ -8,6 +8,10 @@
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-  <span>Uploading photo (3 of 5)</span>
-  <Progress value={60} label="Uploading photo, 60 percent complete" />
+  <span id="upload-progress-label">Uploading photo (3 of 5)</span>
+  <Progress
+    value={60}
+    label="Uploading photo, 60 percent complete"
+    ariaLabelledby="upload-progress-label"
+  />
 </div>

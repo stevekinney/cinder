@@ -5,34 +5,40 @@ tags move into a separate composite widget that users can revisit and edit.
 
 ## Structure
 
-- The committed tags render inside `<ul role="listbox" aria-multiselectable="true">`.
-- Each tag renders as `<li role="option" aria-selected="true">`.
-- The visible text input is a sibling that comes after the listbox in DOM order.
+- The committed tags render inside a plain `<ul>` (implicit `role="list"`) — NOT
+  a `role="listbox"`. Committed tags are confirmed values with a per-item remove
+  command, not selectable options. A listbox would force every child to be a
+  `role="option"`, which legally cannot contain the interactive remove button
+  (axe `aria-required-children` + `nested-interactive`).
+- Each tag renders as a `<li>` (implicit `role="listitem"`) holding the tag label
+  plus a real `<button aria-label="Remove {tag}">`.
+- The visible text input is a sibling that comes after the list in DOM order.
 
-This shape follows the task contract for a listbox-backed tag editor while still
-keeping native text entry in a real `<input>`.
+The remove button being a genuine, named control means it is reachable by
+keyboard, pointer, voice control (Dragon, Voice Control), and switch access.
 
 ## Keyboard model
 
 - `Enter` commits the pending text when the trimmed candidate is non-empty.
 - A configured delimiter key (comma by default) also commits the pending text.
-- `Backspace` on an empty input moves focus to the last tag.
-- `Backspace` or `Delete` on a focused tag removes it.
-- `ArrowLeft`, `ArrowRight`, `Home`, and `End` move focus across tags with a
-  roving-tabindex model.
+- `Backspace` on an empty input moves focus to the last tag's remove button.
+- `Backspace` or `Delete` on a focused remove button removes that tag.
+- `ArrowLeft`, `ArrowRight`, `Home`, and `End` move focus across the remove
+  buttons with a roving-tabindex model.
 - `ArrowRight` from the final tag returns focus to the text input.
 
-The tag options own DOM focus. The nested remove buttons are kept at
-`tabindex="-1"` so they do not create a second focus stop inside each option.
-Pointer users can still activate them directly.
+The remove buttons own DOM focus and carry the roving tabindex: exactly one is in
+the tab order at a time (the focused one, or the first when none is focused, so a
+Tab-only user can always reach the list). When the list is empty no button is in
+the tab order.
 
 ## Labels and descriptions
 
 - When wrapped in `FormField`, the text input inherits `aria-describedby`,
   `aria-invalid`, `aria-required`, and disabled state from context.
-- The listbox receives the `FormField` label through `aria-labelledby`.
+- The tag list receives the `FormField` label through `aria-labelledby`.
 - Standalone `aria-label` and `aria-labelledby` props apply to both the text
-  input and the listbox.
+  input and the tag list.
 
 ## Error messaging
 

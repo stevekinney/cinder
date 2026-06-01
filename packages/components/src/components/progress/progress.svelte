@@ -25,6 +25,8 @@
     variant = 'bar',
     size = 'md',
     label,
+    ariaLabel,
+    ariaLabelledby,
     class: className,
   }: ProgressProps = $props();
 
@@ -46,6 +48,8 @@
   <div
     class={cn('cinder-progress', 'cinder-progress--ring', className)}
     role="progressbar"
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledby}
     aria-valuemin={0}
     aria-valuemax={max}
     aria-valuenow={clampedValue}
@@ -77,6 +81,8 @@
   <div
     class={cn('cinder-progress', 'cinder-progress--bar', className)}
     role="progressbar"
+    aria-label={ariaLabel}
+    aria-labelledby={ariaLabelledby}
     aria-valuemin={0}
     aria-valuemax={max}
     aria-valuenow={clampedValue}

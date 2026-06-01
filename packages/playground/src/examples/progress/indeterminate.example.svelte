@@ -9,6 +9,6 @@
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-  <Progress />
-  <Progress variant="ring" size="lg" />
+  <Progress ariaLabel="Loading" />
+  <Progress variant="ring" size="lg" ariaLabel="Loading" />
 </div>

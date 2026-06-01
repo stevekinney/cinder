@@ -74,6 +74,58 @@ describe('Progress (ring)', () => {
   });
 });
 
+describe('Progress accessible name', () => {
+  test('ariaLabel is forwarded as aria-label on the bar progressbar element', () => {
+    const { container } = render(Progress, { value: 50, ariaLabel: 'Upload progress' });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-label')).toBe('Upload progress');
+  });
+
+  test('ariaLabel is forwarded as aria-label on the ring progressbar element', () => {
+    const { container } = render(Progress, {
+      value: 50,
+      variant: 'ring',
+      ariaLabel: 'Upload progress',
+    });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-label')).toBe('Upload progress');
+  });
+
+  test('ariaLabelledby is forwarded as aria-labelledby on the bar progressbar element', () => {
+    const { container } = render(Progress, { value: 50, ariaLabelledby: 'my-label' });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-labelledby')).toBe('my-label');
+  });
+
+  test('ariaLabelledby is forwarded as aria-labelledby on the ring progressbar element', () => {
+    const { container } = render(Progress, {
+      value: 50,
+      variant: 'ring',
+      ariaLabelledby: 'my-label',
+    });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-labelledby')).toBe('my-label');
+  });
+
+  test('aria-label is absent when ariaLabel is not provided', () => {
+    const { container } = render(Progress, { value: 50 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-label')).toBeNull();
+  });
+
+  test('aria-labelledby is absent when ariaLabelledby is not provided', () => {
+    const { container } = render(Progress, { value: 50 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-labelledby')).toBeNull();
+  });
+
+  test('indeterminate bar with ariaLabel has an accessible name', () => {
+    const { container } = render(Progress, { ariaLabel: 'Loading content' });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('aria-label')).toBe('Loading content');
+  });
+});
+
 /**
  * Extracts all @media (prefers-reduced-motion: reduce) block bodies from a CSS
  * string by balancing braces. Returns an array of block bodies (the content
