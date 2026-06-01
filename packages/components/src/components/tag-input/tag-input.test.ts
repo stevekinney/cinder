@@ -111,6 +111,14 @@ describe('TagInput rendering', () => {
     expect(buttons[1]?.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('an empty tag input renders no remove buttons (roving index clamps to -1)', () => {
+    const { container } = render(TagInput, { props: {} });
+    // No tags → no buttons → no spurious tab stop. Guards the rovingChipIndex
+    // clamp: a default of 0 with zero tags would be a dangling tab-stop index.
+    expect(getOptions(container)).toHaveLength(0);
+    expect(getRemoveButtons(container)).toHaveLength(0);
+  });
+
   test('readonly hides the remove control entirely and keeps the input read-only', () => {
     const { container } = render(TagInput, {
       props: { readonly: true, defaultValue: ['Svelte'] },
@@ -250,8 +258,11 @@ describe('TagInput commits tags', () => {
     const input = getInput(container);
 
     await fireEvent.keyDown(input, { key: 'Backspace' });
-    const option = getOptions(container)[0]!;
-    await fireEvent.keyDown(option, { key: 'Delete' });
+    // Fire against the remove BUTTON — it owns the chip keydown handler in the
+    // list model. Firing at the <li> would miss the handler entirely and pass
+    // for the wrong reason (a false negative).
+    const removeButton = getRemoveButtons(container)[0]!;
+    await fireEvent.keyDown(removeButton, { key: 'Delete' });
 
     expect(onkeydown).toHaveBeenCalledTimes(1);
   });

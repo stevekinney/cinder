@@ -58,7 +58,7 @@
 
   const context = getFormFieldContext();
   const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
-  const listboxId = $derived(`${resolvedId}-listbox`);
+  const tagListId = $derived(`${resolvedId}-tags`);
   const inlineErrorId = $derived(`${resolvedId}-inline-error`);
 
   let rootElement = $state<HTMLDivElement | null>(null);
@@ -68,16 +68,25 @@
   let uncontrolledTags = $state(initialDefaultTags);
   let focusedChipIndex = $state(-1);
 
-  // Roving tabindex: exactly one remove button is in the tab order at a time.
-  // When a chip is focused it owns the tab stop; otherwise the FIRST chip's
-  // button does, so a Tab-only user can always reach the tag list (the keyboard
-  // counterpart to the pointer/voice affordance the button provides).
-  const rovingChipIndex = $derived(focusedChipIndex === -1 ? 0 : focusedChipIndex);
-
   const isControlled = $derived(value !== undefined);
   const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
   const resolvedReadonly = $derived(readonly === true);
+
+  // Roving tabindex: exactly one remove button is in the tab order at a time.
+  // When a chip is focused it owns the tab stop; otherwise the FIRST chip's
+  // button does, so a Tab-only user can always reach the tag list (the keyboard
+  // counterpart to the pointer/voice affordance the button provides).
+  //
+  // Clamp to the live tag count: with no tags there is no tab stop (-1), and a
+  // stale focusedChipIndex (e.g. after a controlled value shrinks) is pulled
+  // back into range — without this, every button could end up tabindex="-1" and
+  // the tag list would become Tab-unreachable.
+  const rovingChipIndex = $derived(
+    currentTags.length === 0
+      ? -1
+      : Math.min(focusedChipIndex === -1 ? 0 : focusedChipIndex, currentTags.length - 1),
+  );
   const resolvedRequired = $derived(context?.required ?? false);
   const resolvedMax = $derived(
     Number.isFinite(max) ? Math.max(0, Math.floor(max as number)) : undefined,
@@ -322,7 +331,7 @@
          button carries the roving tabindex; arrow keys move between buttons and
          Backspace/Delete removes the focused tag. -->
     <ul
-      id={listboxId}
+      id={tagListId}
       class="cinder-tag-input__listbox"
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}

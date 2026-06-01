@@ -166,13 +166,20 @@
     overflow-x: auto;
   }
 
-  /* Suppress the shiki <pre>'s own scroll since .cinder-code-block__highlighted
-   owns the scroll container (axe scrollable-region-focusable requires only one
-   keyboard-reachable scroll region, not a nested pair). `clip` (not `visible`)
-   is used because a `visible` child of an overflow-x:auto parent is coerced
-   back to `auto` by the UA — `clip` is not, so the inner pre reliably never
-   establishes its own scroll port. */
+  /* The shiki <pre> must NOT own a scroll port — the parent
+   .cinder-code-block__highlighted is the single keyboard-reachable scroll
+   region (axe scrollable-region-focusable wants one, not a nested pair). But it
+   MUST still contribute its full content width to the parent's scrollable
+   overflow, or long lines get clipped and become unreachable. So: let the pre
+   grow to its intrinsic width (`width: max-content`, floored at `min-width:
+   100%` so short code still fills the box) and clip its own (now non-existent)
+   overflow. Because the element is sized to its content, `clip` is a no-op on
+   the pre itself, while the wider-than-viewport pre makes the PARENT scroll.
+   (Plain `overflow-x: clip` alone clipped the overflow out of existence so the
+   parent never became scrollable — verified in-browser.) */
   .cinder-code-block__highlighted :where(pre.shiki) {
+    width: max-content;
+    min-width: 100%;
     overflow-x: clip;
   }
 }

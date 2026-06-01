@@ -246,15 +246,16 @@ describe('AvatarGroup', () => {
     });
   });
 
-  test('named avatar triggers carry role="button" so aria-label is valid', () => {
+  test('named avatar triggers carry role="img" so aria-label is valid', () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
     const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
     for (const trigger of triggers) {
-      // The trigger is a focus-activated tooltip control, so role="button" (an
-      // interactive role) is correct — not role="img" (a non-interactive leaf
-      // role that would announce "image" on a focus stop with no affordance).
-      expect(trigger.getAttribute('role')).toBe('button');
+      // role="img" is the honest semantic for a focusable NAMED image. The
+      // trigger has no activation (only a focus/hover name tooltip), so
+      // role="button" would be a false affordance (WCAG 4.1.2). img takes its
+      // name from the author, so aria-label is valid (no aria-prohibited-attr).
+      expect(trigger.getAttribute('role')).toBe('img');
       expect(trigger.getAttribute('aria-label')).toBeTruthy();
     }
   });
