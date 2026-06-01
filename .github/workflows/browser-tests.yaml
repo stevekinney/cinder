@@ -265,7 +265,11 @@ jobs:
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          bun run test:browser
+          if [ "$CINDER_VISUAL_DIFF" = "off" ]; then
+            bun run test:browser
+          else
+            bun run --filter=@cinder/testing test:browser:docker
+          fi
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -383,14 +387,14 @@ jobs:
 
       - name: Prepare manifest
         # baseline-coverage-check reads the cached manifest; ensure it's fresh.
-        run: bun run --filter=@cinder/testing scripts/prepare-manifest.ts
+        run: bun run --filter=@cinder/testing test:playwright -- --list
 
       - name: Verify baseline coverage
         # Fails with a named list of missing slugs when any committed
         # baseline is absent. The exit code drives the job result.
         env:
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
-        run: bun run --filter=@cinder/testing scripts/baseline-coverage-check.ts
+        run: bun run packages/testing/scripts/baseline-coverage-check.ts
 
   update-baselines:
     # Manual-only. Runs inside the canonical Playwright Docker image,

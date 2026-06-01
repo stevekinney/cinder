@@ -56,8 +56,9 @@ The single source of truth for that environment is the canonical
 **`cinder-playwright`** Docker image (`packages/testing/Dockerfile`): the official
 `mcr.microsoft.com/playwright:v<version>-jammy` base (Ubuntu 22.04 "jammy") with
 Bun installed and the exact-pinned Playwright version baked in as
-`CINDER_PLAYWRIGHT_VERSION`. CI's `ubuntu-latest` runner is the matching native
-amd64 target.
+`CINDER_PLAYWRIGHT_VERSION`. CI's `ubuntu-latest` runner supplies Docker on the
+native amd64 target; `report` and `block` comparisons run inside this image, not
+directly on the runner host.
 
 `scripts/docker-authenticity.ts` enforces this: `test:browser:update` refuses to
 write baselines unless three checks pass — `/etc/os-release` codename is `jammy`,
@@ -106,6 +107,18 @@ the repo, and runs `test:browser:update` inside the container with
 working Docker daemon on an amd64 host (or native amd64 Linux). Commit the
 resulting PNGs under `packages/testing/snapshots/`. Omit
 `CINDER_TEST_COMPONENTS` only when intentionally regenerating the full matrix.
+
+To verify committed baselines locally with the same pinned renderer, use the
+browser-suite Docker wrapper:
+
+```bash
+CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker
+```
+
+The native host command is intentionally not authoritative for `report` or
+`block`: when block mode reaches a committed baseline outside the canonical
+image, `blockBaselineGuard` fails early with the Docker wrapper command instead
+of comparing host-rendered pixels.
 
 ### In CI, via workflow dispatch (preferred)
 
@@ -175,11 +188,17 @@ new baseline as expected.
 
 Therefore, on a clean checkout:
 
-- With baselines committed for a case: `CINDER_VISUAL_DIFF=block bun run test:browser`
-  passes when pixels match and fails when they differ — that is the regression gate.
+- With baselines committed for a case:
+  `CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker`
+  passes when pixels match and fails when they differ — that is the regression
+  gate.
 - With scoped baselines committed for `button` only:
-  `CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run test:browser`
+  `CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker`
   passes when Button pixels match and fails when they differ.
+- With a committed baseline reached from a native host command:
+  `CINDER_VISUAL_DIFF=block bun run test:browser` fails with the
+  "run the comparison in Docker" message rather than noisy host-vs-Docker pixel
+  diffs.
 - With no baseline committed for a case: the run fails fast with the
   "author baselines via Docker" message rather than a confusing default.
 
@@ -196,13 +215,13 @@ fixture is **not** a component baseline and deliberately does **not** live under
 `snapshots/`: a synthetic image must never be diffed against real
 browser-rendered component pixels.
 
-The remaining half — committing authentic per-component baselines and running a
-green `toHaveScreenshot` browser pass against them — is not done here. Authentic
-pixels can only be authored on native amd64 inside the canonical
-`cinder-playwright` Docker image (the authenticity gate refuses anything else,
-and QEMU pixels are flaky). Produce them via the `update-baselines` CI dispatch
-described above, which lands them in a snapshot-only PR; only then can a real
-browser block-mode run be shown green on a clean checkout.
+The browser-level proof is the committed `button` baseline set under
+`packages/testing/snapshots/button/`. Those PNGs are authored by the
+`update-baselines` CI dispatch inside the canonical Docker image and include
+`snapshots/provenance.json` with the rendered source SHA, Playwright version,
+Ubuntu codename, architecture, and Docker image tag. The browser workflow uses
+the same Docker image for `report` and `block`, so a clean CI checkout compares
+against the committed pixels in the same renderer that wrote them.
 
 ## Flipping CI to block
 

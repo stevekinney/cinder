@@ -9,7 +9,7 @@ const repoRoot = resolvePath(packageRoot, '../..');
 
 type PackageManifest = { devDependencies?: Record<string, string> };
 
-function readPinnedPlaywrightVersion(): string {
+export function readPinnedPlaywrightVersion(): string {
   const raw = readFileSync(resolvePath(packageRoot, 'package.json'), 'utf8');
   const parsed = JSON.parse(raw) as PackageManifest;
   const pinned = parsed.devDependencies?.['@playwright/test'];
@@ -21,7 +21,7 @@ function readPinnedPlaywrightVersion(): string {
   return pinned;
 }
 
-function run(
+export function run(
   command: string,
   args: readonly string[],
   options: { cwd?: string } = {},
@@ -57,17 +57,29 @@ export function dockerUpdateCommand(extraArgs: string[]): string {
   ].join(' ');
 }
 
+export function dockerBrowserCommand(extraArgs: string[]): string {
+  return [
+    'cd /work',
+    '&& git config --global --add safe.directory /work',
+    '&& bun install --frozen-lockfile',
+    '&& bun run test:browser',
+    ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
+  ].join(' ');
+}
+
 export type DockerRunArgumentsOptions = {
   repoRoot: string;
   imageTag: string;
-  updateCommand: string;
-  componentScope?: string | undefined;
+  containerCommand: string;
+  environment?: Readonly<Record<string, string | undefined>>;
 };
 
 export function dockerRunArguments(options: DockerRunArgumentsOptions): string[] {
   const args = ['run', '--rm'];
-  if (options.componentScope !== undefined && options.componentScope.trim().length > 0) {
-    args.push('-e', `CINDER_TEST_COMPONENTS=${options.componentScope}`);
+  for (const [name, value] of Object.entries(options.environment ?? {})) {
+    if (value !== undefined && value.trim().length > 0) {
+      args.push('-e', `${name}=${value}`);
+    }
   }
   args.push(
     '-v',
@@ -75,9 +87,29 @@ export function dockerRunArguments(options: DockerRunArgumentsOptions): string[]
     '-w',
     '/work',
     options.imageTag,
-    options.updateCommand,
+    options.containerCommand,
   );
   return args;
+}
+
+export async function buildPlaywrightDockerImage(
+  playwrightVersion: string,
+  imageTag: string,
+): Promise<number> {
+  return run(
+    'docker',
+    [
+      'build',
+      '--build-arg',
+      `PLAYWRIGHT_VERSION=${playwrightVersion}`,
+      '-t',
+      imageTag,
+      '-f',
+      resolvePath(packageRoot, 'Dockerfile'),
+      packageRoot,
+    ],
+    { cwd: repoRoot },
+  );
 }
 
 /**
@@ -93,20 +125,7 @@ async function main(): Promise<void> {
   const imageTag = dockerImageTagForVersion(playwrightVersion);
 
   console.log(`Building Docker image ${imageTag}...`);
-  const buildExit = await run(
-    'docker',
-    [
-      'build',
-      '--build-arg',
-      `PLAYWRIGHT_VERSION=${playwrightVersion}`,
-      '-t',
-      imageTag,
-      '-f',
-      resolvePath(packageRoot, 'Dockerfile'),
-      packageRoot,
-    ],
-    { cwd: repoRoot },
-  );
+  const buildExit = await buildPlaywrightDockerImage(playwrightVersion, imageTag);
   if (buildExit !== 0) {
     console.error(`docker build failed with exit code ${buildExit}`);
     process.exit(buildExit);
@@ -121,8 +140,10 @@ async function main(): Promise<void> {
     dockerRunArguments({
       repoRoot,
       imageTag,
-      updateCommand,
-      componentScope: process.env['CINDER_TEST_COMPONENTS'],
+      containerCommand: updateCommand,
+      environment: {
+        CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
+      },
     }),
     { cwd: repoRoot },
   );

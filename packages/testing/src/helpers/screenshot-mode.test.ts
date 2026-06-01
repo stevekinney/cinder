@@ -156,10 +156,26 @@ describe("resolveVisualDiffMode — invalid values fall back to 'off'", () => {
 // ---------------------------------------------------------------------------
 
 const BASELINE = '/repo/packages/testing/snapshots/button/light-desktop-default.png';
+const DOCKER_ENVIRONMENT: NodeJS.ProcessEnv = {
+  CINDER_PLAYWRIGHT_VERSION: '1.60.0',
+  PLAYWRIGHT_DOCKER: '1',
+};
 
 describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
-  it('passes when the baseline exists', () => {
-    expect(blockBaselineGuard(BASELINE, true, 'none')).toEqual({ ok: true });
+  it('passes when the baseline exists inside the canonical Docker image', () => {
+    expect(blockBaselineGuard(BASELINE, true, 'none', false, DOCKER_ENVIRONMENT)).toEqual({
+      ok: true,
+    });
+  });
+
+  it('fails with an actionable message when a host run reaches a committed baseline', () => {
+    const result = blockBaselineGuard(BASELINE, true, 'none', false, {});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected guard to fail');
+
+    expect(result.message).toContain('canonical cinder-playwright Docker image');
+    expect(result.message).toContain('test:browser:docker');
+    expect(result.message).toContain('test:browser:update:docker');
   });
 
   it('fails with an actionable message when the baseline is missing', () => {

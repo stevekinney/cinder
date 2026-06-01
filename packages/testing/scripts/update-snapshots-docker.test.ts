@@ -4,6 +4,7 @@ import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  dockerBrowserCommand,
   dockerImageTagForVersion,
   dockerRunArguments,
   dockerUpdateCommand,
@@ -23,20 +24,38 @@ describe('update-snapshots-docker helpers', () => {
     );
   });
 
-  it('passes the scoped component list into the container', () => {
+  it('quotes forwarded browser-test arguments for the container shell', () => {
+    expect(dockerBrowserCommand(['--grep', 'Button > dark desktop'])).toBe(
+      "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run test:browser -- '--grep' 'Button > dark desktop'",
+    );
+  });
+
+  it('passes browser environment into the container', () => {
     expect(
       dockerRunArguments({
         repoRoot: '/repo',
         imageTag: 'cinder-playwright:1.60.0',
-        updateCommand:
+        containerCommand:
           'cd /work && git config --global --add safe.directory /work && bun run test:browser:update',
-        componentScope: 'button',
+        environment: {
+          CI: 'true',
+          CINDER_TEST_COMPONENTS: 'button',
+          CINDER_VISUAL_DIFF: 'block',
+          PLAYWRIGHT_TRACE: 'off',
+          PLAYGROUND_URL: '',
+        },
       }),
     ).toEqual([
       'run',
       '--rm',
       '-e',
+      'CI=true',
+      '-e',
       'CINDER_TEST_COMPONENTS=button',
+      '-e',
+      'CINDER_VISUAL_DIFF=block',
+      '-e',
+      'PLAYWRIGHT_TRACE=off',
       '-v',
       '/repo:/work',
       '-w',

@@ -159,6 +159,14 @@ function isAuthoringState(
   }
 }
 
+function isCanonicalVisualDiffEnvironment(environment: NodeJS.ProcessEnv): boolean {
+  return (
+    environment['PLAYWRIGHT_DOCKER'] === '1' &&
+    typeof environment['CINDER_PLAYWRIGHT_VERSION'] === 'string' &&
+    environment['CINDER_PLAYWRIGHT_VERSION'].trim().length > 0
+  );
+}
+
 /**
  * Decides whether a block-mode capture should fail fast with an actionable
  * "update baselines" message instead of delegating to `toHaveScreenshot`.
@@ -170,21 +178,51 @@ function isAuthoringState(
  * message reports that a snapshot is absent but not how this repo expects you
  * to produce one, so we substitute a message that names the update command.
  *
- * Stays silent (returns `{ ok: true }`) when the baseline exists, or when
- * Playwright is in an update state.
+ * Stays silent (returns `{ ok: true }`) when Playwright is in an update state,
+ * or when the baseline exists and the comparison is running inside the
+ * canonical Docker image.
  *
  * @param baselinePath - Absolute path to the expected committed baseline PNG.
  * @param baselineExists - Whether that file is present on disk.
  * @param updateSnapshots - Playwright's `config.updateSnapshots` value.
+ * @param explicitUpdateRun - Whether Cinder's update script is intentionally authoring baselines.
+ * @param environment - Process environment used to verify canonical Docker comparison.
  */
 export function blockBaselineGuard(
   baselinePath: string,
   baselineExists: boolean,
   updateSnapshots: UpdateSnapshotsState,
   explicitUpdateRun = process.env['CINDER_UPDATE_SNAPSHOTS'] === '1',
+  environment: NodeJS.ProcessEnv = process.env,
 ): BlockBaselineGuardResult {
-  if (baselineExists || isAuthoringState(updateSnapshots, explicitUpdateRun)) {
+  if (isAuthoringState(updateSnapshots, explicitUpdateRun)) {
     return { ok: true };
+  }
+
+  if (baselineExists) {
+    if (isCanonicalVisualDiffEnvironment(environment)) {
+      return { ok: true };
+    }
+
+    const message = [
+      'Visual-regression baseline comparison requires the canonical cinder-playwright Docker image (CINDER_VISUAL_DIFF=block):',
+      `  ${baselinePath}`,
+      '',
+      'A committed baseline exists, but this process is not running with the',
+      'PLAYWRIGHT_DOCKER=1 and CINDER_PLAYWRIGHT_VERSION markers baked into the',
+      'baseline image. Host-rendered pixels can diverge from committed baselines,',
+      'so run the comparison in Docker instead:',
+      '',
+      '  CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker',
+      '',
+      'To update missing or changed baselines, run:',
+      '',
+      '  bun run --filter=@cinder/testing test:browser:update:docker',
+      '',
+      'See docs/visual-regression/baselines.md for the full update workflow.',
+    ].join('\n');
+
+    return { ok: false, message };
   }
 
   const message = [

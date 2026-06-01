@@ -71,7 +71,7 @@ Screenshot diffing is wired through the `CINDER_VISUAL_DIFF` environment variabl
 The initial committed baseline scope is `button`. To run only that scoped gate:
 
 ```bash
-CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run test:browser
+CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter='@cinder/testing' test:browser:docker
 ```
 
 See [`docs/visual-regression/baselines.md`](../../docs/visual-regression/baselines.md) for the full authoring/update workflow, the pinned environment, and how block mode behaves on a clean checkout.
