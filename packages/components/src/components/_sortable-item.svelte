@@ -45,6 +45,7 @@
   const rowId = useId('cinder-sortable-row');
 
   let handleEl = $state<HTMLButtonElement | null>(null);
+  let rowEl = $state<HTMLLIElement | null>(null);
 
   // Pointer session state — plain let (not $state) since these values do not
   // drive template rendering or $derived expressions; they are bookkeeping only.
@@ -56,6 +57,17 @@
   let latestPointerY = 0;
   let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
+
+  // Preview overlay state — reactive so the template can render the portal div.
+  // These only change during a pointer drag, never during keyboard lifts.
+  let previewX = $state(0);
+  let previewY = $state(0);
+  let previewWidth = $state(0);
+  let previewHeight = $state(0);
+  let isDraggingWithPointer = $state(false);
+
+  // The portal element appended to document.body during a pointer drag.
+  let previewPortalEl: HTMLElement | null = null;
 
   const isLifted = $derived(
     context.controller.phase === 'lifted' && context.controller.liftedKey === itemKey,
@@ -82,6 +94,76 @@
 
   const handleLabel = $derived(formatHandleLabel(itemLabel));
 
+  // Create a fixed-position portal overlay that follows the pointer.
+  // The overlay clones the visual appearance of the lifted row so the user
+  // can see what they are dragging regardless of where the placeholder sits.
+  function createPreviewPortal(): void {
+    if (typeof document === 'undefined') return;
+    if (previewPortalEl) return;
+    if (!rowEl) return;
+
+    const rect = rowEl.getBoundingClientRect();
+    previewWidth = rect.width;
+    previewHeight = rect.height;
+
+    const portal = document.createElement('div');
+    portal.setAttribute('data-cinder-drag-preview', '');
+    portal.setAttribute('aria-hidden', 'true');
+    portal.className = 'cinder-sortable-drag-preview';
+
+    // Clone the row's inner HTML into the preview so the user sees the
+    // card content at the pointer location.
+    const clone = rowEl.cloneNode(true) as HTMLElement;
+    // Remove pointer/keyboard event attributes from the clone so the preview
+    // is entirely inert. The clone is aria-hidden at the portal level.
+    clone.removeAttribute('data-sortable-row');
+    clone.removeAttribute('data-key');
+    clone.removeAttribute('data-row-id');
+    portal.appendChild(clone);
+
+    // Position the portal so its top-left aligns with the row's bounding rect
+    // at the moment of lift — the transform will then track the pointer delta.
+    portal.style.setProperty('--preview-width', `${previewWidth}px`);
+    portal.style.setProperty('--preview-height', `${previewHeight}px`);
+    portal.style.setProperty('--preview-left', `${rect.left}px`);
+    portal.style.setProperty('--preview-top', `${rect.top}px`);
+    portal.style.setProperty('--preview-dx', '0px');
+    portal.style.setProperty('--preview-dy', '0px');
+
+    document.body.appendChild(portal);
+    previewPortalEl = portal;
+    isDraggingWithPointer = true;
+  }
+
+  // Update the portal's translate offset so it follows the pointer.
+  function updatePreviewPosition(pointerX: number, pointerY: number): void {
+    if (!previewPortalEl || !rowEl) return;
+    if (typeof document === 'undefined') return;
+
+    const rect = rowEl.getBoundingClientRect();
+    // Delta from original position to current pointer center.
+    const dx = pointerX - (rect.left + rect.width / 2);
+    const dy = pointerY - (rect.top + rect.height / 2);
+
+    previewPortalEl.style.setProperty('--preview-left', `${rect.left}px`);
+    previewPortalEl.style.setProperty('--preview-top', `${rect.top}px`);
+    previewPortalEl.style.setProperty('--preview-dx', `${dx}px`);
+    previewPortalEl.style.setProperty('--preview-dy', `${dy}px`);
+
+    // Keep reactive state in sync so tests can read it from data-attributes or
+    // computed style rather than CSS custom properties.
+    previewX = pointerX;
+    previewY = pointerY;
+  }
+
+  function destroyPreviewPortal(): void {
+    if (previewPortalEl) {
+      previewPortalEl.remove();
+      previewPortalEl = null;
+    }
+    isDraggingWithPointer = false;
+  }
+
   function endPointerSession(reason: 'drop' | 'cancel'): void {
     if (moveRafHandle !== null) {
       cancelAnimationFrame(moveRafHandle);
@@ -99,6 +181,8 @@
         // Browser may have already revoked capture (common on pointercancel).
       }
     }
+
+    destroyPreviewPortal();
 
     pointerActive = false;
     pointerId = null;
@@ -184,6 +268,11 @@
 
     handleEl.setPointerCapture(event.pointerId);
     context.lift(itemKey, index, itemLabel, total);
+
+    // Create the drag preview after lift so the row is in lifted state
+    // when we clone it, then position relative to the pointer.
+    createPreviewPortal();
+    updatePreviewPosition(event.clientX, event.clientY);
     scheduleAutoScroll();
   }
 
@@ -197,6 +286,7 @@
       moveRafHandle = requestAnimationFrame(() => {
         moveRafHandle = null;
         recomputeTarget();
+        updatePreviewPosition(latestPointerX, latestPointerY);
       });
     }
     // Restart auto-scroll loop if it has stopped (e.g. pointer entered edge zone
@@ -316,6 +406,7 @@
         handleEl.releasePointerCapture(pointerId);
       } catch {}
     }
+    destroyPreviewPortal();
     pointerActive = false;
     pointerId = null;
     listEl = null;
@@ -346,6 +437,7 @@
             // Already revoked.
           }
         }
+        destroyPreviewPortal();
         pointerActive = false;
         pointerId = null;
         listEl = null;
@@ -355,13 +447,17 @@
 </script>
 
 <li
+  bind:this={rowEl}
   data-sortable-row
   data-key={itemKey}
   data-row-id={rowId}
+  data-preview-x={isDraggingWithPointer ? previewX : undefined}
+  data-preview-y={isDraggingWithPointer ? previewY : undefined}
   aria-roledescription="sortable item"
   class={cn(
     'cinder-sortable-item',
-    isLifted && 'cinder-sortable-item--lifted',
+    isLifted && isDraggingWithPointer && 'cinder-sortable-item--placeholder',
+    isLifted && !isDraggingWithPointer && 'cinder-sortable-item--lifted',
     !isLifted && context.controller.phase === 'lifted' && 'cinder-sortable-item--shifting',
     className,
   )}

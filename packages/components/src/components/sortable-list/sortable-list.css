@@ -22,6 +22,26 @@
     position: relative;
   }
 
+  /*
+   * During a pointer drag the source row becomes a placeholder — a translucent
+   * ghost that marks the current drop target while the real preview follows the
+   * pointer. The drop-target column / position is always visible because
+   * visualColumns / visualItems already re-inserts the placeholder at the
+   * destination index as the pointer moves.
+   */
+  .cinder-sortable-item--placeholder {
+    opacity: 0.4;
+    border: 2px dashed var(--cinder-border-muted, rgb(0 0 0 / 0.15));
+    border-radius: var(--cinder-radius-md, 4px);
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .cinder-sortable-item--placeholder > * {
+    /* Hide child content from sight; placeholder conveys drop position only. */
+    visibility: hidden;
+  }
+
   .cinder-sortable-item--shifting {
     transition: transform 150ms ease;
   }
@@ -34,6 +54,10 @@
     .cinder-sortable-item--lifted {
       transform: none;
       box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    }
+
+    .cinder-sortable-item--placeholder {
+      opacity: 0.6;
     }
   }
 
@@ -59,5 +83,56 @@
 
   .cinder-sortable-handle[aria-pressed='true'] {
     cursor: grabbing;
+  }
+
+  /* ========================================
+   * DRAG PREVIEW OVERLAY
+   * ======================================== */
+
+  /*
+   * The drag preview is a fixed-position portal appended to <body> during a
+   * pointer drag. It clones the lifted item's content and follows the pointer
+   * so the user always has a clear visual of what they are dragging.
+   *
+   * Positioning uses CSS custom properties set by _sortable-item.svelte:
+   *   --preview-left / --preview-top   — row's bounding rect at lift time
+   *   --preview-dx / --preview-dy      — pointer delta since lift
+   *   --preview-width / --preview-height — row dimensions at lift time
+   *
+   * The transform translates the preview to the pointer location.
+   */
+  .cinder-sortable-drag-preview {
+    position: fixed;
+    inset-block-start: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
+    inset-inline-start: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
+    inline-size: var(--preview-width, auto);
+    block-size: var(--preview-height, auto);
+    z-index: var(--cinder-z-drag-preview, 9999);
+    pointer-events: none;
+    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    border-radius: var(--cinder-radius-md, 4px);
+    /* Subtle rotation and scale to distinguish preview from the placeholder. */
+    transform: rotate(2deg) scale(1.02);
+    transform-origin: center top;
+    will-change: top, left;
+    overflow: hidden;
+  }
+
+  /* Restore full opacity and visibility inside the preview clone. */
+  .cinder-sortable-drag-preview > * {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Inside the preview clone keep children visible even if the source
+     had placeholder--hidden children. */
+  .cinder-sortable-drag-preview > * > * {
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-sortable-drag-preview {
+      transform: none;
+    }
   }
 }

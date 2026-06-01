@@ -49,6 +49,18 @@ HTML5 Drag and Drop API is **not used**. iOS Safari does not fire touch events o
 
 Pointer Events (`pointerdown`, `pointermove`, `pointerup`, `pointercancel`) with `setPointerCapture` are used instead. This handles mouse, touch, and stylus uniformly. The drag handle has `touch-action: none` so the browser does not steal vertical pans.
 
+## Drag Preview
+
+During a pointer drag a fixed-position overlay (`.cinder-sortable-drag-preview`) is appended to `document.body`. The overlay clones the lifted row's HTML so the user can see what they are dragging as the pointer moves. The preview:
+
+- Has `aria-hidden="true"` — it is purely visual and does not duplicate AT content.
+- Has `pointer-events: none` — it does not interfere with drop-target hit testing.
+- Is removed on drop, cancel, `pointercancel`, Escape (both handle-level and window-level), and component destroy.
+
+The source row switches from `.cinder-sortable-item--lifted` to `.cinder-sortable-item--placeholder` during a pointer drag. The placeholder uses a dashed border and reduced opacity to mark the current drop target position without showing full card content.
+
+Keyboard lifts use `.cinder-sortable-item--lifted` (no preview overlay — the item moves in-place).
+
 ## Focus Retention
 
 Svelte's keyed `each` block preserves the focused DOM node across visual reorders. Focus stays on the handle of the lifted item as Arrow Up/Down moves it through the list.
@@ -57,9 +69,12 @@ Cancellation on bare `focusout` is intentionally not implemented — DOM reorder
 
 ## Auto-Scroll
 
-Window-only auto-scroll is implemented. When the pointer is within 32px of the viewport top or bottom during a drag, the page scrolls at 8px/frame and the insertion target is recomputed after each frame.
+Window-only vertical auto-scroll is implemented. When the pointer is within 32px of the viewport top or bottom during a drag, the page scrolls at 8px/frame and the insertion target is recomputed after each frame.
 
-**Nested scroll containers are not supported.** Items inside a scrollable container (other than the window) will not auto-scroll during a pointer drag.
+**Known auto-scroll limitations:**
+
+- **Nested scroll containers**: Items inside a scrollable container (other than the window) will not auto-scroll during a pointer drag. Auto-scroll only applies to `window.scrollBy`.
+- **Horizontal scroll**: The auto-scroll loop checks only the vertical edges of the viewport. Horizontal scroll (e.g. scrolling the KanbanBoard's columns container to reveal off-screen columns during a drag) is not implemented. Dragging a card toward the right/left edge of a KanbanBoard that overflows horizontally will not auto-scroll the board container.
 
 ## Reduced Motion
 

@@ -114,6 +114,18 @@
     box-shadow: var(--cinder-shadow-md);
   }
 
+  /*
+   * During a pointer drag the card in the list becomes a placeholder showing
+   * the drop target position. The preview overlay (in sortable-list.css) is
+   * what follows the pointer; this keeps the drop slot visible in the column.
+   */
+  .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+    min-block-size: var(--cinder-space-12, 3rem);
+    border: 2px dashed var(--cinder-ring-color, currentColor);
+    background: transparent;
+    box-shadow: none;
+  }
+
   .cinder-kanban-board__card-content {
     min-inline-size: 0;
   }

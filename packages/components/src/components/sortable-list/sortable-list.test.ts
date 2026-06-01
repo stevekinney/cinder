@@ -1,6 +1,6 @@
 // @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -537,5 +537,272 @@ describe('SortableList', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     const liveRegion = container.querySelector('[role="alert"]');
     expect(liveRegion?.textContent).toContain('CUSTOM Alpha LIFTED');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pointer drag preview state contract tests
+// ---------------------------------------------------------------------------
+//
+// happy-dom cannot prove pixels, so we test the STATE CONTRACT:
+//   - During a pointer drag a [data-cinder-drag-preview] portal is appended to body.
+//   - The lifted row gains cinder-sortable-item--placeholder (not --lifted).
+//   - The preview element is present in document.body (not inside the list).
+//   - data-preview-x / data-preview-y on the lifted row track pointer coords.
+//   - On drop the preview is removed and the placeholder class is gone.
+//   - On pointer cancel the preview is removed.
+//   - On Escape during pointer drag the preview is removed.
+//   - Keyboard lifts do NOT create a preview portal (preview is pointer-only).
+
+function installPointerCaptureOnHandle(handle: HTMLElement): void {
+  handle.setPointerCapture = mock(() => {});
+  handle.releasePointerCapture = mock(() => {});
+  handle.hasPointerCapture = mock(() => true);
+}
+
+async function waitForAnimationFrame(): Promise<void> {
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+describe('SortableList pointer drag preview', () => {
+  // Capture the body's child count before each test so we can assert portal
+  // creation and removal relative to a known baseline.
+  let baselineBodyChildren: number;
+
+  beforeEach(() => {
+    baselineBodyChildren = document.body.children.length;
+  });
+
+  afterEach(() => {
+    // Clean up any orphaned portals that a failing test left behind.
+    document.querySelectorAll('[data-cinder-drag-preview]').forEach((element) => element.remove());
+  });
+
+  test('pointer drag appends a drag preview portal to document.body', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview).not.toBeNull();
+    // Preview must be on body, not inside the list container.
+    expect(document.body.contains(preview)).toBe(true);
+    expect(container.contains(preview)).toBe(false);
+
+    // Cleanup.
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('preview has aria-hidden=true so it does not duplicate AT content', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview?.getAttribute('aria-hidden')).toBe('true');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('lifted row has --placeholder class during pointer drag (not --lifted)', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(liftedRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(true);
+    expect(liftedRow?.classList.contains('cinder-sortable-item--lifted')).toBe(false);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('lifted row exposes data-preview-x and data-preview-y during pointer drag', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(liftedRow?.getAttribute('data-preview-x')).toBe('50');
+    expect(liftedRow?.getAttribute('data-preview-y')).toBe('100');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('preview position attributes update on pointer move', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 80,
+      clientY: 160,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(liftedRow?.getAttribute('data-preview-x')).toBe('80');
+    expect(liftedRow?.getAttribute('data-preview-y')).toBe('160');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('drop removes the preview portal from document.body', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('drop clears placeholder class and data-preview-x/y from the row', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    const row = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(row?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+    expect(row?.hasAttribute('data-preview-x')).toBe(false);
+    expect(row?.hasAttribute('data-preview-y')).toBe(false);
+  });
+
+  test('pointercancel removes the preview portal (cancel path)', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.pointerCancel(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('Escape during pointer drag removes the preview portal', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('keyboard lift does NOT create a preview portal', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+
+    // Keyboard drag: no preview portal should exist.
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    // Keyboard drag: row should have --lifted class, not --placeholder.
+    const row = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(row?.classList.contains('cinder-sortable-item--lifted')).toBe(true);
+    expect(row?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+
+    // Cleanup.
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+  });
+
+  test('window Escape during pointer drag removes the preview portal', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    // Simulate window-level Escape (SortableList's handleWindowKeydown).
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
   });
 });
