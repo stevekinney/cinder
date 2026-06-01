@@ -119,6 +119,31 @@ describe('TagInput rendering', () => {
     expect(getRemoveButtons(container)).toHaveLength(0);
   });
 
+  test('the tag list stays Tab-reachable after a controlled value shrinks below the focused index', async () => {
+    // End-to-end guard for the stale-index scenario: focus is on a high chip
+    // index, then the controlled value shrinks below it. The roving tab stop
+    // must land on a surviving button (not vanish to all -1, which would make
+    // the list Tab-unreachable). Two layers cooperate to guarantee this — the
+    // rovingChipIndex `Math.min` clamp (synchronous) and the focusedChipIndex
+    // reset $effect (after the DOM settles). This test asserts the user-facing
+    // result; if BOTH guards regressed, it fails.
+    const { container, rerender } = render(TagInput, { props: { value: ['A', 'B', 'C'] } });
+
+    // Move the roving focus to the last chip's remove button (index 2).
+    await fireEvent.focus(getRemoveButtons(container)[2]!);
+    await tick();
+    expect(getRemoveButtons(container)[2]!.getAttribute('tabindex')).toBe('0');
+
+    // Controlled shrink to a single tag — index 2 no longer exists.
+    await rerender({ value: ['A'] });
+    await tick();
+
+    const buttons = getRemoveButtons(container);
+    expect(buttons).toHaveLength(1);
+    // The surviving button must own the tab stop — the list is still reachable.
+    expect(buttons[0]!.getAttribute('tabindex')).toBe('0');
+  });
+
   test('readonly hides the remove control entirely and keeps the input read-only', () => {
     const { container } = render(TagInput, {
       props: { readonly: true, defaultValue: ['Svelte'] },
