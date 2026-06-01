@@ -71,6 +71,22 @@ describe('JsonViewer — unserializable fallback', () => {
     expect(fallback?.textContent).toContain("can't be serialized");
   });
 
+  test.each([
+    ['undefined', undefined],
+    ['a symbol', Symbol('x')],
+    ['a function', () => 'noop'],
+  ])(
+    '%s (JSON.stringify returns undefined, not a throw) shows the unserializable fallback',
+    (_label, value) => {
+      const { container } = render(JsonViewer, { value });
+      const fallback = container.querySelector('.cinder-json-viewer__fallback');
+      expect(fallback).not.toBeNull();
+      expect(fallback?.textContent).toContain("can't be serialized");
+      expect(fallback?.textContent).not.toContain('Infinity');
+      expect(fallback?.textContent).not.toContain('undefined KB');
+    },
+  );
+
   test('a genuinely oversized payload still shows the size-based fallback', () => {
     const big = { blob: 'x'.repeat(2048) };
     const { container } = render(JsonViewer, { value: big, maxBytes: 100 });

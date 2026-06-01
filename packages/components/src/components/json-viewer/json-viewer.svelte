@@ -35,7 +35,12 @@
   // meaningful message instead of a garbage "~Infinity KB" size.
   const serialized = $derived.by((): { ok: true; size: number } | { ok: false } => {
     try {
-      return { ok: true, size: new Blob([JSON.stringify(value)]).size };
+      const json = JSON.stringify(value);
+      // `JSON.stringify` returns `undefined` (not a throw) for top-level
+      // `undefined`, a `Symbol`, or a function — none of which are valid JSON.
+      // Treat those as unserializable rather than measuring the string "undefined".
+      if (typeof json !== 'string') return { ok: false };
+      return { ok: true, size: new Blob([json]).size };
     } catch {
       return { ok: false };
     }
