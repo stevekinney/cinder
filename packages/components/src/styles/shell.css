@@ -1,0 +1,15 @@
+/*
+ * Playground shell stylesheet.
+ *
+ * The playground shell imports Cinder primitives directly for its own chrome.
+ * Keep that chrome styled without loading every component stylesheet into the
+ * outer document.
+ */
+
+@import './index.css';
+@import '../components/button/button.css';
+@import '../components/input/input.css';
+@import '../components/number-input/number-input.css';
+@import '../components/segmented-control/segmented-control.css';
+@import '../components/side-navigation/side-navigation.css';
+@import '../components/toolbar/toolbar.css';
