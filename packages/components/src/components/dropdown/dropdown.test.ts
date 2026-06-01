@@ -610,4 +610,11 @@ describe('Dropdown', () => {
     expect(css).not.toContain('border-radius: var(--cinder-radius-lg);');
     expect(css).not.toContain('color-mix(in oklch, var(--cinder-text) 8%');
   });
+
+  test('fixed-position fallback clears legacy absolute insets', async () => {
+    const css = await readDropdownCss();
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[data-cinder-position-ready\]\s*\{[^}]*inset:\s*auto;/,
+    );
+  });
 });

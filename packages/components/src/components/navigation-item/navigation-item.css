@@ -113,20 +113,8 @@
     background-color: var(--cinder-surface-inset);
   }
 
-  /* ----------------------------------------
- * Mobile variant — stacked full-width layout. This variant is selected by the
- * parent component rather than the viewport.
- * ---------------------------------------- */
-
-  .cinder-navigation-item[data-variant='mobile'] {
-    display: flex;
-    inline-size: 100%;
-    justify-content: flex-start;
-    padding-block: var(--cinder-space-3);
-  }
-
   @media (forced-colors: active) {
-    .cinder-navigation-item[data-variant='mobile']:focus-visible {
+    .cinder-navigation-item:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
     }

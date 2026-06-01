@@ -28,7 +28,8 @@
     description,
     error,
     rows = 4,
-    disabled = false,
+    disabled,
+    required,
     class: customClassName,
     maxlength,
     showCount = false,
@@ -41,6 +42,7 @@
   const maximumLength = $derived(resolveMaximumLength(maxlength));
   const countId = $derived(showCount && maximumLength !== undefined ? `${id}-count` : undefined);
   const currentCount = $derived(value?.length ?? 0);
+  const ownRequired = $derived(required === true ? true : required === false ? false : undefined);
   const field = $derived(
     resolveFieldControl({
       id,
@@ -48,9 +50,11 @@
       context,
       hasDescription: !!description,
       hasError: !!error,
+      localIdNamespace: 'textarea',
       consumerDescribedBy,
       consumerInvalid,
       additionalDescribedBy: [countId],
+      required: ownRequired,
       disabled,
     }),
   );
@@ -64,6 +68,7 @@
     {id}
     {rows}
     disabled={field.disabled}
+    required={field.required}
     {maxlength}
     class={classNames('cinder-_input-frame', 'cinder-textarea', customClassName)}
     aria-invalid={field.ariaInvalid}
@@ -72,7 +77,7 @@
     {...rest}
   ></textarea>
   {#if description}
-    <p id={field.descriptionId} class="cinder-textarea-description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-textarea-description">{description}</p>
   {/if}
   {#if countId}
     <output
@@ -86,6 +91,6 @@
     </output>
   {/if}
   {#if error}
-    <p id={field.errorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
+    <p id={field.ownErrorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
   {/if}
 </div>

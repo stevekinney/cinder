@@ -17,41 +17,34 @@ export type CoverageRecord = {
 export type CoverageAverages = {
   files: number;
   functions: number;
+  functionsFound: number;
+  functionsHit: number;
   lines: number;
+  linesFound: number;
+  linesHit: number;
 };
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
-const defaultBunfigPath = resolve(packageRoot, 'bunfig.toml');
+const defaultThresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
 const defaultCoveragePath = resolve(packageRoot, 'coverage/lcov.info');
 
 export function parseCoverageThresholds(source: string): CoverageThresholds {
-  const objectMatch = source.match(/coverageThreshold\s*=\s*\{([^}]*)\}/);
-  if (objectMatch) {
-    const body = objectMatch[1]!;
-    const lines = readThresholdProperty(body, 'lines');
-    const functions = readThresholdProperty(body, 'functions');
-    if (lines === undefined || functions === undefined) {
-      throw new Error('coverageThreshold must define both lines and functions.');
-    }
-    return { lines, functions };
+  const parsed = JSON.parse(source) as Partial<CoverageThresholds>;
+
+  if (typeof parsed.lines !== 'number' || typeof parsed.functions !== 'number') {
+    throw new Error('coverage-ratchet.json must define numeric lines and functions thresholds.');
   }
 
-  const singleMatch = source.match(/coverageThreshold\s*=\s*([0-9]*\.?[0-9]+)/);
-  if (!singleMatch) {
-    throw new Error('coverageThreshold was not found in bunfig.toml.');
+  if (!isRatchetThreshold(parsed.lines) || !isRatchetThreshold(parsed.functions)) {
+    throw new Error('Coverage thresholds must be decimals between 0 and 1.');
   }
 
-  const threshold = Number(singleMatch[1]);
-  return { lines: threshold, functions: threshold };
+  return { lines: parsed.lines, functions: parsed.functions };
 }
 
-function readThresholdProperty(
-  source: string,
-  property: keyof CoverageThresholds,
-): number | undefined {
-  const match = source.match(new RegExp(`${property}\\s*=\\s*([0-9]*\\.?[0-9]+)`));
-  return match ? Number(match[1]) : undefined;
+function isRatchetThreshold(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {
@@ -89,18 +82,26 @@ function readNumberField(lines: string[], key: string): number {
 export function computeCoverageAverages(records: CoverageRecord[]): CoverageAverages {
   if (records.length === 0) throw new Error('LCOV report did not contain any records.');
 
-  let functions = 0;
-  let lines = 0;
+  let functionsFound = 0;
+  let functionsHit = 0;
+  let linesFound = 0;
+  let linesHit = 0;
 
   for (const record of records) {
-    functions += percentage(record.functionsHit, record.functionsFound);
-    lines += percentage(record.linesHit, record.linesFound);
+    functionsFound += record.functionsFound;
+    functionsHit += record.functionsHit;
+    linesFound += record.linesFound;
+    linesHit += record.linesHit;
   }
 
   return {
     files: records.length,
-    functions: functions / records.length,
-    lines: lines / records.length,
+    functions: percentage(functionsHit, functionsFound),
+    functionsFound,
+    functionsHit,
+    lines: percentage(linesHit, linesFound),
+    linesFound,
+    linesHit,
   };
 }
 
@@ -146,7 +147,7 @@ function formatThreshold(value: number): string {
 }
 
 export async function main(): Promise<void> {
-  const thresholds = parseCoverageThresholds(await Bun.file(defaultBunfigPath).text());
+  const thresholds = parseCoverageThresholds(await Bun.file(defaultThresholdsPath).text());
   const averages = computeCoverageAverages(
     parseLcovRecords(await Bun.file(defaultCoveragePath).text()),
   );

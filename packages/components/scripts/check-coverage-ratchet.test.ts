@@ -29,29 +29,54 @@ end_of_record
 `;
 
 describe('coverage ratchet check', () => {
-  test('parses object thresholds from bunfig.toml', () => {
-    expect(
-      parseCoverageThresholds('[test]\ncoverageThreshold = { lines = 0.65, functions = 0.63 }'),
-    ).toEqual({
+  test('parses thresholds from coverage-ratchet.json', () => {
+    expect(parseCoverageThresholds(JSON.stringify({ lines: 0.65, functions: 0.63 }))).toEqual({
       lines: 0.65,
       functions: 0.63,
     });
   });
 
-  test('parses a shared threshold for both metrics', () => {
-    expect(parseCoverageThresholds('[test]\ncoverageThreshold = 0.8')).toEqual({
-      lines: 0.8,
-      functions: 0.8,
-    });
+  test('rejects missing threshold properties', () => {
+    expect(() => parseCoverageThresholds(JSON.stringify({ lines: 0.65 }))).toThrow(
+      'coverage-ratchet.json must define numeric lines and functions thresholds.',
+    );
   });
 
-  test('computes Bun-compatible unweighted file averages from LCOV records', () => {
+  test('computes aggregate hit/found percentages from LCOV records', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(averages).toEqual({
       files: 2,
+      functionsFound: 4,
+      functionsHit: 3,
       functions: 75,
+      linesFound: 4,
+      linesHit: 3,
       lines: 75,
     });
+  });
+
+  test('weights large files by their covered item counts instead of averaging file percentages', () => {
+    const weightedFixture = `TN:
+SF:tiny.ts
+FNF:1
+FNH:1
+LF:1
+LH:1
+end_of_record
+TN:
+SF:large.ts
+FNF:99
+FNH:50
+LF:99
+LH:50
+end_of_record
+`;
+
+    const averages = computeCoverageAverages(parseLcovRecords(weightedFixture));
+    expect(averages.functions).toBe(51);
+    expect(averages.lines).toBe(51);
+    expect(averages.functionsFound).toBe(100);
+    expect(averages.linesFound).toBe(100);
   });
 
   test('reports no failures when the aggregate ratchet is met', () => {

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -11,6 +12,8 @@ const { default: Toolbar } = await import('./index.ts');
 const { default: ToolbarSpacer } = await import('./toolbar-spacer.svelte');
 const { default: ToolbarCompositionFixture } =
   await import('../../test/fixtures/toolbar-composition-fixture.svelte');
+
+const toolbarCss = readFileSync(new URL('./toolbar.css', import.meta.url), 'utf8');
 
 afterEach(() => cleanup());
 
@@ -416,5 +419,16 @@ describe('Toolbar', () => {
     await flushEffects();
 
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Custom width' }));
+  });
+});
+
+describe('Toolbar responsive CSS', () => {
+  test('horizontal toolbars wrap through a component container query', () => {
+    expect(toolbarCss).toContain('container-name: cinder-toolbar;');
+    expect(toolbarCss).toContain('@container cinder-toolbar (max-width: 30rem)');
+    expect(toolbarCss).not.toContain('@media (max-width: 30rem)');
+    expect(toolbarCss).toMatch(
+      /@container cinder-toolbar \(max-width: 30rem\)[\s\S]*?\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?flex-wrap:\s*wrap;/,
+    );
   });
 });

@@ -28,8 +28,8 @@
     label,
     description,
     error,
-    required = false,
-    disabled = false,
+    required,
+    disabled,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -44,11 +44,16 @@
       context,
       hasDescription: !!description,
       hasError: !!error,
+      localIdNamespace: 'select',
       consumerDescribedBy,
       consumerInvalid,
       required,
       disabled,
     }),
+  );
+
+  const stableLocalErrorId = $derived(
+    context?.errorId === `${field.id}-error` ? `${field.id}-select-error` : `${field.id}-error`,
   );
 
   // Guard runs only in the browser after mount so SSR render doesn't pollute
@@ -95,12 +100,12 @@
     <span class="cinder-select-field__chevron" aria-hidden="true"></span>
   </span>
   {#if description}
-    <p id={field.descriptionId} class="cinder-select-field__description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-select-field__description">{description}</p>
   {/if}
   <!-- Always in DOM so the live region is registered before text is injected;
        freshly-mounted aria-live nodes are not reliably announced by NVDA/JAWS. -->
   <p
-    id={field.errorId ?? `${id}-error`}
+    id={field.ownErrorId ?? stableLocalErrorId}
     class="cinder-select-field__error"
     aria-live="polite"
     data-cinder-error={!!error || undefined}

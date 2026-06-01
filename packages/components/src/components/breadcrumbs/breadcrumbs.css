@@ -98,7 +98,12 @@
 
   @container cinder-breadcrumbs (max-width: 24rem) {
     .cinder-breadcrumbs__item:not(:first-child):not(:last-child) {
-      display: none;
+      flex: 1 1 min(8rem, 25%);
+      max-inline-size: min(8rem, 25%);
+    }
+
+    .cinder-breadcrumbs__item:not(:first-child):not(:last-child) .cinder-breadcrumbs__link {
+      max-inline-size: 100%;
     }
   }
 }

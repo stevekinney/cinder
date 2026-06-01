@@ -123,6 +123,10 @@
     visibility: hidden;
   }
 
+  .cinder-dropdown-menu[data-cinder-position-ready] {
+    inset: auto;
+  }
+
   .cinder-dropdown-item {
     position: relative;
     display: flex;

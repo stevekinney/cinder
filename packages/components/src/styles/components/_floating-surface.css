@@ -6,13 +6,17 @@
     max-block-size: min(28rem, calc(100vh - var(--cinder-space-4)));
     margin: 0;
     padding: var(--cinder-space-1);
-    overflow: auto;
+    overflow: visible;
     overscroll-behavior: contain;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
     color: var(--cinder-text);
     box-shadow: var(--cinder-shadow-lg);
+  }
+
+  .cinder-_floating-surface:where([role='listbox'], [role='menu']) {
+    overflow: auto;
   }
 
   .cinder-_floating-surface[data-cinder-position-ready='false'] {

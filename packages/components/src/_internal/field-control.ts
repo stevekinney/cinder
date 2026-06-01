@@ -49,7 +49,9 @@ export function errorId(fieldId: string, hasError: boolean): string | undefined 
  * (e.g. a tooltip id, a counter id) without re-implementing the join logic.
  */
 export function composeDescribedBy(...ids: Array<string | undefined | null>): string | undefined {
-  const filtered = ids.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  const filtered = ids.flatMap((id) =>
+    typeof id === 'string' ? id.trim().split(/\s+/).filter(Boolean) : [],
+  );
   const unique = Array.from(new Set(filtered));
   return unique.length > 0 ? unique.join(' ') : undefined;
 }
@@ -77,17 +79,20 @@ export type ResolveFieldControlInput = {
   id?: string;
   generatedId: string;
   context?: FieldControlContextLike | undefined;
+  localIdNamespace?: string | undefined;
   hasDescription?: boolean;
   hasError?: boolean;
   consumerDescribedBy?: string | null | undefined;
   additionalDescribedBy?: Array<string | undefined | null> | undefined;
   consumerInvalid?: 'true' | 'false' | 'grammar' | 'spelling' | boolean | null | undefined;
-  required?: boolean;
-  disabled?: boolean;
+  required?: boolean | undefined;
+  disabled?: boolean | undefined;
 };
 
 export type ResolvedFieldControl = {
   id: string;
+  ownDescriptionId: string | undefined;
+  ownErrorId: string | undefined;
   descriptionId: string | undefined;
   errorId: string | undefined;
   describedBy: string | undefined;
@@ -98,8 +103,18 @@ export type ResolvedFieldControl = {
 
 export function resolveFieldControl(input: ResolveFieldControlInput): ResolvedFieldControl {
   const resolvedId = input.id ?? input.context?.controlId ?? input.generatedId;
-  const ownDescriptionId = describeId(resolvedId, input.hasDescription ?? false);
-  const ownErrorId = errorId(resolvedId, input.hasError ?? false);
+  const defaultDescriptionId = describeId(resolvedId, input.hasDescription ?? false);
+  const defaultErrorId = errorId(resolvedId, input.hasError ?? false);
+  const ownDescriptionId =
+    defaultDescriptionId &&
+    defaultDescriptionId === input.context?.descriptionId &&
+    input.localIdNamespace
+      ? `${resolvedId}-${input.localIdNamespace}-description`
+      : defaultDescriptionId;
+  const ownErrorId =
+    defaultErrorId && defaultErrorId === input.context?.errorId && input.localIdNamespace
+      ? `${resolvedId}-${input.localIdNamespace}-error`
+      : defaultErrorId;
   const descriptionId = ownDescriptionId ?? input.context?.descriptionId;
   const resolvedErrorId = ownErrorId ?? input.context?.errorId;
   const explicitInvalid = ariaInvalid(input.hasError ?? false);
@@ -112,6 +127,8 @@ export function resolveFieldControl(input: ResolveFieldControlInput): ResolvedFi
 
   return {
     id: resolvedId,
+    ownDescriptionId,
+    ownErrorId,
     descriptionId,
     errorId: resolvedErrorId,
     describedBy: composeDescribedBy(

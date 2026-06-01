@@ -42,6 +42,10 @@ describe('field-control helpers', () => {
     expect(composeDescribedBy('', 'real-id', '')).toBe('real-id');
   });
 
+  test('composeDescribedBy splits multi-token inputs and removes duplicate ids', () => {
+    expect(composeDescribedBy('alpha beta', 'beta', 'gamma alpha')).toBe('alpha beta gamma');
+  });
+
   test('ariaInvalid returns the literal "true" when there is an error', () => {
     expect(ariaInvalid(true)).toBe('true');
   });
@@ -71,6 +75,8 @@ describe('field-control helpers', () => {
 
     expect(resolved).toEqual({
       id: 'email',
+      ownDescriptionId: 'email-description',
+      ownErrorId: 'email-error',
       descriptionId: 'email-description',
       errorId: 'email-error',
       describedBy: 'email-description email-error context-description context-error consumer-hint',
@@ -89,6 +95,8 @@ describe('field-control helpers', () => {
       }),
     ).toEqual({
       id: 'generated',
+      ownDescriptionId: undefined,
+      ownErrorId: undefined,
       descriptionId: undefined,
       errorId: undefined,
       describedBy: undefined,
@@ -105,5 +113,30 @@ describe('field-control helpers', () => {
         consumerInvalid: 'grammar',
       }).ariaInvalid,
     ).toBe('grammar');
+  });
+
+  test('resolveFieldControl namespaces local ids that would collide with FormField context', () => {
+    const resolved = resolveFieldControl({
+      generatedId: 'email',
+      id: 'email',
+      context: {
+        controlId: 'email',
+        descriptionId: 'email-description',
+        errorId: 'email-error',
+        describedBy: 'email-description email-error',
+        invalid: 'true',
+        required: true,
+        disabled: false,
+      },
+      localIdNamespace: 'select',
+      hasDescription: true,
+      hasError: true,
+    });
+
+    expect(resolved.ownDescriptionId).toBe('email-select-description');
+    expect(resolved.ownErrorId).toBe('email-select-error');
+    expect(resolved.describedBy).toBe(
+      'email-select-description email-select-error email-description email-error',
+    );
   });
 });
