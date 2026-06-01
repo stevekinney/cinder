@@ -3625,6 +3625,7 @@
     "prepublishOnly": "bun run validate && bun run build",
     "publish:release": "bun run scripts/publish-release.ts",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1",
+    "test:changed": "bun run scripts/test-changed.ts",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
     "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",

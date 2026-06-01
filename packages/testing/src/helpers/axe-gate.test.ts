@@ -55,24 +55,14 @@ describe('BLOCKING_IMPACTS', () => {
 });
 
 describe('AXE_ALLOW_LIST', () => {
-  it('documents every current pre-existing blocking violation captured by the sweep', () => {
-    // The baseline captured on 2026-05-29 by running the full broad sweep
-    // (134 components × 2 themes × 3 viewports) against the playground. If a
-    // violation is fixed, its entry is removed here; if a new one appears, the
-    // gate fails until it is fixed or added with a reason — that is the point.
-    const slugs = AXE_ALLOW_LIST.map((entry) => entry.slug).toSorted();
-    expect(slugs).toEqual([
-      'area-chart',
-      'avatar-group',
-      'bar-chart',
-      'chip',
-      'code-block',
-      'copy-button',
-      'line-chart',
-      'progress',
-      'table',
-      'tag-input',
-    ]);
+  it('is empty — every captured serious violation has been fixed at the source', () => {
+    // The 2026-05-29 baseline sweep surfaced serious violations on charts,
+    // avatar-group, progress, tag-input, code-block, copy-button, table, and
+    // chip. All were fixed at the source rather than tolerated, so the gate is
+    // now fully enforced: any new critical/serious violation fails CI. When a
+    // genuine exception is needed, add an entry with `ruleIds` + a `reason` —
+    // the invariants below keep such entries auditable.
+    expect(AXE_ALLOW_LIST).toHaveLength(0);
   });
 
   it('gives every entry a non-empty, auditable reason', () => {
@@ -108,20 +98,14 @@ describe('AXE_ALLOW_LIST', () => {
     expect(new Set(scopes).size).toBe(scopes.length);
   });
 
-  it('scopes the theme-dependent color-contrast exceptions to their failing theme', () => {
-    // color-contrast depends on the active palette, so these are narrowed to a
-    // single theme rather than blanket-allowing the component.
-    const table = AXE_ALLOW_LIST.find((entry) => entry.slug === 'table');
-    const chip = AXE_ALLOW_LIST.find((entry) => entry.slug === 'chip');
-    const copyButton = AXE_ALLOW_LIST.find((entry) => entry.slug === 'copy-button');
-    expect(table?.theme).toBe('light');
-    expect(chip?.theme).toBe('light');
-    expect(copyButton?.theme).toBe('dark');
-  });
-
-  it('downgrades a real allow-listed violation but still fails the same slug in an unscoped theme', () => {
-    // `table` is allow-listed only in the light theme; a serious violation in
-    // the dark theme must still fail (this is what keeps the narrowing honest).
+  it('downgrades a theme-scoped exception but still fails the same slug in an unscoped theme', () => {
+    // A theme-narrowed entry tolerates the violation only in its theme; a
+    // serious violation in the other theme must still fail. This keeps the
+    // narrowing honest. Exercised against a synthetic list so the test does not
+    // couple to the (currently empty) production allow-list.
+    const allowList: AxeAllowEntry[] = [
+      { slug: 'table', theme: 'light', ruleIds: ['color-contrast'], reason: 'color-contrast #42' },
+    ];
     const buckets = makeBuckets({ serious: [makeViolation('color-contrast', 'serious')] });
     const lightKey: ArtifactKey = {
       slug: 'table',
@@ -130,31 +114,8 @@ describe('AXE_ALLOW_LIST', () => {
       fixture: 'default',
     };
     const darkKey: ArtifactKey = { ...lightKey, theme: 'dark' };
-    expect(evaluateAxeGate(lightKey, buckets, AXE_ALLOW_LIST).status).toBe('allowed');
-    expect(evaluateAxeGate(darkKey, buckets, AXE_ALLOW_LIST).status).toBe('fail');
-  });
-
-  it('still fails an allow-listed slug when a NEW rule id (outside ruleIds) regresses', () => {
-    // `table` is allow-listed only for `color-contrast`. A brand-new serious
-    // violation with a different rule id must still fail the gate rather than
-    // being silently masked by the contrast exception.
-    const buckets = makeBuckets({
-      serious: [makeViolation('color-contrast', 'serious'), makeViolation('label', 'serious')],
-    });
-    const lightKey: ArtifactKey = {
-      slug: 'table',
-      theme: 'light',
-      viewport: 'desktop',
-      fixture: 'default',
-    };
-    const decision = evaluateAxeGate(lightKey, buckets, AXE_ALLOW_LIST);
-    expect(decision.status).toBe('fail');
-    if (decision.status === 'fail') {
-      // Only the un-allowed violation is surfaced, not the tolerated one.
-      expect(decision.violations.map((violation) => violation.id)).toEqual(['label']);
-      expect(decision.message).toContain('label');
-      expect(decision.message).not.toContain('color-contrast');
-    }
+    expect(evaluateAxeGate(lightKey, buckets, allowList).status).toBe('allowed');
+    expect(evaluateAxeGate(darkKey, buckets, allowList).status).toBe('fail');
   });
 });
 
@@ -291,6 +252,28 @@ describe('evaluateAxeGate', () => {
     expect(decision.status).toBe('fail');
     if (decision.status === 'fail') {
       expect(decision.violations.map((violation) => violation.id)).toEqual(['label']);
+    }
+  });
+
+  it('surfaces only the un-allowed violation when a bucket mixes allowed and un-allowed rules', () => {
+    // Exercises the `unallowed` FILTER: the bucket contains both a tolerated
+    // rule (`color-contrast`) and a new regression (`label`). The gate must
+    // fail, but surface ONLY the un-allowed `label` — the tolerated contrast
+    // violation must not appear in the failure list or message. A single-
+    // violation bucket cannot catch a bug where the filter returns everything,
+    // since there `unallowed === violations`; this two-violation case can.
+    const buckets = makeBuckets({
+      serious: [makeViolation('color-contrast', 'serious'), makeViolation('label', 'serious')],
+    });
+    const allowList: AxeAllowEntry[] = [
+      { slug: 'button', ruleIds: ['color-contrast'], reason: 'contrast only, tracked in #42' },
+    ];
+    const decision = evaluateAxeGate(KEY, buckets, allowList);
+    expect(decision.status).toBe('fail');
+    if (decision.status === 'fail') {
+      expect(decision.violations.map((violation) => violation.id)).toEqual(['label']);
+      expect(decision.message).toContain('label');
+      expect(decision.message).not.toContain('color-contrast');
     }
   });
 

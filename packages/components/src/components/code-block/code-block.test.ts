@@ -67,6 +67,13 @@ describe('CodeBlock — static structure', () => {
     expect(loadDefaultHighlighter).not.toHaveBeenCalled();
   });
 
+  test('plain <pre> scroll container has tabindex="0" for keyboard access', () => {
+    const { container } = render(CodeBlock, { code: 'const x = 1;' });
+    const pre = container.querySelector('pre.cinder-code-block__pre');
+    expect(pre).not.toBeNull();
+    expect(pre?.getAttribute('tabindex')).toBe('0');
+  });
+
   test('language prop renders a language label in the header', () => {
     const { container } = render(CodeBlock, { code: 'const x', language: 'ts', highlight: false });
     const label = container.querySelector('.cinder-code-block__language');
@@ -108,6 +115,19 @@ describe('CodeBlock — static structure', () => {
     expect(css).toContain('outline-color: CanvasText;');
     expect(css).toContain('box-shadow: none;');
   });
+
+  test('CSS contains dark-theme rule that overrides shiki span color with --shiki-dark', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    // The rule must cover the [data-cinder-theme='dark'] selector (playground uses this).
+    expect(css).toContain("data-cinder-theme='dark'");
+    // The rule must switch the inline `color:` to the --shiki-dark custom property.
+    expect(css).toContain('color: var(--shiki-dark, inherit)');
+  });
+
+  test('CSS contains prefers-color-scheme: dark fallback for system dark mode', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+  });
 });
 
 describe('CodeBlock — automatic highlighting (bundled default)', () => {
@@ -121,6 +141,15 @@ describe('CodeBlock — automatic highlighting (bundled default)', () => {
     expect(loadDefaultHighlighter).toHaveBeenCalledTimes(1);
     // The default highlighter output replaces the plain fallback.
     expect(container.querySelector('.cinder-code-block__pre')).toBeNull();
+  });
+
+  test('highlighted wrapper div has tabindex="0" for keyboard scroll access', async () => {
+    const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+    await waitFor(() => {
+      const wrapper = container.querySelector('.cinder-code-block__highlighted');
+      expect(wrapper).not.toBeNull();
+      expect(wrapper?.getAttribute('tabindex')).toBe('0');
+    });
   });
 
   test('default-load failure falls back to escaped plain code (warn names language, never code)', async () => {

@@ -225,9 +225,12 @@
     {/if}
     <svg
       viewBox={`0 0 ${measuredWidth} ${height}`}
-      role="img"
       aria-hidden={loading || model.empty ? 'true' : undefined}
+      aria-labelledby={!loading && !model.empty ? `${rootId}-svg-title` : undefined}
     >
+      {#if !loading && !model.empty}
+        <title id="{rootId}-svg-title">{label}</title>
+      {/if}
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
         {#each model.yTicks as tick, index}
           <text

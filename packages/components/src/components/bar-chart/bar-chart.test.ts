@@ -79,6 +79,66 @@ describe('BarChart', () => {
     ).toThrow('rule=invalid-bar-value');
   });
 
+  test('svg has an accessible title matching the label when data is present', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const svg = container.querySelector('svg');
+    const title = svg?.querySelector('title');
+
+    expect(svg?.getAttribute('role')).toBeNull();
+    expect(title).not.toBeNull();
+    expect(title?.textContent).toBe('Revenue by month');
+    expect(svg?.getAttribute('aria-labelledby')).toBeTruthy();
+  });
+
+  test('svg has no title and is aria-hidden when loading', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      loading: true,
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const svg = container.querySelector('svg');
+
+    expect(svg?.getAttribute('aria-hidden')).toBe('true');
+    expect(svg?.querySelector('title')).toBeNull();
+  });
+
+  test('svg has no title and is aria-hidden when empty', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data: [],
+      categoryKey: 'month',
+      series,
+    });
+    const svg = container.querySelector('svg');
+
+    expect(svg?.getAttribute('aria-hidden')).toBe('true');
+    expect(svg?.querySelector('title')).toBeNull();
+  });
+
+  test('interactive focus targets are not inside an img-role element', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const svg = container.querySelector('svg');
+
+    // The svg must not carry role="img" — that is a leaf role that forbids
+    // interactive descendants (nested-interactive axe violation).
+    expect(svg?.getAttribute('role')).toBeNull();
+    // The interactive buttons must still be present and focusable.
+    const buttons = container.querySelectorAll('[role="button"][tabindex="0"]');
+    expect(buttons.length).toBeGreaterThan(0);
+  });
+
   test('loading state renders the loading indicator and hides the SVG', () => {
     const { getByText, container } = render(BarChart, {
       label: 'Loading',

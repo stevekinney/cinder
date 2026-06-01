@@ -76,94 +76,16 @@ export type AxeAllowEntry = {
  * the gate globally. Each entry should be removed as the underlying violation
  * is fixed.
  *
- * The baseline below was captured by running the full broad sweep
- * (`bun run scripts/start-server.ts` → 134 components × 2 themes × 3 viewports)
- * against the playground on 2026-05-29. Every entry records the exact axe rule
- * ids it covers in `ruleIds`; only those rules are downgraded, so a *new*
- * critical/serious regression on an allow-listed component still fails the gate.
- * Color-contrast findings are theme-scoped because contrast depends on the
- * active palette; structural findings (nested-interactive, svg-img-alt, etc.)
- * reproduce across every theme/viewport, so those entries match by slug alone.
- *
- * An empty list would mean the gate is fully enforced for every component.
+ * The list is currently **empty**: every `serious` violation captured by the
+ * 2026-05-29 baseline sweep has since been fixed at the source (chart SVG
+ * roles + accessible names, avatar-group role, progressbar names, tag-input
+ * listbox restructure, code-block dark-theme contrast + scroll focus, and the
+ * copy-button/table/chip color-contrast fixes). The gate is therefore fully
+ * enforced for every component: any `critical`/`serious` violation now fails CI.
+ * When a new entry is genuinely needed, record the exact axe rule ids it covers
+ * in `ruleIds` (only those rules are downgraded) plus a tracking `reason`.
  */
-export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [
-  {
-    slug: 'area-chart',
-    ruleIds: ['nested-interactive', 'svg-img-alt'],
-    reason:
-      'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
-      'Charts render interactive data points inside the <svg> without a non-nested control and ' +
-      'without alt text for the img-role SVG. Tracking: chart-a11y follow-up.',
-  },
-  {
-    slug: 'bar-chart',
-    ruleIds: ['nested-interactive', 'svg-img-alt'],
-    reason:
-      'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
-      'Same root cause as area-chart (shared chart primitives). Tracking: chart-a11y follow-up.',
-  },
-  {
-    slug: 'line-chart',
-    ruleIds: ['nested-interactive', 'svg-img-alt'],
-    reason:
-      'Pre-existing serious violations: nested-interactive and svg-img-alt on the SVG chart. ' +
-      'Same root cause as area-chart (shared chart primitives). Tracking: chart-a11y follow-up.',
-  },
-  {
-    slug: 'avatar-group',
-    ruleIds: ['aria-prohibited-attr'],
-    reason:
-      'Pre-existing serious violation: aria-prohibited-attr — an aria-* attribute is set on an ' +
-      'element whose role does not permit it. Tracking: avatar-group-a11y follow-up.',
-  },
-  {
-    slug: 'progress',
-    ruleIds: ['aria-progressbar-name'],
-    reason:
-      'Pre-existing serious violation: aria-progressbar-name — the progressbar node lacks an ' +
-      'accessible name. Tracking: progress-a11y follow-up.',
-  },
-  {
-    slug: 'tag-input',
-    ruleIds: ['nested-interactive'],
-    reason:
-      'Pre-existing serious violation: nested-interactive — the removable-tag control is nested ' +
-      'inside another interactive element. Tracking: tag-input-a11y follow-up.',
-  },
-  {
-    slug: 'code-block',
-    ruleIds: ['color-contrast', 'scrollable-region-focusable'],
-    reason:
-      'Pre-existing serious violations: color-contrast (all viewports) and ' +
-      'scrollable-region-focusable (the scrollable code region lacks keyboard access, surfaces in ' +
-      'the mobile viewport). Tracking: code-block-a11y follow-up.',
-  },
-  {
-    slug: 'table',
-    theme: 'light',
-    ruleIds: ['color-contrast'],
-    reason:
-      'Pre-existing serious violation: color-contrast in the light theme (all viewports). ' +
-      'Tracking: table-light-contrast follow-up.',
-  },
-  {
-    slug: 'chip',
-    theme: 'light',
-    ruleIds: ['color-contrast'],
-    reason:
-      'Pre-existing serious violation: color-contrast in the light theme (all viewports). ' +
-      'Tracking: chip-light-contrast follow-up.',
-  },
-  {
-    slug: 'copy-button',
-    theme: 'dark',
-    ruleIds: ['color-contrast'],
-    reason:
-      'Pre-existing serious violation: color-contrast in the dark theme (all viewports). ' +
-      'Tracking: copy-button-dark-contrast follow-up.',
-  },
-];
+export const AXE_ALLOW_LIST: readonly AxeAllowEntry[] = [];
 
 /**
  * Returns the blocking (`critical` + `serious`) violations from a bucketed axe

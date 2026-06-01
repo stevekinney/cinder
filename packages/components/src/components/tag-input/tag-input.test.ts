@@ -17,12 +17,22 @@ function getInput(container: HTMLElement): HTMLInputElement {
   return container.querySelector('.cinder-tag-input__input') as HTMLInputElement;
 }
 
+// Committed tags render as a plain list (implicit role="list") of listitems,
+// not a listbox of options — see tag-input.svelte for why. These helpers keep
+// the historical names but target the list / chip elements so existing
+// count/text assertions stay meaningful across the model change.
 function getListbox(container: HTMLElement): HTMLElement {
-  return container.querySelector('[role="listbox"]') as HTMLElement;
+  return container.querySelector('.cinder-tag-input__listbox') as HTMLElement;
 }
 
 function getOptions(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll('[role="option"]'));
+  return Array.from(container.querySelectorAll('.cinder-tag-input__chip'));
+}
+
+// The focusable, keyboard-removable element per chip is the remove <button>.
+// Keyboard tests assert focus / fire keydown against these, not the listitems.
+function getRemoveButtons(container: HTMLElement): HTMLButtonElement[] {
+  return Array.from(container.querySelectorAll('.cinder-tag-input__remove'));
 }
 
 function renderTagInputInForm(props: Record<string, unknown>) {
@@ -40,7 +50,7 @@ function renderTagInputInForm(props: Record<string, unknown>) {
 }
 
 describe('TagInput rendering', () => {
-  test('renders committed tags as a listbox with the input after it in DOM order', () => {
+  test('renders committed tags as a list with the input after it in DOM order', () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte', 'Bun'] },
     });
@@ -50,12 +60,15 @@ describe('TagInput rendering', () => {
     const input = getInput(container);
 
     expect(listbox).not.toBeNull();
+    // The tag list is a plain list, NOT a listbox: it carries no role="listbox"
+    // and its items carry no role="option"/aria-selected. Each tag is a real
+    // listitem with a labeled remove button.
+    expect(listbox.hasAttribute('role')).toBe(false);
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    expect(container.querySelector('[role="option"]')).toBeNull();
     expect(getOptions(container)).toHaveLength(2);
     expect(control?.children[0]).toBe(listbox);
     expect(control?.children[1]).toBe(input);
-    expect(
-      getOptions(container).every((option) => option.getAttribute('aria-selected') === 'true'),
-    ).toBe(true);
   });
 
   test('hidden input mirrors committed tags when name is provided', () => {
@@ -69,25 +82,85 @@ describe('TagInput rendering', () => {
     expect(hiddenInputs.map((input) => input.value)).toEqual(['Svelte', 'Bun']);
   });
 
-  test('remove buttons expose the required aria-label', () => {
+  test('the remove control is a real labeled button (reachable by pointer, voice, switch)', () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte'] },
     });
 
-    const removeButton = container.querySelector('.cinder-tag-input__remove');
-    expect(removeButton?.getAttribute('aria-label')).toBe('Remove Svelte');
-    expect(removeButton?.getAttribute('tabindex')).toBe('-1');
+    const remove = container.querySelector('.cinder-tag-input__remove');
+    // A real <button> with an accessible name — reachable by pointer, voice
+    // control (Dragon, Voice Control), switch access, AND keyboard.
+    expect(remove?.tagName.toLowerCase()).toBe('button');
+    expect(remove?.getAttribute('aria-label')).toBe('Remove Svelte');
+    // The button is a legal interactive child of a non-interactive listitem —
+    // no nested-interactive, no aria-required-children (the list is not a
+    // listbox). The first chip's button carries the roving tabindex.
+    expect(remove?.getAttribute('tabindex')).toBe('0');
+
+    const chip = getOptions(container)[0]!;
+    expect(chip.getAttribute('role')).toBeNull();
+    expect(chip.contains(remove)).toBe(true);
   });
 
-  test('readonly forwards to the input and disables remove buttons', () => {
+  test('the first chip button is in the tab order; later chip buttons are roving (-1)', () => {
+    const { container } = render(TagInput, {
+      props: { defaultValue: ['Svelte', 'Bun'] },
+    });
+    const buttons = container.querySelectorAll<HTMLButtonElement>('.cinder-tag-input__remove');
+    expect(buttons[0]?.getAttribute('tabindex')).toBe('0');
+    expect(buttons[1]?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('an empty tag input renders no remove buttons (roving index clamps to -1)', () => {
+    const { container } = render(TagInput, { props: {} });
+    // No tags → no buttons → no spurious tab stop. Guards the rovingChipIndex
+    // clamp: a default of 0 with zero tags would be a dangling tab-stop index.
+    expect(getOptions(container)).toHaveLength(0);
+    expect(getRemoveButtons(container)).toHaveLength(0);
+  });
+
+  test('the tag list stays Tab-reachable after a controlled value shrinks below the focused index', async () => {
+    // End-to-end guard for the stale-index scenario: focus is on a high chip
+    // index, then the controlled value shrinks below it. The roving tab stop
+    // must land on a surviving button (not vanish to all -1, which would make
+    // the list Tab-unreachable). Two layers cooperate to guarantee this — the
+    // rovingChipIndex `Math.min` clamp (synchronous) and the focusedChipIndex
+    // reset $effect (after the DOM settles). This test asserts the user-facing
+    // result; if BOTH guards regressed, it fails.
+    const { container, rerender } = render(TagInput, { props: { value: ['A', 'B', 'C'] } });
+
+    // Move the roving focus to the last chip's remove button (index 2).
+    await fireEvent.focus(getRemoveButtons(container)[2]!);
+    await tick();
+    expect(getRemoveButtons(container)[2]!.getAttribute('tabindex')).toBe('0');
+
+    // Controlled shrink to a single tag — index 2 no longer exists.
+    await rerender({ value: ['A'] });
+    await tick();
+
+    const buttons = getRemoveButtons(container);
+    expect(buttons).toHaveLength(1);
+    // The surviving button must own the tab stop — the list is still reachable.
+    expect(buttons[0]!.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('readonly hides the remove control entirely and keeps the input read-only', () => {
     const { container } = render(TagInput, {
       props: { readonly: true, defaultValue: ['Svelte'] },
     });
 
     expect(getInput(container).readOnly).toBe(true);
-    expect(container.querySelector<HTMLButtonElement>('.cinder-tag-input__remove')?.disabled).toBe(
-      true,
-    );
+    // In readonly mode the remove button is not rendered at all.
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
+  });
+
+  test('disabled hides the remove control entirely and keeps the input disabled', () => {
+    const { container } = render(TagInput, {
+      props: { disabled: true, defaultValue: ['Svelte'] },
+    });
+
+    expect(getInput(container).disabled).toBe(true);
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
   });
 
   test('standalone aria-label applies to both the input and the listbox', () => {
@@ -210,14 +283,19 @@ describe('TagInput commits tags', () => {
     const input = getInput(container);
 
     await fireEvent.keyDown(input, { key: 'Backspace' });
-    const option = getOptions(container)[0]!;
-    await fireEvent.keyDown(option, { key: 'Delete' });
+    // Fire against the remove BUTTON — it owns the chip keydown handler in the
+    // list model. Firing at the <li> would miss the handler entirely and pass
+    // for the wrong reason (a false negative).
+    const removeButton = getRemoveButtons(container)[0]!;
+    await fireEvent.keyDown(removeButton, { key: 'Delete' });
 
     expect(onkeydown).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('TagInput keyboard removal and navigation', () => {
+  // Keyboard focus lands on the remove <button> of a chip (the focusable,
+  // keyboard-removable element), so these assert against getRemoveButtons().
   test('Backspace on an empty input focuses the last chip, then removes it on a second Backspace', async () => {
     const { container } = render(TagInput, {
       props: { defaultValue: ['Svelte', 'Bun'] },
@@ -225,14 +303,12 @@ describe('TagInput keyboard removal and navigation', () => {
     const input = getInput(container);
 
     await fireEvent.keyDown(input, { key: 'Backspace' });
-    const options = getOptions(container);
-    const lastOption = options[1]!;
-    expect(document.activeElement).toBe(lastOption);
+    const lastButton = getRemoveButtons(container)[1]!;
+    expect(document.activeElement).toBe(lastButton);
 
-    await fireEvent.keyDown(lastOption, { key: 'Backspace' });
+    await fireEvent.keyDown(lastButton, { key: 'Backspace' });
     expect(getOptions(container)).toHaveLength(1);
-    const remainingOption = getOptions(container)[0]!;
-    expect(document.activeElement).toBe(remainingOption);
+    expect(document.activeElement).toBe(getRemoveButtons(container)[0]!);
   });
 
   test('Delete on a focused chip removes it and returns focus to the input when it was the only chip', async () => {
@@ -242,10 +318,10 @@ describe('TagInput keyboard removal and navigation', () => {
     const input = getInput(container);
 
     await fireEvent.keyDown(input, { key: 'Backspace' });
-    const option = getOptions(container)[0]!;
-    expect(document.activeElement).toBe(option);
+    const button = getRemoveButtons(container)[0]!;
+    expect(document.activeElement).toBe(button);
 
-    await fireEvent.keyDown(option, { key: 'Delete' });
+    await fireEvent.keyDown(button, { key: 'Delete' });
     expect(getOptions(container)).toHaveLength(0);
     expect(document.activeElement).toBe(input);
   });
@@ -259,8 +335,7 @@ describe('TagInput keyboard removal and navigation', () => {
     input.setSelectionRange(0, 0);
 
     await fireEvent.keyDown(input, { key: 'ArrowLeft' });
-    const lastOption = getOptions(container)[1]!;
-    expect(document.activeElement).toBe(lastOption);
+    expect(document.activeElement).toBe(getRemoveButtons(container)[1]!);
   });
 
   test('Home, End, and ArrowRight follow the roving focus contract', async () => {
@@ -272,18 +347,18 @@ describe('TagInput keyboard removal and navigation', () => {
     input.setSelectionRange(0, 0);
 
     await fireEvent.keyDown(input, { key: 'ArrowLeft' });
-    let options = getOptions(container);
-    expect(document.activeElement).toBe(options[2]!);
+    let buttons = getRemoveButtons(container);
+    expect(document.activeElement).toBe(buttons[2]!);
 
-    await fireEvent.keyDown(options[2]!, { key: 'Home' });
-    options = getOptions(container);
-    expect(document.activeElement).toBe(options[0]!);
+    await fireEvent.keyDown(buttons[2]!, { key: 'Home' });
+    buttons = getRemoveButtons(container);
+    expect(document.activeElement).toBe(buttons[0]!);
 
-    await fireEvent.keyDown(options[0]!, { key: 'End' });
-    options = getOptions(container);
-    expect(document.activeElement).toBe(options[2]!);
+    await fireEvent.keyDown(buttons[0]!, { key: 'End' });
+    buttons = getRemoveButtons(container);
+    expect(document.activeElement).toBe(buttons[2]!);
 
-    await fireEvent.keyDown(options[2]!, { key: 'ArrowRight' });
+    await fireEvent.keyDown(buttons[2]!, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(input);
   });
 
@@ -292,14 +367,11 @@ describe('TagInput keyboard removal and navigation', () => {
       props: { defaultValue: ['Svelte', 'Bun'] },
     });
 
-    const removeButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>('.cinder-tag-input__remove'),
-    );
+    const removeButtons = getRemoveButtons(container);
     await fireEvent.click(removeButtons[1]!);
 
-    const options = getOptions(container);
-    expect(options).toHaveLength(1);
-    expect(document.activeElement).toBe(options[0]!);
+    expect(getOptions(container)).toHaveLength(1);
+    expect(document.activeElement).toBe(getRemoveButtons(container)[0]!);
   });
 
   test('readonly blocks both commits and removals', async () => {
@@ -317,13 +389,9 @@ describe('TagInput keyboard removal and navigation', () => {
     await fireEvent.keyDown(input, { key: 'Backspace' });
     expect(document.activeElement).toBe(input);
 
-    const firstOption = getOptions(container)[0]!;
-    firstOption.focus();
-    await fireEvent.keyDown(firstOption, { key: 'Delete' });
-    expect(document.activeElement).toBe(firstOption);
-    expect(getOptions(container)).toHaveLength(2);
-
-    await fireEvent.click(container.querySelector('.cinder-tag-input__remove')!);
+    // In readonly mode there is no remove control at all — nothing to focus and
+    // no keyboard path to removal, so the tags are immutable.
+    expect(container.querySelector('.cinder-tag-input__remove')).toBeNull();
     expect(getOptions(container)).toHaveLength(2);
   });
 });
@@ -343,8 +411,8 @@ describe('TagInput form participation', () => {
     expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte', 'Bun']);
 
     await fireEvent.keyDown(input, { key: 'Backspace' });
-    const lastOption = getOptions(container)[1]!;
-    await fireEvent.keyDown(lastOption, { key: 'Delete' });
+    const lastButton = getRemoveButtons(container)[1]!;
+    await fireEvent.keyDown(lastButton, { key: 'Delete' });
 
     hiddenInputs = Array.from(
       container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),

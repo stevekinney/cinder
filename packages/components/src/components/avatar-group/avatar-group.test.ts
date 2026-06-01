@@ -246,6 +246,34 @@ describe('AvatarGroup', () => {
     });
   });
 
+  test('named avatar triggers carry role="img" so aria-label is valid', () => {
+    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
+
+    const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
+    for (const trigger of triggers) {
+      // role="img" is the honest semantic for a focusable NAMED image. The
+      // trigger has no activation (only a focus/hover name tooltip), so
+      // role="button" would be a false affordance (WCAG 4.1.2). img takes its
+      // name from the author, so aria-label is valid (no aria-prohibited-attr).
+      expect(trigger.getAttribute('role')).toBe('img');
+      expect(trigger.getAttribute('aria-label')).toBeTruthy();
+    }
+  });
+
+  test('unnamed avatar triggers carry neither role nor aria-label (no unnamed control)', () => {
+    // An avatar with no name still renders a trigger span, but it is NOT
+    // keyboard focusable and carries no role="button"/aria-label pair — so there
+    // is no interactive control lacking an accessible name.
+    const { container } = render(AvatarGroup, {
+      avatars: [{ name: '', src: 'https://example.test/a.png' }],
+    });
+    const trigger = container.querySelector('.cinder-avatar-group__trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.getAttribute('role')).toBeNull();
+    expect(trigger?.getAttribute('aria-label')).toBeNull();
+    expect(trigger?.hasAttribute('tabindex')).toBe(false);
+  });
+
   test('shows a named avatar tooltip on focus and hides it on Escape', async () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 1) });
 

@@ -18,7 +18,7 @@
   <Table.Body>
     <Table.Row>
       <Table.Cell>
-        <span style="color: #888; font-style: italic;"
+        <span style="color: var(--cinder-text-muted); font-style: italic;"
           >No contributors yet — invite your team to get started.</span
         >
       </Table.Cell>
