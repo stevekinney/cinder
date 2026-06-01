@@ -493,6 +493,34 @@ describe('computeScope', () => {
     expect(decision).toEqual({ mode: 'filtered', slugs: ['badge'] });
   });
 
+  it('force-fulls a shared seed that reaches no component, even with a co-changed component', () => {
+    // packages/markdown/src/foo.ts is a traceable shared module, but no component
+    // in the graph imports it (markdown is consumed via bare `cinder/markdown/...`
+    // specifiers → external → no edge). Co-changed with badge, the naive result
+    // would be filtered: [badge], silently dropping the markdown change. The
+    // per-seed reachability guard must force full instead. (copilot finding, PR #222)
+    const withMarkdown = new Map(sourceFiles);
+    withMarkdown.set('packages/markdown/src/foo.ts', `export const foo = 1;`);
+    const decision = computeScope(
+      base({
+        sourceFiles: withMarkdown,
+        changedFiles: ['packages/markdown/src/foo.ts', `${C}/badge/badge.svelte`],
+      }),
+    );
+    expect(decision.mode).toBe('full');
+    expect((decision as { reason: string }).reason).toContain('reaches no component');
+  });
+
+  it('keeps filtered when a shared seed DOES reach a component', () => {
+    // class-names.ts is imported by button → its closure reaches a component, so
+    // a shared change that genuinely fans out stays filtered (not over-fulled).
+    const decision = computeScope(base({ changedFiles: [`${U}/class-names.ts`] }));
+    expect(decision.mode).toBe('filtered');
+    if (decision.mode === 'filtered') {
+      expect(decision.slugs).toContain('button');
+    }
+  });
+
   it('force-fulls globally when ANY ambiguous import exists in the graph', () => {
     // card imports '../button/button' (extensionless); both button.ts and
     // button.svelte exist → ambiguous. Any ambiguous import in the scanned graph

@@ -26,14 +26,27 @@ describe('testPathsForScope', () => {
     expect(testPathsForScope({ mode: 'filtered', slugs: [] })).toBeNull();
   });
 
-  it('maps slugs to component directories plus the always-run shared test dir', () => {
+  it('maps slugs to component dirs plus the always-run shared dirs and root tests', () => {
     const paths = testPathsForScope({ mode: 'filtered', slugs: ['button', 'badge'] });
-    expect(paths).toEqual(['src/test', 'src/components/button', 'src/components/badge']);
+    // Shared-source dirs whose own tests must run when a shared change widens slugs.
+    expect(paths).toContain('src/test');
+    expect(paths).toContain('src/utilities');
+    expect(paths).toContain('src/_internal');
+    expect(paths).toContain('src/highlighters');
+    // Package-level invariant tests (export drift, manifest, conventions).
+    expect(paths).toContain('src/exports-drift.test.ts');
+    expect(paths).toContain('src/api-contract.test.ts');
+    expect(paths).toContain('src/manifest.test.ts');
+    // The scoped component dirs.
+    expect(paths).toContain('src/components/button');
+    expect(paths).toContain('src/components/badge');
   });
 
-  it('always includes the shared test infra dir but NOT scripts/', () => {
+  it('always includes shared dirs + root invariant tests but NOT scripts/', () => {
     const paths = testPathsForScope({ mode: 'filtered', slugs: ['accordion'] });
     expect(paths).toContain('src/test');
+    expect(paths).toContain('src/utilities');
+    expect(paths).toContain('src/exports-drift.test.ts');
     // scripts/ tooling tests run only when scripts/ changes (which force-fulls).
     expect(paths).not.toContain('scripts');
     expect(paths).toContain('src/components/accordion');

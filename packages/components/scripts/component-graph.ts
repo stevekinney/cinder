@@ -587,20 +587,32 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
   // because the component's slug "won".
   const closureSeeds: string[] = [];
   const directSlugs = new Set<string>();
+  // Non-component seeds (shared modules / sibling-package source that are not
+  // themselves a component slug). EACH of these must prove it reaches at least
+  // one component slug in the closure — otherwise its change is invisible to the
+  // scoped run and we must force full. See the per-seed reachability check below.
+  const sharedSeeds: string[] = [];
   for (const file of changedFiles) {
     if (isIgnorableFile(file)) continue; // docs/markdown/etc. cannot affect tests
-    if (sourceFiles.has(file)) {
-      closureSeeds.push(file);
-      continue;
-    }
     const slug = slugForFile(file);
     if (slug !== null) {
-      // A component-tree file (e.g. test/CSS sidecar) not in the graph.
+      // A component-tree file (e.g. test/CSS sidecar) — a slug whether or not it
+      // is in the graph. Seed the closure AND record the slug directly.
       directSlugs.add(slug);
+      if (sourceFiles.has(file)) closureSeeds.push(file);
+      continue;
+    }
+    if (sourceFiles.has(file)) {
+      // A graph source file with no slug → a shared module. Seed + track.
+      closureSeeds.push(file);
+      sharedSeeds.push(file);
       continue;
     }
     if (isTraceableSharedModule(file)) {
+      // A shared module not in the graph map (rare) — still seed + track so its
+      // reachability is verified.
       closureSeeds.push(file);
+      sharedSeeds.push(file);
       continue;
     }
     return { mode: 'full', reason: `unaccounted changed file: ${file}` };
@@ -614,6 +626,26 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
   for (const file of closure) {
     const slug = slugForFile(file);
     if (slug !== null) slugs.add(slug);
+  }
+
+  // Per-seed reachability guard. A shared/sibling-package seed whose OWN
+  // dependents closure reaches no component slug (e.g. `packages/markdown/src/x`
+  // consumed only via bare `cinder/markdown/...` specifiers, which resolve as
+  // external → no graph edge) would otherwise be silently dropped when a
+  // CO-CHANGED component supplies a slug and flips the decision to `filtered`.
+  // Force full if any shared seed cannot be proven to reach a component.
+  for (const seed of sharedSeeds) {
+    const seedClosure = dependentsClosure(graph, [seed]);
+    const reachesComponent = [...seedClosure].some((file) => {
+      const slug = slugForFile(file);
+      return slug !== null && knownSlugs.has(slug);
+    });
+    if (!reachesComponent) {
+      return {
+        mode: 'full',
+        reason: `shared change reaches no component slug (can't prove its dependents are tested): ${seed}`,
+      };
+    }
   }
 
   // Every slug must be a real, known component; an unknown slug means the

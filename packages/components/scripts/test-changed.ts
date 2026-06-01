@@ -39,18 +39,51 @@ const packageRoot = resolve(scriptDirectory, '..');
 const workspaceRoot = resolve(packageRoot, '..', '..');
 
 /**
- * Directories whose tests ALWAYS run regardless of scope.
+ * Paths whose tests ALWAYS run with any filtered (scoped) set.
  *
- * `src/test` holds the shared test harness (lifecycle helpers, render
- * utilities) that component tests import; a change there is force-full anyway,
- * but its own unit tests are cheap and worth running with any scoped set.
+ * A filtered decision widens component slugs when a SHARED module changes
+ * (`utilities/`, `_internal/`, `highlighters/`, `schema-types.ts`, etc.) — but
+ * the shared module's OWN tests, and the package-level invariant tests
+ * (`exports-drift`, `api-contract`, `manifest`, `tree-shake`, …), live OUTSIDE
+ * any `src/components/<slug>/` dir. Without these, a scoped run could pass while
+ * a shared module or the export surface is broken (the slugs widened, but only
+ * the component dirs were tested). So every scoped run also runs:
+ *   - the shared test harness + shared-source dirs (cheap unit tests), and
+ *   - the package-level invariant tests directly under `src/`.
  *
  * `scripts/` is deliberately NOT here: a component change must not drag in all
- * ~17 build/generate-tooling test files. Those tests run only when `scripts/`
- * itself changes — and a `scripts/` change force-fulls (see
- * `pathForceFullReason`), which runs them via the full suite.
+ * ~17 build/generate-tooling test files. Those run only when `scripts/` itself
+ * changes — and a `scripts/` change force-fulls (see `pathForceFullReason`),
+ * which runs them via the full suite.
  */
-const ALWAYS_RUN_PATHS = ['src/test'] as const;
+const ALWAYS_RUN_PATHS = [
+  'src/test',
+  'src/utilities',
+  'src/_internal',
+  'src/highlighters',
+  'src/schemas',
+] as const;
+
+/**
+ * Package-level invariant test files that sit directly under `src/` (not in a
+ * component dir). These guard the export surface, manifest, and conventions —
+ * exactly the things a shared-module change can break — so they run with every
+ * scoped set. Listed explicitly (not by dir) because `src/` itself recurses
+ * into every component.
+ */
+const ALWAYS_RUN_ROOT_TESTS = [
+  'src/api-contract.test.ts',
+  'src/components.test.ts',
+  'src/compound-leaf-import-boundary.test.ts',
+  'src/compound-namespace.test.ts',
+  'src/convention.test.ts',
+  'src/domain-suite.test.ts',
+  'src/experimental-aliases.test.ts',
+  'src/exports-drift.test.ts',
+  'src/index.test.ts',
+  'src/manifest.test.ts',
+  'src/tree-shake.test.ts',
+] as const;
 
 /** The `bun test` flags the components package uses (browser+svelte conditions). */
 const BUN_TEST_FLAGS = [
@@ -72,7 +105,7 @@ export function testPathsForScope(decision: ScopeDecision): string[] | null {
   if (decision.mode === 'full') return null;
   if (decision.slugs.length === 0) return null;
 
-  const paths: string[] = [...ALWAYS_RUN_PATHS];
+  const paths: string[] = [...ALWAYS_RUN_PATHS, ...ALWAYS_RUN_ROOT_TESTS];
   for (const slug of decision.slugs) {
     paths.push(`src/components/${slug}`);
   }
