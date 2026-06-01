@@ -13,7 +13,7 @@ describe('update-snapshots-docker helpers', () => {
 
   it('quotes forwarded update arguments for the container shell', () => {
     expect(dockerUpdateCommand(['--grep', 'Button > dark desktop'])).toBe(
-      "cd /work && bun install --frozen-lockfile && bun run --filter=@cinder/testing test:browser:update -- '--grep' 'Button > dark desktop'",
+      "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run --filter=@cinder/testing test:browser:update -- '--grep' 'Button > dark desktop'",
     );
   });
 
@@ -22,7 +22,8 @@ describe('update-snapshots-docker helpers', () => {
       dockerRunArguments({
         repoRoot: '/repo',
         imageTag: 'cinder-playwright:1.60.0',
-        updateCommand: 'cd /work && bun run test:browser:update',
+        updateCommand:
+          'cd /work && git config --global --add safe.directory /work && bun run test:browser:update',
         componentScope: 'button',
       }),
     ).toEqual([
@@ -35,7 +36,7 @@ describe('update-snapshots-docker helpers', () => {
       '-w',
       '/work',
       'cinder-playwright:1.60.0',
-      'cd /work && bun run test:browser:update',
+      'cd /work && git config --global --add safe.directory /work && bun run test:browser:update',
     ]);
   });
 });

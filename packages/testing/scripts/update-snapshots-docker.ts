@@ -50,6 +50,7 @@ function shellQuote(value: string): string {
 export function dockerUpdateCommand(extraArgs: string[]): string {
   return [
     'cd /work',
+    '&& git config --global --add safe.directory /work',
     '&& bun install --frozen-lockfile',
     '&& bun run --filter=@cinder/testing test:browser:update',
     ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
