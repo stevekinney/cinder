@@ -4,7 +4,7 @@
  * ======================================== */
 
   .cinder-grid-list {
-    /* Default min-cell-width if `columns` prop is omitted. */
+    /* Default min-cell-width if `minColumnWidth` prop is omitted. */
     --cinder-grid-list-min-width: 16rem;
 
     list-style: none;

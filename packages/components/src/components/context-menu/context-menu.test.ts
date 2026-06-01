@@ -17,12 +17,15 @@ const autoUpdateSpy = mock((_reference: unknown, _menu: HTMLElement, update: () 
   return autoUpdateTeardown;
 });
 const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
+const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
 const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () => ({}) }));
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
   autoUpdate: autoUpdateSpy,
   computePosition: computePositionSpy,
   flip: flipSpy,
+  offset: offsetSpy,
   shift: shiftSpy,
 }));
 
@@ -38,6 +41,7 @@ beforeEach(() => {
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
   flipSpy.mockClear();
+  offsetSpy.mockClear();
   shiftSpy.mockClear();
 });
 

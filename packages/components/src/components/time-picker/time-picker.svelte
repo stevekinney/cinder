@@ -577,6 +577,7 @@
   triggerRef={toggleButton}
   role="dialog"
   label="Choose time"
+  widthMode="content"
   class="cinder-time-picker__popover"
 >
   {#snippet children()}

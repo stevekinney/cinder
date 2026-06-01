@@ -41,9 +41,9 @@
   let textareaElement = $state<HTMLTextAreaElement | null>(null);
   let popoverElement = $state<HTMLDivElement | null>(null);
   let restoreFocusElement = $state<HTMLElement | null>(null);
+  let measuredWidth = $state(0);
+  let measuredHeight = $state(0);
 
-  const POPOVER_WIDTH = 100;
-  const POPOVER_HEIGHT = 36;
   const VIEWPORT_MARGIN = 16;
 
   const positionStyle = $derived.by(() => {
@@ -53,19 +53,21 @@
     const viewportHeight = innerHeight.current;
 
     if (viewportWidth == null || viewportHeight == null) {
-      const x = Math.max(VIEWPORT_MARGIN + POPOVER_WIDTH / 2, position.x);
+      const halfWidth = Math.max(measuredWidth / 2, 0);
+      const x = Math.max(VIEWPORT_MARGIN + halfWidth, position.x);
       const y = Math.max(VIEWPORT_MARGIN, position.y);
       return `left: ${x}px; top: ${y}px;`;
     }
 
-    const halfWidth = POPOVER_WIDTH / 2;
+    const halfWidth = Math.max(measuredWidth / 2, 0);
+    const height = Math.max(measuredHeight, 0);
     const x = Math.max(
       VIEWPORT_MARGIN + halfWidth,
       Math.min(position.x, viewportWidth - halfWidth - VIEWPORT_MARGIN),
     );
     const y = Math.max(
       VIEWPORT_MARGIN,
-      Math.min(position.y, viewportHeight - POPOVER_HEIGHT - VIEWPORT_MARGIN),
+      Math.min(position.y, viewportHeight - height - VIEWPORT_MARGIN),
     );
 
     return `left: ${x}px; top: ${y}px;`;
@@ -172,6 +174,8 @@
 
 <div
   bind:this={popoverElement}
+  bind:clientWidth={measuredWidth}
+  bind:clientHeight={measuredHeight}
   {id}
   class={classNames('cinder-selection-popover', customClassName)}
   data-cinder-expanded={expanded ? '' : undefined}

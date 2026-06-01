@@ -146,8 +146,8 @@
   }
 
   .cinder-tag-input__input {
-    flex: 1 1 10rem;
-    min-inline-size: 8rem;
+    flex: 1 1 8rem;
+    min-inline-size: min(8rem, 100%);
     border: none;
     background: transparent;
     padding: 0;

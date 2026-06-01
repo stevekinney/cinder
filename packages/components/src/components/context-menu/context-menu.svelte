@@ -18,8 +18,8 @@
 <script lang="ts">
   import type { ContextMenuProps } from './context-menu.types.ts';
   import { setContext, tick } from 'svelte';
-  import { autoUpdate, computePosition, flip, shift } from '@floating-ui/dom';
   import type { VirtualElement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
@@ -49,7 +49,6 @@
   let capturedFocus: HTMLElement | null = null;
   let requestedX = $state(0);
   let requestedY = $state(0);
-  let positionStyle = $state('');
   let previouslyOpen = false;
 
   function setOpen(nextOpen: boolean) {
@@ -106,6 +105,20 @@
     };
   }
 
+  const virtualReference = $derived.by<VirtualElement | null>(() => {
+    if (!open) return null;
+    return makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY);
+  });
+
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => virtualReference,
+    panel: () => menuElement,
+    placement: () => 'right-start',
+    offset: () => 0,
+    widthMode: () => 'menu',
+  });
+
   function handleOutsidePointerdown(event: PointerEvent) {
     const target = event.target;
     if (!(target instanceof Node)) return;
@@ -151,28 +164,17 @@
   });
 
   $effect(() => {
-    if (!open || !menuElement) return;
-    const menu = menuElement;
+    if (!open || !menuElement || !anchoredOverlay.positionStyle) return;
     const x = anchorPoint?.x ?? requestedX;
     const y = anchorPoint?.y ?? requestedY;
-    let cancelled = false;
-    const reference = makeVirtualReference(x, y);
-    const stop = autoUpdate(reference, menu, async () => {
-      const result = await computePosition(reference, menu, {
-        placement: 'right-start',
-        middleware: [flip(), shift({ padding: 8 })],
-        strategy: 'fixed',
-      });
-      if (cancelled) return;
-      positionStyle = `position: fixed; left: ${result.x}px; top: ${result.y}px;`;
-      menu.setAttribute('style', positionStyle);
-      menu.setAttribute('data-cinder-requested-x', String(x));
-      menu.setAttribute('data-cinder-requested-y', String(y));
-    });
+    const menu = menuElement;
+    menu.setAttribute('style', anchoredOverlay.positionStyle);
+    menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
+    menu.setAttribute('data-cinder-requested-x', String(x));
+    menu.setAttribute('data-cinder-requested-y', String(y));
     return () => {
-      cancelled = true;
-      stop();
-      positionStyle = '';
+      menu.removeAttribute('style');
+      menu.removeAttribute('data-cinder-position-ready');
     };
   });
 

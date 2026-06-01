@@ -7,12 +7,17 @@ bun = true
 [test]
 preload = ["./scripts/preload.ts"]
 
-# Coverage ratchet. These are floors, not targets — they only ever move UP.
-# Measured baseline (May 2026, `bun run test:coverage`): 63.67% functions /
-# 65.87% lines. The floors are set just below that so the gate cannot fail on a
-# clean checkout while still catching any drop. When you add tests that lift the
-# real numbers, raise these to the new floor in the same change — never lower
-# them. See ../../CONTRIBUTING.md § Coverage ratchet.
+# Coverage ratchet. These are aggregate floors, not per-file targets, and they
+# only ever move UP. `bun run test:coverage` emits LCOV and then
+# scripts/check-coverage-ratchet.ts checks the same unweighted aggregate that
+# Bun prints as the "All files" row in the text reporter. The native Bun text
+# threshold currently fails individual files, which does not match this
+# repository's documented aggregate ratchet. Measured baseline (May 2026,
+# `bun run test:coverage`): 63.67% functions / 65.87% lines. The floors are set
+# just below that so the gate cannot fail on a clean checkout while still
+# catching any aggregate drop. When you add tests that lift the real numbers,
+# raise these to the new floor in the same change — never lower them. See
+# ../../CONTRIBUTING.md § Coverage ratchet.
 coverageThreshold = { lines = 0.65, functions = 0.63 }
 
 # The `test` / `test:coverage` scripts in package.json run with `--parallel=1`

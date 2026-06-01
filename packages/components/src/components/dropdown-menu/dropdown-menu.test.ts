@@ -10,6 +10,11 @@ const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
 const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
 
+function renderFixture() {
+  const result = render(Fixture);
+  return { ...result, container: document.body };
+}
+
 describe('DropdownMenu', () => {
   test('throws when rendered outside a Dropdown', () => {
     expect(() =>
@@ -22,7 +27,7 @@ describe('DropdownMenu', () => {
   });
 
   test('is absent until the trigger opens it, then renders with role="menu"', async () => {
-    const { container } = render(Fixture);
+    const { container } = renderFixture();
     expect(container.querySelector('[role="menu"]')).toBeNull();
 
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
@@ -31,7 +36,7 @@ describe('DropdownMenu', () => {
   });
 
   test('ArrowDown moves focus to the next menu item once open', async () => {
-    const { container } = render(Fixture);
+    const { container } = renderFixture();
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 

@@ -119,6 +119,10 @@
     outline: none;
   }
 
+  .cinder-dropdown-menu[data-cinder-position-ready='false'] {
+    visibility: hidden;
+  }
+
   .cinder-dropdown-item {
     position: relative;
     display: flex;

@@ -24,10 +24,10 @@
 <script lang="ts">
   import type { CommandMenuProps } from './command-menu.types.ts';
   import { getCaretRect } from './caret-rect.svelte.ts';
-  import { computePosition, autoUpdate, flip, shift, offset as offsetMw } from '@floating-ui/dom';
-  import type { VirtualElement } from '@floating-ui/dom';
+  import type { Placement, VirtualElement } from '@floating-ui/dom';
   import { on } from 'svelte/events';
 
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { inDocumentOrder } from '../../utilities/document-order.ts';
   import { useId } from '../../utilities/use-id.ts';
@@ -65,8 +65,6 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
-  let positionReady = $state(false);
-  let positionStyle = $state('');
   let registrations = $state<RegistrationRecord[]>([]);
   let activeItemId = $state<string | null>(null);
   let itemCounter = 0;
@@ -80,6 +78,27 @@
   });
 
   const showEmpty = $derived(mounted && open && registrationsReady && registrations.length === 0);
+  const caretAnchor = $derived.by<VirtualElement | null>(() => {
+    const anchorElement = anchor;
+    const currentCaretIndex = caretIndex;
+    if (!anchorElement) return null;
+    return {
+      getBoundingClientRect() {
+        return (
+          getCaretRect(anchorElement, currentCaretIndex) ?? anchorElement.getBoundingClientRect()
+        );
+      },
+    };
+  });
+
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => caretAnchor,
+    panel: () => listElement,
+    placement: () => placement as Placement,
+    offset: () => offset,
+    widthMode: () => 'content',
+  });
 
   $effect(() => {
     mounted = true;
@@ -215,59 +234,16 @@
       stopPointerdown();
     };
   });
-
-  $effect(() => {
-    if (!open || !anchor || !listElement) {
-      positionReady = false;
-      positionStyle = '';
-      return;
-    }
-
-    const panel = listElement;
-    const anchorElement = anchor;
-    const currentCaretIndex = caretIndex;
-    let cancelled = false;
-    let generation = 0;
-    const virtualElement: VirtualElement = {
-      getBoundingClientRect() {
-        return (
-          getCaretRect(anchorElement, currentCaretIndex) ?? anchorElement.getBoundingClientRect()
-        );
-      },
-    };
-    const middleware = [offsetMw(offset), flip(), shift({ padding: 8 })];
-
-    async function updatePosition() {
-      const currentGeneration = ++generation;
-      const result = await computePosition(virtualElement, panel, {
-        placement,
-        middleware,
-        strategy: 'fixed',
-      });
-      if (cancelled || currentGeneration !== generation) return;
-      positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
-      positionReady = true;
-    }
-
-    const stop = autoUpdate(virtualElement, panel, updatePosition);
-
-    return () => {
-      cancelled = true;
-      stop();
-      positionReady = false;
-      positionStyle = '';
-    };
-  });
 </script>
 
 {#if mounted && open && anchor}
   <div
     bind:this={listElement}
     {@attach portalAttachment}
-    aria-hidden={positionReady ? undefined : 'true'}
-    class={classNames('cinder-command-menu', className)}
-    data-cinder-position-ready={positionReady}
-    style={positionStyle}
+    aria-hidden={anchoredOverlay.positionReady ? undefined : 'true'}
+    class={classNames('cinder-_floating-surface', 'cinder-command-menu', className)}
+    data-cinder-position-ready={anchoredOverlay.positionReady}
+    style={anchoredOverlay.positionStyle}
   >
     <ul id={listboxId} role="listbox" aria-label={label} class="cinder-command-menu__listbox">
       {@render items({ query })}

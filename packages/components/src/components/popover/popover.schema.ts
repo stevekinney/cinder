@@ -53,6 +53,10 @@ const schema = {
       type: 'boolean',
       description: 'Whether Popover owns trigger ARIA wiring. Default `true`.',
     },
+    widthMode: {
+      enum: ['content', 'match-anchor', 'menu', 'none'],
+      description: "Floating panel width strategy. Default `'content'`.",
+    },
     class: {
       type: 'string',
       description: 'Extra class merged onto `.cinder-popover`.',

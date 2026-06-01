@@ -19,6 +19,7 @@
   import type { DropdownMenuProps } from './dropdown-menu.types.ts';
   import { getContext, hasContext, tick } from 'svelte';
 
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     DROPDOWN_CONTEXT,
@@ -26,6 +27,7 @@
     DROPDOWN_SET_OPEN,
   } from '../dropdown/dropdown.context.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
 
   if (!hasContext(DROPDOWN_CONTEXT)) {
     throw new Error('DropdownMenu must be used within a Dropdown.');
@@ -39,6 +41,20 @@
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
+  const anchoredFallback = createAnchoredOverlay({
+    open: () => context.isOpen && !context.supportsPopover && Boolean(context.anchorElement),
+    anchor: () => context.anchorElement,
+    panel: () => menuElement,
+    placement: () => context.fallbackPlacement ?? 'bottom-end',
+    offset: () => 4,
+    widthMode: () => context.widthMode ?? 'menu',
+  });
+  const fallbackPortalAttachment = createPortalAttachment({
+    target: () => (typeof document === 'undefined' ? null : document.body),
+    source: () => context.anchorElement ?? null,
+    inheritAttributes: true,
+    disabled: () => context.supportsPopover || !context.anchorElement,
+  });
 
   $effect(() => {
     registerMenu(menuElement);
@@ -127,13 +143,21 @@
     bind:this={menuElement}
     id={context.menuId}
     popover={context.supportsPopover ? 'auto' : undefined}
-    class={classNames('cinder-dropdown-menu', customClassName)}
-    style={context.supportsPopover ? `position-anchor: --${context.menuId};` : undefined}
+    class={classNames('cinder-_floating-surface', 'cinder-dropdown-menu', customClassName)}
+    style={context.supportsPopover
+      ? `position-anchor: --${context.menuId};`
+      : context.anchorElement
+        ? anchoredFallback.positionStyle
+        : undefined}
     role="menu"
     aria-orientation="vertical"
+    data-cinder-position-ready={!context.supportsPopover && context.anchorElement
+      ? anchoredFallback.positionReady
+      : undefined}
     tabindex={-1}
     onkeydown={handleKeydown}
     ontoggle={context.supportsPopover ? handleToggle : undefined}
+    {@attach fallbackPortalAttachment}
     {...rest}
   >
     {#if children}

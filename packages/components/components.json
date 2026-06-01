@@ -1553,7 +1553,7 @@
       "tags": ["grid", "gallery"],
       "useWhen": [
         "Presenting a homogenous collection of cards that should reflow into multiple columns.",
-        "Constraining tile minimum widths per breakpoint via the columns prop."
+        "Constraining tile minimum widths per breakpoint via the minColumnWidth prop."
       ],
       "avoidWhen": [
         "Comparing rows of structured data — use table instead.",

@@ -8,6 +8,8 @@
 
   .cinder-steps {
     display: block;
+    container-type: inline-size;
+    container-name: cinder-steps;
   }
 
   /* ----------------------------------------
@@ -259,5 +261,35 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+  }
+
+  @container cinder-steps (max-width: 32rem) {
+    .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__list {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__item {
+      flex: none;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 0 var(--cinder-space-3);
+    }
+
+    .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
+      grid-column: 1;
+      grid-row: 2;
+      justify-self: center;
+      width: 1px;
+      min-height: var(--cinder-space-6);
+      margin-inline-start: 0;
+      align-self: stretch;
+    }
+
+    .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      padding-bottom: var(--cinder-space-4);
+    }
   }
 }

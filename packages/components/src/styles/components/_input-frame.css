@@ -1,0 +1,44 @@
+@layer cinder.components {
+  .cinder-_input-frame {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-_input-frame:focus-visible,
+  .cinder-_input-frame:focus-within {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-_input-frame[aria-invalid='true'],
+  .cinder-_input-frame[data-invalid] {
+    border-color: var(--cinder-danger);
+  }
+
+  .cinder-_input-frame:disabled,
+  .cinder-_input-frame[data-disabled] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    border-color: var(--cinder-border-muted);
+    cursor: not-allowed;
+  }
+
+  @supports selector(:user-invalid) {
+    .cinder-_input-frame:user-invalid:not([aria-invalid='true']):not([data-invalid]) {
+      border-color: var(--cinder-danger);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .cinder-_input-frame:focus-visible,
+    .cinder-_input-frame:focus-within {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+}

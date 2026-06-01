@@ -17,9 +17,11 @@ const autoUpdateSpy = mock((_reference: unknown, _menu: HTMLElement, update: () 
 });
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
   autoUpdate: autoUpdateSpy,
   computePosition: computePositionSpy,
   flip: () => ({ name: 'flip', fn: () => ({}) }),
+  offset: (options: unknown) => ({ name: 'offset', options, fn: () => ({}) }),
   shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
 }));
 

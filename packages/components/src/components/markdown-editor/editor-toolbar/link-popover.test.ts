@@ -34,6 +34,7 @@ const offsetSpy = mock((value: unknown) => ({
 }));
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
   computePosition: computePositionSpy,
   autoUpdate: autoUpdateSpy,
   flip: flipSpy,
