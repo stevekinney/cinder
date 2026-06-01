@@ -3,7 +3,7 @@
    * @cinder
    * @category overlay
    * @status stable
-   * @purpose Modal search overlay that lets users find and trigger commands, navigate to destinations, or jump to records via a fuzzy-filtered list.
+   * @purpose Modal search overlay for keyboard-first command launching and navigation. Filtering is consumer-owned: the `items` snippet receives `{ query }` and renders only the matching rows.
    * @tag overlay
    * @tag command
    * @useWhen Exposing a global keyboard-first launcher for power-user actions and navigation.
