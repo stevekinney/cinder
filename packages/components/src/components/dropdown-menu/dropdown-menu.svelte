@@ -51,9 +51,9 @@
   });
   const fallbackPortalAttachment = createPortalAttachment({
     target: () => (typeof document === 'undefined' ? null : document.body),
-    source: () => context.anchorElement ?? null,
+    source: () => context.anchorElement,
     inheritAttributes: true,
-    disabled: () => context.supportsPopover || !context.anchorElement,
+    disabled: () => context.supportsPopover,
   });
 
   $effect(() => {

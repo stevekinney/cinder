@@ -55,7 +55,7 @@ describe('coverage ratchet check', () => {
     });
   });
 
-  test('weights large files by their covered item counts instead of averaging file percentages', () => {
+  test('keeps function coverage aggregate and line coverage aligned to the All files row', () => {
     const weightedFixture = `TN:
 SF:tiny.ts
 FNF:1
@@ -74,7 +74,7 @@ end_of_record
 
     const averages = computeCoverageAverages(parseLcovRecords(weightedFixture));
     expect(averages.functions).toBe(51);
-    expect(averages.lines).toBe(51);
+    expect(averages.lines).toBeCloseTo(75.2525);
     expect(averages.functionsFound).toBe(100);
     expect(averages.linesFound).toBe(100);
   });

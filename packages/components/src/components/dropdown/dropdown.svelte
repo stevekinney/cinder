@@ -172,7 +172,15 @@
   }
 
   function handleOutsideClick(event: MouseEvent) {
-    if (rootElement && !rootElement.contains(event.target as Node)) {
+    const target = event.target as Node;
+    if (
+      rootElement?.contains(target) ||
+      menuElement?.contains(target) ||
+      compoundMenuElement?.contains(target)
+    ) {
+      return;
+    }
+    if (rootElement) {
       open = false;
       compoundOpen = false;
     }

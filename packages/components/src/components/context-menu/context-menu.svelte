@@ -164,17 +164,23 @@
   });
 
   $effect(() => {
-    if (!open || !menuElement || !anchoredOverlay.positionStyle) return;
+    if (!open || !menuElement) return;
     const x = anchorPoint?.x ?? requestedX;
     const y = anchorPoint?.y ?? requestedY;
     const menu = menuElement;
-    menu.setAttribute('style', anchoredOverlay.positionStyle);
+    if (anchoredOverlay.positionStyle) {
+      menu.setAttribute('style', anchoredOverlay.positionStyle);
+    } else {
+      menu.removeAttribute('style');
+    }
     menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
     menu.setAttribute('data-cinder-requested-x', String(x));
     menu.setAttribute('data-cinder-requested-y', String(y));
     return () => {
       menu.removeAttribute('style');
       menu.removeAttribute('data-cinder-position-ready');
+      menu.removeAttribute('data-cinder-requested-x');
+      menu.removeAttribute('data-cinder-requested-y');
     };
   });
 

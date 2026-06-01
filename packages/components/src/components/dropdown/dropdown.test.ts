@@ -425,6 +425,19 @@ describe('Dropdown', () => {
     expect(container.querySelector('output')?.textContent).toBe('copy');
   });
 
+  test('clicking portaled compound menu chrome stays inside the dropdown', async () => {
+    const { container } = renderCompoundDropdown();
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => {
+      expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
+    });
+
+    await fireEvent.click(document.body.querySelector('.cinder-dropdown-label') as HTMLElement);
+
+    expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
+  });
+
   test('grouped menu exposes aria-labelledby boundaries', async () => {
     const { container } = renderCompoundDropdown();
 

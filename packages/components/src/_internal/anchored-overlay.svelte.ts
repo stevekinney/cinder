@@ -125,11 +125,21 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const stop = autoUpdate(anchor, panel, async () => {
       if (cancelled) return;
       const currentGeneration = ++generation;
-      const result = await computePosition(anchor, panel, {
-        placement,
-        middleware,
-        strategy: 'fixed',
-      });
+      let result: Awaited<ReturnType<typeof computePosition>>;
+      try {
+        result = await computePosition(anchor, panel, {
+          placement,
+          middleware,
+          strategy: 'fixed',
+        });
+      } catch {
+        if (cancelled || currentGeneration !== generation) return;
+        positionReady = false;
+        positionStyle = '';
+        arrowStyle = '';
+        resolvedPlacement = placement;
+        return;
+      }
       if (cancelled || currentGeneration !== generation) return;
 
       const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
