@@ -267,25 +267,25 @@ assertRuntimeResolvable('cinder/styles');
 //    the manifest-derived expected set; anything else is an orphan.
 // ---------------------------------------------------------------------------
 
-// Experimental deprecation-alias exports: `./experimental/<name>` (and its
-// `/schema`, `/variables`, `/styles` subpaths) are generated shims that
-// re-export a component promoted out of `experimental/` to the top level. They
-// are legitimate package exports the manifest does not enumerate — but only
-// when the promoted target `./<name>` is itself a real component export. An
-// `experimental/*` alias whose base is NOT a known export is a genuine orphan
-// (a stale or typo'd alias), so we validate the relationship rather than
-// blanket-skipping the whole namespace.
+// Experimental deprecation-alias exports: `./experimental/<name>` and its
+// `/schema`, `/variables`, `/styles`, `/examples`, and `/constraints` subpaths
+// are generated shims that re-export a component promoted out of `experimental/`
+// to the top level. They are legitimate package exports the manifest does not
+// enumerate — but only when the promoted target `./<name>` is itself a real
+// component export. An `experimental/*` alias whose base is NOT a known export is
+// a genuine orphan (a stale or typo'd alias), so we validate the relationship
+// rather than blanket-skipping the whole namespace.
 const EXPERIMENTAL_ALIAS_PATTERN =
-  /^\.\/experimental\/([a-z0-9][a-z0-9-]*)(?:\/(?:schema|variables|styles|examples|constraints))?$/;
+  /^\.\/experimental\/([a-z0-9][a-z0-9-]*)(\/(?:schema|variables|styles|examples|constraints))?$/;
 function isValidExperimentalAlias(key) {
   const match = EXPERIMENTAL_ALIAS_PATTERN.exec(key);
   if (match === null) return false;
-  const promotedBase = `./${match[1]}`;
-  // The promoted target must be a real COMPONENT export (manifest-derived), not
-  // merely any package export. Checking `exportKeys` here would wrongly accept
-  // `./experimental/styles` (base `./styles` is a non-component export) or a
-  // stale alias whose base only survives as a top-level reserved export.
-  return expectedComponentExportKeys.has(promotedBase);
+  const promotedKey = `./${match[1]}${match[2] ?? ''}`;
+  // The promoted target must be the exact manifest-derived component export, not
+  // merely any package export or any component base export. Checking only the
+  // base would wrongly accept stale sidecar aliases such as
+  // `./experimental/foo/examples` when `./foo/examples` is not published.
+  return expectedComponentExportKeys.has(promotedKey);
 }
 
 const orphanExports = [];

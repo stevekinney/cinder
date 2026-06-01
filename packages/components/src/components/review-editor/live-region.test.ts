@@ -7,7 +7,7 @@ import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
-// Dynamic import so @testing-library/svelte initialises after happy-dom is installed.
+// Dynamic import so the Svelte component loads after happy-dom is installed.
 const { default: LiveRegion } = await import('./live-region.svelte');
 
 // ---------------------------------------------------------------------------
