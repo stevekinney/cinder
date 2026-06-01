@@ -17,7 +17,6 @@
   <ColorField
     id="color-field-basic"
     defaultValue="#3b82f6"
-    ariaLabel="Brand color"
     onchange={(value) => {
       committed = value;
     }}

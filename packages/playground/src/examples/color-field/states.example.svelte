@@ -13,13 +13,13 @@
     <label for="color-field-disabled" style="font-size: 0.875rem; font-weight: 500;">
       Disabled
     </label>
-    <ColorField id="color-field-disabled" value="#ef4444" ariaLabel="Disabled color" disabled />
+    <ColorField id="color-field-disabled" value="#ef4444" disabled />
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 0.5rem;">
     <label for="color-field-readonly" style="font-size: 0.875rem; font-weight: 500;">
       Read-only
     </label>
-    <ColorField id="color-field-readonly" value="#22c55e" ariaLabel="Read-only color" readonly />
+    <ColorField id="color-field-readonly" value="#22c55e" readonly />
   </div>
 </div>

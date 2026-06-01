@@ -55,7 +55,9 @@ export const INTERACTION_ACTIONS = ['focus', 'click', 'hover', 'press'] as const
  *   - `documentation`: playground chrome / doc-oriented pages, not a component
  *     visual contract.
  *
- * Defaults to `visual-contract` when a fixture omits it.
+ * When a fixture omits `category`, the schema resolves it from the fixture
+ * shape: `interaction-state` if it has `interact` steps, otherwise
+ * `visual-contract` (see {@link VisualFixtureSchema}).
  */
 export const FIXTURE_CATEGORIES = [
   'visual-contract',
