@@ -24,7 +24,7 @@ Cinder provides three dialog-level components with distinct interaction contract
 
 **`ConfirmDialog`** is a preset for user-initiated binary decisions. It composes Modal + two Buttons, defaults focus to the cancel button (the industry-standard guard against accidental destructive confirms), and wires `aria-describedby` automatically. Escape, backdrop click, and the close-X all fire `oncancel`. Use it for "Delete account?", "Discard changes?", and similar two-action prompts.
 
-**`AlertDialog`** is a preset for urgent, blocking acknowledgements. It renders Modal with `role="alertdialog"`, `dismissOnBackdropClick={false}`, `dismissOnEscape={false}`, and no close button. The user must click an explicit action button to proceed. Use it for session expiry, system-level errors, or consequences that affect other people.
+**`AlertDialog`** is a preset for urgent, blocking acknowledgements. It renders Modal with `role="alertdialog"`, `dismissOnBackdropClick={false}`, `dismissOnEscape={false}`, and no close button. The user must click an explicit action button to proceed. Use it for session expiry and system-level errors — cases where the _system_ surfaces a condition that must be acknowledged before continuing. For user-initiated actions (even high-impact ones), use `ConfirmDialog` instead.
 
 ## The `role` prop and `alertdialog`
 

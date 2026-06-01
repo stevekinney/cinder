@@ -8,9 +8,9 @@ ConfirmDialog is one of three dialog-level components. For the general dialog co
 
 `ConfirmDialog` has no own `role`. It inherits `role="dialog"` and `aria-modal="true"` from the underlying `<Modal>`. The `dialog` role is used intentionally — not `alertdialog`.
 
-`alertdialog` is reserved for system-initiated urgency where dismissal without acting is incorrect (session expiry, process failures, actions affecting other users). User-initiated confirmation prompts are non-urgent: the user can press Escape to reconsider without consequence. Overusing `alertdialog` for routine confirmations degrades its effectiveness as an urgency signal.
+`alertdialog` is reserved for system-initiated urgency where the session state has already changed and dismissal without acting is incorrect (session expiry, process failures, out-of-band errors). User-initiated confirmation prompts are non-urgent: the user can press Escape to reconsider without consequence. Overusing `alertdialog` for routine confirmations degrades its effectiveness as an urgency signal.
 
-Use `AlertDialog` when the dialog is triggered by a system event, affects other users, or requires mandatory acknowledgement. Use `ConfirmDialog` when the user voluntarily initiated the action and Escape is a valid "never mind."
+Use `AlertDialog` when the dialog is triggered by a _system event_ and Escape would let the user bypass a mandatory acknowledgement. Use `ConfirmDialog` when the user voluntarily initiated the action — even a high-impact or irreversible one — and Escape is a valid "never mind."
 
 ## ARIA Attributes
 

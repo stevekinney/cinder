@@ -20,6 +20,7 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
+  import { DEV } from 'esm-env';
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -90,6 +91,20 @@
 
   $effect(() => {
     mounted = true;
+  });
+
+  $effect(() => {
+    if (!DEV) return;
+    if (
+      role === 'alertdialog' &&
+      (dismissOnBackdropClick !== false || dismissOnEscape !== false || showCloseButton !== false)
+    ) {
+      console.warn(
+        '[cinder/Modal] role="alertdialog" requires dismissOnBackdropClick={false}, dismissOnEscape={false}, and showCloseButton={false}. ' +
+          'Without these, Escape or backdrop click can bypass the mandatory acknowledgement. ' +
+          'Use <AlertDialog> instead, or pass all three companion props explicitly.',
+      );
+    }
   });
 
   $effect(() => {

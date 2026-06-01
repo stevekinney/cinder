@@ -803,6 +803,58 @@ describe('Modal', () => {
     expect(openValue).toBe(false);
   });
 
+  test('DEV warning fires when role="alertdialog" is used without companion dismiss flags', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Modal, {
+        props: {
+          open: true,
+          title: 'Session expired',
+          role: 'alertdialog',
+          describedById: 'session-description',
+          // dismissOnBackdropClick and dismissOnEscape intentionally left at their defaults (true)
+          // to trigger the dev warning about the broken alertdialog contract
+          children: emptySnippet,
+        },
+      });
+      expect(warnings.some((warning) => warning.includes('[cinder/Modal]'))).toBe(true);
+      expect(warnings.some((warning) => warning.includes('role="alertdialog"'))).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('DEV warning does NOT fire when role="alertdialog" has all companion flags set correctly', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+
+    try {
+      render(Modal, {
+        props: {
+          open: true,
+          title: 'Session expired',
+          role: 'alertdialog',
+          dismissOnBackdropClick: false,
+          dismissOnEscape: false,
+          showCloseButton: false,
+          describedById: 'session-description',
+          children: emptySnippet,
+        },
+      });
+      expect(warnings.some((warning) => warning.includes('[cinder/Modal]'))).toBe(false);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
   test('role="alertdialog" with both dismiss flags off is the sticky alertdialog contract', async () => {
     // Documents the manual composition required when using Modal's role="alertdialog"
     // escape hatch: both dismiss flags must be false to satisfy the alertdialog contract.

@@ -189,4 +189,78 @@ describe('AlertDialog', () => {
     expect(cancelButton?.autofocus).toBe(true);
     expect(deleteButton?.autofocus ?? false).toBe(false);
   });
+
+  // Dialog-model boundary tests
+  // These document the public contract that distinguishes AlertDialog from Modal and ConfirmDialog.
+  // They will fail if AlertDialog is accidentally made dismissible by Escape, backdrop click,
+  // or a close button — the three affordances that must NOT exist for a sticky alertdialog.
+
+  test('boundary: AlertDialog has role="alertdialog" by default', () => {
+    const { container } = render(AlertDialog, {
+      props: {
+        open: true,
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.getAttribute('role')).toBe('alertdialog');
+  });
+
+  test('boundary: AlertDialog has no close button by default', () => {
+    const { container } = render(AlertDialog, {
+      props: {
+        open: true,
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+    expect(container.querySelector('.cinder-modal__close')).toBeNull();
+  });
+
+  test('boundary: AlertDialog does NOT dismiss on Escape (native cancel event)', async () => {
+    let openValue = true;
+    const { container } = render(AlertDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(true);
+  });
+
+  test('boundary: AlertDialog does NOT dismiss on backdrop click', async () => {
+    let openValue = true;
+    const { container } = render(AlertDialog, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Session expired',
+        description: 'Sign in again before continuing.',
+        onacknowledge: () => {},
+      },
+    });
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent.click(dialog);
+    expect(openValue).toBe(true);
+  });
 });

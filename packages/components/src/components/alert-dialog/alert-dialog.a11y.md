@@ -12,7 +12,7 @@ AlertDialog renders `<Modal role="alertdialog">`. The `alertdialog` role signals
 - Requires explicit user response before the session can continue.
 - Should be announced immediately by screen readers on open, with higher assertiveness than `role="dialog"`.
 
-Do not use `alertdialog` for ordinary user-initiated confirm/cancel prompts — use [`ConfirmDialog`](../confirm-dialog/confirm-dialog.a11y.md). Overusing `alertdialog` trains users and assistive technology to ignore it.
+Do not use `alertdialog` for user-initiated confirm/cancel prompts — use [`ConfirmDialog`](../confirm-dialog/confirm-dialog.a11y.md). This applies even when the action is high-impact or affects other users: if the user clicked a button to open the dialog, Escape is a safe exit and `role="dialog"` is correct. Overusing `alertdialog` trains users and assistive technology to ignore it.
 
 ## `aria-describedby`
 
