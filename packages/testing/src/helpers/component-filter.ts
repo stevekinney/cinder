@@ -17,6 +17,25 @@
 export type ComponentEntryLike = { readonly slug: string };
 
 /**
+ * Parses the comma-separated component-scope grammar shared by browser tests,
+ * update scripts, and CI dispatch inputs. This function only normalizes shape:
+ * callers that know the manifest should pass the result through
+ * `parseComponentFilter()` so unknown slugs fail loudly.
+ */
+export function parseComponentScopeValue(rawValue: string | undefined): string[] {
+  if (rawValue === undefined) return [];
+
+  return [
+    ...new Set(
+      rawValue
+        .split(',')
+        .map((slug) => slug.trim())
+        .filter((slug) => slug.length > 0),
+    ),
+  ].toSorted();
+}
+
+/**
  * Parse + validate the raw env-var value. Pure function for unit testing;
  * the spec file calls this with `process.env['CINDER_TEST_COMPONENTS']`.
  */
@@ -24,18 +43,10 @@ export function parseComponentFilter(
   rawValue: string | undefined,
   knownSlugs: ReadonlySet<string>,
 ): ReadonlySet<string> | null {
-  if (rawValue === undefined) return null;
+  const parsedSlugs = parseComponentScopeValue(rawValue);
+  if (parsedSlugs.length === 0) return null;
 
-  const parsed = new Set(
-    rawValue
-      .split(',')
-      .map((slug) => slug.trim())
-      .filter((slug) => slug.length > 0),
-  );
-
-  if (parsed.size === 0) return null;
-
-  const unknown = [...parsed].filter((slug) => !knownSlugs.has(slug));
+  const unknown = parsedSlugs.filter((slug) => !knownSlugs.has(slug));
   if (unknown.length > 0) {
     throw new Error(
       `CINDER_TEST_COMPONENTS references unknown component slugs: ${unknown
@@ -44,7 +55,7 @@ export function parseComponentFilter(
     );
   }
 
-  return parsed;
+  return new Set(parsedSlugs);
 }
 
 /**

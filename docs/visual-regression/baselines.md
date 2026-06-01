@@ -56,8 +56,9 @@ The single source of truth for that environment is the canonical
 **`cinder-playwright`** Docker image (`packages/testing/Dockerfile`): the official
 `mcr.microsoft.com/playwright:v<version>-jammy` base (Ubuntu 22.04 "jammy") with
 Bun installed and the exact-pinned Playwright version baked in as
-`CINDER_PLAYWRIGHT_VERSION`. CI's `ubuntu-latest` runner is the matching native
-amd64 target.
+`CINDER_PLAYWRIGHT_VERSION`. CI's `ubuntu-latest` runner supplies Docker on the
+native amd64 target; `report` and `block` comparisons run inside this image, not
+directly on the runner host.
 
 `scripts/docker-authenticity.ts` enforces this: `test:browser:update` refuses to
 write baselines unless three checks pass — `/etc/os-release` codename is `jammy`,
@@ -76,10 +77,27 @@ committed set.
 
 ## Authoring or updating baselines
 
+### Initial committed scope
+
+The first committed baseline set is intentionally scoped to `button` only:
+
+```text
+packages/testing/snapshots/button/light-mobile-default.png
+packages/testing/snapshots/button/light-tablet-default.png
+packages/testing/snapshots/button/light-desktop-default.png
+packages/testing/snapshots/button/dark-mobile-default.png
+packages/testing/snapshots/button/dark-tablet-default.png
+packages/testing/snapshots/button/dark-desktop-default.png
+```
+
+That scope proves the update and block-mode path without turning the first PR
+into full-matrix PNG churn. Full-matrix baselines can be generated later once
+report-mode soak says the broader set is stable.
+
 ### Locally, via the Docker wrapper
 
 ```bash
-bun run --filter=@cinder/testing test:browser:update:docker
+CINDER_TEST_COMPONENTS=button bun run --filter=@cinder/testing test:browser:update:docker
 ```
 
 `scripts/update-snapshots-docker.ts` derives the image tag from the pinned
@@ -87,17 +105,62 @@ Playwright version, builds the image from `packages/testing/Dockerfile`, mounts
 the repo, and runs `test:browser:update` inside the container with
 `CINDER_VISUAL_DIFF=block` and `--update-snapshots --retries=0`. Requires a
 working Docker daemon on an amd64 host (or native amd64 Linux). Commit the
-resulting PNGs under `packages/testing/snapshots/`.
+resulting PNGs under `packages/testing/snapshots/`. Omit
+`CINDER_TEST_COMPONENTS` only when intentionally regenerating the full matrix.
+
+To verify committed baselines locally with the same pinned renderer, use the
+browser-suite Docker wrapper:
+
+```bash
+CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker
+```
+
+The native host command is intentionally not authoritative for `report` or
+`block`: when block mode reaches a committed baseline outside the canonical
+image, `blockBaselineGuard` fails early with the Docker wrapper command instead
+of comparing host-rendered pixels.
 
 ### In CI, via workflow dispatch (preferred)
 
-The `update-baselines` job in `.github/workflows/browser-tests.yaml` is the
-preferred path because it runs on the native amd64 GitHub runner. Trigger the
-`browser-tests` workflow with `workflow_dispatch`, set `update_baselines=true`,
-and provide `source_ref` (the branch to render from) and `base_ref` (the branch
-the snapshot PR targets). The job builds the canonical image, writes baselines,
-and opens a **snapshot-only follow-up PR** so the PNG churn lands separately from
-the source change.
+The `update-baselines` job in `.github/workflows/browser-tests.yaml` is preferred
+when a local native amd64 Docker environment is unavailable, because it runs on
+the native amd64 GitHub runner.
+
+For the initial `button` rollout on a task branch, trigger `browser-tests` with:
+
+```text
+mode=off
+components=button
+update_baselines=true
+source_ref=<task branch>
+base_ref=main
+baseline_update_target=source_branch
+```
+
+`baseline_update_target=source_branch` is only allowed for `tasks/*` branches and
+uses a non-force push back to `source_ref`. It fails if the branch moved while
+the workflow was rendering. This mode is for wiring the initial scoped baseline
+set into the same implementation branch.
+
+For normal snapshot-only follow-up updates, keep the default:
+
+```text
+baseline_update_target=snapshot_pr
+```
+
+That mode builds the canonical image from `source_ref`, then copies only
+`packages/testing/snapshots/` onto a bot branch based on `base_ref` before
+opening the follow-up PR. `base_ref` is required for both update targets because
+the workflow dispatch schema and branch-safety checks need an explicit target.
+The resulting PR stays snapshot-only, so PNG churn lands separately from source
+changes.
+
+After baselines exist, verify block mode with a separate dispatch:
+
+```text
+mode=block
+components=button
+```
 
 ### Scope the set you regenerate
 
@@ -125,8 +188,17 @@ new baseline as expected.
 
 Therefore, on a clean checkout:
 
-- With baselines committed for a case: `CINDER_VISUAL_DIFF=block bun run test:browser`
-  passes when pixels match and fails when they differ — that is the regression gate.
+- With baselines committed for a case:
+  `CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker`
+  passes when pixels match and fails when they differ — that is the regression
+  gate.
+- With scoped baselines committed for `button` only:
+  `CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker`
+  passes when Button pixels match and fails when they differ.
+- With a committed baseline reached from a native host command:
+  `CINDER_VISUAL_DIFF=block bun run test:browser` fails with the
+  "run the comparison in Docker" message rather than noisy host-vs-Docker pixel
+  diffs.
 - With no baseline committed for a case: the run fails fast with the
   "author baselines via Docker" message rather than a confusing default.
 
@@ -143,13 +215,13 @@ fixture is **not** a component baseline and deliberately does **not** live under
 `snapshots/`: a synthetic image must never be diffed against real
 browser-rendered component pixels.
 
-The remaining half — committing authentic per-component baselines and running a
-green `toHaveScreenshot` browser pass against them — is not done here. Authentic
-pixels can only be authored on native amd64 inside the canonical
-`cinder-playwright` Docker image (the authenticity gate refuses anything else,
-and QEMU pixels are flaky). Produce them via the `update-baselines` CI dispatch
-described above, which lands them in a snapshot-only PR; only then can a real
-browser block-mode run be shown green on a clean checkout.
+The browser-level proof is the committed `button` baseline set under
+`packages/testing/snapshots/button/`. Those PNGs are authored by the
+`update-baselines` CI dispatch inside the canonical Docker image and include
+`snapshots/provenance.json` with the rendered source SHA, Playwright version,
+Ubuntu codename, architecture, and Docker image tag. The browser workflow uses
+the same Docker image for `report` and `block`, so a clean CI checkout compares
+against the committed pixels in the same renderer that wrote them.
 
 ## Flipping CI to block
 

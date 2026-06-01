@@ -8,6 +8,7 @@
     "install-browsers:ci": "playwright install --with-deps chromium",
     "report": "playwright show-report ./playwright-report",
     "test": "bun run typecheck && bun test",
+    "test:browser:docker": "bun run scripts/run-browser-docker.ts",
     "test:browser:update": "bun run scripts/update-snapshots.ts",
     "test:browser:update:docker": "bun run scripts/update-snapshots-docker.ts",
     "test:playwright": "bun run scripts/start-server.ts",

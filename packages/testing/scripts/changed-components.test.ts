@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { decide } from './changed-components.ts';
+import { decide, decideExplicitComponents } from './changed-components.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
@@ -129,21 +129,62 @@ describe('changed-components decide()', () => {
   });
 });
 
+describe('changed-components explicit component scope', () => {
+  it('treats an empty explicit component list as a full matrix', () => {
+    expect(decideExplicitComponents('', knownSlugs)).toEqual({
+      mode: 'full',
+      reason: 'explicit component scope empty',
+    });
+  });
+
+  it('normalizes explicit component slugs', () => {
+    expect(decideExplicitComponents('button, accordion,button', knownSlugs)).toEqual({
+      mode: 'filtered',
+      components: ['accordion', 'button'],
+    });
+  });
+
+  it('rejects unknown explicit component slugs', () => {
+    expect(() => decideExplicitComponents('button,ghost', knownSlugs)).toThrow(/ghost/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Integration: run the ACTUAL CLI from the repo root, exactly as CI does.
 // ---------------------------------------------------------------------------
 
 describe('changed-components CLI (integration, real tree)', () => {
   function runCli(changedPaths: string[]): { mode: string; components: string } {
+    const env: NodeJS.ProcessEnv = { ...process.env, GITHUB_OUTPUT: '' };
+    delete env['CINDER_TEST_COMPONENTS'];
     const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
       cwd: workspaceRoot,
       input: changedPaths.join('\n') + '\n',
       encoding: 'utf-8',
-      env: { ...process.env, GITHUB_OUTPUT: '' },
+      env,
     });
     expect(result.status).toBe(0);
     const stdout = result.stdout ?? '';
-    const mode = /mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
+    const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
+    return { mode, components };
+  }
+
+  function runCliWithExplicitComponents(componentScope: string): {
+    mode: string;
+    components: string;
+  } {
+    const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
+      cwd: workspaceRoot,
+      input: '',
+      encoding: 'utf-8',
+      env: { ...process.env, GITHUB_OUTPUT: '', CINDER_TEST_COMPONENTS: componentScope },
+    });
+    expect(result.status).toBe(0);
+    const stdout = result.stdout ?? '';
+    const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
     const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
     return { mode, components };
   }
@@ -161,6 +202,13 @@ describe('changed-components CLI (integration, real tree)', () => {
 
   it('the lockfile forces full', () => {
     expect(runCli(['bun.lock'])).toEqual({ mode: 'full', components: '' });
+  });
+
+  it('explicit component scope emits both scope keys without reading changed files', () => {
+    expect(runCliWithExplicitComponents('button')).toEqual({
+      mode: 'filtered',
+      components: 'button',
+    });
   });
 
   it('a real example change is filtered to its slug', () => {

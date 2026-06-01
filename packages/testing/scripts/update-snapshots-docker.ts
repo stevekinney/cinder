@@ -9,7 +9,7 @@ const repoRoot = resolvePath(packageRoot, '../..');
 
 type PackageManifest = { devDependencies?: Record<string, string> };
 
-function readPinnedPlaywrightVersion(): string {
+export function readPinnedPlaywrightVersion(): string {
   const raw = readFileSync(resolvePath(packageRoot, 'package.json'), 'utf8');
   const parsed = JSON.parse(raw) as PackageManifest;
   const pinned = parsed.devDependencies?.['@playwright/test'];
@@ -21,7 +21,7 @@ function readPinnedPlaywrightVersion(): string {
   return pinned;
 }
 
-function run(
+export function run(
   command: string,
   args: readonly string[],
   options: { cwd?: string } = {},
@@ -39,20 +39,64 @@ function run(
   });
 }
 
-/**
- * Host-side wrapper that builds and runs the canonical cinder-playwright
- * Docker image, then invokes `bun run test:browser:update` inside it.
- *
- * The image tag is derived from the exact-pinned `@playwright/test`
- * version in `packages/testing/package.json` — hardcoded tags are
- * forbidden by the plan.
- */
-async function main(): Promise<void> {
-  const playwrightVersion = readPinnedPlaywrightVersion();
-  const imageTag = `cinder-playwright:${playwrightVersion}`;
+export function dockerImageTagForVersion(playwrightVersion: string): string {
+  return `cinder-playwright:${playwrightVersion}`;
+}
 
-  console.log(`Building Docker image ${imageTag}...`);
-  const buildExit = await run(
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function dockerUpdateCommand(extraArgs: string[]): string {
+  return [
+    'cd /work',
+    '&& git config --global --add safe.directory /work',
+    '&& bun install --frozen-lockfile',
+    '&& bun run --filter=@cinder/testing test:browser:update',
+    ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
+  ].join(' ');
+}
+
+export function dockerBrowserCommand(extraArgs: string[]): string {
+  return [
+    'cd /work',
+    '&& git config --global --add safe.directory /work',
+    '&& bun install --frozen-lockfile',
+    '&& bun run test:browser',
+    ...(extraArgs.length > 0 ? ['--', ...extraArgs.map(shellQuote)] : []),
+  ].join(' ');
+}
+
+export type DockerRunArgumentsOptions = {
+  repoRoot: string;
+  imageTag: string;
+  containerCommand: string;
+  environment?: Readonly<Record<string, string | undefined>>;
+};
+
+export function dockerRunArguments(options: DockerRunArgumentsOptions): string[] {
+  const args = ['run', '--rm'];
+  for (const [name, value] of Object.entries(options.environment ?? {})) {
+    if (value !== undefined && value.trim().length > 0) {
+      args.push('-e', `${name}=${value}`);
+    }
+  }
+  args.push(
+    '-v',
+    `${options.repoRoot}:/work`,
+    '-w',
+    '/work',
+    options.imageTag,
+    options.containerCommand,
+  );
+  return args;
+}
+
+export async function buildPlaywrightDockerImage(
+  playwrightVersion: string,
+  imageTag: string,
+): Promise<number> {
+  return run(
     'docker',
     [
       'build',
@@ -66,30 +110,50 @@ async function main(): Promise<void> {
     ],
     { cwd: repoRoot },
   );
+}
+
+/**
+ * Host-side wrapper that builds and runs the canonical cinder-playwright
+ * Docker image, then invokes `bun run test:browser:update` inside it.
+ *
+ * The image tag is derived from the exact-pinned `@playwright/test`
+ * version in `packages/testing/package.json` — hardcoded tags are
+ * forbidden by the plan.
+ */
+async function main(): Promise<void> {
+  const playwrightVersion = readPinnedPlaywrightVersion();
+  const imageTag = dockerImageTagForVersion(playwrightVersion);
+
+  console.log(`Building Docker image ${imageTag}...`);
+  const buildExit = await buildPlaywrightDockerImage(playwrightVersion, imageTag);
   if (buildExit !== 0) {
     console.error(`docker build failed with exit code ${buildExit}`);
     process.exit(buildExit);
   }
 
   const extraArgs = process.argv.slice(2);
-  const updateCommand = [
-    'cd /work',
-    '&& bun install --frozen-lockfile',
-    '&& bun run --filter=@cinder/testing test:browser:update',
-    ...(extraArgs.length > 0 ? ['--', ...extraArgs] : []),
-  ].join(' ');
+  const updateCommand = dockerUpdateCommand(extraArgs);
 
   console.log(`Running snapshot update inside ${imageTag}...`);
   const runExit = await run(
     'docker',
-    ['run', '--rm', '-v', `${repoRoot}:/work`, '-w', '/work', imageTag, updateCommand],
+    dockerRunArguments({
+      repoRoot,
+      imageTag,
+      containerCommand: updateCommand,
+      environment: {
+        CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
+      },
+    }),
     { cwd: repoRoot },
   );
 
   process.exit(runExit);
 }
 
-main().catch((error: unknown) => {
-  console.error('update-snapshots-docker failed:', error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('update-snapshots-docker failed:', error);
+    process.exit(1);
+  });
+}

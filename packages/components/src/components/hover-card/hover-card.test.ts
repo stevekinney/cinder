@@ -1,5 +1,9 @@
 /// <reference lib="dom" />
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { parse, type Declaration } from 'postcss';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -331,5 +335,51 @@ describe('HoverCard', () => {
     await Bun.sleep(35);
 
     expect(queryHoverCard()).not.toBeNull();
+  });
+});
+
+/**
+ * Parse `.cinder-hover-card` panel rules and find the `padding` declaration.
+ * Returns `undefined` when no `padding` declaration is present.
+ */
+function findHoverCardPaddingDeclaration(): Declaration | undefined {
+  const cssSource = readFileSync(
+    fileURLToPath(new URL('./hover-card.css', import.meta.url)),
+    'utf8',
+  );
+  const root = parse(cssSource);
+  let paddingDeclaration: Declaration | undefined;
+
+  root.walkRules((rule) => {
+    if (!rule.selectors.includes('.cinder-hover-card')) return;
+    rule.walkDecls('padding', (decl) => {
+      paddingDeclaration = decl;
+    });
+  });
+
+  return paddingDeclaration;
+}
+
+describe('HoverCard CSS — spacing token regression', () => {
+  test('panel padding uses a valid --cinder-space-N token, not the undefined --cinder-space-md', () => {
+    // Regression guard for the bug where `padding: var(--cinder-space-md)` was
+    // used but `--cinder-space-md` does not exist in the Cinder token scale
+    // (the scale is numeric: --cinder-space-0..--cinder-space-32). This test
+    // fails if the padding value ever references the undefined alias again,
+    // or drifts to any other non-numeric token name.
+    const declaration = findHoverCardPaddingDeclaration();
+
+    expect(declaration).toBeDefined();
+    expect(declaration!.value).not.toContain('--cinder-space-md');
+    expect(declaration!.value).toMatch(/^var\(--cinder-space-[\d][\d-]*\)$/);
+  });
+
+  test('panel padding resolves specifically to --cinder-space-4 (1rem card-like inset)', () => {
+    // Pin the chosen token value so any future change to the padding token
+    // requires a conscious acknowledgment that the card inset changed.
+    const declaration = findHoverCardPaddingDeclaration();
+
+    expect(declaration).toBeDefined();
+    expect(declaration!.value).toBe('var(--cinder-space-4)');
   });
 });

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "componentScope": ["button"],
+  "renderedSourceSha": "bd6b2bed7f1dc42cd419ce9650bf3ae733843dd4",
+  "playwrightVersion": "1.60.0",
+  "osCodename": "jammy",
+  "architecture": "x64",
+  "dockerImageTag": "cinder-playwright:1.60.0"
+}

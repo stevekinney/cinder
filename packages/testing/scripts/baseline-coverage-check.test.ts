@@ -14,7 +14,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { findMissingBaselines } from './baseline-coverage-check.ts';
+import type { ManifestFixtureEntry } from '../src/helpers/manifest.ts';
+import { applyBaselineComponentFilter, findMissingBaselines } from './baseline-coverage-check.ts';
 
 // ---------------------------------------------------------------------------
 // Fake snapshot root
@@ -50,12 +51,21 @@ type FakeEntry = {
   name: string;
   slug: string;
   route: string;
-  fixtures?: Array<{ name: string }>;
+  fixtures?: ManifestFixtureEntry[];
 };
 
-function makeEntry(slug: string, fixtures?: Array<{ name: string }>): FakeEntry {
+function makeFixture(name: string): ManifestFixtureEntry {
+  return {
+    name,
+    mode: 'direct',
+    fixtureContentHash: '0'.repeat(64),
+    category: 'visual-contract',
+  };
+}
+
+function makeEntry(slug: string, fixtures?: string[]): FakeEntry {
   if (fixtures !== undefined) {
-    return { name: slug, slug, route: `/page/${slug}`, fixtures };
+    return { name: slug, slug, route: `/page/${slug}`, fixtures: fixtures.map(makeFixture) };
   }
   return { name: slug, slug, route: `/page/${slug}` };
 }
@@ -93,7 +103,7 @@ describe('findMissingBaselines — all baselines present', () => {
   });
 
   it('returns an empty array for a component with explicit fixtures', () => {
-    const entries = [makeEntry('badge', [{ name: 'open' }, { name: 'closed' }])];
+    const entries = [makeEntry('badge', ['open', 'closed'])];
 
     for (const theme of ['light', 'dark']) {
       for (const viewport of ['mobile', 'tablet', 'desktop']) {
@@ -104,6 +114,30 @@ describe('findMissingBaselines — all baselines present', () => {
 
     const missing = findMissingBaselines(entries);
     expect(missing).toHaveLength(0);
+  });
+});
+
+describe('applyBaselineComponentFilter', () => {
+  it('keeps all entries when no component scope is set', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(applyBaselineComponentFilter(entries, undefined).map((entry) => entry.slug)).toEqual([
+      'button',
+      'badge',
+    ]);
+  });
+
+  it('filters to the requested component scope', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(applyBaselineComponentFilter(entries, 'button').map((entry) => entry.slug)).toEqual([
+      'button',
+    ]);
+  });
+
+  it('rejects unknown component slugs with the shared parser message', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(() => applyBaselineComponentFilter(entries, 'button,ghost')).toThrow(
+      /CINDER_TEST_COMPONENTS references unknown component slugs: ghost/,
+    );
   });
 });
 
@@ -137,7 +171,7 @@ describe('findMissingBaselines — some baselines missing', () => {
   });
 
   it('reports missing per-fixture entries for a component with explicit fixtures', () => {
-    const entries = [makeEntry('badge', [{ name: 'open' }, { name: 'closed' }])];
+    const entries = [makeEntry('badge', ['open', 'closed'])];
 
     // Write only the 'open' snapshots, not 'closed'
     for (const theme of ['light', 'dark']) {
