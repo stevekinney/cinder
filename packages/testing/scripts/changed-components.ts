@@ -4,8 +4,9 @@
  * (transitively) depends on them.
  *
  * Reads newline-separated changed file paths from stdin (the output of
- * `git diff --name-only <base>..HEAD`) and either appends `mode=`/`components=`
- * to `$GITHUB_OUTPUT` (CI) or prints them to stdout (local debugging).
+ * `git diff --name-only <base>..HEAD`) and either appends `mode=`,
+ * `component_scope_mode=`, and `components=` to `$GITHUB_OUTPUT` (CI) or prints
+ * them to stdout (local debugging).
  *
  * The real dependency logic lives in
  * `packages/components/scripts/component-graph.ts` — a pure, file-level import
@@ -143,6 +144,7 @@ async function emit(decision: Decision): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
   const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
   const payload = [
+    `mode=${decision.mode}`,
     `component_scope_mode=${decision.mode}`,
     `components=${componentsValue}`,
     '',

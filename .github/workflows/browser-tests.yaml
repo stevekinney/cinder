@@ -493,7 +493,7 @@ jobs:
               ;;
             1)
               echo "changed=false" >> "$GITHUB_OUTPUT"
-              echo "No baseline PNG changes; nothing to commit."
+              echo "No baseline PNG or provenance changes; nothing to commit."
               ;;
             *)
               echo "Snapshot change detection failed with exit code $status." >&2
@@ -523,9 +523,8 @@ jobs:
           git config user.email "cinder-bot@users.noreply.github.com"
           git fetch origin "$BASE_REF"
           git checkout -f -B "$BRANCH" FETCH_HEAD
-          rm -rf packages/testing/snapshots
-          mkdir -p packages/testing
-          cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots" packages/testing/snapshots
+          mkdir -p packages/testing/snapshots
+          cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots/." packages/testing/snapshots/
           git add packages/testing/snapshots
           if git diff --cached --quiet; then
             echo "Snapshot baselines already match ${BASE_REF}; no PR needed."

@@ -15,9 +15,9 @@ describe('snapshot change detection', () => {
     ).toBe(true);
   });
 
-  it('ignores provenance-only changes', () => {
+  it('detects provenance-only changes', () => {
     expect(hasMeaningfulSnapshotChanges(' M packages/testing/snapshots/provenance.json\n')).toBe(
-      false,
+      true,
     );
   });
 

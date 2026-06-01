@@ -12,7 +12,7 @@ export function extractPorcelainPath(line: string): string[] {
 }
 
 export function isMeaningfulSnapshotPath(path: string): boolean {
-  return path.startsWith(SNAPSHOT_DIRECTORY) && path !== PROVENANCE_PATH && path.endsWith('.png');
+  return path === PROVENANCE_PATH || (path.startsWith(SNAPSHOT_DIRECTORY) && path.endsWith('.png'));
 }
 
 export function hasMeaningfulSnapshotChanges(porcelain: string): boolean {

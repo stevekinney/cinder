@@ -319,6 +319,10 @@ export async function captureScreenshot(
   key: ArtifactKey,
   options?: CaptureScreenshotOptions,
 ): Promise<void> {
+  if (!isScreenshotInComponentScope(key.slug)) {
+    return;
+  }
+
   await page.addStyleTag({ content: ANIMATION_KILL_CSS });
   // Use string form to avoid a TypeScript dom-lib dependency; runs in browser context.
   await page.evaluate('document.fonts.ready');
@@ -326,10 +330,6 @@ export async function captureScreenshot(
   // no re-wait needed here.
 
   const mode = resolveVisualDiffMode();
-
-  if (!isScreenshotInComponentScope(key.slug)) {
-    return;
-  }
 
   if (mode === 'off') {
     await captureOffMode(page, key);

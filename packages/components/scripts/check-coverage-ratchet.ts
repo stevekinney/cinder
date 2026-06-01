@@ -36,8 +36,8 @@ export function parseCoverageThresholds(source: string): CoverageThresholds {
     typeof parsed !== 'object' ||
     parsed === null ||
     !('lines' in parsed) ||
-    !('functions' in parsed) ||
     typeof parsed.lines !== 'number' ||
+    !('functions' in parsed) ||
     typeof parsed.functions !== 'number'
   ) {
     throw new Error('coverage-ratchet.json must define numeric lines and functions thresholds.');

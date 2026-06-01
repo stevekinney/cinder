@@ -166,6 +166,7 @@ describe('changed-components CLI (integration, real tree)', () => {
     expect(result.status).toBe(0);
     const stdout = result.stdout ?? '';
     const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
     const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
     return { mode, components };
   }
@@ -183,6 +184,7 @@ describe('changed-components CLI (integration, real tree)', () => {
     expect(result.status).toBe(0);
     const stdout = result.stdout ?? '';
     const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
     const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
     return { mode, components };
   }
@@ -202,7 +204,7 @@ describe('changed-components CLI (integration, real tree)', () => {
     expect(runCli(['bun.lock'])).toEqual({ mode: 'full', components: '' });
   });
 
-  it('explicit component scope emits component_scope_mode without reading changed files', () => {
+  it('explicit component scope emits both scope keys without reading changed files', () => {
     expect(runCliWithExplicitComponents('button')).toEqual({
       mode: 'filtered',
       components: 'button',
