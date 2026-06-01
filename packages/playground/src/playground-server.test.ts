@@ -73,7 +73,7 @@ function cssImportUrlsFrom(cssUrl: string, css: string): string[] {
 }
 
 function shellStylesheetUrl(html: string): string {
-  const match = html.match(/<link rel="stylesheet" href="([^"]+)" \/>/);
+  const match = html.match(/<link\s+[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*\/?>/);
   if (match === null) throw new Error('Shell HTML did not contain a stylesheet link');
   return match[1]!;
 }

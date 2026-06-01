@@ -53,9 +53,8 @@ async function waitForShellLayout(page: Page): Promise<void> {
 }
 
 test.describe('playground shell styles', () => {
-  test('outer shell chrome loads Cinder component styles', async ({ page }) => {
+  test('outer shell chrome loads Cinder component styles', async ({ page }, testInfo) => {
     await page.goto('/c/slider', { waitUntil: 'load' });
-    await page.waitForLoadState('networkidle');
     await waitForShellLayout(page);
 
     const viewportControl = page.locator('#viewport-preset.cinder-segmented-control');
@@ -119,7 +118,9 @@ test.describe('playground shell styles', () => {
     await expect(navigationItems).not.toHaveCount(unfilteredNavigationCount);
 
     await page.screenshot({
-      path: 'test-results/playwright/playground-shell-styles-slider.png',
+      path: testInfo.outputPath('playground-shell-styles-slider.png'),
+      animations: 'disabled',
+      caret: 'hide',
       fullPage: true,
     });
 
