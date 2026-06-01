@@ -1,9 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  buildBaselineEntries,
+  countByKey,
   FEATURE_PROBES,
+  findRegressions,
   findViewportMediaQueries,
+  flagKey,
   matchedProbesForLine,
+  parseBaseline,
   scan,
   stripCssComments,
   VIEWPORT_WIDTH_MEDIA,
@@ -120,6 +125,77 @@ describe('findViewportMediaQueries — block-aware scanning', () => {
 
   test('flags CSS Level 4 range syntax', () => {
     expect(findViewportMediaQueries('@media (width < 640px) {\n}')).toHaveLength(1);
+  });
+});
+
+describe('count-based baseline — the grandfathering identity', () => {
+  const flags = [
+    { filePath: 'a.svelte', query: '@media (max-width: 480px)' },
+    { filePath: 'a.svelte', query: '@media (max-width: 480px)' }, // a genuine duplicate site
+    { filePath: 'b.css', query: '@media (min-width: 640px)' },
+  ];
+
+  test('flagKey format is stable (write/read coupling point)', () => {
+    expect(flagKey({ filePath: 'a.svelte', query: '@media (max-width: 480px)' })).toBe(
+      'a.svelte::@media (max-width: 480px)',
+    );
+  });
+
+  test('countByKey counts duplicate file+query sites', () => {
+    const counts = countByKey(flags);
+    expect(counts.get('a.svelte::@media (max-width: 480px)')).toBe(2);
+    expect(counts.get('b.css::@media (min-width: 640px)')).toBe(1);
+  });
+
+  test('buildBaselineEntries emits one sorted entry per key with allowedCount', () => {
+    const entries = buildBaselineEntries(flags);
+    expect(entries).toEqual([
+      { filePath: 'a.svelte', query: '@media (max-width: 480px)', allowedCount: 2 },
+      { filePath: 'b.css', query: '@media (min-width: 640px)', allowedCount: 1 },
+    ]);
+  });
+
+  test('findRegressions: no regression when counts match the baseline', () => {
+    const baseline = new Map([
+      ['a.svelte::@media (max-width: 480px)', 2],
+      ['b.css::@media (min-width: 640px)', 1],
+    ]);
+    expect(findRegressions(flags, baseline)).toEqual([]);
+  });
+
+  test('findRegressions: flags a NEW occurrence beyond the grandfathered count', () => {
+    // The exact failure the Set model missed: a 3rd identical @media block.
+    const withExtra = [...flags, { filePath: 'a.svelte', query: '@media (max-width: 480px)' }];
+    const baseline = new Map([
+      ['a.svelte::@media (max-width: 480px)', 2],
+      ['b.css::@media (min-width: 640px)', 1],
+    ]);
+    expect(findRegressions(withExtra, baseline)).toEqual([
+      { filePath: 'a.svelte', query: '@media (max-width: 480px)', allowed: 2, found: 3 },
+    ]);
+  });
+
+  test('findRegressions: a site absent from the baseline is allowed 0, so any occurrence fails', () => {
+    expect(
+      findRegressions([{ filePath: 'new.css', query: '@media (min-width: 1px)' }], new Map()),
+    ).toEqual([{ filePath: 'new.css', query: '@media (min-width: 1px)', allowed: 0, found: 1 }]);
+  });
+
+  test('parseBaseline: returns a key→count map for a well-formed array', () => {
+    const map = parseBaseline([
+      { filePath: 'b.css', query: '@media (min-width: 640px)', allowedCount: 1 },
+    ]);
+    expect(map.get('b.css::@media (min-width: 640px)')).toBe(1);
+  });
+
+  test('parseBaseline: throws on a non-array (a corrupt baseline must fail loudly, not disable the gate)', () => {
+    expect(() => parseBaseline({})).toThrow(/must be a JSON array/);
+  });
+
+  test('parseBaseline: throws on an entry missing allowedCount', () => {
+    expect(() =>
+      parseBaseline([{ filePath: 'b.css', query: '@media (min-width: 640px)' }]),
+    ).toThrow(/invalid baseline entry/);
   });
 });
 

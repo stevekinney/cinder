@@ -1,34 +1,27 @@
 [
   {
     "filePath": "src/components/card/card.css",
-    "query": "@media (width < 640px)"
+    "query": "@media (width < 640px)",
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/chat/message/chat-message.svelte",
-    "query": "@media (max-width: 480px)"
-  },
-  {
-    "filePath": "src/components/chat/message/chat-message.svelte",
-    "query": "@media (max-width: 480px)"
+    "query": "@media (max-width: 480px)",
+    "allowedCount": 2
   },
   {
     "filePath": "src/components/diff-viewer/diff-summary-bar.svelte",
-    "query": "@media (max-width: 360px)"
+    "query": "@media (max-width: 360px)",
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/diff-viewer/diff-toolbar.svelte",
-    "query": "@media (max-width: 480px)"
+    "query": "@media (max-width: 480px)",
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/page-layout/page-layout.css",
-    "query": "@media (min-width: 640px)"
-  },
-  {
-    "filePath": "src/components/page-layout/page-layout.css",
-    "query": "@media (min-width: 640px)"
-  },
-  {
-    "filePath": "src/components/page-layout/page-layout.css",
-    "query": "@media (min-width: 640px)"
+    "query": "@media (min-width: 640px)",
+    "allowedCount": 3
   }
 ]

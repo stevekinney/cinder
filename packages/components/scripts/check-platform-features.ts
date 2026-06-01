@@ -190,11 +190,29 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
   return { counts, viewportFlags };
 }
 
-/** A baseline entry grandfathers a known viewport-media site by file + query. */
-type BaselineEntry = { filePath: string; query: string };
+/**
+ * A baseline entry grandfathers a known viewport-media site by file + normalized
+ * query, with the allowed occurrence count. Identity is intentionally count-based
+ * rather than line-based: line numbers drift on every unrelated edit above a style
+ * block (brittle), and two physically separate but identical `@media` blocks in
+ * one file are not distinguishable without coordinates. Counting the
+ * `{ filePath, query }` pair lets the gate stay stable across unrelated edits while
+ * still failing when a NEW occurrence is added (currentCount > allowedCount).
+ */
+export type BaselineEntry = { filePath: string; query: string; allowedCount: number };
 
-function flagKey(flag: { filePath: string; query: string }): string {
+/** The identity key for a viewport-media site: file + normalized prelude text. */
+export function flagKey(flag: { filePath: string; query: string }): string {
   return `${flag.filePath}::${flag.query}`;
+}
+
+/** Counts how many times each `flagKey` occurs across the flags. */
+export function countByKey(flags: Array<{ filePath: string; query: string }>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const flag of flags) {
+    counts.set(flagKey(flag), (counts.get(flagKey(flag)) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function isBaselineEntry(value: unknown): value is BaselineEntry {
@@ -203,26 +221,81 @@ function isBaselineEntry(value: unknown): value is BaselineEntry {
     'filePath' in value &&
     typeof value['filePath'] === 'string' &&
     'query' in value &&
-    typeof value['query'] === 'string'
+    typeof value['query'] === 'string' &&
+    'allowedCount' in value &&
+    typeof value['allowedCount'] === 'number'
   );
 }
 
-async function readBaseline(): Promise<Set<string>> {
-  const file = Bun.file(baselinePath);
-  if (!(await file.exists())) return new Set();
-  const parsed: unknown = await file.json();
+/**
+ * Parses already-loaded baseline JSON into a `flagKey` → allowed-count map.
+ * Pure (no filesystem) so all three branches are unit-testable. Throws on a
+ * non-array or a malformed entry so a corrupt baseline fails loudly rather than
+ * silently disabling the gate.
+ */
+export function parseBaseline(parsed: unknown): Map<string, number> {
   if (!Array.isArray(parsed)) {
-    throw new Error(`${baselinePath} must contain a JSON array of {filePath, query} entries.`);
+    throw new Error('baseline must be a JSON array of {filePath, query, allowedCount} entries.');
   }
-  const keys = parsed.map((entry) => {
+  const allowed = new Map<string, number>();
+  for (const entry of parsed) {
     if (!isBaselineEntry(entry)) {
-      throw new Error(
-        `${baselinePath} contains an invalid baseline entry: ${JSON.stringify(entry)}`,
-      );
+      throw new Error(`invalid baseline entry: ${JSON.stringify(entry)}`);
     }
-    return flagKey(entry);
-  });
-  return new Set(keys);
+    allowed.set(flagKey(entry), entry.allowedCount);
+  }
+  return allowed;
+}
+
+/** Reads the baseline file as a map of `flagKey` → allowed occurrence count. */
+export async function readBaseline(): Promise<Map<string, number>> {
+  const file = Bun.file(baselinePath);
+  if (!(await file.exists())) return new Map();
+  return parseBaseline(await file.json());
+}
+
+/** Builds the sorted, deduplicated baseline entries (one per key, with count). */
+export function buildBaselineEntries(
+  flags: Array<{ filePath: string; query: string }>,
+): BaselineEntry[] {
+  const counts = countByKey(flags);
+  const byKey = new Map<string, BaselineEntry>();
+  for (const flag of flags) {
+    const key = flagKey(flag);
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        filePath: flag.filePath,
+        query: flag.query,
+        allowedCount: counts.get(key)!,
+      });
+    }
+  }
+  return [...byKey.values()].toSorted((a, b) => flagKey(a).localeCompare(flagKey(b)));
+}
+
+/** A site that exceeds its grandfathered count (or is entirely new). */
+export type Regression = { filePath: string; query: string; allowed: number; found: number };
+
+/** Returns viewport sites whose current count exceeds the baseline's allowed count. */
+export function findRegressions(
+  flags: Array<{ filePath: string; query: string }>,
+  allowed: Map<string, number>,
+): Regression[] {
+  const found = countByKey(flags);
+  const regressions: Regression[] = [];
+  for (const [key, foundCount] of found) {
+    const allowedCount = allowed.get(key) ?? 0;
+    if (foundCount > allowedCount) {
+      const [filePath, query] = key.split('::');
+      regressions.push({
+        filePath: filePath!,
+        query: query!,
+        allowed: allowedCount,
+        found: foundCount,
+      });
+    }
+  }
+  return regressions.toSorted((a, b) => flagKey(a).localeCompare(flagKey(b)));
 }
 
 function tierLabel(tier: 1 | 2 | 3): string {
@@ -250,12 +323,11 @@ async function main(): Promise<void> {
   const { counts, viewportFlags } = await scan();
 
   if (updateBaseline) {
-    const entries: BaselineEntry[] = viewportFlags
-      .map((flag) => ({ filePath: flag.filePath, query: flag.query }))
-      .toSorted((a, b) => flagKey(a).localeCompare(flagKey(b)));
+    const entries = buildBaselineEntries(viewportFlags);
     await Bun.write(baselinePath, JSON.stringify(entries, null, 2) + '\n');
+    const total = entries.reduce((sum, entry) => sum + entry.allowedCount, 0);
     process.stdout.write(
-      `platform:audit — wrote baseline with ${entries.length} viewport-media sites.\n`,
+      `platform:audit — wrote baseline: ${entries.length} unique site${entries.length === 1 ? '' : 's'} (${total} occurrences).\n`,
     );
     return;
   }
@@ -284,10 +356,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Strict mode: only NEW sites (not in the baseline) fail.
+  // Strict mode: fail only when a site's current count exceeds its grandfathered
+  // allowance (a genuinely NEW viewport query), not for the known set.
   const baseline = await readBaseline();
-  const novel = viewportFlags.filter((flag) => !baseline.has(flagKey(flag)));
-  if (novel.length === 0) {
+  const regressions = findRegressions(viewportFlags, baseline);
+  if (regressions.length === 0) {
     process.stdout.write(
       `  Viewport @media(width) queries: ${viewportFlags.length}, all grandfathered by the baseline. OK.\n`,
     );
@@ -295,11 +368,14 @@ async function main(): Promise<void> {
   }
 
   process.stderr.write(
-    `platform:audit — ${novel.length} NEW viewport @media(width) quer${novel.length === 1 ? 'y' : 'ies'} not in the baseline.\n` +
+    `platform:audit — ${regressions.length} viewport @media(width) site${regressions.length === 1 ? '' : 's'} exceed the baseline.\n` +
       '  A component reacting to its own box width must use @container, not a viewport @media (RESPONSIVE-POLICY.md).\n' +
       '  If this viewport query is genuinely viewport-owned, run `platform:audit --update-baseline` to grandfather it.\n\n' +
-      novel
-        .map((flag) => `    ${flag.filePath}:${flag.lineNumber}\n      ${flag.query} { … }`)
+      regressions
+        .map(
+          (reg) =>
+            `    ${reg.filePath}\n      ${reg.query} { … }  (allowed ${reg.allowed}, found ${reg.found})`,
+        )
         .join('\n') +
       '\n',
   );
