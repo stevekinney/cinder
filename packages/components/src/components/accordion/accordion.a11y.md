@@ -9,13 +9,12 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 - Uses a native `<button type="button">` inside an `<h3>` heading element. The heading level communicates the item's place in the page outline; consumers who nest accordions inside other heading contexts should note this and adjust via CSS if the heading level needs to change semantically (a future prop can address this).
 - `aria-expanded="true|false"` — reflects whether the associated panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
 - `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content.
-- `id="{id}-header"` — provides the stable ID that the panel references via `aria-labelledby`.
+- `id="{id}-header"` — provides a stable ID for the header button itself.
 
 ### AccordionItem panel
 
-- `role="region"` — marks the panel as a landmark region so users can navigate to it by landmark. A region landmark requires an accessible name; this is supplied via `aria-labelledby`.
-- `aria-labelledby="{id}-header"` — associates the panel with its header button, giving the region landmark an accessible name derived from the visible title text.
-- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`.
+- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`. This link is sufficient for assistive technologies to navigate from the trigger to its controlled content.
+- `role="region"` is intentionally **omitted**. The WAI-ARIA APG notes that applying `role="region"` to every accordion panel pollutes the page's landmark list, making landmark navigation harder for screen reader users. The `aria-controls` / `aria-expanded` pairing on the header button provides the machine-readable contract without inflating the landmark count.
 
 ### Disabled items
 

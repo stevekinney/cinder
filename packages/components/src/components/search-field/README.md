@@ -1,6 +1,6 @@
 # SearchField
 
-A SearchField component. Replace this sentence with a one-line purpose statement once the migration settles.
+Dedicated text input with a clear button and search icon for filtering or querying.
 
 ## Usage
 

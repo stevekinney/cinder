@@ -1,6 +1,6 @@
 # Checkbox
 
-A Checkbox component. Replace this sentence with a one-line purpose statement once the migration settles.
+Single boolean toggle for opt-in selections within forms or settings.
 
 ## Usage
 

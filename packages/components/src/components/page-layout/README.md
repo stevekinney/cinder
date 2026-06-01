@@ -1,6 +1,6 @@
 # PageLayout
 
-A PageLayout component. Replace this sentence with a one-line purpose statement once the migration settles.
+Full-page structural scaffold that arranges header, sidebar, content, and footer regions.
 
 ## Usage
 

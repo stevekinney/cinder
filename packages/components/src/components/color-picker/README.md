@@ -1,6 +1,6 @@
 # ColorPicker
 
-A ColorPicker component. Replace this sentence with a one-line purpose statement once the migration settles.
+Full-featured input for selecting a color via hue, saturation, lightness, and hex entry.
 
 ## Usage
 

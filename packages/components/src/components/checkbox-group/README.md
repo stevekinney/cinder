@@ -1,6 +1,6 @@
 # CheckboxGroup
 
-A CheckboxGroup component. Replace this sentence with a one-line purpose statement once the migration settles.
+Wraps multiple checkboxes under a shared label and validation context.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # RadioGroup
 
-A RadioGroup component. Replace this sentence with a one-line purpose statement once the migration settles.
+Coordinates a set of radio buttons under a single name with shared validation state.
 
 ## Usage
 

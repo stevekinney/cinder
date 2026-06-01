@@ -1,6 +1,6 @@
 # NavigationItem
 
-A NavigationItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Individual link or button within a navigation bar, supporting active and disabled states.
 
 ## Usage
 

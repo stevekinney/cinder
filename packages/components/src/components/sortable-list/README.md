@@ -1,6 +1,6 @@
 # SortableList
 
-A SortableList component. Replace this sentence with a one-line purpose statement once the migration settles.
+Drag-and-drop reorderable list that emits the new order on each change.
 
 ## Usage
 

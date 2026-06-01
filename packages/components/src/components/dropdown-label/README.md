@@ -1,6 +1,6 @@
 # DropdownLabel
 
-A DropdownLabel component. Replace this sentence with a one-line purpose statement once the migration settles.
+Non-interactive section heading within a dropdown menu for grouping related items.
 
 ## Usage
 

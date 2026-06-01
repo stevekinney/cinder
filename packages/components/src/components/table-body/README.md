@@ -1,6 +1,6 @@
 # TableBody
 
-A TableBody component. Replace this sentence with a one-line purpose statement once the migration settles.
+`tbody` wrapper that houses the data rows within a table layout.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # Pagination
 
-A Pagination component. Replace this sentence with a one-line purpose statement once the migration settles.
+Page-navigation control for stepping through multi-page result sets.
 
 ## Usage
 

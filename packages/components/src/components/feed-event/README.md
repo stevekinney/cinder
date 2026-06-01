@@ -1,6 +1,6 @@
 # FeedEvent
 
-A FeedEvent component. Replace this sentence with a one-line purpose statement once the migration settles.
+Individual timestamped entry within a chronological activity feed.
 
 ## Usage
 

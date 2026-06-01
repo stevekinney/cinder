@@ -1,6 +1,6 @@
 # DropdownItem
 
-A DropdownItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Selectable item within a dropdown menu, supporting icons, labels, and keyboard navigation.
 
 ## Usage
 

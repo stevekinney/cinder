@@ -1,6 +1,6 @@
 # Progress
 
-A Progress component. Replace this sentence with a one-line purpose statement once the migration settles.
+Visual indicator of task completion as a filled bar or percentage readout.
 
 ## Usage
 

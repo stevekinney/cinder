@@ -1,6 +1,6 @@
 # GridListItem
 
-A GridListItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Keyboard-navigable cell within a grid-list layout for selectable item grids.
 
 ## Usage
 

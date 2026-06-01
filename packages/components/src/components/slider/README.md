@@ -1,6 +1,6 @@
 # Slider
 
-A Slider component. Replace this sentence with a one-line purpose statement once the migration settles.
+Drag handle input for selecting a numeric value within a bounded range.
 
 ## Usage
 

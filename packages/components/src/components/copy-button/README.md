@@ -1,6 +1,6 @@
 # CopyButton
 
-A CopyButton component. Replace this sentence with a one-line purpose statement once the migration settles.
+Button that copies a given text value to the clipboard with visual feedback.
 
 ## Usage
 

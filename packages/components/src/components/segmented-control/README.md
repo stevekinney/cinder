@@ -1,6 +1,6 @@
 # SegmentedControl
 
-A SegmentedControl component. Replace this sentence with a one-line purpose statement once the migration settles.
+Toggle button row for switching between a small set of mutually exclusive options.
 
 ## Usage
 

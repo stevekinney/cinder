@@ -1,6 +1,6 @@
 # TabList
 
-A TabList component. Replace this sentence with a one-line purpose statement once the migration settles.
+Keyboard-navigable row of tab triggers that control which tab panel is visible.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # Card
 
-A Card component. Replace this sentence with a one-line purpose statement once the migration settles.
+Surface container for grouping related content and actions into a distinct visual unit.
 
 ## Usage
 

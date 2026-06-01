@@ -1,6 +1,6 @@
 # Skeleton
 
-A Skeleton component. Replace this sentence with a one-line purpose statement once the migration settles.
+Animated placeholder shape that fills content areas while data is loading.
 
 ## Usage
 

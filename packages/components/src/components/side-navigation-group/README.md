@@ -1,6 +1,6 @@
 # SideNavigationGroup
 
-A SideNavigationGroup component. Replace this sentence with a one-line purpose statement once the migration settles.
+Collapsible group header that organises related items within a side navigation.
 
 ## Usage
 

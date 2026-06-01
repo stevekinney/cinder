@@ -1,6 +1,6 @@
 # Tab
 
-A Tab component. Replace this sentence with a one-line purpose statement once the migration settles.
+Individual tab trigger within a tab list for switching between labelled content panels.
 
 ## Usage
 

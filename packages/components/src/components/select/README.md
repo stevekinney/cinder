@@ -1,6 +1,6 @@
 # Select
 
-A Select component. Replace this sentence with a one-line purpose statement once the migration settles.
+Native-style dropdown select for choosing a single option from a predefined list.
 
 ## Usage
 

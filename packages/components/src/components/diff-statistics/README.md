@@ -1,6 +1,22 @@
 # DiffStatistics
 
-A DiffStatistics component. Replace this sentence with a one-line purpose statement once the migration settles.
+Compact inline display of added, modified, and removed line counts for a file diff.
+
+## When to use
+
+- Showing the line-change summary for a single file or commit in a code review, pull-request list, or activity feed.
+- Toolbars and compact layouts — use `density="toolbar"` to snap to the shared control-height tier.
+- Suppressing zero-count values cleanly with `hideZero` when a file has only additions or only deletions.
+
+## When not to use
+
+- General numeric metrics (revenue, users, errors) — use [`Stat`](../stat/README.md) or [`StatGroup`](../stat-group/README.md) for dashboard figures.
+- Full diff rendering (side-by-side or unified views of the actual line changes) — DiffStatistics only summarises counts; use a diff renderer component for the actual content.
+
+## Related components
+
+- [`Stat`](../stat/README.md) — general-purpose metric tile for non-diff numeric values.
+- [`StatGroup`](../stat-group/README.md) — grid container for multiple `Stat` tiles.
 
 ## Usage
 

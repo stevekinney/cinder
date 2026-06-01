@@ -1,6 +1,21 @@
 # Sheet
 
-A Sheet component. Replace this sentence with a one-line purpose statement once the migration settles.
+Bottom-anchored overlay panel optimised for mobile-style drawer interactions.
+
+## When to use
+
+- Action sheets and option pickers on mobile or touch-first layouts where a bottom-up slide feels natural.
+- Quick-select panels (share, sort, filter) that need to feel native on small screens.
+
+## When not to use
+
+- Desktop-first side panels — use [`Drawer`](../drawer/README.md) for left/right edge placement.
+- Full-attention blocking dialogs — use [`Modal`](../modal/README.md) when the user must act before continuing.
+
+## Related components
+
+- [`Drawer`](../drawer/README.md) — side-anchored overlay for desktop-first supplementary content.
+- [`Modal`](../modal/README.md) — blocking full-attention overlay.
 
 ## Usage
 

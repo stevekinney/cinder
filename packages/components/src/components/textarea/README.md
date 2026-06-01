@@ -1,6 +1,6 @@
 # Textarea
 
-A Textarea component. Replace this sentence with a one-line purpose statement once the migration settles.
+Multi-line text input for longer freeform content with optional resize control.
 
 ## Usage
 

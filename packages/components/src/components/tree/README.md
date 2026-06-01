@@ -1,6 +1,6 @@
 # Tree
 
-A Tree component. Replace this sentence with a one-line purpose statement once the migration settles.
+Hierarchical tree view for navigating or selecting nested data structures.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # DropdownMenu
 
-A DropdownMenu component. Replace this sentence with a one-line purpose statement once the migration settles.
+Floating list of actions or options that opens from a trigger element.
 
 ## Usage
 

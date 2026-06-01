@@ -1,6 +1,6 @@
 # StatGroup
 
-A StatGroup component. Replace this sentence with a one-line purpose statement once the migration settles.
+Grid container that lays out multiple stat tiles with consistent spacing and alignment.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # Input
 
-A Input component. Replace this sentence with a one-line purpose statement once the migration settles.
+Single-line text input with support for labels, addons, validation states, and helper text.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # TreeItem
 
-A TreeItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Expandable or leaf node within a tree view for hierarchical data navigation.
 
 ## Usage
 

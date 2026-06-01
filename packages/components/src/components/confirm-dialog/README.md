@@ -1,6 +1,22 @@
 # ConfirmDialog
 
-A ConfirmDialog component. Replace this sentence with a one-line purpose statement once the migration settles.
+Pre-wired modal dialog with confirm and cancel actions for destructive or irreversible operations.
+
+## When to use
+
+- Asking the user to confirm before deleting, discarding, or publishing something that cannot easily be undone.
+- Any two-action flow where the only choices are "proceed" and "cancel" — ConfirmDialog saves you from composing Modal + two Buttons manually.
+- Destructive actions: set `destructive` to apply the danger variant to the confirm button.
+
+## When not to use
+
+- When the dialog body needs rich content (lists, markup, multiple paragraphs) — compose [`Modal`](../modal/README.md) directly instead, since `aria-describedby` collapses to a single continuous string for screen readers.
+- When more than two actions are needed — use [`Modal`](../modal/README.md) with a custom `footer` snippet.
+- Non-blocking notifications — use a toast or inline alert that does not interrupt the flow.
+
+## Related components
+
+- [`Modal`](../modal/README.md) — the underlying primitive; use directly when you need more control over content or actions.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # SideNavigationItem
 
-A SideNavigationItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Individual link within a side navigation, supporting nesting and active highlighting.
 
 ## Usage
 

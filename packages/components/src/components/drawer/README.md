@@ -1,6 +1,24 @@
 # Drawer
 
-A Drawer component. Replace this sentence with a one-line purpose statement once the migration settles.
+Side-anchored overlay panel for supplementary content without leaving the current page.
+
+## When to use
+
+- Showing detail or edit forms alongside a list or table where the user needs to stay in context.
+- Navigation trees, filter panels, or settings that the user may want to keep open while interacting with the page.
+- Secondary workflows that complement the current view rather than replacing it.
+
+## When not to use
+
+- Full-screen workflows that require the user's full attention — use a [`Modal`](../modal/README.md) or navigate to a new page.
+- Mobile-style bottom sheets — use [`Sheet`](../sheet/README.md) for the bottom-anchored variant.
+- Brief contextual explanations or single-action prompts — use a [`Popover`](../popover/README.md) instead.
+
+## Related components
+
+- [`Modal`](../modal/README.md) — blocking full-attention overlay when the user cannot continue without acting.
+- [`Sheet`](../sheet/README.md) — bottom-anchored overlay optimised for mobile interactions.
+- [`Sidebar`](../sidebar/README.md) — persistent side panel that is always visible (not overlaid).
 
 ## Usage
 

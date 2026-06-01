@@ -1,6 +1,6 @@
 # DropdownTrigger
 
-A DropdownTrigger component. Replace this sentence with a one-line purpose statement once the migration settles.
+Activates the associated dropdown menu on click or keyboard interaction.
 
 ## Usage
 

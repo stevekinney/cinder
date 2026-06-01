@@ -1,6 +1,6 @@
 # SelectionPopover
 
-A SelectionPopover component. Replace this sentence with a one-line purpose statement once the migration settles.
+Floating panel that appears on text selection to offer contextual formatting or actions.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 # TableRow
 
-A TableRow component. Replace this sentence with a one-line purpose statement once the migration settles.
+`tr` wrapper that groups a set of cells into a single table row.
 
 ## Usage
 

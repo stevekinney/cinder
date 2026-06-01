@@ -1,6 +1,6 @@
 # DataList
 
-A DataList component. Replace this sentence with a one-line purpose statement once the migration settles.
+Renders a vertical list of label–value pairs for structured data presentation.
 
 ## Usage
 

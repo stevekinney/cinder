@@ -1,6 +1,6 @@
 # CommandItem
 
-A CommandItem component. Replace this sentence with a one-line purpose statement once the migration settles.
+Individual selectable row within a command palette or dropdown command list.
 
 ## Usage
 
