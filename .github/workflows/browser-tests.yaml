@@ -40,11 +40,11 @@ on:
         default: 'off'
         type: choice
         options:
-          - off
-          - report
-          - block
+          - 'off'
+          - 'report'
+          - 'block'
       update_baselines:
-        description: 'Set to true to run the update-baselines job (writes new snapshot PNGs and opens a follow-up PR).'
+        description: 'Set to true to run update-baselines. Default target opens a snapshot-only follow-up PR; source_branch commits back to source_ref.'
         required: false
         default: false
         type: boolean
@@ -53,13 +53,26 @@ on:
         required: false
         type: string
       base_ref:
-        description: 'Branch the snapshot-only PR targets (required when update_baselines=true).'
+        description: 'Branch the snapshot-only PR targets; also required by source_branch for branch-safety checks.'
         required: false
         type: string
       pull_request_number:
         description: 'Optional originating PR number; used to name the bot branch and link the snapshot PR.'
         required: false
         type: string
+      components:
+        description: 'Optional comma-separated component slugs for scoped visual-regression runs, e.g. button.'
+        required: false
+        default: ''
+        type: string
+      baseline_update_target:
+        description: 'Where update-baselines commits snapshot changes.'
+        required: false
+        default: 'snapshot_pr'
+        type: choice
+        options:
+          - 'snapshot_pr'
+          - 'source_branch'
 
 permissions:
   contents: read
@@ -78,12 +91,28 @@ jobs:
     # `workflow_dispatch` always run the full matrix.
     runs-on: ubuntu-latest
     outputs:
-      mode: ${{ steps.decide.outputs.mode }}
+      component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
     steps:
+      - name: Validate dispatch source ref
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref != ''
+        env:
+          SOURCE_REF: ${{ github.event.inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          if [ "${SOURCE_REF#refs/}" != "$SOURCE_REF" ]; then
+            echo "source_ref must be a branch name, not a full ref: $SOURCE_REF" >&2
+            exit 1
+          fi
+          if ! git check-ref-format --branch "$SOURCE_REF" >/dev/null 2>&1; then
+            echo "source_ref is not a valid branch name: $SOURCE_REF" >&2
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref || github.ref }}
           # `git diff origin/<base>..HEAD` needs the merge base. fetch-depth: 0
           # is the simplest reliable option; the scope job is fast either way
           # and shallow merge-base lookups are fragile on long-lived PRs.
@@ -99,11 +128,18 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          DISPATCH_COMPONENTS: ${{ github.event.inputs.components || '' }}
         run: |
           set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Workflow dispatch component input: ${DISPATCH_COMPONENTS:-<full matrix>}"
+            CINDER_TEST_COMPONENTS="$DISPATCH_COMPONENTS" bun run packages/testing/scripts/changed-components.ts
+            exit 0
+          fi
+
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo "Non-PR event ($EVENT_NAME): running full matrix."
-            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "component_scope_mode=full" >> "$GITHUB_OUTPUT"
             echo "components=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -114,9 +150,10 @@ jobs:
           echo "Changed files:"
           printf '%s\n' "$changed"
 
-          # The script appends `mode=<value>` (and `components=<csv>` when
-          # filtered) directly to $GITHUB_OUTPUT — no shell parsing of its
-          # stdout needed. A non-zero exit fails the job loudly.
+          # The script appends `component_scope_mode=<value>` (and
+          # `components=<csv>` when filtered) directly to $GITHUB_OUTPUT — no
+          # shell parsing of its stdout needed. A non-zero exit fails the job
+          # loudly.
           printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
 
   typecheck:
@@ -215,20 +252,24 @@ jobs:
       - name: Run Playwright suite
         env:
           CI: 'true'
-          # Empty when mode=full; comma-separated slug list when filtered.
-          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
+          # Empty when component_scope_mode=full; comma-separated slug list when filtered.
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           # Trace recording is kept only for the full main-branch run.
-          PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.mode == 'full' && 'retain-on-failure' || 'off' }}
+          PLAYWRIGHT_TRACE: ${{ needs.scope.outputs.component_scope_mode == 'full' && 'retain-on-failure' || 'off' }}
           # Visual-regression dispatch mode. Defaults to 'off' (legacy capture);
           # flip to 'report' during soak, 'block' once approved (Phase 5 single-line PR).
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
         run: |
-          echo "Scope: ${{ needs.scope.outputs.mode }}"
+          echo "Scope: ${{ needs.scope.outputs.component_scope_mode }}"
           echo "Visual-diff mode: $CINDER_VISUAL_DIFF"
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          bun run test:browser
+          if [ "$CINDER_VISUAL_DIFF" = "off" ]; then
+            bun run test:browser
+          else
+            bun run --filter=@cinder/testing test:browser:docker
+          fi
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -329,6 +370,7 @@ jobs:
     # components added without baselines. Skipped in off mode — no baselines
     # are committed yet at off-mode launch, so the check would always fail.
     if: ${{ (github.event.inputs.mode || 'off') != 'off' }}
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -345,16 +387,19 @@ jobs:
 
       - name: Prepare manifest
         # baseline-coverage-check reads the cached manifest; ensure it's fresh.
-        run: bun run --filter=@cinder/testing scripts/prepare-manifest.ts
+        run: bun run --filter=@cinder/testing test:playwright -- --list
 
       - name: Verify baseline coverage
         # Fails with a named list of missing slugs when any committed
         # baseline is absent. The exit code drives the job result.
-        run: bun run --filter=@cinder/testing scripts/baseline-coverage-check.ts
+        env:
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
+        run: bun run packages/testing/scripts/baseline-coverage-check.ts
 
   update-baselines:
     # Manual-only. Runs inside the canonical Playwright Docker image,
-    # writes baselines, and opens a snapshot-only follow-up PR.
+    # writes baselines, then either opens a snapshot-only follow-up PR
+    # or commits the scoped baseline update back to source_ref.
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.update_baselines == 'true'
     needs: scope
     runs-on: ubuntu-latest
@@ -367,10 +412,48 @@ jobs:
         env:
           SOURCE_REF: ${{ github.event.inputs.source_ref }}
           BASE_REF: ${{ github.event.inputs.base_ref }}
+          COMPONENTS: ${{ needs.scope.outputs.components }}
+          TARGET: ${{ github.event.inputs.baseline_update_target || 'snapshot_pr' }}
         run: |
+          set -euo pipefail
+          validate_branch_ref() {
+            local label="$1"
+            local value="$2"
+            if [ "${value#refs/}" != "$value" ]; then
+              echo "$label must be a branch name, not a full ref: $value" >&2
+              exit 1
+            fi
+            if ! git check-ref-format --branch "$value" >/dev/null 2>&1; then
+              echo "$label is not a valid branch name: $value" >&2
+              exit 1
+            fi
+          }
+
           if [ -z "$SOURCE_REF" ] || [ -z "$BASE_REF" ]; then
             echo "update-baselines requires both source_ref and base_ref inputs." >&2
             exit 1
+          fi
+          validate_branch_ref source_ref "$SOURCE_REF"
+          validate_branch_ref base_ref "$BASE_REF"
+          case "$TARGET" in
+            snapshot_pr|source_branch) ;;
+            *)
+              echo "baseline_update_target must be snapshot_pr or source_branch; got $TARGET" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$TARGET" = "source_branch" ]; then
+            if [ -z "$COMPONENTS" ]; then
+              echo "source_branch baseline updates require an explicit components scope." >&2
+              exit 1
+            fi
+            case "$SOURCE_REF" in
+              tasks/*) ;;
+              *)
+                echo "source_branch baseline updates may only push to tasks/* refs; got $SOURCE_REF" >&2
+                exit 1
+                ;;
+            esac
           fi
 
       - name: Checkout source ref
@@ -378,6 +461,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_ref }}
           fetch-depth: 0
+
+      - name: Record rendered source SHA
+        id: source-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -388,20 +475,34 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build Docker image and update baselines
+        env:
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: bun run --filter=@cinder/testing test:browser:update:docker
 
       - name: Check for snapshot changes
         id: changes
         run: |
-          if git diff --quiet packages/testing/snapshots; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No snapshot changes; nothing to PR."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          bun run packages/testing/scripts/snapshot-change-detection.ts
+          status=$?
+          set -e
+
+          case "$status" in
+            0)
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            1)
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "No baseline PNG or provenance changes; nothing to commit."
+              ;;
+            *)
+              echo "Snapshot change detection failed with exit code $status." >&2
+              exit "$status"
+              ;;
+          esac
 
       - name: Create snapshot-only PR
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.changes.outputs.changed == 'true' && (github.event.inputs.baseline_update_target || 'snapshot_pr') == 'snapshot_pr'
         env:
           SOURCE_REF: ${{ github.event.inputs.source_ref }}
           BASE_REF: ${{ github.event.inputs.base_ref }}
@@ -410,11 +511,25 @@ jobs:
         run: |
           set -euo pipefail
           SHORT_SHA=$(git rev-parse --short HEAD)
+          if [ -n "${PR_NUMBER:-}" ] && ! [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "Ignoring non-numeric pull_request_number: $PR_NUMBER" >&2
+            PR_NUMBER=""
+          fi
           BRANCH="bot/snapshots/${PR_NUMBER:-$SHORT_SHA}"
+          SNAPSHOT_STAGING="$(mktemp -d)"
+          mkdir -p "$SNAPSHOT_STAGING/packages/testing"
+          cp -R packages/testing/snapshots "$SNAPSHOT_STAGING/packages/testing/snapshots"
           git config user.name "cinder-bot"
           git config user.email "cinder-bot@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          git fetch origin "$BASE_REF"
+          git checkout -f -B "$BRANCH" FETCH_HEAD
+          mkdir -p packages/testing/snapshots
+          cp -R "$SNAPSHOT_STAGING/packages/testing/snapshots/." packages/testing/snapshots/
           git add packages/testing/snapshots
+          if git diff --cached --quiet; then
+            echo "Snapshot baselines already match ${BASE_REF}; no PR needed."
+            exit 0
+          fi
           git commit -m "chore(snapshots): regenerate baselines from ${SOURCE_REF}"
           git push origin "$BRANCH" --force-with-lease
           BODY="Snapshot-only update generated by the update-baselines workflow from \`${SOURCE_REF}\`."
@@ -426,3 +541,30 @@ jobs:
             --head "$BRANCH" \
             --title "chore(snapshots): regenerate from ${SOURCE_REF}" \
             --body "$BODY"
+
+      - name: Commit snapshots to source branch
+        if: steps.changes.outputs.changed == 'true' && github.event.inputs.baseline_update_target == 'source_branch'
+        env:
+          SOURCE_REF: ${{ github.event.inputs.source_ref }}
+          RENDERED_SOURCE_SHA: ${{ steps.source-sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "cinder-bot"
+          git config user.email "cinder-bot@users.noreply.github.com"
+          git add packages/testing/snapshots
+          git commit -m "chore(snapshots): add scoped baselines for ${SOURCE_REF}"
+          REMOTE_SHA=$(git ls-remote --heads origin "$SOURCE_REF" | awk '{print $1}')
+          if [ -z "$REMOTE_SHA" ]; then
+            echo "source branch missing on origin: $SOURCE_REF" >&2
+            exit 1
+          fi
+          if [ "$REMOTE_SHA" != "$RENDERED_SOURCE_SHA" ]; then
+            echo "source branch moved; sync and rerun baseline update" >&2
+            echo "expected: $RENDERED_SOURCE_SHA" >&2
+            echo "actual:   $REMOTE_SHA" >&2
+            exit 1
+          fi
+          git push origin "HEAD:${SOURCE_REF}" || {
+            echo "failed to push baseline commit to ${SOURCE_REF}; check workflow permissions or branch protection" >&2
+            exit 1
+          }

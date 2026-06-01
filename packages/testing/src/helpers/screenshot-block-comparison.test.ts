@@ -31,6 +31,10 @@ import { blockBaselineGuard, SNAPSHOT_DIFF_OPTIONS } from './screenshot.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BASELINE_FIXTURE = join(here, '__fixtures__', 'block-baseline-fixture.png');
+const DOCKER_ENVIRONMENT: NodeJS.ProcessEnv = {
+  CINDER_PLAYWRIGHT_VERSION: '1.60.0',
+  PLAYWRIGHT_DOCKER: '1',
+};
 
 /** The block-mode tolerance, sourced from production config (no duplicated literals). */
 const THRESHOLD = SNAPSHOT_DIFF_OPTIONS.threshold ?? 0.1;
@@ -112,12 +116,14 @@ describe('block-mode comparison contract — committed baseline', () => {
 });
 
 describe('block-mode guard against the committed baseline path', () => {
-  it('does NOT fire the missing-baseline guard when the baseline exists on disk', () => {
+  it('does NOT fire the guard when the baseline exists inside Docker', () => {
     // Real existsSync against the committed fixture — the same wiring
     // captureBlockMode uses (existsSync(snapshotPath(key))).
-    expect(blockBaselineGuard(BASELINE_FIXTURE, existsSync(BASELINE_FIXTURE), 'none')).toEqual({
-      ok: true,
-    });
+    expect(
+      blockBaselineGuard(BASELINE_FIXTURE, existsSync(BASELINE_FIXTURE), 'none', false, {
+        ...DOCKER_ENVIRONMENT,
+      }),
+    ).toEqual({ ok: true });
   });
 
   it('fires the actionable guard for an absent baseline path while validating', () => {

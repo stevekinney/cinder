@@ -7,8 +7,12 @@ ENV PLAYWRIGHT_DOCKER=1
 ENV CINDER_PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN curl -fsSL https://bun.sh/install | bash \
-    && ln -s /root/.bun/bin/bun /usr/local/bin/bun
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://bun.sh/install | bash \
+    && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
+    && ln -sf /root/.bun/bin/bun /usr/local/bin/bunx
 
 WORKDIR /work
 

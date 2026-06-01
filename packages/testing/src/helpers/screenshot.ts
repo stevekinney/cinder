@@ -11,7 +11,9 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { screenshotPath, snapshotPath, type ArtifactKey } from './artifact-path.ts';
+import { parseComponentFilter, parseComponentScopeValue } from './component-filter.ts';
 import type { MaskRule } from './fixture-schema.ts';
+import { loadManifest } from './manifest.ts';
 
 // ---------------------------------------------------------------------------
 // Visual diff mode
@@ -104,10 +106,11 @@ export const SNAPSHOT_DIFF_OPTIONS: ToHaveScreenshotOptions = {
 
 /**
  * Playwright's `config.updateSnapshots` value, narrowed to what block mode
- * cares about. `'none'` means we are validating against committed baselines
- * (the CI block-mode run); any other value (`'all'`, `'missing'`, `'changed'`)
- * means `--update-snapshots` is active, so a missing baseline is expected and
- * must NOT error — `toHaveScreenshot` legitimately writes the new baseline.
+ * cares about. `'none'` means we are validating against committed baselines.
+ * The other values (`'all'`, `'missing'`, `'changed'`) only count as authoring
+ * when Cinder's update script also set `CINDER_UPDATE_SNAPSHOTS=1`; Playwright
+ * can otherwise default local runs to `'missing'`, and block mode must still
+ * fail with the project-specific update-baselines message.
  *
  * Aliased from Playwright's own `FullConfig['updateSnapshots']` (the type of
  * `test.info().config.updateSnapshots`) so the `'none'` sentinel below stays
@@ -125,8 +128,8 @@ export type UpdateSnapshotsState = FullConfig['updateSnapshots'];
 export type BlockBaselineGuardResult = { ok: true } | { ok: false; message: string };
 
 /**
- * Whether Playwright is in a baseline-authoring state (`--update-snapshots`),
- * in which a missing baseline is expected and must NOT trigger the guard.
+ * Whether Playwright is in Cinder's baseline-authoring state, in which a
+ * missing baseline is expected and must NOT trigger the guard.
  *
  * Written as an exhaustive switch over every {@link UpdateSnapshotsState}
  * literal rather than `!== 'none'`: the `never`-typed default makes any literal
@@ -134,7 +137,10 @@ export type BlockBaselineGuardResult = { ok: true } | { ok: false; message: stri
  * forcing a deliberate validate-vs-author decision instead of silently treating
  * the new mode as authoring and suppressing the missing-baseline guard.
  */
-function isAuthoringState(updateSnapshots: UpdateSnapshotsState): boolean {
+function isAuthoringState(
+  updateSnapshots: UpdateSnapshotsState,
+  explicitUpdateRun: boolean,
+): boolean {
   switch (updateSnapshots) {
     case 'none':
       // Validating against committed baselines — the guard may fire.
@@ -142,14 +148,23 @@ function isAuthoringState(updateSnapshots: UpdateSnapshotsState): boolean {
     case 'all':
     case 'changed':
     case 'missing':
-      // --update-snapshots is active; toHaveScreenshot legitimately writes the
-      // baseline, so a missing one is not an error.
-      return true;
+      // Playwright defaults to writing missing snapshots in local runs. Cinder
+      // only treats this as baseline authoring when the update script has set
+      // the explicit repo-owned marker.
+      return explicitUpdateRun;
     default: {
       const exhaustive: never = updateSnapshots;
       return exhaustive;
     }
   }
+}
+
+function isCanonicalVisualDiffEnvironment(environment: NodeJS.ProcessEnv): boolean {
+  return (
+    environment['PLAYWRIGHT_DOCKER'] === '1' &&
+    typeof environment['CINDER_PLAYWRIGHT_VERSION'] === 'string' &&
+    environment['CINDER_PLAYWRIGHT_VERSION'].trim().length > 0
+  );
 }
 
 /**
@@ -163,20 +178,51 @@ function isAuthoringState(updateSnapshots: UpdateSnapshotsState): boolean {
  * message reports that a snapshot is absent but not how this repo expects you
  * to produce one, so we substitute a message that names the update command.
  *
- * Stays silent (returns `{ ok: true }`) when the baseline exists, or when
- * Playwright is in an update state.
+ * Stays silent (returns `{ ok: true }`) when Playwright is in an update state,
+ * or when the baseline exists and the comparison is running inside the
+ * canonical Docker image.
  *
  * @param baselinePath - Absolute path to the expected committed baseline PNG.
  * @param baselineExists - Whether that file is present on disk.
  * @param updateSnapshots - Playwright's `config.updateSnapshots` value.
+ * @param explicitUpdateRun - Whether Cinder's update script is intentionally authoring baselines.
+ * @param environment - Process environment used to verify canonical Docker comparison.
  */
 export function blockBaselineGuard(
   baselinePath: string,
   baselineExists: boolean,
   updateSnapshots: UpdateSnapshotsState,
+  explicitUpdateRun = process.env['CINDER_UPDATE_SNAPSHOTS'] === '1',
+  environment: NodeJS.ProcessEnv = process.env,
 ): BlockBaselineGuardResult {
-  if (baselineExists || isAuthoringState(updateSnapshots)) {
+  if (isAuthoringState(updateSnapshots, explicitUpdateRun)) {
     return { ok: true };
+  }
+
+  if (baselineExists) {
+    if (isCanonicalVisualDiffEnvironment(environment)) {
+      return { ok: true };
+    }
+
+    const message = [
+      'Visual-regression baseline comparison requires the canonical cinder-playwright Docker image (CINDER_VISUAL_DIFF=block):',
+      `  ${baselinePath}`,
+      '',
+      'A committed baseline exists, but this process is not running with the',
+      'PLAYWRIGHT_DOCKER=1 and CINDER_PLAYWRIGHT_VERSION markers baked into the',
+      'baseline image. Host-rendered pixels can diverge from committed baselines,',
+      'so run the comparison in Docker instead:',
+      '',
+      '  CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker',
+      '',
+      'To update missing or changed baselines, run:',
+      '',
+      '  bun run --filter=@cinder/testing test:browser:update:docker',
+      '',
+      'See docs/visual-regression/baselines.md for the full update workflow.',
+    ].join('\n');
+
+    return { ok: false, message };
   }
 
   const message = [
@@ -194,6 +240,25 @@ export function blockBaselineGuard(
   ].join('\n');
 
   return { ok: false, message };
+}
+
+export function isScreenshotInComponentScope(
+  slug: string,
+  rawComponentScope = process.env['CINDER_TEST_COMPONENTS'],
+  knownSlugs?: ReadonlySet<string>,
+): boolean {
+  if (parseComponentScopeValue(rawComponentScope).length === 0) return true;
+
+  const manifestSlugs = knownSlugs ?? manifestSlugSet();
+  const scope = parseComponentFilter(rawComponentScope, manifestSlugs);
+  return scope === null || scope.has(slug);
+}
+
+let cachedManifestSlugSet: ReadonlySet<string> | undefined;
+
+function manifestSlugSet(): ReadonlySet<string> {
+  cachedManifestSlugSet ??= new Set(loadManifest().map((component) => component.slug));
+  return cachedManifestSlugSet;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +319,10 @@ export async function captureScreenshot(
   key: ArtifactKey,
   options?: CaptureScreenshotOptions,
 ): Promise<void> {
+  if (!isScreenshotInComponentScope(key.slug)) {
+    return;
+  }
+
   await page.addStyleTag({ content: ANIMATION_KILL_CSS });
   // Use string form to avoid a TypeScript dom-lib dependency; runs in browser context.
   await page.evaluate('document.fonts.ready');
