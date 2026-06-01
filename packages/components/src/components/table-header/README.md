@@ -1,6 +1,6 @@
 # TableHeader
 
-thead wrapper that contains the column header row of a table.
+`thead` wrapper that contains the column header row of a table.
 
 ## Usage
 

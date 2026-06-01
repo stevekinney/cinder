@@ -9,7 +9,7 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 - Uses a native `<button type="button">` inside an `<h3>` heading element. The heading level communicates the item's place in the page outline; consumers who nest accordions inside other heading contexts should note this and adjust via CSS if the heading level needs to change semantically (a future prop can address this).
 - `aria-expanded="true|false"` — reflects whether the associated panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
 - `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content.
-- `id="{id}-header"` — provides the stable ID that the panel references via `aria-labelledby`.
+- `id="{id}-header"` — provides a stable ID for the header button itself.
 
 ### AccordionItem panel
 

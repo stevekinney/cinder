@@ -1,6 +1,6 @@
 # TableBody
 
-tbody wrapper that houses the data rows within a table layout.
+`tbody` wrapper that houses the data rows within a table layout.
 
 ## Usage
 

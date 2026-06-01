@@ -1,6 +1,6 @@
 # TableRow
 
-tr wrapper that groups a set of cells into a single table row.
+`tr` wrapper that groups a set of cells into a single table row.
 
 ## Usage
 
