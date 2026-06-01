@@ -1,153 +1,173 @@
 import { describe, expect, it } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { decide } from './changed-components.ts';
 
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
+
+const C = 'packages/components/src/components';
+const U = 'packages/components/src/utilities';
+
+/**
+ * A small synthetic source tree exercising the dependents graph without the
+ * filesystem:
+ *   button  ← dialog ← confirm
+ *   badge   (leaf)
+ *   class-names.ts ← button, badge
+ */
+const sourceFiles = new Map<string, string>([
+  [`${C}/button/button.svelte`, `import { cx } from '../../utilities/class-names.ts';`],
+  [`${C}/dialog/dialog.svelte`, `import Button from '../button/button.svelte';`],
+  [`${C}/confirm/confirm.svelte`, `import Dialog from '../dialog/dialog.svelte';`],
+  [`${C}/badge/badge.svelte`, `import { cx } from '../../utilities/class-names.ts';`],
+  [`${U}/class-names.ts`, `export const cx = () => '';`],
+]);
+const knownSlugs = new Set(['button', 'dialog', 'confirm', 'badge', 'accordion']);
+
 describe('changed-components decide()', () => {
-  it('returns filtered list for a single component change', () => {
-    const result = decide(['packages/components/src/components/accordion.svelte']);
-    expect(result).toEqual({ mode: 'filtered', components: ['accordion'] });
-  });
-
-  it('returns filtered list for multiple components, sorted and deduped', () => {
-    const result = decide([
-      'packages/components/src/components/button.svelte',
-      'packages/components/src/components/accordion.svelte',
-      'packages/components/src/components/button.test.ts',
-      'packages/playground/src/examples/accordion/basic.example.svelte',
-    ]);
-    expect(result).toEqual({ mode: 'filtered', components: ['accordion', 'button'] });
-  });
-
-  it('matches .a11y.md, .test.ts, and .type-test.ts siblings', () => {
-    const result = decide([
-      'packages/components/src/components/accordion.a11y.md',
-      'packages/components/src/components/button-group.test.ts',
-      'packages/components/src/components/button-group.type-test.ts',
-    ]);
-    expect(result).toEqual({ mode: 'filtered', components: ['accordion', 'button-group'] });
-  });
-
-  it('returns full when an _internal helper is touched', () => {
-    const result = decide([
-      'packages/components/src/_internal/focus.ts',
-      'packages/components/src/components/button.svelte',
-    ]);
-    expect(result.mode).toBe('full');
-  });
-
-  it('returns full when a utilities/* file is touched', () => {
-    const result = decide(['packages/components/src/utilities/class-names.ts']);
-    expect(result.mode).toBe('full');
-  });
-
-  it('returns full for changes in editor / markdown / commentary / diff packages', () => {
-    for (const file of [
-      'packages/editor/src/index.ts',
-      'packages/markdown/src/parse.ts',
-      'packages/commentary/src/index.ts',
-      'packages/diff/src/render.ts',
-    ]) {
-      expect(decide([file]).mode).toBe('full');
-    }
-  });
-
-  it('returns full when the playground server is touched', () => {
-    const result = decide(['packages/playground/src/server.ts']);
-    expect(result.mode).toBe('full');
-  });
-
-  it('returns full when the changed-set is empty', () => {
-    expect(decide([]).mode).toBe('full');
-    expect(decide(['', '   ', '\n']).mode).toBe('full');
-  });
-
-  it('ignores workflow + own-script files but falls back to full if nothing else changed', () => {
-    const result = decide([
-      '.github/workflows/browser-tests.yaml',
-      'packages/testing/scripts/changed-components.ts',
-      'packages/testing/scripts/changed-components.test.ts',
-    ]);
-    expect(result.mode).toBe('full');
-  });
-
-  it('treats workflow + own-script files as ignorable when paired with component changes', () => {
-    const result = decide([
-      '.github/workflows/browser-tests.yaml',
-      'packages/testing/scripts/changed-components.ts',
-      'packages/components/src/components/badge.svelte',
-    ]);
+  it('filters to a single component when nothing depends on it', () => {
+    const result = decide([`${C}/badge/badge.svelte`], sourceFiles, knownSlugs);
     expect(result).toEqual({ mode: 'filtered', components: ['badge'] });
   });
 
-  it('returns full when packages/testing/playwright.config.ts is touched', () => {
-    // The Playwright config affects every test run; changes here must
-    // trigger the full matrix, not be silently ignored.
-    const result = decide(['packages/testing/playwright.config.ts']);
-    expect(result.mode).toBe('full');
+  it('includes transitive dependents of a changed component', () => {
+    const result = decide([`${C}/button/button.svelte`], sourceFiles, knownSlugs);
+    expect(result).toEqual({ mode: 'filtered', components: ['button', 'confirm', 'dialog'] });
   });
 
-  it('returns full when a packages/testing fixture is touched', () => {
-    // Fixtures (component-page.ts, theme.ts, etc.) affect every test.
-    const result = decide(['packages/testing/src/fixtures/component-page.ts']);
-    expect(result.mode).toBe('full');
+  it('fans a shared utility out to every dependent', () => {
+    const result = decide([`${U}/class-names.ts`], sourceFiles, knownSlugs);
+    expect(result).toEqual({
+      mode: 'filtered',
+      components: ['badge', 'button', 'confirm', 'dialog'],
+    });
   });
 
-  it('returns full when packages/testing/tests/* is touched', () => {
-    // The spec file itself drives the matrix; changes there can affect
-    // every component's run.
-    const result = decide(['packages/testing/tests/components.spec.ts']);
-    expect(result.mode).toBe('full');
-  });
-
-  it('returns full for a root-level file like package.json', () => {
-    const result = decide(['package.json']);
-    expect(result.mode).toBe('full');
-  });
-
-  it('returns full for bun.lock changes', () => {
-    const result = decide(['bun.lock']);
-    expect(result.mode).toBe('full');
-  });
-
-  it('falls back to full when an extracted slug is not in the manifest', () => {
-    // A cross-cutting helper directory under examples that happens to
-    // match the slug regex must not silently be treated as a component.
-    const knownSlugs = new Set(['accordion', 'button']);
-    const result = decide(['packages/playground/src/examples/shared/helper.svelte'], knownSlugs);
-    expect(result.mode).toBe('full');
-    if (result.mode === 'full') {
-      expect(result.reason).toContain('shared');
-    }
-  });
-
-  it('keeps filtered mode when every extracted slug is in the manifest', () => {
-    const knownSlugs = new Set(['accordion', 'button', 'badge']);
-    const result = decide(['packages/components/src/components/accordion.svelte'], knownSlugs);
+  it('maps a playground example change to its slug', () => {
+    const result = decide(
+      ['packages/playground/src/examples/accordion/basic.example.svelte'],
+      sourceFiles,
+      knownSlugs,
+    );
     expect(result).toEqual({ mode: 'filtered', components: ['accordion'] });
   });
 
-  it('falls back to full when a deleted component slug is extracted', () => {
-    // A PR that removes `view-switcher.svelte` will have the deleted file
-    // path in `git diff --name-only`. The known-slug set no longer contains
-    // it, so the suite must run in full mode rather than throw at slug
-    // validation in components.spec.ts.
-    const knownSlugs = new Set(['accordion', 'button']);
-    const result = decide(['packages/components/src/components/view-switcher.svelte'], knownSlugs);
+  it('merges example slugs with component-source slugs', () => {
+    const result = decide(
+      [`${C}/badge/badge.svelte`, 'packages/playground/src/examples/accordion/x.example.svelte'],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: ['accordion', 'badge'] });
+  });
+
+  it('forces full for an example of an unknown slug', () => {
+    const result = decide(
+      ['packages/playground/src/examples/ghost/x.example.svelte'],
+      sourceFiles,
+      knownSlugs,
+    );
     expect(result.mode).toBe('full');
   });
 
-  it('returns full for shared CSS / utility files in packages/components/src', () => {
-    expect(decide(['packages/components/src/styles/shared.css']).mode).toBe('full');
-    expect(decide(['packages/components/src/styles/components.css']).mode).toBe('full');
+  it('forces full when a testing-harness file is touched', () => {
+    const result = decide(
+      [`${C}/button/button.svelte`, 'packages/testing/playwright.config.ts'],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result.mode).toBe('full');
   });
 
-  it('returns full for component-package manifest / public-export files', () => {
-    expect(decide(['packages/components/src/index.ts']).mode).toBe('full');
-    expect(decide(['packages/components/package.json']).mode).toBe('full');
+  it('forces full for the lockfile and root manifest', () => {
+    expect(decide(['bun.lock'], sourceFiles, knownSlugs).mode).toBe('full');
+    expect(decide(['package.json'], sourceFiles, knownSlugs).mode).toBe('full');
   });
 
-  it('returns full for playground server / discovery files outside examples/', () => {
-    expect(decide(['packages/playground/src/discover.ts']).mode).toBe('full');
-    expect(decide(['packages/playground/src/shell-app/routing.ts']).mode).toBe('full');
+  it('forces full for global style changes', () => {
+    const result = decide(['packages/components/src/styles/tokens.css'], sourceFiles, knownSlugs);
+    expect(result.mode).toBe('full');
+  });
+
+  it('forces full when a changed file was deleted', () => {
+    const result = decide([`${C}/button/button.svelte`], sourceFiles, knownSlugs, [
+      `${C}/old/old.svelte`,
+    ]);
+    expect(result.mode).toBe('full');
+  });
+
+  it('ignores blank lines in the changed-file list', () => {
+    const result = decide(['', `${C}/badge/badge.svelte`, '  '], sourceFiles, knownSlugs);
+    expect(result).toEqual({ mode: 'filtered', components: ['badge'] });
+  });
+
+  it('forces full when an example is co-changed with a real force-full trigger', () => {
+    // The example slug must NOT rescue a genuine force-full (e.g. lockfile). This
+    // pins the string-match branch in decide() that distinguishes "no component
+    // changes" (example wins) from a real force-full reason (full wins).
+    const result = decide(
+      ['packages/playground/src/examples/accordion/basic.example.svelte', 'bun.lock'],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result.mode).toBe('full');
+  });
+
+  it('filters to the example slug when the only co-change is an ignorable doc', () => {
+    const result = decide(
+      [
+        'packages/playground/src/examples/accordion/basic.example.svelte',
+        'packages/playground/README.md',
+      ],
+      sourceFiles,
+      knownSlugs,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: ['accordion'] });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: run the ACTUAL CLI from the repo root, exactly as CI does.
+// ---------------------------------------------------------------------------
+
+describe('changed-components CLI (integration, real tree)', () => {
+  function runCli(changedPaths: string[]): { mode: string; components: string } {
+    const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
+      cwd: workspaceRoot,
+      input: changedPaths.join('\n') + '\n',
+      encoding: 'utf-8',
+      env: { ...process.env, GITHUB_OUTPUT: '' },
+    });
+    expect(result.status).toBe(0);
+    const stdout = result.stdout ?? '';
+    const mode = /mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
+    return { mode, components };
+  }
+
+  it('a real button change is filtered to button + real dependents', () => {
+    const { mode, components } = runCli([
+      'packages/components/src/components/button/button.svelte',
+    ]);
+    expect(mode).toBe('filtered');
+    const slugs = components.split(',');
+    expect(slugs).toContain('button');
+    expect(slugs).toContain('confirm-dialog');
+    expect(slugs).toContain('alert-dialog');
+  });
+
+  it('the lockfile forces full', () => {
+    expect(runCli(['bun.lock'])).toEqual({ mode: 'full', components: '' });
+  });
+
+  it('a real example change is filtered to its slug', () => {
+    const { mode, components } = runCli([
+      'packages/playground/src/examples/accordion/basic.example.svelte',
+    ]);
+    expect(mode).toBe('filtered');
+    expect(components.split(',')).toContain('accordion');
   });
 });

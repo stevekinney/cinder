@@ -1,0 +1,161 @@
+name: unit-tests
+
+# Dependency-aware unit tests for the component library.
+#
+# On a pull request this scopes `bun test` to the changed components AND their
+# transitive dependents (the same import-graph the browser-tests `scope` job
+# uses), giving fast per-PR unit feedback that previously only existed
+# post-merge in `main-green`. On push to `main` and `workflow_dispatch` it runs
+# the FULL unit suite — `main-green` remains the authoritative full-suite gate,
+# and this push run is a redundant safety net.
+#
+# Scope decision lives in packages/testing/scripts/changed-components.ts
+# (delegating to packages/components/scripts/component-graph.ts). It force-fulls
+# on any uncertainty (shared/harness/config change, deletion, computed dynamic
+# import, ambiguous resolution, unknown slug), so a missed edge can never
+# silently skip a test.
+
+on:
+  # NOTE: this paths list must include EVERY root path that
+  # pathForceFullReason() treats as a force-full trigger. If a force-full path
+  # is omitted here, a PR changing only that file would not trigger the
+  # workflow at all — the scoper would never run and a change that should
+  # force-full the suite would silently run nothing. Keep the two in sync.
+  pull_request:
+    paths:
+      - 'packages/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bun.lockb'
+      - 'bunfig.toml'
+      - '.npmrc'
+      - 'tsconfig*.json'
+      - '!packages/**/*.md'
+      - '!packages/**/README*'
+      - '!packages/**/CHANGELOG*'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bun.lockb'
+      - 'bunfig.toml'
+      - '.npmrc'
+      - 'tsconfig*.json'
+      - '!packages/**/*.md'
+      - '!packages/**/README*'
+      - '!packages/**/CHANGELOG*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # PR runs cancel each other (superseded by a new push to the same PR). Push-to-main
+  # runs each get a unique group (keyed by SHA) so a rapid follow-up merge never cancels
+  # the in-flight full-suite safety-net run.
+  group: unit-tests-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BUN_VERSION: 1.3.13
+
+jobs:
+  scope:
+    # Compute the scoped slug set for a pull request. Non-PR events run full.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.decide.outputs.mode }}
+      components: ${{ steps.decide.outputs.components }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The graph reads source files at HEAD and detects deletions by disk
+          # absence; the diff needs the merge base. fetch-depth: 0 is the
+          # simplest reliable option (the scope job is fast regardless).
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      # No `bun install` here by design: changed-components.ts and the
+      # component-graph module it imports use ONLY Bun/Node built-ins and
+      # relative-path imports — no npm dependencies, no workspace package
+      # resolution. Verified to run in a fresh checkout with no node_modules.
+      # If the graph ever gains a third-party import, add a cache + `bun install
+      # --frozen-lockfile` step here (mirroring the unit-tests job).
+
+      - name: Decide scope
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "Non-PR event ($EVENT_NAME): running full unit suite."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "components=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Three-dot: diff against the merge base, so only the PR's own changes
+          # are considered (not commits that landed on the base since the fork).
+          # Matches test-changed.ts's local behavior.
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          echo "Changed files:"
+          printf '%s\n' "$changed"
+
+          printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
+
+  unit-tests:
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run component unit tests (scoped)
+        # Scopes the `cinder` (components) package to the changed components and
+        # their dependents. Sibling @cinder/* package suites are intentionally
+        # NOT run here — they keep their authoritative coverage in `main-green`
+        # (and the ~11-min playground suite would otherwise tax every PR).
+        # Per-package dependency scoping is the deferred follow-up.
+        env:
+          # CINDER_TEST_MODE is the explicit signal: `full` → test-changed.ts runs
+          # the full suite without touching git (the checkout here is shallow).
+          # `filtered` → CINDER_TEST_COMPONENTS carries the scoped slug list.
+          CINDER_TEST_MODE: ${{ needs.scope.outputs.mode }}
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
+        run: |
+          if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
+            echo "Scoped unit tests: $CINDER_TEST_COMPONENTS"
+          else
+            echo "Full unit suite (mode=${{ needs.scope.outputs.mode }})."
+          fi
+          bun run --filter=cinder test:changed
