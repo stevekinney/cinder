@@ -476,8 +476,10 @@
 
   /**
    * Pre-normalized swatches mapped to the ColorSwatch shape that ColorSwatchPicker
-   * expects. Unparseable entries are kept with their original string as color so they
-   * render visually but will never match the selected value.
+   * expects. Entries that fail `normalizeSwatch` keep their original string as the
+   * color: a CSS-valid-but-non-normalizable value still paints its swatch background,
+   * while a truly invalid value (e.g. `not-a-color`) paints nothing — either way it
+   * never matches the selected value, so it can never show as selected or be committed.
    */
   const normalizedSwatchColors = $derived<ColorSwatch[]>(
     swatchList.map((swatch) => ({
