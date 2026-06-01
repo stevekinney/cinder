@@ -189,17 +189,32 @@ describe('ChartInteraction', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globals = globalThis as any;
 
-    test('returns a no-op cleanup function when ResizeObserver is unavailable', () => {
+    /**
+     * Swaps in a `ResizeObserver` value (or deletes it when `mock` is undefined)
+     * for the duration of `body`, then restores the original in a `finally` so a
+     * failing assertion can never leak the mock into later tests.
+     */
+    function withResizeObserver(mock: unknown, body: () => void): void {
+      const hadOriginal = 'ResizeObserver' in globals;
       const original = globals['ResizeObserver'];
-      delete globals['ResizeObserver'];
+      if (mock === undefined) delete globals['ResizeObserver'];
+      else globals['ResizeObserver'] = mock;
+      try {
+        body();
+      } finally {
+        if (hadOriginal) globals['ResizeObserver'] = original;
+        else delete globals['ResizeObserver'];
+      }
+    }
 
-      const interaction = new ChartInteraction();
-      const element = { ownerDocument: {} } as unknown as HTMLElement;
-      const cleanup = interaction.observeResize(element);
-      expect(typeof cleanup).toBe('function');
-      expect(() => cleanup()).not.toThrow();
-
-      globals['ResizeObserver'] = original;
+    test('returns a no-op cleanup function when ResizeObserver is unavailable', () => {
+      withResizeObserver(undefined, () => {
+        const interaction = new ChartInteraction();
+        const element = { ownerDocument: {} } as unknown as HTMLElement;
+        const cleanup = interaction.observeResize(element);
+        expect(typeof cleanup).toBe('function');
+        expect(() => cleanup()).not.toThrow();
+      });
     });
 
     test('attaches a ResizeObserver and returns a disconnect cleanup', () => {
@@ -213,18 +228,16 @@ describe('ChartInteraction', () => {
           disconnected = true;
         }
       }
-      const original = globals['ResizeObserver'];
-      globals['ResizeObserver'] = MockResizeObserver;
 
-      const interaction = new ChartInteraction();
-      const element = {} as HTMLElement;
-      const cleanup = interaction.observeResize(element);
+      withResizeObserver(MockResizeObserver, () => {
+        const interaction = new ChartInteraction();
+        const element = {} as HTMLElement;
+        const cleanup = interaction.observeResize(element);
 
-      expect(observed).toContain(element);
-      cleanup();
-      expect(disconnected).toBe(true);
-
-      globals['ResizeObserver'] = original;
+        expect(observed).toContain(element);
+        cleanup();
+        expect(disconnected).toBe(true);
+      });
     });
 
     test('updates measuredWidth from the ResizeObserver entry', () => {
@@ -237,20 +250,18 @@ describe('ChartInteraction', () => {
         observe(): void {}
         disconnect(): void {}
       }
-      const original = globals['ResizeObserver'];
-      globals['ResizeObserver'] = MockResizeObserver;
 
-      const interaction = new ChartInteraction();
-      interaction.observeResize({} as HTMLElement);
+      withResizeObserver(MockResizeObserver, () => {
+        const interaction = new ChartInteraction();
+        interaction.observeResize({} as HTMLElement);
 
-      capturedCallback?.([{ contentRect: { width: 800 } } as unknown as ResizeObserverEntry]);
-      expect(interaction.measuredWidth).toBe(800);
+        capturedCallback?.([{ contentRect: { width: 800 } } as unknown as ResizeObserverEntry]);
+        expect(interaction.measuredWidth).toBe(800);
 
-      capturedCallback?.([{ contentRect: { width: 0 } } as unknown as ResizeObserverEntry]);
-      // Width below 1 is clamped to 1 to avoid degenerate SVG viewboxes.
-      expect(interaction.measuredWidth).toBe(1);
-
-      globals['ResizeObserver'] = original;
+        capturedCallback?.([{ contentRect: { width: 0 } } as unknown as ResizeObserverEntry]);
+        // Width below 1 is clamped to 1 to avoid degenerate SVG viewboxes.
+        expect(interaction.measuredWidth).toBe(1);
+      });
     });
   });
 
