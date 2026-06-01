@@ -281,8 +281,11 @@ function isValidExperimentalAlias(key) {
   const match = EXPERIMENTAL_ALIAS_PATTERN.exec(key);
   if (match === null) return false;
   const promotedBase = `./${match[1]}`;
-  // The promoted target must ship as a real top-level component export.
-  return expectedComponentExportKeys.has(promotedBase) || exportKeys.has(promotedBase);
+  // The promoted target must be a real COMPONENT export (manifest-derived), not
+  // merely any package export. Checking `exportKeys` here would wrongly accept
+  // `./experimental/styles` (base `./styles` is a non-component export) or a
+  // stale alias whose base only survives as a top-level reserved export.
+  return expectedComponentExportKeys.has(promotedBase);
 }
 
 const orphanExports = [];
