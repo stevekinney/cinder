@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Basic time picker';
-  export const description = 'Choose a time with direct input or the popover list.';
+  export const description =
+    'Type a time directly or click the clock icon to open the scroll-list picker.';
 </script>
 
 <script lang="ts">

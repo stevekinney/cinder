@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
@@ -384,5 +386,43 @@ describe('TimePicker', () => {
     } finally {
       timers.release();
     }
+  });
+});
+
+describe('TimePicker — single picker affordance (double-icon regression)', () => {
+  const cssPath = resolve(dirname(fileURLToPath(import.meta.url)), 'time-picker.css');
+
+  test('the CSS sidecar suppresses the native calendar-picker-indicator', async () => {
+    const cssText = await Bun.file(cssPath).text();
+    // The rule must target the input's OWN native indicator and hide it, to stop
+    // Chrome from rendering its clock icon alongside the Cinder toggle. Anchored to
+    // the full `.cinder-time-picker__input` selector so a stray/commented mention
+    // of the pseudo-element elsewhere can't satisfy the assertion.
+    expect(cssText).toMatch(
+      /\.cinder-time-picker__input::-webkit-calendar-picker-indicator\s*\{[^}]*display\s*:\s*none/,
+    );
+  });
+
+  test('renders exactly one toggle affordance and no native picker button in the DOM', () => {
+    const { container, getByLabelText } = render(TimePicker, {
+      id: 'affordance-check',
+      label: 'Meeting time',
+    });
+
+    // Exactly one "Choose time" button — the Cinder toggle.
+    const toggleButtons = container.querySelectorAll('[aria-label="Choose time"]');
+    expect(toggleButtons).toHaveLength(1);
+
+    // That single button is the Cinder toggle, not a native control.
+    const toggle = getByLabelText('Choose time');
+    expect(toggle.tagName.toLowerCase()).toBe('button');
+    expect(toggle.getAttribute('type')).toBe('button');
+
+    // happy-dom does not render the native ::-webkit-calendar-picker-indicator
+    // pseudo-element, but we can verify no second button has appeared in the
+    // input wrapper from any other source.
+    const inputWrapper = container.querySelector('.cinder-time-picker');
+    const buttonsInWrapper = inputWrapper?.querySelectorAll('button') ?? [];
+    expect(buttonsInWrapper).toHaveLength(1);
   });
 });
