@@ -12,6 +12,7 @@ import {
   parseBaseline,
   scan,
   stripCssComments,
+  toPosixPath,
   VIEWPORT_WIDTH_MEDIA,
 } from './check-platform-features.ts';
 
@@ -104,6 +105,16 @@ describe('stripCssComments', () => {
     expect(stripCssComments(source).split('\n')).toHaveLength(source.split('\n').length);
     // And the @media query must still report its true source line (4).
     expect(findViewportMediaQueries(source)[0]!.lineNumber).toBe(4);
+  });
+});
+
+describe('toPosixPath — OS-independent baseline keys', () => {
+  test('converts backslashes to forward slashes (Windows scan paths)', () => {
+    expect(toPosixPath('src\\components\\x\\x.css')).toBe('src/components/x/x.css');
+  });
+
+  test('leaves POSIX paths unchanged', () => {
+    expect(toPosixPath('src/components/x/x.css')).toBe('src/components/x/x.css');
   });
 });
 

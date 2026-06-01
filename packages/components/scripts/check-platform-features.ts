@@ -32,7 +32,7 @@
  */
 
 import { Glob } from 'bun';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +112,11 @@ export const VIEWPORT_WIDTH_MEDIA =
 
 export type FeatureCount = { feature: string; tier: 1 | 2 | 3; count: number };
 export type Flag = { filePath: string; lineNumber: number; query: string };
+
+/** Normalizes a path to forward slashes so baseline keys are OS-independent. */
+export function toPosixPath(path: string): string {
+  return path.replaceAll('\\', '/');
+}
 
 /** True for test/spec sources, which should not count toward the usage inventory. */
 export function isTestPath(relativePath: string): boolean {
@@ -197,7 +202,10 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
     if (relativePath.endsWith('.css') || relativePath.endsWith('.svelte')) {
       for (const hit of findViewportMediaQueries(content)) {
         viewportFlags.push({
-          filePath: relative(componentsRoot, filePath),
+          // Build the key from the POSIX-style scan path (Glob yields forward
+          // slashes on every OS) so baseline keys are stable across platforms —
+          // path.relative() would emit backslashes on Windows and break the gate.
+          filePath: `src/${toPosixPath(relativePath)}`,
           lineNumber: hit.lineNumber,
           query: hit.query,
         });
