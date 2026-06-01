@@ -18,7 +18,14 @@ export type ComponentEntry = {
   slug: string;
   route: string;
   /** Explicit fixture list for components with multiple visual states. When absent, a single `'default'` fixture is used. */
-  fixtures?: Array<{ name: string }>;
+  fixtures?: Array<{
+    name: string;
+    mode: 'direct' | 'host';
+    fixtureContentHash: string;
+    interact?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').InteractionStep[];
+    mask?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').MaskRule[];
+    category?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').FixtureCategory;
+  }>;
 };
 
 export const THEMES: readonly Theme[] = ['light', 'dark'] as const;

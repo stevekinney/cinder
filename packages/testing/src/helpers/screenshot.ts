@@ -10,8 +10,8 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import type { MaskRule } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
 import { screenshotPath, snapshotPath, type ArtifactKey } from './artifact-path.ts';
-import type { MaskRule } from './fixture-schema.ts';
 
 // ---------------------------------------------------------------------------
 // Visual diff mode

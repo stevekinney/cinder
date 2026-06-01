@@ -13,7 +13,12 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
-import { extractFixtures, writeFixtureManifest } from './extract-fixtures.ts';
+import {
+  extractFixtures,
+  loadFixtureFile,
+  resolveFixtureFilePath,
+  writeFixtureManifest,
+} from './extract-fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -127,6 +132,68 @@ export default fixtures;
     expect(result.entries).toHaveLength(1);
     expect(result.entries[0]?.componentName).toBe('button');
     expect(result.entries[0]?.fixtures[0]?.name).toBe('primary');
+  });
+
+  it('returns a content hash for a parsed fixture file', async () => {
+    const root = makeRoot([
+      {
+        component: 'input',
+        filename: 'input-fixtures.ts',
+        content: `export default [{ name: 'filled', props: { value: 'One' } }];\n`,
+      },
+    ]);
+
+    const result = await loadFixtureFile(join(root, 'input', 'input-fixtures.ts'));
+
+    expect(result.kind).toBe('entry');
+    if (result.kind === 'entry') {
+      expect(result.entry.contentHash).toMatch(/^[a-f0-9]{64}$/);
+    }
+  });
+
+  it('resolves the canonical fixture file path for a slug', () => {
+    const root = '/tmp/components';
+    expect(resolveFixtureFilePath('segmented-control', root)).toBe(
+      join(root, 'segmented-control', 'segmented-control-fixtures.ts'),
+    );
+  });
+
+  it('accepts a host fixture when the host file stays inside the component directory', async () => {
+    const root = makeRoot([
+      {
+        component: 'tabs',
+        filename: 'tabs-fixtures.ts',
+        content: `export default [{ name: 'keyboard', host: './keyboard.fixture.svelte' }];\n`,
+      },
+      {
+        component: 'tabs',
+        filename: 'keyboard.fixture.svelte',
+        content: `<p>Keyboard fixture</p>\n`,
+      },
+    ]);
+
+    const result = await extractFixtures(root);
+
+    expect(result.violations).toHaveLength(0);
+    expect(result.entries[0]?.fixtures[0]).toMatchObject({
+      name: 'keyboard',
+      host: './keyboard.fixture.svelte',
+    });
+  });
+
+  it('rejects a host fixture that leaves the component directory', async () => {
+    const root = makeRoot([
+      {
+        component: 'tabs',
+        filename: 'tabs-fixtures.ts',
+        content: `export default [{ name: 'escape', host: '../escape.fixture.svelte' }];\n`,
+      },
+    ]);
+
+    const result = await extractFixtures(root);
+
+    expect(result.entries).toHaveLength(0);
+    expect(result.violations.some((violation) => violation.includes('host'))).toBe(true);
   });
 });
 

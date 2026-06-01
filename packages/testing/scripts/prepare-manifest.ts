@@ -3,11 +3,17 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  loadFixtureFile,
+  normalizeFixtureMetadata,
+  resolveFixtureFilePath,
+} from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentEntry } from '../src/helpers/manifest.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '..');
+const componentsRoot = resolve(packageRoot, '..', 'components', 'src', 'components');
 
 type RawManifestEntry = {
   name: string;
@@ -31,11 +37,19 @@ async function main(): Promise<void> {
     );
   }
 
-  const entries: ComponentEntry[] = raw.map((entry) => ({
-    name: entry.name,
-    slug: entry.kebabName,
-    route: `/page/${entry.kebabName}`,
-  }));
+  const entries: ComponentEntry[] = [];
+  for (const entry of raw) {
+    const fixtureFile = await loadFixtureFile(
+      resolveFixtureFilePath(entry.kebabName, componentsRoot),
+    );
+    const fixtures = fixtureFile === null ? undefined : normalizeFixtureMetadata(fixtureFile);
+    entries.push({
+      name: entry.name,
+      slug: entry.kebabName,
+      route: `/page/${entry.kebabName}`,
+      ...(fixtures !== undefined && fixtures.length > 0 ? { fixtures } : {}),
+    });
+  }
 
   const slugsSeen = new Set<string>();
   for (const entry of entries) {

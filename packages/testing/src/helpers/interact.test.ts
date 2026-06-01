@@ -1,7 +1,17 @@
 import { describe, expect, it, mock } from 'bun:test';
 
-import { InteractionStepSchema, type InteractionStep } from './fixture-schema.ts';
-import { AmbiguousTestIdError, MissingTestIdError, applyInteractions } from './interact.ts';
+import {
+  InteractionStepSchema,
+  type InteractionStep,
+} from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+import {
+  AmbiguousInteractionTargetError,
+  AmbiguousTestIdError,
+  DisabledInteractionTargetError,
+  HiddenInteractionTargetError,
+  MissingTestIdError,
+  applyInteractions,
+} from './interact.ts';
 
 // ---------------------------------------------------------------------------
 // Mock Page factory
@@ -18,15 +28,22 @@ type MockLocator = {
   click: ReturnType<typeof mock>;
   hover: ReturnType<typeof mock>;
   press: ReturnType<typeof mock>;
+  isVisible: ReturnType<typeof mock>;
+  isEnabled: ReturnType<typeof mock>;
 };
 
-function createMockLocator(resolvedCount: number): MockLocator {
+function createMockLocator(
+  resolvedCount: number,
+  options: { visible?: boolean; enabled?: boolean } = {},
+): MockLocator {
   return {
     count: mock(() => Promise.resolve(resolvedCount)),
     focus: mock(() => Promise.resolve()),
     click: mock(() => Promise.resolve()),
     hover: mock(() => Promise.resolve()),
     press: mock(() => Promise.resolve()),
+    isVisible: mock(() => Promise.resolve(options.visible ?? true)),
+    isEnabled: mock(() => Promise.resolve(options.enabled ?? true)),
   };
 }
 
@@ -39,8 +56,22 @@ function createMockPage(locatorsByTestId: Record<string, MockLocator>) {
   return {
     // interact.ts now uses page.getByTestId() rather than page.locator() to
     // avoid CSS selector injection. The mock exposes getByTestId accordingly.
-    getByTestId: mock((testId: string) => {
-      return locatorsByTestId[testId] ?? createMockLocator(1);
+    getByTestId: mock(
+      (testId: string) =>
+        locatorsByTestId[`testId:${testId}`] ?? locatorsByTestId[testId] ?? createMockLocator(1),
+    ),
+    getByLabel: mock(
+      (label: string) =>
+        locatorsByTestId[`label:${label}`] ?? locatorsByTestId[label] ?? createMockLocator(1),
+    ),
+    getByRole: mock((role: string, options?: { name?: string | RegExp }) => {
+      const name = typeof options?.name === 'string' ? options.name : '';
+      return (
+        locatorsByTestId[`role:${role}:${name}`] ??
+        locatorsByTestId[`role:${role}`] ??
+        locatorsByTestId[role] ??
+        createMockLocator(1)
+      );
     }),
   };
 }
@@ -58,16 +89,19 @@ describe('runtime defence against non-testId targets', () => {
     const badStep = { action: 'click', target: { selector: '.foo' } } as unknown as InteractionStep;
     const page = createMockPage({});
 
-    // target.testId is undefined on the bad object, so getByTestId('undefined')
-    // is called; the default fallback locator (count=1) handles it. The important
-    // assertion: the raw CSS string '.foo' was never passed to the page.
+    // The malformed object has no supported target key. The important
+    // assertion: the raw CSS string '.foo' is never passed to the page.
     await applyInteractions(page as never, [badStep]);
-    // getByTestId should have been called exactly once
-    expect(page.getByTestId.mock.calls).toHaveLength(1);
-    const calledWithArg = (page.getByTestId.mock.calls[0] as unknown[])[0];
-    // The raw CSS string '.foo' must never be passed to getByTestId
-    expect(String(calledWithArg)).not.toContain('.foo');
-    expect(String(calledWithArg)).not.toContain('[data-testid=');
+    const allCalls = [
+      ...page.getByTestId.mock.calls,
+      ...page.getByLabel.mock.calls,
+      ...page.getByRole.mock.calls,
+    ];
+    expect(allCalls.length).toBeGreaterThan(0);
+    for (const call of allCalls) {
+      expect(JSON.stringify(call)).not.toContain('.foo');
+      expect(JSON.stringify(call)).not.toContain('[data-testid=');
+    }
   });
 });
 
@@ -127,6 +161,8 @@ describe('applyInteractions — happy paths', () => {
 
     const inputLocator: MockLocator = {
       count: mock(() => Promise.resolve(1)),
+      isVisible: mock(() => Promise.resolve(true)),
+      isEnabled: mock(() => Promise.resolve(true)),
       focus: mock(() => {
         calls.push('focus:input');
         return Promise.resolve();
@@ -140,6 +176,8 @@ describe('applyInteractions — happy paths', () => {
     };
     const buttonLocator: MockLocator = {
       count: mock(() => Promise.resolve(1)),
+      isVisible: mock(() => Promise.resolve(true)),
+      isEnabled: mock(() => Promise.resolve(true)),
       focus: mock(() => Promise.resolve()),
       click: mock(() => {
         calls.push('click:button');
@@ -171,6 +209,30 @@ describe('applyInteractions — happy paths', () => {
     ]);
 
     expect(page.getByTestId).toHaveBeenCalledWith('dialog-close');
+  });
+
+  it('resolves role targets with accessible names', async () => {
+    const locator = createMockLocator(1);
+    const page = createMockPage({ 'role:button:Save changes': locator });
+
+    await applyInteractions(page as never, [
+      { action: 'click', target: { role: 'button', name: 'Save changes' } },
+    ]);
+
+    expect(page.getByRole).toHaveBeenCalledWith('button', { name: 'Save changes' });
+    expect(locator.click).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves label targets', async () => {
+    const locator = createMockLocator(1);
+    const page = createMockPage({ 'label:Email address': locator });
+
+    await applyInteractions(page as never, [
+      { action: 'focus', target: { label: 'Email address' } },
+    ]);
+
+    expect(page.getByLabel).toHaveBeenCalledWith('Email address', {});
+    expect(locator.focus).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -278,6 +340,34 @@ describe('applyInteractions — AmbiguousTestIdError', () => {
   });
 });
 
+describe('applyInteractions — target visibility and enabledness', () => {
+  it('throws when the target is hidden', async () => {
+    const page = createMockPage({ submit: createMockLocator(1, { visible: false }) });
+
+    await expect(
+      applyInteractions(page as never, [{ action: 'click', target: { testId: 'submit' } }]),
+    ).rejects.toThrow(HiddenInteractionTargetError);
+  });
+
+  it('throws when a click target is disabled', async () => {
+    const page = createMockPage({ submit: createMockLocator(1, { enabled: false }) });
+
+    await expect(
+      applyInteractions(page as never, [{ action: 'click', target: { testId: 'submit' } }]),
+    ).rejects.toThrow(DisabledInteractionTargetError);
+  });
+
+  it('throws a role-target ambiguity error for duplicate role matches', async () => {
+    const page = createMockPage({ 'role:button:Save': createMockLocator(2) });
+
+    await expect(
+      applyInteractions(page as never, [
+        { action: 'click', target: { role: 'button', name: 'Save' } },
+      ]),
+    ).rejects.toThrow(AmbiguousInteractionTargetError);
+  });
+});
+
 describe('applyInteractions — press without key', () => {
   it('throws when key is undefined', async () => {
     const page = createMockPage({ input: createMockLocator(1) });
@@ -315,10 +405,10 @@ describe('applyInteractions — press without key', () => {
 // Canonical-schema binding (task f1ed0bed)
 //
 // `applyInteractions` consumes `InteractionStep` values; a fixture file's
-// `interact` array is validated at load time by `InteractionStepSchema` in
-// `fixture-schema.ts`. Both must agree on the shape, otherwise a fixture could
-// pass validation yet fail at `applyInteractions`, or vice versa. These tests
-// pin that the canonical schema accepts exactly the well-formed steps
+// `interact` array is validated at load time by `InteractionStepSchema` in the
+// neutral visual-fixture schema. Both must agree on the shape, otherwise a
+// fixture could pass validation yet fail at `applyInteractions`, or vice versa.
+// These tests pin that the canonical schema accepts exactly the well-formed steps
 // `applyInteractions` handles and rejects the malformed `press` steps it throws
 // on — the "interact arrays validate against the canonical InteractionStep
 // before the Playwright run" guarantee.
@@ -328,6 +418,8 @@ describe('interact steps validate against the canonical InteractionStepSchema', 
   it('accepts every well-formed action this module applies', () => {
     const wellFormed: InteractionStep[] = [
       { action: 'focus', target: { testId: 'field' } },
+      { action: 'focus', target: { label: 'Email address' } },
+      { action: 'focus', target: { role: 'textbox', name: 'Search' } },
       { action: 'click', target: { testId: 'button' } },
       { action: 'hover', target: { testId: 'menu' } },
       { action: 'press', target: { testId: 'input' }, key: 'Enter' },

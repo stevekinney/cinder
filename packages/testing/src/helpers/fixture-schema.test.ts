@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { parseFixtureFile } from './fixture-schema.ts';
+import { parseFixtureFile } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -258,6 +258,47 @@ describe('interact step: target shape', () => {
         ],
       }),
     ).toThrow();
+  });
+
+  it('accepts role and label targets', () => {
+    expect(() =>
+      parse({
+        fixtures: [
+          {
+            name: 'keyboard',
+            props: {},
+            interact: [
+              { action: 'focus', target: { role: 'textbox', name: 'Search' } },
+              { action: 'click', target: { label: 'Email address', exact: true } },
+            ],
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe('fixture render modes', () => {
+  it('requires props for direct fixtures', () => {
+    expect(() => parse({ fixtures: [{ name: 'direct' }] })).toThrow();
+  });
+
+  it('accepts a host fixture without direct props', () => {
+    const { fixtures } = parse({
+      fixtures: [{ name: 'open', host: './open.fixture.svelte' }],
+    });
+    expect(fixtures[0]).toMatchObject({
+      name: 'open',
+      host: './open.fixture.svelte',
+      category: 'visual-contract',
+    });
+  });
+
+  it('accepts a host fixture with JSON props', () => {
+    const { fixtures } = parse({
+      fixtures: [{ name: 'open', host: './open.fixture.svelte', props: { selected: 'first' } }],
+    });
+    expect(fixtures[0]).toMatchObject({ props: { selected: 'first' } });
   });
 });
 

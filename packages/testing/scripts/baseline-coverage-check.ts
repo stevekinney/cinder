@@ -21,6 +21,11 @@ import { loadManifest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 /** The synthesised default fixture used when a component has no explicit fixture list. */
 const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
 
+type BaselineManifestEntry = {
+  slug: string;
+  fixtures?: readonly { name: string }[];
+};
+
 type MissingBaseline = {
   slug: string;
   theme: string;
@@ -35,7 +40,7 @@ type MissingBaseline = {
  * @param entries - Component entries from the manifest (or a fake manifest in tests).
  * @returns Array of missing baseline descriptors; empty when everything is present.
  */
-export function findMissingBaselines(entries: ReturnType<typeof loadManifest>): MissingBaseline[] {
+export function findMissingBaselines(entries: readonly BaselineManifestEntry[]): MissingBaseline[] {
   const missing: MissingBaseline[] = [];
 
   for (const entry of entries) {

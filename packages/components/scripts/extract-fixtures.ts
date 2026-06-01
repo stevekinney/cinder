@@ -12,15 +12,17 @@
  * violation and excluded from the result set.
  */
 
-import { basename, dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
 import ts from 'typescript';
 
 import {
+  fixtureRenderMode,
   parseFixtureFile,
   type VisualFixture,
   type VisualFixtureMetadata,
-} from '@cinder/testing/fixture-schema';
+} from './lib/visual-fixtures/schema.ts';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -33,6 +35,7 @@ import {
 export type FixtureFileEntry = {
   componentName: string;
   sourcePath: string;
+  contentHash: string;
   fixtures: VisualFixture[];
   metadata: VisualFixtureMetadata;
 };
@@ -48,6 +51,46 @@ export type FixtureExtractResult = {
 // ---------------------------------------------------------------------------
 
 const COMPONENT_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+function sha256(contents: string): string {
+  return createHash('sha256').update(contents).digest('hex');
+}
+
+function validateHostFixtures(entry: FixtureFileEntry): string[] {
+  const violations: string[] = [];
+  const componentDirectory = dirname(entry.sourcePath);
+  for (const fixture of entry.fixtures) {
+    if (fixtureRenderMode(fixture) !== 'host') continue;
+    if (typeof fixture.host !== 'string') {
+      violations.push(`[${entry.componentName}] Fixture '${fixture.name}' host is missing`);
+      continue;
+    }
+
+    if (!fixture.host.startsWith('./')) {
+      violations.push(
+        `[${entry.componentName}] Fixture '${fixture.name}' host must be a relative './*.fixture.svelte' path`,
+      );
+      continue;
+    }
+
+    if (!fixture.host.endsWith('.fixture.svelte')) {
+      violations.push(
+        `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must end in .fixture.svelte`,
+      );
+      continue;
+    }
+
+    const hostPath = resolve(componentDirectory, fixture.host);
+    const relativeHostPath = relative(componentDirectory, hostPath);
+    if (relativeHostPath.startsWith('..') || isAbsolute(relativeHostPath)) {
+      violations.push(
+        `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must stay inside the component directory`,
+      );
+    }
+  }
+
+  return violations;
+}
 
 // ---------------------------------------------------------------------------
 // Literal value extraction
@@ -201,7 +244,7 @@ type FileParseResult =
  * Parses a single `*-fixtures.ts` file without executing it. Returns either a
  * valid `FixtureFileEntry` or a list of violations.
  */
-function parseFixtureFile_static(sourcePath: string, contents: string): FileParseResult {
+export function parseFixtureFileStatic(sourcePath: string, contents: string): FileParseResult {
   const componentName = basename(dirname(sourcePath));
 
   if (!COMPONENT_NAME_PATTERN.test(componentName)) {
@@ -453,6 +496,7 @@ function parseFixtureFile_static(sourcePath: string, contents: string): FilePars
       entry: {
         componentName,
         sourcePath,
+        contentHash: sha256(contents),
         fixtures: parsed.fixtures,
         metadata: parsed.metadata,
       },
@@ -465,6 +509,43 @@ function parseFixtureFile_static(sourcePath: string, contents: string): FilePars
       violations: message.split('\n').filter((line) => line.length > 0),
     };
   }
+}
+
+export function resolveFixtureFilePath(slug: string, componentsRoot: string): string {
+  if (!COMPONENT_NAME_PATTERN.test(slug)) {
+    throw new Error(
+      `Invalid component slug '${slug}' — must match ${String(COMPONENT_NAME_PATTERN)}`,
+    );
+  }
+
+  return join(componentsRoot, slug, `${slug}-fixtures.ts`);
+}
+
+export async function loadFixtureFile(sourcePath: string): Promise<FileParseResult> {
+  const contents = await Bun.file(sourcePath).text();
+  const result = parseFixtureFileStatic(sourcePath, contents);
+  if (result.kind !== 'entry') return result;
+
+  const hostViolations = validateHostFixtures(result.entry);
+  if (hostViolations.length > 0) {
+    return { kind: 'violations', violations: hostViolations };
+  }
+
+  for (const fixture of result.entry.fixtures) {
+    if (fixtureRenderMode(fixture) !== 'host') continue;
+    if (typeof fixture.host !== 'string') continue;
+    const hostPath = resolve(dirname(result.entry.sourcePath), fixture.host);
+    if (!(await Bun.file(hostPath).exists())) {
+      return {
+        kind: 'violations',
+        violations: [
+          `[${result.entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' does not exist`,
+        ],
+      };
+    }
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -488,9 +569,7 @@ export async function extractFixtures(componentsRoot: string): Promise<FixtureEx
 
   for await (const relativePath of glob.scan({ cwd: componentsRoot })) {
     const absolutePath = join(componentsRoot, relativePath);
-    const contents = await Bun.file(absolutePath).text();
-
-    const result = parseFixtureFile_static(absolutePath, contents);
+    const result = await loadFixtureFile(absolutePath);
 
     if (result.kind === 'entry') {
       entries.push(result.entry);

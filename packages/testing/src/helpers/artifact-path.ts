@@ -39,6 +39,21 @@ export function screenshotPath(key: ArtifactKey): string {
 }
 
 /**
+ * Returns the absolute path for the screenshot metadata sidecar for a given
+ * artifact key. Files are written to
+ * `packages/testing/test-results/visual-metadata/<slug>/<theme>-<viewport>-<fixture>.json`.
+ */
+export function screenshotMetadataPath(key: ArtifactKey): string {
+  return resolve(
+    packageRoot(),
+    'test-results',
+    'visual-metadata',
+    key.slug,
+    `${key.theme}-${key.viewport}-${key.fixture}.json`,
+  );
+}
+
+/**
  * Returns the absolute path for the committed baseline snapshot used by
  * `toHaveScreenshot` comparisons in `'block'` and `'report'` modes.
  * Files live at `packages/testing/snapshots/<slug>/<theme>-<viewport>-<fixture>.png`.
