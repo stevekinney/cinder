@@ -1,15 +1,74 @@
 # SelectionPopover
 
-Floating panel that appears on text selection to offer contextual formatting or actions.
+A floating toolbar that appears above a text selection and offers a comment-on-selection action with an inline composer. The component renders as a native `popover="manual"` element positioned with `position: fixed`, placing it in the browser's top layer above all other content.
+
+## When to use
+
+Use `SelectionPopover` when you want readers to annotate or comment on a highlighted range of text — for example, in a document editor, review tool, or article surface. It is designed specifically for selection-scoped actions. For generic floating content or popovers unrelated to text selection, use the `Popover` component instead.
+
+## How it positions
+
+The `position` prop accepts **viewport-relative** coordinates — the same coordinate space returned by `Range.getBoundingClientRect()`. A typical consumer computes the anchor from the selected range and passes it directly:
+
+```ts
+const range = selection.getRangeAt(0);
+const rect = range.getBoundingClientRect();
+position = { x: rect.left + rect.width / 2, y: rect.top };
+```
+
+The component clamps the rendered position to a 16px viewport margin automatically, so you do not need to guard against selections near the edges of the screen. Coordinates are **not** relative to a containing element — do not pass offsetLeft/offsetTop or any container-relative value.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import SelectionPopover from 'cinder/selection-popover';
+  import type { SelectionPopoverPosition } from 'cinder/selection-popover';
+  import { SelectionPopover } from 'cinder/selection-popover';
+
+  type Comment = { id: string; body: string };
+
+  let isOpen = $state(false);
+  let position = $state<SelectionPopoverPosition | null>(null);
+  let comments = $state<Comment[]>([]);
+
+  function handleSelectionChange(event: Event): void {
+    const surface = event.currentTarget as HTMLElement;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      isOpen = false;
+      position = null;
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!surface.contains(range.commonAncestorContainer)) return;
+    const rect = range.getBoundingClientRect();
+    position = { x: rect.left + rect.width / 2, y: rect.top };
+    isOpen = true;
+  }
+
+  function handleClose(): void {
+    isOpen = false;
+    position = null;
+  }
+
+  function handleCommentSubmit(body: string): void {
+    comments = [...comments, { id: crypto.randomUUID(), body }];
+    handleClose();
+  }
 </script>
 
-<SelectionPopover />
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<article onselectionchange={handleSelectionChange}>
+  <p>Select text in this paragraph to comment on it.</p>
+</article>
+
+<SelectionPopover
+  id="my-selection-popover"
+  open={isOpen}
+  {position}
+  onclose={handleClose}
+  oncommentsubmit={handleCommentSubmit}
+/>
 ```
 
 ## Props
