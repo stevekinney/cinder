@@ -76,10 +76,27 @@ committed set.
 
 ## Authoring or updating baselines
 
+### Initial committed scope
+
+The first committed baseline set is intentionally scoped to `button` only:
+
+```text
+packages/testing/snapshots/button/light-mobile-default.png
+packages/testing/snapshots/button/light-tablet-default.png
+packages/testing/snapshots/button/light-desktop-default.png
+packages/testing/snapshots/button/dark-mobile-default.png
+packages/testing/snapshots/button/dark-tablet-default.png
+packages/testing/snapshots/button/dark-desktop-default.png
+```
+
+That scope proves the update and block-mode path without turning the first PR
+into full-matrix PNG churn. Full-matrix baselines can be generated later once
+report-mode soak says the broader set is stable.
+
 ### Locally, via the Docker wrapper
 
 ```bash
-bun run --filter=@cinder/testing test:browser:update:docker
+CINDER_TEST_COMPONENTS=button bun run --filter=@cinder/testing test:browser:update:docker
 ```
 
 `scripts/update-snapshots-docker.ts` derives the image tag from the pinned
@@ -87,17 +104,50 @@ Playwright version, builds the image from `packages/testing/Dockerfile`, mounts
 the repo, and runs `test:browser:update` inside the container with
 `CINDER_VISUAL_DIFF=block` and `--update-snapshots --retries=0`. Requires a
 working Docker daemon on an amd64 host (or native amd64 Linux). Commit the
-resulting PNGs under `packages/testing/snapshots/`.
+resulting PNGs under `packages/testing/snapshots/`. Omit
+`CINDER_TEST_COMPONENTS` only when intentionally regenerating the full matrix.
 
 ### In CI, via workflow dispatch (preferred)
 
-The `update-baselines` job in `.github/workflows/browser-tests.yaml` is the
-preferred path because it runs on the native amd64 GitHub runner. Trigger the
-`browser-tests` workflow with `workflow_dispatch`, set `update_baselines=true`,
-and provide `source_ref` (the branch to render from) and `base_ref` (the branch
-the snapshot PR targets). The job builds the canonical image, writes baselines,
-and opens a **snapshot-only follow-up PR** so the PNG churn lands separately from
-the source change.
+The `update-baselines` job in `.github/workflows/browser-tests.yaml` is preferred
+when a local native amd64 Docker environment is unavailable, because it runs on
+the native amd64 GitHub runner.
+
+For the initial `button` rollout on a task branch, trigger `browser-tests` with:
+
+```text
+mode=off
+components=button
+update_baselines=true
+source_ref=<task branch>
+base_ref=main
+baseline_update_target=source_branch
+```
+
+`baseline_update_target=source_branch` is only allowed for `tasks/*` branches and
+uses a non-force push back to `source_ref`. It fails if the branch moved while
+the workflow was rendering. This mode is for wiring the initial scoped baseline
+set into the same implementation branch.
+
+For normal snapshot-only follow-up updates, keep the default:
+
+```text
+baseline_update_target=snapshot_pr
+```
+
+That mode builds the canonical image from `source_ref`, then copies only
+`packages/testing/snapshots/` onto a bot branch based on `base_ref` before
+opening the follow-up PR. `base_ref` is required for both update targets because
+the workflow dispatch schema and branch-safety checks need an explicit target.
+The resulting PR stays snapshot-only, so PNG churn lands separately from source
+changes.
+
+After baselines exist, verify block mode with a separate dispatch:
+
+```text
+mode=block
+components=button
+```
 
 ### Scope the set you regenerate
 
@@ -127,6 +177,9 @@ Therefore, on a clean checkout:
 
 - With baselines committed for a case: `CINDER_VISUAL_DIFF=block bun run test:browser`
   passes when pixels match and fails when they differ — that is the regression gate.
+- With scoped baselines committed for `button` only:
+  `CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run test:browser`
+  passes when Button pixels match and fails when they differ.
 - With no baseline committed for a case: the run fails fast with the
   "author baselines via Docker" message rather than a confusing default.
 

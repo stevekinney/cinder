@@ -14,7 +14,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { findMissingBaselines } from './baseline-coverage-check.ts';
+import { applyBaselineComponentFilter, findMissingBaselines } from './baseline-coverage-check.ts';
 
 // ---------------------------------------------------------------------------
 // Fake snapshot root
@@ -104,6 +104,30 @@ describe('findMissingBaselines — all baselines present', () => {
 
     const missing = findMissingBaselines(entries);
     expect(missing).toHaveLength(0);
+  });
+});
+
+describe('applyBaselineComponentFilter', () => {
+  it('keeps all entries when no component scope is set', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(applyBaselineComponentFilter(entries, undefined).map((entry) => entry.slug)).toEqual([
+      'button',
+      'badge',
+    ]);
+  });
+
+  it('filters to the requested component scope', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(applyBaselineComponentFilter(entries, 'button').map((entry) => entry.slug)).toEqual([
+      'button',
+    ]);
+  });
+
+  it('rejects unknown component slugs with the shared parser message', () => {
+    const entries = [makeEntry('button'), makeEntry('badge')];
+    expect(() => applyBaselineComponentFilter(entries, 'button,ghost')).toThrow(
+      /CINDER_TEST_COMPONENTS references unknown component slugs: ghost/,
+    );
   });
 });
 

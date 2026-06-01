@@ -16,6 +16,7 @@
 
 import { existsSync } from 'node:fs';
 import { snapshotPath } from '../src/helpers/artifact-path.ts';
+import { applyComponentFilter, parseComponentFilter } from '../src/helpers/component-filter.ts';
 import { loadManifest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 
 /** The synthesised default fixture used when a component has no explicit fixture list. */
@@ -69,6 +70,15 @@ export function findMissingBaselines(entries: ReturnType<typeof loadManifest>): 
   return missing;
 }
 
+export function applyBaselineComponentFilter(
+  entries: ReturnType<typeof loadManifest>,
+  rawComponentScope: string | undefined,
+): ReturnType<typeof loadManifest> {
+  const knownSlugs = new Set(entries.map((entry) => entry.slug));
+  const filter = parseComponentFilter(rawComponentScope, knownSlugs);
+  return [...applyComponentFilter(entries, filter)];
+}
+
 async function main(): Promise<void> {
   let entries: ReturnType<typeof loadManifest>;
   try {
@@ -78,7 +88,15 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const missing = findMissingBaselines(entries);
+  let filteredEntries: ReturnType<typeof loadManifest>;
+  try {
+    filteredEntries = applyBaselineComponentFilter(entries, process.env['CINDER_TEST_COMPONENTS']);
+  } catch (error) {
+    process.stderr.write(`baseline-coverage-check: invalid component scope — ${String(error)}\n`);
+    process.exit(1);
+  }
+
+  const missing = findMissingBaselines(filteredEntries);
 
   if (missing.length === 0) {
     process.stdout.write('baseline-coverage-check: all baselines present.\n');

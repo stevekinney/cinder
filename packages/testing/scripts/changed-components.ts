@@ -36,6 +36,7 @@ import {
   loadSourceFiles,
   type ScopeDecision,
 } from '../../components/scripts/component-graph.ts';
+import { parseComponentFilter } from '../src/helpers/component-filter.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 // scripts/ → packages/testing → packages → repo root
@@ -47,6 +48,21 @@ const examplePattern = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]
 export type Decision =
   | { mode: 'full'; reason: string }
   | { mode: 'filtered'; components: string[] };
+
+/**
+ * Normalize an explicit component scope from `workflow_dispatch` inputs.
+ * Empty input means "full matrix"; non-empty input must name known slugs.
+ */
+export function decideExplicitComponents(
+  rawComponents: string | undefined,
+  knownSlugs: ReadonlySet<string>,
+): Decision {
+  const parsed = parseComponentFilter(rawComponents, knownSlugs);
+  if (parsed === null) {
+    return { mode: 'full', reason: 'explicit component scope empty' };
+  }
+  return { mode: 'filtered', components: [...parsed].toSorted() };
+}
 
 /**
  * Decide scope from a list of changed file paths.
@@ -126,7 +142,11 @@ function partitionDeleted(changedFiles: string[]): { all: string[]; deleted: str
 async function emit(decision: Decision): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
   const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
-  const payload = [`mode=${decision.mode}`, `components=${componentsValue}`, ''].join('\n');
+  const payload = [
+    `component_scope_mode=${decision.mode}`,
+    `components=${componentsValue}`,
+    '',
+  ].join('\n');
 
   if (githubOutput !== undefined && githubOutput.length > 0) {
     const { appendFile } = await import('node:fs/promises');
@@ -145,10 +165,19 @@ async function emit(decision: Decision): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const input = await Bun.stdin.text();
-  const { all, deleted } = partitionDeleted(input.split('\n'));
-  const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
-  const decision = decide(all, sourceFiles, knownSlugs, deleted);
+  const explicitComponents = process.env['CINDER_TEST_COMPONENTS'];
+  const knownSlugs = await loadKnownSlugs();
+
+  let decision: Decision;
+  if (explicitComponents !== undefined) {
+    decision = decideExplicitComponents(explicitComponents, knownSlugs);
+  } else {
+    const input = await Bun.stdin.text();
+    const { all, deleted } = partitionDeleted(input.split('\n'));
+    const sourceFiles = await loadSourceFiles();
+    decision = decide(all, sourceFiles, knownSlugs, deleted);
+  }
+
   await emit(decision);
 }
 

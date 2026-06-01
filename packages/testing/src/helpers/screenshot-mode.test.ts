@@ -8,6 +8,7 @@ import type { FullConfig } from '@playwright/test';
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import {
   blockBaselineGuard,
+  isScreenshotInComponentScope,
   resolveVisualDiffMode,
   type UpdateSnapshotsState,
 } from './screenshot.ts';
@@ -17,9 +18,13 @@ import {
 // ---------------------------------------------------------------------------
 
 let originalValue: string | undefined;
+let originalUpdateSnapshotsValue: string | undefined;
+let originalComponentScopeValue: string | undefined;
 
 beforeEach(() => {
   originalValue = process.env['CINDER_VISUAL_DIFF'];
+  originalUpdateSnapshotsValue = process.env['CINDER_UPDATE_SNAPSHOTS'];
+  originalComponentScopeValue = process.env['CINDER_TEST_COMPONENTS'];
 });
 
 afterEach(() => {
@@ -27,6 +32,16 @@ afterEach(() => {
     delete process.env['CINDER_VISUAL_DIFF'];
   } else {
     process.env['CINDER_VISUAL_DIFF'] = originalValue;
+  }
+  if (originalUpdateSnapshotsValue === undefined) {
+    delete process.env['CINDER_UPDATE_SNAPSHOTS'];
+  } else {
+    process.env['CINDER_UPDATE_SNAPSHOTS'] = originalUpdateSnapshotsValue;
+  }
+  if (originalComponentScopeValue === undefined) {
+    delete process.env['CINDER_TEST_COMPONENTS'];
+  } else {
+    process.env['CINDER_TEST_COMPONENTS'] = originalComponentScopeValue;
   }
 });
 
@@ -164,21 +179,48 @@ describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
 });
 
 describe('blockBaselineGuard — authoring (updateSnapshots !== none)', () => {
-  it("stays silent for 'all' even when the baseline is missing", () => {
+  it("stays silent for 'all' when the explicit Cinder update marker is set", () => {
     // --update-snapshots is active; toHaveScreenshot legitimately writes the file.
-    expect(blockBaselineGuard(BASELINE, false, 'all')).toEqual({ ok: true });
+    expect(blockBaselineGuard(BASELINE, false, 'all', true)).toEqual({ ok: true });
   });
 
-  it("stays silent for 'missing' when the baseline is missing", () => {
-    expect(blockBaselineGuard(BASELINE, false, 'missing')).toEqual({ ok: true });
+  it("fails for Playwright's local 'missing' default without the explicit Cinder update marker", () => {
+    const result = blockBaselineGuard(BASELINE, false, 'missing', false);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected guard to fail');
+    expect(result.message).toContain('Visual-regression baseline missing');
   });
 
-  it("stays silent for 'changed' when the baseline is missing", () => {
-    expect(blockBaselineGuard(BASELINE, false, 'changed')).toEqual({ ok: true });
+  it("stays silent for 'missing' when the explicit Cinder update marker is set", () => {
+    expect(blockBaselineGuard(BASELINE, false, 'missing', true)).toEqual({ ok: true });
+  });
+
+  it("stays silent for 'changed' when the explicit Cinder update marker is set", () => {
+    expect(blockBaselineGuard(BASELINE, false, 'changed', true)).toEqual({ ok: true });
   });
 
   it('passes when authoring and the baseline already exists', () => {
-    expect(blockBaselineGuard(BASELINE, true, 'all')).toEqual({ ok: true });
+    expect(blockBaselineGuard(BASELINE, true, 'all', true)).toEqual({ ok: true });
+  });
+});
+
+describe('isScreenshotInComponentScope', () => {
+  it('includes every screenshot when no component scope is set', () => {
+    expect(isScreenshotInComponentScope('button', undefined)).toBe(true);
+  });
+
+  it('includes screenshots whose slug is in scope', () => {
+    expect(isScreenshotInComponentScope('button', 'button,badge')).toBe(true);
+  });
+
+  it('excludes screenshots outside a scoped visual-regression run', () => {
+    expect(isScreenshotInComponentScope('popover', 'button')).toBe(false);
+  });
+
+  it('throws when the component scope references an unknown slug', () => {
+    expect(() =>
+      isScreenshotInComponentScope('button', 'ghost', new Set(['button', 'badge'])),
+    ).toThrow(/ghost/);
   });
 });
 

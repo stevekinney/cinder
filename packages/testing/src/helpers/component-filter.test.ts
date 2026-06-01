@@ -1,8 +1,28 @@
 import { describe, expect, it } from 'bun:test';
 
-import { applyComponentFilter, parseComponentFilter } from './component-filter.ts';
+import {
+  applyComponentFilter,
+  parseComponentFilter,
+  parseComponentScopeValue,
+} from './component-filter.ts';
 
 const knownSlugs = new Set(['accordion', 'button', 'badge']);
+
+describe('parseComponentScopeValue', () => {
+  it('returns an empty array when the raw value is unset or blank', () => {
+    expect(parseComponentScopeValue(undefined)).toEqual([]);
+    expect(parseComponentScopeValue('')).toEqual([]);
+    expect(parseComponentScopeValue('  , , ')).toEqual([]);
+  });
+
+  it('normalizes comma-separated slugs', () => {
+    expect(parseComponentScopeValue('button, accordion ,button,badge')).toEqual([
+      'accordion',
+      'badge',
+      'button',
+    ]);
+  });
+});
 
 describe('parseComponentFilter', () => {
   it('returns null when the env var is unset', () => {

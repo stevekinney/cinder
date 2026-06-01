@@ -68,6 +68,12 @@ All gitignored. Paths are relative to `packages/testing/`:
 
 Screenshot diffing is wired through the `CINDER_VISUAL_DIFF` environment variable (`off` | `report` | `block`). `off` (the default) captures PNGs for human review only; `report` records non-blocking diffs against committed baselines; `block` fails the suite on any pixel difference beyond tolerance. Committed baselines live under `packages/testing/snapshots/` and are authored only inside the canonical `cinder-playwright` Docker image — host pixels diverge from CI.
 
+The initial committed baseline scope is `button`. To run only that scoped gate:
+
+```bash
+CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run test:browser
+```
+
 See [`docs/visual-regression/baselines.md`](../../docs/visual-regression/baselines.md) for the full authoring/update workflow, the pinned environment, and how block mode behaves on a clean checkout.
 
 ## v1 non-goals

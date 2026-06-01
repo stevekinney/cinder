@@ -1,11 +1,47 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  type BaselineComponentScope,
+  createBaselineProvenance,
+  dockerImageTagForPlaywrightVersion,
+  normalizeProvenanceComponentScope,
+  readOsCodename,
+  writeBaselineProvenance,
+} from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const packageJsonPath = resolvePath(packageRoot, 'package.json');
+const repoRoot = resolvePath(packageRoot, '../..');
+
+export function startServerArguments(startServerPath: string, extraArgs: string[]): string[] {
+  return ['run', startServerPath, '--', '--update-snapshots', '--retries=0', ...extraArgs];
+}
+
+export function snapshotUpdateEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...environment, CINDER_UPDATE_SNAPSHOTS: '1', CINDER_VISUAL_DIFF: 'block' };
+}
+
+export function provenanceComponentScope(
+  rawComponentScope: string | undefined,
+): BaselineComponentScope {
+  return rawComponentScope !== undefined && rawComponentScope.trim().length > 0
+    ? normalizeProvenanceComponentScope(rawComponentScope)
+    : 'all';
+}
+
+export function readRenderedSourceSha(cwd: string): string {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`failed to resolve rendered source sha: ${result.stderr || result.stdout}`);
+  }
+  return result.stdout.trim();
+}
 
 /**
  * Update committed visual-regression baselines.
@@ -35,18 +71,15 @@ async function main(): Promise<void> {
 
   const extraArgs = process.argv.slice(2);
   const startServer = resolvePath(packageRoot, 'scripts/start-server.ts');
-  const child = spawn(
-    'bun',
-    ['run', startServer, '--', '--update-snapshots', '--retries=0', ...extraArgs],
-    {
-      cwd: packageRoot,
-      stdio: 'inherit',
-      // CINDER_VISUAL_DIFF=block ensures toHaveScreenshot is active so
-      // Playwright actually writes/updates the committed baseline PNGs rather
-      // than writing legacy review screenshots under screenshots/.
-      env: { ...process.env, CINDER_UPDATE_SNAPSHOTS: '1', CINDER_VISUAL_DIFF: 'block' },
-    },
-  );
+  const renderedSourceSha = readRenderedSourceSha(repoRoot);
+  const child = spawn('bun', startServerArguments(startServer, extraArgs), {
+    cwd: packageRoot,
+    stdio: 'inherit',
+    // CINDER_VISUAL_DIFF=block ensures toHaveScreenshot is active so
+    // Playwright actually writes/updates the committed baseline PNGs rather
+    // than writing legacy review screenshots under screenshots/.
+    env: snapshotUpdateEnvironment(process.env),
+  });
 
   const exitCode = await new Promise<number>((resolve) => {
     child.once('exit', (code) => resolve(code ?? 1));
@@ -56,10 +89,26 @@ async function main(): Promise<void> {
     });
   });
 
+  if (exitCode === 0) {
+    await writeBaselineProvenance(
+      resolvePath(packageRoot, 'snapshots', 'provenance.json'),
+      createBaselineProvenance({
+        componentScope: provenanceComponentScope(process.env['CINDER_TEST_COMPONENTS']),
+        renderedSourceSha,
+        playwrightVersion: result.playwrightVersion,
+        osCodename: readOsCodename() ?? '<missing /etc/os-release>',
+        architecture: process.arch,
+        dockerImageTag: dockerImageTagForPlaywrightVersion(result.playwrightVersion),
+      }),
+    );
+  }
+
   process.exit(exitCode);
 }
 
-main().catch((error: unknown) => {
-  console.error('update-snapshots failed:', error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('update-snapshots failed:', error);
+    process.exit(1);
+  });
+}
