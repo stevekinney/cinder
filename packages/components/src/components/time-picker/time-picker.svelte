@@ -283,27 +283,46 @@
     periodFocusIndex = displayHour.period === 'PM' ? 1 : 0;
   }
 
-  // Handle for the post-open focus timer so it can be cleared if the picker is
-  // re-opened or destroyed before it fires — otherwise unmounting during the
-  // open-focus window leaks a timer that wakes a destroyed component.
+  // Handle + resolver for the post-open focus timer so it can be cancelled if
+  // the picker is re-opened or destroyed before it fires. Cancelling clears the
+  // timer (no leaked timer that wakes a destroyed component) AND settles the
+  // awaited promise (no permanently-suspended async path on rapid re-open).
   let openFocusTimer: ReturnType<typeof setTimeout> | undefined;
+  let resolveOpenFocusTimer: (() => void) | undefined;
+
+  /** Cancel any pending post-open focus timer and settle its promise. */
+  function clearOpenFocusTimer(): void {
+    if (openFocusTimer !== undefined) clearTimeout(openFocusTimer);
+    openFocusTimer = undefined;
+    resolveOpenFocusTimer?.();
+    resolveOpenFocusTimer = undefined;
+  }
 
   async function focusSelectedHourAfterOpen(): Promise<void> {
     await tick();
     // Yield one macrotask so the popover's options are laid out before focusing.
-    // Stored + cleared (here and in onDestroy) so an unmount mid-window leaks no timer.
-    if (openFocusTimer !== undefined) clearTimeout(openFocusTimer);
+    // Cancel any in-flight focus timer first so only the latest open wins.
+    clearOpenFocusTimer();
+    let cancelled = false;
     await new Promise<void>((resolve) => {
+      resolveOpenFocusTimer = () => {
+        cancelled = true;
+        resolve();
+      };
       openFocusTimer = setTimeout(() => {
         openFocusTimer = undefined;
+        resolveOpenFocusTimer = undefined;
         resolve();
       }, 0);
     });
+    // A cancelled call (re-opened or destroyed mid-window) must not steal focus;
+    // the superseding open — or nothing, on destroy — owns it.
+    if (cancelled) return;
     hourOptionElements[hourFocusIndex]?.focus();
   }
 
   onDestroy(() => {
-    if (openFocusTimer !== undefined) clearTimeout(openFocusTimer);
+    clearOpenFocusTimer();
   });
 
   function handleToggleClick(): void {
