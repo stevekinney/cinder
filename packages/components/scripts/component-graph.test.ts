@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  assertNoAmbiguousImports,
   assertNoUnmodellableImports,
   buildImportGraph,
   computeScope,
@@ -443,6 +444,14 @@ describe('computeScope', () => {
     expect(decision.mode).toBe('full');
   });
 
+  it('uses the EXACT "no component-mapped changes detected" reason (decide() depends on it)', () => {
+    // changed-components.ts decide() string-matches this reason to let an
+    // example-only change recover a filtered scope. Pin the wording so a rename
+    // fails here loudly instead of silently breaking that rescue path.
+    const decision = computeScope(base({ changedFiles: ['docs/readme.md'] }));
+    expect(decision).toEqual({ mode: 'full', reason: 'no component-mapped changes detected' });
+  });
+
   // --- silent-miss regressions (found by codex-advisor) ---
 
   it('includes a co-changed test file’s slug even when another component also changed', () => {
@@ -523,6 +532,11 @@ describe('no-unmodellable-imports guard (real tree)', () => {
   it('the harness allow-list is exhaustive — no stray computed imports', async () => {
     const files = await loadSourceFiles();
     expect(() => assertNoUnmodellableImports(files)).not.toThrow();
+  });
+
+  it('the real tree has no ambiguous imports that would make scoping permanently full', async () => {
+    const files = await loadSourceFiles();
+    expect(() => assertNoAmbiguousImports(files)).not.toThrow();
   });
 
   it('every allow-list entry is under src/test/ (cannot wave through component source)', () => {

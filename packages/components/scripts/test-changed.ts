@@ -116,6 +116,17 @@ async function resolveScope(baseRef: string): Promise<ScopeDecision> {
   const diff = Bun.spawnSync(['git', 'diff', '--name-only', `${baseRef}...HEAD`], {
     cwd: workspaceRoot,
   });
+  // A failed git invocation (e.g. base ref not fetched on a shallow clone) must
+  // NOT be misread as "empty diff → full". Surface it as full WITH the reason,
+  // so the run is safe (full) and the failure is visible in the log rather than
+  // silently swallowed. This path is local-only; CI sets CINDER_TEST_MODE.
+  if (diff.exitCode !== 0) {
+    const stderr = new TextDecoder().decode(diff.stderr).trim();
+    return {
+      mode: 'full',
+      reason: `git diff against '${baseRef}' failed (running full): ${stderr || `exit ${diff.exitCode}`}`,
+    };
+  }
   const changedFiles = new TextDecoder()
     .decode(diff.stdout)
     .split('\n')

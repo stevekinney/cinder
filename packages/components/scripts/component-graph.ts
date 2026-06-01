@@ -760,3 +760,24 @@ export function assertNoUnmodellableImports(files: ReadonlyMap<string, string>):
     );
   }
 }
+
+/**
+ * Guard used by the test suite: assert that the real tree has no ambiguous
+ * imports. An ambiguous import is safe at runtime because scoping force-fulls,
+ * but leaving one on `main` would make every future scoped run permanently full.
+ */
+export function assertNoAmbiguousImports(files: ReadonlyMap<string, string>): void {
+  const graph = buildImportGraph(files);
+  if (graph.ambiguousFiles.size === 0) return;
+
+  throw new Error(
+    `Ambiguous import(s) found in the dependency-aware test graph:\n` +
+      [...graph.ambiguousFiles]
+        .toSorted()
+        .map((file) => `  • ${file}`)
+        .join('\n') +
+      `\n\nThese imports cannot be resolved to exactly one on-disk source file, so ` +
+      `dependency-aware scoping would force the full suite for every change.\n` +
+      `Fix by adding an explicit extension or removing the competing candidate file.`,
+  );
+}
