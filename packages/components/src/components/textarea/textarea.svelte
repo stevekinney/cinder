@@ -16,12 +16,8 @@
 
 <script lang="ts">
   import type { TextareaProps } from './textarea.types.ts';
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
+  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { resolveMaximumLength } from '../textarea-count.ts';
 
@@ -32,19 +28,36 @@
     description,
     error,
     rows = 4,
-    disabled = false,
+    disabled,
+    required,
     class: customClassName,
     maxlength,
     showCount = false,
+    'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerInvalid,
     ...rest
   }: TextareaProps = $props();
 
-  const descriptionId = $derived(describeId(id, !!description));
-  const errId = $derived(buildErrorId(id, !!error));
+  const context = getFormFieldContext();
   const maximumLength = $derived(resolveMaximumLength(maxlength));
   const countId = $derived(showCount && maximumLength !== undefined ? `${id}-count` : undefined);
   const currentCount = $derived(value?.length ?? 0);
-  const describedBy = $derived(composeDescribedBy(descriptionId, countId, errId));
+  const ownRequired = $derived(required === true ? true : required === false ? false : undefined);
+  const field = $derived(
+    resolveFieldControl({
+      id,
+      generatedId: id,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'textarea',
+      consumerDescribedBy,
+      consumerInvalid,
+      additionalDescribedBy: [countId],
+      required: ownRequired,
+      disabled,
+    }),
+  );
 </script>
 
 <div class="cinder-textarea-field">
@@ -54,16 +67,17 @@
   <textarea
     {id}
     {rows}
-    {disabled}
+    disabled={field.disabled}
+    required={field.required}
     {maxlength}
-    class={classNames('cinder-textarea', customClassName)}
-    aria-invalid={ariaInvalid(!!error)}
-    aria-describedby={describedBy}
+    class={classNames('cinder-_input-frame', 'cinder-textarea', customClassName)}
+    aria-invalid={field.ariaInvalid}
+    aria-describedby={field.describedBy}
     bind:value
     {...rest}
   ></textarea>
   {#if description}
-    <p id={descriptionId} class="cinder-textarea-description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-textarea-description">{description}</p>
   {/if}
   {#if countId}
     <output
@@ -77,6 +91,6 @@
     </output>
   {/if}
   {#if error}
-    <p id={errId} class="cinder-textarea-error" aria-live="polite">{error}</p>
+    <p id={field.ownErrorId} class="cinder-textarea-error" aria-live="polite">{error}</p>
   {/if}
 </div>

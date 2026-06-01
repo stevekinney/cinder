@@ -721,10 +721,11 @@
       ],
       "related": ["color-picker", "color-swatch-picker", "input", "form-field"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/color-field/schema",
-        "variables": "cinder/color-field/variables"
+        "variables": "cinder/color-field/variables",
+        "examples": "cinder/color-field/examples"
       }
     },
     {
@@ -1075,10 +1076,11 @@
       ],
       "related": ["data-list", "table"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/description-list/schema",
-        "variables": "cinder/description-list/variables"
+        "variables": "cinder/description-list/variables",
+        "examples": "cinder/description-list/examples"
       }
     },
     {
@@ -1553,7 +1555,7 @@
       "tags": ["grid", "gallery"],
       "useWhen": [
         "Presenting a homogenous collection of cards that should reflow into multiple columns.",
-        "Constraining tile minimum widths per breakpoint via the columns prop."
+        "Constraining tile minimum widths per breakpoint via the minColumnWidth prop."
       ],
       "avoidWhen": [
         "Comparing rows of structured data — use table instead.",
@@ -1938,10 +1940,11 @@
       ],
       "related": ["chat", "callout"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/message/schema",
-        "variables": "cinder/message/variables"
+        "variables": "cinder/message/variables",
+        "examples": "cinder/message/examples"
       }
     },
     {
@@ -2910,10 +2913,11 @@
       ],
       "related": ["badge"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "cinder/status-dot/schema",
-        "variables": "cinder/status-dot/variables"
+        "variables": "cinder/status-dot/variables",
+        "examples": "cinder/status-dot/examples"
       }
     },
     {

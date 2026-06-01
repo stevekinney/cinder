@@ -66,21 +66,19 @@
     cursor: not-allowed;
   }
 
-  .cinder-combobox__listbox {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+  .cinder-combobox__panel {
     margin: var(--cinder-space-1) 0 0 0;
     padding: var(--cinder-space-1);
+    min-inline-size: 0;
+    max-inline-size: min(32rem, calc(100vw - var(--cinder-space-4)));
+  }
+
+  .cinder-combobox__listbox {
+    margin: 0;
+    padding: 0;
     list-style: none;
-    background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
-    box-shadow: var(--cinder-shadow-md);
     max-height: 16rem;
     overflow-y: auto;
-    z-index: var(--cinder-z-popover);
   }
 
   .cinder-combobox__option {

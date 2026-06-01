@@ -8,6 +8,8 @@
     flex-direction: column;
     gap: var(--cinder-space-1-5);
     inline-size: 100%;
+    container-type: inline-size;
+    container-name: cinder-phone-input;
   }
 
   .cinder-phone-input-field__label {
@@ -30,6 +32,12 @@
     grid-template-columns: minmax(7rem, max-content) 1fr;
     gap: var(--cinder-space-2);
     align-items: stretch;
+  }
+
+  @container cinder-phone-input (max-width: 22rem) {
+    .cinder-phone-input {
+      grid-template-columns: 1fr;
+    }
   }
 
   .cinder-phone-input__country,

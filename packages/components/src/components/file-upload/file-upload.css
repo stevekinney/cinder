@@ -113,6 +113,7 @@
     align-items: start;
     justify-content: space-between;
     gap: var(--cinder-space-3);
+    flex-wrap: wrap;
   }
 
   .cinder-file-upload__file-meta {
@@ -122,6 +123,7 @@
   }
 
   .cinder-file-upload__file-name {
+    overflow-wrap: anywhere;
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-weight-medium);

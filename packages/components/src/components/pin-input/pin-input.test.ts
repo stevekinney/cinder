@@ -249,6 +249,11 @@ describe('PinInput error / disabled / required', () => {
     expect(errorNode?.textContent).toContain('Invalid code');
   });
 
+  test('group invalid state reaches visible segment styling without segment aria-invalid', async () => {
+    const css = await Bun.file(new URL('./pin-input.css', import.meta.url)).text();
+    expect(css).toContain(".cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment");
+  });
+
   test('description wires aria-describedby on every segment', () => {
     const { container } = renderPin({
       props: { id: 'otp', value: '', description: 'Enter the 6-digit code we sent you.' },

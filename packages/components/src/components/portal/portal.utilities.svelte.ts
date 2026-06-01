@@ -125,7 +125,7 @@ export function createPortalAttachment(
       const disabled = readOption(options.disabled ?? false);
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
       const targetValue = readOption(options.target ?? null);
-      const attributeSource = readOption(options.source ?? initialParent);
+      const attributeSource = readOption(options.source ?? initialParent) ?? initialParent;
       const resolved = disabled ? null : resolvePortalTarget(targetValue);
 
       if (!disabled && resolved?.kind === 'resolved') {

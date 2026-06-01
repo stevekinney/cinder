@@ -62,9 +62,9 @@ NavigationItem is designed to be used inside a `<nav>` element or another approp
 
 ## Variants
 
-`NavigationItem` accepts a `variant` prop (`'horizontal'` | `'mobile'`, default `'horizontal'`) that controls stacked layout on small viewports. The value is emitted as a `data-variant` attribute on the root element.
+`NavigationItem` accepts a `variant` prop (`'horizontal'` | `'mobile'`, default `'horizontal'`) that marks which geometry an owning navigation surface should use. The value is emitted as a `data-variant` attribute on the root element.
 
-**Visual behavior is CSS-only and viewport-gated.** The `data-variant='mobile'` styles are scoped inside a `@media (max-width: 47.99rem)` rule. Passing `variant='mobile'` on a desktop viewport has no visual effect—the item renders identically to the horizontal variant. This keeps the variant safe to pass at all viewports without conditional JS.
+**Visual behavior is CSS-only and parent-owned.** `NavigationBar` applies `data-variant='mobile'` item geometry inside its narrow container query, so the item follows the bar's available inline size rather than the global viewport. Passing `variant="mobile"` does not force stacked geometry in a wide `NavigationBar`.
 
 **Usage with `NavigationBar`.** When `NavigationBar` renders with a `menuToggle` snippet (mobile collapse enabled), it passes a `{ variant }` context object to the `items` snippet. Consumers forward this to each `NavigationItem` to enable stacked layout automatically:
 

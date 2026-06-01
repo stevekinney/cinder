@@ -1,0 +1,39 @@
+@layer cinder.components {
+  .cinder-_control-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-2);
+    min-block-size: var(--cinder-control-height-md, 2.25rem);
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-md);
+    background: transparent;
+    color: var(--cinder-text);
+    font: inherit;
+    text-decoration: none;
+  }
+
+  .cinder-_control-item[aria-current],
+  .cinder-_control-item[data-cinder-active] {
+    background: var(--cinder-surface-raised);
+    border-color: var(--cinder-border);
+  }
+
+  .cinder-_control-item:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (hover: hover) {
+    .cinder-_control-item:not([aria-disabled='true']):not(:disabled):hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .cinder-_control-item:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+}

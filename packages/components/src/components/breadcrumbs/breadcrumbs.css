@@ -4,6 +4,11 @@
  * Navigation landmark with an ordered list of links.
  * ======================================== */
 
+  .cinder-breadcrumbs {
+    container-type: inline-size;
+    container-name: cinder-breadcrumbs;
+  }
+
   .cinder-breadcrumbs__list {
     list-style: none;
     padding: 0;
@@ -89,5 +94,16 @@
     user-select: none;
     /* Separators never collapse. */
     flex-shrink: 0;
+  }
+
+  @container cinder-breadcrumbs (max-width: 24rem) {
+    .cinder-breadcrumbs__item:not(:first-child):not(:last-child) {
+      flex: 1 1 min(8rem, 25%);
+      max-inline-size: min(8rem, 25%);
+    }
+
+    .cinder-breadcrumbs__item:not(:first-child):not(:last-child) .cinder-breadcrumbs__link {
+      max-inline-size: 100%;
+    }
   }
 }

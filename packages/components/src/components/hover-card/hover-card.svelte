@@ -19,15 +19,8 @@
   import type { HoverCardProps } from './hover-card.types.ts';
   import { DEV } from 'esm-env';
   import { onDestroy } from 'svelte';
-  import {
-    arrow as arrowMw,
-    autoUpdate,
-    computePosition,
-    flip,
-    offset as offsetMw,
-    shift,
-  } from '@floating-ui/dom';
   import type { Placement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useId } from '../../utilities/use-id.ts';
   import { createPortalAttachment } from '../portal/index.ts';
@@ -56,10 +49,6 @@
   let triggerWrapper = $state<HTMLSpanElement | null>(null);
   let cardElement = $state<HTMLDivElement | null>(null);
   let arrowElement = $state<HTMLSpanElement | null>(null);
-  let computedPlacement = $state<Placement>('bottom-start');
-  let positionStyle = $state('');
-  let arrowStyle = $state('');
-  let positionReady = $state(false);
   let pointerInsideTrigger = false;
   let pointerInsideCard = false;
   let focusInsideTrigger = false;
@@ -81,6 +70,17 @@
     target: () => document.body,
     source: () => anchorElement,
     inheritAttributes: true,
+  });
+
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => anchorElement,
+    panel: () => cardElement,
+    arrow: () => arrowElement,
+    placement: () => placement as Placement,
+    offset: () => offset,
+    showArrow: () => showArrow,
+    widthMode: () => 'content',
   });
 
   function clearTimers() {
@@ -206,62 +206,6 @@
   });
 
   $effect(() => {
-    if (!open || !anchorElement || !cardElement) {
-      positionReady = false;
-      positionStyle = '';
-      return;
-    }
-
-    const anchor = anchorElement;
-    const card = cardElement;
-    const arrow = arrowElement;
-    let cancelled = false;
-    let generation = 0;
-    const middleware = [offsetMw(offset), flip(), shift({ padding: 8 })];
-    if (showArrow && arrow) {
-      middleware.push(arrowMw({ element: arrow, padding: 6 }));
-    }
-
-    const stop = autoUpdate(anchor, card, async () => {
-      const myGeneration = ++generation;
-      const result = await computePosition(anchor, card, {
-        placement,
-        middleware,
-        strategy: 'fixed',
-      });
-      if (cancelled || myGeneration !== generation) return;
-      positionStyle = `left: ${result.x}px; top: ${result.y}px;`;
-      computedPlacement = result.placement;
-      if (showArrow && arrow) {
-        const arrowPosition = result.middlewareData.arrow;
-        const side = result.placement.split('-')[0] as 'top' | 'right' | 'bottom' | 'left';
-        const staticSide = {
-          top: 'bottom',
-          right: 'left',
-          bottom: 'top',
-          left: 'right',
-        }[side];
-        arrowStyle = [
-          arrowPosition?.x != null ? `left: ${arrowPosition.x}px;` : '',
-          arrowPosition?.y != null ? `top: ${arrowPosition.y}px;` : '',
-          staticSide ? `${staticSide}: -4px;` : '',
-        ]
-          .filter(Boolean)
-          .join(' ');
-      }
-      positionReady = true;
-    });
-
-    return () => {
-      cancelled = true;
-      stop();
-      positionReady = false;
-      positionStyle = '';
-      arrowStyle = '';
-    };
-  });
-
-  $effect(() => {
     if (!DEV || !open || !cardElement) return;
     const focusable = cardElement.querySelector(focusableSelector);
     if (focusable) {
@@ -292,11 +236,11 @@
   <div
     bind:this={cardElement}
     id={cardId}
-    class={classNames('cinder-hover-card', className)}
+    class={classNames('cinder-_floating-surface', 'cinder-hover-card', className)}
     role="tooltip"
-    data-cinder-placement={computedPlacement}
-    data-cinder-position-ready={positionReady}
-    style={positionStyle}
+    data-cinder-placement={anchoredOverlay.resolvedPlacement}
+    data-cinder-position-ready={anchoredOverlay.positionReady}
+    style={anchoredOverlay.positionStyle}
     onmouseenter={handleCardMouseEnter}
     onmouseleave={handleCardMouseLeave}
     onfocusin={handleCardFocusIn}
@@ -305,7 +249,11 @@
   >
     {@render children()}
     {#if showArrow}
-      <span bind:this={arrowElement} class="cinder-hover-card__arrow" style={arrowStyle}></span>
+      <span
+        bind:this={arrowElement}
+        class="cinder-hover-card__arrow"
+        style={anchoredOverlay.arrowStyle}
+      ></span>
     {/if}
   </div>
 {/if}

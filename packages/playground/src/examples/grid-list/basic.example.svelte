@@ -15,7 +15,7 @@
   ];
 </script>
 
-<GridList columns="14rem" aria-label="Projects">
+<GridList minColumnWidth="14rem" aria-label="Projects">
   {#each projects as project (project.name)}
     <GridList.Item>
       {#snippet title()}

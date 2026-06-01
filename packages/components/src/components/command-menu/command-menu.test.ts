@@ -21,6 +21,7 @@ const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () =>
 const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
 
 mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
   computePosition: computePositionSpy,
   autoUpdate: autoUpdateSpy,
   flip: flipSpy,

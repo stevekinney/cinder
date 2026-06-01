@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -13,6 +14,8 @@ const { default: NavigationBar } = await import('./navigation-bar.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
 const { createRawSnippet } = await import('svelte');
+
+const navigationBarCss = readFileSync(new URL('./navigation-bar.css', import.meta.url), 'utf8');
 
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
@@ -529,5 +532,15 @@ describe('NavigationBar', () => {
     await fireEvent.keyDown(docsLabel, { key: ' ' });
 
     expect(clicks['docs']).toBeUndefined();
+  });
+});
+
+describe('NavigationBar responsive CSS', () => {
+  test('mobile item geometry is owned by the bar container query', () => {
+    expect(navigationBarCss).toContain('container-name: cinder-navigation-bar;');
+    expect(navigationBarCss).toContain('@container cinder-navigation-bar (max-width: 47.99rem)');
+    expect(navigationBarCss).toMatch(
+      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
+    );
   });
 });

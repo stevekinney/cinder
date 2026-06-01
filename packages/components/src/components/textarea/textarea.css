@@ -36,7 +36,6 @@
     width: 100%;
     min-height: 6rem;
     resize: vertical;
-    field-sizing: content;
 
     padding: var(--cinder-space-2) var(--cinder-space-3);
 
@@ -52,6 +51,12 @@
     transition:
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @supports (field-sizing: content) {
+    .cinder-textarea {
+      field-sizing: content;
+    }
   }
 
   .cinder-textarea::placeholder {

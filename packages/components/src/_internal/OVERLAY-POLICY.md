@@ -2,7 +2,20 @@
 
 This document defines the cross-cutting behavior every Cinder overlay component (Modal, Sheet, Dropdown, Popover, Tooltip, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
 
-The runtime helpers backing this policy live in `src/_internal/overlay.ts`.
+The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
+`src/_internal/anchored-overlay.svelte.ts`.
+
+## Native-first positioning matrix
+
+| Surface                                                   | Preferred primitive                                               | JavaScript fallback                                                 | Notes                                                                                                                                             |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modal blocking surfaces                                   | Native `<dialog>.showModal()`                                     | None for the modal contract                                         | Browser top-layer and native inert behavior are the baseline. Do not manually inert the whole app except for narrowly scoped transitional states. |
+| Simple trigger-owned menus                                | Popover API plus CSS Anchor Positioning                           | Shared anchored overlay helper with Floating UI `strategy: "fixed"` | The native path must be guarded by both runtime `showPopover` detection and CSS `@supports` for anchor positioning.                               |
+| Rich anchored panels, listboxes, and hover/focus previews | Shared anchored overlay helper                                    | Same helper                                                         | Popover, Combobox, Autocomplete, HoverCard, Tooltip, CommandMenu, MenuBar, and non-native Dropdown paths use one fixed-position lifecycle.        |
+| Pointer, caret, and text-selection anchors                | Shared anchored overlay helper with a Floating UI virtual element | Same helper                                                         | CSS Anchor Positioning is intentionally not used for virtual anchors yet. ContextMenu and CommandMenu use virtual anchors.                        |
+
+CSS Anchor Positioning remains a progressive enhancement. Do not require it for
+correctness until the support policy changes.
 
 ## Portal root
 

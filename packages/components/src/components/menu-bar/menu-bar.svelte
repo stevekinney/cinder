@@ -76,6 +76,7 @@
   let openSubmenuKey = $state<string | null>(null);
   let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
   let suppressSubmenuFocusOpen = false;
+  const menuElements = new Map<string, HTMLElement>();
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
@@ -124,6 +125,12 @@
 
   function focusElement(id: string): void {
     document.getElementById(id)?.focus();
+  }
+
+  function findElementById(id: string): HTMLElement | null {
+    if (typeof document === 'undefined') return null;
+    const element = document.getElementById(id);
+    return element instanceof HTMLElement ? element : null;
   }
 
   function focusSubmenuTriggerAfterClose(id: string): void {
@@ -202,6 +209,8 @@
 
   function makeContext(options: {
     menuId: string;
+    anchorElement: () => HTMLElement | null;
+    fallbackPlacement?: DropdownContext['fallbackPlacement'];
     isOpen: () => boolean;
     close: () => void;
     focusTrigger: () => void;
@@ -216,6 +225,15 @@
       get supportsPopover() {
         return false;
       },
+      get anchorElement() {
+        return options.anchorElement();
+      },
+      get fallbackPlacement() {
+        return options.fallbackPlacement ?? 'bottom-start';
+      },
+      get widthMode() {
+        return 'menu' as const;
+      },
       get initialFocus() {
         return initialFocus;
       },
@@ -224,7 +242,19 @@
     };
   }
 
-  function noopRegister(): void {}
+  function makeMenuRegister(menuId: string): (element: HTMLElement | null) => void {
+    return (element) => {
+      if (element) {
+        menuElements.set(menuId, element);
+      } else {
+        menuElements.delete(menuId);
+      }
+    };
+  }
+
+  function isInsideOpenMenu(target: Node): boolean {
+    return Array.from(menuElements.values()).some((element) => element.contains(target));
+  }
 
   function handleTriggerKeydown(event: KeyboardEvent, index: number): void {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
@@ -309,6 +339,7 @@
 
   function handleDocumentPointerdown(event: PointerEvent): void {
     if (!rootElement || !(event.target instanceof Node)) return;
+    if (isInsideOpenMenu(event.target)) return;
     if (!rootElement.contains(event.target)) closeAll();
   }
 
@@ -316,12 +347,24 @@
     if (!rootElement || !(event.target instanceof Node)) return;
     void tick().then(() => {
       if (document.activeElement && rootElement?.contains(document.activeElement)) return;
+      if (document.activeElement && isInsideOpenMenu(document.activeElement)) return;
       closeAll();
     });
   }
+
+  function handleDocumentKeydown(event: KeyboardEvent): void {
+    if (!rootElement || !(event.target instanceof Node)) return;
+    if (rootElement.contains(event.target)) return;
+    if (!isInsideOpenMenu(event.target)) return;
+    handleRootKeydown(event);
+  }
 </script>
 
-<svelte:document onpointerdown={handleDocumentPointerdown} onfocusin={handleDocumentFocusin} />
+<svelte:document
+  onpointerdown={handleDocumentPointerdown}
+  onfocusin={handleDocumentFocusin}
+  onkeydown={handleDocumentKeydown}
+/>
 
 <div
   {...rest}
@@ -371,12 +414,14 @@
       <MenuBarDropdownContext
         context={makeContext({
           menuId,
+          anchorElement: () => findElementById(triggerId),
+          fallbackPlacement: 'bottom-start',
           isOpen: () => openMenuIndex === menuIndex,
           close: () => closeMenuAndFocusTrigger(menuIndex),
           focusTrigger: () => focusTopLevelTrigger(menuIndex),
         })}
-        registerMenu={noopRegister}
-        registerTrigger={noopRegister}
+        registerMenu={makeMenuRegister(menuId)}
+        registerTrigger={() => {}}
         setOpen={(open) => {
           if (open) openMenu(menuIndex);
           else closeAll();
@@ -449,12 +494,14 @@
                   <MenuBarDropdownContext
                     context={makeContext({
                       menuId: submenuKey,
+                      anchorElement: () => findElementById(submenuTrigger),
+                      fallbackPlacement: 'right-start',
                       isOpen: () => openSubmenuKey === submenuKey,
                       close: () => closeMenuAndFocusTrigger(menuIndex),
                       focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),
                     })}
-                    registerMenu={noopRegister}
-                    registerTrigger={noopRegister}
+                    registerMenu={makeMenuRegister(submenuKey)}
+                    registerTrigger={() => {}}
                     setOpen={(open) => {
                       if (open) openSubmenu(submenuKey);
                       else openSubmenuKey = null;

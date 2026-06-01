@@ -8,7 +8,8 @@ type CommonArm = {
    *
    * - `'horizontal'`: top-rounded radius, accent bottom-border active indicator.
    *   Used inside `NavigationBar` and similar horizontal tab-bar contexts.
-   * - `'mobile'`: stacked full-width layout below the mobile breakpoint.
+   * - `'mobile'`: stacked full-width layout when an owning navigation surface
+   *   enters its narrow container mode.
    * - `'vertical'`: square row geometry, neutral selected surface, and accent inline-start border active indicator.
    *   Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or
    *   standalone sidebar footers where flush sidebar edges are required.

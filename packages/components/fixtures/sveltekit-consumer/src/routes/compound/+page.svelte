@@ -92,7 +92,7 @@
   </section>
 
   <section aria-label="Namespaced GridList">
-    <GridList columns="14rem" aria-label="Boards">
+    <GridList minColumnWidth="14rem" aria-label="Boards">
       <GridList.Item>
         {#snippet title()}<strong>Roadmap</strong>{/snippet}
       </GridList.Item>
