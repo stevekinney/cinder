@@ -8,7 +8,7 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 
 - Uses a native `<button type="button">` inside an `<h3>` heading element. The heading level communicates the item's place in the page outline; consumers who nest accordions inside other heading contexts should note this and adjust via CSS if the heading level needs to change semantically (a future prop can address this).
 - `aria-expanded="true|false"` — reflects whether the associated panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
-- `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content.
+- `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content. Unlike `Collapsible`, which emits `aria-controls` only while the panel is in the DOM, `AccordionItem` always emits this attribute because the panel ID is a stable, predictable value derived from the item `id` prop — the panel's absence from the DOM when collapsed is a visual-only concern, and the reference remains valid once expanded.
 - `id="{id}-header"` — provides a stable ID for the header button itself.
 
 ### AccordionItem panel
@@ -18,7 +18,7 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 
 ### Disabled items
 
-- The header button carries both `disabled` (native HTML boolean) and `aria-disabled="true"`. The native `disabled` attribute prevents all interaction and removes the element from the tab order, while `aria-disabled` ensures assistive technologies that do not fully honour `disabled` still announce the state.
+- The header button carries the native `disabled` HTML boolean attribute only. Native `disabled` prevents all interaction, removes the element from the tab order, and is announced by assistive technologies. `aria-disabled` is intentionally **omitted** alongside `disabled` on a `<button>` — adding both causes double-announcement of the disabled state in some screen reader + browser combinations.
 
 ## Keyboard Interactions
 
@@ -47,6 +47,10 @@ Arrow-key navigation between accordion headers (as described in the optional ARI
 - Header titles should be concise and describe the panel content clearly — they serve as both the visible label and the accessible name for the panel region.
 - Avoid nesting interactive elements (buttons, links) inside the title prop. Place interactive content inside the panel (children) instead.
 - Do not rely solely on icon colour to communicate expanded/collapsed state; the chevron rotates as a secondary affordance but `aria-expanded` is the primary machine-readable signal.
+
+## Reduced Motion
+
+The chevron rotation animation is suppressed under `prefers-reduced-motion: reduce` via a CSS media query on `.cinder-accordion-item__chevron`. AccordionItem does not use a JS-driven slide transition for its panel — the panel appears and disappears instantly via `{#if}` — so there is no JS-side reduced-motion guard required. `aria-expanded` remains the primary indication of state regardless of motion preference.
 
 ## Forced-Colors Mode (Windows High Contrast)
 
