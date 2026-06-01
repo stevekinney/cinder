@@ -102,6 +102,16 @@ for (const entry of entries) {
               description: `C/S/M/m: ${buckets.critical.length}/${buckets.serious.length}/${buckets.moderate.length}/${buckets.minor.length}`,
             });
 
+            // Record the screenshot taxonomy so the contact-sheet tooling can
+            // group captures by intent (visual contract vs interaction state
+            // vs primitive composition vs documentation). The fixture schema
+            // resolves `category` to a default when omitted.
+            const category =
+              'category' in fixture && typeof fixture.category === 'string'
+                ? fixture.category
+                : 'visual-contract';
+            test.info().annotations.push({ type: 'category', description: category });
+
             // Pass mask rules from the fixture so toHaveScreenshot can exclude
             // dynamic regions from the pixel comparison.
             const masks =

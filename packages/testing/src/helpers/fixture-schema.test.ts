@@ -308,3 +308,55 @@ describe('happy path', () => {
     ).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// category — screenshot taxonomy with default resolution
+// ---------------------------------------------------------------------------
+
+describe('fixture category (screenshot taxonomy)', () => {
+  it("defaults to 'visual-contract' when omitted and there are no interactions", () => {
+    const { fixtures } = parse({ fixtures: [{ name: 'plain', props: {} }] });
+    expect(fixtures[0]!.category).toBe('visual-contract');
+  });
+
+  it("defaults to 'interaction-state' when the fixture has interact steps", () => {
+    const { fixtures } = parse({
+      fixtures: [
+        {
+          name: 'hovered',
+          props: {},
+          interact: [{ action: 'hover', target: { testId: 'trigger' } }],
+        },
+      ],
+    });
+    expect(fixtures[0]!.category).toBe('interaction-state');
+  });
+
+  it('honors an explicit category over the interact-based default', () => {
+    const { fixtures } = parse({
+      fixtures: [
+        {
+          name: 'open-doc',
+          props: {},
+          interact: [{ action: 'click', target: { testId: 'trigger' } }],
+          category: 'documentation',
+        },
+      ],
+    });
+    expect(fixtures[0]!.category).toBe('documentation');
+  });
+
+  it('accepts every taxonomy value and rejects an unknown one', () => {
+    const categories = [
+      'visual-contract',
+      'primitive-composition',
+      'interaction-state',
+      'documentation',
+    ] as const;
+    for (const category of categories) {
+      const { fixtures } = parse({ fixtures: [{ name: 'f', props: {}, category }] });
+      expect(fixtures[0]!.category).toBe(category);
+    }
+    expect(() => parse({ fixtures: [{ name: 'f', props: {}, category: 'nonsense' }] })).toThrow();
+  });
+});
