@@ -89,10 +89,11 @@
  * Suppressing only (1) leaves (2) as a visible divider cutting through the far edge of
  * the highlight. Both must be hidden so the highlighted button reads as one clean shape.
  *
- * WHY :has() FOR THE FOLLOWING-SIBLING CASE:
- * CSS has no previous-sibling selector, so we use :has(+ sibling:state) on the item
- * that immediately precedes the highlighted one. This is the item whose ::before seam
- * sits at the highlighted item's far edge.
+ * THE FAR-EDGE SEAM IS THE NEXT SIBLING'S ::before:
+ * The seam at the highlighted item's far edge is owned by the item that immediately
+ * FOLLOWS it (that next item's near-edge ::before sits on the shared boundary). So we
+ * target it with the adjacent-sibling combinator: highlighted-item + next-item::before.
+ * (No :has() / previous-sibling trickery needed — the seam lives on the later item.)
  *
  * VERTICAL ORIENTATION:
  * The same ::before mechanism is used for vertical groups (block axis), so the same
@@ -118,13 +119,12 @@
     opacity: 0;
   }
 
-  /* 2. Drop the following sibling's near-edge seam, which sits at the highlighted
-   *    item's far edge. The :not(:first-child) guard is technically redundant for the
-   *    first item (it has no ::before) but keeps the intent explicit. */
+  /* 2. Drop the seam at the highlighted item's far edge — owned by the NEXT item's
+   *    near-edge ::before. The adjacent-sibling combinator targets that following item
+   *    directly; it is necessarily non-first, so it always has a ::before. */
   .cinder-button-group
-    > [data-cinder-button-group-item]:not(:first-child):has(
-      + [data-cinder-button-group-item]:where(:hover, :active, :focus-within)
-    )::before {
+    > [data-cinder-button-group-item]:where(:hover, :active, :focus-within)
+    + [data-cinder-button-group-item]::before {
     opacity: 0;
   }
 

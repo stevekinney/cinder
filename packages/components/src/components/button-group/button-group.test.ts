@@ -252,12 +252,13 @@ describe('ButtonGroup', () => {
       /\[data-cinder-button-group-item\]:where\(:hover,\s*:active,\s*:focus-within\):not\([\s\S]*?:first-child[\s\S]*?\)::before[\s\S]*?\{[\s\S]*?opacity:\s*0;/,
     );
 
-    // The far-edge seam (owned by the following sibling) is also suppressed while an item
-    // is highlighted. This uses :has(+ sibling:state) because CSS has no previous-sibling
-    // selector. Without this rule, a visible divider would hug the far edge of the highlight.
-    // The regex tolerates Prettier line-wrapping inside :has(...) and across selector lines.
+    // The far-edge seam is owned by the item that FOLLOWS the highlighted one (its
+    // near-edge ::before sits on the shared boundary), so it is suppressed via the
+    // adjacent-sibling combinator: highlighted-item + next-item::before. Without this
+    // rule a visible divider would hug the far edge of the highlight.
+    // The regex tolerates Prettier line-wrapping across the selector lines.
     expect(css).toMatch(
-      /\[data-cinder-button-group-item\]:not\([\s\S]*?:first-child[\s\S]*?\):has\([\s\S]*?\+[\s\S]*?\[data-cinder-button-group-item\]:where\(:hover,\s*:active,\s*:focus-within\)[\s\S]*?\)::before[\s\S]*?\{[\s\S]*?opacity:\s*0;/,
+      /\[data-cinder-button-group-item\]:where\(:hover,\s*:active,\s*:focus-within\)[\s\S]*?\+[\s\S]*?\[data-cinder-button-group-item\]::before[\s\S]*?\{[\s\S]*?opacity:\s*0;/,
     );
 
     // BOTH borders meeting at a junction are zeroed (start on non-first, end on
