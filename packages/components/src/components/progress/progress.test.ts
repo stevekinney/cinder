@@ -213,3 +213,48 @@ describe('Progress CSS reduced-motion audit', () => {
     expect(ringRuleBlock).not.toBeUndefined();
   });
 });
+
+describe('Progress — degenerate max/value guards', () => {
+  // A determinate scale needs a finite, strictly-positive max. Anything else
+  // must fall back to indeterminate rather than dividing by zero (NaN/Infinity).
+  test('max=0 renders indeterminate, not NaN/Infinity', () => {
+    const { container } = render(Progress, { value: 10, max: 0 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
+    expect(el?.getAttribute('aria-valuenow')).toBeNull();
+    expect(el?.getAttribute('aria-valuemax')).toBeNull();
+    // No NaN/Infinity leaks into the value text.
+    expect(el?.getAttribute('aria-valuetext')).toBe('Loading');
+  });
+
+  test('negative max renders indeterminate', () => {
+    const { container } = render(Progress, { value: 10, max: -5 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
+    expect(el?.getAttribute('aria-valuenow')).toBeNull();
+  });
+
+  test('non-finite max (Infinity/NaN) renders indeterminate', () => {
+    for (const max of [Number.POSITIVE_INFINITY, Number.NaN]) {
+      const { container } = render(Progress, { value: 10, max });
+      const el = container.querySelector('[role="progressbar"]');
+      expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
+    }
+  });
+
+  test('non-finite value renders indeterminate even with a valid max', () => {
+    const { container } = render(Progress, { value: Number.NaN, max: 100 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
+    expect(el?.getAttribute('aria-valuenow')).toBeNull();
+  });
+
+  test('a valid finite max still computes a clamped determinate percent', () => {
+    const { container } = render(Progress, { value: 25, max: 50 });
+    const el = container.querySelector('[role="progressbar"]');
+    expect(el?.getAttribute('data-cinder-indeterminate')).toBeNull();
+    expect(el?.getAttribute('aria-valuenow')).toBe('25');
+    expect(el?.getAttribute('aria-valuemax')).toBe('50');
+    expect(el?.getAttribute('aria-valuetext')).toBe('50%');
+  });
+});

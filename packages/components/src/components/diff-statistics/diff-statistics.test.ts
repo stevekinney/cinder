@@ -11,16 +11,29 @@ const { default: DiffStatistics } = await import('./diff-statistics.svelte');
 afterEach(() => cleanup());
 
 describe('DiffStatistics', () => {
-  test('announces the total number of changed lines', () => {
+  test('labels the total number of changed lines as a single figure', () => {
     const { container } = render(DiffStatistics, {
       props: { added: 2, removed: 1, modified: 3 },
     });
 
-    const status = container.querySelector('[role="status"]');
-    expect(status?.getAttribute('aria-label')).toBe('6 lines changed');
-    expect(status?.textContent).toContain('added');
-    expect(status?.textContent).toContain('removed');
-    expect(status?.textContent).toContain('modified');
+    const figure = container.querySelector('[role="img"]');
+    expect(figure?.getAttribute('aria-label')).toBe('6 lines changed');
+    expect(figure?.textContent).toContain('added');
+    expect(figure?.textContent).toContain('removed');
+    expect(figure?.textContent).toContain('modified');
+  });
+
+  test('is a static labeled figure, not a live region', () => {
+    // Regression: diff stats describe a fixed diff, so they must NOT use
+    // role="status" / aria-live (which would announce on every re-render).
+    const { container } = render(DiffStatistics, {
+      props: { added: 2, removed: 1, modified: 3 },
+    });
+
+    const root = container.querySelector('.cinder-diff-statistics');
+    expect(root?.getAttribute('role')).toBe('img');
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
   test('supports compact zero-hiding output', () => {
@@ -28,7 +41,7 @@ describe('DiffStatistics', () => {
       props: { added: 4, removed: 0, modified: 0, variant: 'compact', hideZero: true },
     });
 
-    const status = container.querySelector('[role="status"]');
+    const status = container.querySelector('[role="img"]');
     expect(status?.getAttribute('data-cinder-variant')).toBe('compact');
     expect(status?.textContent).toContain('4');
     expect(status?.textContent).not.toContain('0');
@@ -38,7 +51,7 @@ describe('DiffStatistics', () => {
     const { container } = render(DiffStatistics, {
       props: { added: 1, removed: 0, modified: 0, variant: 'compact', density: 'toolbar' },
     });
-    const status = container.querySelector('[role="status"]');
+    const status = container.querySelector('[role="img"]');
     expect(status?.getAttribute('data-cinder-density')).toBe('toolbar');
   });
 
@@ -46,7 +59,7 @@ describe('DiffStatistics', () => {
     const { container } = render(DiffStatistics, {
       props: { added: 1, removed: 0, modified: 0, variant: 'compact' },
     });
-    const status = container.querySelector('[role="status"]');
+    const status = container.querySelector('[role="img"]');
     expect(status?.hasAttribute('data-cinder-density')).toBe(false);
   });
 

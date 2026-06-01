@@ -49,11 +49,17 @@
   const hasAnyStatistics = $derived(showAdded || showRemoved || showModified);
 </script>
 
+<!--
+  Static summary, not a live region: `role="img"` + `aria-label` reads the whole
+  figure as a single unit without announcing on every re-render the way
+  `role="status"` (an aria-live region) would. Diff stats describe a fixed diff;
+  they are not a value that updates in place.
+-->
 <div
   class={classNames('cinder-diff-statistics', customClassName)}
   data-cinder-variant={variant}
   data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
-  role="status"
+  role="img"
   aria-label={`${total} ${pluralize(total, 'line', 'lines')} changed`}
   {...rest}
 >

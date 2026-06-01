@@ -29,26 +29,35 @@
     class: className,
   }: JsonViewerProps = $props();
 
-  // Compute serialized size up front so we can short-circuit oversized
-  // payloads before walking the tree.
-  const serializedSize = $derived.by(() => {
+  // Compute serialized size up front so we can short-circuit oversized payloads
+  // before walking the tree. `JSON.stringify` can throw (circular references) or
+  // throw on `BigInt`; distinguish that from "too large" so the fallback shows a
+  // meaningful message instead of a garbage "~Infinity KB" size.
+  const serialized = $derived.by((): { ok: true; size: number } | { ok: false } => {
     try {
-      return new Blob([JSON.stringify(value)]).size;
+      return { ok: true, size: new Blob([JSON.stringify(value)]).size };
     } catch {
-      return Number.POSITIVE_INFINITY;
+      return { ok: false };
     }
   });
 
-  const tooLarge = $derived(serializedSize > maxBytes);
+  const unserializable = $derived(!serialized.ok);
+  const tooLarge = $derived(serialized.ok && serialized.size > maxBytes);
 </script>
 
 <div class={cn('cinder-json-viewer', className)}>
-  {#if tooLarge}
+  {#if unserializable}
     <div class="cinder-json-viewer__fallback" role="status">
       <p>
-        Payload too large to render (~{Math.round(serializedSize / 1024)} KB; cap is {Math.round(
-          maxBytes / 1024,
-        )} KB).
+        This value can't be serialized as JSON (it may contain a circular reference or a BigInt).
+      </p>
+      <p>Pass a plain JSON-serializable value, or use the consumer's download or copy action.</p>
+    </div>
+  {:else if tooLarge}
+    <div class="cinder-json-viewer__fallback" role="status">
+      <p>
+        Payload too large to render (~{Math.round((serialized.ok ? serialized.size : 0) / 1024)} KB; cap
+        is {Math.round(maxBytes / 1024)} KB).
       </p>
       <p>Use the consumer's download or copy action to inspect the raw JSON.</p>
     </div>
