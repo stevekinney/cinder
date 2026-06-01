@@ -7,7 +7,9 @@
     position: fixed;
     z-index: var(--cinder-z-popover, 1000);
     max-width: min(20rem, calc(100vw - 2rem));
-    padding: var(--cinder-space-md);
+    /* --cinder-space-4 (1rem) gives a card-like inset — one step above popover's
+       --cinder-space-3 (0.75rem) to reflect the richer preview-card surface. */
+    padding: var(--cinder-space-4);
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
@@ -18,6 +20,17 @@
     transition:
       opacity var(--cinder-duration-fast) var(--cinder-ease-out),
       transform var(--cinder-duration-fast) var(--cinder-ease-out);
+  }
+
+  /* Reset browser-default paragraph margins on first/last flow children so
+     content never touches the border and spacing is determined by `padding`
+     alone, not paragraph margin accidents. */
+  .cinder-hover-card > :first-child {
+    margin-block-start: 0;
+  }
+
+  .cinder-hover-card > :last-child {
+    margin-block-end: 0;
   }
 
   .cinder-hover-card[data-cinder-position-ready='true'] {

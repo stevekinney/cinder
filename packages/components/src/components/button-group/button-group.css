@@ -74,15 +74,54 @@
     block-size: 1px;
   }
 
-  /* On the FOCUSED participant only, drop its own seam so the focus ring is never
- * overpainted by a 1px line. Scoped to :focus-within — NOT :hover — because only
- * focus paints a ring that needs protecting; hovering must keep the seam visible
- * (hover has no ring, so suppressing it there would simply erase the junction
- * line). The focused item is also lifted to z-index:1 by the existing
- * :where(:hover,:focus-within) rule above, so its ring additionally paints over
- * the neighbor item's seam. Net: a focused button shows a clean, unclipped ring;
- * every resting AND hovered junction keeps its seam. */
-  .cinder-button-group > [data-cinder-button-group-item]:focus-within:not(:first-child)::before {
+  /* Suppress the seam for the highlighted (hovered, active, or focused) participant
+ * and the seam that sits immediately at its far boundary (owned by the next sibling).
+ *
+ * WHY TWO RULES:
+ * Each non-first group item paints its own ::before seam on its near edge. When item B
+ * is highlighted, two seams become problematic:
+ *   1. B's own ::before — sits at B's near (left/top) edge inside the highlight area.
+ *   2. The next sibling C's ::before — sits at B's far (right/bottom) edge, also
+ *      hugging the highlighted surface.
+ * Suppressing only (1) leaves (2) as a visible divider cutting through the far edge of
+ * the highlight. Both must be hidden so the highlighted button reads as one clean shape.
+ *
+ * WHY :has() FOR THE FOLLOWING-SIBLING CASE:
+ * CSS has no previous-sibling selector, so we use :has(+ sibling:state) on the item
+ * that immediately precedes the highlighted one. This is the item whose ::before seam
+ * sits at the highlighted item's far edge.
+ *
+ * VERTICAL ORIENTATION:
+ * The same ::before mechanism is used for vertical groups (block axis), so the same
+ * suppression selectors apply unchanged — orientation only affects the seam's
+ * inset/inline placement, not its ownership or z-index model.
+ *
+ * FORCED COLORS:
+ * The forced-colors @media rule further below remaps the seam to CanvasText. These
+ * opacity:0 rules run inside the same stacking context, so forced-colors highlight
+ * feedback (system Highlight background) replaces the seam visually. The seam
+ * suppression is safe: the system highlight is already a visible indicator.
+ *
+ * FOCUS RING PROTECTION:
+ * The focused participant is additionally lifted to z-index:1 by the
+ * :where(:hover,:focus-within) rule above, so its focus ring also paints over any
+ * seam on the far side. The opacity:0 here is a belt-and-suspenders complement. */
+
+  /* 1. Drop the highlighted item's own near-edge seam. */
+  .cinder-button-group
+    > [data-cinder-button-group-item]:where(:hover, :active, :focus-within):not(
+      :first-child
+    )::before {
+    opacity: 0;
+  }
+
+  /* 2. Drop the following sibling's near-edge seam, which sits at the highlighted
+   *    item's far edge. The :not(:first-child) guard is technically redundant for the
+   *    first item (it has no ::before) but keeps the intent explicit. */
+  .cinder-button-group
+    > [data-cinder-button-group-item]:not(:first-child):has(
+      + [data-cinder-button-group-item]:where(:hover, :active, :focus-within)
+    )::before {
     opacity: 0;
   }
 

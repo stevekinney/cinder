@@ -51,6 +51,13 @@
   let isClosing = $state(false);
   let closeGeneration = $state(0);
   let pendingOpenFocus = $state(false);
+  /**
+   * The side that was active when the current open/close cycle began.
+   * Snapshotted at open time so that a side-prop change while the drawer
+   * is open or closing does not flip the slide direction mid-animation.
+   * Only updated when the drawer actually (re)opens a new cycle.
+   */
+  let activeSide = $state(side);
 
   let capturedFocus: HTMLElement | null = null;
   let releaseScrollLock: (() => void) | null = null;
@@ -80,6 +87,10 @@
     if (!dialogElement) return;
     if (open) {
       if (isClosing) {
+        // Quick-reopen while a close transition is still running.
+        // Snapshot the current side so the reversal / re-entry animation
+        // uses the side the user expects for this new open intent.
+        activeSide = side;
         closeGeneration += 1;
         cancelPendingClose?.();
         cancelPendingClose = null;
@@ -87,6 +98,9 @@
       }
 
       if (!renderPanel) {
+        // Fresh mount — snapshot the side for this open cycle so any later
+        // side-prop change while open or closing does not flip the direction.
+        activeSide = side;
         renderPanel = true;
       }
 
@@ -254,7 +268,7 @@
       <div
         bind:this={panelElement}
         class="cinder-drawer__panel"
-        data-cinder-side={side}
+        data-cinder-side={activeSide}
         data-cinder-size={size}
         data-cinder-closing={isClosing ? '' : undefined}
         inert={isClosing}

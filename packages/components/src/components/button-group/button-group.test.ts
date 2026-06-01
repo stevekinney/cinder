@@ -244,11 +244,21 @@ describe('ButtonGroup', () => {
       /\[data-cinder-button-group-item\]:not\(:first-child\)::before\s*\{[\s\S]*?z-index:\s*1;[\s\S]*?background:\s*var\(--cinder-border\);/,
     );
 
-    // The seam is suppressed only on the FOCUSED participant, never on hover.
+    // The seam is suppressed on hovered, active, AND focused participants (own near-edge seam).
+    // A single :where(:hover, :active, :focus-within) rule covers all three states so that
+    // a secondary button's highlighted surface is never cut by a stray divider line.
+    // The regex tolerates Prettier line-wrapping inside :not(...) and across selector lines.
     expect(css).toMatch(
-      /\[data-cinder-button-group-item\]:focus-within:not\(:first-child\)::before\s*\{[\s\S]*?opacity:\s*0;/,
+      /\[data-cinder-button-group-item\]:where\(:hover,\s*:active,\s*:focus-within\):not\([\s\S]*?:first-child[\s\S]*?\)::before[\s\S]*?\{[\s\S]*?opacity:\s*0;/,
     );
-    expect(css).not.toMatch(/:hover[^{};]*::before\s*\{[^}]*opacity:\s*0;/);
+
+    // The far-edge seam (owned by the following sibling) is also suppressed while an item
+    // is highlighted. This uses :has(+ sibling:state) because CSS has no previous-sibling
+    // selector. Without this rule, a visible divider would hug the far edge of the highlight.
+    // The regex tolerates Prettier line-wrapping inside :has(...) and across selector lines.
+    expect(css).toMatch(
+      /\[data-cinder-button-group-item\]:not\([\s\S]*?:first-child[\s\S]*?\):has\([\s\S]*?\+[\s\S]*?\[data-cinder-button-group-item\]:where\(:hover,\s*:active,\s*:focus-within\)[\s\S]*?\)::before[\s\S]*?\{[\s\S]*?opacity:\s*0;/,
+    );
 
     // BOTH borders meeting at a junction are zeroed (start on non-first, end on
     // non-last) so bordered variants don't render a doubled 2px divider.

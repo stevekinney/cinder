@@ -694,6 +694,324 @@ describe('Drawer', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Slide direction lifecycle — regression for wrong-edge entry/exit.
+//
+// The panel's `data-cinder-side` must reflect the side that was current when
+// the drawer *opened* (the active-open-cycle side), not the live `side` prop.
+// happy-dom cannot render CSS, so these tests assert the state contract that
+// drives direction: whichever value `data-cinder-side` carries on the panel
+// is the value the CSS will use for translate/anchor rules.
+// ---------------------------------------------------------------------------
+describe('Drawer slide direction lifecycle', () => {
+  // 1. Opening a right drawer and then changing side while open must NOT
+  //    mutate data-cinder-side during the open cycle.
+  test('side change while open does not affect data-cinder-side until the next open cycle', async () => {
+    let openValue = true;
+    let sideValue: 'left' | 'right' = 'right';
+
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        get side() {
+          return sideValue;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    // Change the side while the drawer remains open.
+    sideValue = 'left';
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // Panel should still report the open-cycle side ('right'), not 'left'.
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+  });
+
+  // 2. Side change while closed takes effect on the next open.
+  test('side change while closed is reflected on the next open', async () => {
+    let openValue = false;
+    let sideValue: 'left' | 'right' = 'right';
+
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        get side() {
+          return sideValue;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    // First open — right side.
+    openValue = true;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    // Close the drawer fully.
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+    await finishCloseTransition(container);
+
+    // Change side while closed.
+    sideValue = 'left';
+
+    // Reopen — the new side should now be snapshotted.
+    openValue = true;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    const newPanel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(newPanel.getAttribute('data-cinder-side')).toBe('left');
+  });
+
+  // 3. Close transition keeps data-cinder-side stable even if side prop changes
+  //    mid-transition (e.g. the user queues a new side while the exit plays).
+  test('side change during a close transition does not flip data-cinder-side mid-transition', async () => {
+    let openValue = true;
+    let sideValue: 'left' | 'right' = 'right';
+
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        get side() {
+          return sideValue;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    // Begin closing.
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // Panel should be in closing state.
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+    // Side must still be the open-cycle side, not whatever side is now.
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    // Change side prop while transition is running.
+    sideValue = 'left';
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // data-cinder-side must remain 'right' throughout the transition.
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    // Transition completes — panel unmounts.
+    await finishCloseTransition(container);
+    expect(container.querySelector('.cinder-drawer__panel')).toBeNull();
+  });
+
+  // 4. Quick-close then reopen: if side changed before the reopen, the new
+  //    side is snapshotted and used for the re-entry animation.
+  test('quick-reopen after mid-close-side-change uses the new side', async () => {
+    let openValue = true;
+    let sideValue: 'left' | 'right' = 'right';
+
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        get side() {
+          return sideValue;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    // Close — transition starts.
+    openValue = false;
+    sideValue = 'left'; // side changes while closing
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // Panel is still mounted mid-transition.
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+
+    // Reopen before the transition completes (quick-reopen scenario).
+    openValue = true;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      get side() {
+        return sideValue;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // After quick-reopen, isClosing should be cleared and the new side snapshot applies.
+    expect(panel.getAttribute('data-cinder-closing')).toBeNull();
+    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+  });
+
+  // 5. Opening with side='left' from the start uses left entry.
+  test('left-side drawer opens with data-cinder-side="left"', () => {
+    const { container } = render(Drawer, {
+      props: { open: true, title: 'Test', side: 'left', children: emptySnippet },
+    });
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-side')).toBe('left');
+  });
+
+  // 6. Right-side drawer (default) closes with data-cinder-side='right' throughout.
+  test('right-side drawer exit transition preserves data-cinder-side="right"', async () => {
+    let openValue = true;
+    const { container, rerender } = render(Drawer, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test',
+        children: emptySnippet,
+      },
+    });
+
+    const panel = container.querySelector('.cinder-drawer__panel') as HTMLElement;
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+
+    openValue = false;
+    await rerender({
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Test',
+      children: emptySnippet,
+    });
+
+    // During the close transition, direction must still be 'right'.
+    expect(panel.getAttribute('data-cinder-side')).toBe('right');
+    expect(panel.getAttribute('data-cinder-closing')).toBe('');
+
+    await finishCloseTransition(container);
+    expect(container.querySelector('.cinder-drawer__panel')).toBeNull();
+  });
+});
+
 // The drawer's <dialog> is gated behind a `hydrated` $state set inside an
 // $effect, which never runs on the server. These tests render the component in
 // Svelte's server compiler and assert the gated markup is absent server-side —
