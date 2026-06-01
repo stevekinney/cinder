@@ -394,10 +394,13 @@ describe('TimePicker — single picker affordance (double-icon regression)', () 
 
   test('the CSS sidecar suppresses the native calendar-picker-indicator', async () => {
     const cssText = await Bun.file(cssPath).text();
-    // The rule must be present to prevent Chrome from rendering its own clock
-    // icon alongside the Cinder toggle button.
-    expect(cssText).toContain('::-webkit-calendar-picker-indicator');
-    expect(cssText).toMatch(/::-webkit-calendar-picker-indicator\s*\{[^}]*display\s*:\s*none/);
+    // The rule must target the input's OWN native indicator and hide it, to stop
+    // Chrome from rendering its clock icon alongside the Cinder toggle. Anchored to
+    // the full `.cinder-time-picker__input` selector so a stray/commented mention
+    // of the pseudo-element elsewhere can't satisfy the assertion.
+    expect(cssText).toMatch(
+      /\.cinder-time-picker__input::-webkit-calendar-picker-indicator\s*\{[^}]*display\s*:\s*none/,
+    );
   });
 
   test('renders exactly one toggle affordance and no native picker button in the DOM', () => {
