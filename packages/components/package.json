@@ -3626,7 +3626,7 @@
     "test:changed": "bun run scripts/test-changed.ts",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
-    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run validate:workflow && bun run validate:consumer",
+    "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run validate:workflow && bun run validate:consumer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
