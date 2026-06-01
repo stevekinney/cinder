@@ -179,19 +179,20 @@
    * in the cascade is harmless — the last identical declaration wins.
    *
    * Positioning uses CSS custom properties set by _sortable-item.svelte:
-   *   --preview-left / --preview-top   — row's bounding rect at lift time
+   *   --preview-left / --preview-top   — row's bounding rect at lift time (physical viewport coords)
    *   --preview-dx / --preview-dy      — pointer delta since lift
    *   --preview-width / --preview-height — row dimensions at lift time
    *
-   * Position is computed via inset-block-start / inset-inline-start using the
-   * custom properties above. The transform applies only a subtle rotate + scale
-   * to visually distinguish the preview from the placeholder — it does not
-   * translate the preview.
+   * Physical left/top (not logical inset-inline-start/inset-block-start) are used
+   * because --preview-left/--preview-top come from getBoundingClientRect(), which
+   * always returns physical viewport distances regardless of writing direction.
+   * Using inset-inline-start would map to the right edge in RTL layouts, causing
+   * the preview to appear on the wrong side of the viewport.
    */
   .cinder-sortable-drag-preview {
     position: fixed;
-    inset-block-start: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
-    inset-inline-start: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
+    top: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
+    left: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
     inline-size: var(--preview-width, auto);
     block-size: var(--preview-height, auto);
     z-index: var(--cinder-z-drag-preview, 9999);
