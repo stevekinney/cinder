@@ -41,6 +41,7 @@
 .cinder-code-block > pre {
     margin: 0;
     padding: var(--cinder-space-4);
+    overflow-x: auto;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
