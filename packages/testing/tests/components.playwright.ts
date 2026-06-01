@@ -8,7 +8,7 @@ import { applyComponentFilter, parseComponentFilter } from '../src/helpers/compo
 import { applyInteractions } from '../src/helpers/interact.ts';
 import { loadManifest, manifestDigest, THEMES, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { writeScreenshotMetadata } from '../src/helpers/screenshot-metadata.ts';
-import { captureScreenshot, resolveVisualDiffMode } from '../src/helpers/screenshot.ts';
+import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 test.describe('server identity', () => {
   test('cached manifest matches live standalone manifest', async ({ request }) => {
@@ -160,10 +160,11 @@ const DEFAULT_FIXTURE = [{ name: 'default' }] as const;
 
 function fixtureRoute(route: string, fixtureName: string, fixtureContentHash?: string): string {
   if (fixtureName === 'default') return route;
-  const params = new URLSearchParams({ fixture: fixtureName });
-  if (fixtureContentHash !== undefined) {
-    params.set('fixtureContentHash', fixtureContentHash);
+  if (fixtureContentHash === undefined) {
+    throw new Error(`Visual fixture "${fixtureName}" is missing fixtureContentHash.`);
   }
+  const params = new URLSearchParams({ fixture: fixtureName });
+  params.set('fixtureContentHash', fixtureContentHash);
   return `${route}?${params.toString()}`;
 }
 
@@ -299,20 +300,18 @@ for (const entry of entries) {
             const masks =
               'mask' in fixture && Array.isArray(fixture.mask) ? fixture.mask : undefined;
             await captureScreenshot(page, key, masks !== undefined ? { masks } : undefined);
-            if (resolveVisualDiffMode() === 'off') {
-              await writeScreenshotMetadata({
-                key,
-                component: entry.name,
-                category,
-                route,
-                fixtureContentHash,
-                interact:
-                  'interact' in fixture && Array.isArray(fixture.interact)
-                    ? fixture.interact
-                    : undefined,
-                mask: masks,
-              });
-            }
+            await writeScreenshotMetadata({
+              key,
+              component: entry.name,
+              category,
+              route,
+              fixtureContentHash,
+              interact:
+                'interact' in fixture && Array.isArray(fixture.interact)
+                  ? fixture.interact
+                  : undefined,
+              mask: masks,
+            });
 
             // Accessibility gate: `critical` and `serious` violations fail the
             // sweep; `moderate`/`minor` stay annotation-only (recorded above).

@@ -181,6 +181,32 @@ export default fixtures;
     });
   });
 
+  it('changes the content hash when a referenced host fixture file changes', async () => {
+    const root = makeRoot([
+      {
+        component: 'tabs',
+        filename: 'tabs-fixtures.ts',
+        content: `export default [{ name: 'keyboard', host: './keyboard.fixture.svelte' }];\n`,
+      },
+      {
+        component: 'tabs',
+        filename: 'keyboard.fixture.svelte',
+        content: `<p>Keyboard fixture</p>\n`,
+      },
+    ]);
+
+    const fixturePath = join(root, 'tabs', 'tabs-fixtures.ts');
+    const initial = await loadFixtureFile(fixturePath);
+    writeFileSync(join(root, 'tabs', 'keyboard.fixture.svelte'), `<p>Updated fixture</p>\n`);
+    const updated = await loadFixtureFile(fixturePath);
+
+    expect(initial.kind).toBe('entry');
+    expect(updated.kind).toBe('entry');
+    if (initial.kind === 'entry' && updated.kind === 'entry') {
+      expect(updated.entry.contentHash).not.toBe(initial.entry.contentHash);
+    }
+  });
+
   it('rejects a host fixture that leaves the component directory', async () => {
     const root = makeRoot([
       {

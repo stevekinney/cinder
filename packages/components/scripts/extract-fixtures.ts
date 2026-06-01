@@ -56,6 +56,38 @@ function sha256(contents: string): string {
   return createHash('sha256').update(contents).digest('hex');
 }
 
+async function fixtureContentHash(
+  entry: FixtureFileEntry,
+  fixtureFileContents: string,
+): Promise<string> {
+  const componentDirectory = dirname(entry.sourcePath);
+  const hostInputs: Array<{ path: string; contents: string }> = [];
+  const seenHosts = new Set<string>();
+
+  for (const fixture of entry.fixtures) {
+    if (fixtureRenderMode(fixture) !== 'host') continue;
+    if (typeof fixture.host !== 'string') continue;
+    if (seenHosts.has(fixture.host)) continue;
+
+    seenHosts.add(fixture.host);
+    const hostPath = resolve(componentDirectory, fixture.host);
+    hostInputs.push({
+      path: fixture.host.replaceAll('\\', '/'),
+      contents: await Bun.file(hostPath).text(),
+    });
+  }
+
+  if (hostInputs.length === 0) return sha256(fixtureFileContents);
+
+  hostInputs.sort((a, b) => a.path.localeCompare(b.path));
+  return sha256(
+    JSON.stringify({
+      fixtureFile: fixtureFileContents,
+      hosts: hostInputs,
+    }),
+  );
+}
+
 function validateHostFixtures(entry: FixtureFileEntry): string[] {
   const violations: string[] = [];
   const componentDirectory = dirname(entry.sourcePath);
@@ -545,7 +577,13 @@ export async function loadFixtureFile(sourcePath: string): Promise<FileParseResu
     }
   }
 
-  return result;
+  return {
+    kind: 'entry',
+    entry: {
+      ...result.entry,
+      contentHash: await fixtureContentHash(result.entry, contents),
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

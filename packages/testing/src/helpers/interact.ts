@@ -18,12 +18,52 @@ function contextPrefix(context: InteractionContext | undefined): string {
   return '';
 }
 
+type TargetKind = 'testId' | 'label' | 'role';
+
+function hasOwnStringValue(target: Record<string, unknown>, key: TargetKind): boolean {
+  return Object.hasOwn(target, key) && typeof target[key] === 'string';
+}
+
+function targetKind(
+  step: InteractionStep,
+  index: number,
+  context: InteractionContext | undefined,
+): TargetKind {
+  const { target } = step;
+  if (target === null || typeof target !== 'object') {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  const record = target as Record<string, unknown>;
+  const kinds = (['testId', 'label', 'role'] as const).filter((kind) =>
+    hasOwnStringValue(record, kind),
+  );
+
+  if (kinds.length !== 1) {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  return kinds[0]!;
+}
+
 function targetDescription(step: InteractionStep): string {
   const { target } = step;
   if ('testId' in target) return `testId "${target.testId}"`;
   if ('label' in target) return `label "${target.label}"`;
   const name = target.name !== undefined ? ` named "${target.name}"` : '';
   return `role "${target.role}"${name}`;
+}
+
+export class InvalidInteractionTargetError extends Error {
+  readonly step: number;
+
+  constructor(step: number, context?: InteractionContext) {
+    super(
+      `${contextPrefix(context)}Step ${step}: target must provide exactly one of role, label, or testId.`,
+    );
+    this.name = 'InvalidInteractionTargetError';
+    this.step = step;
+  }
 }
 
 /**
@@ -111,11 +151,21 @@ export class DisabledInteractionTargetError extends Error {
   }
 }
 
-function locatorForStep(page: Page, step: InteractionStep): Locator {
+function locatorForStep(
+  page: Page,
+  step: InteractionStep,
+  index: number,
+  context: InteractionContext | undefined,
+): Locator {
   const { target } = step;
-  if ('testId' in target) return page.getByTestId(target.testId);
-  if ('label' in target) {
+  const kind = targetKind(step, index, context);
+  if (kind === 'testId' && 'testId' in target) return page.getByTestId(target.testId);
+  if (kind === 'label' && 'label' in target) {
     return page.getByLabel(target.label, target.exact !== undefined ? { exact: target.exact } : {});
+  }
+
+  if (!('role' in target)) {
+    throw new InvalidInteractionTargetError(index, context);
   }
 
   const options =
@@ -179,7 +229,7 @@ export async function applyInteractions(
 ): Promise<void> {
   let index = 0;
   for (const step of steps) {
-    const locator = locatorForStep(page, step);
+    const locator = locatorForStep(page, step, index, context);
     await assertResolvable(locator, step, index, context);
 
     switch (step.action) {

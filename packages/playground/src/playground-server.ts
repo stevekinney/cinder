@@ -189,6 +189,7 @@ const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
  * behind the same URL, and the hot-reload flow depends on the browser refetching.
  */
 const NO_STORE_CACHE_CONTROL = 'no-store';
+const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 
 /** Resolved manifest array — cached after first analysis. */
 let manifestCache: ComponentManifest[] | null = null;
@@ -911,7 +912,7 @@ async function buildFixtureBundle(
   const cachedEntryPath = fixtureEntryByKey.get(entryKey);
   if (cachedEntryPath) {
     const cached = fixtureArtifactByPath.get(cachedEntryPath);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) return cachedEntryPath;
   }
 
   const cacheKey = fixtureCacheKey(componentName, fixture, fixtureContentHash);
@@ -919,6 +920,7 @@ async function buildFixtureBundle(
   if (existing !== undefined) return existing;
 
   const buildPromise = (async () => {
+    const generationAtStart = rebuildGeneration;
     const entry = await compileFixtureBundleArtifacts(
       componentName,
       fixture,
@@ -928,8 +930,10 @@ async function buildFixtureBundle(
     if (entry === null) return null;
 
     for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
-    fixtureEntryByKey.set(entryKey, entry.entryPath);
-    return entry.entryCode;
+    if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+      fixtureEntryByKey.set(entryKey, entry.entryPath);
+    }
+    return entry.entryPath;
   })();
 
   fixtureBuildPromiseByKey.set(cacheKey, buildPromise);
@@ -1238,7 +1242,7 @@ async function renderFixturePageResponse(
   componentName: string,
   fixtureName: string,
   snapshotMode: boolean,
-  expectedFixtureContentHash: string | null,
+  expectedFixtureContentHash: string,
 ): Promise<Response> {
   const fixturesRoot = join(COMPONENTS_ROOT, 'src', 'components');
   const fixtureFilePath = resolveFixtureFilePath(componentName, fixturesRoot);
@@ -1254,10 +1258,7 @@ async function renderFixturePageResponse(
   }
 
   if (fixtureFile === null) return notFound(`Fixture file for "${componentName}" not found`);
-  if (
-    expectedFixtureContentHash !== null &&
-    expectedFixtureContentHash !== fixtureFile.contentHash
-  ) {
+  if (expectedFixtureContentHash !== fixtureFile.contentHash) {
     return new Response(
       `Fixture manifest drift for "${componentName}": expected ${expectedFixtureContentHash}, found ${fixtureFile.contentHash}`,
       { status: 409, headers: { 'Content-Type': 'text/plain' } },
@@ -1274,24 +1275,20 @@ async function renderFixturePageResponse(
       ? resolveFixtureHostPath(fixtureFile, fixture)
       : componentSourcePath(componentName);
 
-  const code = await buildFixtureBundle(
+  const fixtureEntryPath = await buildFixtureBundle(
     componentName,
     fixture,
     fixtureFile.contentHash,
     componentOrHostPath,
   );
-  if (code === null) {
+  if (fixtureEntryPath === null) {
     return new Response(`Fixture "${componentName}/${fixtureName}" failed to build`, {
       status: 500,
       headers: { 'Content-Type': 'text/plain' },
     });
   }
 
-  const scriptSource = `/fixture-bundle/${fixtureEntryKey(
-    componentName,
-    fixtureName,
-    fixtureFile.contentHash,
-  )}.js`;
+  const scriptSource = `/fixture-bundle/${fixtureEntryPath}`;
   return new Response(
     renderFixturePageHtml(componentName, fixtureName, snapshotMode, scriptSource),
     {
@@ -1308,6 +1305,11 @@ function isSafeSegment(segment: string): boolean {
 /** Build a plain-text 404 response. */
 function notFound(message = 'Not Found'): Response {
   return new Response(message, { status: 404, headers: { 'Content-Type': 'text/plain' } });
+}
+
+/** Build a plain-text 400 response. */
+function badRequest(message: string): Response {
+  return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
 /** Main request handler — exported for testing. */
@@ -1560,11 +1562,18 @@ export async function handleRequest(request: Request): Promise<Response> {
     const fixtureName = url.searchParams.get('fixture');
     if (fixtureName !== null) {
       if (!isSafeSegment(fixtureName)) return notFound();
+      const fixtureContentHash = url.searchParams.get('fixtureContentHash');
+      if (fixtureContentHash === null) {
+        return badRequest('fixtureContentHash is required for fixture routes');
+      }
+      if (!SHA256_HEX_PATTERN.test(fixtureContentHash)) {
+        return badRequest('fixtureContentHash must be a 64-character lowercase sha256 hash');
+      }
       return await renderFixturePageResponse(
         componentName,
         fixtureName,
         snapshotModeActive,
-        url.searchParams.get('fixtureContentHash'),
+        fixtureContentHash,
       );
     }
     const html = await renderComponentPage(componentName, snapshotModeActive);

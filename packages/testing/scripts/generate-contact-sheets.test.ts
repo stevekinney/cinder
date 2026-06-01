@@ -28,7 +28,7 @@ async function writeMetadata(
   const outputPath = join(
     metadataRoot,
     metadata.slug,
-    `${metadata.theme}-${metadata.fixture}.json`,
+    `${metadata.theme}-${metadata.viewport}-${metadata.fixture}.json`,
   );
   await mkdir(join(metadataRoot, metadata.slug), { recursive: true });
   await writeFile(outputPath, JSON.stringify(metadata, null, 2));
@@ -76,5 +76,32 @@ describe('generateContactSheets', () => {
     await expect(generateContactSheets({ metadataRoot, outputRoot })).rejects.toThrow(
       /missing screenshot/,
     );
+  });
+
+  it('escapes metadata fields and image paths in generated HTML', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cinder-contact-sheets-'));
+    const metadataRoot = join(root, 'metadata');
+    const screenshotRoot = join(root, 'screenshots');
+    const outputRoot = join(root, 'contact-sheets');
+    await mkdir(screenshotRoot, { recursive: true });
+
+    const screenshot = join(screenshotRoot, 'button-<danger>&"save".png');
+    await writeFile(screenshot, '');
+    await writeMetadata(metadataRoot, screenshot, {
+      slug: 'button-<danger>',
+      component: 'Button <danger> & "save"',
+      fixture: 'focused & "quoted"',
+      category: 'review<&"state' as never,
+    });
+
+    const result = await generateContactSheets({ metadataRoot, outputRoot });
+
+    expect(result.categories).toEqual(['review<&"state']);
+    const sheet = await readFile(join(outputRoot, 'review<&"state.html'), 'utf8');
+    const index = await readFile(join(outputRoot, 'index.html'), 'utf8');
+    expect(sheet).toContain('Button &lt;danger&gt; &amp; &quot;save&quot;');
+    expect(sheet).toContain('button-&lt;danger&gt; / focused &amp; &quot;quoted&quot;');
+    expect(sheet).toContain('button-&lt;danger&gt;&amp;&quot;save&quot;.png');
+    expect(index).toContain('review&lt;&amp;&quot;state');
   });
 });

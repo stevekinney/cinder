@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
 import {
@@ -70,12 +71,28 @@ export function resolveFixtureHostPath(entry: LoadedFixtureFile, fixture: Visual
     throw new Error(`[${entry.componentName}] Fixture '${fixture.name}' host is missing.`);
   }
 
+  if (!fixture.host.startsWith('./')) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host must be a relative './*.fixture.svelte' path.`,
+    );
+  }
+  if (!fixture.host.endsWith('.fixture.svelte')) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must end in .fixture.svelte.`,
+    );
+  }
+
   const componentDirectory = dirname(entry.sourcePath);
   const hostPath = resolve(componentDirectory, fixture.host);
   const relativeHostPath = relative(componentDirectory, hostPath);
   if (relativeHostPath.startsWith('..') || isAbsolute(relativeHostPath)) {
     throw new Error(
       `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' must stay inside the component directory.`,
+    );
+  }
+  if (!existsSync(hostPath)) {
+    throw new Error(
+      `[${entry.componentName}] Fixture '${fixture.name}' host '${fixture.host}' does not exist.`,
     );
   }
   return hostPath;

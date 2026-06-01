@@ -9,6 +9,7 @@ import {
   AmbiguousTestIdError,
   DisabledInteractionTargetError,
   HiddenInteractionTargetError,
+  InvalidInteractionTargetError,
   MissingTestIdError,
   applyInteractions,
 } from './interact.ts';
@@ -83,25 +84,17 @@ function createMockPage(locatorsByTestId: Record<string, MockLocator>) {
 describe('runtime defence against non-testId targets', () => {
   it('rejects an object with a selector key cast through unknown', async () => {
     // The TypeScript type only allows { testId: string }, so an accidental
-    // any-cast is the only way this could arrive at runtime. We confirm the
-    // raw selector string (.foo) is never passed to the page — getByTestId()
-    // receives the testId value, not a CSS selector, so injection is impossible.
+    // any-cast is the only way this could arrive at runtime. The runner should
+    // reject the malformed target before any Playwright locator sees it.
     const badStep = { action: 'click', target: { selector: '.foo' } } as unknown as InteractionStep;
     const page = createMockPage({});
 
-    // The malformed object has no supported target key. The important
-    // assertion: the raw CSS string '.foo' is never passed to the page.
-    await applyInteractions(page as never, [badStep]);
-    const allCalls = [
-      ...page.getByTestId.mock.calls,
-      ...page.getByLabel.mock.calls,
-      ...page.getByRole.mock.calls,
-    ];
-    expect(allCalls.length).toBeGreaterThan(0);
-    for (const call of allCalls) {
-      expect(JSON.stringify(call)).not.toContain('.foo');
-      expect(JSON.stringify(call)).not.toContain('[data-testid=');
-    }
+    await expect(applyInteractions(page as never, [badStep])).rejects.toThrow(
+      InvalidInteractionTargetError,
+    );
+    expect(page.getByTestId).not.toHaveBeenCalled();
+    expect(page.getByLabel).not.toHaveBeenCalled();
+    expect(page.getByRole).not.toHaveBeenCalled();
   });
 });
 

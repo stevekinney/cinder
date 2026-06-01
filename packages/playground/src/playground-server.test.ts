@@ -777,13 +777,28 @@ describe('/page/:name', () => {
   }, 30_000);
 
   it('returns 404 for a missing fixture name', async () => {
-    const response = await handleRequest(req('/page/input?fixture=does-not-exist'));
+    const hash = await fixtureContentHash('input');
+    const response = await handleRequest(
+      req(`/page/input?fixture=does-not-exist&fixtureContentHash=${hash}`),
+    );
     expect(response.status).toBe(404);
+  });
+
+  it('returns 400 when a fixture route omits fixtureContentHash', async () => {
+    const response = await handleRequest(req('/page/input?fixture=disabled'));
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 400 when fixtureContentHash is malformed', async () => {
+    const response = await handleRequest(
+      req('/page/input?fixture=disabled&fixtureContentHash=stale-hash'),
+    );
+    expect(response.status).toBe(400);
   });
 
   it('returns 409 when fixtureContentHash does not match the fixture file', async () => {
     const response = await handleRequest(
-      req('/page/input?fixture=disabled&fixtureContentHash=stale-hash'),
+      req(`/page/input?fixture=disabled&fixtureContentHash=${'0'.repeat(64)}`),
     );
     expect(response.status).toBe(409);
   });
@@ -795,7 +810,9 @@ describe('/page/:name', () => {
       "export default [{ name: 'bad', props: { onClick: () => undefined } }];\n",
     );
     try {
-      const response = await handleRequest(req('/page/avatar?fixture=bad'));
+      const response = await handleRequest(
+        req(`/page/avatar?fixture=bad&fixtureContentHash=${'a'.repeat(64)}`),
+      );
       expect(response.status).toBe(500);
       expect(await response.text()).toContain('Invalid fixture file');
     } finally {

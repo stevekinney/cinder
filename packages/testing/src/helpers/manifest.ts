@@ -2,9 +2,25 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type {
+  FixtureCategory,
+  InteractionStep,
+  MaskRule,
+} from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+
 export type Theme = 'light' | 'dark';
 export type ViewportName = 'mobile' | 'tablet' | 'desktop';
 export type Viewport = { name: ViewportName; width: number; height: number };
+
+export type ManifestFixtureEntry = {
+  name: string;
+  mode: 'direct' | 'host';
+  fixtureContentHash: string;
+  interact?: InteractionStep[];
+  mask?: MaskRule[];
+  category: FixtureCategory;
+};
+
 /**
  * A single component entry from the manifest. The `fixtures` field is optional:
  * when omitted, the test loop synthesises a single `{ name: 'default' }` fixture
@@ -18,14 +34,7 @@ export type ComponentEntry = {
   slug: string;
   route: string;
   /** Explicit fixture list for components with multiple visual states. When absent, a single `'default'` fixture is used. */
-  fixtures?: Array<{
-    name: string;
-    mode: 'direct' | 'host';
-    fixtureContentHash: string;
-    interact?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').InteractionStep[];
-    mask?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').MaskRule[];
-    category?: import('../../../components/scripts/lib/visual-fixtures/schema.ts').FixtureCategory;
-  }>;
+  fixtures?: ManifestFixtureEntry[];
 };
 
 export const THEMES: readonly Theme[] = ['light', 'dark'] as const;
