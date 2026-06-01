@@ -19,6 +19,12 @@ type PackageManifest = {
   devDependencies?: Record<string, string>;
 };
 
+type ComponentsManifest = {
+  package?: {
+    frameworkVersionRange?: string;
+  };
+};
+
 function fail(message: string): never {
   throw new Error(message);
 }
@@ -41,8 +47,12 @@ async function assertDocumentationMentionsContract(): Promise<void> {
 
 async function main(): Promise<void> {
   const manifest = await readJsonFile<PackageManifest>(join(packageRoot, 'package.json'));
+  const componentsManifest = await readJsonFile<ComponentsManifest>(
+    join(packageRoot, 'components.json'),
+  );
   const peerRange = manifest.peerDependencies?.['svelte'];
   const devRange = manifest.devDependencies?.['svelte'];
+  const frameworkVersionRange = componentsManifest.package?.frameworkVersionRange;
   if (peerRange !== sveltePeerContract.peerRange) {
     fail(
       `peerDependencies.svelte is ${peerRange ?? '<missing>'}; expected ${sveltePeerContract.peerRange}`,
@@ -51,6 +61,11 @@ async function main(): Promise<void> {
   if (devRange !== sveltePeerContract.workspace) {
     fail(
       `devDependencies.svelte is ${devRange ?? '<missing>'}; expected ${sveltePeerContract.workspace}`,
+    );
+  }
+  if (frameworkVersionRange !== sveltePeerContract.peerRange) {
+    fail(
+      `components.json package.frameworkVersionRange is ${frameworkVersionRange ?? '<missing>'}; expected ${sveltePeerContract.peerRange}`,
     );
   }
   await assertDocumentationMentionsContract();

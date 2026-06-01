@@ -58,20 +58,26 @@ jobs:
       - name: Validate workspace
         run: bun run validate
 
-      - name: Check package artifact budget
-        run: bun run --filter=cinder package:weight:check
-
       - name: Create Release Pull Request or publish to npm
+        id: changesets
         if: github.event_name == 'push'
         uses: changesets/action@v1
         with:
           version: bun run changeset:version
-          publish: bun run changeset:publish
           setupGitUser: true
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check validated package artifact budget
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=cinder package:weight:check -- --existing-tarball
+
+      - name: Publish validated package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=cinder publish:release -- --skip-validation
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'

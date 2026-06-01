@@ -641,7 +641,10 @@ async function runSveltePeerCompatibilityFixture(
   process.stdout.write(
     `[validate-consumers] step: svelte peer compatibility (${label}: ${svelteVersion})…\n`,
   );
-  const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
+  const restoreManifest =
+    svelteVersion === undefined
+      ? injectTarballIntoFixture(fixtureDirectory)
+      : injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
     await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
@@ -660,21 +663,30 @@ async function runSveltePeerCompatibilityFixture(
   }
 }
 
-async function runSveltekitFixture(): Promise<void> {
+async function runSveltekitFixture(label = 'workspace', svelteVersion?: string): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/sveltekit-consumer');
-  process.stdout.write('[validate-consumers] step 4: sveltekit-consumer…\n');
+  process.stdout.write(
+    `[validate-consumers] step 4: sveltekit-consumer (${label}${svelteVersion ? `: ${svelteVersion}` : ''})…\n`,
+  );
 
-  const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
+  const restoreManifest =
+    svelteVersion === undefined
+      ? injectTarballIntoFixture(fixtureDirectory)
+      : injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
     await $`rm -rf node_modules .svelte-kit build`.cwd(fixtureDirectory);
     const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
-    if (installResult.exitCode !== 0) fail(`sveltekit-consumer bun install failed`);
+    if (installResult.exitCode !== 0) {
+      fail(
+        `sveltekit-consumer ${label} bun install failed:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+      );
+    }
 
     const syncResult = await $`bunx svelte-kit sync`.cwd(fixtureDirectory).nothrow();
     if (syncResult.exitCode !== 0) {
       fail(
-        `svelte-kit sync failed:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
+        `svelte-kit sync failed in sveltekit-consumer ${label}:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
       );
     }
 
@@ -682,11 +694,15 @@ async function runSveltekitFixture(): Promise<void> {
       .cwd(fixtureDirectory)
       .nothrow();
     if (checkResult.exitCode !== 0) {
-      fail(`svelte-check failed in sveltekit-consumer:\n${checkResult.stdout.toString()}`);
+      fail(`svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout.toString()}`);
     }
 
     const viteBuildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
-    if (viteBuildResult.exitCode !== 0) fail(`vite build failed in sveltekit-consumer`);
+    if (viteBuildResult.exitCode !== 0) {
+      fail(
+        `vite build failed in sveltekit-consumer ${label}:\n${viteBuildResult.stdout.toString()}\n${viteBuildResult.stderr.toString()}`,
+      );
+    }
 
     // Scan BOTH the intermediate Vite output and the final adapter-node output. SvelteKit's
     // CSS layout in `.svelte-kit/output/` is version-dependent; asserting only there risks a
@@ -1346,7 +1362,8 @@ try {
   await runTypescriptConsumerFixture();
   await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
   await runSveltePeerCompatibilityFixture('latest Svelte 5', sveltePeerContract.latest);
-  await runSveltekitFixture();
+  await runSveltekitFixture('minimum', sveltePeerContract.minimum);
+  await runSveltekitFixture('latest Svelte 5', sveltePeerContract.latest);
   await runExamplesConsumerFixture();
   process.stdout.write('[validate-consumers] all checks passed.\n');
 } catch (error) {

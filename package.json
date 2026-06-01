@@ -14,7 +14,7 @@
   "scripts": {
     "build": "bun run --filter=cinder build",
     "changeset": "changeset",
-    "changeset:publish": "bun run --filter=cinder publish:release -- --skip-validation",
+    "changeset:publish": "changeset publish",
     "changeset:publish:dry": "bun run --filter=cinder validate:consumer && bun run --filter=cinder publish:release -- --dry-run --skip-validation",
     "changeset:version": "changeset version",
     "clean": "bun run --filter='*' clean",

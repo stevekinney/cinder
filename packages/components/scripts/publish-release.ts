@@ -1,9 +1,9 @@
 import { $ } from 'bun';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readJsonFile } from './lib/read-json-file.ts';
-import { packForPublish } from './pack-for-publish.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
@@ -18,10 +18,23 @@ async function packageVersionExists(name: string, version: string): Promise<bool
   return result.exitCode === 0 && result.stdout.toString().trim().length > 0;
 }
 
+function getPackFileName(identity: PackageManifest): string {
+  const packageFileNamePrefix = identity.name.replace(/^@/, '').replaceAll('/', '-');
+  return `${packageFileNamePrefix}-${identity.version}.tgz`;
+}
+
+async function validateConsumerArtifact(): Promise<void> {
+  const validationResult = await $`bun run validate:consumer`.cwd(packageRoot).nothrow();
+  if (validationResult.exitCode !== 0) {
+    throw new Error(`validate:consumer failed with exit ${validationResult.exitCode}`);
+  }
+}
+
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
   const skipValidation = process.argv.includes('--skip-validation');
   const manifest = await readJsonFile<PackageManifest>(join(packageRoot, 'package.json'));
+  const tarballPath = join(packageRoot, getPackFileName(manifest));
 
   if (!dryRun && (await packageVersionExists(manifest.name, manifest.version))) {
     process.stdout.write(
@@ -31,16 +44,24 @@ async function main(): Promise<void> {
   }
 
   if (skipValidation) {
-    process.stdout.write('publish-release — using prior validate:consumer result from this job.\n');
+    process.stdout.write(
+      'publish-release — using prior validate:consumer artifact from this job.\n',
+    );
+    if (!existsSync(tarballPath)) {
+      process.stdout.write(
+        `publish-release — no validated artifact found at ${tarballPath}; running validate:consumer…\n`,
+      );
+      await validateConsumerArtifact();
+    }
   } else {
     process.stdout.write('publish-release — validating consumer artifact before publish…\n');
-    const validationResult = await $`bun run validate:consumer`.cwd(packageRoot).nothrow();
-    if (validationResult.exitCode !== 0) {
-      throw new Error(`validate:consumer failed with exit ${validationResult.exitCode}`);
-    }
+    await validateConsumerArtifact();
   }
 
-  const { tarballPath } = await packForPublish();
+  if (!existsSync(tarballPath)) {
+    throw new Error(`validated package artifact not found at ${tarballPath}`);
+  }
+
   const publishArguments = dryRun
     ? ['publish', tarballPath, '--dry-run']
     : ['publish', tarballPath];

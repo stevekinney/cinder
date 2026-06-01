@@ -4,12 +4,18 @@ import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readJsonFile } from './lib/read-json-file.ts';
 import { packForPublish } from './pack-for-publish.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
 const inspectionDirectory = join(packageRoot, 'tmp', 'package-weight-report');
 const tarBinaryPath = Bun.which('tar');
+
+type PackageIdentity = {
+  name: string;
+  version: string;
+};
 
 const budgets = {
   packedBytes: 8_000_000,
@@ -36,6 +42,22 @@ function formatBytes(bytes: number): string {
   if (bytes < 1_000) return `${bytes} B`;
   if (bytes < 1_000_000) return `${(bytes / 1_000).toFixed(2)} KB`;
   return `${(bytes / 1_000_000).toFixed(2)} MB`;
+}
+
+function getPackFileName(identity: PackageIdentity): string {
+  const packageFileNamePrefix = identity.name.replace(/^@/, '').replaceAll('/', '-');
+  return `${packageFileNamePrefix}-${identity.version}.tgz`;
+}
+
+async function existingTarballPath(): Promise<string> {
+  const identity = await readJsonFile<PackageIdentity>(join(packageRoot, 'package.json'));
+  const tarballPath = join(packageRoot, getPackFileName(identity));
+  if (!existsSync(tarballPath)) {
+    throw new Error(
+      `expected validated package artifact at ${tarballPath}; run validate:consumer first`,
+    );
+  }
+  return tarballPath;
 }
 
 async function extractTarball(tarballPath: string): Promise<string> {
@@ -148,7 +170,14 @@ function printReport(report: PackageWeightReport): void {
 async function main(): Promise<void> {
   const check = process.argv.includes('--check');
   const json = process.argv.includes('--json');
-  const { tarballPath } = await packForPublish();
+  const useExistingTarball = process.argv.includes('--existing-tarball');
+  let tarballPath: string;
+  if (useExistingTarball) {
+    tarballPath = await existingTarballPath();
+  } else {
+    const packedArtifact = await packForPublish();
+    tarballPath = packedArtifact.tarballPath;
+  }
   const report = await buildReport(tarballPath);
   if (json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

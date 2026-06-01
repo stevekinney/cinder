@@ -90,7 +90,7 @@ jobs:
         run: bun run --filter=cinder validate:consumer
 
       - name: Check package artifact budget
-        run: bun run --filter=cinder package:weight:check
+        run: bun run --filter=cinder package:weight:check -- --existing-tarball
 
       # Break-glass publish. Authentication uses NPM_TOKEN intentionally
       # (the same secret release.yaml uses) rather than npm trusted
@@ -103,4 +103,4 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun run --filter=cinder publish:release
+        run: bun run --filter=cinder publish:release -- --skip-validation
