@@ -302,16 +302,8 @@
     padding: var(--cinder-space-2);
   }
 
-  .cinder-jse-required-only__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cinder-space-1);
-    padding: var(--cinder-space-0-5) var(--cinder-space-2);
-    border: 1px solid var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-full);
-    font-size: var(--cinder-text-xs);
-    background: var(--cinder-surface);
-  }
+  /* (Required-without-schema pills now render via the shared Chip component in
+     mode="removable" — its styling lives in chip.css, so no local chip rule.) */
 
   /* ===== Advanced row ($ref / preserved badges) ===== */
   .cinder-jse-advanced-row {

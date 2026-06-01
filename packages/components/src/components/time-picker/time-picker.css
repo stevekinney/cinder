@@ -21,6 +21,16 @@
     padding-inline-end: calc(var(--cinder-space-10) + var(--cinder-space-2));
   }
 
+  /*
+   * Suppress the browser's native calendar-picker indicator so only the Cinder
+   * toggle button is visible. The <input type="time"> stays the source of truth
+   * for value, min/max/step, typed entry, and form participation — only the
+   * redundant visual affordance for the native picker is hidden.
+   */
+  .cinder-time-picker__input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
   .cinder-time-picker__toggle {
     position: absolute;
     inset-block: var(--cinder-space-1);

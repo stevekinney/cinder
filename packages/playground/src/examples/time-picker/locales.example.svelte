@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Locale hour cycles';
-  export const description = 'Compare how the picker presents the same time across locales.';
+  export const description =
+    'The Cinder scroll-list picker uses the locale hour cycle consistently across browsers. Click any clock icon to open the picker.';
 </script>
 
 <script lang="ts">

@@ -6,13 +6,13 @@
     {
       "id": "basic",
       "title": "Basic time picker",
-      "description": "Choose a time with direct input or the popover list.",
+      "description": "Type a time directly or click the clock icon to open the scroll-list picker.",
       "code": "<script lang=\"ts\">\n  import { TimePicker } from 'cinder';\n\n  let value = $state('09:30');\n</script>\n\n<div style=\"max-width: 18rem;\">\n  <TimePicker id=\"appointment-time\" bind:value label=\"Appointment time\" />\n  <p>Selected: {value || 'none'}</p>\n</div>\n"
     },
     {
       "id": "locales",
       "title": "Locale hour cycles",
-      "description": "Compare how the picker presents the same time across locales.",
+      "description": "The Cinder scroll-list picker uses the locale hour cycle consistently across browsers. Click any clock icon to open the picker.",
       "code": "<script lang=\"ts\">\n  import { TimePicker } from 'cinder';\n\n  let usValue = $state('13:15');\n  let deValue = $state('13:15');\n  let jaValue = $state('13:15');\n</script>\n\n<div style=\"display: grid; gap: 1rem; max-width: 20rem;\">\n  <TimePicker id=\"locale-us\" bind:value={usValue} label=\"United States\" locale=\"en-US\" />\n  <TimePicker id=\"locale-de\" bind:value={deValue} label=\"Germany\" locale=\"de-DE\" />\n  <TimePicker id=\"locale-ja\" bind:value={jaValue} label=\"Japan\" locale=\"ja-JP\" />\n</div>\n"
     },
     {

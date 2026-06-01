@@ -49,3 +49,49 @@ describe('JsonViewer', () => {
     expect(container.querySelector('.cinder-json-viewer__too-deep')).not.toBeNull();
   });
 });
+
+describe('JsonViewer — unserializable fallback', () => {
+  // JSON.stringify throws on circular refs and BigInt. The viewer must show a
+  // clear "can't be serialized" message, never a garbage "~Infinity KB" size.
+  test('circular reference shows the unserializable fallback, not a size error', () => {
+    const circular: Record<string, unknown> = {};
+    circular['self'] = circular;
+    const { container } = render(JsonViewer, { value: circular });
+    const fallback = container.querySelector('.cinder-json-viewer__fallback');
+    expect(fallback).not.toBeNull();
+    expect(fallback?.textContent).toContain("can't be serialized");
+    expect(fallback?.textContent).not.toContain('Infinity');
+    expect(fallback?.textContent).not.toContain('NaN');
+  });
+
+  test('BigInt value shows the unserializable fallback', () => {
+    const { container } = render(JsonViewer, { value: { big: 10n } });
+    const fallback = container.querySelector('.cinder-json-viewer__fallback');
+    expect(fallback).not.toBeNull();
+    expect(fallback?.textContent).toContain("can't be serialized");
+  });
+
+  test.each([
+    ['undefined', undefined],
+    ['a symbol', Symbol('x')],
+    ['a function', () => 'noop'],
+  ])(
+    '%s (JSON.stringify returns undefined, not a throw) shows the unserializable fallback',
+    (_label, value) => {
+      const { container } = render(JsonViewer, { value });
+      const fallback = container.querySelector('.cinder-json-viewer__fallback');
+      expect(fallback).not.toBeNull();
+      expect(fallback?.textContent).toContain("can't be serialized");
+      expect(fallback?.textContent).not.toContain('Infinity');
+      expect(fallback?.textContent).not.toContain('undefined KB');
+    },
+  );
+
+  test('a genuinely oversized payload still shows the size-based fallback', () => {
+    const big = { blob: 'x'.repeat(2048) };
+    const { container } = render(JsonViewer, { value: big, maxBytes: 100 });
+    const fallback = container.querySelector('.cinder-json-viewer__fallback');
+    expect(fallback?.textContent).toContain('too large');
+    expect(fallback?.textContent).not.toContain('Infinity');
+  });
+});

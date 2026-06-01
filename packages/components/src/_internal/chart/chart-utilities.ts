@@ -739,7 +739,7 @@ export function createBarModel(options: {
  * a linear scan when targets are empty.
  */
 export function nearestTarget(
-  targets: ChartTarget[],
+  targets: readonly ChartTarget[],
   x: number,
   y: number,
   axis: 'x' | 'y' = 'x',

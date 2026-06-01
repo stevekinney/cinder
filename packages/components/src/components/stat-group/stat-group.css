@@ -2,6 +2,10 @@
   .cinder-stat-group {
     display: grid;
     gap: var(--cinder-space-4, 1rem);
+    /* Query the group's own inline size so fixed column counts can collapse when
+       the group is narrow — even inside a wide viewport (RESPONSIVE-POLICY.md). */
+    container-type: inline-size;
+    container-name: cinder-stat-group;
   }
 
   .cinder-stat-group[data-cinder-columns='auto'] {
@@ -22,6 +26,25 @@
 
   .cinder-stat-group[data-cinder-columns='4'] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Fixed multi-column layouts would squeeze each stat below readability on a
+     narrow group. Collapse to two columns under 30rem, then a single column
+     under 18rem, so values never crush. The `auto` mode already self-collapses
+     via auto-fit, so it is intentionally excluded. */
+  @container cinder-stat-group (max-width: 30rem) {
+    .cinder-stat-group[data-cinder-columns='3'],
+    .cinder-stat-group[data-cinder-columns='4'] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container cinder-stat-group (max-width: 18rem) {
+    .cinder-stat-group[data-cinder-columns='2'],
+    .cinder-stat-group[data-cinder-columns='3'],
+    .cinder-stat-group[data-cinder-columns='4'] {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */
