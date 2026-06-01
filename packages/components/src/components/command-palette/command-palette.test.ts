@@ -698,21 +698,47 @@ describe('CommandPalette — attachment registration', () => {
 // ── Visual contract ───────────────────────────────────────────────────────
 
 describe('CommandPalette — visual contract', () => {
-  test('command palette CSS uses visible search focus and full-width active item highlight', async () => {
+  test(':focus-visible provides a WCAG-compliant keyboard focus indicator on the search input', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
+    // `:focus-visible` must carry the full focus-ring box-shadow.
     expect(css).toMatch(
       /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
     );
+
+    // forced-colors fallback must use :focus-visible (not plain :focus) so the
+    // ring is only visible when keyboard-triggered, matching the standard pattern.
     expect(css).toMatch(
-      /\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid ButtonText;/,
     );
-    expect(css).toMatch(
-      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid ButtonText;/,
+  });
+
+  test('plain :focus on the search input must NOT carry a box-shadow or heavy outline (no always-on ring)', async () => {
+    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+
+    // Regression guard: plain :focus must not reintroduce the persistent open-state ring.
+    expect(css).not.toMatch(/\.cinder-command-palette__input:focus\s*\{[\s\S]*?box-shadow\s*:/);
+    expect(css).not.toMatch(
+      /\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline\s*:\s*var\(--cinder-ring-width\)\s+solid\s+(?!none)/,
     );
+
+    // forced-colors must not reintroduce the ring under plain :focus either.
+    expect(css).not.toMatch(
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline\s*:/,
+    );
+  });
+
+  test('search wrapper must not carry a focus ring via :focus-within', async () => {
+    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+
     expect(css).not.toMatch(
       /\.cinder-command-palette__search:focus-within\s*\{[^}]*(?:box-shadow|outline)\s*:/,
     );
+  });
+
+  test('listbox has correct padding and command items span full width', async () => {
+    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+
     expect(css).toMatch(
       /\.cinder-command-palette__listbox\s*\{[\s\S]*?padding:\s*var\(--cinder-space-2\)\s*0;/,
     );

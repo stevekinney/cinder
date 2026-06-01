@@ -90,17 +90,8 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
-  .cinder-command-palette__input:focus {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-  }
-
   @media (forced-colors: active) {
     .cinder-command-palette__input:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-    }
-
-    .cinder-command-palette__input:focus {
       outline: var(--cinder-ring-width) solid ButtonText;
     }
   }
