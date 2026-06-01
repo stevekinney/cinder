@@ -805,4 +805,155 @@ describe('SortableList pointer drag preview', () => {
 
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
   });
+
+  // ---------------------------------------------------------------------------
+  // Regression: orphaned rAF after Escape — Issue 3 fix verification
+  // ---------------------------------------------------------------------------
+  //
+  // Before the fix, destroyPreviewPortal() did not cancel moveRafHandle. A
+  // queued rAF from handlePointerMove could fire after the portal was removed,
+  // then clear moveRafHandle to null. If a second drag started before that
+  // frame fired, the orphan would clobber the second session's rAF gate and
+  // drive the new portal with stale coordinates from the first drag.
+
+  test('Escape during pointer drag followed by queued rAF — no orphaned frame / no leftover portal', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // Queue a move rAF by sending a pointer move (rAF will be scheduled).
+    await fireEvent.pointerMove(handle, {
+      clientX: 60,
+      clientY: 110,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // Cancel via Escape before the rAF fires.
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+
+    // Drain the rAF queue — the cancelled/destroyed portal must not survive.
+    await waitForAnimationFrame();
+    await waitForAnimationFrame();
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+  });
+
+  test('portal count is 0 when idle and exactly 1 during a single drag', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    // Idle: no portals.
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // During drag: exactly 1 portal.
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    // After drop: no portals.
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+  });
+
+  test('rapid second drag after drop does not leave extra portals', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    // First drag.
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    // Second drag immediately after.
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 2,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    await fireEvent.pointerUp(handle, { pointerId: 2, pointerType: 'mouse' });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Regression: clone id stripping — Issue 2 fix verification
+  // ---------------------------------------------------------------------------
+
+  test('preview portal clone does not duplicate id attributes from the source row', async () => {
+    // Use a single-item list so there is exactly one element carrying the test
+    // id in the container, making the before/after count unambiguous.
+    const singleItem = [{ id: 'solo', label: 'Solo' }];
+    const idSnippet = createRawSnippet(() => ({
+      render: () => `<span id="unique-span-id">content</span>`,
+      setup: () => {},
+    }));
+
+    const { container } = render(SortableList as any, {
+      props: {
+        items: singleItem,
+        getKey: (item: { id: string }) => item.id,
+        getItemLabel: (item: { label: string }) => item.label,
+        onreorder: mock(),
+        label: 'Id test list',
+        children: idSnippet,
+      },
+    });
+
+    const handle = container.querySelector('.cinder-sortable-handle') as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    // Pre-drag: exactly one element with the id inside the container.
+    expect(container.querySelectorAll('#unique-span-id').length).toBe(1);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // The source row still has the id.
+    expect(container.querySelectorAll('#unique-span-id').length).toBe(1);
+    // The portal clone must NOT contain any element with that id.
+    const portal = document.querySelector('[data-cinder-drag-preview]') as HTMLElement;
+    expect(portal).not.toBeNull();
+    expect(portal.querySelectorAll('#unique-span-id').length).toBe(0);
+    // The portal itself must have no id attribute.
+    expect(portal.hasAttribute('id')).toBe(false);
+    // The portal must carry inert to suppress interaction.
+    expect(portal.hasAttribute('inert')).toBe(true);
+    // Document-wide: only one element with this id exists (in the source).
+    expect(document.querySelectorAll('#unique-span-id').length).toBe(1);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
 });

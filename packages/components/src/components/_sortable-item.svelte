@@ -94,10 +94,16 @@
 
   const handleLabel = $derived(formatHandleLabel(itemLabel));
 
+  // Grab offset: distance from the pointer to the row's top-left corner at lift
+  // time. Stored so subsequent moves keep the preview under the original grab
+  // point rather than jumping to the row's center.
+  let grabOffsetX = 0;
+  let grabOffsetY = 0;
+
   // Create a fixed-position portal overlay that follows the pointer.
   // The overlay clones the visual appearance of the lifted row so the user
   // can see what they are dragging regardless of where the placeholder sits.
-  function createPreviewPortal(): void {
+  function createPreviewPortal(pointerX: number, pointerY: number): void {
     if (typeof document === 'undefined') return;
     if (previewPortalEl) return;
     if (!rowEl) return;
@@ -106,19 +112,32 @@
     previewWidth = rect.width;
     previewHeight = rect.height;
 
+    // Capture the pointer's offset from the row's top-left at lift time so the
+    // preview stays anchored under the grab point (not the row's center).
+    grabOffsetX = pointerX - rect.left;
+    grabOffsetY = pointerY - rect.top;
+
     const portal = document.createElement('div');
     portal.setAttribute('data-cinder-drag-preview', '');
     portal.setAttribute('aria-hidden', 'true');
+    portal.setAttribute('inert', '');
     portal.className = 'cinder-sortable-drag-preview';
 
     // Clone the row's inner HTML into the preview so the user sees the
     // card content at the pointer location.
     const clone = rowEl.cloneNode(true) as HTMLElement;
     // Remove pointer/keyboard event attributes from the clone so the preview
-    // is entirely inert. The clone is aria-hidden at the portal level.
+    // is entirely inert. The clone is aria-hidden / inert at the portal level.
     clone.removeAttribute('data-sortable-row');
     clone.removeAttribute('data-key');
     clone.removeAttribute('data-row-id');
+    // Strip all id attributes from the clone and its descendants to prevent
+    // duplicate id values in the document, which would break getElementById,
+    // label/for associations, and aria relationships during a drag.
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach((descendant) => {
+      descendant.removeAttribute('id');
+    });
     portal.appendChild(clone);
 
     // Position the portal so its top-left aligns with the row's bounding rect
@@ -141,9 +160,12 @@
     if (typeof document === 'undefined') return;
 
     const rect = rowEl.getBoundingClientRect();
-    // Delta from original position to current pointer center.
-    const dx = pointerX - (rect.left + rect.width / 2);
-    const dy = pointerY - (rect.top + rect.height / 2);
+    // Compute the top-left position that keeps the grab point under the pointer.
+    // The portal's origin (--preview-left / --preview-top) is the row's bounding
+    // rect; --preview-dx / --preview-dy shift it so the grab point aligns with
+    // the current pointer. Equivalent to: newLeft = pointerX - grabOffsetX.
+    const dx = pointerX - grabOffsetX - rect.left;
+    const dy = pointerY - grabOffsetY - rect.top;
 
     previewPortalEl.style.setProperty('--preview-left', `${rect.left}px`);
     previewPortalEl.style.setProperty('--preview-top', `${rect.top}px`);
@@ -157,6 +179,13 @@
   }
 
   function destroyPreviewPortal(): void {
+    // Cancel any queued move-rAF before removing the portal so a pending frame
+    // cannot write to a stale or removed portal element, or interfere with a
+    // subsequent drag session that starts before the frame fires.
+    if (moveRafHandle !== null) {
+      cancelAnimationFrame(moveRafHandle);
+      moveRafHandle = null;
+    }
     if (previewPortalEl) {
       previewPortalEl.remove();
       previewPortalEl = null;
@@ -271,7 +300,7 @@
 
     // Create the drag preview after lift so the row is in lifted state
     // when we clone it, then position relative to the pointer.
-    createPreviewPortal();
+    createPreviewPortal(event.clientX, event.clientY);
     updatePreviewPosition(event.clientX, event.clientY);
     scheduleAutoScroll();
   }

@@ -154,4 +154,60 @@
         background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
     }
   }
+
+  /* ========================================
+   * DRAG PREVIEW OVERLAY (shared with sortable-list)
+   * ======================================== */
+
+  /*
+   * The drag preview portal is created by _sortable-item.svelte and appended
+   * to <body> — outside the component tree. A consumer importing only
+   * cinder/kanban-board/styles would miss sortable-list.css and therefore
+   * miss these rules, leaving the portal unstyled and unpositioned.
+   *
+   * These rules are intentionally kept identical to the ones in
+   * sortable-list.css so both subpath import paths (cinder/sortable-list/styles
+   * and cinder/kanban-board/styles) produce a correctly positioned preview.
+   * The cinder/styles aggregator loads both CSS files; having the rule twice
+   * in the cascade is harmless — the last identical declaration wins.
+   *
+   * Positioning uses CSS custom properties set by _sortable-item.svelte:
+   *   --preview-left / --preview-top   — row's bounding rect at lift time
+   *   --preview-dx / --preview-dy      — pointer delta since lift
+   *   --preview-width / --preview-height — row dimensions at lift time
+   */
+  .cinder-sortable-drag-preview {
+    position: fixed;
+    inset-block-start: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
+    inset-inline-start: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
+    inline-size: var(--preview-width, auto);
+    block-size: var(--preview-height, auto);
+    z-index: var(--cinder-z-drag-preview, 9999);
+    pointer-events: none;
+    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    border-radius: var(--cinder-radius-md, 4px);
+    /* Subtle rotation and scale to distinguish preview from the placeholder. */
+    transform: rotate(2deg) scale(1.02);
+    transform-origin: center top;
+    will-change: top, left;
+    overflow: hidden;
+  }
+
+  /* Restore full opacity and visibility inside the preview clone. */
+  .cinder-sortable-drag-preview > * {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Inside the preview clone keep children visible even if the source
+     had placeholder--hidden children. */
+  .cinder-sortable-drag-preview > * > * {
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-sortable-drag-preview {
+      transform: none;
+    }
+  }
 }
