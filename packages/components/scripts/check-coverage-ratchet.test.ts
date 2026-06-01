@@ -42,6 +42,12 @@ describe('coverage ratchet check', () => {
     );
   });
 
+  test('rejects non-object threshold data', () => {
+    expect(() => parseCoverageThresholds('null')).toThrow(
+      'coverage-ratchet.json must define numeric lines and functions thresholds.',
+    );
+  });
+
   test('computes aggregate hit/found percentages from LCOV records', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(averages).toEqual({

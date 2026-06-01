@@ -30,9 +30,16 @@ const defaultThresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
 const defaultCoveragePath = resolve(packageRoot, 'coverage/lcov.info');
 
 export function parseCoverageThresholds(source: string): CoverageThresholds {
-  const parsed = JSON.parse(source) as Partial<CoverageThresholds>;
+  const parsed: unknown = JSON.parse(source);
 
-  if (typeof parsed.lines !== 'number' || typeof parsed.functions !== 'number') {
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('lines' in parsed) ||
+    !('functions' in parsed) ||
+    typeof parsed.lines !== 'number' ||
+    typeof parsed.functions !== 'number'
+  ) {
     throw new Error('coverage-ratchet.json must define numeric lines and functions thresholds.');
   }
 
