@@ -57,7 +57,7 @@ During a pointer drag a fixed-position overlay (`.cinder-sortable-drag-preview`)
 - Has `pointer-events: none` — it does not interfere with drop-target hit testing.
 - Is removed on drop, cancel, `pointercancel`, Escape (both handle-level and window-level), and component destroy.
 
-The source row switches from `.cinder-sortable-item--lifted` to `.cinder-sortable-item--placeholder` during a pointer drag. The placeholder uses a dashed border and reduced opacity to mark the current drop target position without showing full card content.
+The source row switches from `.cinder-sortable-item--lifted` to `.cinder-sortable-item--placeholder` during a pointer drag. The placeholder uses a dashed outline (not a border, to avoid box-size change) and reduced opacity to mark the current drop target position. Its child content is hidden via `visibility: hidden` so only the drop slot shape is visible, not a ghost of the card content.
 
 Keyboard lifts use `.cinder-sortable-item--lifted` (no preview overlay — the item moves in-place).
 

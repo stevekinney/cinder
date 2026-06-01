@@ -126,11 +126,17 @@
    */
   .cinder-kanban-board__card.cinder-sortable-item--placeholder {
     min-block-size: var(--cinder-space-12, 3rem);
+    opacity: 0.4;
     border-color: transparent;
     outline: 2px dashed var(--cinder-ring-color, currentColor);
     outline-offset: -1px;
     background: transparent;
     box-shadow: none;
+  }
+
+  .cinder-kanban-board__card.cinder-sortable-item--placeholder > * {
+    /* Hide card content from sight; placeholder conveys drop position only. */
+    visibility: hidden;
   }
 
   .cinder-kanban-board__card-content {

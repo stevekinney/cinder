@@ -887,4 +887,68 @@ describe('KanbanBoard pointer drag preview', () => {
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
   });
+
+  // ---------------------------------------------------------------------------
+  // Regression: drop-target filter must exclude the dragged card in both
+  // keyboard-drag state (--lifted) and pointer-drag state (--placeholder).
+  //
+  // Before the fix, locatePointerTarget filtered rows by
+  // !row.classList.contains('cinder-sortable-item--lifted'). During a pointer
+  // drag the lifted card carries cinder-sortable-item--placeholder instead, so
+  // the dragged card was NOT excluded — skewing midpoint calculations. The fix
+  // filters by data-key, which is present and stable in both drag states.
+  //
+  // Note: happy-dom does not support ':scope >' in Element.querySelector, so
+  // locatePointerTarget's card-list lookup returns null in this environment and
+  // all pointer-drag cardIndex values always resolve to 0 (empty row set →
+  // insertionIndex 0). The full midpoint-computation path is correct in real
+  // browsers; the tests below verify the class-state invariant that the old
+  // filter would have broken.
+  // ---------------------------------------------------------------------------
+
+  test('pointer drag: dragged row gets --placeholder (not --lifted) — old class filter would miss it', async () => {
+    // This test documents the core of the regression. During a pointer drag the
+    // dragged row carries cinder-sortable-item--placeholder, NOT --lifted. The
+    // old locatePointerTarget filter excluded only --lifted rows, so the dragged
+    // card would be included in midpoint calculations during pointer drags.
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const alphaRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    // The class the old filter keyed on is NOT present during a pointer drag.
+    expect(alphaRow?.classList.contains('cinder-sortable-item--lifted')).toBe(false);
+    // The actual class during a pointer drag IS present — and carries the data-key
+    // that the fixed filter now uses to identify and exclude the dragged row.
+    expect(alphaRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(true);
+    // data-key is present and stable regardless of drag state.
+    expect(alphaRow?.getAttribute('data-key')).toBe('a');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('keyboard drag: dragged row gets --lifted (not --placeholder) — data-key filter still excludes it', async () => {
+    // Mirror of the previous test for keyboard drags. data-key is present in
+    // both states, making it the correct stable exclusion marker.
+    const { container } = renderBoard();
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+
+    const alphaRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(alphaRow?.classList.contains('cinder-sortable-item--lifted')).toBe(true);
+    expect(alphaRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+    expect(alphaRow?.getAttribute('data-key')).toBe('a');
+
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+  });
 });

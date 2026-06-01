@@ -12,7 +12,7 @@ The component does not use deprecated `aria-grabbed` or `aria-dropeffect`. Annou
 
 Pointer dragging uses the shared cinder sortable handle implementation and recomputes board column geometry during the gesture.
 
-During a pointer drag a fixed-position overlay (`.cinder-sortable-drag-preview`, appended to `document.body`) shows what is being dragged. The card's source row becomes a placeholder (dashed border, reduced opacity) marking the current drop insertion position. Both the overlay and the placeholder class are removed on drop, cancel, or any cleanup path.
+During a pointer drag a fixed-position overlay (`.cinder-sortable-drag-preview`, appended to `document.body`) shows what is being dragged. The card's source row becomes a placeholder (dashed outline, reduced opacity) marking the current drop insertion position. The placeholder hides its child content via `visibility: hidden` so only the drop slot shape is visible, not a duplicate of the card content. Both the overlay and the placeholder class are removed on drop, cancel, or any cleanup path.
 
 **Auto-scroll limitations for KanbanBoard:**
 
