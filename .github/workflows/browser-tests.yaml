@@ -40,9 +40,9 @@ on:
         default: 'off'
         type: choice
         options:
-          - off
-          - report
-          - block
+          - 'off'
+          - 'report'
+          - 'block'
       update_baselines:
         description: 'Set to true to run update-baselines. Default target opens a snapshot-only follow-up PR; source_branch commits back to source_ref.'
         required: false
@@ -71,8 +71,8 @@ on:
         default: 'snapshot_pr'
         type: choice
         options:
-          - snapshot_pr
-          - source_branch
+          - 'snapshot_pr'
+          - 'source_branch'
 
 permissions:
   contents: read
