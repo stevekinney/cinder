@@ -13,6 +13,7 @@
  *                              resolve through this single route.
  *   GET /bundle/:name/:scenario.js → compiled example bundle (standalone — useful for tests/debugging)
  *   GET /styles.css    → raw contents of src/styles/index.css (slim base — no per-component CSS)
+ *   GET /styles/shell.css → shell chrome styles (base CSS plus shell component CSS)
  *   GET /styles/all.css → full cascade aggregator (all component CSS — used by the preview iframe)
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
