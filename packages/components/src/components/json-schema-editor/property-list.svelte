@@ -15,6 +15,7 @@
 <script lang="ts">
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
+  import Chip from '../chip/chip.svelte';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
 
@@ -265,18 +266,12 @@
       </summary>
       <div class="cinder-jse-required-only__panel">
         {#each requiredOnly as name (name)}
-          <span class="cinder-jse-required-only__chip">
-            {name}
-            <Button
-              variant="ghost"
-              size="xs"
-              disabled={readonly}
-              aria-label={`Remove ${name}`}
-              onclick={() => removeRequiredOnly(name)}
-            >
-              ×
-            </Button>
-          </span>
+          <Chip
+            mode="removable"
+            label={name}
+            disabled={readonly}
+            onremove={() => removeRequiredOnly(name)}
+          />
         {/each}
         <Input
           id={`${idPrefix}-required-only-add`}

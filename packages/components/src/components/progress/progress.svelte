@@ -30,12 +30,18 @@
     class: className,
   }: ProgressProps = $props();
 
-  const isIndeterminate = $derived(value === undefined);
+  // A usable upper bound: only a finite, strictly-positive `max` can define a
+  // determinate scale. Zero, negative, or non-finite `max` cannot, so the bar
+  // falls back to indeterminate rather than dividing by zero (NaN/Infinity).
+  const effectiveMax = $derived(Number.isFinite(max) && max > 0 ? max : undefined);
+  const isIndeterminate = $derived(
+    value === undefined || !Number.isFinite(value) || effectiveMax === undefined,
+  );
   const clampedValue = $derived(
-    value === undefined ? undefined : Math.max(0, Math.min(max, value)),
+    isIndeterminate ? undefined : Math.max(0, Math.min(effectiveMax!, value!)),
   );
   const percent = $derived(
-    clampedValue === undefined ? undefined : Math.round((clampedValue / max) * 100),
+    clampedValue === undefined ? undefined : Math.round((clampedValue / effectiveMax!) * 100),
   );
 
   // Default valuetext mirrors the percent for determinate; falls back to a
@@ -51,7 +57,7 @@
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledby}
     aria-valuemin={0}
-    aria-valuemax={max}
+    aria-valuemax={effectiveMax}
     aria-valuenow={clampedValue}
     aria-valuetext={valueText}
     data-cinder-size={size}
@@ -84,7 +90,7 @@
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledby}
     aria-valuemin={0}
-    aria-valuemax={max}
+    aria-valuemax={effectiveMax}
     aria-valuenow={clampedValue}
     aria-valuetext={valueText}
     data-cinder-size={size}

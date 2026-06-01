@@ -49,11 +49,18 @@
   const hasAnyStatistics = $derived(showAdded || showRemoved || showModified);
 </script>
 
+<!--
+  Static summary, not a live region. `role="group"` + `aria-label` labels the
+  cluster ("N lines changed") while keeping the visible added/removed/modified
+  breakdown readable by assistive technology — unlike `role="img"`, which would
+  hide that inner text, and unlike `role="status"`, which would re-announce on
+  every render. Diff stats describe a fixed diff, not a value that updates in place.
+-->
 <div
   class={classNames('cinder-diff-statistics', customClassName)}
   data-cinder-variant={variant}
   data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
-  role="status"
+  role="group"
   aria-label={`${total} ${pluralize(total, 'line', 'lines')} changed`}
   {...rest}
 >
