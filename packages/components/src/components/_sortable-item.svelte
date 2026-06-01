@@ -58,13 +58,19 @@
   let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
 
-  // Preview overlay state — reactive so the template can render the portal div.
-  // These only change during a pointer drag, never during keyboard lifts.
+  // Reactive state for the pointer-drag preview portal.
+  // previewX / previewY drive data-preview-x / data-preview-y on the row element
+  // and the --placeholder / --lifted class toggle — they must be $state.
+  // isDraggingWithPointer gates both the class toggle and the data-attribute output.
   let previewX = $state(0);
   let previewY = $state(0);
-  let previewWidth = $state(0);
-  let previewHeight = $state(0);
   let isDraggingWithPointer = $state(false);
+
+  // Portal dimensions are captured at lift time and written imperatively to the
+  // portal's CSS custom properties inside createPreviewPortal. They never drive
+  // reactive rendering, so plain let is correct here.
+  let previewWidth = 0;
+  let previewHeight = 0;
 
   // The portal element appended to document.body during a pointer drag.
   let previewPortalEl: HTMLElement | null = null;

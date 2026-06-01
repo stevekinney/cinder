@@ -1,6 +1,6 @@
 // @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -565,14 +565,6 @@ async function waitForAnimationFrame(): Promise<void> {
 }
 
 describe('SortableList pointer drag preview', () => {
-  // Capture the body's child count before each test so we can assert portal
-  // creation and removal relative to a known baseline.
-  let baselineBodyChildren: number;
-
-  beforeEach(() => {
-    baselineBodyChildren = document.body.children.length;
-  });
-
   afterEach(() => {
     // Clean up any orphaned portals that a failing test left behind.
     document.querySelectorAll('[data-cinder-drag-preview]').forEach((element) => element.remove());

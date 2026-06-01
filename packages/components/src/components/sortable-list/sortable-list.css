@@ -28,10 +28,16 @@
    * pointer. The drop-target column / position is always visible because
    * visualColumns / visualItems already re-inserts the placeholder at the
    * destination index as the pointer moves.
+   *
+   * Outline is used instead of border so the drop indicator does not affect
+   * the box model. Adding a border where none exists at rest would shift box
+   * dimensions by 2px on each side, causing layout jitter and skewing the
+   * midpoint geometry used by drop-target calculations.
    */
   .cinder-sortable-item--placeholder {
     opacity: 0.4;
-    border: 2px dashed var(--cinder-border-muted, rgb(0 0 0 / 0.15));
+    outline: 2px dashed var(--cinder-border-muted, rgb(0 0 0 / 0.15));
+    outline-offset: -1px;
     border-radius: var(--cinder-radius-md, 4px);
     box-shadow: none;
     background: transparent;
@@ -99,7 +105,10 @@
    *   --preview-dx / --preview-dy      — pointer delta since lift
    *   --preview-width / --preview-height — row dimensions at lift time
    *
-   * The transform translates the preview to the pointer location.
+   * Position is computed via inset-block-start / inset-inline-start using the
+   * custom properties above. The transform applies only a subtle rotate + scale
+   * to visually distinguish the preview from the placeholder — it does not
+   * translate the preview.
    */
   .cinder-sortable-drag-preview {
     position: fixed;
