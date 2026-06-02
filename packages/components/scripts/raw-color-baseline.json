@@ -45,11 +45,6 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/dropdown/dropdown.css",
-    "colorClass": "rgb",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/input/input.css",
     "colorClass": "oklch",
     "allowedCount": 2
@@ -85,28 +80,13 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/segmented-control/segmented-control.css",
-    "colorClass": "rgb",
-    "allowedCount": 2
-  },
-  {
     "filePath": "src/components/select/select.css",
     "colorClass": "oklch",
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/selection-popover/selection-popover.css",
-    "colorClass": "rgb",
-    "allowedCount": 3
-  },
-  {
     "filePath": "src/components/skeleton/skeleton.css",
     "colorClass": "oklch",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/slider/slider.css",
-    "colorClass": "rgb",
     "allowedCount": 1
   },
   {
@@ -117,11 +97,6 @@
   {
     "filePath": "src/components/spinner/spinner.css",
     "colorClass": "hex",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/stat-group/stat-group.css",
-    "colorClass": "rgb",
     "allowedCount": 1
   },
   {

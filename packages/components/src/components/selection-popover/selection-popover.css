@@ -29,7 +29,7 @@
     cursor: pointer;
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    box-shadow: var(--cinder-shadow-md, 0 4px 6px rgb(0 0 0 / 0.12));
+    box-shadow: var(--cinder-shadow-md);
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       transform var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -44,8 +44,7 @@
   .cinder-selection-popover__button:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
-    box-shadow:
-      var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md, 0 4px 6px rgb(0 0 0 / 0.12));
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
   }
 
   @media (forced-colors: active) {
@@ -68,7 +67,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
-    box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
+    box-shadow: var(--cinder-shadow-lg);
   }
 
   .cinder-selection-popover__textarea {

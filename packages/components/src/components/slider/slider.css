@@ -82,7 +82,7 @@
     border-radius: var(--cinder-radius-full);
     transform: translate(-50%, -50%);
     cursor: grab;
-    box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+    box-shadow: var(--cinder-shadow-sm);
     /* Touch-action is set on the track for the same reason; explicitly setting
    * it on the thumb prevents older Chromium-on-Android from intercepting the
    * gesture for scrolling when pointerdown lands directly on the thumb. */
