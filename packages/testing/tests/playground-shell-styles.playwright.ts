@@ -97,7 +97,7 @@ test.describe('playground shell styles', () => {
     await customWidth.blur();
     await expect(customWidth).toHaveValue('640');
 
-    await page.getByRole('radio', { name: 'Dark theme' }).click();
+    await page.getByRole('radio', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
 
     // The narrow-viewport sidebar toggle is in the DOM but display:none at this

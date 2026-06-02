@@ -239,6 +239,10 @@ describe('/c/:name', () => {
     expect(urls.has('/components/input/input.css')).toBe(true);
     expect(urls.has('/components/number-input/number-input.css')).toBe(true);
     expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
+    // Regression: side-navigation.css carries no per-item styling, so the shell
+    // MUST also load navigation-item.css or the sidebar links fall back to bare
+    // underlined anchors (no padding, no active indicator, wrong focus ring).
+    expect(urls.has('/components/navigation-item/navigation-item.css')).toBe(true);
 
     for (const selector of [
       '.cinder-toolbar',
@@ -248,6 +252,9 @@ describe('/c/:name', () => {
       '.cinder-number-input',
       '.cinder-side-navigation',
       '.cinder-side-navigation__list',
+      // The per-row styling (text-decoration:none, padding, active indicator)
+      // lives on .cinder-navigation-item — assert it's actually in the cascade.
+      '.cinder-navigation-item',
     ]) {
       expect(css).toContain(selector);
     }

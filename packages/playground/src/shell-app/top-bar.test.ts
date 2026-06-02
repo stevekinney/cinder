@@ -69,7 +69,7 @@ function wait(ms: number): Promise<void> {
 
 /**
  * Find a `<button>` by its trimmed visible text. The theme segments render as
- * buttons whose text is the option label ("Light theme", etc.) and the toolbar
+ * buttons whose text is the option label ("Light", etc.) and the toolbar
  * action buttons carry a stable `aria-label` — both are accessible, stable
  * selectors rather than incidental markup.
  */
@@ -172,7 +172,7 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container, 'Dark theme').click();
+    buttonByText(container, 'Dark').click();
     await tick();
 
     expect(themeCalls).toEqual(['dark']);
@@ -188,7 +188,7 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container, 'Light theme').click();
+    buttonByText(container, 'Light').click();
     await tick();
 
     expect(themeCalls).toEqual(['light']);

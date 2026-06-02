@@ -218,23 +218,15 @@
   }
 
   /*
-   * Inset the navigation list off the column edges so the links don't sit
-   * flush against the viewport border, and tighten the per-row density so the
-   * long component list reads as a compact index rather than a list of fat
-   * touch targets. These override cinder's global navigation-item spacing
-   * (which has no per-component style hook), scoped to the playground sidebar.
+   * The cinder navigation-item styling (padding, muted color, no underline,
+   * inline-start active indicator, focus ring) comes from navigation-item.css,
+   * which the shell stylesheet now imports. We only add a small list inset so
+   * the rows don't sit flush against the column edge.
    */
   .sidebar-chrome :global(.cinder-side-navigation__list) {
     padding-block: var(--cinder-space-1, 0.25rem);
-    padding-inline: var(--cinder-space-2, 0.5rem);
+    padding-inline: var(--cinder-space-1, 0.25rem);
     gap: 0;
-  }
-
-  .sidebar-chrome :global(.cinder-navigation-item) {
-    min-height: 0;
-    padding-block: var(--cinder-space-1, 0.25rem);
-    padding-inline: var(--cinder-space-2, 0.5rem);
-    border-radius: var(--cinder-radius-sm, 0.25rem);
   }
 
   .sidebar-empty {

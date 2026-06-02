@@ -18,6 +18,7 @@
   } from './example-error.ts';
   import {
     fetchComponentManifest,
+    splitUnionType,
     toPropReferenceRows,
     type PropReferenceRow,
   } from './manifest-reference.ts';
@@ -340,7 +341,21 @@
                 {/if}
               </Table.Cell>
               <Table.Cell>
-                <code class="props-type">{prop.type}</code>
+                <!-- Render a union type as one member per line (split at the
+                     top-level ` | ` only) so long unions read as a clean list
+                     instead of wrapping mid-token. Members after the first carry
+                     a leading `|` so the union reading stays clear; a non-union
+                     type is a single line with no separator. -->
+                {@const typeMembers = splitUnionType(prop.type)}
+                <code class="props-type" class:props-type--union={typeMembers.length > 1}>
+                  {#each typeMembers as member, index (index)}
+                    <span class="props-type__member">
+                      {#if index > 0}<span class="props-type__sep" aria-hidden="true"
+                          >|
+                        </span>{/if}<span class="props-type__value">{member}</span>
+                    </span>
+                  {/each}
+                </code>
               </Table.Cell>
               <Table.Cell>
                 {#if prop.defaultValue !== undefined}
@@ -394,8 +409,9 @@
   .example-preview {
     /* Scale the inner preview gutter with the viewport so components aren't
        boxed into a sliver on narrow screens — matches the iframe body's
-       responsive gutter. */
-    padding: clamp(var(--cinder-space-3), 3vw, var(--cinder-space-6));
+       responsive gutter. Floors at space-2 (8px) on phones; the body gutter is
+       already near-zero there, so the component gets almost the full width. */
+    padding: clamp(var(--cinder-space-2), 2vw, var(--cinder-space-6));
     min-height: 4rem;
     display: block;
     overflow: visible;
@@ -477,6 +493,10 @@
   /* --- Props / API reference panel ------------------------------------- */
   .props-section {
     margin-top: var(--cinder-space-8);
+    /* Establish a query container so the table responds to ITS OWN width (the
+       preview pane), not the viewport — the iframe is resized by the toolbar
+       independently of the device. */
+    container: props-section / inline-size;
   }
 
   .props-heading {
@@ -486,6 +506,21 @@
     color: var(--cinder-text);
   }
 
+  /* The <h3> is the only visible heading. The <Table caption> stays in the DOM
+     so the table keeps an accessible name, but is visually hidden to avoid a
+     second, redundant "Props for <component>" heading. */
+  .props-section :global(.cinder-table__caption) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .props-skeleton {
     display: flex;
     flex-direction: column;
@@ -493,9 +528,7 @@
     padding: var(--cinder-space-2) 0;
   }
 
-  /* The props table has six columns; the Type and Description columns can hold
-     long union strings. <Card> sets overflow: hidden, so give the table its own
-     horizontal scroll container to avoid clipping at narrow preview widths. */
+  /* Wide container: a normal horizontally-scrollable table. */
   .props-table-scroll {
     overflow-x: auto;
   }
@@ -519,6 +552,31 @@
     font-weight: var(--cinder-font-medium);
   }
 
+  /* Union type: one member per line, no mid-token wrapping. Each member stays
+     intact; the separator pipe is decorative (real `|` punctuation is read by
+     screen readers from the cell text, so the visual one is aria-hidden). */
+  .props-type {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--cinder-space-0-5, 0.125rem);
+    align-items: flex-start;
+  }
+
+  .props-type__member {
+    white-space: nowrap;
+  }
+
+  /* Hang the leading `|` of continuation lines in a small gutter so the member
+     values line up vertically under each other. */
+  .props-type--union .props-type__member {
+    padding-inline-start: 1ch;
+  }
+
+  .props-type__sep {
+    margin-inline-start: -1ch;
+    color: var(--cinder-text-subtle);
+  }
+
   .props-required-marker {
     margin-inline-start: var(--cinder-space-1);
     color: var(--cinder-color-danger-fg);
@@ -532,5 +590,78 @@
 
   .props-dash {
     color: var(--cinder-text-subtle);
+  }
+
+  /*
+   * Narrow container (a constrained preview pane): a 6-column table can't fit,
+   * so stack each row into a labelled card. The column order is fixed (Name,
+   * Type, Default, Required, Bindable, Description), so each cell's header label
+   * is injected by nth-child via ::before — no per-cell attribute or change to
+   * the cinder Table component is needed. Table semantics (and the SR-only
+   * caption) stay intact; only `display` changes.
+   */
+  @container props-section (max-width: 34rem) {
+    .props-table-scroll {
+      overflow-x: visible;
+    }
+
+    .props-section :global(.cinder-table) {
+      display: block;
+      inline-size: 100%;
+    }
+
+    .props-section :global(.cinder-table thead) {
+      /* Column headers are reproduced as per-cell ::before labels below, so the
+         visual header row is hidden (kept in the a11y tree). */
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .props-section :global(.cinder-table tbody),
+    .props-section :global(.cinder-table tr) {
+      display: block;
+    }
+
+    .props-section :global(.cinder-table tr) {
+      padding-block: var(--cinder-space-3);
+      border-block-end: 1px solid var(--cinder-border);
+    }
+
+    .props-section :global(.cinder-table td) {
+      display: grid;
+      grid-template-columns: minmax(4.5rem, max-content) 1fr;
+      gap: var(--cinder-space-3);
+      padding-block: var(--cinder-space-1);
+      border: none;
+      /* Reset the centered alignment from the Required/Bindable columns. */
+      text-align: start;
+    }
+
+    .props-section :global(.cinder-table td)::before {
+      font-weight: var(--cinder-font-medium);
+      color: var(--cinder-text-subtle);
+    }
+
+    .props-section :global(.cinder-table td:nth-child(1))::before {
+      content: 'Name';
+    }
+    .props-section :global(.cinder-table td:nth-child(2))::before {
+      content: 'Type';
+    }
+    .props-section :global(.cinder-table td:nth-child(3))::before {
+      content: 'Default';
+    }
+    .props-section :global(.cinder-table td:nth-child(4))::before {
+      content: 'Required';
+    }
+    .props-section :global(.cinder-table td:nth-child(5))::before {
+      content: 'Bindable';
+    }
+    .props-section :global(.cinder-table td:nth-child(6))::before {
+      content: 'Description';
+    }
   }
 </style>

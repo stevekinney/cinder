@@ -53,6 +53,39 @@ export function describeControlType(control: ControlKind): string {
 }
 
 /**
+ * Split a type string into its top-level union members so each can render on
+ * its own line instead of wrapping mid-token. Splits ONLY on ` | ` that sits
+ * outside any brackets, so a `|` inside a generic (`Map<string, A | B>`),
+ * object (`{ a: 1 | 2 }`), tuple, or function-parameter list stays intact.
+ *
+ * A non-union type (or one whose only `|`s are nested) returns a single-member
+ * array, so the caller can treat every type uniformly.
+ *
+ * @param type - The display type string from {@link describeControlType}.
+ * @returns The union members, trimmed, in source order. Never empty.
+ */
+export function splitUnionType(type: string): string[] {
+  const members: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (let index = 0; index < type.length; index += 1) {
+    const char = type[index];
+    if (char === '<' || char === '(' || char === '[' || char === '{') depth += 1;
+    else if (char === '>' || char === ')' || char === ']' || char === '}') depth -= 1;
+    // A top-level union separator is " | " (pipe padded by spaces) at depth 0.
+    if (depth === 0 && char === '|' && type[index - 1] === ' ' && type[index + 1] === ' ') {
+      members.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  const last = current.trim();
+  if (last !== '') members.push(last);
+  return members.length > 0 ? members : [type.trim()];
+}
+
+/**
  * Render a prop's default value as compact source-ish text for the table.
  *
  * Strings are single-quoted, primitives are stringified, and structured values

@@ -1114,9 +1114,9 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
         /* Scale the preview gutter with the viewport: a comfortable space-6
-           (24px) on wide screens collapses toward space-2 (8px) on phones so
-           example components aren't squeezed into a sliver of usable width. */
-        padding: clamp(var(--cinder-space-2), 4vw, var(--cinder-space-6));
+           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
+           example components get almost the full width and look realistic. */
+        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
       }
       /* Guard the background/color crossfade behind a reduced-motion opt-out so
          users who prefer no motion get an instant theme swap, not a transition. */
@@ -1183,9 +1183,9 @@ function renderFixturePageHtml(
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
         /* Scale the preview gutter with the viewport: a comfortable space-6
-           (24px) on wide screens collapses toward space-2 (8px) on phones so
-           example components aren't squeezed into a sliver of usable width. */
-        padding: clamp(var(--cinder-space-2), 4vw, var(--cinder-space-6));
+           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
+           example components get almost the full width and look realistic. */
+        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
       }
       @media (prefers-reduced-motion: no-preference) {
         body {

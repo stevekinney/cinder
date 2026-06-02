@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { MediaQuery } from 'svelte/reactivity';
+
   import { getAnnouncer } from './announcer.svelte.ts';
   import type { ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
@@ -13,6 +15,19 @@
 
   const store = getPreviewStore();
   const announcer = getAnnouncer();
+
+  // The viewport-size presets (Mobile/Tablet/Desktop/Full + custom px) simulate
+  // a narrower preview canvas on a wide screen. Below ~840px the toolbar can't
+  // fit them AND they're meaningless (you're already constrained), so the CSS
+  // hides that group. 840px (not 720px) because at 768px the 220px brand column
+  // still eats most of the bar. When hidden, drop any constrained width so the
+  // preview uses the real available space instead of a phantom 1280px box.
+  const hidesViewportControls = new MediaQuery('(max-width: 840px)');
+  $effect(() => {
+    if (hidesViewportControls.current && store.previewWidth !== null) {
+      store.previewWidth = null;
+    }
+  });
 
   // Forward toolbar feedback to the shell's single shared live region. The
   // empty-then-set coalescing trick (so identical repeats still read) lives
@@ -74,16 +89,19 @@
   // localStorage and updates the document's color-scheme. Never assign
   // store.theme directly.
 
-  const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string }> = [
-    { value: 'light', label: 'Light theme' },
-    { value: 'system', label: 'System theme' },
-    { value: 'dark', label: 'Dark theme' },
+  // Short visible labels keep the 3-segment control compact enough to fit a
+  // phone-width toolbar; the SegmentedControl's `label="Color scheme"` supplies
+  // the group context, and `announce` uses the full phrase for assistive tech.
+  const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; announce: string }> = [
+    { value: 'light', label: 'Light', announce: 'Light theme' },
+    { value: 'system', label: 'System', announce: 'System theme' },
+    { value: 'dark', label: 'Dark', announce: 'Dark theme' },
   ];
 
   function selectTheme(value: ThemeChoice): void {
     store.setTheme(value);
     const option = THEME_OPTIONS.find((o) => o.value === value);
-    announce(`Color scheme: ${option?.label ?? value}`);
+    announce(`Color scheme: ${option?.announce ?? value}`);
   }
 
   // ── Sidebar drawer (narrow viewports) ──────────────────────────────────────
@@ -145,7 +163,7 @@
       </span>
     </Toolbar.Group>
 
-    <Toolbar.Group>
+    <Toolbar.Group class="viewport-size-controls">
       <SegmentedControl
         id="viewport-preset"
         label="Viewport width"
@@ -163,8 +181,9 @@
       {#if isCustomWidthVisible}
         <!-- NumberInput's field is inline-size:100% and would otherwise stretch
              to fill the toolbar row, crushing the segmented controls. Constrain
-             it to a fixed, content-appropriate width so the toolbar layout is
-             stable in every viewport preset. -->
+             it to a fixed width wide enough for a four-digit value plus the two
+             steppers. `useGrouping:false` keeps the value a plain integer
+             ("1280", not the locale-grouped "1,280"). -->
         <span class="width-input">
           <NumberInput
             id="viewport-width-input"
@@ -172,6 +191,7 @@
             min={200}
             max={3840}
             step={1}
+            format={{ useGrouping: false }}
             aria-label="Custom viewport width in pixels (200 to 3840)"
             onchange={handleCustomWidthChange}
           />
@@ -358,8 +378,9 @@
    */
   .width-input {
     display: inline-flex;
+    /* Wide enough for a four-digit value plus the +/- steppers. */
     /* stylelint-disable-next-line csstools/use-logical */
-    width: 7.5rem;
+    width: 9rem;
     flex: 0 0 auto;
   }
 
@@ -409,10 +430,28 @@
     }
   }
 
-  /* Below the phone breakpoint the wordmark is just noise next to the menu
-     button and the controls — hide it so the toolbar wins the space. */
+  /*
+   * The viewport-size presets (Mobile/Tablet/Desktop/Full + custom px) simulate
+   * a narrower canvas on a wide screen — meaningless once the screen itself is
+   * narrow, and the controls that overflow/overlap the toolbar at these widths.
+   * Hide the whole group below 840px (768px still carries the 220px brand
+   * column, so the bar is most pinched there); the script resets previewWidth
+   * to Full so the preview uses the real width. The theme control + icon buttons
+   * fit comfortably without them.
+   */
+  @media (max-width: 840px) {
+    .top-bar :global(.viewport-size-controls) {
+      display: none;
+    }
+  }
+
+  /* Below the phone breakpoint the wordmark and the redundant component-name
+     label are just noise next to the menu button and controls — the page title
+     and the sidebar already name the component. Hide them so the toolbar wins
+     the space. */
   @media (max-width: 520px) {
-    .wordmark {
+    .wordmark,
+    .component-name {
       display: none;
     }
   }

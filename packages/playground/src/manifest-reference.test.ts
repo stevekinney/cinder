@@ -16,6 +16,7 @@ import {
   describeDefaultValue,
   fetchComponentManifest,
   isComponentManifest,
+  splitUnionType,
   toPropReferenceRow,
   toPropReferenceRows,
 } from './manifest-reference.ts';
@@ -62,6 +63,48 @@ describe('describeControlType', () => {
     expect(describeControlType({ kind: 'number' })).toBe('number');
     expect(describeControlType({ kind: 'boolean' })).toBe('boolean');
     expect(describeControlType({ kind: 'snippet' })).toBe('snippet');
+  });
+});
+
+describe('splitUnionType', () => {
+  it('splits a top-level union into trimmed members', () => {
+    expect(splitUnionType("'neutral' | 'success' | 'danger'")).toEqual([
+      "'neutral'",
+      "'success'",
+      "'danger'",
+    ]);
+  });
+
+  it('returns a single member for a non-union type', () => {
+    expect(splitUnionType('string')).toEqual(['string']);
+    expect(splitUnionType('number')).toEqual(['number']);
+  });
+
+  it('does NOT split a pipe nested inside angle brackets (generics)', () => {
+    expect(splitUnionType('Map<string, A | B>')).toEqual(['Map<string, A | B>']);
+  });
+
+  it('does NOT split a pipe nested inside an object or function type', () => {
+    expect(splitUnionType('{ a: 1 | 2 }')).toEqual(['{ a: 1 | 2 }']);
+    expect(splitUnionType('(value: A | B) => void')).toEqual(['(value: A | B) => void']);
+  });
+
+  it('splits top-level members while preserving nested pipes', () => {
+    expect(splitUnionType('Array<A | B> | null | undefined')).toEqual([
+      'Array<A | B>',
+      'null',
+      'undefined',
+    ]);
+  });
+
+  it('treats a bare "|" without surrounding spaces as not a separator', () => {
+    // The describe* output always pads union separators with spaces; a `||`
+    // operator or an unspaced pipe inside a string must not split.
+    expect(splitUnionType("'a||b'")).toEqual(["'a||b'"]);
+  });
+
+  it('falls back to the whole string when there are no members', () => {
+    expect(splitUnionType('')).toEqual(['']);
   });
 });
 
