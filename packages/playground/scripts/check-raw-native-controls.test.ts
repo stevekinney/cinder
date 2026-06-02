@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   ALLOWLIST,
@@ -19,6 +20,11 @@ import {
   type RawControlOccurrence,
   type ScanResult,
 } from './check-raw-native-controls.ts';
+
+// Resolve via fileURLToPath (not `new URL(...).pathname`) so the path is a valid
+// filesystem path on every platform — `.pathname` yields a broken `/C:/...` on
+// Windows. Mirrors the script's own `fileURLToPath(import.meta.url)` usage.
+const examplesDirectory = fileURLToPath(new URL('../src/examples', import.meta.url));
 
 // ── stripCommentsAndStrings ───────────────────────────────────────────────────
 
@@ -545,7 +551,6 @@ describe('renderReport — human-readable output', () => {
 describe('scan — live inventory against the real examples directory', () => {
   // scan() walks the real examples tree; give it generous headroom on slow CI.
   test('returns a ScanResult with allowlisted, flagged, and staleAllowlistEntries arrays', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
 
     expect(Array.isArray(result.allowlisted)).toBe(true);
@@ -554,14 +559,12 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('detects at least one raw control across all example files', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
     const total = result.allowlisted.length + result.flagged.length;
     expect(total).toBeGreaterThan(0);
   }, 15_000);
 
   test('does NOT flag the navigation-bar menuToggle button (it is allowlisted)', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
 
     const navigationBarFlagged = result.flagged.filter(
@@ -576,7 +579,6 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('does NOT flag the popover transformed-ancestor trigger button (it is allowlisted)', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
 
     const popoverFlagged = result.flagged.filter(
@@ -586,7 +588,6 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('every returned occurrence has a positive lineNumber and a non-empty relativePath', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
 
     for (const occurrence of [...result.allowlisted, ...result.flagged]) {
@@ -597,7 +598,6 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('respects a custom empty allowlist (nothing is allowlisted)', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory, []);
     // With an empty allowlist all occurrences land in flagged.
     expect(result.allowlisted).toHaveLength(0);
@@ -605,7 +605,6 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('results are sorted by relativePath then lineNumber', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
     // Check each array is sorted independently.
     for (const list of [result.allowlisted, result.flagged]) {
@@ -623,7 +622,6 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('does NOT flag raw controls inside HTML/Svelte comments in real files', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
     // command-palette/search-recent-actions.example.svelte has several <!-- ... -->
     // comment blocks in the template; those must not be counted as raw controls.
@@ -636,14 +634,12 @@ describe('scan — live inventory against the real examples directory', () => {
   }, 15_000);
 
   test('the canonical ALLOWLIST has no stale entries against the real files', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
     // If this fails, the file was refactored and the ALLOWLIST entry needs updating.
     expect(result.staleAllowlistEntries).toHaveLength(0);
   }, 15_000);
 
   test('a deliberately stale allowlist entry is reported as stale', async () => {
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const staleEntry: AllowlistEntry = {
       relativePath: 'navigation-bar/basic.example.svelte',
       tagName: 'button',
@@ -660,7 +656,6 @@ describe('scan — live inventory against the real examples directory', () => {
     // This exercises that the allowlist is tag-specific: if a file had <button> and
     // <input> on the same line and only <button> is allowlisted, <input> is still flagged.
     // We construct a minimal fixture via a custom allowlist with the wrong tag.
-    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     // Use an allowlist that covers 'input' at index 0 for the nav-bar file (which
     // actually has a <button> there, not an <input>). The <button> should be flagged.
     const wrongTagEntry: AllowlistEntry = {
