@@ -13,17 +13,18 @@ the namespace API.
 </script>
 
 <Feed aria-label="Project activity">
-  <Feed.Event datetime="2025-05-12T15:30:00Z">
+  <Feed.Event datetime="2025-05-12T15:30:00Z" timestamp="2m ago">
     {#snippet icon()}
       <span aria-hidden="true">★</span>
     {/snippet}
-    {#snippet timestamp()}2m ago{/snippet}
-    {#snippet content()}
-      <p>Ada Lovelace starred the repository.</p>
-    {/snippet}
+    <p>Ada Lovelace starred the repository.</p>
   </Feed.Event>
 </Feed>
 ```
+
+The event body is the default child content. The visible time label is the
+`timestamp` string (use the `timestampLabel` snippet only when the label needs
+markup); if omitted, it falls back to the raw `datetime` value.
 
 The leaf remains importable individually for à-la-carte builds — see
 `cinder/feed-event`.

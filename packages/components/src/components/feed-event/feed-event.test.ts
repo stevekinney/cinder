@@ -17,14 +17,13 @@ function textSnippet(text: string) {
 }
 
 const iconSnippet = textSnippet('icon-content');
-const contentSnippet = textSnippet('event-content');
-const timestampSnippet = textSnippet('2m ago');
+const childrenSnippet = textSnippet('event-content');
 
 const baseProps = {
   datetime: '2026-05-12T14:30:00Z',
   icon: iconSnippet,
-  content: contentSnippet,
-  timestamp: timestampSnippet,
+  children: childrenSnippet,
+  timestamp: '2m ago',
 };
 
 describe('FeedEvent', () => {
@@ -46,8 +45,8 @@ describe('FeedEvent', () => {
       props: {
         datetime: '2026-05-12T14:30:00Z',
         variant: 'minimal',
-        content: contentSnippet,
-        timestamp: timestampSnippet,
+        children: childrenSnippet,
+        timestamp: '2m ago',
       },
     });
     const root = container.querySelector('.cinder-feed-event');
@@ -61,18 +60,70 @@ describe('FeedEvent', () => {
     expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:00Z');
   });
 
-  test('timestamp snippet content renders inside the <time> element', () => {
+  test('plain-text timestamp renders inside the <time> element', () => {
     const { container } = render(FeedEvent, { props: baseProps });
     const time = container.querySelector('time.cinder-feed-event-time');
     expect(time).not.toBeNull();
     expect(time?.textContent).toContain('2m ago');
   });
 
-  test('content snippet renders inside .cinder-feed-event-content', () => {
+  test('body children render inside .cinder-feed-event-content', () => {
     const { container } = render(FeedEvent, { props: baseProps });
     const content = container.querySelector('.cinder-feed-event-content');
     expect(content).not.toBeNull();
     expect(content?.textContent).toContain('event-content');
+  });
+
+  test('omitting the visible label falls back to the raw datetime (SSR-deterministic)', () => {
+    const { container } = render(FeedEvent, {
+      props: {
+        datetime: '2026-05-12T14:30:00Z',
+        icon: iconSnippet,
+        children: childrenSnippet,
+      },
+    });
+    const time = container.querySelector('time.cinder-feed-event-time');
+    // No locale/timezone formatting — the deterministic fallback is the ISO value.
+    expect(time?.textContent?.trim()).toBe('2026-05-12T14:30:00Z');
+    expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:00Z');
+  });
+
+  test('timestampLabel snippet takes precedence over the timestamp string', () => {
+    const { container } = render(FeedEvent, {
+      props: {
+        ...baseProps,
+        timestamp: 'plain-text-label',
+        timestampLabel: textSnippet('rich-label'),
+      },
+    });
+    const time = container.querySelector('time.cinder-feed-event-time');
+    expect(time?.textContent).toContain('rich-label');
+    expect(time?.textContent).not.toContain('plain-text-label');
+  });
+
+  test('an explicit empty timestamp string renders empty, not the datetime fallback', () => {
+    // timestamp="" is a deliberate "no visible label" — honor it rather than
+    // treating it as omitted and substituting the ISO datetime.
+    const { container } = render(FeedEvent, {
+      props: {
+        datetime: '2026-05-12T14:30:00Z',
+        icon: iconSnippet,
+        children: childrenSnippet,
+        timestamp: '',
+      },
+    });
+    const time = container.querySelector('time.cinder-feed-event-time');
+    expect(time?.textContent?.trim()).toBe('');
+    expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:00Z');
+  });
+
+  test('omitting children renders no .cinder-feed-event-content wrapper (no layout gap)', () => {
+    const { container } = render(FeedEvent, {
+      props: { datetime: '2026-05-12T14:30:00Z', icon: iconSnippet, timestamp: '2m ago' },
+    });
+    expect(container.querySelector('.cinder-feed-event-content')).toBeNull();
+    // The time still renders.
+    expect(container.querySelector('time.cinder-feed-event-time')?.textContent).toContain('2m ago');
   });
 
   test('icon snippet renders inside the rail when variant is icon', () => {
@@ -89,8 +140,8 @@ describe('FeedEvent', () => {
       props: {
         datetime: '2026-05-12T14:30:00Z',
         variant: 'minimal',
-        content: contentSnippet,
-        timestamp: timestampSnippet,
+        children: childrenSnippet,
+        timestamp: '2m ago',
       },
     });
     const rail = container.querySelector('.cinder-feed-event-rail');
@@ -131,8 +182,6 @@ describe('FeedEvent', () => {
       },
     });
     const root = container.querySelector('.cinder-feed-event');
-    // The component's own data-cinder-variant={variant} is written after {...rest},
-    // so the owned attribute wins.
     expect(root?.getAttribute('data-cinder-variant')).toBe('icon');
   });
 });

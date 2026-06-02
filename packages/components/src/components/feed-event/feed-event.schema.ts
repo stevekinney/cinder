@@ -10,7 +10,12 @@ const schema = {
     datetime: {
       type: 'string',
       description:
-        'ISO 8601 datetime string. Rendered as `<time datetime={datetime}>` so\nassistive tech and parsers receive a machine-readable timestamp. The\nvisible label inside the `<time>` element is consumer-controlled via\nthe required `timestamp` snippet.',
+        'ISO 8601 datetime string. Rendered as `<time datetime={datetime}>` so\nassistive tech and parsers receive a machine-readable timestamp. This is\nalways the authoritative value; the visible label is separate (see\n`timestamp` / `timestampLabel`).',
+    },
+    timestamp: {
+      type: 'string',
+      description:
+        'Visible time label, as plain text — the common case (`"2m ago"`,\n`"May 12, 3:30 PM"`). Rendered inside the `<time>` element. Optional, with a\ndeliberate three-way contract:\n\n- **omitted** (`undefined`) and no `timestampLabel` → falls back to the raw\n  `datetime` string, which is deterministic and SSR-safe (no locale or\n  timezone dependence).\n- **explicit empty string** (`timestamp=""`) → renders no visible label.\n  This is treated as "intentionally blank", NOT as omitted, so it does\n  **not** trigger the `datetime` fallback. Use it to hide the label while\n  keeping the machine-readable `<time datetime>` for assistive tech.\n- **non-empty string** → rendered verbatim.',
     },
     variant: {
       enum: ['icon', 'minimal'],
@@ -22,7 +27,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'content',
+        name: 'children',
         reason: 'function-or-snippet',
       },
       {
@@ -30,7 +35,7 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'timestamp',
+        name: 'timestampLabel',
         reason: 'function-or-snippet',
       },
     ],
