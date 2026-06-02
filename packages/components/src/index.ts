@@ -389,9 +389,6 @@ export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/p
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
 
-export { default as Radio } from './components/radio/index.ts';
-export type { RadioProps } from './components/radio/index.ts';
-
 export { default as RadioGroup } from './components/radio-group/index.ts';
 export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
 

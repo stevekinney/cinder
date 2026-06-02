@@ -79,7 +79,7 @@
 @import '../components/pin-input/pin-input.css';
 @import '../components/popover/popover.css';
 @import '../components/progress/progress.css';
-@import '../components/radio/radio.css';
+@import '../components/_radio/radio.css';
 @import '../components/radio-group/radio-group.css';
 @import '../components/rating/rating.css';
 @import '../components/resizable-panels/resizable-panels.css';
