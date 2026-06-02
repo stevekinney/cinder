@@ -686,7 +686,9 @@ describe('scan — inline marker line boundaries (temp fixtures)', () => {
   async function scanFixture(contents: string): Promise<ScanResult> {
     const directory = await mkdtemp(join(tmpdir(), 'raw-native-guard-'));
     try {
-      await Bun.write(join(directory, 'fixture', 'basic.example.svelte'), contents);
+      // Write at the temp-dir root (the scan glob is `**/*.example.svelte`, so a
+      // root-level file matches) to avoid depending on any subdirectory creation.
+      await Bun.write(join(directory, 'basic.example.svelte'), contents);
       return await scan(directory, []);
     } finally {
       await rm(directory, { recursive: true, force: true });
