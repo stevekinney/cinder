@@ -6,7 +6,6 @@
 
 <script lang="ts">
   import { Tree } from 'cinder/tree';
-  import { TreeSelectAll } from 'cinder/tree-select-all';
 
   let selectedIds = $state<string[]>(['src']);
   let expandedIds = $state<string[]>(['src', 'components']);
@@ -21,7 +20,7 @@
   bind:expandedIds
 >
   {#snippet selectionControls()}
-    <TreeSelectAll label="Project files" includeDescendants />
+    <Tree.SelectAll label="Project files" includeDescendants />
   {/snippet}
 
   <Tree.Item

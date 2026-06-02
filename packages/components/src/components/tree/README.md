@@ -61,7 +61,9 @@ This component does not declare any local CSS variables.
 <!-- generated:subcomponents:start -->
 
 - `Tree.Item` — a tree node, branch or leaf; see [`tree-item`](../tree-item/README.md).
-  Use the related `TreeSelectAll` (still flat-exported as `cinder/tree-select-all`)
-  for the root-level select-all control.
+- `Tree.SelectAll` — the root-level select-all/none control. It reads Tree's
+  selection context and is namespace-only: there is no standalone
+  `cinder/tree-select-all` import, because rendering it outside a Tree always
+  throws.
 
 <!-- generated:subcomponents:end -->
