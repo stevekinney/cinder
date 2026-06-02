@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic data list",
       "description": "A list of homogeneous records. DataList is the semantic `<ul role=\"list\">` container; each row is a StackedListItem with a title and trailing meta. Row chrome (padding, dividers, density) is owned by the row, so content stays compactly aligned instead of stretching to the viewport edges.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members = [\n    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },\n    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },\n    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },\n  ];\n</script>\n\n<DataList items={members}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n      {#snippet meta()}{member.role} · {member.status}{/snippet}\n    </StackedListItem>\n  {/snippet}\n</DataList>\n"
+      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members = [\n    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },\n    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },\n    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },\n  ];\n</script>\n\n<DataList items={members} key={(m) => m.id}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n      {#snippet meta()}{member.role} · {member.status}{/snippet}\n    </StackedListItem>\n  {/snippet}\n</DataList>\n"
     },
     {
       "id": "empty",
