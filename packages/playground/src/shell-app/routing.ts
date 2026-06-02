@@ -60,33 +60,25 @@ export function buildIframeSrc(componentName: string): string {
  * without paying the `.svelte.ts` compilation cost in test boot.
  */
 export type ThemeChoice = 'light' | 'dark' | 'system';
-/**
- * Preview backdrop. `surface` is the themed default (light or dark depending
- * on the active theme); `checker` overlays a transparency grid so visual
- * artifacts and component edges are easy to spot. Dark-on-light or
- * light-on-dark is the theme toggle's job — that's why there is no `inverse`.
- */
-export type BackgroundChoice = 'surface' | 'checker';
 
-const PREVIEW_THEMES_INTERNAL: ReadonlySet<ThemeChoice> = new Set<ThemeChoice>([
-  'light',
-  'dark',
-  'system',
-]);
-const PREVIEW_BACKGROUNDS_INTERNAL: ReadonlySet<BackgroundChoice> = new Set<BackgroundChoice>([
-  'surface',
-  'checker',
-]);
+// Typed as ReadonlySet<string> (not ReadonlySet<ThemeChoice>) so `.has(raw)`
+// accepts an arbitrary string without an `as ThemeChoice` assertion. Narrowing
+// from string → ThemeChoice is the job of `isThemeChoice` below.
+const THEME_VALUES: ReadonlySet<string> = new Set<ThemeChoice>(['light', 'dark', 'system']);
+
+/** Type guard narrowing an arbitrary string to a {@link ThemeChoice}. */
+function isThemeChoice(value: string): value is ThemeChoice {
+  return THEME_VALUES.has(value);
+}
 
 /**
- * Canonical search-param keys for the toolbar. Compact spellings (`bg`, `w`)
- * keep shareable URLs readable; full-word keys are reserved for future
- * additions that don't appear together with these.
+ * Canonical search-param keys for the toolbar. Compact spellings (`w`) keep
+ * shareable URLs readable; full-word keys are reserved for future additions
+ * that don't appear together with these.
  */
 export const TOOLBAR_PARAMS = {
   focus: 'focus',
   theme: 'theme',
-  background: 'bg',
   width: 'w',
 } as const;
 
@@ -104,7 +96,6 @@ const VIEWPORT_WIDTH_MAX = 3840;
 export type ToolbarSearchState = {
   isFocusMode: boolean;
   theme: ThemeChoice | null;
-  background: BackgroundChoice;
   previewWidth: number | null;
 };
 
@@ -127,19 +118,7 @@ export function readFocusModeFromSearch(search: URLSearchParams): boolean {
 export function readThemeFromSearch(search: URLSearchParams): ThemeChoice | null {
   const raw = search.get(TOOLBAR_PARAMS.theme);
   if (raw === null) return null;
-  return PREVIEW_THEMES_INTERNAL.has(raw as ThemeChoice) ? (raw as ThemeChoice) : null;
-}
-
-/**
- * Read the preview background from a URLSearchParams instance. The default
- * `surface` value is returned when the param is absent or unrecognized.
- */
-export function readBackgroundFromSearch(search: URLSearchParams): BackgroundChoice {
-  const raw = search.get(TOOLBAR_PARAMS.background);
-  if (raw === null) return 'surface';
-  return PREVIEW_BACKGROUNDS_INTERNAL.has(raw as BackgroundChoice)
-    ? (raw as BackgroundChoice)
-    : 'surface';
+  return isThemeChoice(raw) ? raw : null;
 }
 
 /**
@@ -163,7 +142,6 @@ export function readToolbarStateFromSearch(search: URLSearchParams): ToolbarSear
   return {
     isFocusMode: readFocusModeFromSearch(search),
     theme: readThemeFromSearch(search),
-    background: readBackgroundFromSearch(search),
     previewWidth: readPreviewWidthFromSearch(search),
   };
 }
@@ -190,12 +168,6 @@ export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearch
     next.set(TOOLBAR_PARAMS.theme, state.theme);
   }
 
-  if (state.background === 'surface') {
-    next.delete(TOOLBAR_PARAMS.background);
-  } else {
-    next.set(TOOLBAR_PARAMS.background, state.background);
-  }
-
   if (state.previewWidth === null) {
     next.delete(TOOLBAR_PARAMS.width);
   } else {
@@ -211,27 +183,11 @@ export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearch
  * `cinder:` prefix scopes the protocol so future iframe content can't
  * accidentally collide with unrelated messages on the same channel.
  *
- * Theme/background changes flow shell → iframe; the iframe never sends
- * back. The receiver MUST validate the origin AND the value against the
- * allowed set before applying any effect.
+ * Theme changes flow shell → iframe; the iframe never sends back. The
+ * receiver MUST validate the origin AND the value against the allowed set
+ * before applying any effect.
  */
-export type PreviewMessage =
-  | { type: 'cinder:set-theme'; value: ThemeChoice }
-  | { type: 'cinder:set-background'; value: BackgroundChoice };
-
-const PREVIEW_THEMES: ReadonlySet<ThemeChoice> = new Set<ThemeChoice>(['light', 'dark', 'system']);
-const PREVIEW_BACKGROUNDS: ReadonlySet<BackgroundChoice> = new Set<BackgroundChoice>([
-  'surface',
-  'checker',
-]);
-
-function isThemeChoice(value: string): value is ThemeChoice {
-  return PREVIEW_THEMES.has(value as ThemeChoice);
-}
-
-function isBackgroundChoice(value: string): value is BackgroundChoice {
-  return PREVIEW_BACKGROUNDS.has(value as BackgroundChoice);
-}
+export type PreviewMessage = { type: 'cinder:set-theme'; value: ThemeChoice };
 
 /**
  * Construct a typed preview message. Returns `null` if the value doesn't
@@ -241,16 +197,8 @@ function isBackgroundChoice(value: string): value is BackgroundChoice {
 export function createPreviewMessage(
   type: 'cinder:set-theme',
   value: ThemeChoice,
-): PreviewMessage | null;
-export function createPreviewMessage(
-  type: 'cinder:set-background',
-  value: BackgroundChoice,
-): PreviewMessage | null;
-export function createPreviewMessage(type: string, value: string): PreviewMessage | null {
+): PreviewMessage | null {
   if (type === 'cinder:set-theme' && isThemeChoice(value)) {
-    return { type, value };
-  }
-  if (type === 'cinder:set-background' && isBackgroundChoice(value)) {
     return { type, value };
   }
   return null;

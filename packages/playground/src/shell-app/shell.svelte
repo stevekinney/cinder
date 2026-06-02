@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
   import {
@@ -67,6 +68,38 @@
   // can move to the freshly-rendered content after client-side navigation.
   let mainEl = $state<HTMLElement | null>(null);
 
+  // True below the responsive breakpoint, where the sidebar is a modal-style
+  // off-canvas drawer rather than a static column. Used to gate the drawer's
+  // focus-trap / inert behavior so the wide-viewport sidebar (always visible)
+  // never makes the rest of the shell inert. Mirrors the 720px CSS breakpoint.
+  const isNarrow = new MediaQuery('max-width: 720px');
+
+  // Modal semantics for the narrow-viewport drawer. When it opens we move focus
+  // into the drawer's filter and mark the content behind the scrim `inert` so a
+  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop; on
+  // close we restore focus to the element that opened it (the hamburger). On
+  // wide viewports the drawer is just the static sidebar, so none of this runs.
+  $effect(() => {
+    const drawerIsModal = store.isSidebarOpen && isNarrow.current;
+    const header = document.querySelector<HTMLElement>('header.top-bar');
+    if (mainEl) mainEl.inert = drawerIsModal;
+    if (header) header.inert = drawerIsModal;
+
+    if (drawerIsModal) {
+      // Remember what to return focus to, then move focus into the drawer.
+      const opener = document.activeElement;
+      sidebar?.focusFilter();
+      return () => {
+        // On close (or teardown), drop inert and restore focus to the opener if
+        // it's still in the document and focusable.
+        if (mainEl) mainEl.inert = false;
+        if (header) header.inert = false;
+        if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      };
+    }
+    return undefined;
+  });
+
   // Apply the persisted theme to the shell's root document on first paint.
   // The inline pre-paint script in render-shell.ts already did this before
   // the bundle loaded, but reapplying here keeps the state machine simple
@@ -76,6 +109,9 @@
   async function selectComponent(name: string): Promise<void> {
     if (name === store.currentComponent) return;
     store.currentComponent = name;
+    // Selecting from the off-canvas drawer (narrow viewports) should dismiss it
+    // so the freshly-selected preview is visible. Harmless on wide viewports.
+    store.isSidebarOpen = false;
     // Preserve the current query string (e.g. ?focus=1) and hash when
     // navigating between components.
     const { search, hash } = window.location;
@@ -114,6 +150,10 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && store.isSidebarOpen) {
+      store.isSidebarOpen = false;
+      return;
+    }
     if (event.key === 'Escape' && store.isFocusMode) {
       store.isFocusMode = false;
       return;
@@ -176,7 +216,22 @@
     {components}
     currentComponent={store.currentComponent}
     onSelect={selectComponent}
+    isOpen={store.isSidebarOpen}
+    onClose={() => (store.isSidebarOpen = false)}
   />
+  <!--
+    Scrim behind the off-canvas drawer (narrow viewports only — kept
+    display:none on wide ones via CSS). Clicking it dismisses the drawer. It is
+    aria-hidden and not a Tab stop; Escape (handled at the window level) is the
+    keyboard path to close.
+  -->
+  {#if store.isSidebarOpen}
+    <div
+      class="sidebar-backdrop"
+      aria-hidden="true"
+      onclick={() => (store.isSidebarOpen = false)}
+    ></div>
+  {/if}
   <!--
     tabindex="-1" makes <main> programmatically focusable so client-side
     navigation can move keyboard focus to the new content without adding it to
@@ -249,5 +304,35 @@
     margin-left: 0;
     margin-top: 0;
     height: 100vh;
+  }
+
+  /*
+   * Scrim behind the off-canvas sidebar drawer. Only meaningful at narrow
+   * widths — the {#if store.isSidebarOpen} guard means it's never in the DOM on
+   * wide viewports anyway, but the breakpoint keeps it from ever dimming the
+   * full desktop layout if the drawer state is somehow set there.
+   */
+  .sidebar-backdrop {
+    display: none;
+  }
+
+  /*
+   * Narrow viewports: the sidebar is an off-canvas drawer, so the main content
+   * column reclaims the full width (no 220px gutter). The drawer floats above
+   * via its own fixed positioning + transform.
+   */
+  @media (max-width: 720px) {
+    main {
+      /* stylelint-disable-next-line csstools/use-logical */
+      margin-left: 0;
+    }
+
+    .sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      background: rgb(0 0 0 / 45%);
+    }
   }
 </style>

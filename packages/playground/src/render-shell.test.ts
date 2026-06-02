@@ -123,22 +123,23 @@ describe('renderShell', () => {
 
 describe('renderShell metadata and Open Graph', () => {
   const ROOT_DESCRIPTION =
-    'Interactive component playground for cinder — a Svelte 5 accessible component library.';
+    'Interactive component playground for cinder — an accessible, SSR-safe Svelte 5 component library. Browse live examples, props, and themes.';
+  const ROOT_TITLE = 'cinder playground — Svelte 5 component library';
 
   describe('root page', () => {
     it('emits the root description and base Open Graph / Twitter tags', () => {
       const html = renderShell(null, ['button']);
       expect(html).toContain(`<meta name="description" content="${ROOT_DESCRIPTION}" />`);
-      expect(html).toContain(`<meta property="og:title" content="cinder playground" />`);
+      expect(html).toContain(`<meta property="og:title" content="${ROOT_TITLE}" />`);
       expect(html).toContain(`<meta property="og:description" content="${ROOT_DESCRIPTION}" />`);
       expect(html).toContain(`<meta property="og:type" content="website" />`);
       expect(html).toContain(`<meta property="og:site_name" content="cinder playground" />`);
       expect(html).toContain(`<meta name="twitter:card" content="summary_large_image" />`);
-      expect(html).toContain(`<meta name="twitter:title" content="cinder playground" />`);
+      expect(html).toContain(`<meta name="twitter:title" content="${ROOT_TITLE}" />`);
       expect(html).toContain(`<meta name="twitter:description" content="${ROOT_DESCRIPTION}" />`);
-      // Favicon is an inlined data-URI SVG (no /favicon.svg route exists, so a
-      // file reference would 404 on every page). Assert the data URI, not a path.
-      expect(html).toContain(`<link rel="icon" href="data:image/svg+xml,`);
+      // Favicon is served by fav.farm (the brick emoji); no /favicon.svg route
+      // exists, so a local file reference would 404 on every page.
+      expect(html).toContain(`<link rel="icon" href="https://fav.farm/`);
       expect(html).not.toContain('href="/favicon.svg"');
     });
 
@@ -165,7 +166,8 @@ describe('renderShell metadata and Open Graph', () => {
 
   describe('per-component page', () => {
     const PER_COMPONENT_DESCRIPTION =
-      'Explore the button component in the cinder playground — live examples, props, and CSS variables.';
+      'Button component for cinder: live, interactive examples plus a full props/API reference. Toggle light and dark themes and preview responsive breakpoints.';
+    const PER_COMPONENT_TITLE = 'Button — cinder playground';
 
     it('emits a per-component description and matching og/twitter title', () => {
       const html = renderShell('button', ['button']);
@@ -173,8 +175,8 @@ describe('renderShell metadata and Open Graph', () => {
       expect(html).toContain(
         `<meta property="og:description" content="${PER_COMPONENT_DESCRIPTION}" />`,
       );
-      expect(html).toContain(`<meta property="og:title" content="cinder playground — button" />`);
-      expect(html).toContain(`<meta name="twitter:title" content="cinder playground — button" />`);
+      expect(html).toContain(`<meta property="og:title" content="${PER_COMPONENT_TITLE}" />`);
+      expect(html).toContain(`<meta name="twitter:title" content="${PER_COMPONENT_TITLE}" />`);
       expect(html).toContain(
         `<meta name="twitter:description" content="${PER_COMPONENT_DESCRIPTION}" />`,
       );

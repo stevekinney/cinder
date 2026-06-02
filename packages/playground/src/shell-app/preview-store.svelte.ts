@@ -12,16 +12,15 @@
 
 import { getContext, setContext } from 'svelte';
 
-import type { BackgroundChoice, ThemeChoice, ToolbarSearchState } from './routing.ts';
+import type { ThemeChoice, ToolbarSearchState } from './routing.ts';
 import {
   buildToolbarSearch,
-  readBackgroundFromSearch,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
   readThemeFromSearch,
 } from './routing.ts';
 
-export type { BackgroundChoice, ThemeChoice };
+export type { ThemeChoice };
 
 const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
@@ -84,14 +83,20 @@ export class PreviewStore {
    */
   #isFocusMode = $state<boolean>(false);
   #theme = $state<ThemeChoice>('system');
-  #background = $state<BackgroundChoice>('surface');
   #previewWidth = $state<number | null>(null);
+
+  /**
+   * Narrow-viewport sidebar drawer state. Pure shell-local UI: it is never
+   * serialized to the URL (a drawer that reopens on reload is annoying, not
+   * shareable) and never crosses the iframe boundary, so its setter does NOT
+   * write the URL. On wide viewports the CSS ignores it entirely.
+   */
+  isSidebarOpen = $state<boolean>(false);
 
   constructor(initialComponent: string, initialState: Partial<ToolbarSearchState> = {}) {
     this.currentComponent = initialComponent;
     this.#isFocusMode = initialState.isFocusMode ?? false;
     this.#theme = initialState.theme ?? 'system';
-    this.#background = initialState.background ?? 'surface';
     this.#previewWidth = initialState.previewWidth ?? null;
   }
 
@@ -105,14 +110,6 @@ export class PreviewStore {
 
   get theme(): ThemeChoice {
     return this.#theme;
-  }
-
-  get background(): BackgroundChoice {
-    return this.#background;
-  }
-  set background(value: BackgroundChoice) {
-    this.#background = value;
-    this.#writeUrl();
   }
 
   /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
@@ -147,7 +144,6 @@ export class PreviewStore {
     if (typeof window === 'undefined') return;
     const search = new URL(window.location.href).searchParams;
     this.#isFocusMode = readFocusModeFromSearch(search);
-    this.#background = readBackgroundFromSearch(search);
     this.#previewWidth = readPreviewWidthFromSearch(search);
     const explicitTheme = readThemeFromSearch(search);
     const nextTheme = explicitTheme ?? readPersistedTheme();
@@ -166,7 +162,6 @@ export class PreviewStore {
     return {
       isFocusMode: this.#isFocusMode,
       theme: this.#theme,
-      background: this.#background,
       previewWidth: this.#previewWidth,
     };
   }

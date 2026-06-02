@@ -106,7 +106,10 @@ describe('top-bar open-in-new-tab button', () => {
     expect(container.querySelectorAll('.cinder-segmented-control').length).toBeGreaterThanOrEqual(
       2,
     );
-    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(3);
+    // Open-in-new-tab (↗) and focus-mode (⛶) are the two cinder Buttons in the
+    // toolbar; the narrow-viewport sidebar toggle is a plain <button>, not a
+    // .cinder-button.
+    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector('input.cinder-input')).not.toBeNull();
 
     unmount();
@@ -193,16 +196,16 @@ describe('top-bar announcements', () => {
     const region = liveRegion(container);
     expect(region.textContent?.trim()).toBe('');
 
-    // Toggling the checkerboard button triggers announce(). The 50 ms
-    // empty-then-set gap means the message is NOT yet present right after.
-    buttonByLabel(container, 'Show transparency grid').click();
+    // Toggling the sidebar button triggers announce(). The 50 ms empty-then-set
+    // gap means the message is NOT yet present right after the click.
+    buttonByLabel(container, 'Toggle component list').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
     // After the gap, the announcement text appears.
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background on');
+    expect(region.textContent?.trim()).toBe('Component list shown');
   });
 
   test('a second announcement replaces the first after its own 50 ms gap', async () => {
@@ -212,19 +215,19 @@ describe('top-bar announcements', () => {
 
     const region = liveRegion(container);
 
-    buttonByLabel(container, 'Show transparency grid').click();
+    buttonByLabel(container, 'Toggle component list').click();
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background on');
+    expect(region.textContent?.trim()).toBe('Component list shown');
 
-    // Toggle again — off this time. The region clears immediately, then fills
+    // Toggle again — hidden this time. The region clears immediately, then fills
     // with the new message after the gap.
-    buttonByLabel(container, 'Show transparency grid').click();
+    buttonByLabel(container, 'Toggle component list').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background off');
+    expect(region.textContent?.trim()).toBe('Component list hidden');
   });
 });

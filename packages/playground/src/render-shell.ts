@@ -14,24 +14,18 @@
  * terminate a script body in some parsers.
  */
 
+import { humanizeComponentName } from './shell-app/humanize.ts';
+
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 /**
- * Self-contained favicon as a data URI: a rounded square in the cinder ember
- * orange with a lowercase "c". Inlined so every page has an icon without a
- * /favicon.svg route (which neither handleRequest nor vercel.json serves) and
- * therefore without a guaranteed 404 in devtools and server logs.
+ * Favicon served by fav.farm — the brick (🧱) emoji rendered as an SVG icon.
+ * fav.farm returns an emoji favicon for any `/{emoji}` path, so no static asset
+ * pipeline or /favicon.svg route is needed. The emoji is percent-encoded so the
+ * href is valid in HTML even though browsers also accept the raw character.
  */
-const FAVICON_DATA_URI =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
-      '<rect width="32" height="32" rx="7" fill="#e8590c"/>' +
-      '<text x="16" y="23" font-family="system-ui,sans-serif" font-size="22" ' +
-      'font-weight="700" fill="#fff" text-anchor="middle">c</text>' +
-      '</svg>',
-  );
+export const FAVICON_HREF = `https://fav.farm/${encodeURIComponent('🧱')}`;
 
 /**
  * Escape a string value so it's safe to embed inside the body of a
@@ -86,7 +80,7 @@ export const PRE_PAINT_THEME_SCRIPT = `
     `;
 
 /** Escape a string for safe use in HTML text content and attribute values. */
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -129,13 +123,17 @@ export function renderShell(
 ): string {
   const baseUrl = (options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
 
+  // Human-friendly label for titles/descriptions (e.g. "Json Schema Editor"
+  // → "JSON Schema Editor"); the raw kebab name still drives routing/URLs.
+  const humanName = activeComponent ? humanizeComponentName(activeComponent) : '';
+
   const title = activeComponent
-    ? `cinder playground — ${escapeHtml(activeComponent)}`
-    : 'cinder playground';
+    ? `${escapeHtml(humanName)} — cinder playground`
+    : 'cinder playground — Svelte 5 component library';
 
   const description = activeComponent
-    ? `Explore the ${escapeHtml(activeComponent)} component in the cinder playground — live examples, props, and CSS variables.`
-    : 'Interactive component playground for cinder — a Svelte 5 accessible component library.';
+    ? `${escapeHtml(humanName)} component for cinder: live, interactive examples plus a full props/API reference. Toggle light and dark themes and preview responsive breakpoints.`
+    : 'Interactive component playground for cinder — an accessible, SSR-safe Svelte 5 component library. Browse live examples, props, and themes.';
 
   // Shell routes: `/c/<component>` for a specific component, `/` for the root.
   const path = activeComponent ? `/c/${encodeURIComponent(activeComponent)}` : '/';
@@ -157,11 +155,10 @@ export function renderShell(
     `<meta name="twitter:description" content="${description}" />`,
     imageUrl ? `<meta name="twitter:image" content="${imageUrl}" />` : '',
     canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
-    // Inline data-URI favicon: a self-contained SVG ember mark. Embedding it
-    // avoids a guaranteed 404 on every page (there is no /favicon.svg route in
-    // handleRequest or rewrite in vercel.json) without adding a static asset
-    // pipeline. Swap for a shipped /favicon.svg if a richer icon is ever wanted.
-    `<link rel="icon" href="${FAVICON_DATA_URI}" />`,
+    // Brick (🧱) favicon via fav.farm — no static asset pipeline or
+    // /favicon.svg route needed (neither handleRequest nor vercel.json serves
+    // one), so this avoids a guaranteed 404 while giving every page a real icon.
+    `<link rel="icon" href="${FAVICON_HREF}" />`,
   ]
     .filter(Boolean)
     .join('\n    ');

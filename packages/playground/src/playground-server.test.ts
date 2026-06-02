@@ -700,24 +700,6 @@ describe('/page/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
-  it('checker background uses theme-adaptive custom properties, not hardcoded colors', async () => {
-    // Regression: the checker squares were hardcoded #e0e0e0 on a #fff base,
-    // which is blinding in dark mode. The pattern must adapt via light-dark()
-    // and the --cinder-surface token so it reads as a transparency checker in
-    // both schemes without any JS.
-    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
-    const html = await response.text();
-    const checkerBlockMatch = /body\[data-cinder-bg="checker"\]\s*\{[^}]*\}/.exec(html);
-    expect(checkerBlockMatch).not.toBeNull();
-    const checkerBlock = checkerBlockMatch![0];
-    expect(checkerBlock).not.toContain('#fff');
-    expect(checkerBlock).not.toContain('#e0e0e0');
-    expect(checkerBlock).toContain('light-dark(');
-    expect(checkerBlock).toContain('var(--cinder-surface)');
-    // Geometry must stay a 16px grid checker.
-    expect(checkerBlock).toContain('background-size: 16px 16px');
-  });
-
   it('wraps the body background/color transition in a reduced-motion guard', async () => {
     // The crossfade must only run when the user has not requested reduced
     // motion, so the unguarded `transition: background ...` is gone.

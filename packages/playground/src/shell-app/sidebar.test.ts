@@ -229,6 +229,56 @@ describe('Sidebar', () => {
   });
 });
 
+describe('sidebar drawer (narrow-viewport) wiring', () => {
+  test('exposes a stable #sidebar-drawer id for the toggle aria-controls', () => {
+    const { container } = render(Sidebar, {
+      props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },
+    });
+    expect(container.querySelector('#sidebar-drawer.sidebar-chrome')).not.toBeNull();
+  });
+
+  test('reflects the isOpen prop as the is-open class', async () => {
+    const { container, rerender } = render(Sidebar, {
+      props: {
+        components: COMPONENTS,
+        currentComponent: 'button',
+        onSelect: () => {},
+        isOpen: false,
+      },
+    });
+    const drawer = container.querySelector('#sidebar-drawer');
+    expect(drawer?.classList.contains('is-open')).toBe(false);
+
+    await rerender({
+      components: COMPONENTS,
+      currentComponent: 'button',
+      onSelect: () => {},
+      isOpen: true,
+    });
+    expect(drawer?.classList.contains('is-open')).toBe(true);
+  });
+
+  test('the close button invokes onClose', async () => {
+    let closed = 0;
+    const { container } = render(Sidebar, {
+      props: {
+        components: COMPONENTS,
+        currentComponent: 'button',
+        onSelect: () => {},
+        onClose: () => {
+          closed += 1;
+        },
+      },
+    });
+    const closeButton = container.querySelector<HTMLButtonElement>('.sidebar-close');
+    expect(closeButton).not.toBeNull();
+    expect(closeButton?.getAttribute('aria-label')).toBe('Close component list');
+    closeButton?.click();
+    await tick();
+    expect(closed).toBe(1);
+  });
+});
+
 const ONSELECT_COMPONENTS = ['avatar', 'button', 'card'];
 
 describe('sidebar onSelect contract', () => {

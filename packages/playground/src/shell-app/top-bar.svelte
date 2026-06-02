@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getAnnouncer } from './announcer.svelte.ts';
-  import type { BackgroundChoice, ThemeChoice } from './preview-store.svelte.ts';
+  import type { ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
   import { buildIframeSrc } from './routing.ts';
   import {
@@ -86,14 +86,14 @@
     announce(`Color scheme: ${option?.label ?? value}`);
   }
 
-  // ── Background ────────────────────────────────────────────────────────────
+  // ── Sidebar drawer (narrow viewports) ──────────────────────────────────────
+  // The menu button is only visible below the responsive breakpoint (CSS), but
+  // toggling shell-local state is harmless on wide viewports where the sidebar
+  // is always in view.
 
-  let isCheckerActive = $derived(store.background === 'checker');
-
-  function toggleCheckerboard(): void {
-    const next: BackgroundChoice = store.background === 'checker' ? 'surface' : 'checker';
-    store.background = next;
-    announce(next === 'checker' ? 'Checkerboard background on' : 'Checkerboard background off');
+  function toggleSidebar(): void {
+    store.isSidebarOpen = !store.isSidebarOpen;
+    announce(store.isSidebarOpen ? 'Component list shown' : 'Component list hidden');
   }
 
   // ── Focus mode ────────────────────────────────────────────────────────────
@@ -121,6 +121,16 @@
 
 <header class="top-bar">
   <div class="top-bar__brand">
+    <button
+      type="button"
+      class="sidebar-toggle"
+      aria-label="Toggle component list"
+      aria-expanded={store.isSidebarOpen}
+      aria-controls="sidebar-drawer"
+      onclick={toggleSidebar}
+    >
+      <span aria-hidden="true">☰</span>
+    </button>
     <span class="wordmark" aria-label="Cinder design system">cinder</span>
   </div>
 
@@ -147,15 +157,21 @@
       </SegmentedControl>
 
       {#if isCustomWidthVisible}
-        <NumberInput
-          id="viewport-width-input"
-          value={store.previewWidth}
-          min={200}
-          max={3840}
-          step={1}
-          aria-label="Custom viewport width in pixels (200 to 3840)"
-          onchange={handleCustomWidthChange}
-        />
+        <!-- NumberInput's field is inline-size:100% and would otherwise stretch
+             to fill the toolbar row, crushing the segmented controls. Constrain
+             it to a fixed, content-appropriate width so the toolbar layout is
+             stable in every viewport preset. -->
+        <span class="width-input">
+          <NumberInput
+            id="viewport-width-input"
+            value={store.previewWidth}
+            min={200}
+            max={3840}
+            step={1}
+            aria-label="Custom viewport width in pixels (200 to 3840)"
+            onchange={handleCustomWidthChange}
+          />
+        </span>
         <span class="unit" aria-hidden="true">px</span>
       {/if}
     </Toolbar.Group>
@@ -173,16 +189,6 @@
           <Segment value={option.value}>{option.label}</Segment>
         {/each}
       </SegmentedControl>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-pressed={isCheckerActive}
-        aria-label="Show transparency grid"
-        onclick={toggleCheckerboard}
-      >
-        <span aria-hidden="true">▦</span>
-      </Button>
     </Toolbar.Group>
 
     <Toolbar.Spacer />
@@ -250,6 +256,35 @@
     flex-shrink: 0;
   }
 
+  /*
+   * Hamburger that opens the off-canvas sidebar drawer. Hidden on wide
+   * viewports (the sidebar is always visible there); shown below the 720px
+   * breakpoint where the sidebar slides off canvas.
+   */
+  .sidebar-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    /* stylelint-disable-next-line csstools/use-logical */
+    width: 40px;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--cinder-text);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .sidebar-toggle:hover {
+    color: var(--cinder-text-subtle);
+  }
+
+  /* No local :focus-visible rule — the foundation.css global default paints the
+     baseline accent ring (per docs/focus-ring-policy.md), and inventing a
+     colored outline here would violate cinder/no-focus-visible-colored-outline. */
+
   .top-bar :global(.cinder-toolbar) {
     width: 100%;
     height: 100%;
@@ -299,6 +334,35 @@
     min-width: 0;
   }
 
+  /*
+   * Keep segmented-control labels on a single line. Cinder's toolbar-density
+   * segments have no `white-space: nowrap`, so a long label ("Mobile (375
+   * pixels)") wraps to two/three cramped lines the moment the row tightens —
+   * which is exactly what mangled the toolbar when a viewport preset was
+   * selected. Force single-line segments.
+   */
+  .top-bar :global(.cinder-segmented-control-option) {
+    white-space: nowrap;
+  }
+
+  /*
+   * The custom-width NumberInput field is inline-size:100% by default and would
+   * stretch across the whole toolbar. Pin it to a fixed, four-digit-plus-stepper
+   * width so it never crushes the segmented controls beside it.
+   */
+  .width-input {
+    display: inline-flex;
+    /* stylelint-disable-next-line csstools/use-logical */
+    width: 7.5rem;
+    flex: 0 0 auto;
+  }
+
+  .width-input :global(.cinder-input-field),
+  .width-input :global(.cinder-number-input) {
+    /* stylelint-disable-next-line csstools/use-logical */
+    width: 100%;
+  }
+
   .component-name {
     font-size: 13px;
     font-weight: 600;
@@ -315,5 +379,35 @@
     color: var(--cinder-text-subtle);
     padding-inline-start: 3px;
     flex-shrink: 0;
+  }
+
+  /*
+   * Narrow viewports: surface the hamburger and collapse the brand block down
+   * to just the toggle so the toolbar gets the room it needs. The wordmark's
+   * fixed 220px width (which mirrors the wide sidebar column) is dropped here
+   * since there's no static sidebar column to align with.
+   */
+  @media (max-width: 720px) {
+    .sidebar-toggle {
+      display: inline-flex;
+    }
+
+    .wordmark {
+      /* stylelint-disable-next-line csstools/use-logical */
+      width: auto;
+      /* stylelint-disable-next-line csstools/use-logical */
+      min-width: 0;
+      padding-inline: var(--cinder-space-2);
+      /* stylelint-disable-next-line csstools/use-logical */
+      border-right: none;
+    }
+  }
+
+  /* Below the phone breakpoint the wordmark is just noise next to the menu
+     button and the controls — hide it so the toolbar wins the space. */
+  @media (max-width: 520px) {
+    .wordmark {
+      display: none;
+    }
   }
 </style>

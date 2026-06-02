@@ -16,7 +16,6 @@ import {
   buildToolbarSearch,
   createPreviewMessage,
   parseComponentFromPath,
-  readBackgroundFromSearch,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
   readThemeFromSearch,
@@ -26,7 +25,6 @@ import {
 const DEFAULT_TOOLBAR_STATE = {
   isFocusMode: false,
   theme: null,
-  background: 'surface' as const,
   previewWidth: null,
 };
 
@@ -117,25 +115,9 @@ describe('createPreviewMessage', () => {
     });
   });
 
-  it('builds a background message for each allowed value', () => {
-    expect(createPreviewMessage('cinder:set-background', 'surface')).toEqual({
-      type: 'cinder:set-background',
-      value: 'surface',
-    });
-    expect(createPreviewMessage('cinder:set-background', 'checker')).toEqual({
-      type: 'cinder:set-background',
-      value: 'checker',
-    });
-  });
-
   it('returns null for an unknown theme value', () => {
     // @ts-expect-error — exercising runtime validation
     expect(createPreviewMessage('cinder:set-theme', 'midnight')).toBeNull();
-  });
-
-  it('returns null for an unknown background value', () => {
-    // @ts-expect-error — exercising runtime validation
-    expect(createPreviewMessage('cinder:set-background', 'rainbow')).toBeNull();
   });
 });
 
@@ -178,20 +160,6 @@ describe('readThemeFromSearch', () => {
   });
 });
 
-describe('readBackgroundFromSearch', () => {
-  it('defaults to "surface" when the param is absent', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams(''))).toBe('surface');
-  });
-
-  it('returns "checker" when explicitly set', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams('bg=checker'))).toBe('checker');
-  });
-
-  it('falls back to "surface" for unknown values', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams('bg=rainbow'))).toBe('surface');
-  });
-});
-
 describe('readPreviewWidthFromSearch', () => {
   it('returns null when the width param is absent', () => {
     expect(readPreviewWidthFromSearch(new URLSearchParams(''))).toBeNull();
@@ -218,12 +186,9 @@ describe('readToolbarStateFromSearch', () => {
   });
 
   it('parses a fully-populated query string', () => {
-    expect(
-      readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768')),
-    ).toEqual({
+    expect(readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&w=768'))).toEqual({
       isFocusMode: true,
       theme: 'dark',
-      background: 'checker',
       previewWidth: 768,
     });
   });
@@ -248,10 +213,9 @@ describe('buildToolbarSearch', () => {
       buildToolbarSearch(new URLSearchParams(''), {
         isFocusMode: true,
         theme: 'dark',
-        background: 'checker',
         previewWidth: 768,
       }),
-    ).toBe('?focus=1&theme=dark&bg=checker&w=768');
+    ).toBe('?focus=1&theme=dark&w=768');
   });
 
   it('preserves unrelated params', () => {
@@ -265,7 +229,7 @@ describe('buildToolbarSearch', () => {
 
   it('removes a param when its value resets to the default', () => {
     expect(
-      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768'), {
+      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&w=768'), {
         ...DEFAULT_TOOLBAR_STATE,
       }),
     ).toBe('');

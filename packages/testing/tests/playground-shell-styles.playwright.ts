@@ -100,9 +100,13 @@ test.describe('playground shell styles', () => {
     await page.getByRole('radio', { name: 'Dark theme' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
 
-    const checkerButton = page.getByRole('button', { name: 'Show transparency grid' });
-    await checkerButton.click();
-    await expect(checkerButton).toHaveAttribute('aria-pressed', 'true');
+    // The narrow-viewport sidebar toggle is in the DOM but display:none at this
+    // wide width (so getByRole, which excludes hidden nodes, would not see it).
+    // Assert it exists and carries the right a11y wiring without requiring it to
+    // be visible here; its open/close behaviour is unit-tested in top-bar.test.ts.
+    const sidebarToggle = page.locator('.sidebar-toggle');
+    await expect(sidebarToggle).toHaveAttribute('aria-label', 'Toggle component list');
+    await expect(sidebarToggle).toHaveCSS('display', 'none');
 
     const focusModeButton = page.getByRole('button', { name: /Focus mode/ });
     await focusModeButton.click();
