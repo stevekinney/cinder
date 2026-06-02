@@ -490,8 +490,9 @@ describe('ALLOWLIST — canonical checked-in entries', () => {
 
 // ── Enforcement gate (live scan of the real examples) ───────────────────────────
 //
-// This is the invariant the `examples:audit --strict` validate step enforces.
-// Keeping it as a fast unit test (the validate gate also runs it, but that path
+// This is the invariant that `bun run validate` enforces (the playground's validate
+// script runs `scripts/check-raw-native-controls.ts --strict` before the server
+// crawl). Keeping it as a fast unit test (the validate gate also runs it, but that path
 // is slow) means a newly-added raw control in an example fails the normal test
 // suite immediately, with a clear pointer to the offending file.
 

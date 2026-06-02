@@ -11,8 +11,10 @@
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
 
+  // Prefix IDs with an example namespace so they don't collide if multiple
+  // examples are mounted on the same page.
   const filters = Array.from({ length: 30 }, (_, index) => ({
-    id: `filter-${index + 1}`,
+    id: `drawer-overflowing-filter-${index + 1}`,
     label: `Filter group ${index + 1}`,
   }));
 </script>
