@@ -6,7 +6,6 @@
 
 <script lang="ts">
   import { Button } from 'cinder/button';
-  import { Radio } from 'cinder/radio';
   import { RadioGroup } from 'cinder/radio-group';
   let role = $state('');
   let submitted = $state(false);
@@ -22,9 +21,9 @@
       bind:value={role}
       error="Choose a role to continue."
     >
-      <Radio id="with-error-role-engineer" value="engineer" label="Engineer" />
-      <Radio id="with-error-role-designer" value="designer" label="Designer" />
-      <Radio id="with-error-role-manager" value="manager" label="Manager" />
+      <RadioGroup.Option id="with-error-role-engineer" value="engineer" label="Engineer" />
+      <RadioGroup.Option id="with-error-role-designer" value="designer" label="Designer" />
+      <RadioGroup.Option id="with-error-role-manager" value="manager" label="Manager" />
     </RadioGroup>
   {:else}
     <RadioGroup
@@ -33,9 +32,9 @@
       description="Pick the role that best describes you."
       bind:value={role}
     >
-      <Radio id="with-error-role-engineer" value="engineer" label="Engineer" />
-      <Radio id="with-error-role-designer" value="designer" label="Designer" />
-      <Radio id="with-error-role-manager" value="manager" label="Manager" />
+      <RadioGroup.Option id="with-error-role-engineer" value="engineer" label="Engineer" />
+      <RadioGroup.Option id="with-error-role-designer" value="designer" label="Designer" />
+      <RadioGroup.Option id="with-error-role-manager" value="manager" label="Manager" />
     </RadioGroup>
   {/if}
 

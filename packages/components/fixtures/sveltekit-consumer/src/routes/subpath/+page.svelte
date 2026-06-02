@@ -13,7 +13,6 @@
   import Modal from 'cinder/modal';
   import NavigationBar from 'cinder/navigation-bar';
   import NavigationItem from 'cinder/navigation-item';
-  import PageLayout from 'cinder/page-layout';
   import Pagination from 'cinder/pagination';
   import Select from 'cinder/select';
   import Skeleton from 'cinder/skeleton';
@@ -93,12 +92,6 @@
       {#snippet items()}<NavigationItem href="/subpath" active={true}>Subpath</NavigationItem
         >{/snippet}
     </NavigationBar>
-  </section>
-
-  <section aria-label="PageLayout">
-    <PageLayout title="Subpath page">
-      {#snippet children()}<p>subpath content</p>{/snippet}
-    </PageLayout>
   </section>
 
   <section aria-label="Pagination">

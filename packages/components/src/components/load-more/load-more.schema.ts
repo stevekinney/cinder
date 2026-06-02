@@ -48,6 +48,10 @@ const schema = {
         name: 'onLoadMore',
         reason: 'function-or-snippet',
       },
+      {
+        name: 'root',
+        reason: 'unknown-shape',
+      },
     ],
   },
 } satisfies ComponentSchema;

@@ -7,7 +7,11 @@ type ForwardedLiAttributes = Omit<
   'title' | 'class' | 'role' | 'tabindex' | LiEventAttribute
 >;
 type StackedListItemBase = ForwardedLiAttributes & {
-  /** Density token surfaced as `data-cinder-density`. Default `comfortable`. */
+  /**
+   * Density token surfaced as `data-cinder-density`. When omitted, inherits the
+   * enclosing DataList's list-level `density` (if any), then falls back to
+   * `comfortable`. An explicit value here always overrides the list default.
+   */
   density?: StackedListItemDensity;
   /** Leading visual (avatar, icon, status dot). */
   leading?: Snippet;

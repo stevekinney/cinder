@@ -14,7 +14,6 @@
     Modal,
     NavigationBar,
     NavigationItem,
-    PageLayout,
     Pagination,
     Select,
     Skeleton,
@@ -103,12 +102,6 @@
     <NavigationItem href="/" active={true}>
       {#snippet children()}Home{/snippet}
     </NavigationItem>
-  </section>
-
-  <section aria-label="PageLayout">
-    <PageLayout title="Page title">
-      {#snippet children()}<p>page content</p>{/snippet}
-    </PageLayout>
   </section>
 
   <section aria-label="Pagination">

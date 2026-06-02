@@ -2,15 +2,30 @@
 @layer cinder.components {
   /* ========================================
  * DATA LIST
+ *
+ * DataList is the semantic list container (`<ul role="list">`). It owns the
+ * list reset and the empty-state treatment; it deliberately does NOT draw row
+ * dividers — the row primitive (StackedListItem) owns its own `border-bottom`,
+ * so drawing a divider here too would double every separator.
  * ======================================== */
 
   .cinder-data-list {
     display: flex;
     flex-direction: column;
     inline-size: 100%;
+    /* List reset: a `<ul>` with list-style:none drops list semantics in Safari,
+     * which is why the markup restates role="list". */
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .cinder-data-list > :not(:first-child) {
-    border-block-start: 1px solid var(--cinder-border-muted);
+  /* Empty state: a single `<li>` so the `<ul>` stays valid. Component-owned
+   * padding and muted color mean the empty example needs no inline styles. */
+  .cinder-data-list-empty {
+    padding-block: var(--cinder-space-6, 1.5rem);
+    padding-inline: var(--cinder-space-4, 1rem);
+    color: var(--cinder-text-muted);
+    text-align: center;
   }
 }

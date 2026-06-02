@@ -1,24 +1,25 @@
 <script lang="ts" module>
   export const title = 'Basic data list';
-  export const description = 'Renders each item using the parameterized children snippet.';
+  export const description =
+    'A list of homogeneous records. DataList is the semantic `<ul role="list">` container; each row is a StackedListItem with a title and trailing meta. Row chrome (padding, dividers, density) is owned by the row, so content stays compactly aligned instead of stretching to the viewport edges.';
 </script>
 
 <script lang="ts">
-  import { Cluster } from 'cinder/cluster';
   import { DataList } from 'cinder/data-list';
+  import { StackedListItem } from 'cinder/stacked-list-item';
 
-  const users = [
-    { name: 'Alice Chen', role: 'Engineer' },
-    { name: 'Bob Osei', role: 'Designer' },
-    { name: 'Carol Mwangi', role: 'Product' },
+  const members = [
+    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },
+    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },
+    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },
   ];
 </script>
 
-<DataList items={users}>
-  {#snippet children(user)}
-    <Cluster justify="space-between">
-      <strong>{user.name}</strong>
-      <span style="color: var(--cinder-text-muted);">{user.role}</span>
-    </Cluster>
+<DataList items={members} key={(m) => m.id}>
+  {#snippet children(member)}
+    <StackedListItem>
+      {#snippet title()}{member.name}{/snippet}
+      {#snippet meta()}{member.role} · {member.status}{/snippet}
+    </StackedListItem>
   {/snippet}
 </DataList>
