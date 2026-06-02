@@ -42,15 +42,17 @@ export {
 // implementation is intentionally NOT re-exported here; consumers should use
 // the wrapper above. (The wrapper provides the documented public API and
 // class-merge behavior the inner implementation lacks.)
+// `formatUnreadCount` and `isLargeCount` are intentionally NOT re-exported:
+// they encode this component's badge presentation policy (e.g. capping at
+// "99+"), not reusable behavior a consumer building a custom chat container
+// would depend on. They remain available internally from ./container.
 export {
   DEFAULT_SCROLL_CONFIGURATION,
   calculateScrollToBottom,
   calculateUnreadCount,
   extractTimestamp,
   findUnreadBoundaryIndex,
-  formatUnreadCount,
   isAtBottom,
-  isLargeCount,
   shouldShowJumpToLatest,
 } from './container';
 export type {
@@ -61,9 +63,6 @@ export type {
   ScrollConfiguration,
   ScrollState,
 } from './container';
-
-// Scope
-export { RepositoryScope } from './scope';
 
 // Export
 export { ConversationExportActions } from './export';

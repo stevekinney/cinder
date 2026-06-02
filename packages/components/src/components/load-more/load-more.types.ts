@@ -5,6 +5,13 @@ export type LoadMoreProps = {
   hasMore?: boolean;
   /** Whether a load is in progress. Bindable. */
   loading?: boolean;
+  /**
+   * Scroll container the sentinel is observed within. Pass the scrollable
+   * ancestor element when the list scrolls inside a container rather than the
+   * viewport. `null`/omitted observes against the viewport. Captured at
+   * attachment time.
+   */
+  root?: Element | Document | null;
   /** rootMargin passed to IntersectionObserver. Captured at attachment time. */
   rootMargin?: string;
   /** Visible label for the load-more button. */
