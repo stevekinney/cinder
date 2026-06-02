@@ -53,7 +53,12 @@
     "no-shadow": "error",
     "unicorn/consistent-function-scoping": "error",
     "import/no-named-as-default-member": "error",
-    "import/no-unassigned-import": "error",
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css"]
+      }
+    ],
     "unicorn/no-array-sort": "error",
     "unicorn/prefer-add-event-listener": "error"
   },

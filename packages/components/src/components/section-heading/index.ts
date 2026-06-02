@@ -1,3 +1,4 @@
+import './section-heading.css';
 import SectionHeading from './section-heading.svelte';
 
 export default SectionHeading;

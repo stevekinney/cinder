@@ -1,3 +1,4 @@
+import './status-dot.css';
 import StatusDot from './status-dot.svelte';
 
 export default StatusDot;

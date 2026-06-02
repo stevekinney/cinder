@@ -55,34 +55,47 @@ export function jsonForScriptTag(value: unknown): string {
 }
 
 /**
- * Inline script body that applies a persisted theme to `:root` before any
- * stylesheet or bundle runs. Same source of truth for both the shell scaffold
- * and the iframe page (`renderComponentPage`) so the localStorage key, the
- * try/catch policy, and the validation rules stay in sync. If you change the
+ * Inline script body that applies the persisted theme override to `:root`
+ * before any stylesheet or bundle runs. Same source of truth for both the shell
+ * scaffold and the iframe page (`renderComponentPage`) so the localStorage key,
+ * the try/catch policy, and the validation rules stay in sync. If you change the
  * theme storage key, change `THEME_STORAGE_KEY` in `preview-store.svelte.ts`
  * to match.
+ *
+ * The only persisted/shareable values are explicit overrides — `light` or
+ * `dark`. With no override the playground follows the browser's
+ * `prefers-color-scheme`: the inline `color-scheme` is left unset so the base
+ * `color-scheme: light dark` declaration governs, and `data-cinder-theme` is
+ * seeded with the resolved preference so the authoritative CSS signal still
+ * reflects the theme actually in effect.
  */
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
-        var theme = 'system';
+        var override = null;
         // URL wins over localStorage — a shareable ?theme=dark link must
-        // paint dark even if this browser's stored preference is light.
+        // paint dark even if this browser's stored preference differs.
         try {
           var urlTheme = new URLSearchParams(window.location.search).get('theme');
-          if (urlTheme === 'light' || urlTheme === 'dark' || urlTheme === 'system') {
-            theme = urlTheme;
+          if (urlTheme === 'light' || urlTheme === 'dark') {
+            override = urlTheme;
           } else {
             var stored = localStorage.getItem('cinder-playground-theme');
-            if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+            if (stored === 'light' || stored === 'dark') override = stored;
           }
         } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
-        if (theme === 'light' || theme === 'dark') {
-          document.documentElement.style.colorScheme = theme;
+        if (override) {
+          // Explicit override wins over the OS setting.
+          document.documentElement.style.colorScheme = override;
+          document.documentElement.dataset.cinderTheme = override;
+        } else {
+          // No override: follow the browser. Leave color-scheme to the base
+          // 'color-scheme: light dark' declaration and seed data-cinder-theme
+          // with the resolved prefers-color-scheme so CSS reads the live theme.
+          var prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.cinderTheme = prefersDark ? 'dark' : 'light';
         }
-        // data-cinder-theme is the authoritative theme-choice signal — read it
-        // from CSS instead of sniffing the inline color-scheme style. Reflects
-        // 'system' explicitly so CSS can branch on prefers-color-scheme.
-        document.documentElement.dataset.cinderTheme = theme;
       })();
     `;
 

@@ -16,7 +16,7 @@
     VisuallyHidden,
   } from '../../../components/src/index.ts';
   import { humanizeComponentName } from './humanize.ts';
-  import { buildShellHref } from './routing.ts';
+  import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
 
   type Props = {
@@ -71,15 +71,56 @@
     `${visibleComponents.length} component${visibleComponents.length === 1 ? '' : 's'} shown`,
   );
 
+  // A "plain" left-click is the only gesture we hijack for SPA navigation.
+  // Modified clicks (cmd/ctrl/shift/alt) and middle-clicks fall through to
+  // native browser behavior so open-in-new-tab, "Copy Link Address", and
+  // status-bar URL preview all keep working like regular anchor semantics.
+  function isPlainLeftClick(event: MouseEvent): boolean {
+    if (event.button !== 0) return false;
+    return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
+  }
+
   function handleClick(event: MouseEvent, componentName: string): void {
-    // Only intercept plain left-clicks. Modified clicks (cmd/ctrl/shift/alt)
-    // and middle-clicks fall through to native browser navigation so
-    // open-in-new-tab, "Copy Link Address", and status-bar URL preview all
-    // continue to work like regular anchor semantics.
-    if (event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!isPlainLeftClick(event)) return;
+    // Belt-and-suspenders: the capture-phase handler below normally fires first
+    // and has already preventDefaulted + routed this exact click. Bailing on an
+    // already-handled event keeps onSelect from firing twice (which would push a
+    // duplicate history entry). If the capture handler somehow didn't run, this
+    // bubble-phase path still selects — so the SPA navigation never silently
+    // falls through to a native page load.
+    if (event.defaultPrevented) return;
     event.preventDefault();
     onSelect(componentName);
+  }
+
+  // Capture-phase delegation on the nav container. This is the GUARANTEE that a
+  // plain left-click never triggers the default anchor navigation (which would
+  // be a full page load to `/c/<name>` — a route the SPA owns but the static
+  // server does not, landing the user on a "page that doesn't exist").
+  //
+  // The per-item `onclick` below forwards through cinder's NavigationItem and
+  // already calls preventDefault, but it runs in the BUBBLE phase and depends on
+  // that component's internal handler ordering. By intercepting in the CAPTURE
+  // phase on the wrapping <nav>, we preventDefault and route through onSelect
+  // before the anchor's own handler ever runs — independent of any inner
+  // component behavior. The component name is parsed from the anchor's
+  // `/c/<name>` href so this covers every item without per-row wiring.
+  function interceptNavClicks(nav: HTMLElement) {
+    function onCapturedClick(event: MouseEvent): void {
+      if (!isPlainLeftClick(event)) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const componentName = parseComponentFromPath(anchor.getAttribute('href') ?? '');
+      if (componentName === null) return;
+      event.preventDefault();
+      onSelect(componentName);
+    }
+    nav.addEventListener('click', onCapturedClick, { capture: true });
+    return () => {
+      nav.removeEventListener('click', onCapturedClick, { capture: true });
+    };
   }
 
   function handleFilterKeydown(event: KeyboardEvent): void {
@@ -126,7 +167,7 @@
       <span aria-hidden="true">✕</span>
     </button>
   </div>
-  <SideNavigation ariaLabel="Components">
+  <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
     {#each visibleComponents as name (name)}
       <SideNavigationItem
         href={buildShellHref(name)}

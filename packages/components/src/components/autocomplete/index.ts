@@ -1,3 +1,4 @@
+import './autocomplete.css';
 import Autocomplete from './autocomplete.svelte';
 
 export default Autocomplete;

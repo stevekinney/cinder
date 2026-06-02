@@ -1,3 +1,4 @@
+import './spacer.css';
 import Spacer from './spacer.svelte';
 
 export default Spacer;

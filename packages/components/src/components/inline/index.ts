@@ -1,3 +1,4 @@
+import './inline.css';
 import Inline from './inline.svelte';
 
 export default Inline;

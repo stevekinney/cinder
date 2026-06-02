@@ -1,3 +1,4 @@
+import './button-group.css';
 import ButtonGroup from './button-group.svelte';
 
 export default ButtonGroup;

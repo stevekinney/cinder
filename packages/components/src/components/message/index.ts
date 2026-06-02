@@ -1,3 +1,4 @@
+import './message.css';
 import Message from './message.svelte';
 
 export default Message;

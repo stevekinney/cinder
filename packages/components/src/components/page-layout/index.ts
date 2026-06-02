@@ -1,3 +1,4 @@
+import './page-layout.css';
 import PageLayout from './page-layout.svelte';
 
 export default PageLayout;

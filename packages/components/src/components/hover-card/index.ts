@@ -1,3 +1,4 @@
+import './hover-card.css';
 import HoverCard from './hover-card.svelte';
 
 export default HoverCard;

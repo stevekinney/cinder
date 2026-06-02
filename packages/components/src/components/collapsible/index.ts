@@ -1,3 +1,4 @@
+import './collapsible.css';
 import Collapsible from './collapsible.svelte';
 
 export default Collapsible;

@@ -1,3 +1,4 @@
+import './table-header-cell.css';
 import TableHeaderCell from './table-header-cell.svelte';
 
 export default TableHeaderCell;

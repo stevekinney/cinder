@@ -1,3 +1,4 @@
+import './bar-chart.css';
 import BarChart from './bar-chart.svelte';
 
 export default BarChart;

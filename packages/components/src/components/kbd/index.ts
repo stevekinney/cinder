@@ -1,3 +1,4 @@
+import './kbd.css';
 import Kbd from './kbd.svelte';
 
 export default Kbd;

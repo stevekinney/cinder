@@ -14,15 +14,23 @@
  *      intrinsic to the file and survives a direct subpath import
  *      (`cinder/<name>/styles`). A bare top-level rule outside the wrapper is
  *      a violation.
- *   4. The ONLY at-rules permitted outside the wrapper are leading
- *      sibling-leaf `@import '../<leaf>/<leaf>.css'` statements. Compound
- *      parents (Tabs, Table, Accordion, SideNavigation) use these so that
- *      importing `cinder/<parent>/styles` pulls the whole family. The path
- *      shape mirrors the verbatim dist layout — `dist/components/<parent>/`
- *      and `dist/components/<leaf>/` are siblings — so `../<leaf>/<leaf>.css`
- *      resolves identically in `src/` and `dist/`. Any other `@import`
- *      (absolute, bare specifier, or non-sibling path) is rejected because it
- *      would not resolve after the verbatim copy.
+ *   4. The FIRST non-comment node must be the cascade-layer order prelude
+ *      `@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;`
+ *      (see {@link LAYER_ORDER_PRELUDE}). The build injects
+ *      `import 'cinder/<name>/styles'` into every browser component entry, so a
+ *      sidecar can now load BEFORE `cinder/styles`; the prelude guarantees the
+ *      layer order is declared up front rather than inferred from insertion
+ *      order (which would silently invert the cascade). Re-declaring the same
+ *      order after `cinder/styles` already ran is a spec no-op.
+ *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude
+ *      and leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements.
+ *      Compound parents (Tabs, Table, Accordion, SideNavigation) use the
+ *      imports so that importing `cinder/<parent>/styles` pulls the whole
+ *      family. The path shape mirrors the verbatim dist layout —
+ *      `dist/components/<parent>/` and `dist/components/<leaf>/` are siblings —
+ *      so `../<leaf>/<leaf>.css` resolves identically in `src/` and `dist/`.
+ *      Any other `@import` (absolute, bare specifier, or non-sibling path) is
+ *      rejected because it would not resolve after the verbatim copy.
  *
  * Scoped descendants are allowed (e.g. `.button *`, `.alert :where(html)`).
  * The check distinguishes these from forbidden globals by walking the parsed
@@ -50,6 +58,47 @@ export type CssViolation = {
  * verification, and the invariant test all agree on the name.
  */
 export const COMPONENT_LAYER_NAME = 'cinder.components';
+
+/**
+ * The four cinder cascade layers, in priority order. Declared once at the top
+ * of `src/styles/index.css` so `@layer` order is established before any
+ * component CSS loads — and now ALSO prepended to every component sidecar so a
+ * direct `cinder/<name>/styles` import (or the build's injected
+ * `import 'cinder/<name>/styles'`) that lands BEFORE `cinder/styles` cannot
+ * invert the cascade. Re-declaring the same order is a spec no-op when the base
+ * already ran, and establishes the correct order when the sidecar loads first.
+ */
+export const LAYER_ORDER = [
+  'cinder.tokens',
+  'cinder.foundation',
+  'cinder.components',
+  'cinder.utilities',
+] as const;
+
+/**
+ * The exact `@layer` order-declaration statement (no block body) that must be
+ * the FIRST line of every component CSS sidecar. Exported so the build, the
+ * sidecar-rewrite script, and the invariant tests all agree on one string.
+ */
+export const LAYER_ORDER_PRELUDE = `@layer ${LAYER_ORDER.join(', ')};`;
+
+/**
+ * Whether a top-level AST node is the `@layer cinder.tokens, …;` order-
+ * declaration prelude — a `@layer` at-rule with no block body whose params name
+ * exactly the four cinder layers in priority order. Distinguished from the
+ * `@layer cinder.components { … }` wrapper by the absence of a block body and
+ * the multi-layer params.
+ */
+function isLayerOrderPreludeNode(node: { type: string }): boolean {
+  if (node.type !== 'atrule') return false;
+  // eslint-disable-next-line no-unsafe-type-assertion -- runtime-checked: node.type === 'atrule' above.
+  const atRule = node as AtRule;
+  return (
+    atRule.name === 'layer' &&
+    atRule.nodes === undefined &&
+    atRule.params.trim() === LAYER_ORDER.join(', ')
+  );
+}
 
 /**
  * Matches a sibling-leaf CSS import: `'../<leaf>/<leaf>.css'` where the
@@ -103,6 +152,9 @@ export function isSingleComponentLayer(root: Root): boolean {
   for (const node of topLevelNodes) {
     if (isComponentLayerNode(node)) {
       layerCount += 1;
+      continue;
+    }
+    if (isLayerOrderPreludeNode(node)) {
       continue;
     }
     if (node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)) {
@@ -247,19 +299,46 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
     }
   }
 
+  // The `@layer` order-declaration prelude must be the FIRST non-comment node,
+  // so that a sidecar loaded BEFORE `cinder/styles` still establishes the
+  // correct cascade-layer order instead of letting the layers be created in
+  // insertion order (which silently inverts cascade priority). Re-declaring the
+  // same order after `cinder/styles` already ran is a spec no-op. CSS requires
+  // `@layer` statements (and `@import`) to precede style rules, and permits a
+  // `@layer` name-list statement before `@import`, so prelude → imports → block
+  // is valid ordering.
+  if (!topLevel.some(isLayerOrderPreludeNode)) {
+    const target = topLevel[0] ?? root;
+    violations.push({
+      file,
+      line: target.source?.start?.line ?? 1,
+      column: target.source?.start?.column ?? 1,
+      message: `Component CSS sidecar must begin with the cascade-layer order prelude \`${LAYER_ORDER_PRELUDE}\` as its first line, so a sidecar loaded before \`cinder/styles\` does not invert the cascade. Run \`bun run components:generate\` (or the sidecar-prelude rewrite) to add it.`,
+    });
+  } else if (!isLayerOrderPreludeNode(topLevel[0]!)) {
+    const target = topLevel[0]!;
+    violations.push({
+      file,
+      line: target.source?.start?.line ?? 1,
+      column: target.source?.start?.column ?? 1,
+      message: `The cascade-layer order prelude \`${LAYER_ORDER_PRELUDE}\` must be the FIRST line of the sidecar (before any \`@import\` or \`@layer ${COMPONENT_LAYER_NAME} { … }\` block).`,
+    });
+  }
+
   // Layer assignment must be intrinsic to the sidecar so it survives a direct
   // subpath import (`cinder/<name>/styles`) rather than relying on the
   // aggregator wrapping the `@import` with `layer(cinder.components)`. The
   // contract: exactly one top-level node (ignoring comments) is the
   // `@layer cinder.components { … }` wrapper; the only other permitted
-  // top-level nodes are leading sibling-leaf `@import` statements. A bare
-  // top-level style rule or any other at-rule outside that wrapper is the
-  // violation.
+  // top-level nodes are the leading order-declaration prelude and sibling-leaf
+  // `@import` statements. A bare top-level style rule or any other at-rule
+  // outside that wrapper is the violation.
   if (!isSingleComponentLayer(root)) {
     const topLevelNodes = root.nodes.filter((node) => node.type !== 'comment');
     const offender = topLevelNodes.find(
       (node) =>
         !isComponentLayerNode(node) &&
+        !isLayerOrderPreludeNode(node) &&
         !(node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)),
     );
     const target = offender ?? root;

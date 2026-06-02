@@ -1,3 +1,4 @@
+import './skeleton.css';
 import Skeleton from './skeleton.svelte';
 
 export default Skeleton;

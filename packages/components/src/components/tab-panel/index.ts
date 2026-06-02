@@ -1,3 +1,4 @@
+import './tab-panel.css';
 import TabPanel from './tab-panel.svelte';
 
 export default TabPanel;

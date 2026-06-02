@@ -1,3 +1,4 @@
+import './command-menu.css';
 import CommandMenu from './command-menu.svelte';
 
 export default CommandMenu;

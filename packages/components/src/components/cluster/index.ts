@@ -1,3 +1,4 @@
+import './cluster.css';
 import Cluster from './cluster.svelte';
 
 export default Cluster;

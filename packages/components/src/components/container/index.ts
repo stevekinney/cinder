@@ -1,3 +1,4 @@
+import './container.css';
 import Container from './container.svelte';
 
 export default Container;

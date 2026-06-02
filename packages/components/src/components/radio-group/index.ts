@@ -1,3 +1,4 @@
+import './radio-group.css';
 import RadioGroup from './radio-group.svelte';
 
 export default RadioGroup;

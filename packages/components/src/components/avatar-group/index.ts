@@ -1,3 +1,4 @@
+import './avatar-group.css';
 import AvatarGroup from './avatar-group.svelte';
 
 export default AvatarGroup;

@@ -1,3 +1,4 @@
+import './copy-button.css';
 import CopyButton from './copy-button.svelte';
 
 export default CopyButton;

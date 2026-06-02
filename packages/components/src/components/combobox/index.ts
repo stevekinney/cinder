@@ -1,3 +1,4 @@
+import './combobox.css';
 import Combobox from './combobox.svelte';
 
 export default Combobox;

@@ -1,3 +1,4 @@
+import './checkbox.css';
 import Checkbox from './checkbox.svelte';
 
 export default Checkbox;

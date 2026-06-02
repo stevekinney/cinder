@@ -1,3 +1,4 @@
+import './confirm-dialog.css';
 import ConfirmDialog from './confirm-dialog.svelte';
 
 export default ConfirmDialog;

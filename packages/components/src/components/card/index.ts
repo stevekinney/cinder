@@ -1,3 +1,4 @@
+import './card.css';
 import Card from './card.svelte';
 
 export default Card;

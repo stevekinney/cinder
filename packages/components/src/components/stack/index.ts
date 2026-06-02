@@ -1,3 +1,4 @@
+import './stack.css';
 import Stack from './stack.svelte';
 
 export default Stack;

@@ -1,3 +1,4 @@
+import './menu-bar.css';
 export { default as MenuBar, default } from './menu-bar.svelte';
 export type {
   MenuBarEntry,

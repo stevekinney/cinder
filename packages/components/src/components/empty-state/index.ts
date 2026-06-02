@@ -1,3 +1,4 @@
+import './empty-state.css';
 import EmptyState from './empty-state.svelte';
 
 export default EmptyState;

@@ -1,3 +1,4 @@
+import './input.css';
 import Input from './input.svelte';
 
 export default Input;

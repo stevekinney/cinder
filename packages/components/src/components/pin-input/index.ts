@@ -1,3 +1,4 @@
+import './pin-input.css';
 import PinInput from './pin-input.svelte';
 
 export default PinInput;

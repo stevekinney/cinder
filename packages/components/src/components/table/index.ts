@@ -3,6 +3,7 @@ import TableCell from '../table-cell/table-cell.svelte';
 import TableHeaderCell from '../table-header-cell/table-header-cell.svelte';
 import TableHeader from '../table-header/table-header.svelte';
 import TableRow from '../table-row/table-row.svelte';
+import './table.css';
 import TableRoot from './table.svelte';
 
 /**

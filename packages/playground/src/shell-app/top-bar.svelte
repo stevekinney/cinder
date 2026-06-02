@@ -7,7 +7,7 @@
   import { buildIframeSrc } from './routing.ts';
   import {
     Button,
-    NumberInput,
+    Input,
     Segment,
     SegmentedControl,
     Toolbar,
@@ -55,14 +55,15 @@
   // Derive the SegmentedControl value from store.previewWidth. When no preset
   // matches exactly (custom width), pass `undefined` so SegmentedControl
   // renders without a selected segment instead of trying to select a phantom
-  // option — the NumberInput is the visual indicator of custom mode.
+  // option — the custom-width number field is the visual indicator of custom
+  // mode.
   let viewportPresetKey = $derived<string | undefined>(
     store.previewWidth === null
       ? 'full'
       : VIEWPORT_PRESETS.find((p) => p.value === store.previewWidth)?.key,
   );
 
-  // The custom width NumberInput is only visible when the viewport is
+  // The custom-width number field is only visible when the viewport is
   // constrained to a numeric value (i.e., previewWidth is not null).
   let isCustomWidthVisible = $derived(store.previewWidth !== null);
 
@@ -74,14 +75,23 @@
   }
 
   function handleCustomWidthChange(newValue: number | null): void {
-    // NumberInput defers commit to blur; clearing the input then blurring
-    // surfaces as `newValue === null`. Treat that as "keep the current width"
-    // — the user navigates to Full via the SegmentedControl, not by clearing
-    // this input. Without this guard, clearing-to-retype kicks the user out
-    // of custom-width mode and hides the input mid-edit.
+    // An empty or otherwise non-numeric field surfaces as `newValue === null`.
+    // Treat that as "keep the current width" — the user navigates to Full via
+    // the SegmentedControl, not by clearing this input. Without this guard,
+    // clearing-to-retype kicks the user out of custom-width mode and hides the
+    // input mid-edit.
     if (newValue === null) return;
     store.previewWidth = newValue;
     announce(`Viewport: custom, ${newValue} pixels`);
+  }
+
+  // Native <input type="number"> surfaces its value as a string on the change
+  // event (empty when the field is cleared). Coerce to `number | null` so
+  // `handleCustomWidthChange` keeps its numeric contract.
+  function handleCustomWidthInput(event: Event & { currentTarget: HTMLInputElement }): void {
+    const raw = event.currentTarget.value.trim();
+    const parsed = raw === '' ? Number.NaN : Number(raw);
+    handleCustomWidthChange(Number.isFinite(parsed) ? parsed : null);
   }
 
   // ── Theme ─────────────────────────────────────────────────────────────────
@@ -89,12 +99,13 @@
   // localStorage and updates the document's color-scheme. Never assign
   // store.theme directly.
 
-  // Short visible labels keep the 3-segment control compact enough to fit a
-  // phone-width toolbar; the SegmentedControl's `label="Color scheme"` supplies
-  // the group context, and `announce` uses the full phrase for assistive tech.
+  // Short visible labels keep the control compact enough to fit a phone-width
+  // toolbar; the SegmentedControl's `label="Color scheme"` supplies the group
+  // context, and `announce` uses the full phrase for assistive tech. There is no
+  // 'System' option: with no explicit choice the playground follows the browser
+  // preference live, and the control highlights whichever theme is resolved.
   const THEME_OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; announce: string }> = [
     { value: 'light', label: 'Light', announce: 'Light theme' },
-    { value: 'system', label: 'System', announce: 'System theme' },
     { value: 'dark', label: 'Dark', announce: 'Dark theme' },
   ];
 
@@ -179,21 +190,23 @@
       </SegmentedControl>
 
       {#if isCustomWidthVisible}
-        <!-- NumberInput's field is inline-size:100% and would otherwise stretch
-             to fill the toolbar row, crushing the segmented controls. Constrain
-             it to a fixed width wide enough for a four-digit value plus the two
-             steppers. `useGrouping:false` keeps the value a plain integer
-             ("1280", not the locale-grouped "1,280"). -->
+        <!-- A native <input type="number"> renders the value as a plain integer
+             ("1280", never the locale-grouped "1,280") and exposes the browser's
+             spinner. Its field is inline-size:100% and would otherwise stretch to
+             fill the toolbar row, crushing the segmented controls — the
+             .width-input wrapper pins it to a fixed width wide enough for a
+             four-digit value plus the spinner. The block only renders when
+             previewWidth is a number, so String(...) is always a bare integer. -->
         <span class="width-input">
-          <NumberInput
+          <Input
             id="viewport-width-input"
-            value={store.previewWidth}
+            type="number"
+            value={String(store.previewWidth)}
             min={200}
             max={3840}
             step={1}
-            format={{ useGrouping: false }}
             aria-label="Custom viewport width in pixels (200 to 3840)"
-            onchange={handleCustomWidthChange}
+            onchange={handleCustomWidthInput}
           />
         </span>
         <span class="unit" aria-hidden="true">px</span>
@@ -372,20 +385,22 @@
   }
 
   /*
-   * The custom-width NumberInput field is inline-size:100% by default and would
-   * stretch across the whole toolbar. Pin it to a fixed, four-digit-plus-stepper
-   * width so it never crushes the segmented controls beside it.
+   * The custom-width number field is inline-size:100% by default and would
+   * stretch across the whole toolbar. Pin it to a fixed width so it never
+   * crushes the segmented controls beside it. Narrower than the old stepper
+   * field — the native spinner is slimmer than NumberInput's two steppers, but
+   * a four-digit value plus the spinner still needs more than a default field.
    */
   .width-input {
     display: inline-flex;
-    /* Wide enough for a four-digit value plus the +/- steppers. */
+    /* Wide enough for a four-digit value plus the native number spinner. */
     /* stylelint-disable-next-line csstools/use-logical */
-    width: 9rem;
+    width: 6.5rem;
     flex: 0 0 auto;
   }
 
   .width-input :global(.cinder-input-field),
-  .width-input :global(.cinder-number-input) {
+  .width-input :global(.cinder-input) {
     /* stylelint-disable-next-line csstools/use-logical */
     width: 100%;
   }

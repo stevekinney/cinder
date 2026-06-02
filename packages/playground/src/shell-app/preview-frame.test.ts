@@ -300,7 +300,11 @@ describe('preview-frame handleLoad', () => {
     expect(themeMessage?.value).toBe('dark');
   });
 
-  test('replays the default system theme on load', async () => {
+  test('replays the resolved browser theme on load when there is no override', async () => {
+    // With no explicit override the store resolves `theme` from the browser's
+    // prefers-color-scheme. The test environment reports no dark preference, so
+    // the resolved theme — and thus the replayed message — is 'light', never the
+    // retired 'system' value.
     const store = new PreviewStore('button');
     const { container } = render(PreviewFrameFixture, { store, componentName: 'button' });
     await tick();
@@ -313,6 +317,6 @@ describe('preview-frame handleLoad', () => {
     await tick();
 
     const themeMessage = messages.find((message) => message.type === 'cinder:set-theme');
-    expect(themeMessage?.value).toBe('system');
+    expect(themeMessage?.value).toBe('light');
   });
 });

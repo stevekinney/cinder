@@ -337,7 +337,7 @@
               <Table.Cell>
                 <code class="props-name">{prop.name}</code>
                 {#if prop.required}
-                  <span class="props-required-marker" aria-hidden="true">*</span>
+                  <span class="props-required-gem" aria-hidden="true"></span>
                 {/if}
               </Table.Cell>
               <Table.Cell>
@@ -366,7 +366,12 @@
               </Table.Cell>
               <Table.Cell align="center">
                 {#if prop.required}
-                  <Badge variant="danger" size="xs">Required</Badge>
+                  <!-- The little red gem matches the required-field indicator on
+                       cinder form fields (.cinder-form-field__required). It's
+                       purely decorative; the visually-hidden text carries the
+                       "Required" meaning to screen readers. -->
+                  <span class="props-required-gem" aria-hidden="true"></span>
+                  <span class="props-visually-hidden">Required</span>
                 {:else}
                   <span class="props-dash" aria-hidden="true">—</span>
                 {/if}
@@ -577,10 +582,39 @@
     color: var(--cinder-text-subtle);
   }
 
-  .props-required-marker {
+  /* Required indicator — the same 6px red gem cinder renders for required form
+     fields (.cinder-form-field__required). Used both as the Name-column marker
+     (where the leading margin separates it from the prop name) and in the
+     centered Required column. It's decorative (aria-hidden); the "Required"
+     meaning is carried by adjacent visually-hidden text / the column header. */
+  .props-required-gem {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--cinder-danger);
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  /* Only the Name-column gem trails the prop name and needs separating space;
+     the centered Required column shows the gem alone, so no leading margin. */
+  .props-name + .props-required-gem {
     margin-inline-start: var(--cinder-space-1);
-    color: var(--cinder-color-danger-fg);
-    font-weight: var(--cinder-font-semibold);
+  }
+
+  /* Standard visually-hidden helper: keeps the "Required" label in the
+     accessibility tree while only the gem is shown visually. */
+  .props-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .props-description {

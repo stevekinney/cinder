@@ -1,3 +1,4 @@
+import './center.css';
 import Center from './center.svelte';
 
 export default Center;

@@ -1,3 +1,4 @@
+import './sortable-list.css';
 import SortableList from './sortable-list.svelte';
 
 export default SortableList;

@@ -2,10 +2,13 @@
  * Tests for the pure(-ish) helpers in `preview-store.svelte.ts`:
  *
  * - `readPersistedTheme` / `writePersistedTheme` wrap `localStorage` access
- *   in try/catch so a thrown access never breaks the bundle. The tests stub
- *   `localStorage` at the global level for the duration of each case.
- * - `applyThemeToDocument` sets or clears `color-scheme` on a document's
- *   `documentElement.style`. We use a minimal fake document.
+ *   in try/catch so a thrown access never breaks the bundle. `readPersistedTheme`
+ *   returns the stored override (`light`/`dark`) or `null` when there is none —
+ *   `null` is the signal to follow the browser's `prefers-color-scheme`. The
+ *   tests stub `localStorage` at the global level for the duration of each case.
+ * - `applyThemeToDocument` pins or clears `color-scheme` on a document's
+ *   `documentElement.style` depending on whether an override is set. We use a
+ *   minimal fake document.
  */
 
 import { afterEach, describe, expect, it } from 'bun:test';
@@ -65,29 +68,34 @@ describe('readPersistedTheme', () => {
     expect(readPersistedTheme()).toBe('dark');
   });
 
-  it('returns "system" when the stored value is missing', () => {
+  it('returns null (no override) when the stored value is missing', () => {
     installLocalStorage({ getItem: () => null, setItem: () => {} });
-    expect(readPersistedTheme()).toBe('system');
+    expect(readPersistedTheme()).toBeNull();
   });
 
-  it('returns "system" when the stored value is an unknown string', () => {
+  it('returns null when the stored value is the retired "system" string', () => {
+    installLocalStorage({ getItem: () => 'system', setItem: () => {} });
+    expect(readPersistedTheme()).toBeNull();
+  });
+
+  it('returns null when the stored value is an unknown string', () => {
     installLocalStorage({ getItem: () => 'midnight', setItem: () => {} });
-    expect(readPersistedTheme()).toBe('system');
+    expect(readPersistedTheme()).toBeNull();
   });
 
-  it('returns "system" when localStorage.getItem throws', () => {
+  it('returns null when localStorage.getItem throws', () => {
     installLocalStorage({
       getItem: () => {
         throw new Error('blocked');
       },
       setItem: () => {},
     });
-    expect(readPersistedTheme()).toBe('system');
+    expect(readPersistedTheme()).toBeNull();
   });
 
-  it('returns "system" when localStorage is not defined at all', () => {
+  it('returns null when localStorage is not defined at all', () => {
     installLocalStorage(undefined);
-    expect(readPersistedTheme()).toBe('system');
+    expect(readPersistedTheme()).toBeNull();
   });
 });
 
@@ -127,32 +135,44 @@ function makeFakeDocument(): Document {
 }
 
 describe('applyThemeToDocument', () => {
-  const cases: Array<[ThemeChoice, string]> = [
+  // An explicit override pins colorScheme to that value; no override (null)
+  // clears the inline value so the OS preference and base CSS drive rendering.
+  const cases: Array<[ThemeChoice | null, string]> = [
     ['light', 'light'],
     ['dark', 'dark'],
-    ['system', ''], // empty string clears the inline override
+    [null, ''], // empty string clears the inline override
   ];
 
-  for (const [input, expected] of cases) {
-    it(`sets colorScheme to "${expected}" for "${input}"`, () => {
+  for (const [override, expected] of cases) {
+    it(`sets colorScheme to "${expected}" for override ${String(override)}`, () => {
       const doc = makeFakeDocument();
-      applyThemeToDocument(doc, input);
+      // `resolved` only matters when there is no override; pass 'light' as the
+      // resolved browser preference for these colorScheme assertions.
+      applyThemeToDocument(doc, override, 'light');
       expect(doc.documentElement.style.colorScheme).toBe(expected);
     });
   }
 
-  it('clears a previously-set inline override when called with "system"', () => {
+  it('clears a previously-set inline override when there is no override', () => {
     const doc = makeFakeDocument();
     doc.documentElement.style.colorScheme = 'dark';
-    applyThemeToDocument(doc, 'system');
+    applyThemeToDocument(doc, null, 'light');
     expect(doc.documentElement.style.colorScheme).toBe('');
   });
 
-  it('writes data-cinder-theme for every choice including "system"', () => {
-    for (const choice of ['light', 'dark', 'system'] as const) {
+  it('writes data-cinder-theme to the override when one is set', () => {
+    for (const override of ['light', 'dark'] as const) {
       const doc = makeFakeDocument();
-      applyThemeToDocument(doc, choice);
-      expect(doc.documentElement.dataset['cinderTheme']).toBe(choice);
+      applyThemeToDocument(doc, override, 'light');
+      expect(doc.documentElement.dataset['cinderTheme']).toBe(override);
+    }
+  });
+
+  it('writes data-cinder-theme to the resolved browser theme when there is no override', () => {
+    for (const resolved of ['light', 'dark'] as const) {
+      const doc = makeFakeDocument();
+      applyThemeToDocument(doc, null, resolved);
+      expect(doc.documentElement.dataset['cinderTheme']).toBe(resolved);
     }
   });
 });

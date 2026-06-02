@@ -1,3 +1,4 @@
+import './scroll-area.css';
 import ScrollArea from './scroll-area.svelte';
 
 export default ScrollArea;

@@ -59,12 +59,12 @@ export function buildIframeSrc(componentName: string): string {
  * any Svelte file. That keeps it cleanly unit-testable from `bun:test`
  * without paying the `.svelte.ts` compilation cost in test boot.
  */
-export type ThemeChoice = 'light' | 'dark' | 'system';
+export type ThemeChoice = 'light' | 'dark';
 
 // Typed as ReadonlySet<string> (not ReadonlySet<ThemeChoice>) so `.has(raw)`
 // accepts an arbitrary string without an `as ThemeChoice` assertion. Narrowing
 // from string → ThemeChoice is the job of `isThemeChoice` below.
-const THEME_VALUES: ReadonlySet<string> = new Set<ThemeChoice>(['light', 'dark', 'system']);
+const THEME_VALUES: ReadonlySet<string> = new Set<ThemeChoice>(['light', 'dark']);
 
 /** Type guard narrowing an arbitrary string to a {@link ThemeChoice}. */
 function isThemeChoice(value: string): value is ThemeChoice {
@@ -91,7 +91,9 @@ const VIEWPORT_WIDTH_MAX = 3840;
 /**
  * Snapshot of every toolbar setting that lives in the URL. `null`s mean
  * "use the default" — they're the values that are omitted from the query
- * string when serializing.
+ * string when serializing. A `null` theme means "no explicit override": the
+ * playground follows the browser's `prefers-color-scheme` rather than pinning
+ * light or dark.
  */
 export type ToolbarSearchState = {
   isFocusMode: boolean;
@@ -110,10 +112,10 @@ export function readFocusModeFromSearch(search: URLSearchParams): boolean {
 }
 
 /**
- * Read the explicit theme from a URLSearchParams instance, or `null` if the
- * caller should fall back to localStorage (or `system` for SSR). Unknown
- * values resolve to `null` so a corrupted URL doesn't lock users into a bad
- * state.
+ * Read the explicit theme override from a URLSearchParams instance, or `null`
+ * when the URL carries no override (the playground then follows the browser's
+ * `prefers-color-scheme`). Unknown values resolve to `null` so a corrupted URL
+ * doesn't lock users into a bad state.
  */
 export function readThemeFromSearch(search: URLSearchParams): ThemeChoice | null {
   const raw = search.get(TOOLBAR_PARAMS.theme);
@@ -166,8 +168,10 @@ export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearch
     next.delete(TOOLBAR_PARAMS.focus);
   }
 
-  // Theme defaults to "system" — omit the param entirely in that case.
-  if (state.theme === null || state.theme === 'system') {
+  // `?theme=` is only present for an explicit override. With no override the
+  // playground follows the browser's `prefers-color-scheme`, so omit the param
+  // entirely and keep a default URL clean.
+  if (state.theme === null) {
     next.delete(TOOLBAR_PARAMS.theme);
   } else {
     next.set(TOOLBAR_PARAMS.theme, state.theme);

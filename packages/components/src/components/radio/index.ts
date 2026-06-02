@@ -1,3 +1,4 @@
+import './radio.css';
 import Radio from './radio.svelte';
 
 export default Radio;

@@ -1,3 +1,4 @@
+import './table-body.css';
 import TableBody from './table-body.svelte';
 
 export default TableBody;

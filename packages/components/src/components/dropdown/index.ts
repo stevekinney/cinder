@@ -4,6 +4,7 @@ import DropdownLabel from '../dropdown-label/dropdown-label.svelte';
 import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
 import DropdownSeparator from '../dropdown-separator/dropdown-separator.svelte';
 import DropdownTrigger from '../dropdown-trigger/dropdown-trigger.svelte';
+import './dropdown.css';
 import DropdownRoot from './dropdown.svelte';
 
 /**

@@ -1,5 +1,6 @@
 import TreeSelectAll from '../_tree-select-all/tree-select-all.svelte';
 import TreeItem from '../tree-item/tree-item.svelte';
+import './tree.css';
 import TreeRoot from './tree.svelte';
 
 /**

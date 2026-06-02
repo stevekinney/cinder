@@ -179,7 +179,11 @@ describe('top-bar theme selection', () => {
   });
 
   test('selecting the light theme segment passes "light" to setTheme', async () => {
-    const store = new PreviewStore('button');
+    // Seed a 'dark' override so 'Dark' is the active segment; otherwise the
+    // resolved browser theme in the test environment ('light') already selects
+    // 'Light', and clicking the active segment is a no-op that never fires
+    // onchange. Starting from dark makes the Light click a genuine change.
+    const store = new PreviewStore('button', { theme: 'dark' });
     const themeCalls: ThemeChoice[] = [];
     store.setTheme = (value: ThemeChoice) => {
       themeCalls.push(value);

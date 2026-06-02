@@ -86,11 +86,13 @@ test.describe('playground shell styles', () => {
     await page.getByRole('radio', { name: 'Tablet (768 pixels)' }).click();
     await expect(viewportControl.locator('[data-cinder-selected]')).toContainText('Tablet');
 
-    const numberInput = page.locator('.cinder-number-input:has(#viewport-width-input)');
-    const numberInputMetrics = await computedMetrics(numberInput);
-    expect(['flex', 'inline-flex']).toContain(numberInputMetrics.display);
-    expect(numberInputMetrics.borderBlockStartWidth).toBeGreaterThan(0);
-    expect(numberInputMetrics.borderRadius).toBeGreaterThan(0);
+    // The custom-width field is cinder's Input with type="number" (a native
+    // number input), so it renders as `.cinder-input`, not `.cinder-number-input`.
+    const widthInput = page.locator('#viewport-width-input.cinder-input');
+    await expect(widthInput).toHaveAttribute('type', 'number');
+    const widthInputMetrics = await computedMetrics(widthInput);
+    expect(widthInputMetrics.borderBlockStartWidth).toBeGreaterThan(0);
+    expect(widthInputMetrics.borderRadius).toBeGreaterThan(0);
 
     const customWidth = page.getByLabel('Custom viewport width in pixels (200 to 3840)');
     await customWidth.fill('640');

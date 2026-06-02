@@ -1,3 +1,4 @@
+import './time-picker.css';
 import TimePicker from './time-picker.svelte';
 
 export default TimePicker;

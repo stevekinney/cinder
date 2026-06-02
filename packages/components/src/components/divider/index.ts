@@ -1,3 +1,4 @@
+import './divider.css';
 import Divider from './divider.svelte';
 
 export default Divider;

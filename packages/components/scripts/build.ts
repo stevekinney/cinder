@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
+import { componentStylesSpecifier, cssImportPlugin } from './css-import-plugin.ts';
 import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
 import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
@@ -176,6 +177,33 @@ if (cssLintViolations.length > 0) {
   process.exit(1);
 }
 
+// Pre-emit source-index CSS-import gate: every component with a CSS sidecar must
+// import it from its SOURCE `index.ts`. The browser BUILD injects the styles
+// import into dist, but the `svelte` export condition resolves the raw source
+// `index.ts` (SvelteKit/Vite resolve it first), so a source entry that omits the
+// import would silently render unstyled for SvelteKit consumers. Enforce it here
+// rather than only in dist, since the source path bypasses the build plugin.
+const sourceCssImportViolations: string[] = [];
+for (const component of components) {
+  const cssPath = componentCssSource(component);
+  if (!existsSync(cssPath)) continue;
+  const indexSource = await Bun.file(componentEntrypoint(component)).text();
+  if (!indexSource.includes(`./${component.name}.css`)) {
+    sourceCssImportViolations.push(componentEntrypoint(component));
+  }
+}
+if (sourceCssImportViolations.length > 0) {
+  process.stderr.write(
+    "Build aborted: source index.ts entries missing their `import './<name>.css';`\n" +
+      '(the `svelte` export condition resolves source, so it must auto-import its sidecar).\n' +
+      'Run `bun run styles:source-css`:\n',
+  );
+  for (const path of sourceCssImportViolations) {
+    process.stderr.write(`  ${path}\n`);
+  }
+  process.exit(1);
+}
+
 // -----------------------------------------------------------------------------
 // 1. Existing single-file server bundle. PRESERVED untouched in this PR —
 //    removal is a follow-up after Track 3 + Track 5 prove the per-component
@@ -259,6 +287,40 @@ const browserEntrypoints = [
   ...staticSubpathEntrypoints,
   ...deprecatedAliasEntrypoints,
 ];
+
+// Components whose directory ships a CSS sidecar. The BROWSER build's
+// `cssImportPlugin` prepends `import 'cinder/<name>/styles'` so
+// `import Button from 'cinder/button'` (subpath) and `import { Button }
+// from 'cinder'` (root barrel) auto-pull the component's CSS instead of
+// rendering silently unstyled. The set is gated on sidecar presence so it
+// lines up 1:1 with the `./<name>/styles` export subpaths (both derive from
+// `existsSync(<name>.css)`); sidecar-less components and the deprecated alias
+// shims (which carry no sidecar of their own and re-export the promoted
+// component, whose entry injects its own styles in this same pass) are never
+// handed a dead `/styles` specifier. The SERVER build deliberately omits this
+// plugin: a CSS import under the `node` condition throws
+// `ERR_UNKNOWN_FILE_EXTENSION` in plain Node SSR.
+const componentsWithSidecar = components.filter((component) =>
+  existsSync(componentCssSource(component)),
+);
+// SUBPATH injection target: map each component's own `index.ts` to the exact
+// `cinder/<name>/styles` (or experimental) specifier its sidecar resolves to.
+const perComponentStyleSpecifiers = new Map(
+  componentsWithSidecar.map((component) => [
+    componentEntrypoint(component),
+    componentStylesSpecifier(component.name, component.isExperimental),
+  ]),
+);
+// ROOT BARREL injection target: every used component's styles import is added
+// directly to `src/index.ts`. The transitive imports the re-exports would pull
+// in are tree-shaken away by `sideEffects: ["**/*.css"]` (which marks JS
+// side-effect-free); a side-effect import in the entry file itself survives.
+// The root barrel is the documented non-tree-shaken "everything" path, so
+// loading every used component's CSS there matches its semantics.
+const rootBarrelStyleSpecifiers = componentsWithSidecar.map((component) =>
+  componentStylesSpecifier(component.name, component.isExperimental),
+);
+
 // `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
 // the upstream packages have already produced fully-baked `dist/` trees
 // (workers, source maps, declarations) through their own builds. Re-bundling
@@ -293,7 +355,14 @@ const browserBuildResult = await Bun.build({
   },
   sourcemap: 'external',
   minify: false,
-  plugins: [sveltePlugin({ generate: 'client' })],
+  plugins: [
+    cssImportPlugin({
+      perComponentStyleSpecifiers,
+      rootBarrelEntrypoint: `${sourceRoot}/index.ts`,
+      rootBarrelStyleSpecifiers,
+    }),
+    sveltePlugin({ generate: 'client' }),
+  ],
 });
 
 if (!browserBuildResult.success) {
@@ -343,9 +412,10 @@ if (!perComponentServerBuildResult.success) {
 }
 
 // -----------------------------------------------------------------------------
-// 4. Copy per-component CSS sidecars verbatim. We do NOT have the JS import
-//    `./<name>.css`, so the only way these reach `dist/` is an explicit copy
-//    driven by `discoverComponents()`.
+// 4. Copy per-component CSS sidecars verbatim. The browser entry's injected
+//    `import 'cinder/<name>/styles'` resolves through the package `exports`
+//    map to these copied files, so they must land in `dist/` for the
+//    auto-import to have a target. Driven by `discoverComponents()`.
 // -----------------------------------------------------------------------------
 
 const copiedSidecars: string[] = [];
@@ -692,21 +762,70 @@ if (missingPaths.length > 0) {
   process.exit(1);
 }
 
-// Component JS must NOT import the CSS sidecar. Contract: à la carte CSS is
-// opt-in by the consumer via `cinder/<name>/styles`. Scan EVERY per-component
-// bundle (including experimental) for CSS imports in all the forms a bundler
-// could emit — bare side-effect imports, named imports, namespace imports,
-// and dynamic `import('./foo.css')`. Spot-checking a handful of components
-// leaves a backdoor where any unsweep'd bundle could ship a CSS import.
-const cssImportPattern =
+// CSS-import split contract. The auto-import footgun fix flips the old "no CSS
+// in component JS" rule into an asymmetric pair:
+//
+//   - The BROWSER entry (`dist/components/<name>/index.js`) MUST carry the
+//     injected `import 'cinder/<name>/styles'` so `import Button from
+//     'cinder/button'` and `import { Button } from 'cinder'` auto-pull styles.
+//   - The SERVER entry (`dist/server/components/<name>/index.js`) MUST stay
+//     completely CSS-free. A bare CSS import (`*.css`) OR a `cinder/<name>/styles`
+//     specifier resolves under the `node` export condition to a `.css` file,
+//     which plain Node SSR rejects with `ERR_UNKNOWN_FILE_EXTENSION`. Keeping
+//     the server tree CSS-free is the entire reason the injection is
+//     browser-build-only.
+//
+// Both halves are enforced for EVERY component (including experimental) — a
+// missing browser import reintroduces the silent-unstyled footgun, and a stray
+// server import breaks Node SSR. Spot-checking a handful leaves a backdoor.
+//
+// `cssFileImportPattern` matches every `*.css` import form a bundler can emit
+// (bare side-effect, named, namespace, dynamic). `styles` is a side-effect
+// subpath import, so only the bare-specifier form can appear.
+const cssFileImportPattern =
   /(?:\bimport\s*(?:[\w*${},\s]+\s+from\s*)?['"][^'"]*\.css['"]|\bimport\s*\(\s*['"][^'"]*\.css['"])/i;
+function importsComponentStyles(text: string, component: ComponentDiscovery): boolean {
+  const specifier = componentStylesSpecifier(component.name, component.isExperimental);
+  return (
+    text.includes(`'${specifier}'`) ||
+    text.includes(`"${specifier}"`) ||
+    cssFileImportPattern.test(text)
+  );
+}
 for (const component of components) {
-  const distributionFile = `${componentDistributionDirectory(component)}/index.js`;
-  if (!existsSync(distributionFile)) continue;
-  const text = await Bun.file(distributionFile).text();
-  if (cssImportPattern.test(text)) {
+  const browserFile = `${componentDistributionDirectory(component)}/index.js`;
+  const serverFile = component.isExperimental
+    ? `${distributionDirectory}/server/components/experimental/${component.name}/index.js`
+    : `${distributionDirectory}/server/components/${component.name}/index.js`;
+
+  // Server entry must NEVER import CSS, sidecar or `/styles` subpath.
+  if (existsSync(serverFile)) {
+    const serverText = await Bun.file(serverFile).text();
+    if (importsComponentStyles(serverText, component)) {
+      process.stderr.write(
+        `Build aborted: ${serverFile} imports CSS. Server (\`node\`) entries must stay CSS-free — a CSS import under the \`node\` condition throws ERR_UNKNOWN_FILE_EXTENSION in plain Node SSR. The CSS auto-import must land ONLY in the browser entry.\n`,
+      );
+      process.exit(1);
+    }
+  }
+
+  // Browser entry must import its styles when the component ships a sidecar.
+  if (!existsSync(browserFile)) continue;
+  const browserText = await Bun.file(browserFile).text();
+  const hasSidecar = existsSync(componentCssSource(component));
+  if (hasSidecar && !importsComponentStyles(browserText, component)) {
     process.stderr.write(
-      `Build aborted: ${distributionFile} contains a CSS import. Component JS must not pull its sidecar — à la carte CSS is opt-in via \`cinder/<name>/styles\`.\n`,
+      `Build aborted: ${browserFile} is missing its \`import '${componentStylesSpecifier(
+        component.name,
+        component.isExperimental,
+      )}'\` side-effect. The browser entry MUST auto-pull its CSS so consumers do not render silently unstyled.\n`,
+    );
+    process.exit(1);
+  }
+  // A sidecar-less component must not import any CSS at all.
+  if (!hasSidecar && cssFileImportPattern.test(browserText)) {
+    process.stderr.write(
+      `Build aborted: ${browserFile} imports a CSS file but ships no sidecar. Only components with a \`<name>.css\` sidecar may auto-import styles.\n`,
     );
     process.exit(1);
   }

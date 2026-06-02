@@ -1,3 +1,4 @@
+import './table-header.css';
 import TableHeader from './table-header.svelte';
 
 export default TableHeader;

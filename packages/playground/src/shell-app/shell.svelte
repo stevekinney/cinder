@@ -124,11 +124,15 @@
     };
   });
 
-  // Apply the persisted theme to the shell's root document on first paint.
-  // The inline pre-paint script in render-shell.ts already did this before
-  // the bundle loaded, but reapplying here keeps the state machine simple
-  // (the inline script is a perf optimization, not a correctness gate).
-  if (typeof document !== 'undefined') applyThemeToDocument(document, store.theme);
+  // Apply the theme to the shell's root document on first paint. The inline
+  // pre-paint script in render-shell.ts already did this before the bundle
+  // loaded, but reapplying here keeps the state machine simple (the inline
+  // script is a perf optimization, not a correctness gate). Pass the override
+  // (null = follow the browser) and the resolved theme so the helper pins
+  // color-scheme only for an explicit choice.
+  if (typeof document !== 'undefined') {
+    applyThemeToDocument(document, store.themeOverride, store.theme);
+  }
 
   async function selectComponent(name: string): Promise<void> {
     // Selecting from the off-canvas drawer (narrow viewports) should always

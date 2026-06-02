@@ -1,3 +1,4 @@
+import './form-section.css';
 import FormSection from './form-section.svelte';
 
 export default FormSection;

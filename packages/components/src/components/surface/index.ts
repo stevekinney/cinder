@@ -1,3 +1,4 @@
+import './surface.css';
 import Surface from './surface.svelte';
 
 export default Surface;

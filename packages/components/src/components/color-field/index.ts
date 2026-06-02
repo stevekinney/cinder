@@ -1,3 +1,4 @@
+import './color-field.css';
 import ColorField from './color-field.svelte';
 
 export default ColorField;

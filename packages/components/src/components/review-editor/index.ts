@@ -1,3 +1,4 @@
+import './review-editor.css';
 import ReviewEditor from './review-editor.svelte';
 
 export default ReviewEditor;

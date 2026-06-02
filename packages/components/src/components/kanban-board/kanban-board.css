@@ -1,3 +1,4 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-kanban-board {
     --cinder-kanban-column-width: 18rem;

@@ -381,3 +381,72 @@ describe('sidebar onSelect contract', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 });
+
+/**
+ * Capture-phase guarantee. The sidebar nav installs a capture-phase click
+ * listener on the wrapping <nav> so a plain left-click on an in-app `/c/<name>`
+ * anchor is ALWAYS preventDefaulted and routed through onSelect — independent of
+ * cinder NavigationItem's bubble-phase handler. This is what stops a stray
+ * default anchor navigation (a full page load to a route the static server does
+ * not serve) when the inner handler's ordering or behavior can't be relied on.
+ */
+describe('sidebar capture-phase navigation guarantee', () => {
+  let selected: string[];
+  let onSelect: (name: string) => void;
+
+  beforeEach(() => {
+    selected = [];
+    onSelect = (name: string) => {
+      selected.push(name);
+    };
+  });
+
+  test('a plain left-click is preventDefaulted and selects exactly once', async () => {
+    const { container } = render(Sidebar, {
+      components: ONSELECT_COMPONENTS,
+      currentComponent: 'avatar',
+      onSelect,
+    });
+    await tick();
+
+    const event = dispatchClick(linkFor(container, 'button'));
+
+    // preventDefault fired (no native navigation) and onSelect ran ONCE — the
+    // capture handler and the per-item bubble handler must not double-fire.
+    expect(event.defaultPrevented).toBe(true);
+    expect(selected).toEqual(['button']);
+  });
+
+  test('the capture listener prevents default even when the click originates on a child of the anchor', async () => {
+    const { container } = render(Sidebar, {
+      components: ONSELECT_COMPONENTS,
+      currentComponent: 'avatar',
+      onSelect,
+    });
+    await tick();
+
+    // The label text is rendered inside the anchor; clicking a descendant node
+    // must still resolve to the `/c/<name>` anchor via closest() and route.
+    const anchor = linkFor(container, 'card');
+    const innerTarget = anchor.firstChild instanceof Element ? anchor.firstChild : anchor;
+    const event = dispatchClick(innerTarget);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(selected).toEqual(['card']);
+  });
+
+  test('a modified (cmd) click is NOT prevented and does NOT select', async () => {
+    const { container } = render(Sidebar, {
+      components: ONSELECT_COMPONENTS,
+      currentComponent: 'avatar',
+      onSelect,
+    });
+    await tick();
+
+    const event = dispatchClick(linkFor(container, 'button'), { metaKey: true });
+
+    // Falls through to native browser navigation (open-in-new-tab, etc.).
+    expect(event.defaultPrevented).toBe(false);
+    expect(selected).toEqual([]);
+  });
+});

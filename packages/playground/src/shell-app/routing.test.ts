@@ -109,10 +109,6 @@ describe('createPreviewMessage', () => {
       type: 'cinder:set-theme',
       value: 'dark',
     });
-    expect(createPreviewMessage('cinder:set-theme', 'system')).toEqual({
-      type: 'cinder:set-theme',
-      value: 'system',
-    });
   });
 
   it('returns null for an unknown theme value', () => {
@@ -149,10 +145,15 @@ describe('readThemeFromSearch', () => {
     expect(readThemeFromSearch(new URLSearchParams(''))).toBeNull();
   });
 
-  it('returns the explicit theme for known values', () => {
+  it('returns the explicit override for known values', () => {
     expect(readThemeFromSearch(new URLSearchParams('theme=light'))).toBe('light');
     expect(readThemeFromSearch(new URLSearchParams('theme=dark'))).toBe('dark');
-    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBe('system');
+  });
+
+  it('returns null for the retired "system" value', () => {
+    // 'system' is no longer a theme choice — absence of an override is what
+    // makes the playground follow the browser, so it resolves to null.
+    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBeNull();
   });
 
   it('returns null for an unknown value', () => {
@@ -199,11 +200,11 @@ describe('buildToolbarSearch', () => {
     expect(buildToolbarSearch(new URLSearchParams(''), DEFAULT_TOOLBAR_STATE)).toBe('');
   });
 
-  it('omits theme when it is "system"', () => {
+  it('omits theme when there is no override (null)', () => {
     expect(
       buildToolbarSearch(new URLSearchParams(''), {
         ...DEFAULT_TOOLBAR_STATE,
-        theme: 'system',
+        theme: null,
       }),
     ).toBe('');
   });
