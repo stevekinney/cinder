@@ -103,6 +103,20 @@ describe('splitUnionType', () => {
     expect(splitUnionType("'a||b'")).toEqual(["'a||b'"]);
   });
 
+  it('does NOT split a spaced " | " inside a quoted member', () => {
+    // A literal-type member can itself contain ` | ` (e.g. an enum value).
+    expect(splitUnionType("'yes | no' | 'maybe'")).toEqual(["'yes | no'", "'maybe'"]);
+    expect(splitUnionType('"a | b"')).toEqual(['"a | b"']);
+    expect(splitUnionType('`x | y` | `z`')).toEqual(['`x | y`', '`z`']);
+  });
+
+  it('stays resilient to unbalanced brackets (depth clamps at 0)', () => {
+    // The `unknown` control kind carries an untrusted analyzer string; an extra
+    // closing bracket must not drive depth negative and suppress later splits.
+    expect(splitUnionType('A> | B | C')).toEqual(['A>', 'B', 'C']);
+    expect(splitUnionType('}}} | tail')).toEqual(['}}}', 'tail']);
+  });
+
   it('falls back to the whole string when there are no members', () => {
     expect(splitUnionType('')).toEqual(['']);
   });

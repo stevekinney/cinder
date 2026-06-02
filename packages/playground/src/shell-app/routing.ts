@@ -61,10 +61,11 @@ export function buildIframeSrc(componentName: string): string {
  */
 export type ThemeChoice = 'light' | 'dark';
 
-// Typed as ReadonlySet<string> (not ReadonlySet<ThemeChoice>) so `.has(raw)`
-// accepts an arbitrary string without an `as ThemeChoice` assertion. Narrowing
-// from string → ThemeChoice is the job of `isThemeChoice` below.
-const THEME_VALUES: ReadonlySet<string> = new Set<ThemeChoice>(['light', 'dark']);
+// Typed AND instantiated as Set<string> so `.has(raw)` accepts an arbitrary
+// string without an `as ThemeChoice` assertion and without relying on unsound
+// Set<ThemeChoice>→ReadonlySet<string> variance. Narrowing from string →
+// ThemeChoice is the job of `isThemeChoice` below.
+const THEME_VALUES: ReadonlySet<string> = new Set<string>(['light', 'dark']);
 
 /** Type guard narrowing an arbitrary string to a {@link ThemeChoice}. */
 function isThemeChoice(value: string): value is ThemeChoice {
