@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch run src/playground-server.ts",
+    "examples:audit": "bun run scripts/check-raw-native-controls.ts",
     "lint": "oxlint src/ scripts/",
     "lint:fix": "oxlint --fix src/ scripts/",
     "test": "bun run scripts/run-tests.ts",
