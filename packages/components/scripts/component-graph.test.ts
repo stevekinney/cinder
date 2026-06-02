@@ -508,7 +508,7 @@ describe('computeScope', () => {
       }),
     );
     expect(decision.mode).toBe('full');
-    expect((decision as { reason: string }).reason).toContain('reaches no component');
+    expect((decision as { reason: string }).reason).toContain('reaches no standalone component');
   });
 
   it('keeps filtered when a shared seed DOES reach a component', () => {

@@ -129,6 +129,87 @@ describe('changed-components decide()', () => {
   });
 });
 
+describe('changed-components compose-only leaves', () => {
+  // `feed-event` is a compose-only leaf (no standalone Playwright page); `feed`
+  // renders it. The scope job must never EMIT `feed-event` (the runner rejects
+  // unknown slugs) — a change to it should map to `feed` through the closure.
+  const feedTree = new Map<string, string>([
+    [`${C}/feed/feed.svelte`, `import FeedEvent from '../feed-event/feed-event.svelte';`],
+    [`${C}/feed-event/feed-event.svelte`, `export const x = 1;`],
+  ]);
+  const feedKnownSlugs = new Set(['feed', 'feed-event']);
+  const composeOnly = new Set(['feed-event']);
+
+  it('maps a compose-only leaf change to its parent slug, never emitting the leaf', () => {
+    const result = decide(
+      [`${C}/feed-event/feed-event.svelte`],
+      feedTree,
+      feedKnownSlugs,
+      [],
+      composeOnly,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: ['feed'] });
+  });
+
+  it('maps a compose-only SIDECAR change (not a graph node) to its parent via the canonical entry', () => {
+    // `feed-event.test.ts` is a component-tree sidecar that is NOT in the graph
+    // (sourceFiles). Reachability must seed from the canonical feed-event.svelte
+    // entry, not the sidecar path — otherwise the closure is empty and it wrongly
+    // forces full. This is the exact case the reachability guard regressed on.
+    const result = decide(
+      [`${C}/feed-event/feed-event.test.ts`],
+      feedTree,
+      feedKnownSlugs,
+      [],
+      composeOnly,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: ['feed'] });
+  });
+
+  it('forces full when a compose-only leaf reaches no standalone parent (orphaned)', () => {
+    // No parent imports the leaf — it cannot map to a testable slug, so emitting
+    // it would crash the runner and emitting nothing would silently skip it.
+    const orphanTree = new Map<string, string>([
+      [`${C}/feed-event/feed-event.svelte`, `export const x = 1;`],
+    ]);
+    const result = decide(
+      [`${C}/feed-event/feed-event.svelte`],
+      orphanTree,
+      feedKnownSlugs,
+      [],
+      composeOnly,
+    );
+    expect(result.mode).toBe('full');
+  });
+
+  it('still emits a standalone component’s own slug directly', () => {
+    // Guards against over-broadly dropping direct slugs: `feed` itself is not
+    // compose-only and must still appear when it changes.
+    const result = decide([`${C}/feed/feed.svelte`], feedTree, feedKnownSlugs, [], composeOnly);
+    expect(result).toEqual({ mode: 'filtered', components: ['feed'] });
+  });
+
+  it('forces full when a SHARED module reaches only compose-only components', () => {
+    // A shared util consumed only by an orphaned compose-only leaf reaches a
+    // "known" slug but no EMITTABLE (non-compose) one — so nothing would test the
+    // shared change. The shared-seed guard must force full, not accept the
+    // compose-only slug as coverage.
+    const sharedReachingOnlyComposeOnly = new Map<string, string>([
+      [`${U}/feed-helper.ts`, `export const h = () => '';`],
+      [`${C}/feed-event/feed-event.svelte`, `import { h } from '../../utilities/feed-helper.ts';`],
+      // No `feed` parent imports feed-event here → the only dependent is compose-only.
+    ]);
+    const result = decide(
+      [`${U}/feed-helper.ts`],
+      sharedReachingOnlyComposeOnly,
+      feedKnownSlugs,
+      [],
+      composeOnly,
+    );
+    expect(result.mode).toBe('full');
+  });
+});
+
 describe('changed-components explicit component scope', () => {
   it('treats an empty explicit component list as a full matrix', () => {
     expect(decideExplicitComponents('', knownSlugs)).toEqual({
@@ -198,6 +279,21 @@ describe('changed-components CLI (integration, real tree)', () => {
     expect(slugs).toContain('button');
     expect(slugs).toContain('confirm-dialog');
     expect(slugs).toContain('alert-dialog');
+  });
+
+  it('a real compose-only leaf change maps to its parent slug, never emitting the leaf', () => {
+    // End-to-end proof that the production COMPOSE_ONLY_COMPONENTS default is
+    // threaded: `feed-event` is compose-only (rendered by `feed`), so a change to
+    // it must emit `feed` and never `feed-event` (which the Playwright runner
+    // would reject as an unknown slug). Guards the original bug at the real-tree
+    // level, not just the synthetic-fixture level.
+    const { mode, components } = runCli([
+      'packages/components/src/components/feed-event/feed-event.svelte',
+    ]);
+    expect(mode).toBe('filtered');
+    const slugs = components.split(',');
+    expect(slugs).toContain('feed');
+    expect(slugs).not.toContain('feed-event');
   });
 
   it('the lockfile forces full', () => {

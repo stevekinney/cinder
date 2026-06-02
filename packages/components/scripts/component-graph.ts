@@ -513,6 +513,16 @@ export type ComputeScopeOptions = {
   readonly sourceFiles: ReadonlyMap<string, string>;
   /** Known component slugs (directories with a `<slug>.svelte`). */
   readonly knownSlugs: ReadonlySet<string>;
+  /**
+   * Compose-only component slugs — leaf components rendered only via a parent
+   * namespace (e.g. `feed-event` inside `feed`), with NO standalone playground
+   * page. They are part of the filesystem `knownSlugs` but NOT part of the
+   * Playwright runner's manifest vocabulary, so they must never be EMITTED as a
+   * test slug — emitting one makes the runner throw `unknown component slug`.
+   * They may still SEED the dependents closure (a change to `feed-event` retests
+   * `feed`, which imports it). Defaults to empty for backwards compatibility.
+   */
+  readonly composeOnlySlugs?: ReadonlySet<string>;
 };
 
 /**
@@ -533,7 +543,13 @@ export type ComputeScopeOptions = {
  * files, mapped to slugs.
  */
 export function computeScope(options: ComputeScopeOptions): ScopeDecision {
-  const { changedFiles, deletedFiles = [], sourceFiles, knownSlugs } = options;
+  const {
+    changedFiles,
+    deletedFiles = [],
+    sourceFiles,
+    knownSlugs,
+    composeOnlySlugs = new Set<string>(),
+  } = options;
 
   // 1. Path-based force-full.
   for (const path of changedFiles) {
@@ -592,13 +608,29 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
   // one component slug in the closure — otherwise its change is invisible to the
   // scoped run and we must force full. See the per-seed reachability check below.
   const sharedSeeds: string[] = [];
+  // Compose-only seeds (leaf components like `feed-event` with no standalone
+  // page). Like shared seeds, each must prove it reaches a real (non-compose)
+  // component slug through the closure — otherwise its change would be silently
+  // untested. They never contribute a DIRECT slug (the runner can't test them).
+  // Tracked by SLUG (not the changed file path): a compose-only change is often a
+  // sidecar (`<slug>.test.ts`, `<slug>.css`) that is NOT a graph node, so seeding
+  // the reachability closure from the literal path would be empty and force full.
+  // The reachability check below seeds from the slug's canonical `<slug>.svelte`
+  // entry instead, which IS a graph node.
+  const composeOnlySeedSlugs = new Set<string>();
   for (const file of changedFiles) {
     if (isIgnorableFile(file)) continue; // docs/markdown/etc. cannot affect tests
     const slug = slugForFile(file);
     if (slug !== null) {
       // A component-tree file (e.g. test/CSS sidecar) — a slug whether or not it
-      // is in the graph. Seed the closure AND record the slug directly.
-      directSlugs.add(slug);
+      // is in the graph. Seed the closure; record the slug directly UNLESS it is
+      // compose-only (no standalone page), in which case only the closure may map
+      // it to a testable parent slug.
+      if (composeOnlySlugs.has(slug)) {
+        composeOnlySeedSlugs.add(slug);
+      } else {
+        directSlugs.add(slug);
+      }
       if (sourceFiles.has(file)) closureSeeds.push(file);
       continue;
     }
@@ -618,6 +650,35 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
     return { mode: 'full', reason: `unaccounted changed file: ${file}` };
   }
 
+  // Compose-only leaves contribute through their CANONICAL `<slug>/<slug>.svelte`
+  // entry, not the literal changed path: the change is often a sidecar
+  // (`<slug>.test.ts`, `<slug>.css`) that is not a graph node, so seeding from
+  // the path would find no dependents and wrongly force full. Seed from the
+  // entry (a graph node) so the leaf's real parent is reached and emitted. A
+  // leaf whose entry is absent from the graph, or whose closure reaches no real
+  // standalone component (orphan), is uncertain → force full, matching the
+  // shared-seed guard below.
+  for (const slug of composeOnlySeedSlugs) {
+    const entry = `${COMPONENTS_PREFIX}${slug}/${slug}.svelte`;
+    const seedClosure = sourceFiles.has(entry)
+      ? dependentsClosure(graph, [entry])
+      : new Set<string>();
+    const reachesRealComponent = [...seedClosure].some((file) => {
+      const reachedSlug = slugForFile(file);
+      return (
+        reachedSlug !== null && knownSlugs.has(reachedSlug) && !composeOnlySlugs.has(reachedSlug)
+      );
+    });
+    if (!reachesRealComponent) {
+      return {
+        mode: 'full',
+        reason: `compose-only change reaches no standalone component (can't map to a testable slug): ${slug}`,
+      };
+    }
+    // Seed the main closure from the entry so the reached parent slug is emitted.
+    closureSeeds.push(entry);
+  }
+
   // 4. Dependents closure → slugs. (Ambiguity is already handled globally in
   //    step 3, so the closure here is built from a fully-modelled graph.)
   const closure = dependentsClosure(graph, closureSeeds);
@@ -625,25 +686,32 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
   const slugs = new Set<string>(directSlugs);
   for (const file of closure) {
     const slug = slugForFile(file);
-    if (slug !== null) slugs.add(slug);
+    // Compose-only slugs are never emitted (the runner has no page for them);
+    // the closure exists to map them to their real parent, which is added here
+    // like any other dependent.
+    if (slug !== null && !composeOnlySlugs.has(slug)) slugs.add(slug);
   }
 
   // Per-seed reachability guard. A shared/sibling-package seed whose OWN
-  // dependents closure reaches no component slug (e.g. `packages/markdown/src/x`
-  // consumed only via bare `cinder/markdown/...` specifiers, which resolve as
-  // external → no graph edge) would otherwise be silently dropped when a
-  // CO-CHANGED component supplies a slug and flips the decision to `filtered`.
-  // Force full if any shared seed cannot be proven to reach a component.
+  // dependents closure reaches no EMITTABLE component slug (e.g.
+  // `packages/markdown/src/x` consumed only via bare `cinder/markdown/...`
+  // specifiers, which resolve as external → no graph edge) would otherwise be
+  // silently dropped when a CO-CHANGED component supplies a slug and flips the
+  // decision to `filtered`. The reached slug must be a REAL (non-compose-only)
+  // known slug: compose-only slugs are never emitted, so a seed that reaches only
+  // compose-only leaves (e.g. an orphaned leaf with no standalone parent) has no
+  // testable slug covering it and must force full — same rule as the compose-only
+  // guard above. Force full if any shared seed cannot be proven to reach one.
   for (const seed of sharedSeeds) {
     const seedClosure = dependentsClosure(graph, [seed]);
     const reachesComponent = [...seedClosure].some((file) => {
       const slug = slugForFile(file);
-      return slug !== null && knownSlugs.has(slug);
+      return slug !== null && knownSlugs.has(slug) && !composeOnlySlugs.has(slug);
     });
     if (!reachesComponent) {
       return {
         mode: 'full',
-        reason: `shared change reaches no component slug (can't prove its dependents are tested): ${seed}`,
+        reason: `shared change reaches no standalone component slug (can't prove its dependents are tested): ${seed}`,
       };
     }
   }

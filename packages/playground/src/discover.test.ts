@@ -426,3 +426,33 @@ describe('discovery cache', () => {
     }
   });
 });
+
+describe('COMPOSE_ONLY_COMPONENTS — drift guard', () => {
+  // The browser-test scope job (changed-components.ts → computeScope) relies on
+  // this set to keep its emitted slugs inside the Playwright runner's manifest
+  // vocabulary: a compose-only leaf must never be emitted as a test slug. If a
+  // new compose-only component is added but missing here, the scope job re-emits
+  // the leaf and the runner throws `unknown component slugs`. These tests fail
+  // loudly the moment the set drifts from the filesystem reality.
+
+  it('every entry is a real component directory with a <slug>.svelte file', async () => {
+    for (const slug of COMPOSE_ONLY_COMPONENTS) {
+      const svelte = join(COMPONENTS_DIR, slug, `${slug}.svelte`);
+      const exists = await Bun.file(svelte).exists();
+      expect(
+        exists,
+        `COMPOSE_ONLY_COMPONENTS lists "${slug}" but ${slug}/${slug}.svelte is missing`,
+      ).toBe(true);
+    }
+  });
+
+  it('no entry has standalone playground examples (it is genuinely compose-only)', async () => {
+    for (const slug of COMPOSE_ONLY_COMPONENTS) {
+      const examples = await discoverExamples(slug);
+      expect(
+        examples,
+        `COMPOSE_ONLY_COMPONENTS lists "${slug}" but it has standalone examples — it is NOT compose-only`,
+      ).toEqual([]);
+    }
+  });
+});
