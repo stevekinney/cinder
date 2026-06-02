@@ -58,14 +58,16 @@ export function getMessages(
 export function pairToolCallsWithResults(messages: ReadonlyArray<Message>): ToolCallPair[] {
   const resultsByCallId = new Map<string, ToolResult>();
   for (const message of messages) {
-    if (message.toolResult) {
+    // Role-gate (not just `toolResult` presence) so a non-tool message carrying
+    // an incidental tool-shaped field never contributes a phantom result.
+    if (message.role === 'tool-result' && message.toolResult) {
       resultsByCallId.set(message.toolResult.callId, message.toolResult);
     }
   }
 
   const pairs: ToolCallPair[] = [];
   for (const message of messages) {
-    if (message.toolCall) {
+    if (message.role === 'tool-call' && message.toolCall) {
       pairs.push({ call: message.toolCall, result: resultsByCallId.get(message.toolCall.id) });
     }
   }

@@ -126,4 +126,18 @@ describe('pairToolCallsWithResults', () => {
     expect(pairs).toHaveLength(1);
     expect(pairs[0]?.result).toBeUndefined();
   });
+
+  it('ignores non-tool-role messages carrying incidental tool-shaped fields', () => {
+    // A user/assistant message with a stray toolCall/toolResult must NOT become
+    // a pair — pairing is role-gated, not property-presence-gated.
+    const messages = [
+      message({ id: 'u', role: 'user', toolCall: { id: 'call-x', name: 'fn', arguments: {} } }),
+      message({
+        id: 'a',
+        role: 'assistant',
+        toolResult: { callId: 'call-x', outcome: 'success', content: null },
+      }),
+    ];
+    expect(pairToolCallsWithResults(messages)).toHaveLength(0);
+  });
 });
