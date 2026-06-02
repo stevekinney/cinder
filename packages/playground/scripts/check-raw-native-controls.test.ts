@@ -4,18 +4,123 @@ import {
   ALLOWLIST,
   allowlistKey,
   buildAllowlistIndex,
+  detectAllRawControls,
   detectRawControl,
+  extractInlineAllowReason,
   RAW_CONTROL_TAG_NAMES,
   renderReport,
   scan,
+  stripCommentsAndStrings,
   toPosixPath,
   type AllowlistEntry,
   type RawControlOccurrence,
+  type ScanResult,
 } from './check-raw-native-controls.ts';
+
+// ── stripCommentsAndStrings ───────────────────────────────────────────────────
+
+describe('stripCommentsAndStrings — comment and string removal', () => {
+  test('strips a single-line HTML comment containing a raw control tag', () => {
+    const source = '<!-- <button> -->';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<button>');
+    // Line count must be preserved (no newlines here).
+    expect(stripped.split('\n').length).toBe(1);
+  });
+
+  test('strips a multi-line HTML comment containing a raw control tag', () => {
+    const source = '<!--\n  <button>\n-->';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<button>');
+    // Three lines in, three lines out.
+    expect(stripped.split('\n').length).toBe(3);
+  });
+
+  test('preserves line count after stripping multi-line HTML comment', () => {
+    const source = 'line1\n<!-- \n<button>\n -->\nline5';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+    expect(stripped).not.toContain('<button>');
+  });
+
+  test('strips a JS block comment containing a raw control tag (inside script)', () => {
+    const source = '<script lang="ts">\n/* <button> */\nconst x = 1;\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<button>');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('strips a multi-line JS block comment containing a raw control tag', () => {
+    const source = '<script lang="ts">\n/*\n  <textarea>\n*/\nconst x = 1;\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<textarea>');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('strips a JS line comment containing a raw control tag', () => {
+    const source = '<script lang="ts">\n// <input type="text">\nconst x = 1;\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<input');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('strips a single-quoted string literal containing a raw control tag', () => {
+    const source = '<script lang="ts">\nconst tag = \'<button>\';\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<button>');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('strips a double-quoted string literal containing a raw control tag', () => {
+    const source = '<script lang="ts">\nconst tag = "<input>";\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<input>');
+  });
+
+  test('strips a template literal containing a raw control tag', () => {
+    const source = '<script lang="ts">\nconst tag = `<select>`;\n</script>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<select>');
+  });
+
+  test('does NOT strip a real raw control in template content', () => {
+    const source = '<div>\n  <button type="button">Click</button>\n</div>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).toContain('<button');
+  });
+
+  test('does NOT strip a raw control in a Svelte template outside any comment', () => {
+    const source = '<script lang="ts">\nlet x = 1;\n</script>\n<button>OK</button>';
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).toContain('<button>');
+  });
+
+  test('preserves exact line count for a realistic Svelte file with mixed content', () => {
+    const source = [
+      '<script lang="ts">',
+      '  // This is a comment with <button> inside',
+      '  /* block comment <input> */',
+      "  const label = '<select>';",
+      '</script>',
+      '<!-- <textarea> in HTML comment -->',
+      '<button>Real button</button>',
+    ].join('\n');
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+    // Real button must survive; commented/string ones must not.
+    const lines = stripped.split('\n');
+    expect(lines[6]).toContain('<button>');
+    // Commented/string occurrences must be gone from their respective lines.
+    expect(lines[1]).not.toContain('<button>');
+    expect(lines[2]).not.toContain('<input>');
+    expect(lines[3]).not.toContain('<select>');
+    expect(lines[5]).not.toContain('<textarea>');
+  });
+});
 
 // ── detectRawControl ───────────────────────────────────────────────────────────
 
-describe('detectRawControl — raw tag detection', () => {
+describe('detectRawControl — raw tag detection (first match)', () => {
   test('detects <button> tag', () => {
     expect(detectRawControl('<button type="button">Click</button>')).toBe('button');
   });
@@ -84,6 +189,99 @@ describe('detectRawControl — raw tag detection', () => {
   });
 });
 
+// ── detectAllRawControls ───────────────────────────────────────────────────────
+
+describe('detectAllRawControls — all matches per line', () => {
+  test('returns an empty array for a line with no raw controls', () => {
+    expect(detectAllRawControls('<div class="x">')).toEqual([]);
+  });
+
+  test('returns a single match for a line with one raw control', () => {
+    const matches = detectAllRawControls('<button type="button">Click</button>');
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.tagName).toBe('button');
+    expect(matches[0]?.columnIndex).toBe(0);
+  });
+
+  test('returns ALL matches for two raw controls on the same line', () => {
+    const matches = detectAllRawControls('<button /><input />');
+    expect(matches).toHaveLength(2);
+    expect(matches[0]?.tagName).toBe('button');
+    expect(matches[1]?.tagName).toBe('input');
+  });
+
+  test('returns ALL matches for three raw controls on the same line', () => {
+    const matches = detectAllRawControls('<button /><input /><select>');
+    expect(matches).toHaveLength(3);
+    expect(matches[0]?.tagName).toBe('button');
+    expect(matches[1]?.tagName).toBe('input');
+    expect(matches[2]?.tagName).toBe('select');
+  });
+
+  test('reports correct columnIndex for each match', () => {
+    // '  <button />' — button starts at col 2
+    const matches = detectAllRawControls('  <button />');
+    expect(matches[0]?.columnIndex).toBe(2);
+  });
+
+  test('reports correct columnIndex for the second match on a line', () => {
+    // '<button /><input />' — input starts at col 10
+    const matches = detectAllRawControls('<button /><input />');
+    expect(matches[1]?.columnIndex).toBe(10);
+  });
+
+  test('does NOT return Cinder <Button> (uppercase) as a match', () => {
+    const matches = detectAllRawControls('<Button /><input />');
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.tagName).toBe('input');
+  });
+
+  test('calling detectAllRawControls twice gives the same result (no global-regex state leak)', () => {
+    const line = '<button /><input />';
+    const first = detectAllRawControls(line);
+    const second = detectAllRawControls(line);
+    expect(first).toEqual(second);
+  });
+});
+
+// ── extractInlineAllowReason ──────────────────────────────────────────────────
+
+describe('extractInlineAllowReason — inline allow marker', () => {
+  test('extracts reason from a well-formed marker', () => {
+    expect(
+      extractInlineAllowReason(
+        '<button bind:this={el}>Open</button> <!-- examples-audit-allow: triggerRef needs native element -->',
+      ),
+    ).toBe('triggerRef needs native element');
+  });
+
+  test('extracts reason from a marker on its own line', () => {
+    expect(
+      extractInlineAllowReason(
+        '<!-- examples-audit-allow: forwards spread attrs from parent snippet -->',
+      ),
+    ).toBe('forwards spread attrs from parent snippet');
+  });
+
+  test('trims whitespace from the reason', () => {
+    expect(extractInlineAllowReason('<!-- examples-audit-allow:   extra spaces   -->')).toBe(
+      'extra spaces',
+    );
+  });
+
+  test('returns null when the marker is absent', () => {
+    expect(extractInlineAllowReason('<button type="button">Click</button>')).toBeNull();
+  });
+
+  test('returns null for an ordinary HTML comment', () => {
+    expect(extractInlineAllowReason('<!-- this is just a comment -->')).toBeNull();
+  });
+
+  test('returns null for an empty line', () => {
+    expect(extractInlineAllowReason('')).toBeNull();
+  });
+});
+
 // ── toPosixPath ────────────────────────────────────────────────────────────────
 
 describe('toPosixPath — OS-independent path keys', () => {
@@ -99,15 +297,27 @@ describe('toPosixPath — OS-independent path keys', () => {
 // ── allowlistKey ───────────────────────────────────────────────────────────────
 
 describe('allowlistKey — key format', () => {
-  test('builds a stable file::line key', () => {
-    expect(allowlistKey('navigation-bar/basic.example.svelte', 20)).toBe(
-      'navigation-bar/basic.example.svelte::20',
+  test('builds a stable file::tagName::occurrenceIndex key', () => {
+    expect(allowlistKey('navigation-bar/basic.example.svelte', 'button', 0)).toBe(
+      'navigation-bar/basic.example.svelte::button::0',
     );
   });
 
+  test('differentiates the first and second occurrence of the same tag', () => {
+    const key0 = allowlistKey('foo/bar.example.svelte', 'input', 0);
+    const key1 = allowlistKey('foo/bar.example.svelte', 'input', 1);
+    expect(key0).not.toBe(key1);
+  });
+
+  test('differentiates two different tag names at occurrence 0', () => {
+    const keyButton = allowlistKey('foo/bar.example.svelte', 'button', 0);
+    const keyInput = allowlistKey('foo/bar.example.svelte', 'input', 0);
+    expect(keyButton).not.toBe(keyInput);
+  });
+
   test('normalizes backslashes in the path component', () => {
-    expect(allowlistKey('navigation-bar\\basic.example.svelte', 20)).toBe(
-      'navigation-bar/basic.example.svelte::20',
+    expect(allowlistKey('navigation-bar\\basic.example.svelte', 'button', 0)).toBe(
+      'navigation-bar/basic.example.svelte::button::0',
     );
   });
 });
@@ -118,30 +328,37 @@ describe('buildAllowlistIndex — fast lookup set', () => {
   const entries: AllowlistEntry[] = [
     {
       relativePath: 'navigation-bar/basic.example.svelte',
-      lineNumber: 20,
+      tagName: 'button',
+      occurrenceIndex: 0,
       reason: 'receives forwarded attrs from NavigationBar menuToggle snippet',
     },
     {
       relativePath: 'popover/transformed-ancestor.example.svelte',
-      lineNumber: 33,
+      tagName: 'button',
+      occurrenceIndex: 0,
       reason: 'uses bind:this for triggerRef — requires a native HTMLButtonElement',
     },
   ];
 
-  test('contains an entry for each allowlisted file+line', () => {
+  test('contains an entry for each allowlisted file+tag+index', () => {
     const index = buildAllowlistIndex(entries);
-    expect(index.has('navigation-bar/basic.example.svelte::20')).toBe(true);
-    expect(index.has('popover/transformed-ancestor.example.svelte::33')).toBe(true);
+    expect(index.has('navigation-bar/basic.example.svelte::button::0')).toBe(true);
+    expect(index.has('popover/transformed-ancestor.example.svelte::button::0')).toBe(true);
   });
 
-  test('does not contain a key for a different line on an allowlisted file', () => {
+  test('does not contain a key for a different occurrenceIndex', () => {
     const index = buildAllowlistIndex(entries);
-    expect(index.has('navigation-bar/basic.example.svelte::99')).toBe(false);
+    expect(index.has('navigation-bar/basic.example.svelte::button::1')).toBe(false);
+  });
+
+  test('does not contain a key for a different tagName', () => {
+    const index = buildAllowlistIndex(entries);
+    expect(index.has('navigation-bar/basic.example.svelte::input::0')).toBe(false);
   });
 
   test('does not contain a key for an entirely different file', () => {
     const index = buildAllowlistIndex(entries);
-    expect(index.has('button/basic.example.svelte::20')).toBe(false);
+    expect(index.has('button/basic.example.svelte::button::0')).toBe(false);
   });
 
   test('empty allowlist produces an empty set', () => {
@@ -164,9 +381,15 @@ describe('ALLOWLIST — canonical checked-in entries', () => {
     }
   });
 
-  test('every entry has a positive line number', () => {
+  test('every entry has a valid tagName', () => {
     for (const entry of ALLOWLIST) {
-      expect(entry.lineNumber).toBeGreaterThan(0);
+      expect(RAW_CONTROL_TAG_NAMES).toContain(entry.tagName);
+    }
+  });
+
+  test('every entry has a non-negative occurrenceIndex', () => {
+    for (const entry of ALLOWLIST) {
+      expect(entry.occurrenceIndex).toBeGreaterThanOrEqual(0);
     }
   });
 });
@@ -177,16 +400,24 @@ describe('renderReport — human-readable output', () => {
   const makeOccurrence = (overrides: Partial<RawControlOccurrence> = {}): RawControlOccurrence => ({
     relativePath: 'button/basic.example.svelte',
     lineNumber: 12,
+    columnIndex: 0,
     tagName: 'button',
     lineText: '<button type="button">Click</button>',
     ...overrides,
   });
 
+  const makeResult = (overrides: Partial<ScanResult> = {}): ScanResult => ({
+    allowlisted: [],
+    flagged: [],
+    staleAllowlistEntries: [],
+    ...overrides,
+  });
+
   test('includes the total count in the header', () => {
-    const result = {
+    const result = makeResult({
       allowlisted: [makeOccurrence()],
       flagged: [makeOccurrence({ relativePath: 'inline/basic.example.svelte', lineNumber: 11 })],
-    };
+    });
     const report = renderReport(result);
     expect(report).toContain('Total raw controls found: 2');
     expect(report).toContain('1 flagged');
@@ -194,24 +425,43 @@ describe('renderReport — human-readable output', () => {
   });
 
   test('reports zero flagged when all controls are allowlisted', () => {
-    const result = { allowlisted: [makeOccurrence()], flagged: [] };
+    const result = makeResult({ allowlisted: [makeOccurrence()] });
     const report = renderReport(result);
     expect(report).toContain('Flagged: none');
   });
 
   test('includes relative path and line number for flagged items', () => {
-    const result = {
-      allowlisted: [],
+    const result = makeResult({
       flagged: [makeOccurrence({ relativePath: 'inline/basic.example.svelte', lineNumber: 11 })],
-    };
+    });
     const report = renderReport(result);
     expect(report).toContain('inline/basic.example.svelte:11');
   });
 
   test('includes <tagName> in the rendered line', () => {
-    const result = { allowlisted: [], flagged: [makeOccurrence({ tagName: 'input' })] };
+    const result = makeResult({ flagged: [makeOccurrence({ tagName: 'input' })] });
     const report = renderReport(result);
     expect(report).toContain('<input>');
+  });
+
+  test('reports stale allowlist entries when present', () => {
+    const staleEntry: AllowlistEntry = {
+      relativePath: 'button/basic.example.svelte',
+      tagName: 'button',
+      occurrenceIndex: 5,
+      reason: 'old entry that no longer matches',
+    };
+    const result = makeResult({ staleAllowlistEntries: [staleEntry] });
+    const report = renderReport(result);
+    expect(report).toContain('Stale allowlist entries');
+    expect(report).toContain('button/basic.example.svelte');
+    expect(report).toContain('old entry that no longer matches');
+  });
+
+  test('does NOT include stale section when there are no stale entries', () => {
+    const result = makeResult();
+    const report = renderReport(result);
+    expect(report).not.toContain('Stale allowlist entries');
   });
 });
 
@@ -219,20 +469,19 @@ describe('renderReport — human-readable output', () => {
 
 describe('scan — live inventory against the real examples directory', () => {
   // scan() walks the real examples tree; give it generous headroom on slow CI.
-  test('returns a ScanResult with allowlisted and flagged arrays', async () => {
+  test('returns a ScanResult with allowlisted, flagged, and staleAllowlistEntries arrays', async () => {
     const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
 
-    // Both arrays must be present (possibly empty).
     expect(Array.isArray(result.allowlisted)).toBe(true);
     expect(Array.isArray(result.flagged)).toBe(true);
+    expect(Array.isArray(result.staleAllowlistEntries)).toBe(true);
   }, 15_000);
 
   test('detects at least one raw control across all example files', async () => {
     const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
     const total = result.allowlisted.length + result.flagged.length;
-    // We know from the current state there are 18 raw control lines.
     expect(total).toBeGreaterThan(0);
   }, 15_000);
 
@@ -283,7 +532,6 @@ describe('scan — live inventory against the real examples directory', () => {
   test('results are sorted by relativePath then lineNumber', async () => {
     const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
     const result = await scan(examplesDirectory);
-    const all = [...result.allowlisted, ...result.flagged];
     // Check each array is sorted independently.
     for (const list of [result.allowlisted, result.flagged]) {
       for (let index = 1; index < list.length; index++) {
@@ -297,7 +545,64 @@ describe('scan — live inventory against the real examples directory', () => {
         }
       }
     }
-    // Suppress unused variable warning from the spread above.
-    void all;
+  }, 15_000);
+
+  test('does NOT flag raw controls inside HTML/Svelte comments in real files', async () => {
+    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
+    const result = await scan(examplesDirectory);
+    // command-palette/search-recent-actions.example.svelte has several <!-- ... -->
+    // comment blocks in the template; those must not be counted as raw controls.
+    // We verify this indirectly: the file has exactly 1 <button> (the trigger),
+    // which is allowlisted — so the flagged list should contain 0 from that file.
+    const commandPaletteFlagged = result.flagged.filter((occurrence) =>
+      occurrence.relativePath.includes('command-palette/search-recent-actions'),
+    );
+    expect(commandPaletteFlagged).toHaveLength(0);
+  }, 15_000);
+
+  test('the canonical ALLOWLIST has no stale entries against the real files', async () => {
+    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
+    const result = await scan(examplesDirectory);
+    // If this fails, the file was refactored and the ALLOWLIST entry needs updating.
+    expect(result.staleAllowlistEntries).toHaveLength(0);
+  }, 15_000);
+
+  test('a deliberately stale allowlist entry is reported as stale', async () => {
+    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
+    const staleEntry: AllowlistEntry = {
+      relativePath: 'navigation-bar/basic.example.svelte',
+      tagName: 'button',
+      // occurrenceIndex 99 — no file has 100 buttons.
+      occurrenceIndex: 99,
+      reason: 'deliberate stale entry for test',
+    };
+    const result = await scan(examplesDirectory, [staleEntry]);
+    expect(result.staleAllowlistEntries).toHaveLength(1);
+    expect(result.staleAllowlistEntries[0]?.occurrenceIndex).toBe(99);
+  }, 15_000);
+
+  test('right tag on a line is exempted; wrong tag on the same line is still flagged', async () => {
+    // This exercises that the allowlist is tag-specific: if a file had <button> and
+    // <input> on the same line and only <button> is allowlisted, <input> is still flagged.
+    // We construct a minimal fixture via a custom allowlist with the wrong tag.
+    const examplesDirectory = new URL('../src/examples', import.meta.url).pathname;
+    // Use an allowlist that covers 'input' at index 0 for the nav-bar file (which
+    // actually has a <button> there, not an <input>). The <button> should be flagged.
+    const wrongTagEntry: AllowlistEntry = {
+      relativePath: 'navigation-bar/basic.example.svelte',
+      tagName: 'input', // wrong tag
+      occurrenceIndex: 0,
+      reason: 'wrong tag entry for test',
+    };
+    const result = await scan(examplesDirectory, [wrongTagEntry]);
+    // The <button> in nav-bar is NOT allowlisted (we gave the wrong tag), so it is flagged.
+    const navigationBarFlagged = result.flagged.filter(
+      (occurrence) =>
+        occurrence.relativePath === 'navigation-bar/basic.example.svelte' &&
+        occurrence.tagName === 'button',
+    );
+    expect(navigationBarFlagged.length).toBeGreaterThan(0);
+    // The wrongTagEntry itself is stale (no <input> at index 0 in that file).
+    expect(result.staleAllowlistEntries.some((entry) => entry.tagName === 'input')).toBe(true);
   }, 15_000);
 });
