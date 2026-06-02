@@ -25,8 +25,9 @@
     variant = 'icon',
     class: className,
     icon,
-    content,
+    children,
     timestamp,
+    timestampLabel,
     ...rest
   }: FeedEventProps = $props();
 </script>
@@ -40,7 +41,11 @@
     {/if}
   </span>
   <div class="cinder-feed-event-body">
-    <div class="cinder-feed-event-content">{@render content()}</div>
-    <time class="cinder-feed-event-time" {datetime}>{@render timestamp()}</time>
+    {#if children}
+      <div class="cinder-feed-event-content">{@render children()}</div>
+    {/if}
+    <time class="cinder-feed-event-time" {datetime}>
+      {#if timestampLabel}{@render timestampLabel()}{:else if timestamp !== undefined}{timestamp}{:else}{datetime}{/if}
+    </time>
   </div>
 </li>

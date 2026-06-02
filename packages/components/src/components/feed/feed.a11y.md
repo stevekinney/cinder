@@ -23,23 +23,22 @@ TypeScript cannot express "at least one of two optional attributes is required" 
 
 ## ISO datetime — non-negotiable
 
-`FeedEvent` always renders `<time datetime={datetime}>`. The `datetime` prop must be a valid ISO 8601 string (e.g. `"2026-05-12T14:30:00Z"`). The machine-readable value is owned by the component; the visible label inside `<time>` is consumer-controlled via the `timestamp` snippet.
+`FeedEvent` always renders `<time datetime={datetime}>`. The `datetime` prop must be a valid ISO 8601 string (e.g. `"2026-05-12T14:30:00Z"`). The machine-readable value is owned by the component; the visible label inside `<time>` is the `timestamp` string (or the `timestampLabel` snippet for rich markup). When neither is supplied, the component falls back to the raw `datetime` string — deterministic and SSR-safe, with no locale or timezone dependence.
 
 Never rely on a pre-formatted human string as the only representation. A `<time>` element with a proper `datetime` attribute allows parsers, assistive tech, and future tooling to extract the precise moment — visible text like "2m ago" carries none of that precision.
 
 ## Decorative rail — aria-hidden
 
-The rail wrapper (`.cinder-feed-event-rail`) carries `aria-hidden="true"`. Both the icon badge and the dot are decorative — the event's semantic content lives in the `content` and `timestamp` snippets.
+The rail wrapper (`.cinder-feed-event-rail`) carries `aria-hidden="true"`. Both the icon badge and the dot are decorative — the event's semantic content lives in the body (the default children) and the visible `timestamp`.
 
-**Consequence:** if you pass a meaningful icon (e.g. an avatar identifying the acting user), you must also duplicate that meaning in `content`. The icon snippet is visual reinforcement only; it is the sole carrier of meaning for no user.
+**Consequence:** if you pass a meaningful icon (e.g. an avatar identifying the acting user), you must also duplicate that meaning in the body content. The icon snippet is visual reinforcement only; it is the sole carrier of meaning for no user.
 
 Example — correct:
 
 ```svelte
-<FeedEvent datetime="…">
+<FeedEvent datetime="…" timestamp="2m ago">
   {#snippet icon()}<Avatar src={user.avatar} />{/snippet}
-  {#snippet content()}<strong>{user.name}</strong> pushed 3 commits{/snippet}
-  {#snippet timestamp()}2m ago{/snippet}
+  <strong>{user.name}</strong> pushed 3 commits
 </FeedEvent>
 ```
 

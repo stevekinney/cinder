@@ -5,19 +5,36 @@ type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> &
   class?: string;
   /**
    * ISO 8601 datetime string. Rendered as `<time datetime={datetime}>` so
-   * assistive tech and parsers receive a machine-readable timestamp. The
-   * visible label inside the `<time>` element is consumer-controlled via
-   * the required `timestamp` snippet.
+   * assistive tech and parsers receive a machine-readable timestamp. This is
+   * always the authoritative value; the visible label is separate (see
+   * `timestamp` / `timestampLabel`).
    */
   datetime: string;
-  /** Main event content (description, links, secondary metadata). */
-  content: Snippet;
   /**
-   * Renders inside the `<time>` element. Consumer chooses formatting —
-   * relative (`2m ago`), absolute (`May 12, 2:30 PM`), or anything else.
-   * Required so the component stays presentational and SSR-deterministic.
+   * Main event body — the description, links, and secondary metadata. Passed as
+   * the default children snippet:
+   *
+   * ```svelte
+   * <FeedEvent datetime="…" timestamp="2m ago">
+   *   <strong>{user.name}</strong> pushed 3 commits
+   * </FeedEvent>
+   * ```
    */
-  timestamp: Snippet;
+  children?: Snippet;
+  /**
+   * Visible time label, as plain text — the common case (`"2m ago"`,
+   * `"May 12, 3:30 PM"`). Rendered inside the `<time>` element. Optional: when
+   * omitted (and no `timestampLabel` is given) the component falls back to the
+   * raw `datetime` string, which is deterministic and SSR-safe (no locale or
+   * timezone dependence).
+   */
+  timestamp?: string;
+  /**
+   * Rich visible time label, for the rare case where the label needs markup
+   * (e.g. a `<abbr>` or nested element). Takes precedence over `timestamp` when
+   * both are supplied. Most consumers should use the `timestamp` string instead.
+   */
+  timestampLabel?: Snippet;
 };
 type FeedEventIcon = FeedEventBase & {
   /** Icon variant: renders a circular badge on the rail with the icon inside. */
