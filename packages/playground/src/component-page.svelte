@@ -315,7 +315,10 @@
   {:else if propRows.length === 0}
     <p class="props-empty">This component has no documented props.</p>
   {:else}
-    <div class="props-table-scroll">
+    <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
+         scrollable-region-focusable / WCAG 2.1.1) — at narrow widths the wide
+         props table can overflow horizontally and must be reachable by keyboard. -->
+    <div class="props-table-scroll" tabindex="0">
       <Table caption={`Props for ${componentName}`} density="condensed">
         <Table.Header>
           <Table.Row>
