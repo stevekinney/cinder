@@ -95,6 +95,65 @@ describe('stripCommentsAndStrings — comment and string removal', () => {
     expect(stripped).toContain('<button>');
   });
 
+  test('html-comment inside <script> returns to script state — block comment after it is still stripped', () => {
+    // If the html-comment exit incorrectly resets to 'template', the /* block comment */
+    // that follows would NOT be stripped (template state does not handle /* */), and
+    // <button> inside the block comment would survive into the stripped output.
+    const source = [
+      '<script lang="ts">',
+      '<!-- html-like sequence inside script -->',
+      '/* <button> inside block comment after html-comment */',
+      'const x = 1;',
+      '</script>',
+    ].join('\n');
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<button>');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('html-comment inside <script> returns to script state — line comment after it is still stripped', () => {
+    // Same test but with a // line comment after the html-comment sequence.
+    const source = [
+      '<script lang="ts">',
+      '<!-- sequence inside script -->',
+      '// <input type="text"> inside line comment',
+      'const x = 1;',
+      '</script>',
+    ].join('\n');
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<input');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
+  test('html-comment inside <script> returns to script state — raw control after it is NOT misclassified', () => {
+    // A real <button> in the template AFTER the script block must still be detected.
+    // This ensures the state machine correctly handles both a script-internal html-comment
+    // and subsequent template content.
+    const source = [
+      '<script lang="ts">',
+      '<!-- comment-like sequence inside script -->',
+      'const x = 1;',
+      '</script>',
+      '<button type="button">Click</button>',
+    ].join('\n');
+    const stripped = stripCommentsAndStrings(source);
+    // The real template <button> must survive stripping.
+    expect(stripped).toContain('<button');
+  });
+
+  test('block comment inside <script> returns to script state — subsequent code is not suppressed', () => {
+    // Ensures block-comment exit (which already hardcoded 'script') leaves subsequent
+    // script content visible so a raw tag in a string literal after the comment is stripped.
+    const source = [
+      '<script lang="ts">',
+      "/* comment */ const tag = '<select>';",
+      '</script>',
+    ].join('\n');
+    const stripped = stripCommentsAndStrings(source);
+    expect(stripped).not.toContain('<select>');
+    expect(stripped.split('\n').length).toBe(source.split('\n').length);
+  });
+
   test('preserves exact line count for a realistic Svelte file with mixed content', () => {
     const source = [
       '<script lang="ts">',
@@ -279,6 +338,19 @@ describe('extractInlineAllowReason — inline allow marker', () => {
 
   test('returns null for an empty line', () => {
     expect(extractInlineAllowReason('')).toBeNull();
+  });
+
+  test('returns null for a whitespace-only reason (spaces between colon and -->)', () => {
+    // A whitespace-only reason must NOT count as a valid exemption — a reason is required.
+    expect(extractInlineAllowReason('<!-- examples-audit-allow:    -->')).toBeNull();
+  });
+
+  test('returns null for a marker with nothing after the colon', () => {
+    expect(extractInlineAllowReason('<!-- examples-audit-allow: -->')).toBeNull();
+  });
+
+  test('returns the reason when at least one non-space character is present', () => {
+    expect(extractInlineAllowReason('<!-- examples-audit-allow: x -->')).toBe('x');
   });
 });
 

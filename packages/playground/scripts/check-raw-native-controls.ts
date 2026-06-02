@@ -200,6 +200,14 @@ export function stripCommentsAndStrings(source: string): string {
     | 'string-double' // Inside "..." (script only)
     | 'string-template'; // Inside `...` (script only)
 
+  // returnState tracks which state to resume after exiting a comment.
+  // html-comment can appear in both 'template' and 'script' contexts; we must
+  // return to whichever one we came from, not unconditionally to 'template'.
+  // block-comment and line-comment only appear in 'script', but we track the
+  // same way for consistency and future safety.
+  type ReturnableState = 'template' | 'script';
+  let returnState: ReturnableState = 'template';
+
   let state: State = 'template';
   let output = '';
   let index = 0;
@@ -217,7 +225,9 @@ export function stripCommentsAndStrings(source: string): string {
       case 'template': {
         // Detect start of HTML comment <!-- (applies in template AND inside script tags' text content)
         if (character === '<' && peek(1) === '!' && peek(2) === '-' && peek(3) === '-') {
-          // Enter html-comment — emit the opening <!-- suppressed
+          // Enter html-comment — emit the opening <!-- suppressed.
+          // Record 'template' as the state to return to when --> is found.
+          returnState = 'template';
           output += suppress('<') + suppress('!') + suppress('-') + suppress('-');
           index += 4;
           state = 'html-comment';
@@ -275,6 +285,8 @@ export function stripCommentsAndStrings(source: string): string {
       case 'script': {
         // Detect <!-- comment start (can appear in script text? unlikely but safe)
         if (character === '<' && peek(1) === '!' && peek(2) === '-' && peek(3) === '-') {
+          // Record 'script' as the state to return to when --> is found.
+          returnState = 'script';
           output += suppress('<') + suppress('!') + suppress('-') + suppress('-');
           index += 4;
           state = 'html-comment';
@@ -341,18 +353,10 @@ export function stripCommentsAndStrings(source: string): string {
         if (character === '-' && peek(1) === '-' && peek(2) === '>') {
           output += suppress('-') + suppress('-') + suppress('>');
           index += 3;
-          // Return to whichever state we came from — we need to track that.
-          // Since html-comment can appear in both template and script, and we always
-          // return to template after (HTML comments don't nest inside script blocks
-          // in practice), we determine context by looking at output for the last
-          // </script> vs <script.
-          // Simpler: track previous state explicitly.
-          // Since we already emitted the state machine above without tracking, we
-          // default to template (html comments in script blocks are unusual).
-          // This is safe: the only side effect is that after a <!-- --> inside a
-          // <script>, we'd be in 'template' state — but the next </script> would
-          // switch us back, so at worst we'd miss stripping one JS comment.
-          state = 'template';
+          // Restore the state we were in before entering this comment.
+          // returnState was set to 'template' or 'script' when we entered html-comment,
+          // so we correctly resume whichever context the comment appeared in.
+          state = returnState;
           break;
         }
         // Suppress the character, keep newlines
@@ -533,13 +537,19 @@ export const INLINE_ALLOW_MARKER = /<!--\s*examples-audit-allow\s*:\s*(.+?)\s*--
 
 /**
  * Returns the reason string from an inline allow marker in `line`, or `null` if
- * the marker is not present.
+ * the marker is not present OR the reason is empty/whitespace-only.
+ *
+ * A whitespace-only reason is treated the same as no reason — the docs require
+ * a non-empty rationale. `<!-- examples-audit-allow:    -->` returns null and
+ * leaves the control flagged.
  *
  * Pure — no I/O. Exported for unit tests.
  */
 export function extractInlineAllowReason(line: string): string | null {
   const match = INLINE_ALLOW_MARKER.exec(line);
-  return match ? (match[1]?.trim() ?? null) : null;
+  if (!match) return null;
+  const reason = match[1]?.trim() ?? '';
+  return reason.length > 0 ? reason : null;
 }
 
 // ── Allowlist Key ─────────────────────────────────────────────────────────────
