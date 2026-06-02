@@ -3620,7 +3620,6 @@
     "@shikijs/rehype": "^3.21.0",
     "ajv": "^8",
     "comlink": "^4.4.2",
-    "conversationalist": "0.0.9",
     "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
     "hast-util-sanitize": "^5.0.0",

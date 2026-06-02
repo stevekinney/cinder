@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { Message, ToolCallPair } from 'conversationalist';
+  import type { Message, ToolCallPair } from '../conversation-model.ts';
 
   /**
    * Role labels for display purposes.
@@ -12,15 +12,15 @@
     assistant: 'Assistant',
     system: 'System',
     developer: 'Developer',
-    'tool-use': 'Tool Call',
+    'tool-call': 'Tool Call',
     'tool-result': 'Tool Result',
     snapshot: 'Snapshot',
   };
 
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
-    /** The message to render (from conversationalist) */
+    /** The message to render */
     message: Message;
-    /** Paired tool calls (from pairToolCallsWithResults) - used for tool-use messages */
+    /** Paired tool calls (from pairToolCallsWithResults) - used for tool-call messages */
     toolCallPairs?: ToolCallPair[];
     /** Whether long content is expanded */
     expanded?: boolean;
@@ -128,27 +128,27 @@
   const hasImages = $derived(imageParts.length > 0);
 
   // Role detection
-  const isToolUse = $derived(message.role === 'tool-use');
+  const isToolUse = $derived(message.role === 'tool-call');
   const isToolResult = $derived(message.role === 'tool-result');
 
-  // Find matching tool pair for tool-use messages
+  // Find matching tool pair for tool-call messages
   const toolPair = $derived.by(() => {
     if (!isToolUse || !message.toolCall) return null;
     return toolCallPairs.find((pair) => pair.call.id === message.toolCall?.id) ?? null;
   });
 
   // Safe stringify for tool result content (handles circular refs, etc.)
-  // For error outcomes, prefer toolResult.error over content.
+  // For error outcomes, prefer toolResult.error.message over content.
   // Return strings as-is to preserve formatting.
   const formattedToolResult = $derived.by(() => {
     if (!isToolResult || !message.toolResult) return null;
     const { outcome, content, error } = message.toolResult;
 
-    // For errors, always prefer the error message when available.
-    // This matches tool-call-group.svelte behavior and ensures users see
-    // the actual error, not request metadata that may be in content.
+    // For errors, always prefer the structured error's message when available.
+    // `error` is a ToolError object, so render its `message`, not the object
+    // (which would stringify to `[object Object]`).
     if (outcome === 'error' && error) {
-      return error;
+      return error.message;
     }
 
     return stringify(content);
@@ -391,21 +391,21 @@
     color: var(--cinder-color-warning-fg);
   }
 
-  .chat-message-wrapper[data-role='tool-use'],
+  .chat-message-wrapper[data-role='tool-call'],
   .chat-message-wrapper[data-role='tool-result'] {
     margin-inline-end: auto;
     min-width: min(18rem, 100%);
     max-width: min(100%, 48rem);
   }
 
-  .chat-message-wrapper[data-role='tool-use'] .chat-message,
+  .chat-message-wrapper[data-role='tool-call'] .chat-message,
   .chat-message-wrapper[data-role='tool-result'] .chat-message {
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
 
-  /* When a tool-use has a paired result, ToolCallGroup is the canonical card.
+  /* When a tool-call has a paired result, ToolCallGroup is the canonical card.
    * Strip the outer bubble shell (background, border, padding, role label, footer)
    * so the unified card is the only visible boundary. The wrapper expands
    * within the same readability cap as regular bubbles — chat bubbles hug
@@ -679,7 +679,7 @@
     .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
     .chat-message-wrapper[data-role='system'] .chat-message-footer,
     .chat-message-wrapper[data-role='developer'] .chat-message-footer,
-    .chat-message-wrapper[data-role='tool-use'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-call'] .chat-message-footer,
     .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
     .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;

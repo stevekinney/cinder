@@ -8,9 +8,9 @@
  * - Screen reader announcements
  */
 
-import type { Message } from 'conversationalist';
 import { untrack } from 'svelte';
 import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
+import type { Message } from '../conversation-model.ts';
 import type { ChatUnreadIndicatorChangeEvent } from './chat-events.ts';
 import { formatUnreadCount, isLargeCount } from './scroll-utilities';
 

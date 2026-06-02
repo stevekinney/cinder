@@ -1,44 +1,51 @@
 /**
  * Utility functions for chat message operations.
  *
- * These helpers work with conversationalist's Message type to extract
+ * These helpers work with the vendored {@link Message} type to extract
  * content for copy/export operations.
  */
 
-import type { Message, MultiModalContent } from 'conversationalist';
-import { toMultiModalArray } from 'conversationalist';
+import type { Message, MultiModalContent } from '../conversation-model.ts';
+
+/**
+ * Normalizes content to a multi-modal array.
+ *
+ * Strings are wrapped in a single text part; a single content item is wrapped
+ * in an array; an array is returned as-is. The `ReadonlyArray` in/out signature
+ * matches {@link Message.content} so callers pass `message.content` with zero casts.
+ *
+ * @param input - String, single content item, or readonly content array
+ * @returns The content as a readonly multi-modal array
+ */
+export function toMultiModalArray(
+  input: string | MultiModalContent | ReadonlyArray<MultiModalContent>,
+): ReadonlyArray<MultiModalContent> {
+  if (typeof input === 'string') return [{ type: 'text', text: input }];
+  // A single MultiModalContent has a `type` discriminant; an array does not.
+  // (`Array.isArray` doesn't narrow a `ReadonlyArray` out of the union, so key
+  // off the discriminant instead — no cast needed.)
+  return 'type' in input ? [input] : input;
+}
 
 /**
  * Type predicate for text content parts.
  */
-function isTextPart(
-  part: MultiModalContent,
-): part is MultiModalContent & { type: 'text'; text: string } {
+function isTextPart(part: MultiModalContent): part is TextPart {
   return part.type === 'text';
 }
 
-/**
- * Normalizes message content to a form accepted by toMultiModalArray().
- * Handles null/undefined, plain strings, and readonly arrays uniformly.
- *
- * @param message - The message whose content to normalize
- * @returns A mutable string or array suitable for toMultiModalArray()
- */
-function toMutableContent(message: Message): string | MultiModalContent[] {
-  const { content } = message;
-  if (content == null) return '';
-  return typeof content === 'string' ? content : [...content];
-}
+type TextPart = MultiModalContent & { type: 'text'; text: string };
 
 /**
  * Extracts all content parts from a message as a multi-modal array.
- * String content is converted to a single text part.
+ * String content is converted to a single text part; empty/missing content
+ * yields an empty text part.
  *
  * @param message - The message to extract parts from
- * @returns An array of content parts
+ * @returns A readonly array of content parts
  */
-export function getMessageParts(message: Message): MultiModalContent[] {
-  return toMultiModalArray(toMutableContent(message));
+export function getMessageParts(message: Message): ReadonlyArray<MultiModalContent> {
+  return toMultiModalArray(message.content ?? '');
 }
 
 /**
@@ -77,7 +84,7 @@ export function getMessageRoleLabel(message: Message): string {
     assistant: 'Assistant',
     system: 'System',
     developer: 'Developer',
-    'tool-use': 'Tool Call',
+    'tool-call': 'Tool Call',
     'tool-result': 'Tool Result',
     snapshot: 'Snapshot',
   };
@@ -114,8 +121,8 @@ function formatMessageWithRole(message: Message): string {
 /**
  * Converts a list of messages to Markdown format.
  *
- * This is a browser-compatible alternative to conversationalist/markdown's
- * toMarkdown function, which uses Node.js APIs (createRequire).
+ * This is a browser-compatible markdown serialization for chat transcripts,
+ * avoiding the Node.js APIs (createRequire) used by server-side exporters.
  *
  * @param messages - The messages to convert
  * @returns Markdown-formatted conversation

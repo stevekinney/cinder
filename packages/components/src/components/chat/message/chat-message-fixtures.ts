@@ -2,12 +2,18 @@
  * Test fixtures and factory functions for ChatMessage Storybook stories.
  *
  * These fixtures provide realistic, deterministic test data for:
- * - Different message roles (user, assistant, system, tool-use, tool-result)
+ * - Different message roles (user, assistant, system, tool-call, tool-result)
  * - Various content types (markdown, images, tool calls)
  * - Timestamp formatting tests
  */
 
-import type { Message, MessageRole, ToolCall, ToolCallPair, ToolResult } from 'conversationalist';
+import type {
+  Message,
+  MessageRole,
+  ToolCall,
+  ToolCallPair,
+  ToolResult,
+} from '../conversation-model.ts';
 
 // ============================================================================
 // Message Counter for Deterministic IDs
@@ -101,11 +107,11 @@ export function createDeveloperMessage(overrides?: Partial<Message>): Message {
 }
 
 /**
- * Create a tool-use message with a tool call.
+ * Create a tool-call message with a tool call.
  */
 export function createToolUseMessage(overrides?: Partial<Message>, toolCall?: ToolCall): Message {
   return createStoryMessage({
-    role: 'tool-use',
+    role: 'tool-call',
     content: '',
     toolCall: toolCall ?? SAMPLE_TOOL_CALL,
     ...overrides,
@@ -275,7 +281,12 @@ export const TOOL_ERROR_RESULT: ToolResult = {
   callId: 'call-456',
   outcome: 'error',
   content: null,
-  error: 'Rate limit exceeded. Please try again in 60 seconds.',
+  error: {
+    code: 'rate_limited',
+    category: 'transient',
+    retryable: true,
+    message: 'Rate limit exceeded. Please try again in 60 seconds.',
+  },
 };
 
 export const FILE_READ_TOOL_CALL: ToolCall = {

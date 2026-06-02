@@ -1,4 +1,4 @@
-import type { MessageInput } from 'conversationalist';
+import type { MessageInput } from '../conversation-model.ts';
 import type { ChatAttachment } from '../input/chat-attachment.ts';
 
 /** Event fired when a message is submitted. */

@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { MultiModalContent } from 'conversationalist';
+  import type { MultiModalContent } from '../conversation-model.ts';
 
   export type MessageAttachmentsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** Image parts from the message content */
@@ -29,16 +29,6 @@
     ...rest
   }: MessageAttachmentsProps = $props();
 
-  /** Allowed image MIME types for base64 data URIs */
-  const ALLOWED_IMAGE_MIME_TYPES = new Set([
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    'image/avif',
-  ]);
-
   // Filter to only image type content with valid URLs
   // Pre-compute URLs to ensure data-count matches rendered items
   const validImages = $derived(
@@ -64,51 +54,21 @@
   );
 
   /**
-   * Extracts the image URL from a MultiModalContent item.
-   * Handles both URL-based and base64 sources.
+   * Extracts the image URL from an image content item.
    */
   function getImageUrlFromContent(image: MultiModalContent): string {
     if (image.type !== 'image') return '';
-
-    // Handle ImageContent from conversationalist (has url property directly)
-    if ('url' in image && typeof image.url === 'string') {
-      return image.url;
-    }
-
-    // Handle source-based formats (from @lasercat/homogenaize)
-    if ('source' in image && image.source) {
-      const source = image.source as { type: string; url?: string; data?: string };
-      if (source.type === 'url' && source.url) {
-        return source.url;
-      }
-      if (source.type === 'base64' && source.data) {
-        const rawMimeType = (image as { mimeType?: string }).mimeType ?? 'image/png';
-        // Validate mimeType to prevent malformed data URIs
-        const mimeType = ALLOWED_IMAGE_MIME_TYPES.has(rawMimeType) ? rawMimeType : 'image/png';
-        return `data:${mimeType};base64,${source.data}`;
-      }
-    }
-
-    return '';
+    return image.url;
   }
 
   /**
-   * Extracts alt text from a MultiModalContent item.
+   * Extracts alt text from an image content item.
    * Uses displayIndex for fallback text (1-based position in rendered list).
    */
   function getAltText(image: MultiModalContent, displayIndex: number): string {
     if (image.type !== 'image') return '';
-
-    // Check for text property (used as alt in some formats)
-    if ('text' in image && typeof image.text === 'string' && image.text) {
-      return image.text;
-    }
-
-    // Check for alt property
-    if ('alt' in image && typeof image.alt === 'string' && image.alt) {
-      return image.alt;
-    }
-
+    // ImageContent carries optional descriptive text used as the alt.
+    if (image.text) return image.text;
     return `Image attachment ${displayIndex}`;
   }
 

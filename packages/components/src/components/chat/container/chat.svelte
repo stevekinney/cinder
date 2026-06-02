@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { Conversation, Message, MessageInput } from 'conversationalist';
+  import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
   import type { ChatAttachment } from '../input/chat-attachment.ts';
   import type {
     ChatScrollStateChangeEvent,
@@ -22,11 +22,11 @@
   // Props Type
   // ==========================================================================
 
-  export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
+  export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> & {
     /** Unique ID for accessibility (required) */
     id: string;
     /** The conversation to render */
-    conversation: Conversation;
+    conversation: ConversationHistory;
     /** Whether the viewport is at bottom (bindable) */
     isAtBottom?: boolean;
     /** Count of unread messages (bindable) */
@@ -108,8 +108,8 @@
 
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { getMessages } from 'conversationalist';
   import { classNames } from '../../../utilities/class-names.ts';
+  import { getMessages } from '../utilities';
   import { ChatMessage, ChatDateSeparator } from '../message';
   import { ChatInput } from '../input';
   import { DEFAULT_SCROLL_CONFIGURATION } from './scroll-utilities';

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Conversation } from 'conversationalist';
+  import type { ConversationHistory } from '../conversation-model.ts';
 
   export type ExportFormat = 'markdown' | 'json';
 
@@ -7,7 +7,7 @@
     /** Required unique ID for SSR stability and accessibility */
     id: string;
     /** The conversation to export */
-    conversation: Conversation;
+    conversation: ConversationHistory;
     /** Called when export succeeds */
     onexported?: (format: ExportFormat) => void;
     /** Called when export fails (clipboard error) */
@@ -29,8 +29,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import FileCode from 'lucide-svelte/icons/file-code';
   import FileText from 'lucide-svelte/icons/file-text';
-  import { getMessages } from 'conversationalist';
-  import { messagesToMarkdown } from '../utilities';
+  import { getMessages, messagesToMarkdown } from '../utilities';
 
   let {
     id,
@@ -44,7 +43,7 @@
 
   /**
    * Exports the conversation as Markdown.
-   * Uses browser-compatible messagesToMarkdown (conversationalist/markdown uses Node.js APIs).
+   * Uses the browser-compatible messagesToMarkdown helper (no Node.js APIs).
    */
   async function handleExportMarkdown(): Promise<void> {
     const messages = getMessages(conversation, { includeHidden: false });

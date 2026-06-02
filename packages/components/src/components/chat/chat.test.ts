@@ -24,7 +24,7 @@
 
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -56,8 +56,60 @@ globalThis.IntersectionObserver =
 
 const { render } = await import('@testing-library/svelte');
 const { default: Chat } = await import('./chat.svelte');
-const { createConversation, appendUserMessage, appendAssistantMessage } =
-  await import('conversationalist');
+
+// Local builders for the vendored ConversationHistory shape — Chat no longer
+// depends on a conversation-state library, so the test constructs the data it
+// renders directly. Mirrors the immutable-append pattern (each call returns a
+// new snapshot with the message appended in order).
+type TestConversation = import('./conversation-model.ts').ConversationHistory;
+type TestRole = import('./conversation-model.ts').MessageRole;
+
+let testMessageCounter = 0;
+
+function createConversation(options?: { id?: string }): TestConversation {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: 4,
+    id: options?.id ?? `test-conversation-${++testMessageCounter}`,
+    status: 'active',
+    metadata: {},
+    ids: [],
+    messages: {},
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function appendMessage(
+  conversation: TestConversation,
+  role: TestRole,
+  content: string,
+): TestConversation {
+  const id = `test-message-${++testMessageCounter}`;
+  const now = new Date().toISOString();
+  return {
+    ...conversation,
+    ids: [...conversation.ids, id],
+    messages: {
+      ...conversation.messages,
+      [id]: {
+        id,
+        role,
+        content,
+        position: conversation.ids.length,
+        createdAt: now,
+        metadata: {},
+        hidden: false,
+      },
+    },
+    updatedAt: now,
+  };
+}
+
+const appendUserMessage = (conversation: TestConversation, content: string) =>
+  appendMessage(conversation, 'user', content);
+const appendAssistantMessage = (conversation: TestConversation, content: string) =>
+  appendMessage(conversation, 'assistant', content);
 
 /** Build a minimal Svelte snippet that renders a single text node. */
 function textSnippet(text: string) {
@@ -217,6 +269,86 @@ describe('Chat — slot composition', () => {
       'Summarize this',
       'Explain like I am five',
     ]);
+  });
+});
+
+describe('Chat — imperative API forwarding', () => {
+  // The forwarded surface, as a flat interface so dot-access on the mounted
+  // instance is real-property access (avoids the index-signature access rule on
+  // the raw mount() return type).
+  type ChatImperative = {
+    beginStreaming: (messageId: string) => void;
+    pushToken: (token: string) => void;
+    endStreaming: () => void;
+    scrollToBottom: () => void;
+    scrollToTop: () => void;
+    focusInput: () => void;
+  };
+
+  const IMPERATIVE_METHODS = [
+    'beginStreaming',
+    'pushToken',
+    'endStreaming',
+    'scrollToBottom',
+    'scrollToTop',
+    'focusInput',
+  ] as const;
+
+  // mount()/unmount() (rather than @testing-library's render) gives direct
+  // access to the component instance, which is where the wrapper's forwarded
+  // `export function`s live.
+
+  test('the public Chat instance exposes the forwarded imperative methods', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation({ id: 'conversation-imperative' });
+    const instance = mount(Chat, { target, props: { id: 'chat-imperative', conversation } });
+    const asRecord = instance as unknown as Record<string, unknown>;
+    try {
+      for (const method of IMPERATIVE_METHODS) {
+        expect(typeof asRecord[method]).toBe('function');
+      }
+    } finally {
+      unmount(instance);
+      target.remove();
+    }
+  });
+
+  test('forwarded methods are callable after mount and a no-op after unmount', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    let conversation = createConversation({ id: 'conversation-imperative-stream' });
+    conversation = appendAssistantMessage(conversation, '');
+    const assistantId = conversation.ids[conversation.ids.length - 1]!;
+    const instance = mount(Chat, {
+      target,
+      props: { id: 'chat-imperative-stream', conversation },
+    });
+    const api = instance as unknown as ChatImperative;
+
+    // Callable after mount — drives the streaming buffer without throwing.
+    expect(() => {
+      api.beginStreaming(assistantId);
+      api.pushToken('Hel');
+      api.pushToken('lo');
+      api.endStreaming();
+      api.scrollToBottom();
+      api.scrollToTop();
+      api.focusInput();
+    }).not.toThrow();
+
+    // After unmount, the inner `impl` ref is gone; calls via the retained
+    // reference must be safe no-ops (the `if (!impl) return;` guard), not throws.
+    unmount(instance);
+    target.remove();
+    expect(() => {
+      api.beginStreaming(assistantId);
+      api.pushToken('late');
+      api.endStreaming();
+      api.scrollToBottom();
+      api.scrollToTop();
+      api.focusInput();
+    }).not.toThrow();
   });
 });
 

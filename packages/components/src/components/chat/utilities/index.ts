@@ -1,14 +1,17 @@
 /**
- * Chat data model extensions.
+ * Chat data model helpers.
  *
- * Import core types and functions directly from `conversationalist`.
- * This module only provides project-specific additions.
+ * Conversation-reading helpers ({@link getMessages}, {@link pairToolCallsWithResults})
+ * and content/markdown utilities, all built on the vendored conversation model.
  */
 
+export { getMessages, pairToolCallsWithResults } from './conversation';
 export { type ChatExportOptions, type DeliveryStatus } from './types';
 export {
   formatMessageAsMarkdown,
+  getMessageParts,
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  toMultiModalArray,
 } from './utilities';
