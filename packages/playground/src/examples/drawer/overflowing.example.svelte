@@ -5,6 +5,7 @@
 
 <script lang="ts">
   import { Button } from 'cinder/button';
+  import { Checkbox } from 'cinder/checkbox';
   import { Drawer } from 'cinder/drawer';
 
   let open = $state(false);
@@ -27,12 +28,7 @@
 <Drawer bind:open title="Filters" {triggerRef}>
   <div style="display: grid; gap: 0.75rem;">
     {#each filters as filter (filter.id)}
-      <label
-        style="display: flex; align-items: center; gap: 0.5rem; color: var(--cinder-text-muted);"
-      >
-        <input type="checkbox" />
-        {filter.label}
-      </label>
+      <Checkbox id={filter.id} label={filter.label} />
     {/each}
   </div>
 

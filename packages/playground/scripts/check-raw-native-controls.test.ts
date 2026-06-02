@@ -488,6 +488,31 @@ describe('ALLOWLIST — canonical checked-in entries', () => {
   });
 });
 
+// ── Enforcement gate (live scan of the real examples) ───────────────────────────
+//
+// This is the invariant the `examples:audit --strict` validate step enforces.
+// Keeping it as a fast unit test (the validate gate also runs it, but that path
+// is slow) means a newly-added raw control in an example fails the normal test
+// suite immediately, with a clear pointer to the offending file.
+
+describe('enforcement — real examples have no un-allowlisted raw controls', () => {
+  test('scan of src/examples reports zero flagged controls', async () => {
+    const result = await scan(examplesDirectory);
+    expect(
+      result.flagged.map((occurrence) => `${occurrence.relativePath}:${occurrence.lineNumber}`),
+    ).toEqual([]);
+  });
+
+  test('the checked-in ALLOWLIST has no stale entries', async () => {
+    const result = await scan(examplesDirectory);
+    expect(
+      result.staleAllowlistEntries.map(
+        (entry) => `${entry.relativePath}#${entry.tagName}[${entry.occurrenceIndex}]`,
+      ),
+    ).toEqual([]);
+  });
+});
+
 // ── renderReport ───────────────────────────────────────────────────────────────
 
 describe('renderReport — human-readable output', () => {

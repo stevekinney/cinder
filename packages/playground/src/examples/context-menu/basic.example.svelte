@@ -5,12 +5,13 @@
 </script>
 
 <script lang="ts">
+  import { Button } from 'cinder/button';
   import { ContextMenu } from 'cinder';
 </script>
 
 <ContextMenu>
   <ContextMenu.Trigger>
-    <button type="button">Right-click this region</button>
+    <Button variant="ghost">Right-click this region</Button>
   </ContextMenu.Trigger>
 
   <ContextMenu.Menu>

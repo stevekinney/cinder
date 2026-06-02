@@ -4,12 +4,13 @@
 </script>
 
 <script lang="ts">
+  import { Button } from 'cinder/button';
   import { HoverCard } from 'cinder';
 </script>
 
 <HoverCard openDelay={100} closeDelay={300}>
   {#snippet trigger()}
-    <button type="button">CIN-42</button>
+    <Button variant="ghost">CIN-42</Button>
   {/snippet}
 
   <strong>CIN-42</strong>
