@@ -104,6 +104,19 @@ describe('stripCommentsAndStrings — comment and string removal', () => {
     expect(stripped).toContain('<button>');
   });
 
+  test('an element whose name starts with "script" does NOT enter script state', () => {
+    // `<scripting>` shares the first 7 characters with `<script` but is not the
+    // script element. Without a tag-name boundary check it would wrongly switch
+    // to script state and start stripping its following template content (e.g. a
+    // string literal). Here the real <button> after it must survive.
+    const source = '<scripting>\n  const s = "<select>";\n</scripting>\n<button>OK</button>';
+    const stripped = stripCommentsAndStrings(source);
+    // Still in template state, so the JS-string `<select>` is NOT stripped...
+    expect(stripped).toContain('<select>');
+    // ...and the real <button> is preserved.
+    expect(stripped).toContain('<button>');
+  });
+
   test('html-comment inside <script> returns to script state — block comment after it is still stripped', () => {
     // If the html-comment exit incorrectly resets to 'template', the /* block comment */
     // that follows would NOT be stripped (template state does not handle /* */), and

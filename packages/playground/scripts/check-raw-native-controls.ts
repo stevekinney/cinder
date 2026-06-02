@@ -184,6 +184,16 @@ function suppressCharacter(character: string): string {
   return character === '\n' ? '\n' : ' ';
 }
 
+/**
+ * A character that legitimately terminates an opening tag name: whitespace, the
+ * tag close `>`, or the self-close `/`. Empty string (end of source) also counts
+ * so a trailing `<script` at EOF still matches. Used to ensure `<script` matches
+ * the real element and not `<scripting>` / `<scriptlet>`.
+ */
+function isTagNameBoundary(value: string): boolean {
+  return value === '' || value === '>' || value === '/' || /\s/.test(value);
+}
+
 export function stripCommentsAndStrings(source: string): string {
   // We do a single linear pass using a state machine rather than multiple
   // regex replacements so that overlapping / nested patterns don't interact.
@@ -241,7 +251,8 @@ export function stripCommentsAndStrings(source: string): string {
           peek(3) === 'r' &&
           peek(4) === 'i' &&
           peek(5) === 'p' &&
-          peek(6) === 't'
+          peek(6) === 't' &&
+          isTagNameBoundary(peek(7))
         ) {
           // Emit the <script...> tag verbatim (we need to find the closing >)
           output += character;
