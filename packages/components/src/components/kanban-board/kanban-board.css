@@ -114,6 +114,31 @@
     box-shadow: var(--cinder-shadow-md);
   }
 
+  /*
+   * During a pointer drag the card in the list becomes a placeholder showing
+   * the drop target position. The preview overlay (in sortable-list.css) is
+   * what follows the pointer; this keeps the drop slot visible in the column.
+   *
+   * Outline is used for the dashed drop indicator rather than changing border
+   * width. The card rests at border-width 1px; switching to 2px during drag
+   * would resize the box by 1px on each side, causing layout jitter and
+   * skewing the midpoint geometry used by drop-target calculations.
+   */
+  .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+    min-block-size: var(--cinder-space-12, 3rem);
+    opacity: 0.4;
+    border-color: transparent;
+    outline: 2px dashed var(--cinder-ring-color, currentColor);
+    outline-offset: -1px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .cinder-kanban-board__card.cinder-sortable-item--placeholder > * {
+    /* Hide card content from sight; placeholder conveys drop position only. */
+    visibility: hidden;
+  }
+
   .cinder-kanban-board__card-content {
     min-inline-size: 0;
   }
@@ -133,6 +158,12 @@
     font-size: var(--cinder-text-sm);
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+      opacity: 0.6;
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .cinder-kanban-board__card,
     .cinder-kanban-board__column {
@@ -140,6 +171,68 @@
         border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
         box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
         background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    }
+  }
+
+  /* ========================================
+   * DRAG PREVIEW OVERLAY (shared with sortable-list)
+   * ======================================== */
+
+  /*
+   * The drag preview portal is created by _sortable-item.svelte and appended
+   * to <body> — outside the component tree. A consumer importing only
+   * cinder/kanban-board/styles would miss sortable-list.css and therefore
+   * miss these rules, leaving the portal unstyled and unpositioned.
+   *
+   * These rules are intentionally kept identical to the ones in
+   * sortable-list.css so both subpath import paths (cinder/sortable-list/styles
+   * and cinder/kanban-board/styles) produce a correctly positioned preview.
+   * The cinder/styles aggregator loads both CSS files; having the rule twice
+   * in the cascade is harmless — the last identical declaration wins.
+   *
+   * Positioning uses CSS custom properties set by _sortable-item.svelte:
+   *   --preview-left / --preview-top   — row's bounding rect at lift time (physical viewport coords)
+   *   --preview-dx / --preview-dy      — pointer delta since lift
+   *   --preview-width / --preview-height — row dimensions at lift time
+   *
+   * Physical left/top (not logical inset-inline-start/inset-block-start) are used
+   * because --preview-left/--preview-top come from getBoundingClientRect(), which
+   * always returns physical viewport distances regardless of writing direction.
+   * Using inset-inline-start would map to the right edge in RTL layouts, causing
+   * the preview to appear on the wrong side of the viewport.
+   */
+  .cinder-sortable-drag-preview {
+    position: fixed;
+    top: calc(var(--preview-top, 0px) + var(--preview-dy, 0px));
+    left: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
+    width: var(--preview-width, auto);
+    height: var(--preview-height, auto);
+    z-index: var(--cinder-z-drag-preview, 9999);
+    pointer-events: none;
+    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    border-radius: var(--cinder-radius-md, 4px);
+    /* Subtle rotation and scale to distinguish preview from the placeholder. */
+    transform: rotate(2deg) scale(1.02);
+    transform-origin: center top;
+    will-change: top, left;
+    overflow: hidden;
+  }
+
+  /* Restore full opacity and visibility inside the preview clone. */
+  .cinder-sortable-drag-preview > * {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Inside the preview clone keep children visible even if the source
+     had placeholder--hidden children. */
+  .cinder-sortable-drag-preview > * > * {
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-sortable-drag-preview {
+      transform: none;
     }
   }
 }

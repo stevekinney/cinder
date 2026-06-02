@@ -1,6 +1,6 @@
 // @ts-nocheck — component tests exercise generic snippets and DOM APIs.
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -601,5 +601,389 @@ describe('KanbanBoard', () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KanbanBoard pointer drag preview state contract tests
+// ---------------------------------------------------------------------------
+//
+// Verifies the drag preview lifecycle for KanbanBoard card drags:
+//   - Pointer drag creates a [data-cinder-drag-preview] portal on body.
+//   - Card row becomes placeholder during pointer drag.
+//   - Drop removes the portal.
+//   - Cancel / Escape removes the portal.
+//   - Keyboard lift does not create a portal.
+//   - Cross-column drag keeps a preview and placeholder visible.
+
+describe('KanbanBoard pointer drag preview', () => {
+  afterEach(() => {
+    document.querySelectorAll('[data-cinder-drag-preview]').forEach((element) => element.remove());
+  });
+
+  test('pointer drag creates a preview portal on document.body', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview).not.toBeNull();
+    expect(document.body.contains(preview)).toBe(true);
+    expect(container.contains(preview)).toBe(false);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('preview portal has aria-hidden=true', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview?.getAttribute('aria-hidden')).toBe('true');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('lifted card row has --placeholder class during pointer drag', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(cardRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(true);
+    expect(cardRow?.classList.contains('cinder-sortable-item--lifted')).toBe(false);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('card row exposes data-preview-x/y during pointer drag', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 30,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(cardRow?.getAttribute('data-preview-x')).toBe('20');
+    expect(cardRow?.getAttribute('data-preview-y')).toBe('30');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('preview position updates on pointer move', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 100,
+      clientY: 50,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(cardRow?.getAttribute('data-preview-x')).toBe('100');
+    expect(cardRow?.getAttribute('data-preview-y')).toBe('50');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('drop removes the preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('drop clears placeholder class and preview attributes', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    // After drop, the card row is at its new logical position. Query by key.
+    const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(cardRow).not.toBeNull();
+    expect(cardRow.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+    expect(cardRow.hasAttribute('data-preview-x')).toBe(false);
+    expect(cardRow.hasAttribute('data-preview-y')).toBe(false);
+  });
+
+  test('pointercancel removes the preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.pointerCancel(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('Escape during pointer drag removes the preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('window Escape during pointer drag removes the preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).not.toBeNull();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  test('keyboard lift does NOT create a preview portal', async () => {
+    const { container } = renderBoard();
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(cardRow?.classList.contains('cinder-sortable-item--lifted')).toBe(true);
+    expect(cardRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+
+    await fireEvent.keyDown(handle, { key: 'Escape' });
+  });
+
+  test('rejected lift (another card already lifted) does NOT create an orphaned preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const alphaHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    const betaHandle = container.querySelector('[aria-label="Move Beta"]') as HTMLElement;
+    installPointerCapture(alphaHandle);
+    installPointerCapture(betaHandle);
+
+    // Lift Alpha.
+    await fireEvent.pointerDown(alphaHandle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Attempt a concurrent lift on Beta while Alpha is already lifted.
+    // The controller rejects the second lift; no second portal must be created.
+    await fireEvent.pointerDown(betaHandle, {
+      button: 0,
+      clientX: 20,
+      clientY: 60,
+      pointerId: 2,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Clean up.
+    await fireEvent.pointerUp(alphaHandle, { pointerId: 1, pointerType: 'mouse' });
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+  });
+
+  test('cross-column pointer drag creates a preview and a placeholder in the source column', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    // Move pointer into the second column.
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 4,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    // Preview must still be on body.
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview).not.toBeNull();
+    expect(document.body.contains(preview)).toBe(true);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Regression: drop-target filter must exclude the dragged card in both
+  // keyboard-drag state (--lifted) and pointer-drag state (--placeholder).
+  //
+  // Before the fix, locatePointerTarget filtered rows by
+  // !row.classList.contains('cinder-sortable-item--lifted'). During a pointer
+  // drag the lifted card carries cinder-sortable-item--placeholder instead, so
+  // the dragged card was NOT excluded — skewing midpoint calculations. The fix
+  // filters by data-key, which is present and stable in both drag states.
+  //
+  // Note: happy-dom does not support ':scope >' in Element.querySelector, so
+  // locatePointerTarget's card-list lookup returns null in this environment and
+  // all pointer-drag cardIndex values always resolve to 0 (empty row set →
+  // insertionIndex 0). The full midpoint-computation path is correct in real
+  // browsers; the tests below verify the class-state invariant that the old
+  // filter would have broken.
+  // ---------------------------------------------------------------------------
+
+  test('pointer drag: dragged row gets --placeholder (not --lifted) — old class filter would miss it', async () => {
+    // This test documents the core of the regression. During a pointer drag the
+    // dragged row carries cinder-sortable-item--placeholder, NOT --lifted. The
+    // old locatePointerTarget filter excluded only --lifted rows, so the dragged
+    // card would be included in midpoint calculations during pointer drags.
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const alphaRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    // The class the old filter keyed on is NOT present during a pointer drag.
+    expect(alphaRow?.classList.contains('cinder-sortable-item--lifted')).toBe(false);
+    // The actual class during a pointer drag IS present — and carries the data-key
+    // that the fixed filter now uses to identify and exclude the dragged row.
+    expect(alphaRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(true);
+    // data-key is present and stable regardless of drag state.
+    expect(alphaRow?.getAttribute('data-key')).toBe('a');
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('keyboard drag: dragged row gets --lifted (not --placeholder) — data-key filter still excludes it', async () => {
+    // Mirror of the previous test for keyboard drags. data-key is present in
+    // both states, making it the correct stable exclusion marker.
+    const { container } = renderBoard();
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+
+    await fireEvent.keyDown(handle, { key: ' ' });
+
+    const alphaRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    expect(alphaRow?.classList.contains('cinder-sortable-item--lifted')).toBe(true);
+    expect(alphaRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+    expect(alphaRow?.getAttribute('data-key')).toBe('a');
+
+    await fireEvent.keyDown(handle, { key: 'Escape' });
   });
 });

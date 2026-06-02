@@ -45,6 +45,7 @@
   const rowId = useId('cinder-sortable-row');
 
   let handleEl = $state<HTMLButtonElement | null>(null);
+  let rowEl = $state<HTMLLIElement | null>(null);
 
   // Pointer session state — plain let (not $state) since these values do not
   // drive template rendering or $derived expressions; they are bookkeeping only.
@@ -56,6 +57,23 @@
   let latestPointerY = 0;
   let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
+
+  // Reactive state for the pointer-drag preview portal.
+  // previewX / previewY drive data-preview-x / data-preview-y on the row element
+  // and the --placeholder / --lifted class toggle — they must be $state.
+  // isDraggingWithPointer gates both the class toggle and the data-attribute output.
+  let previewX = $state(0);
+  let previewY = $state(0);
+  let isDraggingWithPointer = $state(false);
+
+  // Portal dimensions are captured at lift time and written imperatively to the
+  // portal's CSS custom properties inside createPreviewPortal. They never drive
+  // reactive rendering, so plain let is correct here.
+  let previewWidth = 0;
+  let previewHeight = 0;
+
+  // The portal element appended to document.body during a pointer drag.
+  let previewPortalEl: HTMLElement | null = null;
 
   const isLifted = $derived(
     context.controller.phase === 'lifted' && context.controller.liftedKey === itemKey,
@@ -82,6 +100,105 @@
 
   const handleLabel = $derived(formatHandleLabel(itemLabel));
 
+  // Grab offset: distance from the pointer to the row's top-left corner at lift
+  // time. Stored so subsequent moves keep the preview under the original grab
+  // point rather than jumping to the row's center.
+  let grabOffsetX = 0;
+  let grabOffsetY = 0;
+
+  // Create a fixed-position portal overlay that follows the pointer.
+  // The overlay clones the visual appearance of the lifted row so the user
+  // can see what they are dragging regardless of where the placeholder sits.
+  function createPreviewPortal(pointerX: number, pointerY: number): void {
+    if (typeof document === 'undefined') return;
+    if (previewPortalEl) return;
+    if (!rowEl) return;
+
+    const rect = rowEl.getBoundingClientRect();
+    previewWidth = rect.width;
+    previewHeight = rect.height;
+
+    // Capture the pointer's offset from the row's top-left at lift time so the
+    // preview stays anchored under the grab point (not the row's center).
+    grabOffsetX = pointerX - rect.left;
+    grabOffsetY = pointerY - rect.top;
+
+    const portal = document.createElement('div');
+    portal.setAttribute('data-cinder-drag-preview', '');
+    portal.setAttribute('aria-hidden', 'true');
+    portal.setAttribute('inert', '');
+    portal.className = 'cinder-sortable-drag-preview';
+
+    // Clone the row's inner HTML into the preview so the user sees the
+    // card content at the pointer location.
+    const clone = rowEl.cloneNode(true) as HTMLElement;
+    // Remove pointer/keyboard event attributes from the clone so the preview
+    // is entirely inert. The clone is aria-hidden / inert at the portal level.
+    clone.removeAttribute('data-sortable-row');
+    clone.removeAttribute('data-key');
+    clone.removeAttribute('data-row-id');
+    // Strip all id attributes from the clone and its descendants to prevent
+    // duplicate id values in the document, which would break getElementById,
+    // label/for associations, and aria relationships during a drag.
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach((descendant) => {
+      descendant.removeAttribute('id');
+    });
+    portal.appendChild(clone);
+
+    // Position the portal so its top-left aligns with the row's bounding rect
+    // at the moment of lift — the transform will then track the pointer delta.
+    portal.style.setProperty('--preview-width', `${previewWidth}px`);
+    portal.style.setProperty('--preview-height', `${previewHeight}px`);
+    portal.style.setProperty('--preview-left', `${rect.left}px`);
+    portal.style.setProperty('--preview-top', `${rect.top}px`);
+    portal.style.setProperty('--preview-dx', '0px');
+    portal.style.setProperty('--preview-dy', '0px');
+
+    document.body.appendChild(portal);
+    previewPortalEl = portal;
+    isDraggingWithPointer = true;
+  }
+
+  // Update the portal's translate offset so it follows the pointer.
+  function updatePreviewPosition(pointerX: number, pointerY: number): void {
+    if (!previewPortalEl || !rowEl) return;
+    if (typeof document === 'undefined') return;
+
+    const rect = rowEl.getBoundingClientRect();
+    // Compute the top-left position that keeps the grab point under the pointer.
+    // The portal's origin (--preview-left / --preview-top) is the row's bounding
+    // rect; --preview-dx / --preview-dy shift it so the grab point aligns with
+    // the current pointer. Equivalent to: newLeft = pointerX - grabOffsetX.
+    const dx = pointerX - grabOffsetX - rect.left;
+    const dy = pointerY - grabOffsetY - rect.top;
+
+    previewPortalEl.style.setProperty('--preview-left', `${rect.left}px`);
+    previewPortalEl.style.setProperty('--preview-top', `${rect.top}px`);
+    previewPortalEl.style.setProperty('--preview-dx', `${dx}px`);
+    previewPortalEl.style.setProperty('--preview-dy', `${dy}px`);
+
+    // Keep reactive state in sync so tests can read it from data-attributes or
+    // computed style rather than CSS custom properties.
+    previewX = pointerX;
+    previewY = pointerY;
+  }
+
+  function destroyPreviewPortal(): void {
+    // Cancel any queued move-rAF before removing the portal so a pending frame
+    // cannot write to a stale or removed portal element, or interfere with a
+    // subsequent drag session that starts before the frame fires.
+    if (moveRafHandle !== null) {
+      cancelAnimationFrame(moveRafHandle);
+      moveRafHandle = null;
+    }
+    if (previewPortalEl) {
+      previewPortalEl.remove();
+      previewPortalEl = null;
+    }
+    isDraggingWithPointer = false;
+  }
+
   function endPointerSession(reason: 'drop' | 'cancel'): void {
     if (moveRafHandle !== null) {
       cancelAnimationFrame(moveRafHandle);
@@ -99,6 +216,8 @@
         // Browser may have already revoked capture (common on pointercancel).
       }
     }
+
+    destroyPreviewPortal();
 
     pointerActive = false;
     pointerId = null;
@@ -184,6 +303,27 @@
 
     handleEl.setPointerCapture(event.pointerId);
     context.lift(itemKey, index, itemLabel, total);
+
+    // Guard portal creation on a successful lift. The controller rejects concurrent
+    // lifts (returns void but leaves phase === 'lifted' with a *different* key if
+    // another item is already active). Only proceed when this item is now the
+    // lifted key — otherwise release capture and bail without creating the portal.
+    if (context.controller.phase !== 'lifted' || context.controller.liftedKey !== itemKey) {
+      try {
+        handleEl.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already revoked by the browser.
+      }
+      pointerActive = false;
+      pointerId = null;
+      listEl = null;
+      return;
+    }
+
+    // Create the drag preview after lift so the row is in lifted state
+    // when we clone it, then position relative to the pointer.
+    createPreviewPortal(event.clientX, event.clientY);
+    updatePreviewPosition(event.clientX, event.clientY);
     scheduleAutoScroll();
   }
 
@@ -197,6 +337,7 @@
       moveRafHandle = requestAnimationFrame(() => {
         moveRafHandle = null;
         recomputeTarget();
+        updatePreviewPosition(latestPointerX, latestPointerY);
       });
     }
     // Restart auto-scroll loop if it has stopped (e.g. pointer entered edge zone
@@ -316,6 +457,7 @@
         handleEl.releasePointerCapture(pointerId);
       } catch {}
     }
+    destroyPreviewPortal();
     pointerActive = false;
     pointerId = null;
     listEl = null;
@@ -346,6 +488,7 @@
             // Already revoked.
           }
         }
+        destroyPreviewPortal();
         pointerActive = false;
         pointerId = null;
         listEl = null;
@@ -355,13 +498,17 @@
 </script>
 
 <li
+  bind:this={rowEl}
   data-sortable-row
   data-key={itemKey}
   data-row-id={rowId}
+  data-preview-x={isDraggingWithPointer ? previewX : undefined}
+  data-preview-y={isDraggingWithPointer ? previewY : undefined}
   aria-roledescription="sortable item"
   class={cn(
     'cinder-sortable-item',
-    isLifted && 'cinder-sortable-item--lifted',
+    isLifted && isDraggingWithPointer && 'cinder-sortable-item--placeholder',
+    isLifted && !isDraggingWithPointer && 'cinder-sortable-item--lifted',
     !isLifted && context.controller.phase === 'lifted' && 'cinder-sortable-item--shifting',
     className,
   )}

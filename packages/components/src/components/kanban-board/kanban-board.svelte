@@ -199,11 +199,16 @@
     const cardList = columnElement.querySelector<HTMLElement>(
       ':scope > .cinder-kanban-board__cards',
     );
+    // Exclude the dragged card by its stable data-key attribute so the filter
+    // works regardless of whether the card is in the keyboard-drag state
+    // (cinder-sortable-item--lifted) or the pointer-drag state
+    // (cinder-sortable-item--placeholder). Both states carry the same data-key.
+    const draggedKey = cardController.liftedKey;
     const rows = Array.from(cardList?.children ?? []).filter(
       (row): row is HTMLElement =>
         row instanceof HTMLElement &&
         row.hasAttribute('data-sortable-row') &&
-        !row.classList.contains('cinder-sortable-item--lifted'),
+        row.getAttribute('data-key') !== String(draggedKey),
     );
     const insertionIndex = rows.filter((row) => {
       const rect = row.getBoundingClientRect();
