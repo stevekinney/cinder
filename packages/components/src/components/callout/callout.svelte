@@ -60,7 +60,13 @@
 
 <aside
   {...restWithoutForbidden}
-  class={classNames('cinder-callout', className)}
+  class={classNames(
+    'cinder-callout',
+    'cinder-_status-surface',
+    'cinder-_status-surface-border',
+    'cinder-_status-surface-stripe',
+    className,
+  )}
   data-cinder-variant={variant}
   aria-label={ariaLabel}
 >

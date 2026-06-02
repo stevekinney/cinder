@@ -112,7 +112,12 @@
   <div
     bind:this={rootElement}
     {...restWithoutLiveRegion}
-    class={classNames('cinder-banner', className)}
+    class={classNames(
+      'cinder-banner',
+      'cinder-_status-surface',
+      'cinder-_status-surface-border',
+      className,
+    )}
     data-cinder-variant={variant}
     role="region"
     aria-label={ariaLabel}

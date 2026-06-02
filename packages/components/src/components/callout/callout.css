@@ -79,105 +79,47 @@
   }
 
   /* ----------------------------------------
- * Variant: info
+ * Status variants
  *
- * NOTE (CSS audit, Batch D): The four status variants below intentionally
- * keep the inline `oklch(from var(--cinder-{status}) …)` math instead of
- * switching to the `--cinder-color-{status}-{bg,fg,border}` triples in
- * tokens-base.css. The dark-theme triple background sits 8 oklch-L points
- * lighter than the surface synthesized here (28% L vs 20% L), which exceeds
- * the audit's 0.02 ΔL threshold. See
- * docs/css-audit/status-triple-equivalence.md for the full pre-flight table.
+ * The soft-surface color algebra (background, border, foreground, stripe) lives
+ * in the shared `_status-surface.css` partial, consumed via the
+ * `.cinder-_status-surface*` classes on the root (see callout.svelte). Each
+ * variant only sets the partial's inputs: the base status color and the
+ * per-variant foreground/stripe chroma (which escalate with status severity).
+ *
+ * NOTE (CSS audit, Batch D): the soft surface is synthesized rather than read
+ * from the `--cinder-color-{status}-{bg,fg,border}` triples in tokens-base.css
+ * because the dark-theme triple background sits ~8 oklch-L points lighter than
+ * the surface here (28% L vs 20% L), exceeding the audit's 0.02 ΔL threshold.
+ * See docs/css-audit/status-triple-equivalence.md for the full table.
  * ---------------------------------------- */
 
   .cinder-callout[data-cinder-variant='info'] {
-    background-color: light-dark(
-      oklch(from var(--cinder-info) 96.5% 0.015 h),
-      oklch(from var(--cinder-info) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-info) 85% 0.05 h),
-      oklch(from var(--cinder-info) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-info) 35% 0.12 h),
-      oklch(from var(--cinder-info) 88% 0.12 h)
-    );
-    /* Saturated stripe — declared after border-color so the inline-start edge
-   * resolves to this high-chroma rule rather than the soft border above. */
-    border-inline-start-color: light-dark(
-      oklch(from var(--cinder-info) 55% 0.13 h),
-      oklch(from var(--cinder-info) 70% 0.13 h)
-    );
+    --_cinder-status-base: var(--cinder-info);
+    --_cinder-status-fg-chroma-light: 0.12;
+    --_cinder-status-fg-chroma-dark: 0.12;
+    --_cinder-status-stripe-chroma: 0.13;
   }
-
-  /* ----------------------------------------
- * Variant: success
- * ---------------------------------------- */
 
   .cinder-callout[data-cinder-variant='success'] {
-    background-color: light-dark(
-      oklch(from var(--cinder-success) 96.5% 0.015 h),
-      oklch(from var(--cinder-success) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-success) 85% 0.05 h),
-      oklch(from var(--cinder-success) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-success) 35% 0.14 h),
-      oklch(from var(--cinder-success) 88% 0.12 h)
-    );
-    border-inline-start-color: light-dark(
-      oklch(from var(--cinder-success) 55% 0.14 h),
-      oklch(from var(--cinder-success) 70% 0.14 h)
-    );
+    --_cinder-status-base: var(--cinder-success);
+    --_cinder-status-fg-chroma-light: 0.14;
+    --_cinder-status-fg-chroma-dark: 0.12;
+    --_cinder-status-stripe-chroma: 0.14;
   }
-
-  /* ----------------------------------------
- * Variant: warning
- * ---------------------------------------- */
 
   .cinder-callout[data-cinder-variant='warning'] {
-    background-color: light-dark(
-      oklch(from var(--cinder-warning) 96.5% 0.015 h),
-      oklch(from var(--cinder-warning) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-warning) 85% 0.05 h),
-      oklch(from var(--cinder-warning) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-warning) 35% 0.16 h),
-      oklch(from var(--cinder-warning) 88% 0.14 h)
-    );
-    border-inline-start-color: light-dark(
-      oklch(from var(--cinder-warning) 55% 0.16 h),
-      oklch(from var(--cinder-warning) 70% 0.16 h)
-    );
+    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-status-fg-chroma-light: 0.16;
+    --_cinder-status-fg-chroma-dark: 0.14;
+    --_cinder-status-stripe-chroma: 0.16;
   }
 
-  /* ----------------------------------------
- * Variant: danger
- * ---------------------------------------- */
-
   .cinder-callout[data-cinder-variant='danger'] {
-    background-color: light-dark(
-      oklch(from var(--cinder-danger) 96.5% 0.015 h),
-      oklch(from var(--cinder-danger) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-danger) 85% 0.05 h),
-      oklch(from var(--cinder-danger) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-danger) 35% 0.18 h),
-      oklch(from var(--cinder-danger) 88% 0.16 h)
-    );
-    border-inline-start-color: light-dark(
-      oklch(from var(--cinder-danger) 55% 0.18 h),
-      oklch(from var(--cinder-danger) 70% 0.18 h)
-    );
+    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-status-fg-chroma-light: 0.18;
+    --_cinder-status-fg-chroma-dark: 0.16;
+    --_cinder-status-stripe-chroma: 0.18;
   }
 
   /* ----------------------------------------

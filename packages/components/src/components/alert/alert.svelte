@@ -60,7 +60,7 @@
 {#if visible}
   <div
     {...restWithoutForbidden}
-    class={cn('cinder-alert', className)}
+    class={cn('cinder-alert', 'cinder-_status-surface', className)}
     data-cinder-variant={variant}
     role="alert"
   >
