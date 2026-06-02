@@ -8,7 +8,7 @@
    * @tag layout
    * @useWhen Separating leading controls from trailing utility actions inside a single Toolbar row.
    * @avoidWhen Creating vertical rhythm between stacked blocks — use spacer, stack, or inline layout primitives instead.
-   * @related toolbar, spacer, inline
+   * @related toolbar
    */
   export type { ToolbarSpacerProps } from './toolbar.types.ts';
 </script>

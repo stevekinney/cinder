@@ -10,7 +10,7 @@
    * @useWhen Letting nested components adapt their styling based on the surrounding surface tone.
    * @avoidWhen Building a self-contained content card with padding and elevation — use card instead.
    * @avoidWhen Standing up a full page scaffold with header and actions — use page-layout instead.
-   * @related card, page-layout
+   * @related card
    */
   export type { SurfaceProps, SurfaceTone } from './surface.types.ts';
 </script>

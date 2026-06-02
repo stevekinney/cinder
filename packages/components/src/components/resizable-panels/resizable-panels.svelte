@@ -12,7 +12,6 @@
    * @avoidWhen You only need a static two-column or stack layout with no interactive resizing.
    * @avoidWhen Content should wrap naturally instead of claiming a fixed share of a measured container.
    * @related divider
-   * @related page-layout
    * @related scroll-area
    */
   export type {

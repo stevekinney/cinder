@@ -10,7 +10,7 @@
    * @useWhen Pairing a section title with inline actions or a tab row beneath the heading.
    * @avoidWhen Labelling a single form control or field — use label instead.
    * @avoidWhen Rendering a page-wide header with primary navigation — use page-layout primitives instead.
-   * @related page-layout, card, tab-list
+   * @related card, tab-list
    */
   export type { SectionHeadingLevel, SectionHeadingProps } from './section-heading.types.ts';
 </script>

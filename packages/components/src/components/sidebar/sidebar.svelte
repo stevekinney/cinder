@@ -10,7 +10,7 @@
    * @useWhen Sharing collapsed state between a side-navigation column and the rest of the app shell via context.
    * @avoidWhen Building the page body itself rather than the surrounding shell — use page-layout instead.
    * @avoidWhen Rendering navigation entries directly — place side-navigation inside the sidebar column.
-   * @related page-layout, side-navigation, drawer
+   * @related side-navigation, drawer
    */
   export type { SidebarProps } from './sidebar.types.ts';
 </script>
