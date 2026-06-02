@@ -39,6 +39,17 @@
   // enclosing DataList's list-level density (if any) applies; otherwise the
   // row's own default of `comfortable`. A standalone StackedListItem (no
   // DataList ancestor) reads `undefined` from the context and uses the default.
+  // Context identity is stable: `getDataListContext()` reads the Svelte context
+  // once at component instantiation. Reactivity is preserved because the
+  // returned object uses a getter (`get density() { return density }`) rather
+  // than a snapshot value — reading `dataListContext?.density` inside `$derived`
+  // re-subscribes to that getter every time DataList's `density` prop changes.
+  // Avoid destructuring the context object; doing so captures the value at
+  // read time and breaks reactivity.
+  //
+  // Limitation: if a StackedListItem row is dynamically moved between DataList
+  // instances after mount, the context read is not retried and the new parent's
+  // density is not inherited. Mount rows inside the intended DataList only.
   const dataListContext = getDataListContext();
   const resolvedDensity = $derived(density ?? dataListContext?.density ?? 'comfortable');
 

@@ -15,7 +15,7 @@
   ];
 </script>
 
-<DataList items={members}>
+<DataList items={members} key={(m) => m.id}>
   {#snippet children(member)}
     <StackedListItem>
       {#snippet title()}{member.name}{/snippet}

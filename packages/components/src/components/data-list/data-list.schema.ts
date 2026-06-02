@@ -7,7 +7,7 @@ const schema = {
     density: {
       enum: ['comfortable', 'condensed'],
       description:
-        'List-level density inherited by StackedListItem rows that do not set their\nown `density` prop. Omit to let each row use its own default. A per-row\n`density` always overrides this list-level value.',
+        'List-level density inherited by StackedListItem rows that do not set their\nown `density` prop. Omit to let each row use its own default. A per-row\n`density` always overrides this list-level value.\n\nNote: when passing a variable that may be `undefined`, spread conditionally\nbecause `exactOptionalPropertyTypes` is enabled:\n`{...(density ? { density } : {})}`',
     },
     class: {
       type: 'string',
@@ -27,6 +27,10 @@ const schema = {
       {
         name: 'items',
         reason: 'generic-type-parameter',
+      },
+      {
+        name: 'key',
+        reason: 'function-or-snippet',
       },
     ],
   },
