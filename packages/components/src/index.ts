@@ -358,12 +358,6 @@ export type {
 } from './components/navigation-bar/index.ts';
 export { default as Portal, createPortalAttachment } from './components/portal/index.ts';
 export type { PortalAttachmentOptions, PortalProps } from './components/portal/index.ts';
-export { Presence, default as Transition } from './components/transition/index.ts';
-export type {
-  PresenceProps,
-  TransitionFunction,
-  TransitionProps,
-} from './components/transition/index.ts';
 
 export { default as NavigationItem } from './components/navigation-item/index.ts';
 export type { NavigationItemProps } from './components/navigation-item/index.ts';

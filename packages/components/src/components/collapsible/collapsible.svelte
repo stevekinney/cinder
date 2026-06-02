@@ -11,7 +11,6 @@
    * @avoidWhen Coordinating multiple sections where opening one may close others — use accordion.
    * @related accordion
    * @related accordion-item
-   * @related transition
    */
   export type { CollapsibleProps, CollapsibleTriggerState } from './collapsible.types.ts';
 </script>
@@ -21,7 +20,6 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
-  import Transition from '../transition/transition.svelte';
 
   import type { CollapsibleProps } from './collapsible.types.ts';
 
@@ -93,17 +91,17 @@
     </svg>
   </button>
 
-  <Transition
-    show={open}
-    transition={slide}
-    transitionParameters={{ duration: slideMs }}
-    id={panelId}
-    role="region"
-    aria-labelledby={headerId}
-    class="cinder-collapsible__panel"
-  >
-    <div class="cinder-collapsible__panel-inner">
-      {@render children()}
+  {#if open}
+    <div
+      transition:slide={{ duration: slideMs }}
+      id={panelId}
+      role="region"
+      aria-labelledby={headerId}
+      class="cinder-collapsible__panel"
+    >
+      <div class="cinder-collapsible__panel-inner">
+        {@render children()}
+      </div>
     </div>
-  </Transition>
+  {/if}
 </div>

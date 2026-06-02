@@ -1,6 +1,6 @@
 # Collapsible
 
-Single-panel show/hide disclosure — the single-item counterpart to Accordion. A labeled trigger toggles one region, animating its height open and closed via the Transition primitive.
+Single-panel show/hide disclosure — the single-item counterpart to Accordion. A labeled trigger toggles one region, animating its height open and closed with Svelte's native `slide` transition.
 
 ## Usage
 
