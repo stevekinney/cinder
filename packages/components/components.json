@@ -1039,17 +1039,18 @@
       "exportName": "DataList",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Generic iterator that renders a typed collection through a consumer-supplied row snippet with empty-state fallback.",
+      "purpose": "Semantic list container for homogeneous record rows, with a styled empty state and an optional list-level density.",
       "tags": ["list", "iterator"],
       "useWhen": [
-        "Mapping a homogenous array of records to identical row markup defined by the caller.",
+        "Rendering a vertical list of like records where each row shares the same layout.",
+        "Pairing with StackedListItem rows for leading/title/description/meta/trailing content.",
         "Showing a dedicated empty state when the collection has no items."
       ],
       "avoidWhen": [
         "Presenting key-value metadata for a single entity — use description-list instead.",
         "Rendering tabular data with rows and columns — use table instead."
       ],
-      "related": ["description-list", "table", "stacked-list-item"],
+      "related": ["stacked-list-item", "description-list", "table"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

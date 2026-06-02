@@ -6,7 +6,8 @@ const schema = {
   properties: {
     density: {
       enum: ['comfortable', 'condensed'],
-      description: 'Density token surfaced as `data-cinder-density`. Default `comfortable`.',
+      description:
+        "Density token surfaced as `data-cinder-density`. When omitted, inherits the\nenclosing DataList's list-level `density` (if any), then falls back to\n`comfortable`. An explicit value here always overrides the list default.",
     },
     class: {
       type: 'string',

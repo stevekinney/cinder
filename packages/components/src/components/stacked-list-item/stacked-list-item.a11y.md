@@ -11,8 +11,18 @@
 </ul>
 ```
 
-> [!NOTE] Incompatibility with DataList
-> `DataList` wraps its children in a `<div>`, making it an invalid parent for `StackedListItem` — `<li>` children inside a `<div>` is invalid HTML. Do not compose these two components together.
+> [!TIP] Composing with DataList
+> `DataList` renders a `<ul role="list">`, so it is a valid parent for `StackedListItem`. Prefer it over a hand-rolled `<ul>` when you want a styled empty state and a list-level `density` that each row inherits:
+>
+> ```svelte
+> <DataList items={records} density="condensed">
+>   {#snippet children(record)}
+>     <StackedListItem>
+>       {#snippet title()}{record.name}{/snippet}
+>     </StackedListItem>
+>   {/snippet}
+> </DataList>
+> ```
 
 ## Roles, Names, States
 
