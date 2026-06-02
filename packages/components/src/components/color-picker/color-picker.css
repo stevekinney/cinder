@@ -11,6 +11,13 @@
     gap: var(--cinder-space-2);
     width: 100%;
     max-width: 280px;
+
+    /* structural-pattern: the transparency checkerboard (shown behind alpha
+     * channels by the alpha slider and the preview chip) is a fixed light/neutral
+     * grid that signals "see-through", not a themeable surface. Declared once here
+     * and reused by both checkerboards below so the raw values have a single home. */
+    --_cinder-color-picker-checker-base: #fff; /* cinder-allow-raw-color: structural-pattern — checkerboard backing */
+    --_cinder-color-picker-checker-tile: #ccc; /* cinder-allow-raw-color: structural-pattern — checkerboard tile */
   }
 
   .cinder-color-picker[data-cinder-disabled] {
@@ -25,9 +32,20 @@
     width: 100%;
     aspect-ratio: 4 / 3;
     border-radius: var(--cinder-radius-sm, 4px);
-    background-color: var(--cinder-color-picker-hue, hsl(0, 100%, 50%));
+    /* domain-rendering: the saturation/value square paints the full color space
+     * the user is picking from — its hue fill (fallback) and the black/white
+     * value+saturation axes are intrinsic to the control, not themeable. The raw
+     * values are declared once as custom properties (each with a same-line
+     * marker) so the multi-line gradient value carries no unmarked color. */
+    /* prettier-ignore */
+    --_cinder-color-picker-hue-fill: var(--cinder-color-picker-hue, hsl(0, 100%, 50%)); /* cinder-allow-raw-color: domain-rendering — hue fill fallback */
+    /* prettier-ignore */
+    --_cinder-color-picker-value-axis: linear-gradient(to top, #000, transparent); /* cinder-allow-raw-color: domain-rendering — value (black) axis */
+    /* prettier-ignore */
+    --_cinder-color-picker-saturation-axis: linear-gradient(to right, #fff, transparent); /* cinder-allow-raw-color: domain-rendering — saturation (white) axis */
+    background-color: var(--_cinder-color-picker-hue-fill);
     background-image:
-      linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+      var(--_cinder-color-picker-value-axis), var(--_cinder-color-picker-saturation-axis);
     touch-action: none;
     cursor: crosshair;
     outline: none;
@@ -42,10 +60,13 @@
     position: absolute;
     width: 14px;
     height: 14px;
-    border: 2px solid #fff;
+    /* structural-pattern: the draggable thumb sits over the user's chosen color,
+     * so its white ring + dark outline are fixed contrast devices (visible on any
+     * hue), not themeable chrome. */
+    border: 2px solid #fff; /* cinder-allow-raw-color: structural-pattern — thumb contrast ring over arbitrary picked color */
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); /* cinder-allow-raw-color: structural-pattern — thumb dark outline for contrast on light hues */
     pointer-events: none;
   }
 
@@ -61,27 +82,22 @@
   }
 
   .cinder-color-picker__hue {
-    background: linear-gradient(
-      to right,
-      hsl(0, 100%, 50%),
-      hsl(60, 100%, 50%),
-      hsl(120, 100%, 50%),
-      hsl(180, 100%, 50%),
-      hsl(240, 100%, 50%),
-      hsl(300, 100%, 50%),
-      hsl(360, 100%, 50%)
-    );
+    /* domain-rendering: the full-spectrum hue rail IS the control's data — the
+     * user picks a hue along it. Declared on one line so the marker covers every
+     * stop; it is the literal color wheel, never a theme surface. */
+    /* prettier-ignore */
+    --_cinder-color-picker-hue-spectrum: linear-gradient(to right, hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%), hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%)); /* cinder-allow-raw-color: domain-rendering — full hue spectrum rail */
+    background: var(--_cinder-color-picker-hue-spectrum);
   }
 
   .cinder-color-picker__alpha {
-    /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
-    background-color: #fff;
+    background-color: var(--_cinder-color-picker-checker-base);
     background-image:
       linear-gradient(to right, transparent, var(--cinder-color-picker-base, currentColor)),
-      linear-gradient(45deg, #ccc 25%, transparent 25%),
-      linear-gradient(-45deg, #ccc 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #ccc 75%),
-      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      linear-gradient(45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
@@ -108,11 +124,14 @@
     top: 50%;
     width: 14px;
     height: 14px;
-    border: 2px solid #fff;
+    /* structural-pattern: slider thumb sits over the hue rail / alpha
+     * checkerboard, so its white ring + dark outline are fixed contrast devices,
+     * not themeable chrome (same rationale as the gradient handle). */
+    border: 2px solid #fff; /* cinder-allow-raw-color: structural-pattern — slider thumb contrast ring */
     border-radius: 50%;
     background: transparent;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); /* cinder-allow-raw-color: structural-pattern — slider thumb dark outline */
     pointer-events: none;
   }
 
@@ -134,17 +153,16 @@
   }
 
   .cinder-color-picker__preview[data-cinder-alpha] {
-    /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
-    background-color: #fff;
+    background-color: var(--_cinder-color-picker-checker-base);
     background-image:
       linear-gradient(
         var(--cinder-color-picker-preview, transparent),
         var(--cinder-color-picker-preview, transparent)
       ),
-      linear-gradient(45deg, #ccc 25%, transparent 25%),
-      linear-gradient(-45deg, #ccc 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #ccc 75%),
-      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      linear-gradient(45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
