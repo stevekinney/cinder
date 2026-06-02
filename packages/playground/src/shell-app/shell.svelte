@@ -72,7 +72,7 @@
   // off-canvas drawer rather than a static column. Used to gate the drawer's
   // focus-trap / inert behavior so the wide-viewport sidebar (always visible)
   // never makes the rest of the shell inert. Mirrors the 720px CSS breakpoint.
-  const isNarrow = new MediaQuery('max-width: 720px');
+  const isNarrow = new MediaQuery('(max-width: 720px)');
 
   // When the viewport grows past the breakpoint, the drawer is no longer a
   // drawer — it's the static sidebar. Drop the open state so it doesn't linger
@@ -199,6 +199,9 @@
       !isTypingTarget(event.target)
     ) {
       event.preventDefault();
+      // On narrow viewports the sidebar is an off-canvas drawer — open it first
+      // so the filter is visible before moving focus into it.
+      if (isNarrow.current) store.isSidebarOpen = true;
       sidebar?.focusFilter();
     }
   }

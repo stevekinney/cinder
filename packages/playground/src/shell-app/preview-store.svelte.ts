@@ -145,6 +145,10 @@ export class PreviewStore {
     const search = new URL(window.location.href).searchParams;
     this.#isFocusMode = readFocusModeFromSearch(search);
     this.#previewWidth = readPreviewWidthFromSearch(search);
+    // Dismiss the narrow-viewport drawer on every URL sync (browser back/forward).
+    // If the user had the drawer open and navigated away (or landed on ?focus=1
+    // via history), the scrim + inert state must not persist into the new URL.
+    this.isSidebarOpen = false;
     const explicitTheme = readThemeFromSearch(search);
     const nextTheme = explicitTheme ?? readPersistedTheme();
     if (nextTheme !== this.#theme) {
