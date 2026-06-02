@@ -235,6 +235,55 @@ If a story renders the `ThemeToggle` component itself, the toggle reads the curr
 
 A full `ThemeSwitcher` isn't on the v1 roadmap. The recipe above is short enough to copy, and theming-as-a-component tends to bake in opinions (icon set, label copy, layout, focus styles) that don't survive contact with real apps. When two or three reference consumers ship a near-identical toggle and ask cinder to standardize it, that's the signal to promote the recipe into a component.
 
+## Overriding tokens
+
+Dark mode is the headline use of the token system, but the same mechanism themes _anything_. To re-skin cinder, override the documented design tokens on `:root` (or any ancestor of the styled subtree) and every component that consumes them follows:
+
+```css
+:root {
+  --cinder-accent: oklch(62% 0.22 25); /* a warmer brand accent */
+  --cinder-radius-lg: 1.25rem; /* rounder cards and surfaces */
+  --cinder-surface: oklch(95% 0.03 280);
+}
+```
+
+The set of tokens you can safely override is exactly the table in [`tokens.md`](./tokens.md) — the global `--cinder-*` design tokens declared in `tokens-base.css`. You do **not** override a component's own implementation variables; those are not a stable API.
+
+How do you know an override actually reaches a component, rather than hitting a hard-coded value the override can't touch? Two layers enforce it:
+
+### Token categories
+
+Every `--cinder-*` custom property a component references falls into one of four categories. Only the first is consumer-facing theme API:
+
+| Category                            | Shape                                   | Who owns it              | Override it?                                                       |
+| ----------------------------------- | --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| **Global design token**             | `--cinder-accent`, `--cinder-radius-lg` | `tokens-base.css`        | **Yes** — this is the theme API.                                   |
+| **Component override variable**     | `--cinder-color-picker-hue`             | the component            | Advanced; per-component, documented in that component's variables. |
+| **Private implementation variable** | `--_cinder-button-ring`                 | the component, internal  | No — not an API.                                                   |
+| **Runtime-state variable**          | `--cinder-toast-height` (set from JS)   | the component at runtime | No — written by the component.                                     |
+
+### The guards
+
+Two build-time audits keep component CSS honest so the override contract above holds. Both run in `validate` and gate against _regressions_ from a checked-in baseline — existing debt is grandfathered, new debt fails.
+
+- **`tokens:audit`** ([`check-component-css-token-usage.ts`](../packages/components/scripts/check-component-css-token-usage.ts)) classifies every `var(--cinder-*)` reference into the four categories above and reports any that resolve to nothing — a typo, a stale rename, or an undeclared "looks-like-a-token" name. Those references silently fall back to their inline default, so the component stops tracking the token system without any error. Run `bun run --filter=cinder tokens:audit` for the full inventory.
+
+- **`colors:audit`** ([`check-component-css-raw-colors.ts`](../packages/components/scripts/check-component-css-raw-colors.ts)) reports raw color values (`#hex`, `rgb()`, `hsl()`, `oklch()`, `light-dark()`) in component CSS — values that don't track token overrides. Not every raw color is debt: a color-domain control (a color picker's hue spectrum) or a structural pattern (a transparency checkerboard) is intrinsic. Mark those intentional sites inline so the audit classifies them correctly:
+
+  ```css
+  background: linear-gradient(
+    /* … hue spectrum … */
+  ); /* cinder-allow-raw-color: domain-rendering — the hue the user is picking */
+  ```
+
+  Anything unmarked counts as **migration debt** — a color that should become a token or a shared recipe.
+
+When you fix debt (replace a raw color with a token, rename a stale reference), the baseline shrinks: run `bun run --filter=cinder colors:audit -- --update-baseline` (or `tokens:audit --update-baseline`) to record the new, lower floor.
+
+### Proving it at paint time
+
+The static guards catch leaks in source. A leak that only manifests when styles cascade is caught by the [`alternate-theme.playwright.ts`](../packages/testing/tests/alternate-theme.playwright.ts) browser fixture: it loads a real component, overrides documented `:root` tokens to deliberately distinct values, and asserts the component's _computed_ style changes. If a component hard-codes a value instead of consuming the token, the override is inert, the computed style doesn't move, and the test fails. Add a case here whenever you migrate a component family to tokens, so its themeability is locked in.
+
 [mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
 [mdn-color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
 [sb-toolbars]: https://storybook.js.org/docs/essentials/toolbars-and-globals

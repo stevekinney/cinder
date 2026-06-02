@@ -1,0 +1,202 @@
+[
+  {
+    "filePath": "src/components/alert/alert.css",
+    "colorClass": "light-dark",
+    "allowedCount": 9
+  },
+  {
+    "filePath": "src/components/alert/alert.css",
+    "colorClass": "oklch",
+    "allowedCount": 18
+  },
+  {
+    "filePath": "src/components/autocomplete/autocomplete.css",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/banner/banner.css",
+    "colorClass": "light-dark",
+    "allowedCount": 12
+  },
+  {
+    "filePath": "src/components/banner/banner.css",
+    "colorClass": "oklch",
+    "allowedCount": 24
+  },
+  {
+    "filePath": "src/components/callout/callout.css",
+    "colorClass": "light-dark",
+    "allowedCount": 16
+  },
+  {
+    "filePath": "src/components/callout/callout.css",
+    "colorClass": "oklch",
+    "allowedCount": 32
+  },
+  {
+    "filePath": "src/components/chat/input/chat-input.svelte",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/chat/message/image-lightbox.svelte",
+    "colorClass": "rgb",
+    "allowedCount": 9
+  },
+  {
+    "filePath": "src/components/chip/chip.css",
+    "colorClass": "light-dark",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/chip/chip.css",
+    "colorClass": "oklch",
+    "allowedCount": 4
+  },
+  {
+    "filePath": "src/components/code-block/code-block.css",
+    "colorClass": "light-dark",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/color-field/color-field.css",
+    "colorClass": "hex",
+    "allowedCount": 5
+  },
+  {
+    "filePath": "src/components/color-field/color-field.css",
+    "colorClass": "rgb",
+    "allowedCount": 3
+  },
+  {
+    "filePath": "src/components/color-picker/color-picker.css",
+    "colorClass": "hex",
+    "allowedCount": 14
+  },
+  {
+    "filePath": "src/components/color-picker/color-picker.css",
+    "colorClass": "hsl",
+    "allowedCount": 8
+  },
+  {
+    "filePath": "src/components/color-picker/color-picker.css",
+    "colorClass": "rgb",
+    "allowedCount": 3
+  },
+  {
+    "filePath": "src/components/color-swatch-picker/color-swatch-picker.css",
+    "colorClass": "hex",
+    "allowedCount": 5
+  },
+  {
+    "filePath": "src/components/command-menu/command-menu.css",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/dropdown/dropdown.css",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/input/input.css",
+    "colorClass": "oklch",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/kanban-board/kanban-board.css",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
+    "colorClass": "hex",
+    "allowedCount": 7
+  },
+  {
+    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/markdown-editor/prosemirror.css",
+    "colorClass": "hex",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/pagination/pagination.css",
+    "colorClass": "hex",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/rating/rating.css",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/segmented-control/segmented-control.css",
+    "colorClass": "rgb",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/select/select.css",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/selection-popover/selection-popover.css",
+    "colorClass": "rgb",
+    "allowedCount": 3
+  },
+  {
+    "filePath": "src/components/skeleton/skeleton.css",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/slider/slider.css",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/sortable-list/sortable-list.css",
+    "colorClass": "rgb",
+    "allowedCount": 4
+  },
+  {
+    "filePath": "src/components/spinner/spinner.css",
+    "colorClass": "hex",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/stat-group/stat-group.css",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/toast-region/toast-region.css",
+    "colorClass": "light-dark",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/toast-region/toast-region.css",
+    "colorClass": "oklch",
+    "allowedCount": 3
+  },
+  {
+    "filePath": "src/components/toggle/toggle.css",
+    "colorClass": "hex",
+    "allowedCount": 7
+  },
+  {
+    "filePath": "src/components/toggle/toggle.css",
+    "colorClass": "rgb",
+    "allowedCount": 2
+  },
+  {
+    "filePath": "src/styles/components/experimental/popover.css",
+    "colorClass": "oklch",
+    "allowedCount": 2
+  }
+]
