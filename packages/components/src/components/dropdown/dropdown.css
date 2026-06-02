@@ -92,7 +92,7 @@
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
     color: var(--cinder-text);
-    box-shadow: var(--cinder-shadow-lg, 0 10px 15px rgb(0 0 0 / 0.15));
+    box-shadow: var(--cinder-shadow-lg);
   }
 
   .cinder-dropdown__menu {

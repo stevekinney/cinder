@@ -245,7 +245,7 @@
   .cinder-segmented-control-option[data-cinder-selected] {
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
-    box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+    box-shadow: var(--cinder-shadow-sm);
   }
 
   .cinder-segmented-control-option-icon {
@@ -257,7 +257,7 @@
   .cinder-segmented-control-option[data-cinder-pressed] {
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
-    box-shadow: var(--cinder-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.1));
+    box-shadow: var(--cinder-shadow-sm);
   }
 
   /* ── Tablist variant (single mode only) ─────────────────────────────────────
