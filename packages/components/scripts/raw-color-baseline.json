@@ -31,33 +31,13 @@
   },
   {
     "filePath": "src/components/color-field/color-field.css",
-    "colorClass": "hex",
-    "allowedCount": 5
-  },
-  {
-    "filePath": "src/components/color-field/color-field.css",
     "colorClass": "rgb",
     "allowedCount": 3
   },
   {
     "filePath": "src/components/color-picker/color-picker.css",
-    "colorClass": "hex",
-    "allowedCount": 14
-  },
-  {
-    "filePath": "src/components/color-picker/color-picker.css",
-    "colorClass": "hsl",
-    "allowedCount": 8
-  },
-  {
-    "filePath": "src/components/color-picker/color-picker.css",
     "colorClass": "rgb",
-    "allowedCount": 3
-  },
-  {
-    "filePath": "src/components/color-swatch-picker/color-swatch-picker.css",
-    "colorClass": "hex",
-    "allowedCount": 5
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/command-menu/command-menu.css",

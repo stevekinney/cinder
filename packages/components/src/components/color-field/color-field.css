@@ -34,17 +34,21 @@
   }
 
   .cinder-color-field__swatch[data-cinder-alpha]:not([data-cinder-empty]) {
-    /* Checker pattern so partially-transparent swatches remain visible. */
-    background-color: #fff;
+    /* structural-pattern: transparency checkerboard so partially-transparent
+     * swatches stay visible — a fixed light/neutral grid signalling "see-through",
+     * not a themeable surface. Raw values declared once here with markers. */
+    --_cinder-color-field-checker-base: #fff; /* cinder-allow-raw-color: structural-pattern — checkerboard backing */
+    --_cinder-color-field-checker-tile: #ccc; /* cinder-allow-raw-color: structural-pattern — checkerboard tile */
+    background-color: var(--_cinder-color-field-checker-base);
     background-image:
       linear-gradient(
         var(--cinder-color-field-swatch, transparent),
         var(--cinder-color-field-swatch, transparent)
       ),
-      linear-gradient(45deg, #ccc 25%, transparent 25%),
-      linear-gradient(-45deg, #ccc 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #ccc 75%),
-      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      linear-gradient(45deg, var(--_cinder-color-field-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--_cinder-color-field-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--_cinder-color-field-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-field-checker-tile) 75%);
     background-size:
       auto,
       6px 6px,

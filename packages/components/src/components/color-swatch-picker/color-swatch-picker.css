@@ -69,14 +69,18 @@
   /* ── Alpha checkerboard — color layer on top, checkerboard beneath ──────── */
 
   .cinder-color-swatch-picker__swatch[data-cinder-alpha] {
-    /* Intentional: literal white backing for the transparency checkerboard, not a theme surface. */
-    background-color: #fff;
+    /* structural-pattern: transparency checkerboard beneath the color layer — a
+     * fixed light/neutral grid signalling "see-through", not a themeable surface.
+     * Raw values declared once here with markers. */
+    --_cinder-color-swatch-picker-checker-base: #fff; /* cinder-allow-raw-color: structural-pattern — checkerboard backing */
+    --_cinder-color-swatch-picker-checker-tile: #ccc; /* cinder-allow-raw-color: structural-pattern — checkerboard tile */
+    background-color: var(--_cinder-color-swatch-picker-checker-base);
     background-image:
       linear-gradient(var(--swatch-color), var(--swatch-color)),
-      linear-gradient(45deg, #ccc 25%, transparent 25%),
-      linear-gradient(-45deg, #ccc 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #ccc 75%),
-      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      linear-gradient(45deg, var(--_cinder-color-swatch-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--_cinder-color-swatch-picker-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--_cinder-color-swatch-picker-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-swatch-picker-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
