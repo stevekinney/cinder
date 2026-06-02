@@ -38,7 +38,7 @@ type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> &
   timestamp?: string;
   /**
    * Rich visible time label, for the rare case where the label needs markup
-   * (e.g. a `<abbr>` or nested element). Takes precedence over `timestamp` when
+   * (e.g. an `<abbr>` or nested element). Takes precedence over `timestamp` when
    * both are supplied. Most consumers should use the `timestamp` string instead.
    */
   timestampLabel?: Snippet;
