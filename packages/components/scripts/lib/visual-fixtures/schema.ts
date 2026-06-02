@@ -213,8 +213,14 @@ export function parseFixtureFile(input: {
 
   if (violations.length > 0) throw new Error(violations.join('\n'));
 
+  // No violations means both parses succeeded; re-check `.success` so TypeScript
+  // narrows the discriminated unions instead of relying on an unsafe assertion.
+  if (!fixturesResult.success || !metadataResult.success) {
+    throw new Error(`[${input.componentName}] fixture parsing failed unexpectedly.`);
+  }
+
   return {
-    fixtures: (fixturesResult as { success: true; data: VisualFixture[] }).data,
-    metadata: (metadataResult as { success: true; data: VisualFixtureMetadata }).data,
+    fixtures: fixturesResult.data,
+    metadata: metadataResult.data,
   };
 }
