@@ -566,7 +566,7 @@
       ],
       "avoidWhen": [
         "Flipping a single setting on or off with immediate effect — use toggle instead.",
-        "Picking exactly one option from a small fixed set — use radio or segmented-control instead."
+        "Picking exactly one option from a small fixed set — use RadioGroup or segmented-control instead."
       ],
       "related": ["checkbox-group", "radio-group", "toggle", "segmented-control"],
       "hasConstraints": false,
