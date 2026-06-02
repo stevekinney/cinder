@@ -892,7 +892,7 @@
         "Constraining a section of a page to a named content width without app-shell chrome."
       ],
       "avoidWhen": [
-        "Building an app shell with header, breadcrumbs, or action regions — use page-layout instead."
+        "Building an app shell with header, breadcrumbs, or action regions — write a hand-rolled page scaffold directly."
       ],
       "related": ["aspect-ratio"],
       "hasConstraints": false,
@@ -2294,7 +2294,7 @@
       ],
       "avoidWhen": [
         "Labelling a single form control or field — use label instead.",
-        "Rendering a page-wide header with primary navigation — use page-layout primitives instead."
+        "Rendering a page-wide header with primary navigation — use a hand-rolled page scaffold with a heading element."
       ],
       "related": ["card", "tab-list"],
       "hasConstraints": false,
@@ -2524,7 +2524,7 @@
         "Sharing collapsed state between a side-navigation column and the rest of the app shell via context."
       ],
       "avoidWhen": [
-        "Building the page body itself rather than the surrounding shell — use page-layout instead.",
+        "Building the page body itself rather than the surrounding shell — use a hand-rolled page scaffold instead.",
         "Rendering navigation entries directly — place side-navigation inside the sidebar column."
       ],
       "related": ["side-navigation", "drawer"],
@@ -2782,7 +2782,7 @@
       ],
       "avoidWhen": [
         "Building a self-contained content card with padding and elevation — use card instead.",
-        "Standing up a full page scaffold with header and actions — use page-layout instead."
+        "Standing up a full page scaffold with header and actions — use a hand-rolled page scaffold instead."
       ],
       "related": ["card"],
       "hasConstraints": false,

@@ -8,7 +8,7 @@
    * @tag responsive
    * @useWhen Wrapping the page chrome so a navigation column can collapse and become a mobile drawer automatically.
    * @useWhen Sharing collapsed state between a side-navigation column and the rest of the app shell via context.
-   * @avoidWhen Building the page body itself rather than the surrounding shell — use page-layout instead.
+   * @avoidWhen Building the page body itself rather than the surrounding shell — use a hand-rolled page scaffold instead.
    * @avoidWhen Rendering navigation entries directly — place side-navigation inside the sidebar column.
    * @related side-navigation, drawer
    */

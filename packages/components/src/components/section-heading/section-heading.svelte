@@ -9,7 +9,7 @@
    * @useWhen Introducing a top-level section of a page with a title and supporting metadata.
    * @useWhen Pairing a section title with inline actions or a tab row beneath the heading.
    * @avoidWhen Labelling a single form control or field — use label instead.
-   * @avoidWhen Rendering a page-wide header with primary navigation — use page-layout primitives instead.
+   * @avoidWhen Rendering a page-wide header with primary navigation — use a hand-rolled page scaffold with a heading element.
    * @related card, tab-list
    */
   export type { SectionHeadingLevel, SectionHeadingProps } from './section-heading.types.ts';

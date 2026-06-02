@@ -7,7 +7,7 @@
    * @tag layout
    * @useWhen Centering article or long-form content in a readable, max-width-capped column.
    * @useWhen Constraining a section of a page to a named content width without app-shell chrome.
-   * @avoidWhen Building an app shell with header, breadcrumbs, or action regions — use page-layout instead.
+   * @avoidWhen Building an app shell with header, breadcrumbs, or action regions — write a hand-rolled page scaffold directly.
    * @related aspect-ratio
    */
   export type { ContainerElement, ContainerMaxWidth, ContainerProps } from './container.types.ts';
