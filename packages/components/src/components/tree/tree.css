@@ -44,6 +44,11 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2, 0.5rem);
+    /* The row is the click target for selection/expansion (see tree-item.svelte
+     * row handlers), so it — not the small checkbox — must satisfy the minimum
+     * touch target. 2.25rem (36px) clears the WCAG 2.2 2.5.8 floor (24px) with
+     * comfortable margin while staying compact in dense trees. */
+    min-block-size: 2.25rem;
     padding-block: var(--cinder-space-1, 0.25rem);
     padding-inline: var(--cinder-space-2, 0.5rem);
     border-radius: var(--cinder-radius-sm);
@@ -56,6 +61,15 @@
     height: 1rem;
     accent-color: var(--cinder-accent, currentColor);
     pointer-events: auto;
+  }
+
+  /* Long labels must not force the tree wider than its container or overlap the
+   * checkbox at narrow (mobile) widths. The element also carries `cinder-_truncate`
+   * (the shared utility), which supplies overflow:hidden / text-overflow:ellipsis /
+   * white-space:nowrap. Only the flex-grow behaviour is tree-specific. */
+  .cinder-tree-item__label {
+    flex: 1 1 auto;
+    min-inline-size: 0;
   }
 
   .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {

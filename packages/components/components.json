@@ -3478,31 +3478,6 @@
       }
     },
     {
-      "name": "TreeSelectAll",
-      "id": "tree-select-all",
-      "import": "cinder/tree-select-all",
-      "exportName": "TreeSelectAll",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Context control for selecting or clearing a Tree level in checkbox multi-selection mode.",
-      "tags": ["tree", "selection"],
-      "useWhen": [
-        "Adding select-all and select-none controls to a Tree selectionControls snippet.",
-        "Selecting a registered tree level without placing non-treeitem controls inside role=\"tree\"."
-      ],
-      "avoidWhen": [
-        "Rendering outside a Tree component — it requires Tree selectionControls context.",
-        "Selecting arbitrary data that is not represented by registered tree items or selectionScopeIds."
-      ],
-      "related": ["tree", "tree-item"],
-      "hasConstraints": false,
-      "hasExamples": false,
-      "artifacts": {
-        "schema": "cinder/tree-select-all/schema",
-        "variables": "cinder/tree-select-all/variables"
-      }
-    },
-    {
       "name": "VisuallyHidden",
       "id": "visually-hidden",
       "import": "cinder/visually-hidden",

@@ -3237,27 +3237,6 @@
       "node": "./dist/server/components/tree-item/tree-item.variables.js",
       "default": "./dist/components/tree-item/tree-item.variables.js"
     },
-    "./tree-select-all": {
-      "types": "./dist/components/tree-select-all/index.d.ts",
-      "svelte": "./src/components/tree-select-all/index.ts",
-      "node": "./dist/server/components/tree-select-all/index.js",
-      "default": "./dist/components/tree-select-all/index.js"
-    },
-    "./tree-select-all/schema": {
-      "types": "./dist/components/tree-select-all/tree-select-all.schema.d.ts",
-      "svelte": "./src/components/tree-select-all/tree-select-all.schema.ts",
-      "node": "./dist/server/components/tree-select-all/tree-select-all.schema.js",
-      "default": "./dist/components/tree-select-all/tree-select-all.schema.js"
-    },
-    "./tree-select-all/variables": {
-      "types": "./dist/components/tree-select-all/tree-select-all.variables.d.ts",
-      "svelte": "./src/components/tree-select-all/tree-select-all.variables.ts",
-      "node": "./dist/server/components/tree-select-all/tree-select-all.variables.js",
-      "default": "./dist/components/tree-select-all/tree-select-all.variables.js"
-    },
-    "./tree-select-all/styles": {
-      "default": "./dist/components/tree-select-all/tree-select-all.css"
-    },
     "./visually-hidden": {
       "types": "./dist/components/visually-hidden/index.d.ts",
       "svelte": "./src/components/visually-hidden/index.ts",

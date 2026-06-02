@@ -639,9 +639,6 @@ export type {
 export { default as TreeItem } from './components/tree-item/index.ts';
 export type { TreeItemProps, TreeItemRowContext } from './components/tree-item/index.ts';
 
-export { default as TreeSelectAll } from './components/tree-select-all/index.ts';
-export type { TreeSelectAllProps } from './components/tree-select-all/index.ts';
-
 export { default as Tooltip } from './components/tooltip/index.ts';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';
 
