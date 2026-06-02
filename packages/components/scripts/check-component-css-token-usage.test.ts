@@ -75,6 +75,22 @@ describe('findDeclaredNames — what a component owns', () => {
       false,
     );
   });
+
+  test('does NOT falsely collect a name that appears as a var() fallback', () => {
+    // Regression: var(--cinder-a, --cinder-b: fallback) must not add --cinder-b
+    // to the declared set. Without stripping var() before scanning, the naive
+    // `--name:` pattern would match --cinder-b as a declaration.
+    const declared = findDeclaredNames('.x { color: var(--cinder-a, --cinder-b: fallback); }');
+    expect(declared.has('--cinder-b')).toBe(false);
+    expect(declared.has('--cinder-a')).toBe(false); // also a reference, not a declaration
+  });
+
+  test('handles nested var() fallbacks', () => {
+    const declared = findDeclaredNames(
+      '.x { background: var(--cinder-x, var(--cinder-y, --cinder-z: 0)); }',
+    );
+    expect(declared.has('--cinder-z')).toBe(false);
+  });
 });
 
 describe('componentOwnedPrefix / componentDirKey', () => {
@@ -196,7 +212,7 @@ describe('count-based baseline + regression detection (unresolved only)', () => 
     expect(regressions[0]).toMatchObject({ name: '--cinder-stale-one', allowed: 2, found: 3 });
   });
 
-  test('findRegressions splits the key correctly even when the name contains no extra ::', () => {
+  test('findRegressions correctly recovers filePath and name from typed flags', () => {
     const baseline = parseBaseline([]);
     const regressions = findRegressions(
       [{ filePath: 'src/components/c/c.css', name: '--cinder-new' }],

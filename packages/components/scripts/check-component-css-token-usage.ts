@@ -154,15 +154,26 @@ export function parseGlobalTokens(tokensBaseSource: string): Set<string> {
  */
 export function findDeclaredNames(source: string): Set<string> {
   const declared = new Set<string>();
-  // CSS LHS declaration: `--cinder-x:` not preceded by `var(` (a reference).
-  const cssDeclaration =
-    /(^|[;{]\s*|\(\s*--_?cinder[a-z0-9-]*\s*,\s*)?(--_?cinder-[a-z0-9-]+)\s*:/g;
+  // Strip `var(…)` calls first so that names in fallback positions —
+  // e.g. `var(--cinder-a, --cinder-b: fallback)` — are removed before
+  // scanning. Without this, the naive `--name:` pattern would falsely collect
+  // `--cinder-b` as a declaration. The strip replaces the entire `var(` call
+  // up to its matching `)` with whitespace (preserving line structure) rather
+  // than removing it, so source offsets remain stable if callers also need
+  // them. Nested `var()` are handled by repeated stripping until no `var(`
+  // remains, which is safe for typical 1-2 nesting levels in CSS.
+  let stripped = source;
+  let previous: string;
+  do {
+    previous = stripped;
+    stripped = stripped.replace(/var\([^()]*\)/g, (match) => match.replace(/[^\n]/g, ' '));
+  } while (stripped !== previous);
+
+  // CSS LHS declaration: `--cinder-x:` on the left side of a property value.
+  const cssDeclaration = /(--_?cinder-[a-z0-9-]+)\s*:/g;
   let match: RegExpExecArray | null;
-  while ((match = cssDeclaration.exec(source)) !== null) {
-    // Skip a `:` that is actually a pseudo-class or value separator inside var().
-    // A real declaration's name is captured in group 2; `var(--x, --y:...)` won't
-    // produce a bare `--y:` so this stays accurate for our inputs.
-    if (match[2]) declared.add(match[2]);
+  while ((match = cssDeclaration.exec(stripped)) !== null) {
+    if (match[1]) declared.add(match[1]);
   }
   const setProperty = /setProperty\(\s*['"](--_?cinder-[a-z0-9-]+)/g;
   while ((match = setProperty.exec(source)) !== null) {
@@ -250,11 +261,11 @@ export async function scan(globals: Set<string>): Promise<TokenFlag[]> {
   // markup). A reference to one of its OWN declared names is component-owned even
   // when the prefix is a shortened form of the directory name.
   const declaredByComponent = new Map<string, Set<string>>();
-  for (const { dir } of scanRoots) {
+  for (const { dir, prefix } of scanRoots) {
     const glob = new Glob('**/*.{css,svelte,ts}');
     for await (const relativePath of glob.scan({ cwd: dir })) {
       if (isTestPath(relativePath)) continue;
-      const posix = `src/components/${toPosixPath(relativePath)}`;
+      const posix = `${prefix}/${toPosixPath(relativePath)}`;
       const componentKey = componentDirKey(posix);
       if (!componentKey) continue;
       const declared = findDeclaredNames(await Bun.file(join(dir, relativePath)).text());
@@ -369,14 +380,18 @@ export function findRegressions(
   allowed: Map<string, number>,
 ): Regression[] {
   const counts = countByKey(unresolvedFlags);
+  // Iterate the typed flags (deduped by key) so filePath/name keep their types —
+  // no string-key re-parse. Matches the pattern used in check-component-css-raw-colors.ts.
+  const seen = new Set<string>();
   const regressions: Regression[] = [];
-  for (const [key, found] of counts) {
+  for (const flag of unresolvedFlags) {
+    const key = flagKey(flag);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const found = counts.get(key) ?? 0;
     const allowedCount = allowed.get(key) ?? 0;
     if (found > allowedCount) {
-      const separator = key.lastIndexOf('::');
-      const filePath = key.slice(0, separator);
-      const name = key.slice(separator + 2);
-      regressions.push({ filePath, name, allowed: allowedCount, found });
+      regressions.push({ filePath: flag.filePath, name: flag.name, allowed: allowedCount, found });
     }
   }
   return regressions.toSorted(
