@@ -228,6 +228,20 @@ describe('changed-components explicit component scope', () => {
   it('rejects unknown explicit component slugs', () => {
     expect(() => decideExplicitComponents('button,ghost', knownSlugs)).toThrow(/ghost/);
   });
+
+  // `knownSlugs` (filesystem) includes compose-only leaves with no standalone
+  // Playwright page. Dispatching one must fail FAST in the scope job, not get
+  // emitted and rejected later by the runner manifest.
+  it('rejects a compose-only leaf in explicit scope (fails fast, not in the runner)', () => {
+    const known = new Set(['feed', 'feed-event']);
+    const composeOnly = new Set(['feed-event']);
+    expect(() => decideExplicitComponents('feed-event', known, composeOnly)).toThrow(/feed-event/);
+    // A standalone slug in the same tree still resolves.
+    expect(decideExplicitComponents('feed', known, composeOnly)).toEqual({
+      mode: 'filtered',
+      components: ['feed'],
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

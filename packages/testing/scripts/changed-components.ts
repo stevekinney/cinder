@@ -58,13 +58,22 @@ export type Decision =
 
 /**
  * Normalize an explicit component scope from `workflow_dispatch` inputs.
- * Empty input means "full matrix"; non-empty input must name known slugs.
+ * Empty input means "full matrix"; non-empty input must name a standalone slug.
+ *
+ * `knownSlugs` is the filesystem superset and includes compose-only leaves
+ * (e.g. `feed-event`) that have no standalone Playwright page. Dispatching one
+ * of those would pass shape validation here but be rejected later by the runner
+ * manifest as an unknown slug — a confusing late failure. Subtracting the
+ * compose-only set up front makes `parseComponentFilter` throw in the scope job
+ * instead, listing only the slugs the runner can actually test.
  */
 export function decideExplicitComponents(
   rawComponents: string | undefined,
   knownSlugs: ReadonlySet<string>,
+  composeOnlySlugs: ReadonlySet<string> = COMPOSE_ONLY_COMPONENTS,
 ): Decision {
-  const parsed = parseComponentFilter(rawComponents, knownSlugs);
+  const standaloneSlugs = new Set([...knownSlugs].filter((slug) => !composeOnlySlugs.has(slug)));
+  const parsed = parseComponentFilter(rawComponents, standaloneSlugs);
   if (parsed === null) {
     return { mode: 'full', reason: 'explicit component scope empty' };
   }
