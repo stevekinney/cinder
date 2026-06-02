@@ -133,4 +133,68 @@ test.describe('playground shell styles', () => {
       PIXEL_TOLERANCE,
     );
   });
+
+  test('narrow viewport: the sidebar is an off-canvas drawer with working open/close/scrim/inert', async ({
+    page,
+  }) => {
+    // Phone-width viewport so the @media (max-width: 720px) drawer rules engage.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/c/slider', { waitUntil: 'load' });
+    await page.waitForSelector('#sidebar-drawer', { state: 'attached' });
+
+    const toggle = page.getByRole('button', { name: 'Toggle component list' });
+    const drawer = page.locator('#sidebar-drawer');
+    const main = page.locator('main');
+
+    // Closed: the hamburger is visible, the drawer is hidden from the a11y tree
+    // and Tab order via visibility:hidden, and main is reachable (not inert).
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(drawer).toHaveCSS('visibility', 'hidden');
+    await expect(main).not.toHaveAttribute('inert', /.*/);
+
+    // Open: the drawer slides in (visibility:visible), the scrim appears, the
+    // toggle reports expanded, and the content behind the scrim goes inert so
+    // keyboard users can't tab behind it.
+    await toggle.click();
+    await expect(drawer).toHaveCSS('visibility', 'visible');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.sidebar-backdrop')).toBeVisible();
+    await expect(main).toHaveAttribute('inert', /.*/);
+
+    // Close via the in-drawer ✕ button: drawer hides again, scrim is gone, inert
+    // is cleared.
+    await page.getByRole('button', { name: 'Close component list' }).click();
+    await expect(drawer).toHaveCSS('visibility', 'hidden');
+    await expect(page.locator('.sidebar-backdrop')).toHaveCount(0);
+    await expect(main).not.toHaveAttribute('inert', /.*/);
+
+    // Reopen, then dismiss by clicking the backdrop scrim. The drawer (≤280px)
+    // covers the inline-start edge, so click the uncovered right side of the
+    // 375px-wide viewport — clicking over the drawer would hit the drawer, not
+    // the scrim.
+    await toggle.click();
+    await expect(drawer).toHaveCSS('visibility', 'visible');
+    await page.locator('.sidebar-backdrop').click({ position: { x: 350, y: 400 } });
+    await expect(drawer).toHaveCSS('visibility', 'hidden');
+
+    // Reopen, then dismiss with Escape.
+    await toggle.click();
+    await expect(drawer).toHaveCSS('visibility', 'visible');
+    await page.keyboard.press('Escape');
+    await expect(drawer).toHaveCSS('visibility', 'hidden');
+
+    // Growing back to a wide viewport drops the drawer state entirely: the
+    // sidebar is the static column again (toggle hidden, main never inert).
+    await toggle.click();
+    await expect(drawer).toHaveCSS('visibility', 'visible');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    // Query by class, not role: at wide width the toggle is display:none and
+    // therefore absent from the accessibility tree, so getByRole can't see it.
+    await expect(page.locator('.sidebar-toggle')).toHaveCSS('display', 'none');
+    await expect(main).not.toHaveAttribute('inert', /.*/);
+    // The drawer is now the static in-flow sidebar (visible, no off-canvas
+    // transform), confirming the open state was dropped on widen.
+    await expect(drawer).toHaveCSS('visibility', 'visible');
+  });
 });

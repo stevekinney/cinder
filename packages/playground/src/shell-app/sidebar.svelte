@@ -196,9 +196,11 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
+    /* 44px square — meets the WCAG 2.5.5 pointer target size for this
+       phone-only control. */
     /* stylelint-disable-next-line csstools/use-logical */
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border: none;
     border-radius: var(--cinder-radius-sm, 0.25rem);
@@ -293,6 +295,19 @@
 
     .sidebar-close {
       display: inline-flex;
+    }
+
+    /* Restore comfortable touch targets in the drawer. The compact desktop
+       density (min-height:0, 4px padding) makes ~32px rows that are too small
+       and too tightly packed for a finger; give phone users a 44px row
+       (WCAG 2.5.5) with real vertical breathing room. */
+    .sidebar-chrome :global(.cinder-side-navigation__list) {
+      gap: var(--cinder-space-1, 0.25rem);
+    }
+
+    .sidebar-chrome :global(.cinder-navigation-item) {
+      min-height: 2.75rem;
+      padding-block: var(--cinder-space-2, 0.5rem);
     }
   }
 </style>

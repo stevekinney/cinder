@@ -155,6 +155,11 @@ export function readToolbarStateFromSearch(search: URLSearchParams): ToolbarSear
 export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearchState): string {
   const next = new URLSearchParams(search);
 
+  // Strip the retired `bg` param (the removed transparency-grid feature). Old
+  // shared/bookmarked URLs may still carry `?bg=checker`; drop it on the next
+  // toolbar write rather than preserving it as an "unrelated" param forever.
+  next.delete('bg');
+
   if (state.isFocusMode) {
     next.set(TOOLBAR_PARAMS.focus, '1');
   } else {

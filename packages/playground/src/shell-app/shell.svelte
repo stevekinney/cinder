@@ -74,30 +74,42 @@
   // never makes the rest of the shell inert. Mirrors the 720px CSS breakpoint.
   const isNarrow = new MediaQuery('max-width: 720px');
 
+  // When the viewport grows past the breakpoint, the drawer is no longer a
+  // drawer — it's the static sidebar. Drop the open state so it doesn't linger
+  // as a hidden-but-"open" drawer that would (a) re-appear if the viewport
+  // narrows again, (b) make Escape close a phantom drawer before exiting focus
+  // mode, and (c) leave an orphaned scrim. Closing here also means the
+  // focus/inert effect below tears down while the hamburger is still visible,
+  // so focus restoration targets a focusable element.
+  $effect(() => {
+    if (!isNarrow.current && store.isSidebarOpen) store.isSidebarOpen = false;
+  });
+
   // Modal semantics for the narrow-viewport drawer. When it opens we move focus
   // into the drawer's filter and mark the content behind the scrim `inert` so a
-  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop; on
-  // close we restore focus to the element that opened it (the hamburger). On
-  // wide viewports the drawer is just the static sidebar, so none of this runs.
+  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop. The
+  // effect body owns the `inert` state in BOTH directions (it re-runs with
+  // drawerIsModal=false on close), so the cleanup's only job is restoring focus
+  // to the element that opened the drawer. On wide viewports none of this runs.
   $effect(() => {
     const drawerIsModal = store.isSidebarOpen && isNarrow.current;
     const header = document.querySelector<HTMLElement>('header.top-bar');
     if (mainEl) mainEl.inert = drawerIsModal;
     if (header) header.inert = drawerIsModal;
 
-    if (drawerIsModal) {
-      // Remember what to return focus to, then move focus into the drawer.
-      const opener = document.activeElement;
-      sidebar?.focusFilter();
-      return () => {
-        // On close (or teardown), drop inert and restore focus to the opener if
-        // it's still in the document and focusable.
-        if (mainEl) mainEl.inert = false;
-        if (header) header.inert = false;
-        if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
-      };
-    }
-    return undefined;
+    if (!drawerIsModal) return;
+
+    // Capture the opener (the hamburger) before moving focus into the drawer.
+    const opener = document.activeElement;
+    sidebar?.focusFilter();
+    return () => {
+      // Restore focus only if the opener is still connected AND actually
+      // focusable — `.focus()` on a display:none element (e.g. the hamburger
+      // after a resize to wide) silently strands focus, so skip it then.
+      if (opener instanceof HTMLElement && opener.isConnected && opener.offsetParent !== null) {
+        opener.focus();
+      }
+    };
   });
 
   // Apply the persisted theme to the shell's root document on first paint.
@@ -107,11 +119,13 @@
   if (typeof document !== 'undefined') applyThemeToDocument(document, store.theme);
 
   async function selectComponent(name: string): Promise<void> {
+    // Selecting from the off-canvas drawer (narrow viewports) should always
+    // dismiss it so the preview is visible — including when the user taps the
+    // already-active component, which short-circuits below. Harmless on wide
+    // viewports where the drawer is the static sidebar.
+    store.isSidebarOpen = false;
     if (name === store.currentComponent) return;
     store.currentComponent = name;
-    // Selecting from the off-canvas drawer (narrow viewports) should dismiss it
-    // so the freshly-selected preview is visible. Harmless on wide viewports.
-    store.isSidebarOpen = false;
     // Preserve the current query string (e.g. ?focus=1) and hash when
     // navigating between components.
     const { search, hash } = window.location;
@@ -333,6 +347,8 @@
       inset: 0;
       z-index: 15;
       background: rgb(0 0 0 / 45%);
+      /* Suppress the mobile-browser tap delay on the dismiss-by-tap scrim. */
+      touch-action: manipulation;
     }
   }
 </style>

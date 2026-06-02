@@ -100,6 +100,10 @@
 
   function toggleFocusMode(): void {
     store.isFocusMode = !store.isFocusMode;
+    // Entering focus mode hides the sidebar entirely; close the narrow-viewport
+    // drawer too so it doesn't leave an orphaned full-screen scrim with no
+    // visible dismiss affordance behind the now-hidden chrome.
+    if (store.isFocusMode) store.isSidebarOpen = false;
     announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
 

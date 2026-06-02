@@ -137,10 +137,11 @@ describe('renderShell metadata and Open Graph', () => {
       expect(html).toContain(`<meta name="twitter:card" content="summary_large_image" />`);
       expect(html).toContain(`<meta name="twitter:title" content="${ROOT_TITLE}" />`);
       expect(html).toContain(`<meta name="twitter:description" content="${ROOT_DESCRIPTION}" />`);
-      // Favicon is served by fav.farm (the brick emoji); no /favicon.svg route
-      // exists, so a local file reference would 404 on every page.
-      expect(html).toContain(`<link rel="icon" href="https://fav.farm/`);
+      // Favicon is a self-contained data-URI SVG of the brick emoji — no
+      // external request and no /favicon.svg route (which would 404).
+      expect(html).toContain(`<link rel="icon" href="data:image/svg+xml,`);
       expect(html).not.toContain('href="/favicon.svg"');
+      expect(html).not.toContain('fav.farm');
     });
 
     it('omits absolute-URL tags when no base URL is provided', () => {

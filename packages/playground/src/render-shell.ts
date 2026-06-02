@@ -20,12 +20,19 @@ const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 /**
- * Favicon served by fav.farm — the brick (🧱) emoji rendered as an SVG icon.
- * fav.farm returns an emoji favicon for any `/{emoji}` path, so no static asset
- * pipeline or /favicon.svg route is needed. The emoji is percent-encoded so the
- * href is valid in HTML even though browsers also accept the raw character.
+ * Favicon: the brick (🧱) emoji rendered inline as an SVG data URI. Inlining
+ * (rather than pointing at fav.farm or any external/static-asset URL) keeps the
+ * playground fully self-contained — no third-party request on every page and
+ * iframe load, works offline and behind a strict CSP, and leaks no usage
+ * metadata. The emoji is the glyph the icon shows; the SVG is just the carrier.
  */
-export const FAVICON_HREF = `https://fav.farm/${encodeURIComponent('🧱')}`;
+export const FAVICON_HREF =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+      '<text x="50" y="52" font-size="80" text-anchor="middle" dominant-baseline="central">🧱</text>' +
+      '</svg>',
+  );
 
 /**
  * Escape a string value so it's safe to embed inside the body of a
