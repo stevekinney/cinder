@@ -343,7 +343,17 @@
 </Toolbar>
 
 <style>
-  .editor-toolbar {
+  /*
+   * `.editor-toolbar` is applied to the <Toolbar> child component's rendered
+   * element, so it carries Toolbar's scope hash — not this component's. A
+   * plain scoped selector here would be rewritten with this file's hash and
+   * never match. `:global()` is required to cross that boundary. The class is
+   * component-specific (only EditorToolbar emits `editor-toolbar`), so this is
+   * not a true global leak. When embedded in markdown-editor, the wrapper
+   * deliberately strips this chrome (see markdown-editor.svelte); these rules
+   * give standalone EditorToolbar its surface and disabled-state styling.
+   */
+  :global(.editor-toolbar) {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-1);
@@ -354,7 +364,7 @@
     flex-wrap: wrap;
   }
 
-  .editor-toolbar[aria-disabled='true'] {
+  :global(.editor-toolbar[aria-disabled='true']) {
     opacity: 0.6;
     pointer-events: none;
   }
