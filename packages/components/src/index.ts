@@ -389,11 +389,14 @@ export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/p
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
 
-export { default as Radio } from './components/radio/index.ts';
-export type { RadioProps } from './components/radio/index.ts';
-
 export { default as RadioGroup } from './components/radio-group/index.ts';
-export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
+// RadioProps is re-exported here (from radio-group) so root-barrel consumers keep
+// access to the type after the standalone Radio/cinder/radio subpath was removed.
+export type {
+  RadioGroupContext,
+  RadioGroupProps,
+  RadioProps,
+} from './components/radio-group/index.ts';
 
 export { default as Rating } from './components/rating/index.ts';
 export type { RatingPrecision, RatingProps } from './components/rating/index.ts';

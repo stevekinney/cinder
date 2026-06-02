@@ -1,15 +1,22 @@
 # Radio
 
-Single radio button option within a radio group for mutually exclusive selection.
+A single radio option within a radio group, for mutually exclusive selection. It
+reads the group's selection context and throws if rendered outside a `RadioGroup`,
+so it is **namespace-only**: access it as `RadioGroup.Option`. There is no standalone
+`cinder/radio` import — a lone radio is semantically meaningless and would throw at
+runtime. (A standalone `Checkbox`, by contrast, is a legitimate independent control.)
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import Radio from 'cinder/radio';
+  import { RadioGroup } from 'cinder/radio-group';
 </script>
 
-<Radio />
+<RadioGroup name="plan" legend="Pricing tier">
+  <RadioGroup.Option id="free" value="free" label="Free" />
+  <RadioGroup.Option id="pro" value="pro" label="Pro" />
+</RadioGroup>
 ```
 
 ## Props

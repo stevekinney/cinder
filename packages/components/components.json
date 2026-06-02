@@ -566,9 +566,9 @@
       ],
       "avoidWhen": [
         "Flipping a single setting on or off with immediate effect — use toggle instead.",
-        "Picking exactly one option from a small fixed set — use radio or segmented-control instead."
+        "Picking exactly one option from a small fixed set — use RadioGroup or segmented-control instead."
       ],
-      "related": ["checkbox-group", "radio", "toggle", "segmented-control"],
+      "related": ["checkbox-group", "radio-group", "toggle", "segmented-control"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1811,7 +1811,7 @@
       "avoidWhen": [
         "Labelling a built-in input that already renders its own label prop — pass label instead."
       ],
-      "related": ["form-field", "input", "checkbox", "radio"],
+      "related": ["form-field", "input", "checkbox", "radio-group"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -2234,31 +2234,6 @@
       }
     },
     {
-      "name": "Radio",
-      "id": "radio",
-      "import": "cinder/radio",
-      "exportName": "Radio",
-      "category": "form",
-      "status": "stable",
-      "purpose": "Single radio button that contributes a value, label, and id to a parent radio-group for one-of-many selection.",
-      "tags": ["form", "selection"],
-      "useWhen": [
-        "Rendering one option inside a radio-group where exactly one value must be chosen.",
-        "Overriding the group disabled state for a single option."
-      ],
-      "avoidWhen": [
-        "Selecting zero or more independent options — use checkbox instead.",
-        "Used outside a radio-group — the group owns the shared name and value."
-      ],
-      "related": ["radio-group", "checkbox"],
-      "hasConstraints": false,
-      "hasExamples": false,
-      "artifacts": {
-        "schema": "cinder/radio/schema",
-        "variables": "cinder/radio/variables"
-      }
-    },
-    {
       "name": "RadioGroup",
       "id": "radio-group",
       "import": "cinder/radio-group",
@@ -2272,7 +2247,7 @@
         "Sharing a single error and description across a set of related radios."
       ],
       "avoidWhen": ["Selecting zero or more independent options — use checkbox-group instead."],
-      "related": ["radio", "checkbox-group"],
+      "related": ["checkbox-group"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

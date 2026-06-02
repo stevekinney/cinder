@@ -8,7 +8,7 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { createRawSnippet, mount, unmount } = await import('svelte');
 const { default: RadioGroup } = await import('./radio-group.svelte');
-const { default: Radio } = await import('../radio/radio.svelte');
+const { default: Radio } = await import('../_radio/radio.svelte');
 
 /**
  * RadioGroup uses Svelte context, so we need to render a parent that contains
@@ -403,5 +403,32 @@ describe('Radio indicator', () => {
       expect(control.querySelector('input[type="radio"]')).not.toBeNull();
       expect(control.querySelector('.cinder-radio-row__indicator')).not.toBeNull();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RadioGroup.Option namespace contract
+//
+// These tests import RadioGroup from the public index (not the internal .svelte
+// path) to verify that the Object.assign namespace wiring actually exposes Option
+// at the module level. The existing suite already verifies that Radio (= Option)
+// renders correctly via the fixture; the tests here pin the namespace contract.
+// ---------------------------------------------------------------------------
+// Import from the public index to exercise the Object.assign export path.
+// Must be at file level (like the other await imports above) because bun
+// only supports top-level await at module scope, not inside describe callbacks.
+const { default: RadioGroupPublic } = await import('./index.ts');
+
+describe('RadioGroup.Option namespace (public API contract)', () => {
+  test('RadioGroup.Option is a callable Svelte component via the namespace', () => {
+    // Object.assign adds Option to the RadioGroup object; verify it is a
+    // function (Svelte 5 components are functions) and is not undefined.
+    expect(typeof RadioGroupPublic.Option).toBe('function');
+  });
+
+  test('RadioGroup.Option and the internal Radio component are the same reference', () => {
+    // This pins the identity contract: importing via the public API must
+    // return the same component as the direct .svelte import used in tests.
+    expect(RadioGroupPublic.Option).toBe(Radio);
   });
 });

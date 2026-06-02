@@ -2068,27 +2068,6 @@
       "import": "./src/components/progress/progress.examples.json",
       "default": "./src/components/progress/progress.examples.json"
     },
-    "./radio": {
-      "types": "./dist/components/radio/index.d.ts",
-      "svelte": "./src/components/radio/index.ts",
-      "node": "./dist/server/components/radio/index.js",
-      "default": "./dist/components/radio/index.js"
-    },
-    "./radio/schema": {
-      "types": "./dist/components/radio/radio.schema.d.ts",
-      "svelte": "./src/components/radio/radio.schema.ts",
-      "node": "./dist/server/components/radio/radio.schema.js",
-      "default": "./dist/components/radio/radio.schema.js"
-    },
-    "./radio/variables": {
-      "types": "./dist/components/radio/radio.variables.d.ts",
-      "svelte": "./src/components/radio/radio.variables.ts",
-      "node": "./dist/server/components/radio/radio.variables.js",
-      "default": "./dist/components/radio/radio.variables.js"
-    },
-    "./radio/styles": {
-      "default": "./dist/components/radio/radio.css"
-    },
     "./radio-group": {
       "types": "./dist/components/radio-group/index.d.ts",
       "svelte": "./src/components/radio-group/index.ts",
