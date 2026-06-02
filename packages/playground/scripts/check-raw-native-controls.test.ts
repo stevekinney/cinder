@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   ALLOWLIST,
@@ -677,4 +680,46 @@ describe('scan — live inventory against the real examples directory', () => {
     // The wrongTagEntry itself is stale (no <input> at index 0 in that file).
     expect(result.staleAllowlistEntries.some((entry) => entry.tagName === 'input')).toBe(true);
   }, 15_000);
+});
+
+describe('scan — inline marker line boundaries (temp fixtures)', () => {
+  async function scanFixture(contents: string): Promise<ScanResult> {
+    const directory = await mkdtemp(join(tmpdir(), 'raw-native-guard-'));
+    try {
+      await Bun.write(join(directory, 'fixture', 'basic.example.svelte'), contents);
+      return await scan(directory, []);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+
+  test('a same-line marker does NOT bleed its exemption onto the next line', async () => {
+    // Line 1 carries a raw control AND a same-line marker (covers line 1 only).
+    // Line 2 carries a raw control with NO marker of its own — it must be flagged.
+    // Regression: previously the line-2 control picked up line 1's marker as a
+    // "previous-line marker" and was silently exempted.
+    const result = await scanFixture(
+      [
+        `<input type="text" /> <!-- examples-audit-allow: line one is intentional -->`,
+        `<input type="text" />`,
+      ].join('\n'),
+    );
+
+    const allowlistedLines = result.allowlisted.map((occurrence) => occurrence.lineNumber);
+    const flaggedLines = result.flagged.map((occurrence) => occurrence.lineNumber);
+
+    expect(allowlistedLines).toEqual([1]);
+    expect(flaggedLines).toEqual([2]);
+  });
+
+  test('a standalone marker on its own line still exempts the control below it', async () => {
+    const result = await scanFixture(
+      [`<!-- examples-audit-allow: native control needed here -->`, `<input type="text" />`].join(
+        '\n',
+      ),
+    );
+
+    expect(result.flagged).toHaveLength(0);
+    expect(result.allowlisted.map((occurrence) => occurrence.lineNumber)).toEqual([2]);
+  });
 });

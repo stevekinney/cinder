@@ -642,8 +642,18 @@ export async function scan(
 
       // Check for an inline allow-marker on this line or the line immediately above.
       const markerOnSameLine = extractInlineAllowReason(originalLine);
+
+      // A previous-line marker only covers THIS line when it sits on its own —
+      // i.e. line N-1 carries the marker but no raw control of its own. If line
+      // N-1 also had a raw control, its marker was a SAME-LINE marker scoped to
+      // N-1 and must not bleed its exemption down onto line N.
+      const previousStrippedLine = lineIndex > 0 ? (strippedLines[lineIndex - 1] ?? '') : '';
+      const previousLineHasOwnControl =
+        lineIndex > 0 && detectAllRawControls(previousStrippedLine).length > 0;
       const markerOnPreviousLine =
-        lineIndex > 0 ? extractInlineAllowReason(originalLines[lineIndex - 1] ?? '') : null;
+        lineIndex > 0 && !previousLineHasOwnControl
+          ? extractInlineAllowReason(originalLines[lineIndex - 1] ?? '')
+          : null;
       const inlineAllowReason = markerOnSameLine ?? markerOnPreviousLine;
 
       for (const { tagName, columnIndex } of matches) {
