@@ -269,8 +269,10 @@
     display: none;
     align-items: center;
     justify-content: center;
+    /* 44px wide to meet the WCAG 2.5.5 pointer target size (the full bar height
+       already exceeds it); matches the in-drawer close button. */
     /* stylelint-disable-next-line csstools/use-logical */
-    width: 40px;
+    width: 2.75rem;
     height: 100%;
     padding: 0;
     border: none;

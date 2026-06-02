@@ -86,6 +86,14 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
   return button;
 }
 
+/** Find a button whose aria-label matches a pattern (for long/verbose labels). */
+function buttonByLabelMatch(container: HTMLElement, pattern: RegExp): HTMLButtonElement {
+  const buttons = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label]')];
+  const match = buttons.find((button) => pattern.test(button.getAttribute('aria-label') ?? ''));
+  if (!match) throw new Error(`No button with aria-label matching ${pattern}`);
+  return match;
+}
+
 /** The single polite aria-live announcement region rendered by the shell. */
 function liveRegion(container: HTMLElement): HTMLElement {
   const region = container.querySelector<HTMLElement>('[aria-live="polite"]');
@@ -184,6 +192,34 @@ describe('top-bar theme selection', () => {
     await tick();
 
     expect(themeCalls).toEqual(['light']);
+  });
+
+  test('entering focus mode closes an open sidebar drawer', async () => {
+    // Focus mode hides the sidebar entirely; an open narrow-viewport drawer must
+    // be closed too, or its scrim is orphaned over the fullscreen preview.
+    const store = new PreviewStore('button');
+    store.isSidebarOpen = true;
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    buttonByLabelMatch(container, /Focus mode/).click();
+    await tick();
+
+    expect(store.isFocusMode).toBe(true);
+    expect(store.isSidebarOpen).toBe(false);
+  });
+
+  test('toggling focus mode off does not reopen the drawer', async () => {
+    const store = new PreviewStore('button');
+    store.isFocusMode = true;
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    buttonByLabelMatch(container, /Focus mode/).click();
+    await tick();
+
+    expect(store.isFocusMode).toBe(false);
+    expect(store.isSidebarOpen).toBe(false);
   });
 });
 

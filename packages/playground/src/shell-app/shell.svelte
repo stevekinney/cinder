@@ -87,25 +87,37 @@
 
   // Modal semantics for the narrow-viewport drawer. When it opens we move focus
   // into the drawer's filter and mark the content behind the scrim `inert` so a
-  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop. The
-  // effect body owns the `inert` state in BOTH directions (it re-runs with
-  // drawerIsModal=false on close), so the cleanup's only job is restoring focus
-  // to the element that opened the drawer. On wide viewports none of this runs.
+  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop. When
+  // it closes, the cleanup CLEARS inert *before* restoring focus — order
+  // matters: the opener (the hamburger) lives inside `header.top-bar`, so
+  // focusing it while the header is still inert would be silently dropped. On
+  // wide viewports none of this runs.
+  function setShellInert(value: boolean): void {
+    const header = document.querySelector<HTMLElement>('header.top-bar');
+    if (mainEl) mainEl.inert = value;
+    if (header) header.inert = value;
+  }
+
   $effect(() => {
     const drawerIsModal = store.isSidebarOpen && isNarrow.current;
-    const header = document.querySelector<HTMLElement>('header.top-bar');
-    if (mainEl) mainEl.inert = drawerIsModal;
-    if (header) header.inert = drawerIsModal;
 
-    if (!drawerIsModal) return;
+    if (!drawerIsModal) {
+      // Not modal (closed, or wide viewport): the content behind it must be
+      // reachable. Idempotent — safe to run on every non-modal pass.
+      setShellInert(false);
+      return;
+    }
 
+    setShellInert(true);
     // Capture the opener (the hamburger) before moving focus into the drawer.
     const opener = document.activeElement;
     sidebar?.focusFilter();
     return () => {
-      // Restore focus only if the opener is still connected AND actually
-      // focusable — `.focus()` on a display:none element (e.g. the hamburger
-      // after a resize to wide) silently strands focus, so skip it then.
+      // Clear inert FIRST so the opener is no longer in an inert subtree, then
+      // restore focus — but only if the opener is still connected AND focusable
+      // (`.focus()` on a display:none element, e.g. the hamburger after a resize
+      // to wide, silently strands focus, so skip it then).
+      setShellInert(false);
       if (opener instanceof HTMLElement && opener.isConnected && opener.offsetParent !== null) {
         opener.focus();
       }
@@ -164,13 +176,17 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && store.isSidebarOpen) {
-      store.isSidebarOpen = false;
-      return;
-    }
-    if (event.key === 'Escape' && store.isFocusMode) {
-      store.isFocusMode = false;
-      return;
+    // Escape precedence: close the drawer first (if open), otherwise exit focus
+    // mode. A single key never does both.
+    if (event.key === 'Escape') {
+      if (store.isSidebarOpen) {
+        store.isSidebarOpen = false;
+        return;
+      }
+      if (store.isFocusMode) {
+        store.isFocusMode = false;
+        return;
+      }
     }
     // `/` focuses the sidebar filter, but only when the user isn't already
     // typing somewhere (so a literal slash in a field is untouched) and isn't

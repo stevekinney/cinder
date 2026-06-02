@@ -162,9 +162,8 @@ export function renderShell(
     `<meta name="twitter:description" content="${description}" />`,
     imageUrl ? `<meta name="twitter:image" content="${imageUrl}" />` : '',
     canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
-    // Brick (🧱) favicon via fav.farm — no static asset pipeline or
-    // /favicon.svg route needed (neither handleRequest nor vercel.json serves
-    // one), so this avoids a guaranteed 404 while giving every page a real icon.
+    // Self-contained data-URI brick (🧱) favicon — see FAVICON_HREF. No
+    // external request and no /favicon.svg route (which would 404).
     `<link rel="icon" href="${FAVICON_HREF}" />`,
   ]
     .filter(Boolean)
