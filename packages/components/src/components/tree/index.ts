@@ -17,4 +17,8 @@ const Tree = Object.assign(TreeRoot, {
 
 export default Tree;
 export type { TreeProps, TreeSelectionBehavior, TreeSelectionMode } from './tree.types.ts';
+// Tree.SelectAll is namespace-only (no standalone cinder/tree-select-all subpath).
+// Re-export its prop type here so consumers can type a Tree.SelectAll wrapper without
+// reaching into the internal _tree-select-all directory.
+export type { TreeSelectAllProps } from '../_tree-select-all/tree-select-all.types.ts';
 export { Tree };

@@ -420,14 +420,14 @@
         separately since the parent treeitem is labelled by the visually-hidden
         label span above.
       -->
-      <span aria-hidden="true" class="cinder-tree-item__label">{label}</span>
+      <span aria-hidden="true" class="cinder-tree-item__label cinder-_truncate">{label}</span>
     {:else}
       <!--
         aria-hidden prevents the visible default text from being announced
         separately since the parent treeitem is labelled by the visually-hidden
         label span above.
       -->
-      <span aria-hidden="true" class="cinder-tree-item__label">{label}</span>
+      <span aria-hidden="true" class="cinder-tree-item__label cinder-_truncate">{label}</span>
     {/if}
   </div>
   {#if isBranch && isExpanded}
