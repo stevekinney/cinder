@@ -113,9 +113,16 @@
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
     button.cinder-chip:hover:not(:disabled) {
+      /* The flat hover overlay is a single neutral black/white tint, declared
+       * once here so its raw value has one home. It is a structural device (a
+       * darken/lighten film over whatever the chip background is), not a
+       * themeable status surface. */
+      /* cinder-allow-raw-color: structural-pattern — neutral hover overlay tint, not a themeable surface */
+      --_cinder-chip-hover-overlay: light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1));
+
       background-image: linear-gradient(
-        light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1)),
-        light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.1))
+        var(--_cinder-chip-hover-overlay),
+        var(--_cinder-chip-hover-overlay)
       );
     }
   }

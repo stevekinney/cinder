@@ -228,3 +228,42 @@ comment block pointing at this doc — those comment lines also contain the
 literal pattern text in backticks, so `rg` will report a slightly higher raw
 hit count post-audit (one extra match per file = 3 added). Filter to lines
 starting with whitespace + `oklch(` to count only real declarations.
+
+---
+
+## 7. Consolidation into a shared recipe (task 5b849512)
+
+The Batch-D conclusion above — keep the synthesized soft surface, do **not**
+adopt the triples — still holds. What changed is **where** the synthesis lives.
+
+The identical `light-dark(oklch(from … L C h))` algebra that was duplicated
+across Alert, Banner, and Callout now lives **once** in the shared partial
+`src/styles/components/_status-surface.css`, decomposed by emitted
+responsibility:
+
+| Class                            | Emits                        | Composed by            |
+| -------------------------------- | ---------------------------- | ---------------------- |
+| `.cinder-_status-surface`        | `background-color` + `color` | Alert, Banner, Callout |
+| `.cinder-_status-surface-border` | `border-color`               | Banner, Callout        |
+| `.cinder-_status-surface-stripe` | `border-inline-start-color`  | Callout only           |
+
+Alert composes the surface only (P7 neutral border); Banner adds the soft
+border; Callout adds the border and the saturated stripe. Each component sets
+the recipe's inputs per variant on its own root element:
+
+- `--_cinder-status-base` — the status base color (`var(--cinder-info)` etc.;
+  Alert keeps `var(--cinder-alert-info)` for its info variant).
+- `--_cinder-status-fg-chroma-light` / `--_cinder-status-fg-chroma-dark` — the
+  foreground chroma, which **escalates per status severity** (info `0.12` →
+  danger `0.18` light) and so cannot be a single baked constant.
+- `--_cinder-status-stripe-chroma` — Callout's stripe chroma (info `0.13` →
+  danger `0.18`).
+
+The L values and the background/border chroma are uniform across variants, so
+they are baked into the recipe; only the foreground and stripe chroma vary.
+
+**This consolidation preserves every rendered value exactly** — it is a pure
+dedup, not a visual change. The L=20% dark soft-surface background that this
+document measured against the L=28% triple is unchanged; the ~8-oklch-L-point
+discrepancy that blocked the triple migration is preserved verbatim. Reconciling
+the soft surface with the triples remains separate, screenshot-gated work.

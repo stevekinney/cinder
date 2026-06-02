@@ -35,6 +35,29 @@ function loadCss(relativePath: string): string {
 const alertCss = loadCss('./alert.css');
 const root = parse(alertCss);
 
+// The variant-tinted background + foreground algebra now lives in the shared
+// `_status-surface.css` partial; Alert composes `.cinder-_status-surface` (and
+// does NOT compose the border/stripe classes — P7 keeps the border neutral).
+// Variant rules set the partial's `--_cinder-status-base` tint input. So the
+// "still tinted, not flattened to surface" criterion is pinned in two places:
+// the variant rule sets a status-derived base here, and the partial synthesizes
+// the tint from it.
+const statusSurfaceCss = loadCss('../../styles/components/_status-surface.css');
+const statusSurfaceRoot = parse(statusSurfaceCss);
+
+function findRuleInPartial(selector: string): Rule {
+  let match: Rule | undefined;
+  statusSurfaceRoot.walkRules((rule) => {
+    if (rule.selectors.includes(selector)) {
+      match = rule;
+      return false;
+    }
+    return undefined;
+  });
+  if (!match) throw new Error(`partial rule not found: ${selector}`);
+  return match;
+}
+
 /**
  * Every property that can paint or size a border edge — shorthands, longhands,
  * physical sides, logical sides, and the `border-image` family (which can draw
@@ -170,15 +193,33 @@ describe('alert chrome reduction — border-equals-base', () => {
         expect(borderProps).toEqual([]);
       });
 
-      test('background-color is still a variant-tinted light-dark(oklch(...)) (not flattened to surface)', () => {
-        let background: string | undefined;
-        rule.walkDecls('background-color', (decl) => {
-          background = decl.value;
+      test('sets a status-derived base tint input (not flattened to surface)', () => {
+        // The variant tint is no longer an inline background-color; it is driven
+        // by the --_cinder-status-base input the shared partial consumes. Assert
+        // the variant routes to a status color (a --cinder-* token), so the
+        // surface stays tinted rather than collapsing to the neutral base.
+        let base: string | undefined;
+        rule.walkDecls('--_cinder-status-base', (decl) => {
+          base = decl.value;
         });
-        expect(background).toBeDefined();
-        expect(background).toMatch(/^light-dark\(/);
-        expect(background).toMatch(/oklch\(\s*from\s+var\(--cinder-/);
+        expect(base).toBeDefined();
+        expect(base).toMatch(/^var\(--cinder-/);
       });
     });
   }
+
+  test('the composed surface partial synthesizes a variant-tinted light-dark(oklch(...)) background', () => {
+    // The actual tint lives in the partial Alert composes; confirm it is still a
+    // relative-color light-dark surface derived from the base input, so no future
+    // edit flattens Alert to a plain neutral surface.
+    // Selector is self-doubled (.x.x) for (0,2,0) specificity over the component base.
+    const surfaceRule = findRuleInPartial('.cinder-_status-surface.cinder-_status-surface');
+    let background: string | undefined;
+    surfaceRule.walkDecls('background-color', (decl) => {
+      background = decl.value;
+    });
+    expect(background).toBeDefined();
+    expect(background).toMatch(/^light-dark\(/);
+    expect(background).toMatch(/oklch\(\s*from\s+var\(--_cinder-status-base\)/);
+  });
 });

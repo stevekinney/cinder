@@ -2,37 +2,17 @@
   {
     "filePath": "src/components/alert/alert.css",
     "colorClass": "light-dark",
-    "allowedCount": 9
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/alert/alert.css",
     "colorClass": "oklch",
-    "allowedCount": 18
+    "allowedCount": 2
   },
   {
     "filePath": "src/components/autocomplete/autocomplete.css",
     "colorClass": "oklch",
     "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/banner/banner.css",
-    "colorClass": "light-dark",
-    "allowedCount": 12
-  },
-  {
-    "filePath": "src/components/banner/banner.css",
-    "colorClass": "oklch",
-    "allowedCount": 24
-  },
-  {
-    "filePath": "src/components/callout/callout.css",
-    "colorClass": "light-dark",
-    "allowedCount": 16
-  },
-  {
-    "filePath": "src/components/callout/callout.css",
-    "colorClass": "oklch",
-    "allowedCount": 32
   },
   {
     "filePath": "src/components/chat/input/chat-input.svelte",
@@ -43,16 +23,6 @@
     "filePath": "src/components/chat/message/image-lightbox.svelte",
     "colorClass": "rgb",
     "allowedCount": 9
-  },
-  {
-    "filePath": "src/components/chip/chip.css",
-    "colorClass": "light-dark",
-    "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/chip/chip.css",
-    "colorClass": "oklch",
-    "allowedCount": 4
   },
   {
     "filePath": "src/components/code-block/code-block.css",
@@ -193,6 +163,16 @@
     "filePath": "src/components/toggle/toggle.css",
     "colorClass": "rgb",
     "allowedCount": 2
+  },
+  {
+    "filePath": "src/styles/components/_status-surface.css",
+    "colorClass": "light-dark",
+    "allowedCount": 4
+  },
+  {
+    "filePath": "src/styles/components/_status-surface.css",
+    "colorClass": "oklch",
+    "allowedCount": 8
   },
   {
     "filePath": "src/styles/components/experimental/popover.css",

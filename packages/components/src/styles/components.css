@@ -132,3 +132,18 @@
  * Imported last to preserve the original source order of the inline rule it
  * replaced (it previously sat after every component import). */
 @import './components/_dismiss-button.css';
+
+/* Shared internal partial — soft status-surface recipe for Alert/Banner/Callout.
+ * The recipe is import-order-independent by design: its classes are self-doubled
+ * (`.x.x`, specificity 0,2,0) so they beat the component base (0,1,0) whether the
+ * partial loads before or after the component CSS — which matters because in
+ * slim/sidecar mode (`cinder/styles` + `cinder/<component>/styles`) the component
+ * base loads AFTER this partial. The stripe-wins-over-border behavior and the
+ * forced-colors reset are both resolved WITHIN the partial (rule order +
+ * specificity there), not by this import's position. The placement here is just
+ * conventional grouping with the other shared partials.
+ * Like every shared partial here (_dismiss-button, _input-frame, …), this is part
+ * of `cinder/styles` only — a per-component sidecar (`cinder/alert/styles`) does
+ * NOT include it; the documented contract requires importing `cinder/styles`
+ * first (enforced by `cinder/styles/guard`). */
+@import './components/_status-surface.css';
