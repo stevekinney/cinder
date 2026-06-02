@@ -31,7 +31,8 @@
   // mirrors of behavior the wired callbacks already surface).
 
   // --- Chat instance (for the imperative streaming + scroll API) ---
-  let chat = $state<ReturnType<typeof Chat> | undefined>(undefined);
+  // Plain `let`: only read via `chat?.method()` calls, never reactively.
+  let chat: ReturnType<typeof Chat> | undefined;
 
   // --- Conversation state (immutable snapshots via the cinder/chat builders) ---
   let conversation = $state<ConversationHistory>(createConversation({ id: 'harness' }));
@@ -89,8 +90,14 @@
   // can cancel deterministically; streamingPartial holds the accumulated text so
   // Stop can preserve it.
   let pendingTimers = new Set<ReturnType<typeof setTimeout>>();
-  let streamingPartial = $state('');
+  // Plain `let`: read only inside the streaming functions, never in the
+  // template (the assistant message content comes from `conversation`).
+  let streamingPartial = '';
   let streamingMessageId: string | null = null;
+  // Monotonic token identifying the current stream/typing op. Each scheduled
+  // chunk captures the token active when it was queued and bails if a newer op
+  // has started — so an already-dequeued timer can't write into a fresh stream.
+  let activeOperation = 0;
 
   function later(callback: () => void, delay: number): void {
     const handle = setTimeout(() => {
@@ -114,6 +121,9 @@
    */
   function cancelPending(mode: 'preservePartial' | 'discard' | 'destroy'): void {
     clearTimers();
+    // Invalidate the current op so any timer callback already dequeued (past
+    // clearTimers) bails instead of mutating freshly-reset state.
+    activeOperation += 1;
     if (mode === 'destroy') return;
 
     if (streamingMessageId) {
@@ -166,6 +176,8 @@
     const trimmed = text.trim();
     if (!trimmed) return;
     cancelPending('discard');
+    // Start a new operation; stale timers from a prior op will no longer match.
+    const operation = ++activeOperation;
 
     if (replyMode === 'instant') {
       conversation = appendAssistantMessage(conversation, trimmed);
@@ -178,6 +190,7 @@
       // A deliberately long-ish window so the "typing" state is comfortably
       // observable (by a person and by a test) before the reply lands.
       later(() => {
+        if (operation !== activeOperation) return;
         isStreaming = false;
         streamingStatus = '';
         conversation = appendAssistantMessage(conversation, trimmed);
@@ -200,10 +213,13 @@
     // Deterministic cadence: a fixed number of chunks at a fixed delay so an
     // intermediate partial state is reliably observable before completion.
     const chunks = splitIntoChunks(trimmed, 5);
-    streamChunk(chunks, 0);
+    streamChunk(chunks, 0, activeOperation);
   }
 
-  function streamChunk(chunks: string[], index: number): void {
+  function streamChunk(chunks: string[], index: number, operation: number): void {
+    // A newer reply/clear/seed started — this is a stale continuation, bail.
+    if (operation !== activeOperation) return;
+
     if (index >= chunks.length) {
       // Commit the final content into the message, then end the stream.
       conversation = replaceMessageContent(
@@ -228,7 +244,7 @@
         streamingPartial,
       );
     }
-    later(() => streamChunk(chunks, index + 1), 120);
+    later(() => streamChunk(chunks, index + 1, operation), 120);
   }
 
   function splitIntoChunks(text: string, count: number): string[] {

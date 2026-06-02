@@ -45,7 +45,9 @@ type TextPart = MultiModalContent & { type: 'text'; text: string };
  * @returns A readonly array of content parts
  */
 export function getMessageParts(message: Message): ReadonlyArray<MultiModalContent> {
-  return toMultiModalArray(message.content ?? '');
+  // `content` is `string | ReadonlyArray<MultiModalContent>` (never nullish);
+  // toMultiModalArray handles the empty-string and empty-array cases.
+  return toMultiModalArray(message.content);
 }
 
 /**

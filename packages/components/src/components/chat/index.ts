@@ -30,14 +30,18 @@ export {
 export type {
   ConversationHistory,
   ConversationStatus,
+  ExportOptions,
   ImageContent,
-  JSONPrimitive,
+  // JSONValue types the public `ToolCall.arguments` / `metadata` / `content`
+  // fields, so consumers constructing those need it. (JSONPrimitive is an
+  // internal building block and is intentionally not re-exported.)
   JSONValue,
   Message,
   MessageInput,
   MessageRole,
   MultiModalContent,
   TextContent,
+  ToMarkdownOptions,
   TokenUsage,
   ToolAction,
   ToolCall,

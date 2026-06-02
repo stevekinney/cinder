@@ -19,12 +19,14 @@ import type {
 
 const SCHEMA_VERSION = 4;
 
-let idCounter = 0;
-
-/** Generates a stable-enough unique id for builder-created entities. */
+/**
+ * Generates a globally-unique id for a builder-created entity. Uses
+ * `crypto.randomUUID()` (browser + Bun + Node) rather than a module-level
+ * counter, so ids never collide across simultaneously-rendered conversations or
+ * across parallel test cases sharing the cached module.
+ */
 function nextId(prefix: string): string {
-  idCounter += 1;
-  return `${prefix}-${idCounter}`;
+  return `${prefix}-${crypto.randomUUID()}`;
 }
 
 /** Creates a new empty conversation snapshot. */

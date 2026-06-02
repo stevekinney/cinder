@@ -49,12 +49,16 @@ async function openHarness(
   return { page, harness, dispose: () => context.close() };
 }
 
-/** True when the event log has at least one entry for the given callback name. */
-async function loggedEvent(harness: Locator, event: string): Promise<boolean> {
-  const count = await harness
-    .locator(`[data-testid="event-log-entry"][data-event="${event}"]`)
-    .count();
-  return count > 0;
+/**
+ * Asserts the event log eventually contains an entry for the given callback.
+ * Uses an auto-retrying `toBeAttached` so it tolerates the async microtask
+ * between a click and Svelte flushing the log mutation (a bare `.count()`
+ * after `.click()` can read 0 before the flush and fail spuriously).
+ */
+async function expectLoggedEvent(harness: Locator, event: string): Promise<void> {
+  await expect(
+    harness.locator(`[data-testid="event-log-entry"][data-event="${event}"]`).first(),
+  ).toBeAttached();
 }
 
 /** Trimmed length of a locator's text content (0 when empty/absent). */
@@ -97,7 +101,7 @@ test.describe('chat harness — submit and reply', () => {
       await harness.locator('.chat-input-send').click();
 
       await expect(harness.locator('[data-role="user"]')).toContainText('What is alpha?');
-      expect(await loggedEvent(harness, 'onsubmit')).toBe(true);
+      await expectLoggedEvent(harness, 'onsubmit');
       // Auto-reply (default on) eventually lands an assistant message.
       await expect(harness.locator('[data-role="assistant"]')).toBeVisible({ timeout: 5_000 });
     } finally {
@@ -165,7 +169,7 @@ for (const mechanism of ['imperative', 'content-mutation'] as const) {
 
         // Click Stop: it preserves the partial content and fires onstopgenerating.
         await stop.click();
-        expect(await loggedEvent(harness, 'onstopgenerating')).toBe(true);
+        await expectLoggedEvent(harness, 'onstopgenerating');
         await expect(harness.locator('.chat-input-send[data-stop]')).toHaveCount(0);
         // Exactly one assistant message remains (no stray blank/duplicate).
         await expect(harness.locator('[data-role="assistant"]')).toHaveCount(1);
@@ -358,7 +362,7 @@ test.describe('chat harness — copy, edit, retry', () => {
       const retry = harness.locator('.chat-message-retry').first();
       await expect(retry).toBeVisible();
       await retry.click();
-      expect(await loggedEvent(harness, 'onretry')).toBe(true);
+      await expectLoggedEvent(harness, 'onretry');
     } finally {
       await dispose();
     }
@@ -379,7 +383,7 @@ test.describe('chat harness — scroll, unread, jump', () => {
       });
       await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
       await expect(harness.locator('.chat-jump-button')).toBeVisible({ timeout: 5_000 });
-      expect(await loggedEvent(harness, 'onscrollstatechange')).toBe(true);
+      await expectLoggedEvent(harness, 'onscrollstatechange');
     } finally {
       await dispose();
     }
@@ -398,7 +402,7 @@ test.describe('chat harness — scroll, unread, jump', () => {
       const jump = harness.locator('.chat-jump-button');
       await expect(jump).toBeVisible({ timeout: 5_000 });
       await jump.click();
-      expect(await loggedEvent(harness, 'onjumptolatest')).toBe(true);
+      await expectLoggedEvent(harness, 'onjumptolatest');
     } finally {
       await dispose();
     }
@@ -447,7 +451,7 @@ test.describe('chat harness — attachments', () => {
         mimeType: 'image/png',
         buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
       });
-      expect(await loggedEvent(harness, 'onattachmentadd')).toBe(true);
+      await expectLoggedEvent(harness, 'onattachmentadd');
 
       // Disallowed MIME → the composer's own validation fires onattachmentfailure.
       await fileInput.setInputFiles({
@@ -455,7 +459,7 @@ test.describe('chat harness — attachments', () => {
         mimeType: 'application/x-msdownload',
         buffer: Buffer.from([0x4d, 0x5a]),
       });
-      expect(await loggedEvent(harness, 'onattachmentfailure')).toBe(true);
+      await expectLoggedEvent(harness, 'onattachmentfailure');
     } finally {
       await dispose();
     }

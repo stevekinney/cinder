@@ -29,7 +29,10 @@
   // public wrapper forwards it so consumers using `cinder/chat` can drive
   // streaming through a `bind:this` to <Chat> (the inner component is not
   // exported).
-  let impl = $state<ReturnType<typeof ChatImplementation> | undefined>(undefined);
+  // Plain `let` (not `$state`): the instance ref is only read inside the
+  // imperative forwarders, never in the template or a derivation, so it needs
+  // no reactivity.
+  let impl: ReturnType<typeof ChatImplementation> | undefined;
 
   /**
    * Begin streaming content into an existing assistant message. No-op until the
