@@ -86,95 +86,47 @@
   }
 
   /* ----------------------------------------
- * Variant: info
+ * Status variants
  *
- * NOTE (CSS audit, Batch D): The four status variants below intentionally
- * keep the inline `oklch(from var(--cinder-{status}) …)` math instead of
- * switching to the `--cinder-color-{status}-{bg,fg,border}` triples in
- * tokens-base.css. The dark-theme triple background sits 8 oklch-L points
- * lighter than the surface synthesized here (28% L vs 20% L), which exceeds
- * the audit's 0.02 ΔL threshold. See
- * docs/css-audit/status-triple-equivalence.md for the full pre-flight table.
+ * The soft-surface color algebra (background, border, foreground) lives in the
+ * shared `_status-surface.css` partial, consumed via `.cinder-_status-surface`
+ * + `.cinder-_status-surface-border` on the root (see banner.svelte). Banner
+ * draws no inline-start stripe, so it does not compose the stripe class. Each
+ * variant sets the partial's inputs (base color + per-variant foreground chroma)
+ * plus the banner-local focus-ring color.
+ *
+ * NOTE (CSS audit, Batch D): the soft surface is synthesized rather than read
+ * from the `--cinder-color-{status}-{bg,fg,border}` triples because the
+ * dark-theme triple background sits ~8 oklch-L points lighter (28% vs 20% L),
+ * exceeding the 0.02 ΔL threshold. See docs/css-audit/status-triple-equivalence.md.
  * ---------------------------------------- */
 
   .cinder-banner[data-cinder-variant='info'] {
     --_cinder-banner-ring: var(--cinder-info);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-info) 96.5% 0.015 h),
-      oklch(from var(--cinder-info) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-info) 85% 0.05 h),
-      oklch(from var(--cinder-info) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-info) 35% 0.12 h),
-      oklch(from var(--cinder-info) 88% 0.12 h)
-    );
+    --_cinder-status-base: var(--cinder-info);
+    --_cinder-status-fg-chroma-light: 0.12;
+    --_cinder-status-fg-chroma-dark: 0.12;
   }
-
-  /* ----------------------------------------
- * Variant: success
- * ---------------------------------------- */
 
   .cinder-banner[data-cinder-variant='success'] {
     --_cinder-banner-ring: var(--cinder-success);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-success) 96.5% 0.015 h),
-      oklch(from var(--cinder-success) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-success) 85% 0.05 h),
-      oklch(from var(--cinder-success) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-success) 35% 0.14 h),
-      oklch(from var(--cinder-success) 88% 0.12 h)
-    );
+    --_cinder-status-base: var(--cinder-success);
+    --_cinder-status-fg-chroma-light: 0.14;
+    --_cinder-status-fg-chroma-dark: 0.12;
   }
-
-  /* ----------------------------------------
- * Variant: warning
- * ---------------------------------------- */
 
   .cinder-banner[data-cinder-variant='warning'] {
     --_cinder-banner-ring: var(--cinder-warning);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-warning) 96.5% 0.015 h),
-      oklch(from var(--cinder-warning) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-warning) 85% 0.05 h),
-      oklch(from var(--cinder-warning) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-warning) 35% 0.16 h),
-      oklch(from var(--cinder-warning) 88% 0.14 h)
-    );
+    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-status-fg-chroma-light: 0.16;
+    --_cinder-status-fg-chroma-dark: 0.14;
   }
-
-  /* ----------------------------------------
- * Variant: danger
- * ---------------------------------------- */
 
   .cinder-banner[data-cinder-variant='danger'] {
     --_cinder-banner-ring: var(--cinder-danger);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-danger) 96.5% 0.015 h),
-      oklch(from var(--cinder-danger) 20% 0.03 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-danger) 85% 0.05 h),
-      oklch(from var(--cinder-danger) 35% 0.08 h)
-    );
-    color: light-dark(
-      oklch(from var(--cinder-danger) 35% 0.18 h),
-      oklch(from var(--cinder-danger) 88% 0.16 h)
-    );
+    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-status-fg-chroma-light: 0.18;
+    --_cinder-status-fg-chroma-dark: 0.16;
   }
 
   /* ----------------------------------------

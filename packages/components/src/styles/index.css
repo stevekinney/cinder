@@ -35,4 +35,5 @@
 @import './components/_floating-surface.css';
 @import './components/_control-item.css';
 @import './components/_input-frame.css';
+@import './components/_status-surface.css';
 @import './utilities.css' layer(cinder.utilities);

@@ -5,14 +5,15 @@
  * from stylesheets, and the package ships no browser-test harness).
  *
  * The Callout CSS is deliberate and narrow: the base rule sets the box border
- * plus the 4px inline-start stripe width, and each variant rule sets exactly
- * the soft `border-color` and the saturated `border-inline-start-color`. So
- * rather than simulating the full cascade, the tests pin that exact shape — a
- * variant rule may only touch those two border properties (any other
- * border-affecting declaration, shorthand or longhand, fails the test), the
- * stripe color is declared after the soft border so it wins the cascade, both
- * derive from the matching status token, and the stripe's chroma is strictly
- * higher than the soft border's so the stripe reads as "visibly stronger."
+ * plus the 4px inline-start stripe width. The soft `border-color` and saturated
+ * `border-inline-start-color` algebra now lives in the shared
+ * `_status-surface.css` partial, so each variant rule only sets the partial's
+ * per-variant inputs (`--_cinder-status-base` + the foreground/stripe chroma).
+ * The tests pin that split shape: a variant rule may carry NO border-affecting
+ * declaration (any shorthand or longhand fails the test), and the partial
+ * declares the stripe after the soft border so it wins the cascade, both derive
+ * from `--_cinder-status-base`, and the stripe chroma strictly exceeds the
+ * fixed soft-border chroma so the stripe reads as "visibly stronger."
  */
 
 import { readFileSync } from 'node:fs';
@@ -30,12 +31,39 @@ function loadCss(relativePath: string): string {
 const calloutCss = loadCss('./callout.css');
 const root = parse(calloutCss);
 
+// The soft-surface color algebra (border + stripe) now lives in the shared
+// `_status-surface.css` partial, consumed by Callout via the
+// `.cinder-_status-surface*` classes. Callout's variant rules only set the
+// partial's per-variant inputs. The stripe-vs-border acceptance criteria are
+// therefore split: the input wiring is pinned on the variant rules here, and the
+// algebra (stripe declared after border, both derive from --_cinder-status-base,
+// stripe chroma exceeds the fixed soft-border chroma) is pinned on the partial.
+const statusSurfaceCss = loadCss('../../styles/components/_status-surface.css');
+const statusSurfaceRoot = parse(statusSurfaceCss);
+
+function findRuleIn(parsedRoot: ReturnType<typeof parse>, selector: string): Rule {
+  let match: Rule | undefined;
+  parsedRoot.walkRules((rule) => {
+    if (rule.selectors.includes(selector)) {
+      match = rule;
+      return false;
+    }
+    return undefined;
+  });
+  if (!match) throw new Error(`rule not found: ${selector}`);
+  return match;
+}
+
+/** The fixed soft-border chroma in the partial (uniform across variants). */
+const SOFT_BORDER_CHROMA = { light: 0.05, dark: 0.08 };
+
 /**
  * Every property that can paint or size a border edge — shorthands, longhands,
  * physical sides, logical sides, and the `border-image` family (which can draw
  * a directional stripe without touching `border-color`/`border-width` at all).
- * A variant rule is allowed to use only the subset in `ALLOWED_VARIANT_BORDER`;
- * anything else here is an escape hatch the tests must reject.
+ * A variant rule may carry NONE of these; the soft border and stripe colors all
+ * live in the shared partial now, so any border-affecting declaration appearing
+ * on a variant rule is an escape hatch the tests must reject.
  */
 const BORDER_AFFECTING = new Set([
   'border',
@@ -79,14 +107,6 @@ const BORDER_AFFECTING = new Set([
   'border-image-outset',
   'border-image-repeat',
 ]);
-
-/**
- * The only border declarations a Callout variant rule may carry: the soft box
- * border color and the saturated inline-start stripe color. Everything else in
- * BORDER_AFFECTING would either lift a non-start edge to the stripe width, mute
- * the stripe, or paint a competing border-image — all regressions.
- */
-const ALLOWED_VARIANT_BORDER = ['border-color', 'border-inline-start-color'];
 
 /**
  * Find the single non-`@media` rule for a selector. The forced-colors block
@@ -229,51 +249,99 @@ describe('callout stripe — directional treatment', () => {
   });
 
   for (const { variant, token } of VARIANTS) {
-    const tokenPattern = new RegExp(`oklch\\(\\s*from\\s+var\\(${token}\\)`);
-
     describe(`variant: ${variant}`, () => {
       const rule = findRule(`.cinder-callout[data-cinder-variant='${variant}']`);
 
-      test('touches only the soft border-color and the inline-start stripe color', () => {
-        // Rejects every other border escape hatch: a `border`/`border-width`
-        // shorthand or a physical/block longhand that would lift a non-start
-        // edge to 4px, and any `border-image` that would paint a competing
-        // stripe. With only these two, the non-start edges stay at the base
-        // rule's 1px and the stripe stays 4px.
-        expect(borderProps(rule).toSorted()).toEqual(ALLOWED_VARIANT_BORDER);
+      test('carries no border declarations — the algebra lives in the shared partial', () => {
+        // The soft border and stripe colors moved to `_status-surface.css`.
+        // A variant rule must NOT reintroduce any border-affecting declaration
+        // (shorthand or longhand): doing so would lift a non-start edge to 4px,
+        // mute the stripe, or paint a competing border-image — all regressions.
+        expect(borderProps(rule)).toEqual([]);
       });
 
-      test('stripe color is declared after border-color so it wins the cascade', () => {
-        const props = rule.nodes
-          .filter((node): node is Declaration => node.type === 'decl')
-          .map((decl) => decl.prop);
-        expect(props.indexOf('border-inline-start-color')).toBeGreaterThan(
-          props.indexOf('border-color'),
-        );
+      test('sets the status base color to the matching status token', () => {
+        expect(declValue(rule, '--_cinder-status-base')).toBe(`var(${token})`);
       });
 
-      test('stripe color derives from the matching status token in both schemes', () => {
-        const stripe = declValue(rule, 'border-inline-start-color');
-        expect(stripe).toBeDefined();
-        const [light, dark] = lightDarkArms(stripe!);
-        expect(light).toMatch(tokenPattern);
-        expect(dark).toMatch(tokenPattern);
+      test('sets a stripe chroma input that strictly exceeds the fixed soft-border chroma', () => {
+        // "Visibly stronger" is now pinned as: the per-variant stripe chroma
+        // input is greater than the partial's fixed soft-border chroma in both
+        // schemes, so a future edit cannot mute the stripe to the soft chroma.
+        const stripeChroma = Number(declValue(rule, '--_cinder-status-stripe-chroma'));
+        expect(stripeChroma).not.toBeNaN();
+        expect(stripeChroma).toBeGreaterThan(SOFT_BORDER_CHROMA.light);
+        expect(stripeChroma).toBeGreaterThan(SOFT_BORDER_CHROMA.dark);
       });
 
-      test('stripe chroma strictly exceeds the soft border chroma in both schemes', () => {
-        // Pins "visibly stronger": soft border and stripe both use
-        // oklch(from var(--cinder-<status>) L C h); assert C(stripe) > C(soft)
-        // per scheme so a future edit can't mute the stripe to the soft chroma.
-        const soft = declValue(rule, 'border-color');
-        const stripe = declValue(rule, 'border-inline-start-color');
-        expect(soft).toBeDefined();
-        expect(stripe).toBeDefined();
-
-        const [softLight, softDark] = lightDarkArms(soft!);
-        const [stripeLight, stripeDark] = lightDarkArms(stripe!);
-        expect(oklchChroma(stripeLight)).toBeGreaterThan(oklchChroma(softLight));
-        expect(oklchChroma(stripeDark)).toBeGreaterThan(oklchChroma(softDark));
+      test('sets both foreground chroma inputs (light + dark)', () => {
+        expect(Number(declValue(rule, '--_cinder-status-fg-chroma-light'))).not.toBeNaN();
+        expect(Number(declValue(rule, '--_cinder-status-fg-chroma-dark'))).not.toBeNaN();
       });
     });
   }
+
+  describe('shared _status-surface partial — the relocated algebra', () => {
+    // The recipe selectors are self-doubled (`.x.x`) to reach specificity (0,2,0)
+    // — see the partial's header and the specificity test below.
+    const borderRule = findRuleIn(
+      statusSurfaceRoot,
+      '.cinder-_status-surface-border.cinder-_status-surface-border',
+    );
+    const stripeRule = findRuleIn(
+      statusSurfaceRoot,
+      '.cinder-_status-surface-stripe.cinder-_status-surface-stripe',
+    );
+
+    test('recipe selectors are self-doubled for (0,2,0) specificity over the component base', () => {
+      // The component base (`.cinder-callout`, etc.) sets `background`/`border` at
+      // (0,1,0). The recipe must win regardless of import order (sidecar mode loads
+      // the base AFTER the recipe), so each recipe selector doubles its class to
+      // (0,2,0) — matching the pre-extraction variant-selector specificity. A
+      // single-class selector here would regress to a source-order tie.
+      const selectors: string[] = [];
+      statusSurfaceRoot.walkRules((rule) => {
+        for (const selector of rule.selectors) {
+          if (/cinder-_status-surface/.test(selector)) selectors.push(selector);
+        }
+      });
+      expect(selectors.length).toBeGreaterThan(0);
+      for (const selector of selectors) {
+        // Each must repeat its single class (e.g. `.x.x`) — reject a bare `.x`.
+        const match = /^(\.cinder-_status-surface[a-z-]*)\1$/.exec(selector);
+        expect(match, `selector "${selector}" must be self-doubled for (0,2,0)`).not.toBeNull();
+      }
+    });
+
+    test('stripe rule is declared after the border rule so it wins the inline-start edge', () => {
+      // Compare real RULE positions in the parsed AST, not substring offsets in
+      // the source — the selector strings also appear in the header comment, so a
+      // text search could pass even if the actual rules were swapped.
+      const layer = stripeRule.parent;
+      expect(layer).toBe(borderRule.parent);
+      const nodes = (layer as { nodes?: unknown[] }).nodes ?? [];
+      expect(nodes.indexOf(stripeRule)).toBeGreaterThan(nodes.indexOf(borderRule));
+    });
+
+    test('soft border and stripe both derive from --_cinder-status-base', () => {
+      const border = declValue(borderRule, 'border-color');
+      const stripe = declValue(stripeRule, 'border-inline-start-color');
+      expect(border).toBeDefined();
+      expect(stripe).toBeDefined();
+      const basePattern = /oklch\(\s*from\s+var\(--_cinder-status-base\)/;
+      const [bLight, bDark] = lightDarkArms(border!);
+      const [sLight, sDark] = lightDarkArms(stripe!);
+      expect(bLight).toMatch(basePattern);
+      expect(bDark).toMatch(basePattern);
+      expect(sLight).toMatch(basePattern);
+      expect(sDark).toMatch(basePattern);
+    });
+
+    test('soft border uses the fixed soft-border chroma values', () => {
+      const border = declValue(borderRule, 'border-color');
+      const [light, dark] = lightDarkArms(border!);
+      expect(oklchChroma(light)).toBe(SOFT_BORDER_CHROMA.light);
+      expect(oklchChroma(dark)).toBe(SOFT_BORDER_CHROMA.dark);
+    });
+  });
 });

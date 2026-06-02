@@ -4,9 +4,11 @@
  * ======================================== */
 
   /*
- * --cinder-info is not defined in tokens-base.css (the project only ships
- * success / warning / danger status tokens). Define it here, scoped to
- * .cinder-alert, so it doesn't bleed into other components.
+ * Alert's info hue. The global `--cinder-info` token now exists in
+ * tokens-base.css, but Alert keeps a component-local base whose dark arm sits
+ * at a slightly higher chroma (0.15 vs the global 0.13) — the tint Alert was
+ * designed around. Scoped to `.cinder-alert` so it does not bleed elsewhere.
+ * Reconciling this with the global token is a separate visual-design decision.
  */
   .cinder-alert {
     --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
@@ -99,101 +101,57 @@
   }
 
   /* ----------------------------------------
- * Variant: info
+ * Status variants
  *
- * NOTE (CSS audit, Batch D): The four status variants below intentionally
- * keep the inline `oklch(from var(--cinder-{status}) …)` math for
- * background-color and color instead of switching to the
- * `--cinder-color-{status}-{bg,fg,border}` triples in tokens-base.css. The
- * dark-theme triple background sits 8 oklch-L points lighter than the surface
- * synthesized here (28% L vs 20% L), which exceeds the audit's 0.02 ΔL
- * threshold. See docs/css-audit/status-triple-equivalence.md for the table.
+ * The soft-surface background + foreground algebra lives in the shared
+ * `_status-surface.css` partial, consumed via `.cinder-_status-surface` on the
+ * root (see alert.svelte). Each variant sets the partial's inputs (base color +
+ * per-variant foreground chroma) plus the alert-local focus-ring color.
  *
- * NOTE (P7): The variant `border-color` is intentionally removed so every
- * variant inherits the base `border: 1px solid var(--cinder-border)`. P7 sheds
- * Alert's persistent status-colored frame; the directional color cue (an
- * inline-start stripe) now belongs exclusively to Callout. Alert keeps its
- * soft variant background tint and variant text color — only the colored frame
- * is gone. Do not reintroduce any border-affecting declaration here.
+ * NOTE (CSS audit, Batch D): the soft surface is synthesized rather than read
+ * from the `--cinder-color-{status}-{bg,fg,border}` triples because the
+ * dark-theme triple background sits ~8 oklch-L points lighter (28% vs 20% L),
+ * exceeding the 0.02 ΔL threshold. See docs/css-audit/status-triple-equivalence.md.
  *
- * Accessibility (WCAG 1.4.1): with the border neutralized, the variant's
- * background tint and text color are hue-only signals. The non-color channel
- * that conveys status is the alert's own text content (e.g. "Failed to connect
- * to the server.") together with `role="alert"`, plus the optional `icon`
- * slot. The pre-P7 colored border was itself sub-3:1 against the tinted
- * background (see the Batch-D audit), so it was never a reliable non-color
- * cue; removing it does not regress 1.4.1. Authors should pass meaningful
- * message text (and an icon where practical) rather than relying on tint.
+ * NOTE (P7): Alert composes ONLY `.cinder-_status-surface` (background + text),
+ * NOT `.cinder-_status-surface-border` or `-stripe`. Every variant inherits the
+ * base `border: 1px solid var(--cinder-border)`; P7 sheds Alert's persistent
+ * status-colored frame, leaving the directional color cue (the stripe)
+ * exclusively to Callout. Do not add a border/stripe surface class or any
+ * border-affecting declaration here.
+ *
+ * Accessibility (WCAG 1.4.1): with the border neutral, the variant tint + text
+ * color are hue-only signals; the non-color status channel is the alert's own
+ * message text plus `role="alert"` and the optional `icon` slot. The pre-P7
+ * colored border was itself sub-3:1 against the tint (Batch-D audit), so it was
+ * never a reliable non-color cue; its absence does not regress 1.4.1.
  * ---------------------------------------- */
 
   .cinder-alert[data-cinder-variant='info'] {
     --_cinder-alert-ring: var(--cinder-alert-info);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-alert-info) 96.5% 0.015 h),
-      oklch(from var(--cinder-alert-info) 20% 0.03 h)
-    );
-    /* border-color intentionally omitted: every Alert variant falls through to
-   * the base `border: 1px solid var(--cinder-border)`. P7 sheds the persistent
-   * status-colored frame so Alert reads as a flat tinted notification, leaving
-   * the directional color cue (the stripe) exclusively to Callout. */
-    color: light-dark(
-      oklch(from var(--cinder-alert-info) 35% 0.12 h),
-      oklch(from var(--cinder-alert-info) 88% 0.12 h)
-    );
+    --_cinder-status-base: var(--cinder-alert-info);
+    --_cinder-status-fg-chroma-light: 0.12;
+    --_cinder-status-fg-chroma-dark: 0.12;
   }
-
-  /* ----------------------------------------
- * Variant: success
- * ---------------------------------------- */
 
   .cinder-alert[data-cinder-variant='success'] {
     --_cinder-alert-ring: var(--cinder-success);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-success) 96.5% 0.015 h),
-      oklch(from var(--cinder-success) 20% 0.03 h)
-    );
-    /* border-color intentionally omitted — inherits var(--cinder-border). */
-    color: light-dark(
-      oklch(from var(--cinder-success) 35% 0.14 h),
-      oklch(from var(--cinder-success) 88% 0.12 h)
-    );
+    --_cinder-status-base: var(--cinder-success);
+    --_cinder-status-fg-chroma-light: 0.14;
+    --_cinder-status-fg-chroma-dark: 0.12;
   }
-
-  /* ----------------------------------------
- * Variant: warning
- * ---------------------------------------- */
 
   .cinder-alert[data-cinder-variant='warning'] {
     --_cinder-alert-ring: var(--cinder-warning);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-warning) 96.5% 0.015 h),
-      oklch(from var(--cinder-warning) 20% 0.03 h)
-    );
-    /* border-color intentionally omitted — inherits var(--cinder-border). */
-    color: light-dark(
-      oklch(from var(--cinder-warning) 35% 0.16 h),
-      oklch(from var(--cinder-warning) 88% 0.14 h)
-    );
+    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-status-fg-chroma-light: 0.16;
+    --_cinder-status-fg-chroma-dark: 0.14;
   }
-
-  /* ----------------------------------------
- * Variant: error
- * ---------------------------------------- */
 
   .cinder-alert[data-cinder-variant='error'] {
     --_cinder-alert-ring: var(--cinder-danger);
-
-    background-color: light-dark(
-      oklch(from var(--cinder-danger) 96.5% 0.015 h),
-      oklch(from var(--cinder-danger) 20% 0.03 h)
-    );
-    /* border-color intentionally omitted — inherits var(--cinder-border). */
-    color: light-dark(
-      oklch(from var(--cinder-danger) 35% 0.18 h),
-      oklch(from var(--cinder-danger) 88% 0.16 h)
-    );
+    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-status-fg-chroma-light: 0.18;
+    --_cinder-status-fg-chroma-dark: 0.16;
   }
 }
