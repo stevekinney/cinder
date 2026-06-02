@@ -298,7 +298,7 @@
 <!-- Props / API reference. Rendered inline and always-expanded: the props
        table is the reference users come here for, so it sits open as a plain
        titled section rather than buried inside a collapsed Card→Accordion. The
-       wrapper div is owned by this file so its scoped selectors apply. -->
+       wrapper <section> is owned by this file so its scoped selectors apply. -->
 <!-- Heading level is h3 to match the example Card titles (cinder Card renders
      its title as <h3>), keeping the iframe document's heading outline ordered
      rather than inverting to a higher level after the example cards. -->

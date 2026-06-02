@@ -196,6 +196,10 @@
       !event.metaKey &&
       !event.ctrlKey &&
       !event.altKey &&
+      // Focus mode hides the sidebar entirely; opening the narrow-viewport drawer
+      // here would render an orphaned scrim over a display:none drawer, so the
+      // filter shortcut is inert while focus mode is active.
+      !store.isFocusMode &&
       !isTypingTarget(event.target)
     ) {
       event.preventDefault();
