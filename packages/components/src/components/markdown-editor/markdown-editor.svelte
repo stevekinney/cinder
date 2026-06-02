@@ -772,6 +772,10 @@
     border: 0;
     border-radius: 0;
     background: transparent;
+    /* toolbar.css defaults .cinder-toolbar to flex-wrap: nowrap; the scoped
+     * rule in editor-toolbar.svelte cannot cross the component boundary, so
+     * we override here where the rendered element lives. */
+    flex-wrap: wrap;
   }
 
   .toolbar-mode-toggle {

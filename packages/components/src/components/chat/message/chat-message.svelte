@@ -759,6 +759,13 @@
     color: var(--cinder-success);
   }
 
+  /* CopyButton renders icon-sm (16px) icons by default. Override to icon-xs
+   * (14px) to match the sibling edit/retry action buttons in the chat footer. */
+  :global(.chat-message-copy svg) {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
   @media (hover: hover) {
     :global(.chat-message-copy[data-cinder-copied]:hover) {
       color: var(--cinder-color-success-fg);
