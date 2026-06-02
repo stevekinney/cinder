@@ -21,7 +21,15 @@
   import { classNames } from '../../utilities/class-names.ts';
   import type { DataListProps } from './data-list.types.ts';
 
-  let { items, key, density, class: className, children, empty }: DataListProps<T> = $props();
+  let {
+    items,
+    key,
+    density,
+    class: className,
+    children,
+    empty,
+    ...rest
+  }: DataListProps<T> = $props();
 
   // Publish the list-level density so StackedListItem rows can inherit it. The
   // getter keeps the read reactive; `density` stays `undefined` when the
@@ -39,7 +47,7 @@
   `children(entry)` must be an `<li>` (StackedListItem is the recommended row);
   the empty state is itself wrapped in an `<li>` so the list stays valid HTML.
 -->
-<ul class={classNames('cinder-data-list', className)} role="list">
+<ul {...rest} class={classNames('cinder-data-list', className)} role="list">
   {#if items.length > 0}
     {#if key}
       {#each items as entry (key(entry))}

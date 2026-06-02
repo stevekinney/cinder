@@ -33,8 +33,9 @@ responsible for labelling the list through one of:
   <h2 id="team-heading">Team members</h2>
   <DataList aria-labelledby="team-heading" items={members}>
   ```
-- An `aria-label` prop passed via `class` (DataList forwards `{...rest}` — pass
-  `aria-label` directly):
+- An `aria-label` passed directly. DataList extends `HTMLAttributes<HTMLUListElement>`
+  and forwards unrecognized props onto the `<ul>`, so standard list attributes
+  (`aria-label`, `aria-labelledby`, `id`, `data-*`) pass straight through:
   ```svelte
   <DataList aria-label="Team members" items={members}>
   ```

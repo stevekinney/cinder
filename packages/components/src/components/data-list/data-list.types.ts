@@ -1,8 +1,15 @@
 import type { Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
 
 import type { StackedListItemDensity } from '../stacked-list-item/stacked-list-item.types.ts';
 
-export type DataListProps<T> = {
+// Forwarded `<ul>` attributes (matches GridListProps). `role` is omitted because
+// the component enforces `role="list"`; `class` and `children` are redefined
+// below with component-specific shapes.
+export type DataListProps<T> = Omit<
+  HTMLAttributes<HTMLUListElement>,
+  'role' | 'class' | 'children'
+> & {
   /** The records to render. Each is passed to `children`. */
   items: T[];
   /**

@@ -47,6 +47,7 @@ describe('DataList', () => {
       children: itemSnippet((item) => String(item)),
     });
     const list = container.querySelector('.cinder-data-list');
+    expect(list).not.toBeNull();
     expect(list?.querySelectorAll('li')).toHaveLength(3);
     expect(list?.textContent).toContain('alpha');
     expect(list?.textContent).toContain('beta');
@@ -60,6 +61,7 @@ describe('DataList', () => {
       empty: textSnippet('Nothing here'),
     });
     const list = container.querySelector('.cinder-data-list');
+    expect(list).not.toBeNull();
     const emptyItem = list?.querySelector('li.cinder-data-list-empty');
     expect(emptyItem).not.toBeNull();
     expect(emptyItem?.textContent).toContain('Nothing here');
@@ -74,6 +76,7 @@ describe('DataList', () => {
       empty: textSnippet('Nothing here'),
     });
     const list = container.querySelector('.cinder-data-list');
+    expect(list).not.toBeNull();
     expect(list?.textContent).toContain('one');
     expect(list?.textContent).not.toContain('Nothing here');
     expect(list?.querySelector('.cinder-data-list-empty')).toBeNull();
@@ -86,8 +89,22 @@ describe('DataList', () => {
       class: 'my-custom-class',
     });
     const list = container.querySelector('.cinder-data-list');
+    expect(list).not.toBeNull();
     expect(list?.getAttribute('class')).toContain('cinder-data-list');
     expect(list?.getAttribute('class')).toContain('my-custom-class');
+  });
+
+  test('forwards rest attributes (aria-label) onto the <ul> without overriding role', () => {
+    const { container } = render(DataList, {
+      items: ['one'],
+      children: itemSnippet((item) => String(item)),
+      'aria-label': 'Team members',
+    });
+    const list = container.querySelector('.cinder-data-list');
+    expect(list).not.toBeNull();
+    expect(list?.getAttribute('aria-label')).toBe('Team members');
+    // The component-enforced role wins over any forwarded role.
+    expect(list?.getAttribute('role')).toBe('list');
   });
 });
 
