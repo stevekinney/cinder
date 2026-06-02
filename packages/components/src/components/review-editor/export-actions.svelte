@@ -18,7 +18,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import { copyToClipboard } from '../../utilities/clipboard.ts';
+  import { createCopyState } from '../copy-button/use-copy-state.svelte.ts';
   import Dropdown from '../dropdown/dropdown.svelte';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
   import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
@@ -40,12 +40,11 @@
     class: className,
   }: ExportActionsProps = $props();
 
-  type ExportFormat = 'content' | 'summary' | 'json' | 'diff' | 'comments' | null;
-  let copiedFormat = $state<ExportFormat>(null);
+  type ExportFormat = 'content' | 'summary' | 'json' | 'diff' | 'comments';
+
+  const copyState = createCopyState<ExportFormat>();
 
   async function handleCopy(format: ExportFormat) {
-    if (!format) return;
-
     let content: string;
     switch (format) {
       case 'content':
@@ -67,20 +66,10 @@
         break;
     }
 
-    const copied = await copyToClipboard(content);
-    if (copied) {
-      copiedFormat = format;
-    }
+    await copyState.trigger(format, content);
   }
 
-  $effect(() => {
-    if (!copiedFormat) return;
-
-    const timeout = setTimeout(() => (copiedFormat = null), 2000);
-    return () => clearTimeout(timeout);
-  });
-
-  const formatLabels: Record<ExportFormat & string, string> = {
+  const formatLabels: Record<ExportFormat, string> = {
     content: 'Content',
     summary: 'Summary (for LLM)',
     json: 'JSON',
@@ -90,6 +79,13 @@
 </script>
 
 <div class={classNames('export-actions', className)}>
+  <!-- Screen reader announcement for copy success -->
+  <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">
+    {#if copyState.copiedKey}
+      Copied {formatLabels[copyState.copiedKey]}
+    {/if}
+  </div>
+
   <Dropdown {id}>
     <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard" showCaret={false}>
       <Copy class="icon-sm" />
@@ -99,13 +95,13 @@
       <!-- Plain content (current markdown) -->
       {#if onexportcontent}
         <DropdownItem onclick={() => handleCopy('content')}>
-          {#if copiedFormat === 'content'}
+          {#if copyState.copiedKey === 'content'}
             <Check class="icon-sm export-icon-success" />
           {:else}
             <FileText class="icon-sm" />
           {/if}
           <span>{formatLabels.content}</span>
-          {#if copiedFormat === 'content'}
+          {#if copyState.copiedKey === 'content'}
             <span class="copied-label">Copied!</span>
           {/if}
         </DropdownItem>
@@ -113,26 +109,26 @@
 
       <!-- LLM-optimized summary -->
       <DropdownItem onclick={() => handleCopy('summary')}>
-        {#if copiedFormat === 'summary'}
+        {#if copyState.copiedKey === 'summary'}
           <Check class="icon-sm export-icon-success" />
         {:else}
           <FileText class="icon-sm" />
         {/if}
         <span>{formatLabels.summary}</span>
-        {#if copiedFormat === 'summary'}
+        {#if copyState.copiedKey === 'summary'}
           <span class="copied-label">Copied!</span>
         {/if}
       </DropdownItem>
 
       <!-- Git diff -->
       <DropdownItem onclick={() => handleCopy('diff')}>
-        {#if copiedFormat === 'diff'}
+        {#if copyState.copiedKey === 'diff'}
           <Check class="icon-sm export-icon-success" />
         {:else}
           <GitBranch class="icon-sm" />
         {/if}
         <span>{formatLabels.diff}</span>
-        {#if copiedFormat === 'diff'}
+        {#if copyState.copiedKey === 'diff'}
           <span class="copied-label">Copied!</span>
         {/if}
       </DropdownItem>
@@ -140,13 +136,13 @@
       <!-- Comments as markdown -->
       {#if onexportcomments}
         <DropdownItem onclick={() => handleCopy('comments')}>
-          {#if copiedFormat === 'comments'}
+          {#if copyState.copiedKey === 'comments'}
             <Check class="icon-sm export-icon-success" />
           {:else}
             <MessageSquare class="icon-sm" />
           {/if}
           <span>{formatLabels.comments}</span>
-          {#if copiedFormat === 'comments'}
+          {#if copyState.copiedKey === 'comments'}
             <span class="copied-label">Copied!</span>
           {/if}
         </DropdownItem>
@@ -154,13 +150,13 @@
 
       <!-- JSON (full state) -->
       <DropdownItem onclick={() => handleCopy('json')}>
-        {#if copiedFormat === 'json'}
+        {#if copyState.copiedKey === 'json'}
           <Check class="icon-sm export-icon-success" />
         {:else}
           <FileCode class="icon-sm" />
         {/if}
         <span>{formatLabels.json}</span>
-        {#if copiedFormat === 'json'}
+        {#if copyState.copiedKey === 'json'}
           <span class="copied-label">Copied!</span>
         {/if}
       </DropdownItem>
