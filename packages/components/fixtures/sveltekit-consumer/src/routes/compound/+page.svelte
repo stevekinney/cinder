@@ -82,11 +82,8 @@
 
   <section aria-label="Namespaced Feed">
     <Feed aria-label="Activity">
-      <Feed.Event variant="minimal" datetime="2026-05-24T00:00:00Z">
-        {#snippet timestamp()}Just now{/snippet}
-        {#snippet content()}
-          <p style="margin: 0;">Opened the pull request.</p>
-        {/snippet}
+      <Feed.Event variant="minimal" datetime="2026-05-24T00:00:00Z" timestamp="Just now">
+        <p style="margin: 0;">Opened the pull request.</p>
       </Feed.Event>
     </Feed>
   </section>

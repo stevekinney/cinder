@@ -23,10 +23,17 @@ type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> &
   children?: Snippet;
   /**
    * Visible time label, as plain text — the common case (`"2m ago"`,
-   * `"May 12, 3:30 PM"`). Rendered inside the `<time>` element. Optional: when
-   * omitted (and no `timestampLabel` is given) the component falls back to the
-   * raw `datetime` string, which is deterministic and SSR-safe (no locale or
-   * timezone dependence).
+   * `"May 12, 3:30 PM"`). Rendered inside the `<time>` element. Optional, with a
+   * deliberate three-way contract:
+   *
+   * - **omitted** (`undefined`) and no `timestampLabel` → falls back to the raw
+   *   `datetime` string, which is deterministic and SSR-safe (no locale or
+   *   timezone dependence).
+   * - **explicit empty string** (`timestamp=""`) → renders no visible label.
+   *   This is treated as "intentionally blank", NOT as omitted, so it does
+   *   **not** trigger the `datetime` fallback. Use it to hide the label while
+   *   keeping the machine-readable `<time datetime>` for assistive tech.
+   * - **non-empty string** → rendered verbatim.
    */
   timestamp?: string;
   /**

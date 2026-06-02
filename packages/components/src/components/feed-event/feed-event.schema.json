@@ -11,7 +11,7 @@
     },
     "timestamp": {
       "type": "string",
-      "description": "Visible time label, as plain text — the common case (`\"2m ago\"`,\n`\"May 12, 3:30 PM\"`). Rendered inside the `<time>` element. Optional: when\nomitted (and no `timestampLabel` is given) the component falls back to the\nraw `datetime` string, which is deterministic and SSR-safe (no locale or\ntimezone dependence)."
+      "description": "Visible time label, as plain text — the common case (`\"2m ago\"`,\n`\"May 12, 3:30 PM\"`). Rendered inside the `<time>` element. Optional, with a\ndeliberate three-way contract:\n\n- **omitted** (`undefined`) and no `timestampLabel` → falls back to the raw\n  `datetime` string, which is deterministic and SSR-safe (no locale or\n  timezone dependence).\n- **explicit empty string** (`timestamp=\"\"`) → renders no visible label.\n  This is treated as \"intentionally blank\", NOT as omitted, so it does\n  **not** trigger the `datetime` fallback. Use it to hide the label while\n  keeping the machine-readable `<time datetime>` for assistive tech.\n- **non-empty string** → rendered verbatim."
     },
     "variant": {
       "enum": ["icon", "minimal"],
