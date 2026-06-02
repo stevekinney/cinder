@@ -471,6 +471,9 @@
       <strong>Event log</strong>
       <div
         data-testid="event-log"
+        role="log"
+        aria-label="Event log"
+        tabindex="0"
         style="display: grid; gap: 0.15rem; max-height: 10rem; overflow: auto; font-size: var(--cinder-text-xs); font-family: var(--cinder-font-mono);"
       >
         {#each log as entry (entry.id)}
