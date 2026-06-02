@@ -74,6 +74,7 @@
         "**/*.test.ts",
         "**/*.type-test.ts",
         "**/*.spec.ts",
+        "**/*.playwright.ts",
         "**/test/**/*.ts",
         "**/__tests__/**/*.ts"
       ],

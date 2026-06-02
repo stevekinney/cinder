@@ -19,8 +19,8 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { copyToClipboard } from '../../../utilities/clipboard.ts';
   import { stringifyOrNull } from '../../../utilities/stringify.ts';
+  import { createCopyState } from '../../copy-button/use-copy-state.svelte.ts';
   import Dropdown from '../../dropdown/dropdown.svelte';
   import DropdownItem from '../../dropdown-item/dropdown-item.svelte';
   import DropdownMenu from '../../dropdown-menu/dropdown-menu.svelte';
@@ -40,7 +40,7 @@
     class: className,
   }: ConversationExportActionsProps = $props();
 
-  let copiedFormat = $state<ExportFormat | null>(null);
+  const copyState = createCopyState<ExportFormat>();
 
   /**
    * Exports the conversation as Markdown.
@@ -50,9 +50,8 @@
     const messages = getMessages(conversation, { includeHidden: false });
     const markdown = messagesToMarkdown(messages);
 
-    const copied = await copyToClipboard(markdown);
-    if (copied) {
-      copiedFormat = 'markdown';
+    const succeeded = await copyState.trigger('markdown', markdown);
+    if (succeeded) {
       onexported?.('markdown');
     } else {
       onexportfailed?.('markdown', 'Clipboard access denied. Please copy manually.');
@@ -97,22 +96,13 @@
       return;
     }
 
-    const copied = await copyToClipboard(json);
-    if (copied) {
-      copiedFormat = 'json';
+    const succeeded = await copyState.trigger('json', json);
+    if (succeeded) {
       onexported?.('json');
     } else {
       onexportfailed?.('json', 'Clipboard access denied. Please copy manually.');
     }
   }
-
-  // Reset copied state after 2 seconds
-  $effect(() => {
-    if (!copiedFormat) return;
-
-    const timeout = setTimeout(() => (copiedFormat = null), 2000);
-    return () => clearTimeout(timeout);
-  });
 
   const formatLabels: Record<ExportFormat, string> = {
     markdown: 'Markdown',
@@ -123,8 +113,8 @@
 <div class={classNames('conversation-export-actions', className)}>
   <!-- Screen reader announcement for copy success -->
   <div class="sr-only" aria-live="polite" aria-atomic="true">
-    {#if copiedFormat}
-      Copied as {formatLabels[copiedFormat]}
+    {#if copyState.copiedKey}
+      Copied as {formatLabels[copyState.copiedKey]}
     {/if}
   </div>
 
@@ -135,26 +125,26 @@
     <DropdownMenu>
       <!-- Markdown export -->
       <DropdownItem onclick={handleExportMarkdown}>
-        {#if copiedFormat === 'markdown'}
+        {#if copyState.copiedKey === 'markdown'}
           <Check class="icon-sm export-icon-success" />
         {:else}
           <FileText class="icon-sm" />
         {/if}
         <span>Copy as {formatLabels.markdown}</span>
-        {#if copiedFormat === 'markdown'}
+        {#if copyState.copiedKey === 'markdown'}
           <span class="copied-label">Copied!</span>
         {/if}
       </DropdownItem>
 
       <!-- JSON export -->
       <DropdownItem onclick={handleExportJSON}>
-        {#if copiedFormat === 'json'}
+        {#if copyState.copiedKey === 'json'}
           <Check class="icon-sm export-icon-success" />
         {:else}
           <FileCode class="icon-sm" />
         {/if}
         <span>Copy as {formatLabels.json}</span>
-        {#if copiedFormat === 'json'}
+        {#if copyState.copiedKey === 'json'}
           <span class="copied-label">Copied!</span>
         {/if}
       </DropdownItem>

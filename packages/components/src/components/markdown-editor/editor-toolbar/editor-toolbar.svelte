@@ -35,7 +35,6 @@
 </script>
 
 <script lang="ts">
-  import type { Attachment } from 'svelte/attachments';
   import { classNames } from '../../../utilities/class-names.ts';
   import Bold from 'lucide-svelte/icons/bold';
   import Code from 'lucide-svelte/icons/code';
@@ -65,6 +64,7 @@
     getShortcutDisplay,
   } from 'cinder/editor/component-runtime';
 
+  import Toolbar from '../../toolbar/toolbar.svelte';
   import ToolbarButton from './toolbar-button.svelte';
   import ToolbarSeparator from './toolbar-separator.svelte';
   import ToolbarDropdown, { type BlockType, type BlockTypeOption } from './toolbar-dropdown.svelte';
@@ -83,6 +83,10 @@
     onRedo,
     actions,
     class: className,
+    // Destructure aria-label so it doesn't leak into Toolbar's ...rest spread.
+    // EditorToolbar owns its accessible label ("Formatting toolbar"); consumer
+    // overrides are intentionally ignored here.
+    'aria-label': _ariaLabel,
     ...rest
   }: EditorToolbarProps = $props();
 
@@ -171,74 +175,28 @@
         break;
     }
   }
-
-  // Roving tabindex: toolbar keyboard navigation
-  let toolbarElement: HTMLDivElement | undefined = $state();
-
-  const toolbarAttachment: Attachment<HTMLDivElement> = (node) => {
-    toolbarElement = node;
-    return () => {
-      if (toolbarElement === node) {
-        toolbarElement = undefined;
-      }
-    };
-  };
-
-  function getFocusableButtons(): HTMLElement[] {
-    if (!toolbarElement) return [];
-    // Filter to only visible buttons (excludes hidden dropdown menu items)
-    // offsetParent is null for elements in closed popovers or display:none
-    return Array.from(toolbarElement.querySelectorAll<HTMLElement>('button:not(:disabled)')).filter(
-      (button) => button.offsetParent !== null,
-    );
-  }
-
-  function handleToolbarKeyDown(event: KeyboardEvent) {
-    const focusables = getFocusableButtons();
-    if (focusables.length === 0) return;
-
-    const currentIndex = focusables.findIndex((el) => el === document.activeElement);
-    if (currentIndex === -1) return; // Not focused on a button
-
-    let nextIndex: number | null = null;
-
-    switch (event.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        event.preventDefault();
-        nextIndex = (currentIndex + 1) % focusables.length;
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        event.preventDefault();
-        nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
-        break;
-      case 'Home':
-        event.preventDefault();
-        nextIndex = 0;
-        break;
-      case 'End':
-        event.preventDefault();
-        nextIndex = focusables.length - 1;
-        break;
-    }
-
-    if (nextIndex !== null) {
-      focusables[nextIndex]?.focus();
-    }
-  }
 </script>
 
-<div
-  {@attach toolbarAttachment}
+<!--
+  The Toolbar primitive owns roving tabindex and WAI-ARIA toolbar semantics.
+  `aria-controls` is forwarded via the extra-attrs pattern. Toolbar accepts
+  `...rest` so aria-controls, data-* and other passthrough attributes reach
+  the rendered div. The explicit aria-label is pinned here; any aria-label in
+  rest was stripped during $props() destructuring above.
+
+  The `as` cast is required because HTMLAttributes uses `| null | undefined`
+  for many attr types while Toolbar's discriminated-union requires `string`
+  for aria-label/aria-labelledby. The cast is safe: we control the actual
+  values passed at the callsite through EditorToolbarProps.
+-->
+<!-- svelte-ignore ts_invalid_generic_position -->
+<Toolbar
   {id}
-  class={classNames('editor-toolbar', className)}
-  role="toolbar"
   aria-label="Formatting toolbar"
   aria-controls={editorId}
   aria-disabled={disabled || undefined}
-  onkeydown={handleToolbarKeyDown}
-  {...rest}
+  class={classNames('editor-toolbar', className)}
+  {...rest as Record<string, unknown>}
 >
   <!-- Undo/Redo -->
   <div class="toolbar-group" role="group" aria-label="History">
@@ -382,10 +340,20 @@
     <div class="toolbar-spacer"></div>
     {@render actions()}
   {/if}
-</div>
+</Toolbar>
 
 <style>
-  .editor-toolbar {
+  /*
+   * `.editor-toolbar` is applied to the <Toolbar> child component's rendered
+   * element, so it carries Toolbar's scope hash — not this component's. A
+   * plain scoped selector here would be rewritten with this file's hash and
+   * never match. `:global()` is required to cross that boundary. The class is
+   * component-specific (only EditorToolbar emits `editor-toolbar`), so this is
+   * not a true global leak. When embedded in markdown-editor, the wrapper
+   * deliberately strips this chrome (see markdown-editor.svelte); these rules
+   * give standalone EditorToolbar its surface and disabled-state styling.
+   */
+  :global(.editor-toolbar) {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-1);
@@ -396,7 +364,7 @@
     flex-wrap: wrap;
   }
 
-  .editor-toolbar[aria-disabled='true'] {
+  :global(.editor-toolbar[aria-disabled='true']) {
     opacity: 0.6;
     pointer-events: none;
   }

@@ -14,21 +14,27 @@ import { resolve } from 'node:path';
 const source = readFileSync(resolve(import.meta.dir, 'chat-message.svelte'), 'utf8');
 
 describe('chat message action buttons', () => {
-  test('both built-in buttons carry the shared base class', () => {
-    expect(source).toContain('class="chat-message-action-button chat-message-copy"');
+  test('copy action uses CopyButton with both shared base class and copy-specific class', () => {
+    // CopyButton receives the classes as a prop; source shows them in the `class` attribute value.
+    expect(source).toContain('chat-message-action-button chat-message-copy');
+    // The edit button still renders a raw button with the shared base class.
     expect(source).toContain('class="chat-message-action-button chat-message-edit-button"');
   });
 
   test('exactly one .chat-message-action-button base selector exists outside the touch block', () => {
     const withoutTouchBlock = source.replace(extractTouchMediaBlock(source), '');
-    const baseRuleMatches = withoutTouchBlock.match(/\.chat-message-action-button\s*\{/g);
+    // The selector is wrapped in :global() so Svelte scoping does not prevent it
+    // from reaching the CopyButton child component's rendered <button>.
+    const baseRuleMatches = withoutTouchBlock.match(
+      /(?::global\()?\.chat-message-action-button(?:\))?\s*\{/g,
+    );
     expect(baseRuleMatches).not.toBeNull();
     expect(baseRuleMatches).toHaveLength(1);
   });
 
   test('base rule uses border-box sizing and a transparent reserving border', () => {
     const withoutTouchBlock = source.replace(extractTouchMediaBlock(source), '');
-    const baseRule = extractRule(withoutTouchBlock, '.chat-message-action-button {');
+    const baseRule = extractRule(withoutTouchBlock, ':global(.chat-message-action-button) {');
     expect(baseRule).toContain('box-sizing: border-box');
     expect(baseRule).toContain('border: 1px solid transparent');
   });
@@ -36,8 +42,12 @@ describe('chat message action buttons', () => {
   test('touch media block gives a resting background and border-color', () => {
     const touchBlock = extractTouchMediaBlock(source);
     expect(touchBlock).toContain('.chat-message-action-button');
-    expect(touchBlock).toMatch(/\.chat-message-action-button\s*\{[^}]*background:/);
-    expect(touchBlock).toMatch(/\.chat-message-action-button\s*\{[^}]*border-color:/);
+    expect(touchBlock).toMatch(
+      /(?::global\()?\.chat-message-action-button(?:\))?\s*\{[^}]*background:/,
+    );
+    expect(touchBlock).toMatch(
+      /(?::global\()?\.chat-message-action-button(?:\))?\s*\{[^}]*border-color:/,
+    );
   });
 
   test('narrow-viewport footer reset uses logical inset properties', () => {

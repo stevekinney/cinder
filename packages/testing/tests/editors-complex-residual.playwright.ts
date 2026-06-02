@@ -98,7 +98,8 @@ test.describe('chat action buttons', () => {
       });
 
       await copyButton.click();
-      const successButton = page.locator('.chat-message-copy-success').first();
+      // CopyButton signals the copied state via `data-cinder-copied` attribute.
+      const successButton = page.locator('.chat-message-copy[data-cinder-copied]').first();
       await expect(successButton).toBeVisible();
       const successColor = await successButton.evaluate(
         (element) => getComputedStyle(element).color,

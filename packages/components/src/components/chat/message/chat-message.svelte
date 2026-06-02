@@ -49,13 +49,11 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { copyToClipboard } from '../../../utilities/clipboard.ts';
   import { stringify } from '../../../utilities/stringify.ts';
   import { getMessageText, getMessageParts } from '../utilities/utilities.js';
-  import Check from 'lucide-svelte/icons/check';
-  import Copy from 'lucide-svelte/icons/copy';
   import Pencil from 'lucide-svelte/icons/pencil';
   import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
+  import CopyButton from '../../copy-button/copy-button.svelte';
   import MessageContent from './message-content.svelte';
   import MessageAttachments from './message-attachments.svelte';
   import ToolCallGroup from './tool-call-group.svelte';
@@ -78,28 +76,6 @@
     tabindex,
     ...rest
   }: ChatMessageProps = $props();
-
-  // Copy button state
-  let copyState = $state<'idle' | 'copied'>('idle');
-  let copyTimeout: ReturnType<typeof setTimeout> | undefined;
-
-  async function handleCopy() {
-    if (!textContent) return;
-    const copied = await copyToClipboard(textContent);
-    if (copied) {
-      copyState = 'copied';
-      clearTimeout(copyTimeout);
-      copyTimeout = setTimeout(() => {
-        copyState = 'idle';
-      }, 2000);
-    }
-  }
-
-  $effect(() => {
-    return () => {
-      clearTimeout(copyTimeout);
-    };
-  });
 
   // Edit state
   let isEditing = $state(false);
@@ -292,19 +268,14 @@
           {@render actions()}
         {/if}
         {#if showDefaultActions && textContent}
-          <button
-            type="button"
+          <CopyButton
+            value={textContent}
+            label="Copy message"
+            copiedLabel="Copied!"
+            iconOnly
+            confirmDuration={2000}
             class="chat-message-action-button chat-message-copy"
-            class:chat-message-copy-success={copyState === 'copied'}
-            onclick={handleCopy}
-            aria-label={copyState === 'copied' ? 'Copied!' : 'Copy message'}
-          >
-            {#if copyState === 'copied'}
-              <Check class="icon-xs" />
-            {:else}
-              <Copy class="icon-xs" />
-            {/if}
-          </button>
+          />
         {/if}
         {#if canEdit}
           <button
@@ -731,8 +702,14 @@
   /* Shared base for the built-in copy and edit action buttons — small
    * icon-only affordances. The icon size comes from the `icon-xs` class on the
    * SVG (defined in styles/utilities.css). A transparent border reserves layout
-   * space so the touch-context border swap below does not shift the icon. */
-  .chat-message-action-button {
+   * space so the touch-context border swap below does not shift the icon.
+   *
+   * These rules use :global() because the copy button is rendered by the
+   * CopyButton child component — Svelte's scoped hash would not reach an
+   * element whose <button> lives in a different component's template. The edit
+   * button is still a native button in this template and matches via class
+   * name either way. */
+  :global(.chat-message-action-button) {
     display: grid;
     place-items: center;
     box-sizing: border-box;
@@ -751,13 +728,13 @@
   }
 
   @media (hover: hover) {
-    .chat-message-action-button:hover {
+    :global(.chat-message-action-button:hover) {
       color: var(--cinder-text);
       background: var(--cinder-surface-hover);
     }
   }
 
-  .chat-message-action-button:focus-visible {
+  :global(.chat-message-action-button:focus-visible) {
     outline: 2px solid var(--cinder-ring-color);
     outline-offset: 2px;
   }
@@ -768,19 +745,29 @@
    * transparent base border reserves the space, so this only swaps color — no
    * layout shift. */
   @media (hover: none) or (pointer: coarse) {
-    .chat-message-action-button {
+    :global(.chat-message-action-button) {
       background: var(--cinder-surface-raised);
       border-color: var(--cinder-border);
     }
   }
 
-  /* Copy success state overrides the shared color. */
-  .chat-message-copy-success {
+  /* Copy success state overrides the shared color.
+   * CopyButton uses `data-cinder-copied` when the copy succeeds.
+   * Keep `.chat-message-copy-success` as a selector alias so existing
+   * external callers that target it continue to work. */
+  :global(.chat-message-copy[data-cinder-copied]) {
     color: var(--cinder-success);
   }
 
+  /* CopyButton renders icon-sm (16px) icons by default. Override to icon-xs
+   * (14px) to match the sibling edit/retry action buttons in the chat footer. */
+  :global(.chat-message-copy svg) {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
   @media (hover: hover) {
-    .chat-message-copy-success:hover {
+    :global(.chat-message-copy[data-cinder-copied]:hover) {
       color: var(--cinder-color-success-fg);
       background: var(--cinder-color-success-bg);
     }
