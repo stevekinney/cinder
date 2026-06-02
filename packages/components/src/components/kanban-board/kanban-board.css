@@ -158,6 +158,12 @@
     font-size: var(--cinder-text-sm);
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+      opacity: 0.6;
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .cinder-kanban-board__card,
     .cinder-kanban-board__column {

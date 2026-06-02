@@ -864,6 +864,43 @@ describe('SortableList pointer drag preview', () => {
     expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
   });
 
+  test('rejected lift (another item already lifted) does NOT create an orphaned preview portal', async () => {
+    const { container } = renderList();
+    const handles = container.querySelectorAll('.cinder-sortable-handle');
+    const firstHandle = handles[0] as HTMLElement;
+    const secondHandle = handles[1] as HTMLElement;
+    installPointerCaptureOnHandle(firstHandle);
+    installPointerCaptureOnHandle(secondHandle);
+
+    // Lift the first item.
+    await fireEvent.pointerDown(firstHandle, {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Attempt a second pointerdown on a different item while the first is still lifted.
+    // The controller rejects the concurrent lift; no second portal should be created.
+    await fireEvent.pointerDown(secondHandle, {
+      button: 0,
+      clientX: 50,
+      clientY: 200,
+      pointerId: 2,
+      pointerType: 'mouse',
+    });
+
+    // Still exactly one portal — the second lift was rejected.
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Clean up the first drag.
+    await fireEvent.pointerUp(firstHandle, { pointerId: 1, pointerType: 'mouse' });
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
+  });
+
   test('rapid second drag after drop does not leave extra portals', async () => {
     const { container } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;

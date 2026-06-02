@@ -304,6 +304,22 @@
     handleEl.setPointerCapture(event.pointerId);
     context.lift(itemKey, index, itemLabel, total);
 
+    // Guard portal creation on a successful lift. The controller rejects concurrent
+    // lifts (returns void but leaves phase === 'lifted' with a *different* key if
+    // another item is already active). Only proceed when this item is now the
+    // lifted key — otherwise release capture and bail without creating the portal.
+    if (context.controller.phase !== 'lifted' || context.controller.liftedKey !== itemKey) {
+      try {
+        handleEl.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already revoked by the browser.
+      }
+      pointerActive = false;
+      pointerId = null;
+      listEl = null;
+      return;
+    }
+
     // Create the drag preview after lift so the row is in lifted state
     // when we clone it, then position relative to the pointer.
     createPreviewPortal(event.clientX, event.clientY);

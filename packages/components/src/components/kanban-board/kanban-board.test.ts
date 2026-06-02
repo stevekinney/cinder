@@ -772,11 +772,10 @@ describe('KanbanBoard pointer drag preview', () => {
 
     // After drop, the card row is at its new logical position. Query by key.
     const cardRow = container.querySelector('[data-key="a"]') as HTMLElement;
-    if (cardRow) {
-      expect(cardRow.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
-      expect(cardRow.hasAttribute('data-preview-x')).toBe(false);
-      expect(cardRow.hasAttribute('data-preview-y')).toBe(false);
-    }
+    expect(cardRow).not.toBeNull();
+    expect(cardRow.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
+    expect(cardRow.hasAttribute('data-preview-x')).toBe(false);
+    expect(cardRow.hasAttribute('data-preview-y')).toBe(false);
   });
 
   test('pointercancel removes the preview portal', async () => {
@@ -854,6 +853,42 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(cardRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
 
     await fireEvent.keyDown(handle, { key: 'Escape' });
+  });
+
+  test('rejected lift (another card already lifted) does NOT create an orphaned preview portal', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const alphaHandle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    const betaHandle = container.querySelector('[aria-label="Move Beta"]') as HTMLElement;
+    installPointerCapture(alphaHandle);
+    installPointerCapture(betaHandle);
+
+    // Lift Alpha.
+    await fireEvent.pointerDown(alphaHandle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Attempt a concurrent lift on Beta while Alpha is already lifted.
+    // The controller rejects the second lift; no second portal must be created.
+    await fireEvent.pointerDown(betaHandle, {
+      button: 0,
+      clientX: 20,
+      clientY: 60,
+      pointerId: 2,
+      pointerType: 'mouse',
+    });
+
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(1);
+
+    // Clean up.
+    await fireEvent.pointerUp(alphaHandle, { pointerId: 1, pointerType: 'mouse' });
+    expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
   });
 
   test('cross-column pointer drag creates a preview and a placeholder in the source column', async () => {
