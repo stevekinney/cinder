@@ -63,7 +63,7 @@
     vertical-align: middle;
 
     /* Track background — unset (off) state. */
-    background: var(--cinder-toggle-track-off, var(--cinder-border-muted, #d1d5db));
+    background: var(--cinder-toggle-track-off, var(--cinder-border-muted));
 
     transition:
       background-color var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease),
@@ -75,7 +75,7 @@
  * ---------------------------------------- */
 
   .cinder-toggle[data-cinder-checked] {
-    background: var(--cinder-toggle-track-on, var(--cinder-accent, #6366f1));
+    background: var(--cinder-toggle-track-on, var(--cinder-accent));
   }
 
   /* ----------------------------------------
@@ -85,10 +85,9 @@
   .cinder-toggle:focus-visible {
     outline: var(--cinder-ring-width, 2px) solid transparent;
     box-shadow:
-      0 0 0 var(--cinder-ring-offset, 2px)
-        var(--cinder-ring-offset-color, var(--cinder-surface, #fff)),
+      0 0 0 var(--cinder-ring-offset, 2px) var(--cinder-ring-offset-color, var(--cinder-surface)),
       0 0 0 calc(var(--cinder-ring-offset, 2px) + var(--cinder-ring-width, 2px))
-        var(--cinder-toggle-ring, var(--cinder-ring-color, #6366f1));
+        var(--cinder-toggle-ring, var(--cinder-ring-color));
   }
 
   /* Forced Colors Mode: box-shadow is suppressed by Windows High Contrast Mode, so
@@ -107,11 +106,11 @@
 
   @media (hover: hover) {
     .cinder-toggle:hover:not(:disabled) {
-      background: var(--cinder-toggle-track-off-hover, var(--cinder-border, #9ca3af));
+      background: var(--cinder-toggle-track-off-hover, var(--cinder-border));
     }
 
     .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
-      background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover, #4f46e5));
+      background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover));
     }
   }
 
@@ -146,11 +145,7 @@
     height: var(--cinder-toggle-thumb-size, 1.125rem);
     border-radius: 50%;
     background: var(--cinder-toggle-thumb-color, #ffffff);
-    box-shadow: var(
-      --cinder-shadow-sm,
-      0 1px 3px 0 rgb(0 0 0 / 0.1),
-      0 1px 2px -1px rgb(0 0 0 / 0.1)
-    );
+    box-shadow: var(--cinder-shadow-sm);
 
     /* Slide transition — mirrors the track transition duration. */
     transition: transform var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease);

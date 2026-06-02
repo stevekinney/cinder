@@ -30,16 +30,6 @@
     "allowedCount": 2
   },
   {
-    "filePath": "src/components/color-field/color-field.css",
-    "colorClass": "rgb",
-    "allowedCount": 3
-  },
-  {
-    "filePath": "src/components/color-picker/color-picker.css",
-    "colorClass": "rgb",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/command-menu/command-menu.css",
     "colorClass": "rgb",
     "allowedCount": 1
@@ -70,11 +60,6 @@
     "allowedCount": 2
   },
   {
-    "filePath": "src/components/pagination/pagination.css",
-    "colorClass": "hex",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/rating/rating.css",
     "colorClass": "oklch",
     "allowedCount": 1
@@ -92,7 +77,7 @@
   {
     "filePath": "src/components/sortable-list/sortable-list.css",
     "colorClass": "rgb",
-    "allowedCount": 4
+    "allowedCount": 3
   },
   {
     "filePath": "src/components/spinner/spinner.css",
@@ -112,12 +97,7 @@
   {
     "filePath": "src/components/toggle/toggle.css",
     "colorClass": "hex",
-    "allowedCount": 7
-  },
-  {
-    "filePath": "src/components/toggle/toggle.css",
-    "colorClass": "rgb",
-    "allowedCount": 2
+    "allowedCount": 1
   },
   {
     "filePath": "src/styles/components/_status-surface.css",
