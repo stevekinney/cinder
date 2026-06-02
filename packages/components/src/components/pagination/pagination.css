@@ -110,7 +110,7 @@
   .cinder-pagination__page[data-cinder-current] {
     background: var(--cinder-accent);
     border-color: var(--cinder-accent);
-    color: var(--cinder-accent-contrast, #fff);
+    color: var(--cinder-accent-contrast);
     cursor: default;
   }
 

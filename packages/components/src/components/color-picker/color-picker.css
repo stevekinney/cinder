@@ -149,7 +149,7 @@
     height: 24px;
     border-radius: 50%;
     background-color: var(--cinder-color-picker-preview, transparent);
-    border: 1px solid var(--cinder-border, rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--cinder-border);
   }
 
   .cinder-color-picker__preview[data-cinder-alpha] {

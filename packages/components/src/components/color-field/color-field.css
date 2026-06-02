@@ -13,7 +13,7 @@
     height: 18px;
     border-radius: var(--cinder-radius-sm, 4px);
     background-color: var(--cinder-color-field-swatch, transparent);
-    border: 1px solid var(--cinder-border, rgba(0, 0, 0, 0.12));
+    border: 1px solid var(--cinder-border);
     vertical-align: middle;
   }
 
@@ -25,8 +25,8 @@
       135deg,
       transparent 0%,
       transparent 45%,
-      var(--cinder-border, rgba(0, 0, 0, 0.35)) 45%,
-      var(--cinder-border, rgba(0, 0, 0, 0.35)) 55%,
+      var(--cinder-border) 45%,
+      var(--cinder-border) 55%,
       transparent 55%,
       transparent 100%
     );
