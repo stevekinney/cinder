@@ -693,7 +693,7 @@
       "avoidWhen": [
         "Coordinating multiple sections where opening one may close others — use accordion."
       ],
-      "related": ["accordion", "accordion-item", "transition"],
+      "related": ["accordion", "accordion-item"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3427,31 +3427,6 @@
         "schema": "cinder/tooltip/schema",
         "variables": "cinder/tooltip/variables",
         "examples": "cinder/tooltip/examples"
-      }
-    },
-    {
-      "name": "Transition",
-      "id": "transition",
-      "import": "cinder/transition",
-      "exportName": "Transition",
-      "category": "overlay",
-      "status": "stable",
-      "purpose": "Headless mount-coordination primitives for CSS-driven presence state and Svelte transition functions.",
-      "tags": ["overlay", "motion"],
-      "useWhen": [
-        "Coordinating enter and exit lifecycle for overlays, floating panels, or other conditional UI.",
-        "Reusing either CSS transition-driven presence or a Svelte transition function behind one small API."
-      ],
-      "avoidWhen": [
-        "A plain `{#if}` block is sufficient and no enter or exit coordination is needed."
-      ],
-      "related": ["modal", "drawer", "sheet", "accordion-item"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "cinder/transition/schema",
-        "variables": "cinder/transition/variables",
-        "examples": "cinder/transition/examples"
       }
     },
     {

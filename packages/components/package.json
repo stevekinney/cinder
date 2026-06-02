@@ -3194,28 +3194,6 @@
       "import": "./src/components/tooltip/tooltip.examples.json",
       "default": "./src/components/tooltip/tooltip.examples.json"
     },
-    "./transition": {
-      "types": "./dist/components/transition/index.d.ts",
-      "svelte": "./src/components/transition/index.ts",
-      "node": "./dist/server/components/transition/index.js",
-      "default": "./dist/components/transition/index.js"
-    },
-    "./transition/schema": {
-      "types": "./dist/components/transition/transition.schema.d.ts",
-      "svelte": "./src/components/transition/transition.schema.ts",
-      "node": "./dist/server/components/transition/transition.schema.js",
-      "default": "./dist/components/transition/transition.schema.js"
-    },
-    "./transition/variables": {
-      "types": "./dist/components/transition/transition.variables.d.ts",
-      "svelte": "./src/components/transition/transition.variables.ts",
-      "node": "./dist/server/components/transition/transition.variables.js",
-      "default": "./dist/components/transition/transition.variables.js"
-    },
-    "./transition/examples": {
-      "import": "./src/components/transition/transition.examples.json",
-      "default": "./src/components/transition/transition.examples.json"
-    },
     "./tree": {
       "types": "./dist/components/tree/index.d.ts",
       "svelte": "./src/components/tree/index.ts",
