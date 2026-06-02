@@ -37,6 +37,12 @@ import {
   loadSourceFiles,
   type ScopeDecision,
 } from '../../components/scripts/component-graph.ts';
+// Canonical compose-only list lives with the playground discovery logic. It is
+// import-light (only `node:path`), so pulling the constant here does not drag in
+// any playground runtime. Threaded into computeScope so the scope job's emitted
+// slugs match the Playwright runner's manifest vocabulary (compose-only leaves
+// like `feed-event` have no standalone page and must not be emitted).
+import { COMPOSE_ONLY_COMPONENTS } from '../../playground/src/discover.ts';
 import { parseComponentFilter } from '../src/helpers/component-filter.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -52,13 +58,22 @@ export type Decision =
 
 /**
  * Normalize an explicit component scope from `workflow_dispatch` inputs.
- * Empty input means "full matrix"; non-empty input must name known slugs.
+ * Empty input means "full matrix"; non-empty input must name a standalone slug.
+ *
+ * `knownSlugs` is the filesystem superset and includes compose-only leaves
+ * (e.g. `feed-event`) that have no standalone Playwright page. Dispatching one
+ * of those would pass shape validation here but be rejected later by the runner
+ * manifest as an unknown slug — a confusing late failure. Subtracting the
+ * compose-only set up front makes `parseComponentFilter` throw in the scope job
+ * instead, listing only the slugs the runner can actually test.
  */
 export function decideExplicitComponents(
   rawComponents: string | undefined,
   knownSlugs: ReadonlySet<string>,
+  composeOnlySlugs: ReadonlySet<string> = COMPOSE_ONLY_COMPONENTS,
 ): Decision {
-  const parsed = parseComponentFilter(rawComponents, knownSlugs);
+  const standaloneSlugs = new Set([...knownSlugs].filter((slug) => !composeOnlySlugs.has(slug)));
+  const parsed = parseComponentFilter(rawComponents, standaloneSlugs);
   if (parsed === null) {
     return { mode: 'full', reason: 'explicit component scope empty' };
   }
@@ -83,6 +98,7 @@ export function decide(
   sourceFiles: ReadonlyMap<string, string>,
   knownSlugs: ReadonlySet<string>,
   deletedFiles: string[] = [],
+  composeOnlySlugs: ReadonlySet<string> = COMPOSE_ONLY_COMPONENTS,
 ): Decision {
   const cleaned = changedFiles.map((line) => line.trim()).filter((line) => line.length > 0);
 
@@ -108,6 +124,7 @@ export function decide(
     deletedFiles,
     sourceFiles,
     knownSlugs,
+    composeOnlySlugs,
   });
 
   if (graphDecision.mode === 'full') {
@@ -177,6 +194,9 @@ async function main(): Promise<void> {
     const input = await Bun.stdin.text();
     const { all, deleted } = partitionDeleted(input.split('\n'));
     const sourceFiles = await loadSourceFiles();
+    // composeOnlySlugs defaults to COMPOSE_ONLY_COMPONENTS (decide()'s default),
+    // so the real CI run threads the canonical compose-only set; the discover.ts
+    // drift-guard test keeps that set in sync with the filesystem.
     decision = decide(all, sourceFiles, knownSlugs, deleted);
   }
 
