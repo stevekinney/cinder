@@ -40,6 +40,7 @@ Sentinel-based infinite-scroll trigger with an always-visible button fallback an
 | `rootMargin`       | `string`   | no       | —       | rootMargin passed to IntersectionObserver. Captured at attachment time.                                                    |
 | `onError`          | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `onLoadMore`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `root`             | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

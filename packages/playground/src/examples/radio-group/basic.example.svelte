@@ -4,13 +4,24 @@
 </script>
 
 <script lang="ts">
-  import { Radio } from 'cinder/radio';
   import { RadioGroup } from 'cinder/radio-group';
   let plan = $state('pro');
 </script>
 
 <RadioGroup name="basic-plan" legend="Pricing tier" bind:value={plan}>
-  <Radio id="basic-plan-free" value="free" label="Free — for individuals exploring Cinder" />
-  <Radio id="basic-plan-pro" value="pro" label="Pro — small teams, includes private support" />
-  <Radio id="basic-plan-team" value="team" label="Team — SSO, audit logs, role-based access" />
+  <RadioGroup.Option
+    id="basic-plan-free"
+    value="free"
+    label="Free — for individuals exploring Cinder"
+  />
+  <RadioGroup.Option
+    id="basic-plan-pro"
+    value="pro"
+    label="Pro — small teams, includes private support"
+  />
+  <RadioGroup.Option
+    id="basic-plan-team"
+    value="team"
+    label="Team — SSO, audit logs, role-based access"
+  />
 </RadioGroup>

@@ -1,17 +1,23 @@
 <script lang="ts" module>
   export const title = 'Empty state fallback';
-  export const description = 'The empty snippet renders when items is an empty array.';
+  export const description =
+    'When items is empty, the empty snippet renders inside a component-owned `<li class="cinder-data-list-empty">` — centered, muted padding, no inline styles required.';
 </script>
 
 <script lang="ts">
   import { DataList } from 'cinder/data-list';
+  import { StackedListItem } from 'cinder/stacked-list-item';
+
+  const members: { id: string; name: string }[] = [];
 </script>
 
-<DataList items={[]}>
-  {#snippet children(item)}
-    <span>{item}</span>
+<DataList items={members}>
+  {#snippet children(member)}
+    <StackedListItem>
+      {#snippet title()}{member.name}{/snippet}
+    </StackedListItem>
   {/snippet}
   {#snippet empty()}
-    <p style="color: var(--cinder-text-muted); font-style: italic;">No items to display.</p>
+    No team members yet.
   {/snippet}
 </DataList>

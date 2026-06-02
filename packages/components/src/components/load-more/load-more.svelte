@@ -24,6 +24,7 @@
     onError,
     hasMore = $bindable(true),
     loading = $bindable(false),
+    root = null,
     rootMargin = '200px 0px',
     buttonLabel = 'Load more',
     retryLabel = 'Retry loading',
@@ -45,6 +46,7 @@
   );
   const sentinelIntersection = $derived(
     useIntersection(handleIntersect, {
+      root,
       rootMargin,
       enabled: () => sentinelEnabled,
     }),

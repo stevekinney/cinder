@@ -6,14 +6,14 @@
     {
       "id": "basic",
       "title": "Basic data list",
-      "description": "Renders each item using the parameterized children snippet.",
-      "code": "<script lang=\"ts\">\n  import { Cluster } from 'cinder/cluster';\n  import { DataList } from 'cinder/data-list';\n\n  const users = [\n    { name: 'Alice Chen', role: 'Engineer' },\n    { name: 'Bob Osei', role: 'Designer' },\n    { name: 'Carol Mwangi', role: 'Product' },\n  ];\n</script>\n\n<DataList items={users}>\n  {#snippet children(user)}\n    <Cluster justify=\"space-between\">\n      <strong>{user.name}</strong>\n      <span style=\"color: var(--cinder-text-muted);\">{user.role}</span>\n    </Cluster>\n  {/snippet}\n</DataList>\n"
+      "description": "A list of homogeneous records. DataList is the semantic `<ul role=\"list\">` container; each row is a StackedListItem with a title and trailing meta. Row chrome (padding, dividers, density) is owned by the row, so content stays compactly aligned instead of stretching to the viewport edges.",
+      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members = [\n    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },\n    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },\n    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },\n  ];\n</script>\n\n<DataList items={members} key={(m) => m.id}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n      {#snippet meta()}{member.role} · {member.status}{/snippet}\n    </StackedListItem>\n  {/snippet}\n</DataList>\n"
     },
     {
       "id": "empty",
       "title": "Empty state fallback",
-      "description": "The empty snippet renders when items is an empty array.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n</script>\n\n<DataList items={[]}>\n  {#snippet children(item)}\n    <span>{item}</span>\n  {/snippet}\n  {#snippet empty()}\n    <p style=\"color: var(--cinder-text-muted); font-style: italic;\">No items to display.</p>\n  {/snippet}\n</DataList>\n"
+      "description": "When items is empty, the empty snippet renders inside a component-owned `<li class=\"cinder-data-list-empty\">` — centered, muted padding, no inline styles required.",
+      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members: { id: string; name: string }[] = [];\n</script>\n\n<DataList items={members}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n    </StackedListItem>\n  {/snippet}\n  {#snippet empty()}\n    No team members yet.\n  {/snippet}\n</DataList>\n"
     }
   ]
 }

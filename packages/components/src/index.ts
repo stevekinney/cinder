@@ -88,9 +88,6 @@ export type { CalloutProps, CalloutVariant } from './components/callout/index.ts
 export { default as Card } from './components/card/index.ts';
 export type { CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
-export { default as Center } from './components/center/index.ts';
-export type { CenterProps } from './components/center/index.ts';
-
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
 
@@ -111,9 +108,6 @@ export type { CheckboxProps } from './components/checkbox/index.ts';
 
 export { default as CheckboxGroup } from './components/checkbox-group/index.ts';
 export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
-
-export { default as Cluster } from './components/cluster/index.ts';
-export type { ClusterProps } from './components/cluster/index.ts';
 
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
@@ -273,9 +267,6 @@ export type { HoverCardPlacement, HoverCardProps } from './components/hover-card
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
 
-export { default as Inline } from './components/inline/index.ts';
-export type { InlineProps, InlineWrap } from './components/inline/index.ts';
-
 export { default as Input } from './components/input/index.ts';
 export type { InputProps, InputType } from './components/input/index.ts';
 
@@ -365,9 +356,6 @@ export type { NavigationItemProps } from './components/navigation-item/index.ts'
 export { default as NumberInput } from './components/number-input/index.ts';
 export type { NumberInputProps } from './components/number-input/index.ts';
 
-export { default as PageLayout } from './components/page-layout/index.ts';
-export type { PageLayoutProps, PageLayoutTitle } from './components/page-layout/index.ts';
-
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
@@ -389,11 +377,14 @@ export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/p
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
 
-export { default as Radio } from './components/radio/index.ts';
-export type { RadioProps } from './components/radio/index.ts';
-
 export { default as RadioGroup } from './components/radio-group/index.ts';
-export type { RadioGroupContext, RadioGroupProps } from './components/radio-group/index.ts';
+// RadioProps is re-exported here (from radio-group) so root-barrel consumers keep
+// access to the type after the standalone Radio/cinder/radio subpath was removed.
+export type {
+  RadioGroupContext,
+  RadioGroupProps,
+  RadioProps,
+} from './components/radio-group/index.ts';
 
 export { default as Rating } from './components/rating/index.ts';
 export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
@@ -496,12 +487,6 @@ export type { SkeletonProps } from './components/skeleton/index.ts';
 
 export { default as Slider } from './components/slider/index.ts';
 export type { SliderMode, SliderProps, SliderValue } from './components/slider/index.ts';
-
-export { default as Spacer } from './components/spacer/index.ts';
-export type { SpacerProps } from './components/spacer/index.ts';
-
-export { default as Stack } from './components/stack/index.ts';
-export type { StackDirection, StackProps } from './components/stack/index.ts';
 
 export { default as StackedListItem } from './components/stacked-list-item/index.ts';
 export type {

@@ -4,12 +4,11 @@
 </script>
 
 <script lang="ts">
-  import { Radio } from 'cinder/radio';
   import { RadioGroup } from 'cinder/radio-group';
 </script>
 
 <RadioGroup name="disabled-region" legend="Region (locked for trial accounts)" value="us" disabled>
-  <Radio id="disabled-region-us" value="us" label="United States" />
-  <Radio id="disabled-region-eu" value="eu" label="European Union" />
-  <Radio id="disabled-region-ap" value="ap" label="Asia Pacific" />
+  <RadioGroup.Option id="disabled-region-us" value="us" label="United States" />
+  <RadioGroup.Option id="disabled-region-eu" value="eu" label="European Union" />
+  <RadioGroup.Option id="disabled-region-ap" value="ap" label="Asia Pacific" />
 </RadioGroup>

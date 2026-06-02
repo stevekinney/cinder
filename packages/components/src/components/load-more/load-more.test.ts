@@ -95,6 +95,27 @@ describe('LoadMore', () => {
     expect(record?.observeCalls).toEqual(sentinel ? [sentinel] : []);
   });
 
+  test('uses the provided root element for the sentinel observer', () => {
+    const scrollContainer = document.createElement('div');
+    render(LoadMore, {
+      props: {
+        onLoadMore: () => {},
+        root: scrollContainer,
+      },
+    });
+
+    const [record] = FakeIntersectionObserver.records;
+    // root threads through to the IntersectionObserver so the sentinel is
+    // observed within a scrollable container rather than the viewport.
+    expect(record?.options?.root).toBe(scrollContainer);
+  });
+
+  test('defaults root to null (viewport) when not provided', () => {
+    render(LoadMore, { props: { onLoadMore: () => {} } });
+    const [record] = FakeIntersectionObserver.records;
+    expect(record?.options?.root ?? null).toBeNull();
+  });
+
   test('clicking the button calls onLoadMore', async () => {
     let calls = 0;
     const { getByRole } = render(LoadMore, {
