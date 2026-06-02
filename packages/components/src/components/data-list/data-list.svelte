@@ -3,31 +3,50 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Generic iterator that renders a typed collection through a consumer-supplied row snippet with empty-state fallback.
+   * @purpose Semantic list container for homogeneous record rows, with a styled empty state and an optional list-level density.
    * @tag list
    * @tag iterator
-   * @useWhen Mapping a homogenous array of records to identical row markup defined by the caller.
+   * @useWhen Rendering a vertical list of like records where each row shares the same layout.
+   * @useWhen Pairing with StackedListItem rows for leading/title/description/meta/trailing content.
    * @useWhen Showing a dedicated empty state when the collection has no items.
    * @avoidWhen Presenting key-value metadata for a single entity — use description-list instead.
    * @avoidWhen Rendering tabular data with rows and columns — use table instead.
-   * @related description-list, table, stacked-list-item
+   * @related stacked-list-item, description-list, table
    */
   export type { DataListProps } from './data-list.types.ts';
 </script>
 
 <script lang="ts" generics="T">
-  import { cn } from '../../utilities/class-names.ts';
+  import { setDataListContext } from '../../_internal/data-list-context.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { DataListProps } from './data-list.types.ts';
 
-  let { items, class: className, children, empty }: DataListProps<T> = $props();
+  let { items, density, class: className, children, empty }: DataListProps<T> = $props();
+
+  // Publish the list-level density so StackedListItem rows can inherit it. The
+  // getter keeps the read reactive; `density` stays `undefined` when the
+  // consumer set none, in which case each row falls back to its own default.
+  setDataListContext({
+    get density() {
+      return density;
+    },
+  });
 </script>
 
-<div class={cn('cinder-data-list', className)}>
+<!--
+  role="list" is explicit: a `<ul>` with `list-style: none` loses its list
+  semantics in Safari/VoiceOver, so the role is restated. Each child rendered by
+  `children(entry)` must be an `<li>` (StackedListItem is the recommended row);
+  the empty state is itself wrapped in an `<li>` so the list stays valid HTML.
+-->
+<ul class={classNames('cinder-data-list', className)} role="list">
   {#if items.length > 0}
     {#each items as entry}
       {@render children(entry)}
     {/each}
   {:else if empty}
-    {@render empty()}
+    <li class="cinder-data-list-empty">
+      {@render empty()}
+    </li>
   {/if}
-</div>
+</ul>

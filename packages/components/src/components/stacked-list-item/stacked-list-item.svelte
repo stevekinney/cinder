@@ -16,11 +16,12 @@
 </script>
 
 <script lang="ts">
+  import { getDataListContext } from '../../_internal/data-list-context.ts';
   import type { StackedListItemProps } from './stacked-list-item.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
-    density = 'comfortable',
+    density,
     class: className,
     leading,
     title,
@@ -33,6 +34,13 @@
     hreflang,
     ...rest
   }: StackedListItemProps = $props();
+
+  // Density resolution: an explicit per-row `density` prop wins; otherwise the
+  // enclosing DataList's list-level density (if any) applies; otherwise the
+  // row's own default of `comfortable`. A standalone StackedListItem (no
+  // DataList ancestor) reads `undefined` from the context and uses the default.
+  const dataListContext = getDataListContext();
+  const resolvedDensity = $derived(density ?? dataListContext?.density ?? 'comfortable');
 
   // Filter out any attributes that TypeScript already blocks but which could
   // leak through at runtime (e.g. from dynamic spreads or JS consumers).
@@ -58,7 +66,7 @@
     trailing && 'cinder-stacked-list-item--has-trailing',
     className,
   )}
-  data-cinder-density={density}
+  data-cinder-density={resolvedDensity}
   {...safeRest}
 >
   <div class="cinder-stacked-list-item__layout">
