@@ -481,7 +481,11 @@ describe('Popover — trigger ARIA', () => {
       expect(queryPopoverPanel()).not.toBeNull();
     });
     expect(triggerButton.getAttribute('aria-expanded')).toBe('true');
-    expect(triggerButton.getAttribute('aria-controls')).toBeTruthy();
+    // Popover must have changed aria-controls from the pre-existing value to
+    // the actual panel id. $props.id() no longer produces a 'cinder-popover-'
+    // prefix, so assert the relationship rather than a literal prefix format.
+    expect(triggerButton.getAttribute('aria-controls')).not.toBe('preexisting-controls');
+    expect(triggerButton.getAttribute('aria-controls')).toBe(queryPopoverPanel()!.id);
     expect(triggerButton.getAttribute('aria-haspopup')).toBe('dialog');
 
     await rerender({

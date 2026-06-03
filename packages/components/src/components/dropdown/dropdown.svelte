@@ -58,7 +58,7 @@
   // $props.id() returns a framework-managed SSR-stable identifier — always a
   // valid CSS ident, so it can be safely interpolated into the inline
   // `anchor-name`/`position-anchor` styles below without sanitization.
-  const menuId = `${generatedId}-legacy-menu`;
+  const menuId = `${generatedId}-menu`;
 
   let rootElement: HTMLDivElement | undefined = $state();
   let menuElement: HTMLDivElement | undefined = $state();

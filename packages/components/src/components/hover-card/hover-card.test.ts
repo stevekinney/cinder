@@ -128,12 +128,14 @@ describe('HoverCard', () => {
     expect(card).not.toBeNull();
     const describedBy = wrapper.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain(card?.id ?? '');
-    // The description id is derived from the same base as the card id; assert
-    // structural relationship rather than a literal prefix that $props.id() does not produce.
+    // The description id is derived from the same $props.id() base as the card
+    // id: cardId = `${base}-card`, descriptionId = `${base}-description`. Assert
+    // the structural contract — suffix /-description$/ — rather than a literal
+    // prefix that $props.id() no longer produces.
     const descriptionIdInDescribedBy = describedBy
       .split(' ')
       .find((token) => token !== card?.id && token.length > 0);
-    expect(descriptionIdInDescribedBy).toBeTruthy();
+    expect(descriptionIdInDescribedBy).toMatch(/-description$/);
   });
 
   test('showArrow enables Floating UI arrow middleware and positions the arrow', async () => {

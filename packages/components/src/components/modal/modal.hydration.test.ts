@@ -18,8 +18,10 @@
  * nulls `document` during the server pass, which is incompatible with rendering
  * raw-snippet children server-side. So that test proves the client wires
  * `aria-labelledby`/`aria-describedby` correctly, but does NOT prove the SSR HTML
- * and the hydrated client agree on those ids for an initially-open dialog. The
- * SSR-stable $props.id() derivation makes drift unlikely, but it is not asserted here.
+ * and the hydrated client agree on those ids for an initially-open dialog.
+ * $props.id() derives from the component's position in the component tree, which
+ * is deterministic for a given tree, but the open-dialog test does not exercise
+ * the SSR path so server/client agreement on these ids is not asserted here.
  */
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
