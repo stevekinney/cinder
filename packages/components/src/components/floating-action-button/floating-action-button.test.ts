@@ -235,12 +235,13 @@ describe('FloatingActionButton — accessible name', () => {
     expect(container.querySelector('button')?.getAttribute('aria-labelledby')).toBe('fab-label');
   });
 
-  test('component-controlled aria-label cannot be clobbered via rest spread', () => {
-    // The component spreads rest BEFORE setting aria-label, so the prop value wins.
+  test('aria-label is taken from the named prop, not from rest', () => {
+    // aria-label is a destructured named prop (never part of rest), and it's the only
+    // way to set the attribute — a JS props object can't pass it a second time. This
+    // confirms the named prop drives the rendered aria-label.
     const { container } = render(FloatingActionButton, {
       props: {
         'aria-label': 'Correct label',
-        // Passing the same attribute again via rest would try to clobber.
         children: iconSnippet(),
       },
     });
