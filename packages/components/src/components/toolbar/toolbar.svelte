@@ -22,6 +22,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
+  import { useMutationObserver } from '../../utilities/use-mutation-observer.svelte.ts';
   import type { ToolbarProps } from './toolbar.types.ts';
 
   type EditableElement = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
@@ -55,15 +56,12 @@
     ...rest
   }: ToolbarRuntimeProps = $props();
 
-  let rootElement = $state<HTMLDivElement | null>(null);
+  let rootElement: HTMLDivElement | null = null;
   let toolbarItems = $state<HTMLElement[]>([]);
   let activeItem = $state<HTMLElement | null>(null);
 
   const originalTabIndexes = new WeakMap<HTMLElement, string | null>();
   let previousManagedItems = new Set<HTMLElement>();
-  let cleanupKeyboardListener: (() => void) | null = null;
-  let cleanupFocusInListener: (() => void) | null = null;
-  let mutationObserver: MutationObserver | null = null;
   let lastWarnedNameSource = '';
 
   function isHTMLElement(value: Element | EventTarget | null): value is HTMLElement {
@@ -350,57 +348,55 @@
     );
   }
 
-  $effect(() => {
-    if (!rootElement) return;
+  function toolbarSetup(node: HTMLDivElement) {
+    rootElement = node;
 
     syncToolbarItems(untrack(() => activeItem));
-    cleanupKeyboardListener?.();
-    cleanupFocusInListener?.();
-    cleanupKeyboardListener = on(rootElement, 'keydown', handleToolbarKeyDown, { capture: true });
-    cleanupFocusInListener = on(rootElement, 'focusin', handleToolbarFocusIn);
 
-    mutationObserver?.disconnect();
-    mutationObserver = new MutationObserver(() => {
-      syncToolbarItems(activeItem);
-      warnAboutAccessibleName();
-    });
-    mutationObserver.observe(rootElement, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: [
-        'aria-disabled',
-        'aria-hidden',
-        'aria-label',
-        'aria-labelledby',
-        'class',
-        'data-cinder-toolbar-exclude',
-        'data-cinder-toolbar-item',
-        'disabled',
-        'hidden',
-        'inert',
-        'style',
-        'type',
-      ],
-    });
+    const cleanupKeyboardListener = on(node, 'keydown', handleToolbarKeyDown, { capture: true });
+    const cleanupFocusInListener = on(node, 'focusin', handleToolbarFocusIn);
+
+    const detachMutationObserver = useMutationObserver(
+      () => {
+        syncToolbarItems(activeItem);
+        warnAboutAccessibleName();
+      },
+      {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: [
+          'aria-disabled',
+          'aria-hidden',
+          'aria-label',
+          'aria-labelledby',
+          'class',
+          'data-cinder-toolbar-exclude',
+          'data-cinder-toolbar-item',
+          'disabled',
+          'hidden',
+          'inert',
+          'style',
+          'type',
+        ],
+      },
+    )(node);
 
     warnAboutAccessibleName();
 
     return () => {
-      cleanupKeyboardListener?.();
-      cleanupFocusInListener?.();
-      cleanupKeyboardListener = null;
-      cleanupFocusInListener = null;
-      mutationObserver?.disconnect();
-      mutationObserver = null;
+      cleanupKeyboardListener();
+      cleanupFocusInListener();
+      detachMutationObserver?.();
+      rootElement = null;
       restoreDepartedItems([]);
     };
-  });
+  }
 </script>
 
 <div
-  bind:this={rootElement}
   {...rest}
+  {@attach toolbarSetup}
   role="toolbar"
   aria-label={ariaLabel}
   aria-labelledby={ariaLabelledBy}

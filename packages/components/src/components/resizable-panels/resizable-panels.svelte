@@ -54,6 +54,7 @@
     ResizablePanelsResizeReason,
   } from './resizable-panels.types.ts';
   import type { ResizablePanelsLayoutState } from './resizable-panels-sizing.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
 
   let {
     panes,
@@ -178,11 +179,11 @@
     }
   }
 
-  function measureRoot(): void {
-    if (!rootElement) return;
-    const rect = rootElement.getBoundingClientRect();
+  function measureRoot(element: HTMLElement = rootElement!): void {
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
     const rootPixels = orientation === 'horizontal' ? rect.width : rect.height;
-    const firstHandle = rootElement.querySelector<HTMLElement>('.cinder-resizable-panels__handle');
+    const firstHandle = element.querySelector<HTMLElement>('.cinder-resizable-panels__handle');
     let handlePixels = measuredHandlePixels;
     if (firstHandle) {
       const handleRect = firstHandle.getBoundingClientRect();
@@ -193,14 +194,8 @@
     syncMeasuredLayout(computeAvailablePanePixels(rootPixels, handlePixels));
   }
 
-  $effect(() => {
-    if (!rootElement || typeof ResizeObserver === 'undefined') return;
+  const resizeAttachment = useResizeObserver(() => {
     measureRoot();
-    const resizeObserver = new ResizeObserver(() => {
-      measureRoot();
-    });
-    resizeObserver.observe(rootElement);
-    return () => resizeObserver.disconnect();
   });
 
   $effect(() => {
@@ -423,6 +418,7 @@
 <div
   {...rest}
   bind:this={rootElement}
+  {@attach resizeAttachment}
   class={classNames('cinder-resizable-panels', className)}
   data-cinder-orientation={orientation}
 >

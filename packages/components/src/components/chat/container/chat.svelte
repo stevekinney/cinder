@@ -118,6 +118,7 @@
   import { useChatKeyboardNav } from './use-chat-keyboard-nav.svelte';
   import { useChatMessageGroups } from './use-chat-message-groups.svelte';
   import { useChatSearch } from './use-chat-search.svelte';
+  import { useIntersection } from '../../../utilities/use-intersection.svelte.ts';
   import ChatJumpControls from './chat-jump-controls.svelte';
   import ChatStatusAnnouncer from './chat-status-announcer.svelte';
   import ChatSearchBar from './chat-search-bar.svelte';
@@ -166,7 +167,6 @@
   // ==========================================================================
 
   let viewport = $state<HTMLElement | null>(null);
-  let bottomSentinel = $state<HTMLElement | null>(null);
   let containerRef = $state<HTMLElement | null>(null);
   let inputRef:
     | {
@@ -294,14 +294,6 @@
     // Pass a getter function for isAtBottom to avoid creating a scroll dependency.
     // The effect should only re-run when messages change, not on every scroll.
     unreadState.processMessages(messages, conversation.id, () => scrollState.isAtBottom);
-  });
-
-  // ==========================================================================
-  // IntersectionObserver for Bottom Sentinel
-  // ==========================================================================
-
-  $effect(() => {
-    return scrollState.createSentinelObserver(viewport, bottomSentinel);
   });
 
   // ==========================================================================
@@ -674,7 +666,14 @@
       {/if}
 
       <!-- Bottom sentinel for IntersectionObserver -->
-      <div bind:this={bottomSentinel} class="chat-bottom-sentinel" aria-hidden="true"></div>
+      <div
+        class="chat-bottom-sentinel"
+        aria-hidden="true"
+        {@attach useIntersection(scrollState.handleSentinelEntry, {
+          root: viewport,
+          rootMargin: `0px 0px ${bottomThreshold}px 0px`,
+        })}
+      ></div>
     {/if}
   </div>
 

@@ -23,6 +23,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { useMutationObserver } from '../../utilities/use-mutation-observer.svelte.ts';
 
   let {
     label,
@@ -75,10 +76,10 @@
 
     sync();
 
-    const observer = new MutationObserver(sync);
-    observer.observe(element, { childList: true });
+    const detachObserver = useMutationObserver(sync, { childList: true })(element as HTMLElement);
+
     return () => {
-      observer.disconnect();
+      detachObserver?.();
       // Release ownership on unmount for any remaining tagged children.
       for (const child of Array.from(tagged)) {
         if (child.getAttribute(ATTR) === groupId) {

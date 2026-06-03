@@ -76,6 +76,12 @@ export interface UseChatScrollStateReturn {
     viewport: HTMLElement | null,
     sentinel: HTMLElement | null,
   ): (() => void) | undefined;
+  /**
+   * IntersectionObserver callback for the bottom sentinel element.
+   * Use with useIntersection for attachment-based wiring:
+   * `{@attach useIntersection(scrollState.handleSentinelEntry, { root: viewport, ... })}`.
+   */
+  handleSentinelEntry(entry: IntersectionObserverEntry): void;
   /** Scroll to the bottom of the viewport */
   scrollToBottom(viewport: HTMLElement | null): void;
   /** Scroll to the top of the viewport */
@@ -224,7 +230,20 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   /**
+   * IntersectionObserver callback for the bottom sentinel element.
+   * Exposed for use with useIntersection attachment-based wiring.
+   */
+  function handleSentinelEntry(entry: IntersectionObserverEntry): void {
+    const atBottom = entry.isIntersecting;
+    if (atBottom && !isAtBottom) {
+      isAtBottom = true;
+      onReachBottom?.();
+    }
+  }
+
+  /**
    * Create an IntersectionObserver for the bottom sentinel.
+   * @deprecated Prefer `{@attach useIntersection(scrollState.handleSentinelEntry, { root: viewport, rootMargin })}` on the sentinel element.
    */
   function createSentinelObserver(
     viewport: HTMLElement | null,
@@ -235,16 +254,12 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
-        const atBottom = entry.isIntersecting;
-        if (atBottom && !isAtBottom) {
-          isAtBottom = true;
-          onReachBottom?.();
-        }
+        handleSentinelEntry(entry);
       },
       {
         root: viewport,
         threshold: 0,
-        rootMargin: `0px 0px ${bottomThreshold}px 0px`,
+        rootMargin: `0px 0px ${getBottomThreshold?.() ?? bottomThreshold}px 0px`,
       },
     );
 
@@ -303,6 +318,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     setIsAtBottom,
     createScrollAttachment,
     createSentinelObserver,
+    handleSentinelEntry,
     scrollToBottom,
     scrollToTop,
     jumpToLatest,
