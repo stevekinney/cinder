@@ -38,8 +38,9 @@ type TextPart = MultiModalContent & { type: 'text'; text: string };
 
 /**
  * Extracts all content parts from a message as a multi-modal array.
- * String content is converted to a single text part; empty/missing content
- * yields an empty text part.
+ * `content` is `string | ReadonlyArray<MultiModalContent>` and never nullish.
+ * A string yields a single text part (an empty string yields one empty text
+ * part); an array is returned as-is, so an empty array yields an empty array.
  *
  * @param message - The message to extract parts from
  * @returns A readonly array of content parts
