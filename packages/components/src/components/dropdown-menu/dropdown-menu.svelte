@@ -17,27 +17,22 @@
 
 <script lang="ts">
   import type { DropdownMenuProps } from './dropdown-menu.types.ts';
-  import { getContext, hasContext, tick } from 'svelte';
+  import { tick } from 'svelte';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
-    DROPDOWN_CONTEXT,
-    DROPDOWN_REGISTER,
-    DROPDOWN_SET_OPEN,
+    getDropdownContext,
+    getDropdownRegister,
+    getDropdownSetOpen,
   } from '../dropdown/dropdown.context.ts';
-  import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import { createPortalAttachment } from '../portal/index.ts';
-
-  if (!hasContext(DROPDOWN_CONTEXT)) {
-    throw new Error('DropdownMenu must be used within a Dropdown.');
-  }
 
   let { class: customClassName, children, ...rest }: DropdownMenuProps = $props();
 
-  const context = getContext<DropdownContext>(DROPDOWN_CONTEXT);
-  const registerMenu = getContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER);
-  const setOpen = getContext<(open: boolean) => void>(DROPDOWN_SET_OPEN);
+  const context = getDropdownContext();
+  const registerMenu = getDropdownRegister();
+  const setOpen = getDropdownSetOpen();
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;

@@ -16,18 +16,13 @@
 
 <script lang="ts">
   import type { TableRowProps } from './table-row.types.ts';
-  import { getContext, untrack } from 'svelte';
+  import { untrack } from 'svelte';
 
   import {
-    TABLE_CONTEXT_KEY,
-    TABLE_HEADER_SELECTION_CONTEXT_KEY,
-    TABLE_SECTION_CONTEXT_KEY,
+    tryGetTableContext,
+    tryGetTableHeaderSelectionContext,
+    tryGetTableSectionContext,
   } from '../table/table.context.ts';
-  import type {
-    TableContext,
-    TableHeaderSelectionContext,
-    TableSectionContext,
-  } from '../table/table.types.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let {
@@ -39,13 +34,11 @@
     selectionDisabled,
   }: TableRowProps = $props();
 
-  const table = getContext<TableContext | undefined>(TABLE_CONTEXT_KEY);
+  const table = tryGetTableContext();
   const selectionEnabled = table?.selectionEnabled ?? false;
 
-  const section = getContext<TableSectionContext | undefined>(TABLE_SECTION_CONTEXT_KEY);
-  const headerSelection = getContext<TableHeaderSelectionContext | undefined>(
-    TABLE_HEADER_SELECTION_CONTEXT_KEY,
-  );
+  const section = tryGetTableSectionContext();
+  const headerSelection = tryGetTableHeaderSelectionContext();
 
   // Validate body rows when selection is enabled. This is a one-time mount-time
   // guard, so the prop reads are untracked.

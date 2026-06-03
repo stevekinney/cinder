@@ -16,11 +16,15 @@
 
 <script lang="ts">
   import type { TreeItemProps } from './tree-item.types.ts';
-  import { getContext, setContext, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
-  import { TREE_CONTEXT_KEY, TREE_ITEM_PARENT_KEY } from '../tree/tree.svelte';
+  import type { TreeContext } from '../../_internal/tree-context.ts';
+  import {
+    getTreeContext,
+    setTreeItemParentContext,
+    tryGetTreeItemParentContext,
+  } from '../../_internal/tree-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   // ---------------------------------------------------------------------------
@@ -44,18 +48,14 @@
   // Contexts (read at init time — must not be inside onMount)
   // ---------------------------------------------------------------------------
 
-  const treeContext = getContext<TreeContext | undefined>(TREE_CONTEXT_KEY);
-  if (!treeContext) {
-    throw new Error('TreeItem must be used inside a Tree component.');
-  }
-  const context: TreeContext = treeContext;
+  const context: TreeContext = getTreeContext();
 
-  const parentContext = getContext<TreeItemParentContext | undefined>(TREE_ITEM_PARENT_KEY);
+  const parentContext = tryGetTreeItemParentContext();
   const parentId = parentContext?.parentId ?? null;
   const level = parentContext?.level ?? 1;
 
   // Publish context for our own children
-  setContext<TreeItemParentContext>(TREE_ITEM_PARENT_KEY, {
+  setTreeItemParentContext({
     get parentId() {
       return id;
     },

@@ -23,7 +23,7 @@ function textSnippet(text: string) {
 
 /**
  * Render a single AccordionItem inside an Accordion so the Svelte context is
- * established before AccordionItem calls `getContext`.
+ * established before AccordionItem calls `getAccordionContext`.
  *
  * `createRawSnippet` render must return a single-root element; we use a
  * wrapper div and mount AccordionItem into it via Svelte's `mount`.
@@ -88,7 +88,7 @@ function renderItem(options: {
 // ---------------------------------------------------------------------------
 
 test('throws if rendered outside an Accordion', () => {
-  // No Accordion context set — getContext() returns undefined
+  // No Accordion context set — createContext strict getter throws
   expect(() => {
     render(AccordionItem, {
       props: {
@@ -100,7 +100,7 @@ test('throws if rendered outside an Accordion', () => {
         })),
       },
     });
-  }).toThrow(/must be used inside an Accordion/);
+  }).toThrow(/missing_context/);
 });
 
 describe('AccordionItem', () => {

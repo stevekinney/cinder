@@ -27,7 +27,7 @@ describe('Tab', () => {
           })),
         },
       }),
-    ).toThrow(/must be used inside a Tabs component/);
+    ).toThrow(/missing_context/);
   });
 
   test('each Tab carries role="tab" and a per-instance, value-suffixed id', () => {

@@ -12,7 +12,7 @@ const { default: TreeItem } = await import('./tree-item.svelte');
 describe('TreeItem', () => {
   test('throws when rendered outside a Tree', () => {
     expect(() => render(TreeItem, { props: { id: 'lonely', label: 'Lonely' } })).toThrow(
-      /must be used inside a Tree component/,
+      /missing_context/,
     );
   });
 

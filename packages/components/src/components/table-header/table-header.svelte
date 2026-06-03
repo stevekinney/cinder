@@ -15,18 +15,13 @@
 
 <script lang="ts">
   import type { TableHeaderProps } from './table-header.types.ts';
-  import { getContext, setContext, untrack } from 'svelte';
+  import { untrack } from 'svelte';
 
   import {
-    TABLE_CONTEXT_KEY,
-    TABLE_HEADER_SELECTION_CONTEXT_KEY,
-    TABLE_SECTION_CONTEXT_KEY,
+    setTableHeaderSelectionContext,
+    setTableSectionContext,
+    tryGetTableContext,
   } from '../table/table.context.ts';
-  import type {
-    TableContext,
-    TableHeaderSelectionContext,
-    TableSectionContext,
-  } from '../table/table.types.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let {
@@ -38,7 +33,7 @@
     selectAllLabel = 'Select all rows',
   }: TableHeaderProps = $props();
 
-  const table = getContext<TableContext | undefined>(TABLE_CONTEXT_KEY);
+  const table = tryGetTableContext();
   const selectionEnabled = table?.selectionEnabled ?? false;
 
   // One-time mount-time guard; read the props untracked.
@@ -62,9 +57,9 @@
     hasSelectionHeaderCell = true;
   }
 
-  setContext<TableSectionContext>(TABLE_SECTION_CONTEXT_KEY, 'header');
+  setTableSectionContext('header');
 
-  setContext<TableHeaderSelectionContext>(TABLE_HEADER_SELECTION_CONTEXT_KEY, {
+  setTableHeaderSelectionContext({
     get allSelected() {
       return allSelected ?? false;
     },

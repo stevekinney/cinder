@@ -21,19 +21,15 @@
 
 <script lang="ts">
   import type { TabProps } from './tab.types.ts';
-  import { getContext, untrack } from 'svelte';
+  import { untrack } from 'svelte';
 
   import { rovingTabIndex } from '../../_internal/collection.ts';
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
+  import { getTabsContext } from '../tabs/tabs-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let { value, id, disabled = false, class: className, children, trailing }: TabProps = $props();
 
-  const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
-  if (!rawTabs) {
-    throw new Error('Tab must be used inside a Tabs component.');
-  }
-  const tabs: TabsContext = rawTabs;
+  const tabs = getTabsContext();
 
   // Derive both ids from the root's baseId and the tab's value so that two
   // Tabs instances sharing the same value produce distinct DOM ids. The panel

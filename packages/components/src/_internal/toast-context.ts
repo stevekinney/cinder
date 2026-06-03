@@ -1,7 +1,7 @@
 /**
  * Internal toast context shape, factored out of `toast-region.svelte` so that
  * plain `.ts` consumers (the `useToast` hook in `src/utilities/use-toast.ts`)
- * can import the symbol key and types without going through the `.svelte`
+ * can import the context accessors and types without going through the `.svelte`
  * module path. The ambient `*.svelte` declaration only exposes the default
  * export to plain TS, so any context bridge needs a `.ts` home.
  *
@@ -10,9 +10,7 @@
  */
 
 import type { Snippet } from 'svelte';
-
-/** Symbol key for the toast Svelte context. */
-export const TOAST_CONTEXT_KEY = Symbol('cinder-toast');
+import { createContext } from 'svelte';
 
 /** Toast variant — drives both visual treatment and live-region routing. */
 export type ToastVariant = 'info' | 'success' | 'warning' | 'danger';
@@ -89,3 +87,16 @@ export type ToastApi = {
     } & Pick<ToastOptions, 'id' | 'duration' | 'dismissible' | 'action'>,
   ) => string;
 };
+
+const [getToastContextStrict, setToastContext] = createContext<ToastApi>();
+
+export { setToastContext };
+
+/**
+ * Returns the toast API from the nearest enclosing `<ToastRegion />`.
+ *
+ * Throws when no `<ToastRegion />` ancestor has called `setToastContext` —
+ * a missing region is always a programmer error, never a valid runtime state.
+ * `createContext`'s strict getter provides this guarantee automatically.
+ */
+export const getToastContext = getToastContextStrict;

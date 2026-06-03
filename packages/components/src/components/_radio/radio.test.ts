@@ -26,7 +26,7 @@ describe('Radio', () => {
           children: createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} })),
         },
       }),
-    ).toThrow(/must be used inside a RadioGroup component/);
+    ).toThrow(/missing_context/);
   });
 
   test('renders a native <input type="radio"> per option sharing the group name', () => {

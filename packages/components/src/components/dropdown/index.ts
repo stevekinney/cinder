@@ -24,11 +24,9 @@ const Dropdown = Object.assign(DropdownRoot, {
 });
 
 export default Dropdown;
-export {
-  DROPDOWN_CONTEXT,
-  DROPDOWN_REGISTER,
-  DROPDOWN_REGISTER_TRIGGER,
-  DROPDOWN_SET_OPEN,
-} from './dropdown.context.ts';
+// Context getter functions are intentionally excluded from the public barrel:
+// setters would allow external code to hijack the dropdown wiring of any subtree,
+// and raw getters without the provider are not a supported use case for consumers.
+// Internal bridges (menu-bar, context-menu) import from dropdown.context.ts directly.
 export type { DropdownContext, DropdownPlacement, DropdownProps } from './dropdown.types.ts';
 export { Dropdown };

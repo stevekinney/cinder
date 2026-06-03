@@ -16,19 +16,13 @@
 
 <script lang="ts">
   import type { DropdownTriggerProps } from './dropdown-trigger.types.ts';
-  import { getContext, hasContext } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import {
-    DROPDOWN_CONTEXT,
-    DROPDOWN_REGISTER_TRIGGER,
-    DROPDOWN_SET_OPEN,
+    getDropdownContext,
+    getDropdownRegisterTrigger,
+    getDropdownSetOpen,
   } from '../dropdown/dropdown.context.ts';
-  import type { DropdownContext } from '../dropdown/dropdown.types.ts';
-
-  if (!hasContext(DROPDOWN_CONTEXT)) {
-    throw new Error('DropdownTrigger must be used within a Dropdown.');
-  }
 
   let {
     class: customClassName,
@@ -38,10 +32,9 @@
     ...rest
   }: DropdownTriggerProps = $props();
 
-  const context = getContext<DropdownContext>(DROPDOWN_CONTEXT);
-  const registerTrigger =
-    getContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER_TRIGGER);
-  const setOpen = getContext<(open: boolean) => void>(DROPDOWN_SET_OPEN);
+  const context = getDropdownContext();
+  const registerTrigger = getDropdownRegisterTrigger();
+  const setOpen = getDropdownSetOpen();
 
   let triggerElement = $state<HTMLButtonElement | null>(null);
 

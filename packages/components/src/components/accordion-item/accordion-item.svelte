@@ -15,20 +15,13 @@
 </script>
 
 <script lang="ts">
-  import { getContext } from 'svelte';
-
-  import { ACCORDION_CONTEXT_KEY } from '../accordion/accordion.context.ts';
-  import type { AccordionContext } from '../accordion/accordion.types.ts';
+  import { getAccordionContext } from '../accordion/accordion.context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { AccordionItemProps } from './accordion-item.types.ts';
 
   let { id, title, disabled = false, class: className, children }: AccordionItemProps = $props();
 
-  const rawContext = getContext<AccordionContext | undefined>(ACCORDION_CONTEXT_KEY);
-  if (!rawContext) {
-    throw new Error('AccordionItem must be used inside an Accordion component.');
-  }
-  const context: AccordionContext = rawContext;
+  const context = getAccordionContext();
 
   const isExpanded = $derived(context.expandedIds.includes(id));
 

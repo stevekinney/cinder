@@ -12,17 +12,14 @@
    * @avoidWhen Switching between sibling views of the same region — use tabs instead.
    * @related tree-item, accordion
    */
-  export const TREE_CONTEXT_KEY = Symbol('cinder-tree');
-  export const TREE_ITEM_PARENT_KEY = Symbol('cinder-tree-item-parent');
-
   export type { TreeProps, TreeSelectionBehavior, TreeSelectionMode } from './tree.types.ts';
 </script>
 
 <script lang="ts">
   import type { TreeProps } from './tree.types.ts';
-  import { setContext } from 'svelte';
 
-  import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
+  import type { TreeContext } from '../../_internal/tree-context.ts';
+  import { setTreeContext, setTreeItemParentContext } from '../../_internal/tree-context.ts';
   import { TreeRegistry } from '../../_internal/tree-registry.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
@@ -393,8 +390,8 @@
     },
   };
 
-  setContext(TREE_CONTEXT_KEY, context);
-  setContext(TREE_ITEM_PARENT_KEY, { parentId: null, level: 1 } as TreeItemParentContext);
+  setTreeContext(context);
+  setTreeItemParentContext({ parentId: null, level: 1 });
 
   // ---------------------------------------------------------------------------
   // Keyboard handler (Ctrl/Cmd+A handled at tree level)

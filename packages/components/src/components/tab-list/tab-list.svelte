@@ -17,18 +17,13 @@
 
 <script lang="ts">
   import type { TabListProps } from './tab-list.types.ts';
-  import { getContext } from 'svelte';
 
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
+  import { getTabsContext } from '../tabs/tabs-context.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let { label, labelledBy, class: className, children }: TabListProps = $props();
 
-  const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
-  if (!rawTabs) {
-    throw new Error('TabList must be used inside a Tabs component.');
-  }
-  const tabs: TabsContext = rawTabs;
+  const tabs = getTabsContext();
 </script>
 
 <div

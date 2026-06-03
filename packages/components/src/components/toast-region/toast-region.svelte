@@ -12,13 +12,7 @@
    * @avoidWhen Reporting an urgent error that must remain on screen — use alert.
    * @related alert, banner
    */
-  import { TOAST_CONTEXT_KEY } from '../../_internal/toast-context.ts';
-
-  // Re-export so consumers using the public package surface get a single
-  // import path; internal modules import directly from _internal.
-  export { TOAST_CONTEXT_KEY };
   export type {
-    ToastApi,
     ToastItem,
     ToastOptions,
     ToastPosition,
@@ -28,14 +22,14 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy, setContext } from 'svelte';
+  import { onDestroy } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
+  import { setToastContext } from '../../_internal/toast-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { cn } from '../../utilities/class-names.ts';
   import type {
-    ToastApi,
     ToastItem,
     ToastOptions,
     ToastRegionProps,
@@ -568,7 +562,7 @@
     };
   }
 
-  setContext<ToastApi>(TOAST_CONTEXT_KEY, { show, dismiss, dismissAll, promise });
+  setToastContext({ show, dismiss, dismissAll, promise });
 
   onDestroy(() => {
     // Tear down timers so unmounting the region (e.g., during route change)

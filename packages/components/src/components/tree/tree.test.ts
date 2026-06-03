@@ -1590,7 +1590,7 @@ describe('Tree — selection', () => {
   });
 
   test('TreeSelectAll outside tree context throws a clear usage error', () => {
-    expect(() => render(TreeSelectAll, { props: {} })).toThrow(/TreeSelectAll.*selectionControls/);
+    expect(() => render(TreeSelectAll, { props: {} })).toThrow(/missing_context/);
   });
 });
 

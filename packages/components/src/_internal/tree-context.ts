@@ -1,4 +1,7 @@
+import { createContext } from 'svelte';
+
 import type { TreeSelectionState } from '../components/tree/tree-selection.ts';
+import { optionalContext } from './optional-context.ts';
 import type { TreeNodeRegistration } from './tree-registry.svelte.ts';
 
 // Inline the selection mode type here to avoid a circular import with
@@ -16,7 +19,7 @@ export type TreeItemSelectionState = TreeSelectionState;
  * rune-only constraint on `.svelte.ts` files.
  *
  * The context object itself lives in `tree.svelte` (instance block); this file
- * only holds the shared type.
+ * only holds the shared type and the typed context handles.
  */
 export type TreeContext = {
   readonly selectionMode: TreeSelectionMode;
@@ -62,3 +65,26 @@ export type TreeItemParentContext = {
   parentId: string | null;
   level: number;
 };
+
+const [getTreeContextStrict, setTreeContextRaw] = createContext<TreeContext>();
+
+export { setTreeContextRaw as setTreeContext };
+
+/**
+ * Required read — a TreeItem or TreeSelectAll outside a Tree is a programmer
+ * error; the strict getter throws automatically when no provider exists.
+ */
+export const getTreeContext: () => TreeContext = getTreeContextStrict;
+
+const [getTreeItemParentContextStrict, setTreeItemParentContextRaw] =
+  createContext<TreeItemParentContext>();
+
+export { setTreeItemParentContextRaw as setTreeItemParentContext };
+
+/**
+ * Optional read — a TreeItem at the root level has no TreeItem parent provider;
+ * a missing context is a valid state (top-level item, parentId = null, level = 1).
+ */
+export const tryGetTreeItemParentContext: () => TreeItemParentContext | undefined = optionalContext(
+  getTreeItemParentContextStrict,
+);

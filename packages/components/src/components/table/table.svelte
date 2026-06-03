@@ -12,11 +12,6 @@
    * @avoidWhen Listing key-value attributes of one entity — use description-list instead.
    * @related table-header, table-body, table-row, table-cell, table-header-cell
    */
-  export {
-    TABLE_CONTEXT_KEY,
-    TABLE_HEADER_SELECTION_CONTEXT_KEY,
-    TABLE_SECTION_CONTEXT_KEY,
-  } from './table.context.ts';
   export type {
     SortDirection,
     TableContext,
@@ -29,9 +24,8 @@
 </script>
 
 <script lang="ts">
-  import { TABLE_CONTEXT_KEY } from './table.context.ts';
-  import type { TableContext, TableProps } from './table.types.ts';
-  import { setContext } from 'svelte';
+  import { setTableContext } from './table.context.ts';
+  import type { TableProps } from './table.types.ts';
 
   import { cn } from '../../utilities/class-names.ts';
 
@@ -57,7 +51,7 @@
     };
   }
 
-  setContext<TableContext>(TABLE_CONTEXT_KEY, {
+  setTableContext({
     get sort() {
       return sort;
     },

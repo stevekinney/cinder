@@ -16,10 +16,8 @@
 
 <script lang="ts">
   import type { TableHeaderCellProps } from './table-header-cell.types.ts';
-  import { getContext } from 'svelte';
 
-  import { TABLE_CONTEXT_KEY } from '../table/table.context.ts';
-  import type { TableContext } from '../table/table.types.ts';
+  import { getTableContext } from '../table/table.context.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let {
@@ -31,11 +29,7 @@
     children,
   }: TableHeaderCellProps = $props();
 
-  const rawTable = getContext<TableContext | undefined>(TABLE_CONTEXT_KEY);
-  if (!rawTable) {
-    throw new Error('TableHeaderCell must be used inside a Table component.');
-  }
-  const table: TableContext = rawTable;
+  const table = getTableContext();
 
   // aria-sort lives on the <th> per WAI-ARIA. The accessible name and
   // keyboard activation live on the inner <button> when sortable.
