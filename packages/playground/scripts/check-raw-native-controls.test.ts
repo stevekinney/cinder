@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -497,15 +497,21 @@ describe('ALLOWLIST — canonical checked-in entries', () => {
 // suite immediately, with a clear pointer to the offending file.
 
 describe('enforcement — real examples have no un-allowlisted raw controls', () => {
-  test('scan of src/examples reports zero flagged controls', async () => {
-    const result = await scan(examplesDirectory);
+  // Scan the examples directory once and assert against the cached result in
+  // both tests — the scan reads and parses every example file, so running it
+  // per-test would duplicate that work.
+  let result: ScanResult;
+  beforeAll(async () => {
+    result = await scan(examplesDirectory);
+  });
+
+  test('scan of src/examples reports zero flagged controls', () => {
     expect(
       result.flagged.map((occurrence) => `${occurrence.relativePath}:${occurrence.lineNumber}`),
     ).toEqual([]);
   });
 
-  test('the checked-in ALLOWLIST has no stale entries', async () => {
-    const result = await scan(examplesDirectory);
+  test('the checked-in ALLOWLIST has no stale entries', () => {
     expect(
       result.staleAllowlistEntries.map(
         (entry) => `${entry.relativePath}#${entry.tagName}[${entry.occurrenceIndex}]`,
