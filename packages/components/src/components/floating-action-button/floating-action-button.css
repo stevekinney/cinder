@@ -1,0 +1,211 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+   * FLOATING ACTION BUTTON (FAB)
+   * ======================================== */
+
+  .cinder-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cinder-space-2);
+    white-space: nowrap;
+    text-decoration: none;
+
+    font-weight: var(--cinder-font-medium);
+    font-size: var(--cinder-text-sm);
+    line-height: 1;
+
+    border: none;
+    border-radius: var(--cinder-radius-full);
+
+    cursor: pointer;
+
+    /* Elevation shadow — FABs float above the page surface. Held in a custom property
+     * (shared shadow token, so the raw-color audit stays clean) so the focus-visible
+     * rule can COMPOSE the ring with the current elevation instead of replacing it —
+     * otherwise a hovered+focused FAB would lose its focus ring. */
+    --_cinder-fab-elevation: var(--cinder-shadow-md);
+    box-shadow: var(--_cinder-fab-elevation);
+
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* Focus ring — transparent outline + two-stop box-shadow per cinder convention.
+   * The elevation shadow is appended so the ring and the float-shadow coexist (and the
+   * ring survives :hover, which only changes --_cinder-fab-elevation, not this rule). */
+  .cinder-fab:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color),
+      var(--_cinder-fab-elevation);
+  }
+
+  /* Forced Colors Mode — box-shadow is invisible; use a real outline */
+  @media (forced-colors: active) {
+    .cinder-fab:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
+  /* Disabled */
+  .cinder-fab:disabled,
+  .cinder-fab[aria-disabled='true'] {
+    cursor: not-allowed;
+    /* Block mouse activation of a disabled anchor (an <a> has no native disabled, and
+     * aria-disabled is advisory). The button arm is already inert via :disabled. */
+    pointer-events: none;
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+    box-shadow: none;
+  }
+
+  /* ----------------------------------------
+   * Size variants
+   * Filled: equal inline-size and block-size (circle).
+   * Extended: auto inline-size with padding-inline, fixed block-size (pill).
+   * sm  = --cinder-space-10 (2.5rem / 40px)
+   * md  = --cinder-space-12 (3rem   / 48px)  — standard FAB
+   * lg  = --cinder-space-16 (4rem   / 64px)  — large FAB
+   * ---------------------------------------- */
+
+  .cinder-fab[data-cinder-size='sm'] {
+    block-size: var(--cinder-space-10);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-fab[data-cinder-size='sm'][data-cinder-variant='filled'] {
+    inline-size: var(--cinder-space-10);
+  }
+
+  .cinder-fab[data-cinder-size='sm'][data-cinder-variant='extended'] {
+    padding-inline: var(--cinder-space-4);
+  }
+
+  .cinder-fab[data-cinder-size='md'] {
+    block-size: var(--cinder-space-12);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-fab[data-cinder-size='md'][data-cinder-variant='filled'] {
+    inline-size: var(--cinder-space-12);
+  }
+
+  .cinder-fab[data-cinder-size='md'][data-cinder-variant='extended'] {
+    padding-inline: var(--cinder-space-6);
+  }
+
+  .cinder-fab[data-cinder-size='lg'] {
+    block-size: var(--cinder-space-16);
+    font-size: var(--cinder-text-lg);
+  }
+
+  .cinder-fab[data-cinder-size='lg'][data-cinder-variant='filled'] {
+    inline-size: var(--cinder-space-16);
+  }
+
+  .cinder-fab[data-cinder-size='lg'][data-cinder-variant='extended'] {
+    padding-inline: var(--cinder-space-8);
+  }
+
+  /* ----------------------------------------
+   * Color variants
+   * ---------------------------------------- */
+
+  /* primary — accent fill with contrast foreground */
+  .cinder-fab[data-cinder-color='primary'] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+  }
+
+  .cinder-fab[data-cinder-color='primary']:disabled,
+  .cinder-fab[data-cinder-color='primary'][aria-disabled='true'] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+  }
+
+  /* secondary — surface-raised background with standard text */
+  .cinder-fab[data-cinder-color='secondary'] {
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+  }
+
+  .cinder-fab[data-cinder-color='secondary']:disabled,
+  .cinder-fab[data-cinder-color='secondary'][aria-disabled='true'] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+  }
+
+  /* surface — neutral surface color, suited for floating above content */
+  .cinder-fab[data-cinder-color='surface'] {
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+  }
+
+  .cinder-fab[data-cinder-color='surface']:disabled,
+  .cinder-fab[data-cinder-color='surface'][aria-disabled='true'] {
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-disabled);
+  }
+
+  /* ----------------------------------------
+   * Hover states
+   * Wrapped in hover media query to prevent sticky-hover on touch devices.
+   * ---------------------------------------- */
+
+  @media (hover: hover) {
+    .cinder-fab:hover:not(:disabled):not([aria-disabled='true']) {
+      /* Raise the elevation on hover (md → lg) by updating the custom property, not
+       * `box-shadow` directly — so a focused FAB keeps its ring (the focus-visible rule
+       * reads --_cinder-fab-elevation) while still elevating. */
+      --_cinder-fab-elevation: var(--cinder-shadow-lg);
+    }
+
+    .cinder-fab[data-cinder-color='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-accent-hover);
+    }
+
+    .cinder-fab[data-cinder-color='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-surface-hover);
+    }
+
+    .cinder-fab[data-cinder-color='surface']:hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  /* :active placed after hover media so press feedback fires on tap as well */
+  .cinder-fab[data-cinder-color='primary']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-accent-active);
+  }
+
+  .cinder-fab[data-cinder-color='secondary']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-surface-pressed);
+  }
+
+  .cinder-fab[data-cinder-color='surface']:active:not(:disabled):not([aria-disabled='true']) {
+    background: var(--cinder-surface-pressed);
+  }
+
+  /* Forced Colors — revert box-shadow effects; use system ButtonText/ButtonFace */
+  @media (forced-colors: active) {
+    .cinder-fab {
+      background: ButtonFace;
+      color: ButtonText;
+      border: 1px solid ButtonBorder;
+      box-shadow: none;
+    }
+
+    .cinder-fab:disabled,
+    .cinder-fab[aria-disabled='true'] {
+      background: ButtonFace;
+      color: GrayText;
+      border-color: GrayText;
+    }
+  }
+}

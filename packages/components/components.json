@@ -1472,6 +1472,29 @@
       }
     },
     {
+      "name": "FloatingActionButton",
+      "id": "floating-action-button",
+      "import": "cinder/floating-action-button",
+      "exportName": "FloatingActionButton",
+      "category": "action",
+      "status": "beta",
+      "purpose": "Circular button representing the single most important action on a screen.",
+      "tags": ["action", "button"],
+      "useWhen": ["One action dominates the page purpose (compose, add, create)."],
+      "avoidWhen": [
+        "Multiple equally-important actions exist — use a toolbar or button group.",
+        "You need it pinned to the viewport — it doesn't position itself; wrap it in your own fixed/sticky container."
+      ],
+      "related": ["button", "toolbar"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/floating-action-button/schema",
+        "variables": "cinder/floating-action-button/variables",
+        "examples": "cinder/floating-action-button/examples"
+      }
+    },
+    {
       "name": "FocusTrap",
       "id": "focus-trap",
       "import": "cinder/focus-trap",

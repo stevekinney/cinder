@@ -1,0 +1,39 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    variant: {
+      enum: ['filled', 'extended'],
+      description: 'Visual variant. `filled` = circle, `extended` = pill.',
+      default: 'filled',
+    },
+    size: {
+      enum: ['sm', 'md', 'lg'],
+      description: 'Size of the FAB.',
+      default: 'md',
+    },
+    color: {
+      enum: ['primary', 'secondary', 'surface'],
+      description: 'Color palette.',
+      default: 'primary',
+    },
+    disabled: {
+      type: 'boolean',
+      description: 'When true, disables the button and prevents interaction.',
+      default: false,
+    },
+    href: {
+      type: 'string',
+      description: 'Render as an anchor `<a>` element with this href.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-fab`.',
+    },
+  },
+  additionalProperties: false,
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

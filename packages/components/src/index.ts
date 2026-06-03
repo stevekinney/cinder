@@ -241,6 +241,14 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event/i
 export { default as Feed } from './components/feed/index.ts';
 export type { FeedProps } from './components/feed/index.ts';
 
+export { default as FloatingActionButton } from './components/floating-action-button/index.ts';
+export type {
+  FloatingActionButtonColor,
+  FloatingActionButtonProps,
+  FloatingActionButtonSize,
+  FloatingActionButtonVariant,
+} from './components/floating-action-button/index.ts';
+
 export { default as FileUpload } from './components/file-upload/index.ts';
 export type {
   FileUploadEntry,
