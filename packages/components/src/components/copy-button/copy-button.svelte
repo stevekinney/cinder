@@ -33,6 +33,13 @@
     class: className,
     children,
     confirmation,
+    // `...rest` carries every other native button attribute (id, data-*, form, name,
+    // tabindex, etc.) through to the rendered element. The component's controlled attrs
+    // (aria-label, aria-live, onclick, data-cinder-copied) are Omit-ted from the prop
+    // type AND rendered explicitly AFTER {...rest} below, so they always win — even if a
+    // consumer bypasses the types to inject one, the later attribute on the element
+    // overrides the spread value.
+    ...rest
   }: CopyButtonProps = $props();
 
   let copied = $state(false);
@@ -57,12 +64,13 @@
      state change. Without that flip, screen readers receive no feedback when
      copy succeeds in iconOnly mode (the visible icon is aria-hidden). -->
 <button
+  {...rest}
   type="button"
-  class={cn('cinder-copy-button', className)}
   data-cinder-copied={copied || undefined}
   aria-label={copied ? (copiedLabel ?? 'Copied') : (label ?? 'Copy to clipboard')}
   aria-live="polite"
   onclick={handleClick}
+  class={cn('cinder-copy-button', className)}
 >
   <!-- Accessible name for every branch comes from `aria-label` on the button.
        In iconOnly mode the icon is decorative — `aria-hidden` keeps it out of the

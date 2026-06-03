@@ -22,10 +22,13 @@ const schema = {
     class: {
       type: 'string',
     },
-    id: {
-      type: 'string',
+    pressed: {
+      type: 'boolean',
     },
-    title: {
+    disabled: {
+      type: 'boolean',
+    },
+    removeAriaLabel: {
       type: 'string',
     },
   },
@@ -35,6 +38,14 @@ const schema = {
     unsupportedProps: [
       {
         name: 'leadingIcon',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onpressedchange',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onremove',
         reason: 'function-or-snippet',
       },
     ],

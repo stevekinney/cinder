@@ -28,6 +28,21 @@
   import type { ChipProps, ChipRemovableProps, ChipToggleProps } from './chip.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
+  // `ChipProps` is a discriminated union across three variants with different underlying HTML
+  // element types (<button> for toggle, <span> for display/removable). Destructuring the union
+  // directly is not possible for mode-specific props. Instead, `props` is kept as the raw typed
+  // value and bespoke props are accessed via `$derived` with narrowing casts per mode.
+  //
+  // Native HTML attributes pass through via `rest`: we strip the known bespoke prop keys at
+  // runtime and spread the remainder onto the rendered element BEFORE controlled attrs, so that
+  // component-owned attrs (data-cinder-*, aria-pressed, aria-label for toggle) always win.
+  //
+  // `onclick` for the toggle button is read via a cast so it can be wrapped — the wrapper calls
+  // the consumer's handler first, then fires `onpressedchange` unless `defaultPrevented`.
+  //
+  // `aria-label` for toggle is read via a cast so empty strings can be suppressed (an empty
+  // aria-label overrides the accessible-name computation per ARIA spec §4.3 without providing
+  // a name). Display/removable modes forward `aria-label` unchanged through `rest`.
   let props: ChipProps = $props();
   const mode = $derived(props.mode ?? 'display');
   const label = $derived(props.label);
@@ -43,7 +58,9 @@
   const disabled = $derived(
     mode !== 'display' ? (props as ChipToggleProps | ChipRemovableProps).disabled : undefined,
   );
-  const onclick = $derived(mode === 'toggle' ? (props as ChipToggleProps).onclick : undefined);
+  const consumerOnClick = $derived(
+    mode === 'toggle' ? (props as ChipToggleProps).onclick : undefined,
+  );
   const ariaLabelRaw = $derived(
     mode === 'toggle' ? (props as ChipToggleProps)['aria-label'] : undefined,
   );
@@ -59,17 +76,37 @@
     return typeof raw === 'string' && raw.trim().length > 0 ? raw : undefined;
   });
 
-  const extraAttrs = $derived.by(() => {
-    const result: Record<string, string | number | boolean | undefined> = {};
-    const p = props as Record<string, unknown>;
-    if (typeof p['id'] === 'string') result['id'] = p['id'];
-    if (typeof p['title'] === 'string') result['title'] = p['title'];
-    for (const key of Object.keys(p)) {
-      if (key.startsWith('data-') && !key.startsWith('data-cinder-')) {
-        const val = p[key];
-        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
-          result[key] = val;
-        }
+  // Compute `rest` by stripping all known bespoke prop keys from the raw props object.
+  // Whatever remains is a set of native HTML attributes the consumer intends to forward.
+  // This achieves the same effect as `const { a, b, c, ...rest } = $props()` but works
+  // across the discriminated union where not all keys are common to every variant.
+  // `onclick` is intentionally NOT in this set: for display/removable modes it should flow
+  // through `rest` unchanged. For toggle mode, the explicit `onclick={wrapper}` on the <button>
+  // appears after the spread and overrides `rest`'s value; the wrapper reads `consumerOnClick`
+  // (captured via $derived cast above) and calls it first.
+  //
+  // `aria-label` is also NOT stripped: display/removable modes forward it through `rest`.
+  // For toggle mode, the explicit `aria-label={ariaLabel}` (empty-string-filtered) overrides.
+  const BESPOKE_KEYS = new Set([
+    'mode',
+    'label',
+    'variant',
+    'size',
+    'density',
+    'leadingIcon',
+    'class',
+    'pressed',
+    'onpressedchange',
+    'disabled',
+    'onremove',
+    'removeAriaLabel',
+  ]);
+
+  const rest = $derived.by(() => {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
+      if (!BESPOKE_KEYS.has(key)) {
+        result[key] = value;
       }
     }
     return result;
@@ -78,19 +115,19 @@
 
 {#if mode === 'toggle'}
   <button
+    {...rest}
     type="button"
-    class={classNames('cinder-chip', customClassName)}
-    {...extraAttrs}
     data-cinder-mode="toggle"
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+    class={classNames('cinder-chip', customClassName)}
     aria-pressed={pressed}
     aria-label={ariaLabel}
     {disabled}
     onclick={(event) => {
       if (disabled) return;
-      onclick?.(event);
+      consumerOnClick?.(event);
       if (!event.defaultPrevented) {
         onpressedchange?.(!pressed);
       }
@@ -103,13 +140,13 @@
   </button>
 {:else if mode === 'removable'}
   <span
-    class={classNames('cinder-chip', customClassName)}
-    {...extraAttrs}
+    {...rest}
     data-cinder-mode="removable"
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     data-cinder-disabled={disabled || undefined}
+    class={classNames('cinder-chip', customClassName)}
   >
     {#if leadingIcon}
       <span class="cinder-chip__icon" aria-hidden="true">{@render leadingIcon()}</span>
@@ -129,12 +166,12 @@
   </span>
 {:else}
   <span
-    class={classNames('cinder-chip', customClassName)}
-    {...extraAttrs}
+    {...rest}
     data-cinder-mode="display"
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+    class={classNames('cinder-chip', customClassName)}
   >
     {#if leadingIcon}
       <span class="cinder-chip__icon" aria-hidden="true">{@render leadingIcon()}</span>

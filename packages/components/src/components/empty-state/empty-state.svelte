@@ -26,6 +26,7 @@
     headingLevel = 3,
     icon,
     action,
+    ...rest
   }: EmptyStateProps = $props();
 
   // Coerce + clamp at runtime: a consumer can pass 0, 7, NaN, or a non-numeric
@@ -37,7 +38,7 @@
   const tag = $derived(`h${safeLevel}`);
 </script>
 
-<div class={classNames('cinder-empty-state', className)}>
+<div {...rest} class={classNames('cinder-empty-state', className)}>
   {#if icon}
     <div class="cinder-empty-state-icon" aria-hidden="true">
       {@render icon()}

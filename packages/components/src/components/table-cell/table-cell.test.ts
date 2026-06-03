@@ -30,4 +30,40 @@ describe('TableCell', () => {
     const cell = container.querySelector('tbody td');
     expect(cell?.getAttribute('data-cinder-align')).toBe('left');
   });
+
+  test('forwards native td attributes (colspan, id, data-*) to the rendered <td>', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      cellProps: { colspan: 2, id: 'cell-1', 'data-testid': 'my-cell' },
+    });
+    const cell = container.querySelector('tbody td');
+    expect(cell?.getAttribute('colspan')).toBe('2');
+    expect(cell?.getAttribute('id')).toBe('cell-1');
+    expect(cell?.getAttribute('data-testid')).toBe('my-cell');
+  });
+
+  test('bespoke align prop controls data-cinder-align and the cinder class is always present', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      cellProps: { align: 'right' },
+    });
+    const cell = container.querySelector('tbody td');
+    expect(cell?.getAttribute('data-cinder-align')).toBe('right');
+    expect(cell?.classList.contains('cinder-table__cell')).toBe(true);
+  });
+
+  test('component-owned data-cinder-align cannot be clobbered via the rest spread', () => {
+    // `{...rest}` is spread BEFORE the explicit data-cinder-align binding, so the
+    // component's value (derived from `align`, default 'left') always wins — even
+    // though `data-cinder-align` is a raw data-* attribute the type can't exclude.
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      cellProps: { 'data-cinder-align': 'right' } as never,
+    });
+    const cell = container.querySelector('tbody td');
+    expect(cell?.getAttribute('data-cinder-align')).toBe('left');
+  });
 });

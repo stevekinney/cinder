@@ -19,10 +19,11 @@
   import { cn } from '../../utilities/class-names.ts';
   import type { SpinnerProps } from './spinner.types.ts';
 
-  const { size = 'md', label = 'Loading', class: className }: SpinnerProps = $props();
+  const { size = 'md', label = 'Loading', class: className, ...rest }: SpinnerProps = $props();
 </script>
 
 <span
+  {...rest}
   class={cn('cinder-spinner', className)}
   role="status"
   aria-label={label}

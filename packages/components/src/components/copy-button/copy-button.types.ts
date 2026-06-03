@@ -1,12 +1,31 @@
 import type { Snippet } from 'svelte';
+import type { HTMLButtonAttributes } from 'svelte/elements';
+
 /**
  * Props for the CopyButton component.
  *
  * Copies `value` to the clipboard when clicked and renders a brief
  * confirmation state. The `children` snippet defines the button label;
  * `confirmation` is rendered while the copied state is active.
+ *
+ * Extends `HTMLButtonAttributes` (minus `class`) so consumers can pass
+ * any native button attribute — `id`, `data-*`, `form`, etc. The component
+ * owns `aria-label`, `aria-live`, `onclick`, and `type` (always `"button"`,
+ * never a form submitter): these are Omit-ted so a consumer-supplied value is
+ * a compile error rather than being silently overridden at runtime (the
+ * component drives the copied-state announcement and clipboard handler
+ * itself). `data-cinder-copied` is also owned but is a `data-*` attribute that
+ * can't be expressed in the Omit, so it's overridden by spread ordering.
+ *
+ * The native `value` attribute is also Omit-ted: CopyButton's bespoke `value`
+ * is the required clipboard text, and leaving the optional native `value` in
+ * the surface confused schema/README generation (it dropped the prop as
+ * `unknown-shape`). Omit-ting it makes `value: string` unambiguously owned.
  */
-export type CopyButtonProps = {
+export type CopyButtonProps = Omit<
+  HTMLButtonAttributes,
+  'class' | 'aria-label' | 'aria-live' | 'onclick' | 'type' | 'value'
+> & {
   /** Text to copy to the clipboard. */
   value: string;
   /** Duration in ms to show the confirmation state. Default 1500. */

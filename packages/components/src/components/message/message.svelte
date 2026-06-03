@@ -20,7 +20,15 @@
   import type { MessageProps, MessageRole } from './message.types.ts';
   import { cn } from '../../utilities/class-names.ts';
 
-  let { role, time, name, class: className, children }: MessageProps = $props();
+  let {
+    role,
+    datetime,
+    timestamp,
+    name,
+    class: className,
+    children,
+    ...rest
+  }: MessageProps = $props();
 
   const defaultNames: Record<MessageRole, string> = {
     user: 'You',
@@ -31,11 +39,11 @@
   const visibleName = $derived(name ?? defaultNames[role]);
 </script>
 
-<article class={cn('cinder-message', className)} data-cinder-role={role}>
+<article {...rest} data-cinder-role={role} class={cn('cinder-message', className)}>
   <header class="cinder-message__header">
     <span class="cinder-message__name">{visibleName}</span>
-    {#if time}
-      <time class="cinder-message__time" datetime={time}>{time}</time>
+    {#if datetime}
+      <time class="cinder-message__time" {datetime}>{timestamp ?? datetime}</time>
     {/if}
   </header>
   <div class="cinder-message__body">

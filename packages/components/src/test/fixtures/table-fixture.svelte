@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import type { TableSort } from '../../components/table/table.types.ts';
   import type { TableDensity } from '../../components/table/table.types.ts';
+  import type { TableCellProps } from '../../components/table-cell/table-cell.types.ts';
   /** Test-only fixture composing a sortable table. */
   export type TableFixtureProps = {
     sort?: TableSort;
@@ -17,6 +18,8 @@
     onSelectedIds?: (next: Set<string>) => void;
     columns: Array<{ key: string; label: string; sortable?: boolean }>;
     rows: Array<{ id: string; cells: string[]; selectionDisabled?: boolean }>;
+    /** Optional extra native attributes forwarded to every TableCell (for passthrough tests). */
+    cellProps?: Omit<TableCellProps, 'children'>;
   };
 </script>
 
@@ -41,6 +44,7 @@
     onSelectedIds,
     columns,
     rows,
+    cellProps,
   }: TableFixtureProps = $props();
 
   const selectableRows = $derived(rows.filter((r) => !r.selectionDisabled));
@@ -101,7 +105,7 @@
       {#if row.selectionDisabled}
         <TableRow selectionDisabled={true}>
           {#each row.cells as cell, index (index)}
-            <TableCell>{cell}</TableCell>
+            <TableCell {...cellProps}>{cell}</TableCell>
           {/each}
         </TableRow>
       {:else}
@@ -111,7 +115,7 @@
           selectionLabel={`Select ${row.cells[0]}`}
         >
           {#each row.cells as cell, index (index)}
-            <TableCell>{cell}</TableCell>
+            <TableCell {...cellProps}>{cell}</TableCell>
           {/each}
         </TableRow>
       {/if}

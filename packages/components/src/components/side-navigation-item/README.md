@@ -19,6 +19,7 @@ snippet. The flat `cinder/side-navigation-item` subpath remains exported for
 | `active`        | `boolean`  | no       | —       |                                                                                                                            |
 | `class`         | `string`   | no       | —       |                                                                                                                            |
 | `disabled`      | `boolean`  | no       | —       |                                                                                                                            |
+| `href`          | `string`   | no       | —       |                                                                                                                            |
 | `listItemClass` | `string`   | no       | —       | Class merged onto the outer <li>.                                                                                          |
 | `children`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `onclick`       | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |

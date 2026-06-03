@@ -6,9 +6,13 @@
       "enum": ["user", "assistant", "system"],
       "description": "Role of the speaker — drives visual treatment."
     },
-    "time": {
+    "datetime": {
       "type": "string",
-      "description": "Optional timestamp string rendered in the header."
+      "description": "The machine-readable date/time value placed on the `<time datetime>` attribute."
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Human-readable display text rendered inside the `<time>` element.\nFalls back to `datetime` when omitted."
     },
     "name": {
       "type": "string",

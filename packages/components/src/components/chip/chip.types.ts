@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 import type { BadgeVariant } from '../badge/badge.types.ts';
 export type ChipVariant = BadgeVariant;
 export type ChipSize = 'sm' | 'md';
@@ -9,7 +10,7 @@ export type ChipMode = 'display' | 'toggle' | 'removable';
  * (density="toolbar"). Default rendering is unchanged.
  */
 export type ChipDensity = 'toolbar';
-export type ChipDisplayProps = {
+export type ChipDisplayProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   mode?: 'display';
   label: string;
   variant?: ChipVariant;
@@ -17,13 +18,23 @@ export type ChipDisplayProps = {
   density?: ChipDensity;
   leadingIcon?: Snippet;
   class?: string;
-  id?: string;
-  title?: string;
+  // Cross-variant sentinel props: present as `never` so the union is destructurable in chip.svelte,
+  // and consumers get a compile-time error if they pass toggle/removable-only props to display mode.
+  pressed?: never;
+  disabled?: never;
   onpressedchange?: never;
   onremove?: never;
-  [key: `data-${string}`]: string | number | boolean | undefined;
+  removeAriaLabel?: never;
 };
-export type ChipToggleProps = {
+// `aria-pressed` is owned (set from the `pressed` prop) and `type` is always `"button"`
+// (a toggle chip must never become a form submitter), so both are Omit-ted — a consumer
+// value would be silently overridden. `onclick` and `aria-label` are intentionally NOT
+// omitted: the component consumes them (wraps onclick, suppresses empty aria-label)
+// rather than discarding them.
+export type ChipToggleProps = Omit<
+  HTMLButtonAttributes,
+  'class' | 'disabled' | 'aria-pressed' | 'type'
+> & {
   mode: 'toggle';
   label: string;
   variant?: ChipVariant;
@@ -31,16 +42,14 @@ export type ChipToggleProps = {
   density?: ChipDensity;
   leadingIcon?: Snippet;
   class?: string;
-  id?: string;
-  title?: string;
   pressed: boolean;
   onpressedchange?: (pressed: boolean) => void;
   disabled?: boolean;
-  onclick?: (event: MouseEvent) => void;
-  'aria-label'?: string;
-  [key: `data-${string}`]: string | number | boolean | undefined;
+  // Cross-variant sentinel props
+  onremove?: never;
+  removeAriaLabel?: never;
 };
-export type ChipRemovableProps = {
+export type ChipRemovableProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   mode: 'removable';
   label: string;
   variant?: ChipVariant;
@@ -48,11 +57,11 @@ export type ChipRemovableProps = {
   density?: ChipDensity;
   leadingIcon?: Snippet;
   class?: string;
-  id?: string;
-  title?: string;
   onremove?: () => void;
   disabled?: boolean;
   removeAriaLabel?: string;
-  [key: `data-${string}`]: string | number | boolean | undefined;
+  // Cross-variant sentinel props
+  pressed?: never;
+  onpressedchange?: never;
 };
 export type ChipProps = ChipDisplayProps | ChipToggleProps | ChipRemovableProps;

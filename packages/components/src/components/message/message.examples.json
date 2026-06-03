@@ -7,7 +7,7 @@
       "id": "roles",
       "title": "Message roles",
       "description": "User, assistant, and system role variants with a timestamp.",
-      "code": "<script lang=\"ts\">\n  import { Message } from 'cinder/message';\n</script>\n\n<div class=\"example-preview-column\">\n  <Message role=\"user\" name=\"Ada Lovelace\" time=\"9:41 AM\">\n    Can you explain how transformers work?\n  </Message>\n  <Message role=\"assistant\" time=\"9:41 AM\">\n    Transformers use self-attention to relate every token in a sequence to every other token,\n    letting the model weigh context regardless of distance.\n  </Message>\n  <Message role=\"system\">\n    You are a helpful assistant that explains technical concepts clearly and concisely.\n  </Message>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Message } from 'cinder/message';\n</script>\n\n<div class=\"example-preview-column\">\n  <Message role=\"user\" name=\"Ada Lovelace\" datetime=\"2026-04-29T09:41\" timestamp=\"9:41 AM\">\n    Can you explain how transformers work?\n  </Message>\n  <Message role=\"assistant\" datetime=\"2026-04-29T09:41\" timestamp=\"9:41 AM\">\n    Transformers use self-attention to relate every token in a sequence to every other token,\n    letting the model weigh context regardless of distance.\n  </Message>\n  <Message role=\"system\">\n    You are a helpful assistant that explains technical concepts clearly and concisely.\n  </Message>\n</div>\n"
     }
   ]
 }

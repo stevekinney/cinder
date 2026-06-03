@@ -18,9 +18,9 @@
   import type { TableCellProps } from './table-cell.types.ts';
   import { cn } from '../../utilities/class-names.ts';
 
-  let { align = 'left', class: className, children }: TableCellProps = $props();
+  let { align = 'left', class: className, children, ...rest }: TableCellProps = $props();
 </script>
 
-<td class={cn('cinder-table__cell', className)} data-cinder-align={align}>
+<td {...rest} class={cn('cinder-table__cell', className)} data-cinder-align={align}>
   {@render children()}
 </td>
