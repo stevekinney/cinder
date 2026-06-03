@@ -31,7 +31,10 @@ afterEach(() => {
 describe('image-lightbox source contract', () => {
   test('imports createBodyScrollLock, not the legacy bodyScrollLock', () => {
     expect(source).toContain('createBodyScrollLock');
-    expect(source).not.toContain('bodyScrollLock');
+    // Assert against the legacy IDENTIFIER specifically (word boundary + lowercase b),
+    // so this isn't tripped by `createBodyScrollLock` (capital B) or an incidental mention
+    // in a comment. The legacy export was the bare `bodyScrollLock` symbol.
+    expect(source).not.toMatch(/\bbodyScrollLock\b/);
   });
 
   test('attaches createBodyScrollLock() to the overlay element', () => {
