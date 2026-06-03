@@ -1,22 +1,26 @@
 import type { Attachment } from 'svelte/attachments';
+import { lockBodyScroll } from '../_internal/overlay.ts';
 
 /**
- * Locks body scroll while the element is mounted.
- * Useful for modals, sheets, and other overlays.
+ * Creates a body scroll lock attachment that participates in the shared
+ * counted lock from `_internal/overlay.ts`. Nested overlays each call this;
+ * the page scroll is only restored when the last attachment is torn down.
+ *
+ * Use this instead of a raw `overflow: hidden` assignment so that a Modal
+ * opened inside a Sheet (or any combination of locking overlays) cannot
+ * prematurely restore page scroll when only one of them closes.
  *
  * @example
  * ```svelte
- * <div {@attach bodyScrollLock}>Modal content</div>
+ * <div {@attach createBodyScrollLock()}>Modal content</div>
  * ```
  */
-export const bodyScrollLock: Attachment<HTMLElement> = () => {
-  const previousOverflow = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
-
+export function createBodyScrollLock(): Attachment<HTMLElement> {
   return () => {
-    document.body.style.overflow = previousOverflow;
+    const release = lockBodyScroll();
+    return release;
   };
-};
+}
 
 export type ClickOutsideOptions = {
   /** Callback when clicking outside the element */
