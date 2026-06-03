@@ -722,11 +722,13 @@ describe('Sidebar — optional navigation snippet', () => {
   test('omitting navigation renders no <nav> landmark (no empty navigation region)', () => {
     // navigation is now optional (Snippet?). Without it, the <nav> landmark must be
     // absent entirely — an empty <nav> is an a11y violation (screen readers announce
-    // a navigation region with no destinations).
+    // a navigation region with no destinations). Render with a real ariaLabel and NO
+    // navigation prop (every other test passes navigation; this one deliberately omits it).
     const { container } = render(Sidebar, {
-      label: 'Main',
-      children: textSnippet('Content'),
-    } as never);
+      props: { ariaLabel: 'Main' },
+    });
+    // The <aside> renders, but there is no <nav> child because navigation was omitted.
+    expect(container.querySelector('aside')).not.toBeNull();
     expect(container.querySelector('nav')).toBeNull();
   });
 });
