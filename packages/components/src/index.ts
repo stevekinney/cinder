@@ -604,8 +604,10 @@ export type {
 } from './utilities/use-history.svelte.ts';
 
 export { useIntersection } from './utilities/use-intersection.svelte.ts';
+export { useMutationObserver } from './utilities/use-mutation-observer.svelte.ts';
 export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
 export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
 

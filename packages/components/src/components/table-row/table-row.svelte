@@ -80,14 +80,6 @@
     onSelectedChange?.(input.checked);
   }
 
-  // Sync indeterminate state on the select-all checkbox via DOM property.
-  let selectAllInput: HTMLInputElement | undefined = $state();
-  $effect(() => {
-    if (selectAllInput && headerSelection) {
-      selectAllInput.indeterminate = headerSelection.someSelected && !headerSelection.allSelected;
-    }
-  });
-
   const shouldRenderHeaderSelectionCell =
     selectionEnabled && section === 'header' && headerSelection !== undefined;
 
@@ -100,12 +92,16 @@
   {#if shouldRenderHeaderSelectionCell && headerSelection}
     <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
       <input
-        bind:this={selectAllInput}
         type="checkbox"
         class="cinder-table__selection-checkbox"
         checked={headerSelection.allSelected}
         aria-label={headerSelection.selectAllLabel}
         onchange={handleSelectAllChange}
+        {@attach (node: HTMLInputElement) => {
+          $effect(() => {
+            node.indeterminate = headerSelection.someSelected && !headerSelection.allSelected;
+          });
+        }}
       />
     </th>
   {/if}
