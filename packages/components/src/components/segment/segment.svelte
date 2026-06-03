@@ -95,7 +95,7 @@
       {@render leading()}
     </span>
   {/if}
-  {@render children()}
+  {@render children?.()}
   {#if trailing}
     <span class="cinder-segmented-control-option-trailing" aria-hidden="true">
       {@render trailing()}

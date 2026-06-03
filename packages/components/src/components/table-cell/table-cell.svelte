@@ -22,5 +22,5 @@
 </script>
 
 <td {...rest} class={cn('cinder-table__cell', className)} data-cinder-align={align}>
-  {@render children()}
+  {@render children?.()}
 </td>

@@ -35,5 +35,5 @@
   data-cinder-size={size}
   {...rest}
 >
-  {@render children()}
+  {@render children?.()}
 </span>

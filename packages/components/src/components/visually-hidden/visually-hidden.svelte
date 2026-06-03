@@ -33,4 +33,4 @@
   );
 </script>
 
-<svelte:element this={as} class={mergedClass} {...rest}>{@render children()}</svelte:element>
+<svelte:element this={as} class={mergedClass} {...rest}>{@render children?.()}</svelte:element>

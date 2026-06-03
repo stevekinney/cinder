@@ -168,6 +168,12 @@
     padding-top: var(--cinder-space-2);
   }
 
+  /* Inner wrapper rendered by the stepBody snippet — transparent to the parent
+   flex layout so the label and description remain direct flex children. */
+  .cinder-steps__body-content {
+    display: contents;
+  }
+
   /* ----------------------------------------
  * Interactive body — an <a>/<button> occupying the body cell. Resets native
  * chrome so both elements render identically to the static body, then layers

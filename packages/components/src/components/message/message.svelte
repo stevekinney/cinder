@@ -46,7 +46,11 @@
       <time class="cinder-message__time" {datetime}>{timestamp ?? datetime}</time>
     {/if}
   </header>
-  <div class="cinder-message__body">
-    {@render children()}
-  </div>
+  <!-- children is required by MessageProps; optional-chain guards against dynamic
+       JS consumers or future relaxation of the type contract. -->
+  {#if children}
+    <div class="cinder-message__body">
+      {@render children()}
+    </div>
+  {/if}
 </article>

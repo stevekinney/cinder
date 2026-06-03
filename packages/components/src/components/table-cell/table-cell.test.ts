@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/table-fixture.svelte');
+const { default: EmptyTableCellFixture } =
+  await import('../../test/fixtures/empty-table-cell-fixture.svelte');
 
 const columns = [{ key: 'name', label: 'Name' }];
 const rows = [{ id: '1', cells: ['Alice'] }];
@@ -65,5 +67,19 @@ describe('TableCell', () => {
     });
     const cell = container.querySelector('tbody td');
     expect(cell?.getAttribute('data-cinder-align')).toBe('left');
+  });
+});
+
+describe('TableCell — empty children', () => {
+  test('renders an empty <td> without throwing when no children are provided', () => {
+    // children is now optional (children?: Snippet) so empty <td> cells used in
+    // spanning layouts are a valid, non-throwing state. The optional-chain guard
+    // at the render site ({@render children?.()}) ensures undefined children is a
+    // safe no-op rather than a runtime throw.
+    const { container } = render(EmptyTableCellFixture, {});
+    const cell = container.querySelector('tbody td');
+    expect(cell).not.toBeNull();
+    expect(cell?.classList.contains('cinder-table__cell')).toBe(true);
+    expect(cell?.textContent?.trim()).toBe('');
   });
 });

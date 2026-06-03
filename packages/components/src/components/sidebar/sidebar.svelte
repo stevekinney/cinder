@@ -89,7 +89,9 @@
       {/if}
 
       <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-        {@render navigationSnippet()}
+        {#if navigationSnippet}
+          {@render navigationSnippet()}
+        {/if}
       </nav>
 
       {#if footerSnippet}
@@ -114,7 +116,9 @@
     {/if}
 
     <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-      {@render navigationSnippet()}
+      {#if navigationSnippet}
+        {@render navigationSnippet()}
+      {/if}
     </nav>
 
     {#if footerSnippet}

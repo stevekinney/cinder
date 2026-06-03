@@ -12,6 +12,11 @@ export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
   size?: BadgeSize;
   class?: string;
+  /**
+   * Badge content — intentionally required. A badge without content is
+   * semantically meaningless. The render site uses optional chaining
+   * (`children?.()`) as a runtime safety net for JS consumers.
+   */
   children: Snippet;
 };
 
