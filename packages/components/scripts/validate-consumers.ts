@@ -796,7 +796,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       'cinder-empty-state',
       'cinder-input-field',
       'cinder-navigation-bar',
-      'cinder-page-layout',
       'cinder-pagination',
       'cinder-select-field',
       'cinder-skeleton',
