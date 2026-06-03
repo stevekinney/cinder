@@ -1841,6 +1841,26 @@
       }
     },
     {
+      "name": "Link",
+      "id": "link",
+      "import": "cinder/link",
+      "exportName": "Link",
+      "category": "typography",
+      "status": "beta",
+      "purpose": "Inline text link with consistent focus ring and underline behavior.",
+      "tags": ["typography", "link"],
+      "useWhen": ["Embedding a navigable link inside body text or prose content."],
+      "avoidWhen": ["Navigating between pages in a sidebar or nav bar — use NavigationItem."],
+      "related": ["navigation-item", "button", "breadcrumbs"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/link/schema",
+        "variables": "cinder/link/variables",
+        "examples": "cinder/link/examples"
+      }
+    },
+    {
       "name": "LoadMore",
       "id": "load-more",
       "import": "cinder/load-more",

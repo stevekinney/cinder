@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "link",
+  "import": "cinder/link",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Link",
+      "description": "Inline text link with underline and color variants.",
+      "code": "<script lang=\"ts\">\n  import { Link } from 'cinder/link';\n</script>\n\n<!-- Links inside a text block must stay distinguishable without relying on color\n     (WCAG 1.4.1 / axe link-in-text-block), so in-prose links use underline=\"always\". -->\n<p>\n  Read the\n  <Link href=\"/docs\" underline=\"always\">documentation</Link>\n  for more details, or visit the\n  <Link href=\"https://example.com\" external underline=\"always\">official site</Link>.\n</p>\n\n<!-- Underline/color variants shown as a standalone list (one link per row), not inside\n     running prose. Outside a text block the hover/none treatments are an acceptable,\n     intentional choice and don't trip axe's link-in-text-block rule. -->\n<ul style=\"list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem;\">\n  <li><Link href=\"/pricing\" underline=\"always\">Always underlined</Link></li>\n  <li><Link href=\"/pricing\" underline=\"hover\">Underline on hover</Link></li>\n  <li><Link href=\"/pricing\" underline=\"none\">No underline</Link></li>\n  <li><Link href=\"/pricing\" color=\"inherit\" underline=\"always\">Inherits text color</Link></li>\n  <li><Link href=\"/pricing\" disabled>Disabled link</Link></li>\n</ul>\n"
+    }
+  ]
+}
