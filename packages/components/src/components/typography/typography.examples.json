@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "typography",
+  "import": "cinder/typography",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic typography",
+      "description": "Named typographic variants mapped to the design token scale.",
+      "code": "<script lang=\"ts\">\n  import { Typography } from 'cinder/typography';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Typography variant=\"h1\">Heading 1</Typography>\n  <Typography variant=\"h2\">Heading 2</Typography>\n  <Typography variant=\"h3\">Heading 3</Typography>\n  <Typography variant=\"h4\">Heading 4</Typography>\n  <Typography variant=\"h5\">Heading 5</Typography>\n  <Typography variant=\"h6\">Heading 6</Typography>\n  <Typography variant=\"subtitle1\">Subtitle 1 — rendered as p</Typography>\n  <Typography variant=\"subtitle2\">Subtitle 2 — rendered as p</Typography>\n  <Typography variant=\"body1\">Body 1 — the default variant, rendered as p.</Typography>\n  <Typography variant=\"body2\">Body 2 — smaller paragraph text, rendered as p.</Typography>\n  <Typography variant=\"caption\">Caption — rendered as span.</Typography>\n  <Typography variant=\"overline\">Overline — uppercase, rendered as span.</Typography>\n  <Typography variant=\"label\">Label — medium weight, rendered as span.</Typography>\n  <Typography variant=\"h2\" component=\"span\">h2 styled as a span (component override)</Typography>\n  <Typography variant=\"body1\" gutterBottom>Body with gutterBottom.</Typography>\n  <Typography variant=\"body1\" noWrap style=\"max-width: 200px;\">\n    noWrap — this long text will be truncated with an ellipsis when it overflows.\n  </Typography>\n  <Typography variant=\"caption\" noWrap style=\"max-width: 200px;\">\n    noWrap also truncates inline variants like caption, not just block ones.\n  </Typography>\n</div>\n"
+    }
+  ]
+}

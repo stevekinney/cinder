@@ -1,0 +1,148 @@
+@layer cinder.components {
+  /* ========================================
+   * TYPOGRAPHY
+   * Renders text with a named typographic variant mapped to the design token
+   * scale. Each variant sets font-size, font-weight, line-height, and
+   * letter-spacing. The root class resets margin so UA heading margins do not
+   * bleed into layouts.
+   * ======================================== */
+
+  .cinder-typography {
+    margin: 0;
+    font-family: var(--cinder-font-sans);
+    /* Inherit color rather than pinning --cinder-text: the body already resolves to
+     * --cinder-text, so the default is unchanged, but inheriting lets Typography pick
+     * up a parent's intentional color (e.g. inside a colored card, alert, or a muted
+     * region) instead of overriding it. Set a color via the `class`/`style` prop to
+     * apply a semantic token. */
+    color: inherit;
+  }
+
+  /* Heading variant sizes intentionally diverge from the bare-element heading reset in
+   * foundation.css (e.g. Typography h1 is --cinder-text-5xl vs a bare <h1> at 4xl):
+   * Typography is the display-scale surface, the reset keeps prose headings compact.
+   * Mixing bare <h1> and <Typography variant="h1"> in one view will look inconsistent —
+   * prefer one or the other per surface. */
+
+  /* --- Heading variants --- */
+
+  .cinder-typography[data-cinder-variant='h1'] {
+    font-size: var(--cinder-text-5xl);
+    font-weight: var(--cinder-font-bold);
+    line-height: var(--cinder-leading-tight);
+    letter-spacing: var(--cinder-tracking-tight);
+  }
+
+  .cinder-typography[data-cinder-variant='h2'] {
+    font-size: var(--cinder-text-4xl);
+    font-weight: var(--cinder-font-bold);
+    line-height: var(--cinder-leading-tight);
+    letter-spacing: var(--cinder-tracking-tight);
+  }
+
+  .cinder-typography[data-cinder-variant='h3'] {
+    font-size: var(--cinder-text-3xl);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-snug);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='h4'] {
+    font-size: var(--cinder-text-2xl);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-snug);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='h5'] {
+    font-size: var(--cinder-text-xl);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='h6'] {
+    font-size: var(--cinder-text-lg);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  /* --- Subtitle variants --- */
+
+  .cinder-typography[data-cinder-variant='subtitle1'] {
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='subtitle2'] {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  /* --- Body variants --- */
+
+  .cinder-typography[data-cinder-variant='body1'] {
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-normal);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='body2'] {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-normal);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  /* --- Inline variants --- */
+
+  .cinder-typography[data-cinder-variant='caption'] {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-normal);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  .cinder-typography[data-cinder-variant='overline'] {
+    font-size: var(--cinder-text-2xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-wide);
+    text-transform: uppercase;
+  }
+
+  .cinder-typography[data-cinder-variant='label'] {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-normal);
+    letter-spacing: var(--cinder-tracking-normal);
+  }
+
+  /* --- Modifier: gutter bottom --- */
+
+  .cinder-typography[data-cinder-gutter] {
+    margin-block-end: var(--cinder-space-4);
+  }
+
+  /* --- Modifier: no wrap --- */
+
+  .cinder-typography[data-cinder-nowrap] {
+    /* `display: block` is required for `text-overflow: ellipsis` to take effect on
+     * the inline variants (caption/overline/label) and on `component="span"` — an
+     * inline box never establishes the formatting context ellipsis needs.
+     * `max-inline-size: 100%` constrains the line to its container so it actually
+     * truncates; `min-inline-size: 0` lets it shrink inside a flex/grid parent. */
+    display: block;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
