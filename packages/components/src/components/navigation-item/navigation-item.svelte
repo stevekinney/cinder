@@ -53,8 +53,10 @@
     deliberate product decision — a disabled navigation link represents a route
     the user cannot access, and hiding it from the links list (screen reader
     VO+U / NVDA Insert+F7) is preferable to a greyed-out unreachable destination.
-    If you need the link to remain discoverable as a named link in AT, set
-    `aria-disabled` but keep `href` — the click is still blocked by handleClick.
+    NavigationItem owns this behavior: href/tabindex/aria-disabled are derived
+    from the `disabled` prop, not passed through, so there is no escape hatch to
+    keep a disabled link discoverable. If your use case needs that, render a
+    plain <a aria-disabled> yourself instead of a disabled NavigationItem.
   -->
   <a
     href={disabled ? undefined : (props as LinkArm).href}

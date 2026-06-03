@@ -70,6 +70,8 @@ describe('Tab', () => {
     // The panel id is namespaced by the same per-instance baseId and suffixed
     // with the active value; it must resolve to a real element in the document.
     expect(ariaControls).toMatch(/-panel-a$/);
-    expect(container.querySelector(`#${ariaControls}`)).not.toBeNull();
+    // ids include a $props.id()-generated baseId which can contain characters
+    // that need escaping in a CSS selector, so escape before querying.
+    expect(container.querySelector(`#${CSS.escape(ariaControls!)}`)).not.toBeNull();
   });
 });
