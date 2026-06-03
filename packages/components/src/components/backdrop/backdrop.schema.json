@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "open": {
+      "type": "boolean",
+      "description": "Whether the backdrop is visible and active."
+    },
+    "invisible": {
+      "type": "boolean",
+      "description": "When true the backdrop is transparent but still captures pointer events,\nenabling click-to-close without dimming content behind it.",
+      "default": false
+    },
+    "lockScroll": {
+      "type": "boolean",
+      "description": "Lock body scroll while the backdrop is open (counted lock — safe to nest\nwith other overlays). Set false when the consumer manages scrolling itself.",
+      "default": true
+    },
+    "transitionDuration": {
+      "type": "number",
+      "description": "Enter/leave animation duration in milliseconds. Collapses to 0 under\n`prefers-reduced-motion`. Overrides the default when provided."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged onto the root element."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["open"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onclick",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

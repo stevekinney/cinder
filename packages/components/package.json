@@ -285,6 +285,31 @@
       "import": "./src/components/avatar-group/avatar-group.examples.json",
       "default": "./src/components/avatar-group/avatar-group.examples.json"
     },
+    "./backdrop": {
+      "types": "./dist/components/backdrop/index.d.ts",
+      "svelte": "./src/components/backdrop/index.ts",
+      "node": "./dist/server/components/backdrop/index.js",
+      "default": "./dist/components/backdrop/index.js"
+    },
+    "./backdrop/schema": {
+      "types": "./dist/components/backdrop/backdrop.schema.d.ts",
+      "svelte": "./src/components/backdrop/backdrop.schema.ts",
+      "node": "./dist/server/components/backdrop/backdrop.schema.js",
+      "default": "./dist/components/backdrop/backdrop.schema.js"
+    },
+    "./backdrop/variables": {
+      "types": "./dist/components/backdrop/backdrop.variables.d.ts",
+      "svelte": "./src/components/backdrop/backdrop.variables.ts",
+      "node": "./dist/server/components/backdrop/backdrop.variables.js",
+      "default": "./dist/components/backdrop/backdrop.variables.js"
+    },
+    "./backdrop/styles": {
+      "default": "./dist/components/backdrop/backdrop.css"
+    },
+    "./backdrop/examples": {
+      "import": "./src/components/backdrop/backdrop.examples.json",
+      "default": "./src/components/backdrop/backdrop.examples.json"
+    },
     "./badge": {
       "types": "./dist/components/badge/index.d.ts",
       "svelte": "./src/components/badge/index.ts",

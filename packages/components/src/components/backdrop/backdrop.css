@@ -1,0 +1,33 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+   * BACKDROP
+   * Full-viewport fixed scrim primitive.
+   * ======================================== */
+
+  .cinder-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--cinder-z-backdrop);
+    background: var(--cinder-overlay-backdrop);
+    backdrop-filter: blur(var(--cinder-overlay-blur));
+
+    /* Center children (e.g. a Spinner) above the scrim */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Invisible mode: transparent but pointer-events active for click-to-close */
+  .cinder-backdrop--invisible {
+    background: transparent;
+    backdrop-filter: none;
+  }
+
+  /* Respect reduced-motion: remove blur when user prefers reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-backdrop {
+      backdrop-filter: none;
+    }
+  }
+}

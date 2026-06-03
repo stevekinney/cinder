@@ -251,13 +251,16 @@
 
   /* ========================================
    * LAYERING (Z-INDEX)
-   * Ordered: tooltip < dropdown/popover < modal/sheet < toast.
-   * Toast sits above modal so confirmations and warnings reach users
-   * even when a modal is open.
+   * Ordered: tooltip < dropdown/popover < backdrop < modal/sheet < toast.
+   * Backdrop sits between floating surfaces and dialogs so it dims the page
+   * and floating surfaces (tooltips, dropdowns) without obscuring the dialog
+   * panel it is paired with. Toast sits above modal so confirmations and
+   * warnings reach users even when a modal is open.
    * ======================================== */
   --cinder-z-tooltip: 1000;
   --cinder-z-dropdown: 1100;
   --cinder-z-popover: 1100;
+  --cinder-z-backdrop: 1150;
   --cinder-z-modal: 1200;
   --cinder-z-sheet: 1200;
   --cinder-z-toast: 1300;

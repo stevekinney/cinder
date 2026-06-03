@@ -26,6 +26,7 @@ export const Z_LAYERS = {
   tooltip: 1000,
   dropdown: 1100,
   popover: 1100,
+  backdrop: 1150,
   modal: 1200,
   sheet: 1200,
   toast: 1300,
@@ -138,10 +139,11 @@ let scrollLockCount = 0;
 let originalBodyOverflow: string | null = null;
 
 /**
- * Acquire the body scroll lock. Only Modal and Sheet (full-viewport overlays)
- * should call this. Counted: nested overlays each acquire and release; the
- * lock is only released when the count reaches zero, so a Modal opened
- * inside a Sheet doesn't accidentally restore scroll when one of them
+ * Acquire the body scroll lock. Full-viewport overlays that dim the page —
+ * Modal, Sheet, and the standalone Backdrop (via its `lockScroll` prop) — call
+ * this. Counted: nested overlays each acquire and release; the lock is only
+ * released when the count reaches zero, so a Modal opened inside a Sheet (or a
+ * Backdrop behind either) doesn't accidentally restore scroll when one of them
  * closes.
  *
  * Returns a `release` function the overlay must call on close.

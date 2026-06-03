@@ -42,6 +42,9 @@ export type {
 export { default as Badge } from './components/badge/index.ts';
 export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/index.ts';
 
+export { default as Backdrop } from './components/backdrop/index.ts';
+export type { BackdropProps } from './components/backdrop/index.ts';
+
 export { default as Banner } from './components/banner/index.ts';
 export type { BannerProps, BannerVariant } from './components/banner/index.ts';
 
