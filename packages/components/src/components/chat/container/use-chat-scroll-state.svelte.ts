@@ -139,15 +139,19 @@ function getScrollBehavior(): ScrollBehavior {
  *
  *   const scrollAttachment = scrollState.createScrollAttachment();
  *
- *   // Set up IntersectionObserver in an $effect
- *   $effect(() => {
- *     return scrollState.createSentinelObserver(viewport, bottomSentinel);
- *   });
+ *   // Wire the bottom sentinel with useIntersection via {@attach}. Wrap in $derived so
+ *   // the observer is stable across re-renders (recreated only when root/threshold change).
+ *   const sentinelAttach = $derived(
+ *     useIntersection(scrollState.handleSentinelEntry, {
+ *       root: viewport,
+ *       rootMargin: `0px 0px 150px 0px`,
+ *     }),
+ *   );
  * </script>
  *
  * <div bind:this={viewport} {@attach scrollAttachment}>
  *   <!-- content -->
- *   <div bind:this={bottomSentinel}></div>
+ *   <div {@attach sentinelAttach}></div>
  * </div>
  *
  * {#if scrollState.showJumpButton}

@@ -179,7 +179,7 @@
     }
   }
 
-  function measureRoot(element: HTMLElement = rootElement!): void {
+  function measureRoot(element: HTMLElement | undefined = rootElement): void {
     if (!element) return;
     const rect = element.getBoundingClientRect();
     const rootPixels = orientation === 'horizontal' ? rect.width : rect.height;

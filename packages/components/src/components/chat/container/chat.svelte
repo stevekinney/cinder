@@ -231,6 +231,17 @@
 
   const viewportAttach = $derived(viewportAttachment ?? noopAttachment);
 
+  // Stable bottom-sentinel attachment. Wrapping useIntersection in $derived (matching
+  // load-more) means the IntersectionObserver is only torn down + recreated when
+  // `viewport` or `bottomThreshold` actually change — NOT on every chat re-render
+  // (which is frequent during streaming and would otherwise make bottom detection flicker).
+  const sentinelAttach = $derived(
+    useIntersection(scrollState.handleSentinelEntry, {
+      root: viewport,
+      rootMargin: `0px 0px ${bottomThreshold}px 0px`,
+    }),
+  );
+
   // Accessibility IDs
   const timelineId = $derived(`${id}-timeline`);
   const inputId = $derived(`${id}-input`);
@@ -666,14 +677,7 @@
       {/if}
 
       <!-- Bottom sentinel for IntersectionObserver -->
-      <div
-        class="chat-bottom-sentinel"
-        aria-hidden="true"
-        {@attach useIntersection(scrollState.handleSentinelEntry, {
-          root: viewport,
-          rootMargin: `0px 0px ${bottomThreshold}px 0px`,
-        })}
-      ></div>
+      <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
     {/if}
   </div>
 
