@@ -669,12 +669,12 @@
     includeFrontMatter: true,
   });
 
-  // Wire baseline and current values into the external change tracker. This is a
-  // legitimate effect-as-sync-bridge (pushing reactive prop values into a
-  // non-reactive object), collapsed into one effect that re-runs when either
-  // `original` or `value` changes.
+  // Wire baseline and current values to the tracker
   $effect(() => {
     changeTracker.setBaseline(original);
+  });
+
+  $effect(() => {
     changeTracker.setCurrent(value);
   });
 
@@ -896,19 +896,8 @@
     // Scroll to the thread
     scrollToThread(threadId);
 
-    // Cancel any in-flight selection timer first. Without this, a rapid second
-    // selection would leave the first timeout to fire unchecked and stomp the
-    // popover position/thread with the earlier thread's coordinates.
-    if (selectTimeoutId !== null) {
-      clearTimeout(selectTimeoutId);
-      selectTimeoutId = null;
-    }
-
-    // Open popover at anchor position after scroll completes. The handle is
-    // tracked in `selectTimeoutId` so the unmount cleanup, handlePopoverClose,
-    // and reset paths can all cancel it.
-    selectTimeoutId = setTimeout(() => {
-      selectTimeoutId = null;
+    // Open popover at anchor position after scroll completes
+    setTimeout(() => {
       const view = editorRef?.getView();
       if (view && thread.anchor.from !== undefined) {
         const coords = view.coordsAtPos(
@@ -1067,16 +1056,11 @@
   }
 
   /**
-   * Derived values for hidden inputs and the getFormData() method.
-   *
-   * `original` / `value` are used directly (they are already reactive props —
-   * an identity `$derived` around them would only add a reactive node with no
-   * transformation). `formComments` / `formDiff` / `formSummary` do real work,
-   * so they stay derived. Because `$derived` is lazy, the expensive diff/summary
-   * computations only run when something reads them — i.e. when the `{#if name}`
-   * hidden inputs render or `getFormData()` is called — not on every keystroke
-   * when the editor is used outside a named form.
+   * Derived values for hidden inputs (computed reactively).
+   * These power both the hidden form inputs and the getFormData() method.
    */
+  const formOriginal = $derived(original);
+  const formCurrent = $derived(value);
   const formComments = $derived(JSON.stringify(threads));
   const formDiff = $derived(exportUnifiedDiff().diff);
   const formSummary = $derived(exportMarkdownSummary().markdown);
@@ -1096,8 +1080,8 @@
    */
   export function getFormData(): ReviewFormData {
     return {
-      original,
-      current: value,
+      original: formOriginal,
+      current: formCurrent,
       comments: formComments,
       diff: formDiff,
       summary: formSummary,
@@ -1627,8 +1611,8 @@
 
   <!-- Hidden form inputs for FormData participation -->
   {#if name}
-    <input type="hidden" name={getFieldName('original')} value={original} />
-    <input type="hidden" name={getFieldName('current')} {value} />
+    <input type="hidden" name={getFieldName('original')} value={formOriginal} />
+    <input type="hidden" name={getFieldName('current')} value={formCurrent} />
     <input type="hidden" name={getFieldName('comments')} value={formComments} />
     <input type="hidden" name={getFieldName('diff')} value={formDiff} />
     <input type="hidden" name={getFieldName('summary')} value={formSummary} />
