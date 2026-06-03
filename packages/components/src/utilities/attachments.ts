@@ -22,16 +22,40 @@ export function createBodyScrollLock(): Attachment<HTMLElement> {
   };
 }
 
+/** Pointer/click events the outside-dismiss listener can key off. */
+export type ClickOutsideEventType = 'click' | 'pointerdown' | 'mousedown';
+
 export type ClickOutsideOptions = {
-  /** Callback when clicking outside the element */
+  /** Callback when an outside interaction occurs */
   handler: () => void;
   /** Whether the attachment is enabled — accepts a getter to stay reactive (default: true) */
   enabled?: boolean | (() => boolean);
+  /**
+   * Which document event triggers the outside check (default: `'click'`). Overlays that must
+   * dismiss before a focus/selection change commits use `'pointerdown'` (or `'mousedown'`),
+   * which fire ahead of `'click'`.
+   */
+  eventType?: ClickOutsideEventType;
+  /**
+   * Whether to listen in the capture phase (default: `true`). Capture sees the event before
+   * inner stopPropagation can swallow it — the right default for a document-level dismisser.
+   */
+  capture?: boolean;
+  /**
+   * Additional elements that count as "inside" — a target within any of these (or the attach
+   * node) does NOT trigger the handler. Each entry is a getter so a trigger/anchor that mounts
+   * or swaps after the attachment is created still resolves freshly on each event. Returning
+   * `null` skips that ref.
+   */
+  ignoreRefs?: Array<() => Element | null>;
 };
 
 /**
- * Creates a click-outside attachment that calls a handler when clicking outside the element.
- * Useful for closing dropdowns, menus, and popovers.
+ * Creates an outside-interaction attachment that calls a handler when a `click`, `pointerdown`,
+ * or `mousedown` lands outside the attached element (and outside any `ignoreRefs`). This is the
+ * single canonical mechanism for overlay light-dismiss — dropdowns, menus, popovers — so each
+ * overlay does not hand-roll its own `document` listener and inside/trigger exclusion (see
+ * `OVERLAY-POLICY.md` § Outside-click).
  *
  * @example
  * ```svelte
@@ -39,26 +63,44 @@ export type ClickOutsideOptions = {
  *   Dropdown content
  * </div>
  * ```
+ *
+ * @example With a separate trigger that must not count as outside, dismissing on pointerdown:
+ * ```svelte
+ * <div {@attach createClickOutside({
+ *   handler: close,
+ *   enabled: () => open,
+ *   eventType: 'pointerdown',
+ *   ignoreRefs: [() => triggerElement],
+ * })}>...</div>
+ * ```
  */
 export function createClickOutside(options: ClickOutsideOptions): Attachment<HTMLElement> {
-  const { handler, enabled = true } = options;
+  const { handler, enabled = true, eventType = 'click', capture = true, ignoreRefs } = options;
 
   return (node: HTMLElement) => {
-    function handleClick(event: MouseEvent) {
+    function handleEvent(event: Event) {
       const isEnabled = typeof enabled === 'function' ? enabled() : enabled;
       if (!isEnabled) return;
       const target = event.target;
       // A non-Node (or null) target is treated as outside the node.
-      const isInside = target instanceof Node && node.contains(target);
-      if (!isInside) {
+      if (!(target instanceof Node)) {
         handler();
+        return;
       }
+      if (node.contains(target)) return;
+      if (ignoreRefs) {
+        for (const ref of ignoreRefs) {
+          const element = ref();
+          if (element && element.contains(target)) return;
+        }
+      }
+      handler();
     }
 
-    document.addEventListener('click', handleClick, true);
+    document.addEventListener(eventType, handleEvent, capture);
 
     return () => {
-      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener(eventType, handleEvent, capture);
     };
   };
 }
