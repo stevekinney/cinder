@@ -896,7 +896,12 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
           );
         }
         const source = await stylesheetResponse.text();
-        if (source.includes('.cinder-button') || /--cinder-button-/.test(source)) {
+        // Require the `.cinder-button` SELECTOR (the component sidecar), not a
+        // `--cinder-button-*` token: those custom properties are declared by
+        // `cinder/styles` (the tokens/foundation base) and can appear without
+        // the component sidecar, so a token-only match would pass even when the
+        // auto-CSS import is broken.
+        if (source.includes('.cinder-button')) {
           buttonCssServed = true;
         }
       }

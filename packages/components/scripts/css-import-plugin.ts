@@ -107,7 +107,35 @@ export function cssImportPlugin(options: CssImportPluginOptions): BunPlugin {
           return { contents: source, loader: 'ts' };
         }
 
-        return { contents: `import '${specifier}';\n${source}`, loader: 'ts' };
+        // The SOURCE index.ts already leads with a relative `import './<name>.css'`
+        // (for the `svelte` condition, which resolves source). That relative
+        // import is NOT external, so Bun would INLINE the sidecar into the dist
+        // JS — while we also inject the EXTERNAL `cinder/<name>/styles` below,
+        // producing a double load. Strip the one leading relative sidecar import
+        // from the loaded source so dist references the public styles entry
+        // exactly once. The on-disk source file is untouched (the svelte path
+        // keeps its relative import). Throw if the expected import is absent —
+        // that means the source-css gate drifted and the fix would silently
+        // regress to inlining.
+        const componentName = normalized.split('/').at(-2) ?? '';
+        // Match the sidecar import statement on its own line WHEREVER it sits in
+        // the import block — prettier's import sort can move it below a sibling
+        // import, so it is not always line 1. The pattern is anchored to this
+        // component's exact sidecar name (not a generic `./*.css`), so it strips
+        // exactly one known import and never an unrelated CSS import.
+        const sidecarImportPattern = new RegExp(
+          `^import\\s+["']\\./${componentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.css["'];?[^\\n]*\\r?\\n`,
+          'm',
+        );
+        const stripped = source.replace(sidecarImportPattern, '');
+        if (stripped === source) {
+          throw new Error(
+            `[cinder-css-import] expected a leading \`import './${componentName}.css'\` in ${path} ` +
+              `(run \`bun run styles:source-css\`); refusing to inject \`${specifier}\` over an inlined sidecar.`,
+          );
+        }
+
+        return { contents: `import '${specifier}';\n${stripped}`, loader: 'ts' };
       });
     },
   };
