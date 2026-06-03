@@ -55,16 +55,6 @@
       context.close();
     }
   }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (disabled) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (event.currentTarget instanceof HTMLButtonElement) {
-        event.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      }
-    }
-  }
 </script>
 
 <button
@@ -77,11 +67,10 @@
     customClassName,
   )}
   data-cinder-variant={variant}
-  tabindex={disabled ? -1 : 0}
+  tabindex={-1}
   data-disabled={disabled ? '' : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   onclick={handleClick}
-  onkeydown={handleKeydown}
   {...rest}
 >
   {#if children}

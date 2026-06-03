@@ -4,6 +4,9 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    class: {
+      type: 'string',
+    },
     href: {
       type: 'string',
     },
@@ -24,10 +27,6 @@ const schema = {
       {
         name: 'actions',
         reason: 'function-or-snippet',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
       },
       {
         name: 'image',

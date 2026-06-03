@@ -69,7 +69,7 @@
 
   let {
     id,
-    original = '',
+    original = $bindable(''),
     value = $bindable(''),
     threads = $bindable<Thread[]>([]),
     mode = 'edit',

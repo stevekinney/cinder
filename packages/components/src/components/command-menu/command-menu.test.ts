@@ -132,7 +132,11 @@ describe('CommandMenu', () => {
     expect(anchor.value).toBe('/a');
   });
 
-  test('click activation calls only the menu-level onselect callback', async () => {
+  test('click activation fires the per-item onselect and the menu-level callback', async () => {
+    // Regression: command-menu previously dropped the per-item `onselect`
+    // callback on activation, firing only the menu-level prop. command-palette's
+    // shared-context contract fires both (the per-item callback first), so
+    // command-menu now matches it.
     const itemSelect = mock(() => {});
     const selected: string[] = [];
     render(CommandMenuFixture, {
@@ -146,7 +150,7 @@ describe('CommandMenu', () => {
     await fireEvent.click(option);
 
     expect(selected).toEqual(['alpha']);
-    expect(itemSelect).not.toHaveBeenCalled();
+    expect(itemSelect).toHaveBeenCalledTimes(1);
   });
 
   test('Escape dismisses the menu', async () => {

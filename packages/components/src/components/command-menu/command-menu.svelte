@@ -135,6 +135,10 @@
   function activateItemById(id: string) {
     const record = registrations.find((registration) => registration.id === id);
     if (!record || record.getDisabled()) return;
+    // Fire the per-item `onselect` callback first (matching command-palette's
+    // shared-context contract), then the menu-level `onselect` prop. Without the
+    // first call, an item's own onselect is silently dropped on activation.
+    record.getOnselect()();
     onselect?.({ value: record.getValue(), query });
   }
 

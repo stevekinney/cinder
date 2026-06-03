@@ -528,10 +528,12 @@ describe('Dropdown', () => {
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
     expect(document.activeElement?.textContent).toContain('Invite people');
 
-    // DropdownItem dispatches a synthetic click on Enter, so activation and
-    // close-on-select both run even though happy-dom does not synthesize the
-    // click from keydown on a <button> itself.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+    // In a real browser, pressing Enter on a focused <button> dispatches a native
+    // click, which drives activation + close-on-select. DropdownItem no longer
+    // synthesizes its own click on keydown (that caused double-activation), and
+    // happy-dom does not synthesize the native click from keydown — so we fire
+    // the click directly on the focused item to exercise the same native path.
+    await fireEvent.click(document.activeElement as HTMLElement);
 
     await waitFor(() => {
       expect(container.querySelector('[role="menu"]')).toBeNull();

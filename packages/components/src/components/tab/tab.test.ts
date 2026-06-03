@@ -30,12 +30,19 @@ describe('Tab', () => {
     ).toThrow(/must be used inside a Tabs component/);
   });
 
-  test('each Tab carries role="tab" and a stable id', () => {
+  test('each Tab carries role="tab" and a per-instance, value-suffixed id', () => {
     const { container } = render(Wrapper, { value: 'a', items });
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     expect(tabs).toHaveLength(2);
-    expect(tabs[0]?.id).toBe('cinder-tab-a');
-    expect(tabs[1]?.id).toBe('cinder-tab-b');
+    // Ids are namespaced by the root Tabs instance's $props.id() baseId so that
+    // sibling Tabs sharing a value do not collide; the per-tab suffix is stable.
+    expect(tabs[0]?.id).toMatch(/-tab-a$/);
+    expect(tabs[1]?.id).toMatch(/-tab-b$/);
+    // Both tabs share the same instance base id (everything before the suffix).
+    const baseA = tabs[0]?.id.replace(/-tab-a$/, '');
+    const baseB = tabs[1]?.id.replace(/-tab-b$/, '');
+    expect(baseA).toBe(baseB);
+    expect(baseA).toBeTruthy();
   });
 
   test('aria-selected and roving tabindex respond to the active value', () => {
@@ -56,6 +63,10 @@ describe('Tab', () => {
   test('aria-controls points at the matching panel id', () => {
     const { container } = render(Wrapper, { value: 'a', items });
     const tab = container.querySelector('[role="tab"][aria-selected="true"]');
-    expect(tab?.getAttribute('aria-controls')).toBe('cinder-tab-panel-a');
+    const ariaControls = tab?.getAttribute('aria-controls');
+    // The panel id is namespaced by the same per-instance baseId and suffixed
+    // with the active value; it must resolve to a real element in the document.
+    expect(ariaControls).toMatch(/-panel-a$/);
+    expect(container.querySelector(`#${ariaControls}`)).not.toBeNull();
   });
 });

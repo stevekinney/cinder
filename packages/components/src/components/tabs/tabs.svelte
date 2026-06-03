@@ -25,6 +25,8 @@
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
+  const baseId = $props.id();
+
   let {
     value = $bindable(''),
     orientation = 'horizontal',
@@ -168,6 +170,9 @@
     },
     get activateOnFocus() {
       return effectiveActivateOnFocus;
+    },
+    get baseId() {
+      return baseId;
     },
     select(next) {
       value = next;

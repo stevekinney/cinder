@@ -424,7 +424,7 @@ describe('KanbanBoard', () => {
     const { container, onchange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
-    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.click(handle);
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
     await fireEvent.keyDown(handle, { key: ' ' });
     await waitForAnnouncement();
@@ -464,11 +464,35 @@ describe('KanbanBoard', () => {
     });
   });
 
+  test('Space keydown + synthesized click leaves the column lifted, not immediately dropped', async () => {
+    // Regression: before the fix, handleColumnKeydown lifted on Space keydown
+    // (idle branch) AND handleColumnClick dropped on the subsequent browser-
+    // synthesized click, so one Space press performed lift-then-drop in a single
+    // interaction, making keyboard column reordering non-functional.
+    //
+    // The fix removes Space/Enter from the idle keydown path and lets the native
+    // synthesized click drive handleColumnClick → liftColumn. We simulate the
+    // real chain that a browser produces: keydown(Space) followed immediately by
+    // a click on the same element.
+    const { container } = renderBoard();
+    const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
+
+    // Simulate the browser sequence: keydown fires first, then on keyup the
+    // browser synthesizes a click. We fire both in order.
+    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.click(handle);
+    await tick();
+
+    // After a single Space press the column must be LIFTED (aria-pressed=true),
+    // not lifted-then-dropped back to idle (aria-pressed=false).
+    expect(handle.getAttribute('aria-pressed')).toBe('true');
+  });
+
   test('window Escape cancels a lifted column after focus leaves the handle', async () => {
     const { container, onchange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
-    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.click(handle);
     await tick();
     expect(handle.getAttribute('aria-pressed')).toBe('true');
 
@@ -486,7 +510,7 @@ describe('KanbanBoard', () => {
     const { container, onchange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
-    await fireEvent.keyDown(handle, { key: ' ' });
+    await fireEvent.click(handle);
     await tick();
     const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     handle.dispatchEvent(tabEvent);
@@ -583,7 +607,7 @@ describe('KanbanBoard', () => {
       const { container, rerender } = render(KanbanBoard as any, { props });
       const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;
 
-      await fireEvent.keyDown(handle, { key: ' ' });
+      await fireEvent.click(handle);
       expect(handle.getAttribute('aria-pressed')).toBe('true');
 
       await rerender({

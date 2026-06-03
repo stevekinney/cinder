@@ -31,11 +31,19 @@ describe('TabPanel', () => {
     expect(panels[0]?.textContent).toContain('A body');
   });
 
-  test('panel id and aria-labelledby derive deterministically from the value', () => {
+  test('panel id and aria-labelledby derive from the instance baseId and the value', () => {
     const { container } = render(Wrapper, { value: 'b', items });
     const panel = container.querySelector('[role="tabpanel"]');
-    expect(panel?.id).toBe('cinder-tab-panel-b');
-    expect(panel?.getAttribute('aria-labelledby')).toBe('cinder-tab-b');
+    // Ids are namespaced by the root Tabs instance's $props.id() baseId so that
+    // sibling Tabs sharing a value do not collide; the value-suffix is stable
+    // and the panel's labelledby points back at the matching tab in the same
+    // instance (same baseId prefix).
+    expect(panel?.id).toMatch(/-panel-b$/);
+    expect(panel?.getAttribute('aria-labelledby')).toMatch(/-tab-b$/);
+    const panelBase = panel?.id.replace(/-panel-b$/, '');
+    const labelBase = panel?.getAttribute('aria-labelledby')?.replace(/-tab-b$/, '');
+    expect(panelBase).toBe(labelBase);
+    expect(panelBase).toBeTruthy();
   });
 
   test('the rendered panel id matches the active tab aria-controls', () => {

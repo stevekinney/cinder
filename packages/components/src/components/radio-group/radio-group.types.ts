@@ -9,6 +9,7 @@ export type RadioGroupContext = {
   readonly value: string;
   readonly disabled: boolean;
   readonly invalid: boolean;
+  readonly required: boolean;
   select: (next: string) => void;
 };
 /**

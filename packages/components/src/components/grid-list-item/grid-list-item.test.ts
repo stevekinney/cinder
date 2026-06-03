@@ -73,9 +73,14 @@ describe('GridListItem', () => {
     expect(container.querySelector('.cinder-grid-list__title')?.textContent).toContain('Jane');
   });
 
-  test('href without title renders no anchor', () => {
+  test('href without title renders no anchor (runtime defensive guard)', () => {
+    // The type system now rejects href without title at compile time.
+    // This test exercises the runtime defensive behavior for JS callers that
+    // bypass TypeScript — the component must not render an inaccessible anchor.
     const { container } = render(GridListItem, {
-      props: { href: '/people/jane' },
+      props: {
+        href: '/people/jane',
+      } as unknown as import('./grid-list-item.types.ts').GridListItemProps,
     });
     expect(container.querySelector('a.cinder-grid-list__link')).toBeNull();
   });
@@ -198,5 +203,48 @@ describe('GridListItem', () => {
     const relTokens = (anchor?.getAttribute('rel') ?? '').split(/\s+/);
     expect(relTokens).not.toContain('noopener');
     expect(relTokens).not.toContain('noreferrer');
+  });
+
+  // ── Type-level regression tests ────────────────────────────────────────────
+  // These blocks assert compile-time rejections for the two high-severity
+  // defects: (1) href without title must be a type error in GridListItemLinked,
+  // and (2) onclick/role/tabindex must not be accepted by GridListItemBase.
+
+  test('type: GridListItemLinked requires title when href is set', () => {
+    // href without title must not satisfy GridListItemProps.
+    // GridListItemLinked requires title: Snippet; GridListItemStatic forbids href.
+    // @ts-expect-error href without title must be a type error — GridListItemLinked requires title: Snippet
+    const _missingTitle: import('./grid-list-item.types.ts').GridListItemProps = {
+      href: '/people/jane',
+    };
+    void _missingTitle;
+    expect(true).toBe(true);
+  });
+
+  test('type: onclick is not accepted on GridListItemProps', () => {
+    const _withOnClick: import('./grid-list-item.types.ts').GridListItemProps = {
+      // @ts-expect-error onclick is stripped from GridListItemBase — must be a type error
+      onclick: () => {},
+    };
+    void _withOnClick;
+    expect(true).toBe(true);
+  });
+
+  test('type: role is not accepted on GridListItemProps', () => {
+    const _withRole: import('./grid-list-item.types.ts').GridListItemProps = {
+      // @ts-expect-error role is stripped from GridListItemBase — must be a type error
+      role: 'button',
+    };
+    void _withRole;
+    expect(true).toBe(true);
+  });
+
+  test('type: tabindex is not accepted on GridListItemProps', () => {
+    const _withTabIndex: import('./grid-list-item.types.ts').GridListItemProps = {
+      // @ts-expect-error tabindex is stripped from GridListItemBase — must be a type error
+      tabindex: 0,
+    };
+    void _withTabIndex;
+    expect(true).toBe(true);
   });
 });

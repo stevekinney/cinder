@@ -379,6 +379,52 @@ describe('RadioGroup', () => {
     const rows3 = Array.from(c3.querySelectorAll('.cinder-radio-row'));
     rows3.forEach((row) => expect((row as HTMLElement).hasAttribute('data-disabled')).toBe(false));
   });
+  // ── required propagation ────────────────────────────────────────────────
+
+  test('required=true sets the native required attribute on every radio input', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      required: true,
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const radios = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    expect(radios.length).toBe(2);
+    radios.forEach((radio) => {
+      expect(radio.required).toBe(true);
+    });
+  });
+
+  test('required=true sets aria-required="true" on the fieldset', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      required: true,
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.getAttribute('aria-required')).toBe('true');
+  });
+
+  test('required defaults to false — inputs lack the required attribute and fieldset lacks aria-required', () => {
+    const { container } = render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [
+        { id: 'r-a', value: 'a', label: 'A' },
+        { id: 'r-b', value: 'b', label: 'B' },
+      ],
+    });
+    const radios = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    radios.forEach((radio) => {
+      expect(radio.required).toBe(false);
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.hasAttribute('aria-required')).toBe(false);
+  });
 });
 
 describe('Radio indicator', () => {

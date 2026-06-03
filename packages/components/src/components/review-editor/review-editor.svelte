@@ -23,6 +23,7 @@
 
   let {
     class: customClassName,
+    original = $bindable(''),
     value = $bindable(''),
     threads = $bindable([]),
     ...rest
@@ -31,4 +32,10 @@
   const mergedClassName = $derived(classNames(customClassName));
 </script>
 
-<ReviewEditorImplementation class={mergedClassName} bind:value bind:threads {...rest} />
+<ReviewEditorImplementation
+  class={mergedClassName}
+  bind:original
+  bind:value
+  bind:threads
+  {...rest}
+/>

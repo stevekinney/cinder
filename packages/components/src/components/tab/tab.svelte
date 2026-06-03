@@ -35,11 +35,12 @@
   }
   const tabs: TabsContext = rawTabs;
 
-  // Derive both ids from `value` so TabPanel can independently compute the
-  // same id without coordinating through context. Consumers can still override
-  // the tab id via the `id` prop; the panel id stays deterministic.
-  const tabId = $derived(id ?? `cinder-tab-${value}`);
-  const panelId = $derived(`cinder-tab-panel-${value}`);
+  // Derive both ids from the root's baseId and the tab's value so that two
+  // Tabs instances sharing the same value produce distinct DOM ids. Consumers
+  // can still override the tab id via the `id` prop; the panel id stays
+  // deterministic and namespace-scoped to this Tabs instance.
+  const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
+  const panelId = $derived(`${tabs.baseId}-panel-${value}`);
 
   const isActive = $derived(tabs.isActive(value));
   const isFocusable = $derived(tabs.isFocusable(value));

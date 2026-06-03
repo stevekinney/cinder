@@ -48,10 +48,11 @@
 
 {#if isLink}
   <a
-    href={(props as LinkArm).href}
+    href={disabled ? undefined : (props as LinkArm).href}
     class={resolvedClass}
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
+    tabindex={disabled ? -1 : undefined}
     data-active={active}
     data-cinder-navigation-item
     data-variant={variant}
@@ -65,6 +66,7 @@
     class={resolvedClass}
     aria-current={active ? 'page' : undefined}
     aria-disabled={disabled ? true : undefined}
+    {disabled}
     data-active={active}
     data-cinder-navigation-item
     data-variant={variant}
