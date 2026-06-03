@@ -43,7 +43,7 @@ const schema = {
         },
       ],
       description:
-        'Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true.',
+        'Forwarded to the rendered `<a>`. `"noopener noreferrer"` is merged in whenever the link\nopens in a new tab — `external` is true OR the resolved target is `"_blank"`\n(case-insensitive) — and the whole value is de-duplicated case-insensitively.',
     },
     class: {
       type: 'string',

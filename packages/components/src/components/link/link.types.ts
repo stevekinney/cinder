@@ -52,9 +52,13 @@ export type LinkProps = Omit<HTMLAnchorAttributes, 'class' | 'href' | 'target' |
    * @default false
    */
   disabled?: boolean;
-  /** Forwarded to the rendered `<a>`. Merged with `external`-derived values when `external` is true. */
+  /** Forwarded to the rendered `<a>`. `external` supplies `"_blank"` only when no target is given. */
   target?: HTMLAnchorAttributes['target'];
-  /** Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true. */
+  /**
+   * Forwarded to the rendered `<a>`. `"noopener noreferrer"` is merged in whenever the link
+   * opens in a new tab — `external` is true OR the resolved target is `"_blank"`
+   * (case-insensitive) — and the whole value is de-duplicated case-insensitively.
+   */
   rel?: HTMLAnchorAttributes['rel'];
   /** Additional class names merged with `.cinder-link`. */
   class?: string;

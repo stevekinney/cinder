@@ -189,6 +189,31 @@ describe('Link external prop', () => {
     expect(rel.toLowerCase().split('noopener').length - 1).toBe(1);
     expect(rel).toContain('noreferrer');
   });
+
+  test('adds the safe rel for a case-variant target like "_BLANK"', () => {
+    // HTML target keywords are case-insensitive, so _BLANK still opens a new tab and
+    // must get the reverse-tabnabbing guard.
+    const { container } = render(Link, {
+      props: { href: 'https://example.com', target: '_BLANK', children: textSnippet('Blank') },
+    });
+    const rel = container.querySelector('a')?.getAttribute('rel') ?? '';
+    expect(rel).toContain('noopener');
+    expect(rel).toContain('noreferrer');
+  });
+
+  test('de-duplicates tokens already duplicated in a consumer rel', () => {
+    const { container } = render(Link, {
+      props: {
+        href: 'https://example.com',
+        external: true,
+        rel: 'noopener noopener sponsored',
+        children: textSnippet('External'),
+      },
+    });
+    const rel = container.querySelector('a')?.getAttribute('rel') ?? '';
+    expect(rel.split('noopener').length - 1).toBe(1);
+    expect(rel).toContain('sponsored');
+  });
 });
 
 describe('Link disabled prop', () => {

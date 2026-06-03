@@ -48,24 +48,34 @@
   const resolvedTarget = $derived(disabled ? undefined : external && !target ? '_blank' : target);
 
   // Merge "noopener noreferrer" into rel whenever the link opens in a NEW TAB —
-  // either via `external` or any resolved target of "_blank" — so a `target="_blank"`
-  // passed without `external` can't open a reverse-tabnabbing window. The merge is
-  // case-insensitive and de-dupes, so a consumer rel of "noopener noopener" or
-  // "NoOpener" won't produce duplicates.
+  // either via `external` or any resolved target of "_blank" (case-insensitively, since
+  // HTML target keywords are case-insensitive) — so a `target="_blank"` passed without
+  // `external` can't open a reverse-tabnabbing window. The whole rel is de-duplicated
+  // case-insensitively: a consumer rel of "noopener noopener" or "NoOpener" collapses to
+  // a single token and the safe tokens aren't re-added.
   const resolvedRel = $derived.by(() => {
     if (disabled) return undefined;
-    const needsSafeRel = external || resolvedTarget === '_blank';
+    const needsSafeRel = external || resolvedTarget?.toLowerCase() === '_blank';
     const consumerParts = (rel ?? '').split(/\s+/).filter(Boolean);
-    if (!needsSafeRel) return consumerParts.length > 0 ? consumerParts.join(' ') : undefined;
-    const seen = new Set(consumerParts.map((part) => part.toLowerCase()));
-    const merged = [...consumerParts];
-    for (const part of ['noopener', 'noreferrer']) {
-      if (!seen.has(part)) {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    // De-dupe consumer-provided tokens too (keep first occurrence, original casing).
+    for (const part of consumerParts) {
+      const key = part.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
         merged.push(part);
-        seen.add(part);
       }
     }
-    return merged.join(' ');
+    if (needsSafeRel) {
+      for (const part of ['noopener', 'noreferrer']) {
+        if (!seen.has(part)) {
+          seen.add(part);
+          merged.push(part);
+        }
+      }
+    }
+    return merged.length > 0 ? merged.join(' ') : undefined;
   });
 
   const resolvedClass = $derived(classNames('cinder-link', className));
