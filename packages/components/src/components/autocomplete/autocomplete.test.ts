@@ -518,6 +518,12 @@ describe('Autocomplete — FormField context', () => {
     const describedBy = input.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-search-description');
     expect(describedBy).toContain('fruit-search-control-error');
+    // The FormField's own (field-level) error id must also be composed in — assert it
+    // explicitly so a future regression that drops it can't pass silently.
+    expect(describedBy).toContain('fruit-search-error');
+    // No id appears more than once after de-duplication.
+    const tokens = describedBy.split(/\s+/).filter(Boolean);
+    expect(new Set(tokens).size).toBe(tokens.length);
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.required).toBe(true);
     expect(input.disabled).toBe(true);

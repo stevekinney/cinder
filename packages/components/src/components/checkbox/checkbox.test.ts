@@ -18,6 +18,17 @@ describe('Checkbox', () => {
     expect(input?.getAttribute('type')).toBe('checkbox');
   });
 
+  test('resolves a stable id from $props.id() when no id prop is given', () => {
+    // resolveFieldControl falls back to the $props.id() generated id; without it a
+    // standalone checkbox with no id prop would render id={undefined} and break for=/id=.
+    const { container } = render(Checkbox, { label: 'Agree' });
+    const input = container.querySelector('input[type="checkbox"]');
+    const id = input?.getAttribute('id');
+    expect(id).toBeTruthy();
+    // The <label> for must point at the same generated id.
+    expect(container.querySelector('label')?.getAttribute('for')).toBe(id);
+  });
+
   test('label prop creates a <label> with for attribute', () => {
     const { container } = render(Checkbox, {
       id: 'tos',

@@ -35,11 +35,18 @@
     ...rest
   }: CheckboxProps = $props();
 
+  // Stable generated id fallback (Svelte 5 $props.id()), used when neither the `id`
+  // prop nor a FormField context controlId is present — matches input/autocomplete.
+  // Passing the (possibly undefined) `id` prop as the fallback would leave field.id
+  // undefined for an unlabeled standalone checkbox, breaking for=/id=/describedby.
+  const generatedId = $props.id();
   const context = getFormFieldContext();
   const field = $derived(
     resolveFieldControl({
-      id,
-      generatedId: id,
+      // Conditionally spread `id` so `id: undefined` isn't passed (exactOptionalPropertyTypes);
+      // matches autocomplete. The generatedId fallback covers the no-id case.
+      ...(id !== undefined ? { id } : {}),
+      generatedId,
       context,
       hasDescription: !!description,
       hasError: !!error,
