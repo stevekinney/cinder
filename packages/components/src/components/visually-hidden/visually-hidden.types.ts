@@ -44,7 +44,12 @@ export type VisuallyHiddenProps = Omit<
   focusable?: boolean;
   /** Additional classes merged after the utility classes. */
   class?: string;
-  /** Required content — must render something assistive technology can announce. */
+  /**
+   * Required content — must render something assistive technology can announce.
+   * The render site uses optional chaining (`children?.()`) as a JS-consumer safety
+   * net, but omitting children defeats the entire purpose of this component: an empty
+   * `.cinder-sr-only` announces nothing to AT. Always provide meaningful content.
+   */
   children: Snippet;
 };
 

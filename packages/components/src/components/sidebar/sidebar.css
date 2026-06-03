@@ -58,6 +58,10 @@
   }
 
   .cinder-sidebar__footer {
+    /* margin-block-start: auto pins the footer to the bottom of the column independent
+     * of siblings — so it stays bottom-aligned even when the optional nav (which carried
+     * flex: 1) is omitted, instead of collapsing up under the brand. */
+    margin-block-start: auto;
     padding-block: var(--cinder-space-3);
     padding-inline: var(--cinder-space-3);
     border-block-start: 1px solid var(--cinder-border);

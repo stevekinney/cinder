@@ -88,9 +88,15 @@
         </div>
       {/if}
 
-      <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-        {@render navigationSnippet()}
-      </nav>
+      {#if navigationSnippet}
+        <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
+             is an accessibility problem (screen readers announce a navigation landmark
+             with no destinations). navigation is optional so a sidebar can be used as
+             app chrome without a nav list. -->
+        <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+          {@render navigationSnippet()}
+        </nav>
+      {/if}
 
       {#if footerSnippet}
         <div class="cinder-sidebar__footer cinder-sidebar__footer--mobile">
@@ -113,9 +119,13 @@
       </div>
     {/if}
 
-    <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-      {@render navigationSnippet()}
-    </nav>
+    {#if navigationSnippet}
+      <!-- Same guard: keep the <nav> landmark out of the DOM when navigation is absent
+           so screen readers don't announce an empty navigation region. -->
+      <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+        {@render navigationSnippet()}
+      </nav>
+    {/if}
 
     {#if footerSnippet}
       <div class="cinder-sidebar__footer">

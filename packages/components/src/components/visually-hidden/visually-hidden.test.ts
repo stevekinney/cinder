@@ -135,3 +135,13 @@ describe('VisuallyHidden', () => {
     expect(el?.textContent).toContain('Hidden label text');
   });
 });
+
+describe('VisuallyHidden — omitted children (runtime safety net)', () => {
+  test('renders without throwing when children is omitted (JS consumer safety)', () => {
+    // children: Snippet is required in TS, but the optional-chain guard prevents a
+    // runtime throw for untyped callers. NOTE: an empty VisuallyHidden silently defeats
+    // its a11y purpose — only TypeScript consumers calling with children is valid.
+    const { container } = render(VisuallyHidden, {} as never);
+    expect(container.querySelector('.cinder-sr-only')).not.toBeNull();
+  });
+});

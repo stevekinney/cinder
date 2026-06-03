@@ -161,3 +161,12 @@ describe('Surface CSS contract', () => {
     expect(transparentBlock).toContain('border-color: transparent');
   });
 });
+
+describe('Surface — omitted children (optional-chain guard)', () => {
+  test('renders an empty surface without throwing when no children provided', () => {
+    // The guard changed from {#if children}{@render children()}{/if} to {@render children?.()}.
+    // Verify the optional-chain path (children===undefined) is safe.
+    const { container } = render(Surface, {} as never);
+    expect(container.querySelector('.cinder-surface')).not.toBeNull();
+  });
+});

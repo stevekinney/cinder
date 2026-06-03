@@ -73,6 +73,20 @@ describe('Message', () => {
     expect(article?.getAttribute('id')).toBe('msg-1');
   });
 
+  test('omitting children renders without throwing and omits the body wrapper', () => {
+    // children is typed as required but the render is guarded so a dynamic JS
+    // consumer that omits children gets a silent no-op rather than a runtime throw.
+    expect(() => {
+      const { container } = render(Message, {
+        role: 'assistant',
+      } as never);
+      // No body div should be present when children is absent.
+      expect(container.querySelector('.cinder-message__body')).toBeNull();
+      // The article element itself still renders.
+      expect(container.querySelector('article.cinder-message')).not.toBeNull();
+    }).not.toThrow();
+  });
+
   test('consumer cannot clobber the controlled data-cinder-role attribute', () => {
     const { container } = render(Message, {
       role: 'user',

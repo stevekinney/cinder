@@ -44,6 +44,13 @@ export type DataListProps<T> = Omit<
    * leading/title/description/meta/trailing slots.
    */
   children: Snippet<[T]>;
-  /** Rendered (wrapped in an `<li>`) when `items` is empty. */
+  /**
+   * Rendered when `items` is empty. The component automatically wraps the
+   * snippet output in `<li class="cinder-data-list-empty">`.
+   *
+   * **Do NOT wrap in an `<li>` yourself** — the component provides the `<li>`
+   * wrapper automatically. Pass only inner content (e.g. a `<p>`, a `<div>`,
+   * or plain text). Contrast with `children`, which must render an `<li>`.
+   */
   empty?: Snippet;
 };

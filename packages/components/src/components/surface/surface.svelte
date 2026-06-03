@@ -31,7 +31,5 @@
 </script>
 
 <div class={classNames('cinder-surface', className)} data-cinder-tone={tone} {...rest}>
-  {#if children}
-    {@render children()}
-  {/if}
+  {@render children?.()}
 </div>
