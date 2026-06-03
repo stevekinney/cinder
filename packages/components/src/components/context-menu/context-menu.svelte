@@ -23,6 +23,7 @@
   import { captureFocus } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
+  import { createClickOutside } from '../../utilities/attachments.ts';
   import {
     setDropdownContext,
     setDropdownRegister,
@@ -117,12 +118,15 @@
     widthMode: () => 'menu',
   });
 
-  function handleOutsidePointerdown(event: PointerEvent) {
-    const target = event.target;
-    if (!(target instanceof Node)) return;
-    if (menuElement?.contains(target) || triggerElement?.contains(target)) return;
-    close();
-  }
+  const dismissOnOutsidePointerdown = $derived(
+    createClickOutside({
+      handler: close,
+      enabled: () => open,
+      eventType: 'pointerdown',
+      capture: true,
+      ignoreRefs: [() => menuElement ?? null, () => triggerElement ?? null],
+    }),
+  );
 
   setDropdownContext({
     get menuId() {
@@ -151,14 +155,6 @@
       return longPressDelay;
     },
     openAt,
-  });
-
-  $effect(() => {
-    if (!open || !menuElement) return;
-    document.addEventListener('pointerdown', handleOutsidePointerdown, { capture: true });
-    return () => {
-      document.removeEventListener('pointerdown', handleOutsidePointerdown, { capture: true });
-    };
   });
 
   $effect(() => {
@@ -193,6 +189,6 @@
   });
 </script>
 
-<div class={classNames('cinder-context-menu', className)}>
+<div class={classNames('cinder-context-menu', className)} {@attach dismissOnOutsidePointerdown}>
   {@render children()}
 </div>

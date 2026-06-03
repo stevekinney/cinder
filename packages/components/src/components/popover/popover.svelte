@@ -30,6 +30,7 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
+  import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -113,16 +114,19 @@
     mounted = true;
   });
 
-  function handleDocumentMousedown(event: MouseEvent) {
-    if (!panelElement) return;
-    const target = event.target;
-    if (!(target instanceof Node)) return;
-    if (panelElement.contains(target)) return;
-    // Use the open-time snapshot so a swapped/removed trigger does not cause
-    // unexpected close when the user mouses down on the original opener.
-    if (resolvedAnchorAtOpen && resolvedAnchorAtOpen.contains(target)) return;
-    open = false;
-  }
+  const dismissOnOutsideMousedown = $derived(
+    createClickOutside({
+      handler: () => {
+        open = false;
+      },
+      enabled: () => open,
+      eventType: 'mousedown',
+      capture: true,
+      // Use the open-time snapshot so a swapped/removed trigger does not cause
+      // unexpected close when the user mouses down on the original opener.
+      ignoreRefs: [() => resolvedAnchorAtOpen ?? null],
+    }),
+  );
 
   function moveFocusIntoPanel() {
     if (isDestroyed || !panelElement) return;
@@ -152,11 +156,9 @@
     const releaseEscape = pushEscapeHandler(() => {
       open = false;
     });
-    document.addEventListener('mousedown', handleDocumentMousedown, { capture: true });
 
     return () => {
       releaseEscape();
-      document.removeEventListener('mousedown', handleDocumentMousedown, { capture: true });
       pendingInitialFocus = false;
       if (isDestroyed) {
         capturedFocus = null;
@@ -267,6 +269,7 @@
   <div
     bind:this={panelElement}
     {@attach portalAttachment}
+    {@attach dismissOnOutsideMousedown}
     id={panelId}
     {role}
     aria-label={resolvedAriaLabel}

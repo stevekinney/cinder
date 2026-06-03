@@ -76,6 +76,30 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 
 - Click outside the overlay's DOM tree (or on the backdrop, for full-viewport overlays) closes the overlay.
 - `closeOnOutsideClick` prop (default `true`) lets consumers opt out where appropriate (e.g. a popover anchored to a button group where clicks elsewhere should not dismiss).
+- **Use the shared `createClickOutside` attachment** (`src/utilities/attachments.ts`) rather than hand-rolling a `document` listener in a `$effect`. It is the single canonical light-dismiss mechanism: it owns the `document.addEventListener`/`removeEventListener` lifecycle, the inside-vs-outside containment check, the capture-phase default, and the trigger/anchor exclusion. Apply it to the overlay's panel element:
+
+  ```svelte
+  <script lang="ts">
+    import { createClickOutside } from '../../utilities/attachments.ts';
+    // $derived keeps the attachment stable — recreating it each render would re-bind the listener.
+    const dismiss = $derived(
+      createClickOutside({
+        handler: () => (open = false),
+        enabled: () => open,
+        eventType: 'pointerdown', // or 'mousedown' to dismiss before a focus/selection change; default 'click'
+        ignoreRefs: [() => triggerElement], // elements that count as "inside" beyond the panel
+      }),
+    );
+  </script>
+
+  <div {@attach dismiss}>…</div>
+  ```
+
+  - `eventType` (`'click' | 'pointerdown' | 'mousedown'`, default `'click'`): use `pointerdown`/`mousedown` when the overlay must dismiss before a fresh focus or text selection commits.
+  - `capture` (default `true`): the document-level dismisser should see the event before inner `stopPropagation`.
+  - `ignoreRefs`: getters so a trigger/anchor that mounts or swaps after the attachment is created resolves freshly on each event. Snapshot the anchor at open time (not the live reference) when a swapped trigger must not cause an unexpected close.
+
+- **Not every `document` keydown is an outside-click.** A dismiss-on-`Escape` keydown handler (e.g. HoverCard's) is escape handling, not outside-click, and stays as its own listener / `pushEscapeHandler` — do not route it through `createClickOutside`.
 
 ## Scroll lock
 
@@ -108,6 +132,7 @@ When introducing a new overlay component:
 1. Add a Z-layer entry to `tokens-base.css` and `Z_LAYERS` in `overlay.ts` if the layer is novel.
 2. Implement the `hydrated`-gated render pattern (see "SSR rule" above).
 3. Wire `pushEscapeHandler` on open and call its release on close.
-4. If the overlay is full-viewport, wire `lockBodyScroll` on open and release on close.
-5. On open, capture focus; on close, restore focus.
-6. Reference this document in the component's `.a11y.md`.
+4. For light-dismiss (anchored overlays), use the shared `createClickOutside` attachment — see "Outside-click" above. Do not hand-roll a `document` listener.
+5. If the overlay is full-viewport, wire `lockBodyScroll` on open and release on close.
+6. On open, capture focus; on close, restore focus.
+7. Reference this document in the component's `.a11y.md`.

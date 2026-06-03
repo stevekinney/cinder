@@ -255,4 +255,57 @@ describe('SelectionPopover', () => {
 
     trigger.remove();
   });
+
+  test('outside pointerdown on an element outside the popover closes it (attachment wiring)', async () => {
+    // Verifies the {@attach dismissOnOutsidePointerdown} is correctly wired — a pointerdown
+    // outside the popover element calls closePopover (which calls onclose). If the attachment
+    // is missing or attached to the wrong node, this test will fail because onclose never fires.
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onclose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    // Fire a pointerdown from a node that is not inside the popover.
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(closed).toBe(true);
+    outside.remove();
+  });
+
+  test('pointerdown inside the popover does NOT close it', async () => {
+    let closed = false;
+
+    const { container } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onclose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    // Fire a pointerdown from inside the popover panel.
+    const panel = container.querySelector('.cinder-selection-popover');
+    expect(panel).not.toBeNull();
+    panel!.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(closed).toBe(false);
+  });
 });

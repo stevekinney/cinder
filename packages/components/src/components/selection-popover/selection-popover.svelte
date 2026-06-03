@@ -22,6 +22,7 @@
   import type { SelectionPopoverProps } from './selection-popover.types.ts';
   import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
+  import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
@@ -140,11 +141,20 @@
     }
   }
 
-  function handleDocumentPointerdown(event: PointerEvent): void {
-    if (!popoverElement || !open) return;
-    if (event.target instanceof Node && popoverElement.contains(event.target)) return;
-    closePopover();
-  }
+  // Outside-pointerdown dismiss via the shared overlay primitive (OVERLAY-POLICY § Outside-click).
+  // pointerdown (not click) so the popover closes before a fresh text selection commits.
+  // $derived keeps the attachment stable across renders (recreating it would re-bind the
+  // document listener every update); enabled gates it to the open state.
+  const dismissOnOutsidePointerdown = $derived(
+    // capture: false preserves the original bubble-phase semantics
+    // (the previous document.addEventListener call had no capture arg).
+    createClickOutside({
+      handler: closePopover,
+      enabled: () => open,
+      eventType: 'pointerdown',
+      capture: false,
+    }),
+  );
 
   $effect(() => {
     if (!popoverElement) return;
@@ -186,9 +196,6 @@
       wasOpen = true;
       rememberFocus();
     }
-
-    document.addEventListener('pointerdown', handleDocumentPointerdown);
-    return () => document.removeEventListener('pointerdown', handleDocumentPointerdown);
   });
 </script>
 
@@ -204,6 +211,7 @@
   role="toolbar"
   aria-label="Selection actions"
   onkeydown={handleKeydown}
+  {@attach dismissOnOutsidePointerdown}
   {...rest}
 >
   {#if expanded}

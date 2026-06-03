@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     setDropdownContext,
@@ -52,7 +53,6 @@
   // `anchor-name`/`position-anchor` styles below without sanitization.
   const menuId = `${generatedId}-menu`;
 
-  let rootElement: HTMLDivElement | undefined = $state();
   let menuElement: HTMLDivElement | undefined = $state();
   let triggerWrapper: HTMLDivElement | undefined = $state();
 
@@ -161,20 +161,18 @@
     }
   }
 
-  function handleOutsideClick(event: MouseEvent) {
-    const target = event.target as Node;
-    if (
-      rootElement?.contains(target) ||
-      menuElement?.contains(target) ||
-      compoundMenuElement?.contains(target)
-    ) {
-      return;
-    }
-    if (rootElement) {
-      open = false;
-      compoundOpen = false;
-    }
-  }
+  const dismissOnOutsideClick = $derived(
+    createClickOutside({
+      handler: () => {
+        open = false;
+        compoundOpen = false;
+      },
+      // Match the original effect gate: only the non-popover fallback path, and only while open.
+      enabled: () => !supportsPopover && (open || compoundOpen),
+      ignoreRefs: [() => menuElement ?? null, () => compoundMenuElement ?? null],
+      capture: false,
+    }),
+  );
 
   // Popover API path: imperatively show/hide after the feature is detected.
   $effect(() => {
@@ -194,23 +192,14 @@
     const toggleEvent = event as ToggleEvent;
     open = toggleEvent.newState === 'open';
   }
-
-  // Non-popover path: listen for outside clicks while the menu is open.
-  $effect(() => {
-    if (supportsPopover || (!open && !compoundOpen)) return;
-    document.addEventListener('click', handleOutsideClick);
-    return () => {
-      document.removeEventListener('click', handleOutsideClick);
-    };
-  });
 </script>
 
 <div
-  bind:this={rootElement}
   {id}
   class={classNames('cinder-dropdown', customClassName)}
   data-cinder-placement={placement}
   onkeydown={handleKeydown}
+  {@attach dismissOnOutsideClick}
   {...rest}
 >
   {#if usesLegacySnippetApi}
