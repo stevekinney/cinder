@@ -77,6 +77,7 @@
       {value}
       {checked}
       disabled={effectiveDisabled}
+      required={group.required || undefined}
       aria-invalid={ariaInvalid(group.invalid)}
       onchange={handleChange}
       class={cn('cinder-radio', className)}

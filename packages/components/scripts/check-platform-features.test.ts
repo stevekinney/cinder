@@ -259,5 +259,10 @@ describe('scan — live inventory against the real source tree', () => {
       expect(flag.lineNumber).toBeGreaterThan(0);
       expect(VIEWPORT_WIDTH_MEDIA.test(flag.query)).toBe(true);
     }
-  }, 30_000);
+    // This probe walks the entire component source tree from disk. It runs in
+    // ~9s on an idle machine but is starved well past 30s when the full cinder
+    // suite (or a concurrent worktree's suite) saturates the CPU — the failure
+    // mode is a timeout, never an assertion. Budget generously so a loaded
+    // machine doesn't flag a green scan as broken.
+  }, 90_000);
 });

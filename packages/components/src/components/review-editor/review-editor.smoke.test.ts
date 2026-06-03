@@ -1,5 +1,42 @@
 import { describe, expect, test } from 'bun:test';
 
+const implementationSource = await Bun.file(
+  new URL('./review-editor-impl.svelte', import.meta.url).pathname,
+).text();
+
+const wrapperSource = await Bun.file(
+  new URL('./review-editor.svelte', import.meta.url).pathname,
+).text();
+
+describe('review-editor original bindable regression', () => {
+  /**
+   * The bug: `original` was a plain prop (`original = ''`), not $bindable.
+   * setState() assigned `original = state.original` locally, but the write
+   * never propagated to the parent — when the parent re-rendered it reverted
+   * the baseline, silently breaking diffStats/hasContentChanges/exportUnifiedDiff.
+   *
+   * Fix: `original = $bindable('')` in review-editor-impl.svelte (matching
+   * value and threads), and `bind:original` forwarded in review-editor.svelte.
+   */
+  test('review-editor-impl.svelte declares original as $bindable so setState writes propagate to the parent', () => {
+    // Must match: original = $bindable('') in the $props() destructure.
+    // A plain `original = ''` would fail this assertion.
+    expect(implementationSource).toMatch(/original\s*=\s*\$bindable\s*\(\s*['"]{2}\s*\)/);
+  });
+
+  test('review-editor.svelte destructures original as $bindable to support two-way binding from callers', () => {
+    // The outer wrapper must also declare the prop as $bindable so callers
+    // using bind:original on the public ReviewEditor component work correctly.
+    expect(wrapperSource).toMatch(/original\s*=\s*\$bindable\s*\(\s*['"]{2}\s*\)/);
+  });
+
+  test('review-editor.svelte forwards bind:original to the implementation component', () => {
+    // Without bind:original on the inner ReviewEditorImplementation, setState
+    // writes to original in the impl never reach the outer wrapper's binding.
+    expect(wrapperSource).toMatch(/bind:original/);
+  });
+});
+
 describe('review-editor public entrypoint', () => {
   test('exports the component from the package subpath and root barrel', async () => {
     const packageJson = await Bun.file(`${import.meta.dir}/../../../package.json`).json();

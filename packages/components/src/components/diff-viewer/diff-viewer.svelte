@@ -85,6 +85,8 @@
     };
   }
 
+  const instanceId = $props.id();
+
   let {
     original,
     current,
@@ -365,7 +367,7 @@
     <!-- Front Matter Section (DEP-61) -->
     {#if hasFrontMatter}
       <DiffFrontMatter
-        id="front-matter"
+        id={`${instanceId}-front-matter`}
         diffs={frontMatterDiffs}
         {viewMode}
         bind:expanded={frontMatterExpanded}

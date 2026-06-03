@@ -31,13 +31,12 @@
   const tabs: TabsContext = rawTabs;
 
   const isActive = $derived(tabs.isActive(value));
-  // Both ids are derived deterministically from `value` so the
-  // aria-labelledby relationship works without round-tripping through the
-  // parent's registry. Tab uses the same default id pattern unless the
-  // consumer supplies a custom `id` prop, in which case the consumer is
-  // responsible for setting `aria-labelledby` on their own.
-  const panelId = $derived(`cinder-tab-panel-${value}`);
-  const labelledBy = $derived(`cinder-tab-${value}`);
+  // Both ids are derived from the root's baseId and this panel's value so
+  // that two Tabs instances sharing the same value produce distinct DOM ids.
+  // This mirrors the pattern in tab.svelte; the root Tabs provides `baseId`
+  // via context to namespace every Tab/TabPanel pair it owns.
+  const panelId = $derived(`${tabs.baseId}-panel-${value}`);
+  const labelledBy = $derived(`${tabs.baseId}-tab-${value}`);
 </script>
 
 {#if isActive}

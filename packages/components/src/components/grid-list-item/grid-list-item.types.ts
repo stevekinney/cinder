@@ -1,6 +1,10 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLAttributes } from 'svelte/elements';
-type GridListItemBase = Omit<HTMLAttributes<HTMLLIElement>, 'title'> & {
+type LiEventAttribute = Extract<keyof HTMLAttributes<HTMLLIElement>, `on${string}`>;
+type GridListItemBase = Omit<
+  HTMLAttributes<HTMLLIElement>,
+  'title' | 'class' | 'role' | 'tabindex' | LiEventAttribute
+> & {
   class?: string;
   /** Optional image region (avatar, thumbnail). */
   image?: Snippet;
@@ -27,10 +31,14 @@ type GridListItemStatic = GridListItemBase & {
  * via a pseudo-element overlay. Only `actions` (and descendants marked with
  * `data-cinder-stretched-link-escape`) remain pointer-operable above the overlay.
  *
- * If `title` is absent, no anchor is rendered even when `href` is set.
+ * `title` is required when `href` is set: it provides the accessible name for
+ * the stretched-link anchor. An item with `href` but no `title` would render a
+ * pseudo-element overlay with no reachable `<a>` and no accessible name.
  */
 type GridListItemLinked = GridListItemBase & {
   href: string;
+  /** Required when href is set — provides the accessible name for the anchor. */
+  title: Snippet;
   /**
    * When `target` matches `"_blank"` (case-insensitive), the component
    * automatically composes `rel="noopener noreferrer"` with any

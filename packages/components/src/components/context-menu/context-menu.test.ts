@@ -346,10 +346,12 @@ describe('ContextMenu', () => {
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
     expect(document.activeElement?.textContent).toContain('Rename');
 
-    // DropdownItem dispatches a synthetic click on Enter, so selection and
-    // close-on-select both fire even though happy-dom does not synthesize the
-    // click from keydown on its own.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+    // In a real browser, pressing Enter on a focused <button> dispatches a native
+    // click, which drives selection + close-on-select. DropdownItem no longer
+    // synthesizes its own click on keydown (that caused double-activation), and
+    // happy-dom does not synthesize the native click from keydown — so we fire
+    // the click directly on the focused item to exercise the same native path.
+    await fireEvent.click(document.activeElement as HTMLElement);
 
     await waitFor(() => expect(queryMenu()).toBeNull());
     expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');
@@ -402,10 +404,13 @@ describe('ContextMenu', () => {
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
 
-    // Enter on the focused item selects it and closes the menu.
+    // Enter on the focused item selects it and closes the menu. In a real
+    // browser Enter on a <button> dispatches a native click; DropdownItem relies
+    // on that (it no longer synthesizes its own click) and happy-dom does not
+    // synthesize it from keydown, so we fire the click to drive the native path.
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Rename' }));
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Enter' });
+    await fireEvent.click(document.activeElement as HTMLElement);
 
     await waitFor(() => expect(queryByRole('menu')).toBeNull());
     expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');

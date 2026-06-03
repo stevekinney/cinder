@@ -7,6 +7,7 @@
     description?: string;
     error?: string;
     disabled?: boolean;
+    required?: boolean;
     variant?: 'default' | 'card';
     options: Array<{
       id: string;
@@ -31,6 +32,7 @@
     description,
     error,
     disabled = false,
+    required = false,
     variant,
     options,
   }: RadioGroupFixtureProps = $props();
@@ -44,6 +46,7 @@
   {...error !== undefined ? { error } : {}}
   {...variant !== undefined ? { variant } : {}}
   {disabled}
+  {required}
 >
   {#each options as option (option.id)}
     <Radio

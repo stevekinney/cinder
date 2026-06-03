@@ -10,6 +10,7 @@ const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
 const { default: TrailingWrapper } =
   await import('../../test/fixtures/tabs-trailing-fixture.svelte');
+const { default: SiblingWrapper } = await import('../../test/fixtures/tabs-sibling-fixture.svelte');
 
 const tabsCss = readFileSync(new URL('./tabs.css', import.meta.url), 'utf8');
 
@@ -626,6 +627,74 @@ describe('Tab data-variant reflects tabs orientation', () => {
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     for (const tab of tabs) {
       expect(tab.getAttribute('data-variant')).toBe('vertical');
+    }
+  });
+});
+
+describe('Tabs sibling id isolation', () => {
+  test('two Tabs sharing a value produce distinct panel ids and tab ids', () => {
+    // Regression for: tab/panel ids were derived from value alone (e.g.
+    // `cinder-tab-panel-overview`) which collided across sibling Tabs instances,
+    // causing aria-controls to resolve to the first matching element in tree
+    // order rather than the panel in the same Tabs instance.
+    const { container } = render(SiblingWrapper, { sharedValue: 'overview' });
+
+    // Collect all tab buttons and panels that carry the shared value.
+    const allTabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    const allPanels = Array.from(container.querySelectorAll('[role="tabpanel"]'));
+
+    // Both Tabs instances are active on the shared value, so both panels are
+    // rendered. There must be exactly two panels visible.
+    expect(allPanels.length).toBe(2);
+
+    // Collect every id present in the document — ids must be unique.
+    const tabIds = allTabs.map((tab) => tab.getAttribute('id')).filter(Boolean) as string[];
+    const panelIds = allPanels.map((panel) => panel.getAttribute('id')).filter(Boolean) as string[];
+
+    // No duplicate ids anywhere in the document.
+    expect(new Set(tabIds).size).toBe(tabIds.length);
+    expect(new Set(panelIds).size).toBe(panelIds.length);
+
+    // Each Tab's aria-controls must point to the panel in ITS OWN Tabs instance.
+    // Find the two "overview" tab buttons (one per Tabs instance).
+    const overviewTabs = allTabs.filter(
+      (tab) => tab.getAttribute('data-cinder-value') === 'overview',
+    );
+    expect(overviewTabs.length).toBe(2);
+
+    for (const overviewTab of overviewTabs) {
+      const ariaControls = overviewTab.getAttribute('aria-controls');
+      expect(ariaControls).not.toBeNull();
+
+      // The panel pointed at by aria-controls must exist exactly once in the DOM.
+      const targetPanels = container.querySelectorAll(`#${CSS.escape(ariaControls!)}`);
+      expect(targetPanels.length).toBe(1);
+
+      // That panel must be inside the same Tabs root as the tab button itself.
+      const tabsRoot = overviewTab.closest('.cinder-tabs');
+      expect(tabsRoot).not.toBeNull();
+      expect(tabsRoot!.contains(targetPanels[0]!)).toBe(true);
+    }
+  });
+
+  test('aria-labelledby on each panel points back to its own tab (cross-instance safety)', () => {
+    const { container } = render(SiblingWrapper, { sharedValue: 'overview' });
+
+    const allPanels = Array.from(container.querySelectorAll('[role="tabpanel"]'));
+    expect(allPanels.length).toBe(2);
+
+    for (const panel of allPanels) {
+      const labelledBy = panel.getAttribute('aria-labelledby');
+      expect(labelledBy).not.toBeNull();
+
+      // The tab referenced by aria-labelledby must exist exactly once.
+      const referencedTabs = container.querySelectorAll(`#${CSS.escape(labelledBy!)}`);
+      expect(referencedTabs.length).toBe(1);
+
+      // The referenced tab must live in the same Tabs root as the panel.
+      const tabsRoot = panel.closest('.cinder-tabs');
+      expect(tabsRoot).not.toBeNull();
+      expect(tabsRoot!.contains(referencedTabs[0]!)).toBe(true);
     }
   });
 });

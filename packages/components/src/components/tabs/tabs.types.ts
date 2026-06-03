@@ -18,6 +18,13 @@ export type TabsContext = {
   readonly orientation: TabsOrientation;
   /** Whether focus movement also activates a tab (per WAI-ARIA pattern). */
   readonly activateOnFocus: boolean;
+  /**
+   * Per-root base id used to namespace tab and panel ids so that two Tabs
+   * instances sharing the same tab value do not produce duplicate DOM ids.
+   * Derived ids take the form `${baseId}-tab-${value}` and
+   * `${baseId}-panel-${value}`.
+   */
+  readonly baseId: string;
   /** Activate a tab by value. */
   select: (next: string) => void;
   /** True when `candidate` is the active tab. */

@@ -42,11 +42,33 @@ describe('DropdownItem', () => {
     await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
   });
 
-  test('Enter activates the item via the keydown-to-click bridge', async () => {
+  test('button has tabindex=-1 for roving-focus compatibility', async () => {
+    const { container } = await openMenu();
+    const item = container.querySelector('[role="menuitem"]') as HTMLElement;
+    expect(item.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('keydown Enter/Space does not synthesize a click (no double-fire)', async () => {
     const { container } = await openMenu();
     const item = container.querySelector('[role="menuitem"]') as HTMLElement;
     item.focus();
+
+    // Fire multiple keydown events as would happen when a key is held — a
+    // Space held down produces repeated keydown events. With the old
+    // handleKeydown bridge each repetition dispatched a synthetic click,
+    // causing multi-fire.  After the fix, keydown alone must not trigger
+    // activation; only a real click event should.
+    await fireEvent.keyDown(item, { key: ' ' });
+    await fireEvent.keyDown(item, { key: ' ' });
     await fireEvent.keyDown(item, { key: 'Enter' });
+    await fireEvent.keyDown(item, { key: 'Enter' });
+
+    // After all those keydowns the output must still be empty — none should
+    // have fired the onclick handler via a synthetic MouseEvent('click').
+    expect(container.querySelector('output')?.textContent).toBe('');
+
+    // A real click still works.
+    await fireEvent.click(item);
     await waitFor(() => expect(container.querySelector('output')?.textContent).toBe('copy'));
   });
 });

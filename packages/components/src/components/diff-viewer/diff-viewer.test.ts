@@ -32,9 +32,8 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
-const { computeLineDiff, computeWordChanges, getDiffStats, groupIntoHunks } = await import(
-  'cinder/markdown/diff/line-diff'
-);
+const { computeLineDiff, computeWordChanges, getDiffStats, groupIntoHunks } =
+  await import('cinder/markdown/diff/line-diff');
 const { default: DiffLine } = await import('./diff-line.svelte');
 const { default: DiffToolbar } = await import('./diff-toolbar.svelte');
 const { default: DiffFrontMatter } = await import('./diff-front-matter.svelte');
@@ -56,7 +55,10 @@ function hasButtonLabelled(container: HTMLElement, label: string): boolean {
 
 describe('DiffViewer: identical input (basic mount)', () => {
   test('two identical strings produce only unchanged lines and zero stats', () => {
-    const diffs = computeLineDiff('line one\nline two\nline three', 'line one\nline two\nline three');
+    const diffs = computeLineDiff(
+      'line one\nline two\nline three',
+      'line one\nline two\nline three',
+    );
 
     expect(diffs.every((diff) => diff.type === 'same')).toBe(true);
     expect(diffs).toHaveLength(3);
@@ -146,7 +148,10 @@ describe('DiffViewer: changed input (renders hunks)', () => {
 
 describe('DiffViewer: view-mode toggle', () => {
   test('unified view shows a removed line; final view hides it', () => {
-    const unified = render(DiffLine, { diff: { type: 'removed', text: 'gone' }, viewMode: 'unified' });
+    const unified = render(DiffLine, {
+      diff: { type: 'removed', text: 'gone' },
+      viewMode: 'unified',
+    });
     expect(unified.container.textContent).toContain('gone');
     expect(unified.container.querySelector('.diff-line')).not.toBeNull();
 
@@ -157,7 +162,10 @@ describe('DiffViewer: view-mode toggle', () => {
   });
 
   test('original view hides an added line; final view shows it', () => {
-    const original = render(DiffLine, { diff: { type: 'added', text: 'plus' }, viewMode: 'original' });
+    const original = render(DiffLine, {
+      diff: { type: 'added', text: 'plus' },
+      viewMode: 'original',
+    });
     // Original view reflects the baseline, so added lines are hidden.
     expect(original.container.querySelector('.diff-line')).toBeNull();
     expect(original.container.textContent).not.toContain('plus');
@@ -331,5 +339,74 @@ describe('DiffViewer: front-matter section', () => {
     const section = container.querySelector('.front-matter-section');
     expect(section?.getAttribute('data-has-changes')).toBe('true');
     expect(container.textContent).toContain('Changed');
+  });
+
+  test('two DiffFrontMatter instances with distinct ids produce non-colliding toggle and content ids', () => {
+    // This test documents the bug: when diff-viewer passed the literal id="front-matter"
+    // to every DiffFrontMatter it rendered, every instance produced the same
+    // toggle id ("front-matter-toggle") and content id ("front-matter-content").
+    // The fix is that diff-viewer now passes a per-instance prefix derived from
+    // $props.id(), so the ids are unique across instances on the same page.
+    //
+    // We simulate what TWO diff-viewer instances produce by rendering DiffFrontMatter
+    // twice with the distinct ids the fixed diff-viewer would pass.
+
+    const diffs = computeLineDiff('---\ntitle: Old\n---', '---\ntitle: New\n---');
+
+    const { container: containerA } = render(DiffFrontMatter, {
+      id: 'diff-viewer-1-front-matter',
+      diffs,
+      viewMode: 'unified',
+      expanded: true,
+    });
+
+    const { container: containerB } = render(DiffFrontMatter, {
+      id: 'diff-viewer-2-front-matter',
+      diffs,
+      viewMode: 'unified',
+      expanded: true,
+    });
+
+    // Each instance must have its own unique toggle id and content id.
+    const toggleA = containerA.querySelector('[id]');
+    const toggleB = containerB.querySelector('[id]');
+
+    // The ids must not be identical — this would catch the original literal collision.
+    expect(toggleA?.id).not.toBe(toggleB?.id);
+    expect(toggleA?.id).toBe('diff-viewer-1-front-matter-toggle');
+    expect(toggleB?.id).toBe('diff-viewer-2-front-matter-toggle');
+
+    // aria-controls on each toggle must resolve within its own container, not the other's.
+    const ariaControlsA = toggleA?.getAttribute('aria-controls');
+    const ariaControlsB = toggleB?.getAttribute('aria-controls');
+
+    expect(ariaControlsA).toBe('diff-viewer-1-front-matter-content');
+    expect(ariaControlsB).toBe('diff-viewer-2-front-matter-content');
+
+    // The actual content elements must exist with matching ids in the correct containers.
+    expect(containerA.querySelector(`#${ariaControlsA}`)).not.toBeNull();
+    expect(containerB.querySelector(`#${ariaControlsB}`)).not.toBeNull();
+
+    // Cross-instance: each toggle's aria-controls must NOT resolve in the OTHER container.
+    expect(containerA.querySelector(`#${ariaControlsB}`)).toBeNull();
+    expect(containerB.querySelector(`#${ariaControlsA}`)).toBeNull();
+  });
+
+  test('diff-viewer.svelte passes a $props.id()-derived front-matter id, not the colliding literal', async () => {
+    // The behavioural test above proves DiffFrontMatter namespaces ids from
+    // whatever `id` it receives — but the actual bug lived in diff-viewer.svelte,
+    // which hardcoded id="front-matter" on EVERY instance. The composed shell
+    // cannot be mounted under happy-dom (see the file header), so we guard the
+    // shell-level fix at the source level: it must derive a per-instance id from
+    // $props.id() and must not pass the bare literal. Reverting the fix fails here.
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    // The per-instance base id is generated with $props.id().
+    expect(source).toContain('$props.id()');
+
+    // The front-matter id passed to <DiffFrontMatter> is namespaced by that base
+    // id, not the bare literal that collided across instances.
+    expect(source).not.toMatch(/id=["']front-matter["']/);
+    expect(source).toMatch(/id=\{`\$\{instanceId\}-front-matter`\}/);
   });
 });

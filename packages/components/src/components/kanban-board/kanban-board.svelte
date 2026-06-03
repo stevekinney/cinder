@@ -399,10 +399,10 @@
   ): void {
     if (!reorderColumns || invalidKeys || cardController.phase === 'lifted') return;
     if (columnLiftedKey === null) {
-      if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        liftColumn(column, columnIndex);
-      }
+      // Space/Enter in the idle state: do nothing here. The native button will
+      // synthesize a click on Space/Enter keyup, which handleColumnClick will
+      // handle to liftColumn. Handling Space/Enter in both keydown and the
+      // subsequent synthesized click caused an immediate lift-then-drop.
       return;
     }
     if (columnLiftedKey !== column.id) return;
@@ -417,6 +417,10 @@
       return;
     }
     if (event.key === ' ' || event.key === 'Enter') {
+      // Prevent the default action so the browser does not synthesize a click
+      // event on keyup — for Space, preventDefault() on keydown suppresses the
+      // synthetic keyup-click, so handleColumnClick never fires after the column
+      // is already dropped and columnLiftedKey is null again.
       event.preventDefault();
       dropColumn(column, currentTarget);
       return;

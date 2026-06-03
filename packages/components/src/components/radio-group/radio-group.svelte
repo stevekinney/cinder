@@ -63,6 +63,9 @@
     get invalid() {
       return !!error;
     },
+    get required() {
+      return required;
+    },
     select(next) {
       value = next;
     },
@@ -80,6 +83,7 @@
 <fieldset
   class={cn('cinder-radio-group', className)}
   aria-invalid={ariaInvalid(!!error)}
+  aria-required={required || undefined}
   aria-describedby={describedBy}
   data-cinder-disabled={disabled || undefined}
   data-cinder-required={required || undefined}
