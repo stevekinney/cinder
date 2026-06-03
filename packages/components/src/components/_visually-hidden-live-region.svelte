@@ -73,12 +73,17 @@
       clearTimeoutId = null;
     }
 
-    // Blank first so the upcoming set is always a content change.
+    // Blank first so the upcoming set is always a DOM content change. ATs only
+    // announce a live region when its text content changes, so setting the same
+    // string twice would be a no-op. A `queueMicrotask` delay is sometimes too
+    // tight — some ATs batch accessibility-tree updates and can see the blank + set
+    // as a single no-op. `setTimeout(0)` ensures the blank commit reaches the AT
+    // before the replacement text, giving reliable re-announcement.
     rendered = '';
 
     if (next === '') return;
 
-    queueMicrotask(() => {
+    clearTimeoutId = setTimeout(() => {
       if (isDestroyed || version !== current) return;
       rendered = next;
       clearTimeoutId = setTimeout(() => {
@@ -86,26 +91,19 @@
         rendered = '';
         clearTimeoutId = null;
       }, clearDelay);
-    });
+    }, 0);
   });
 </script>
 
-{#if priority === 'assertive'}
-  <div
-    role="alert"
-    aria-live="assertive"
-    aria-atomic="true"
-    class={classNames('cinder-sr-only', className)}
-  >
-    {rendered}
-  </div>
-{:else}
-  <div
-    role="status"
-    aria-live="polite"
-    aria-atomic="true"
-    class={classNames('cinder-sr-only', className)}
-  >
-    {rendered}
-  </div>
-{/if}
+<!-- Single element with computed role/aria-live to avoid duplicated markup. Note:
+     changing `priority` after mount is generally unreliable (ATs cache live-region
+     type at registration), but `priority` is expected to be a static configuration
+     prop, not reactive data. -->
+<div
+  role={priority === 'assertive' ? 'alert' : 'status'}
+  aria-live={priority === 'assertive' ? 'assertive' : 'polite'}
+  aria-atomic="true"
+  class={classNames('cinder-sr-only', className)}
+>
+  {rendered}
+</div>
