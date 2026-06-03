@@ -121,6 +121,7 @@
 @import '../components/tooltip/tooltip.css';
 @import '../components/tree/tree.css';
 @import '../components/_tree-select-all/tree-select-all.css';
+@import '../components/typography/typography.css';
 
 /* Shared internal partial — base chrome for Alert/Banner dismiss buttons.
  * Imported last to preserve the original source order of the inline rule it

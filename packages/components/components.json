@@ -3301,6 +3301,28 @@
       }
     },
     {
+      "name": "Typography",
+      "id": "typography",
+      "import": "cinder/typography",
+      "exportName": "Typography",
+      "category": "typography",
+      "status": "beta",
+      "purpose": "Renders text with a named typographic variant mapped to the design token scale.",
+      "tags": ["typography", "text"],
+      "useWhen": [
+        "Applying a named typographic style (heading, body, caption) with semantic HTML."
+      ],
+      "avoidWhen": ["Rendering inline text inside a paragraph — use a plain <span> with CSS."],
+      "related": ["label", "kbd"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/typography/schema",
+        "variables": "cinder/typography/variables",
+        "examples": "cinder/typography/examples"
+      }
+    },
+    {
       "name": "VisuallyHidden",
       "id": "visually-hidden",
       "import": "cinder/visually-hidden",

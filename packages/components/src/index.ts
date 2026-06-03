@@ -627,6 +627,13 @@ export type { TreeItemProps, TreeItemRowContext } from './components/tree-item/i
 export { default as Tooltip } from './components/tooltip/index.ts';
 export type { TooltipPlacement, TooltipProps } from './components/tooltip/index.ts';
 
+export { default as Typography } from './components/typography/index.ts';
+export type {
+  TypographyElement,
+  TypographyProps,
+  TypographyVariant,
+} from './components/typography/index.ts';
+
 export { default as VisuallyHidden } from './components/visually-hidden/index.ts';
 export type {
   VisuallyHiddenElement,
