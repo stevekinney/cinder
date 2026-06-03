@@ -17,17 +17,17 @@
   import TableHeaderCell from '../../components/table-header-cell/table-header-cell.svelte';
   import TableRow from '../../components/table-row/table-row.svelte';
 
-  let { align, sortable = false, headerCellProps }: TableHeaderCellFixtureProps = $props();
+  let { align, sortable = false, headerCellProps = {} }: TableHeaderCellFixtureProps = $props();
 </script>
 
 <Table>
   <TableHeader>
     <TableRow>
       <TableHeaderCell
+        {...headerCellProps}
         {...align === undefined ? {} : { align }}
         {sortable}
         column="commits"
-        {...headerCellProps}
       >
         Commits
       </TableHeaderCell>

@@ -16,10 +16,15 @@ import type { HTMLButtonAttributes } from 'svelte/elements';
  * component drives the copied-state announcement and clipboard handler
  * itself). `data-cinder-copied` is also owned but is a `data-*` attribute that
  * can't be expressed in the Omit, so it's overridden by spread ordering.
+ *
+ * The native `value` attribute is also Omit-ted: CopyButton's bespoke `value`
+ * is the required clipboard text, and leaving the optional native `value` in
+ * the surface confused schema/README generation (it dropped the prop as
+ * `unknown-shape`). Omit-ting it makes `value: string` unambiguously owned.
  */
 export type CopyButtonProps = Omit<
   HTMLButtonAttributes,
-  'class' | 'aria-label' | 'aria-live' | 'onclick' | 'type'
+  'class' | 'aria-label' | 'aria-live' | 'onclick' | 'type' | 'value'
 > & {
   /** Text to copy to the clipboard. */
   value: string;

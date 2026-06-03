@@ -4,6 +4,10 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    value: {
+      type: 'string',
+      description: 'Text to copy to the clipboard.',
+    },
     confirmDuration: {
       type: 'number',
       description: 'Duration in ms to show the confirmation state. Default 1500.',
@@ -28,6 +32,7 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['value'],
   metadata: {
     unsupportedProps: [
       {
@@ -37,10 +42,6 @@ const schema = {
       {
         name: 'confirmation',
         reason: 'function-or-snippet',
-      },
-      {
-        name: 'value',
-        reason: 'unknown-shape',
       },
     ],
   },
