@@ -26,7 +26,7 @@ export type SidebarProps = Omit<
   /** Optional branding region rendered above the navigation. */
   brand?: Snippet;
   /** Navigation region. Typically a `<SideNavigation>` subtree. Required. */
-  navigation: Snippet;
+  navigation?: Snippet;
   /** Optional footer region (e.g. user account, sign-out). */
   footer?: Snippet;
 };

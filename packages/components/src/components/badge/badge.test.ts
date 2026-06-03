@@ -84,3 +84,12 @@ describe('Badge', () => {
     expect(smRule).toContain('line-height: 1rem');
   });
 });
+
+describe('Badge — omitted children (runtime safety net)', () => {
+  test('renders without throwing when children is omitted (JS consumer safety)', () => {
+    // children: Snippet is required in TypeScript, but the optional-chain guard
+    // ensures a JS consumer who omits it gets an empty badge rather than a crash.
+    const { container } = render(Badge, { variant: 'info' } as never);
+    expect(container.querySelector('.cinder-badge')).not.toBeNull();
+  });
+});

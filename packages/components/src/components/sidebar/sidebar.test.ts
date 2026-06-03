@@ -717,3 +717,16 @@ describe('Sidebar collapsed CSS contract', () => {
     expect(css).toContain('clip-path: inset(50%);');
   });
 });
+
+describe('Sidebar — optional navigation snippet', () => {
+  test('omitting navigation renders no <nav> landmark (no empty navigation region)', () => {
+    // navigation is now optional (Snippet?). Without it, the <nav> landmark must be
+    // absent entirely — an empty <nav> is an a11y violation (screen readers announce
+    // a navigation region with no destinations).
+    const { container } = render(Sidebar, {
+      label: 'Main',
+      children: textSnippet('Content'),
+    } as never);
+    expect(container.querySelector('nav')).toBeNull();
+  });
+});

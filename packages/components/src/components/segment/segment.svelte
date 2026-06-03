@@ -95,6 +95,9 @@
       {@render leading()}
     </span>
   {/if}
+  <!-- children: Snippet is required in TypeScript but the optional-chain is a
+     JS-caller safety net. Segment requires SegmentedControl's group context to
+     render so it can't be tested standalone; the guard is verified at code level. -->
   {@render children?.()}
   {#if trailing}
     <span class="cinder-segmented-control-option-trailing" aria-hidden="true">
