@@ -43,6 +43,7 @@
   let restoreFocusElement = $state<HTMLElement | null>(null);
   let measuredWidth = $state(0);
   let measuredHeight = $state(0);
+  let wasOpen = false;
 
   const VIEWPORT_MARGIN = 16;
 
@@ -161,10 +162,29 @@
 
   $effect(() => {
     if (!open) {
-      expanded = false;
-      commentBody = '';
-      restoreFocusElement = null;
+      // Only act on the true -> false transition. This keeps the close logic
+      // (state reset + focus restore) from re-running on unrelated effect
+      // re-evaluations while already closed.
+      if (wasOpen) {
+        wasOpen = false;
+        expanded = false;
+        commentBody = '';
+        // Return focus to wherever it was before the popover opened.
+        // restoreFocus() null-guards and clears the ref, so an internal close
+        // that already restored leaves this a safe no-op (no double-restore).
+        restoreFocus();
+      }
       return;
+    }
+
+    // Capture the pre-open focus owner once, on the false -> true transition,
+    // before focus can move into the popover. This guarantees something to
+    // restore to on an external close even if the popover is never expanded,
+    // while never re-capturing mid-open (which would otherwise re-grab focus
+    // after an internal close-and-restore left the popover open).
+    if (!wasOpen) {
+      wasOpen = true;
+      rememberFocus();
     }
 
     document.addEventListener('pointerdown', handleDocumentPointerdown);

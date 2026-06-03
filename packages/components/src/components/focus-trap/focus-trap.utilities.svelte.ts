@@ -155,6 +155,10 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     const fallbackFocus = options.fallbackFocus ?? null;
 
     let activated = false;
+    // Bumped on every `activate()`. The deferred `focusTrapTarget` microtask snapshots this value
+    // and bails if it no longer matches, so a deactivate (or deactivate→reactivate) that lands
+    // before the microtask drains can't let a stale activation steal focus into the trap.
+    let activationGeneration = 0;
     let capturedFocus: HTMLElement | null = null;
     let restoreRootFocusability = noop;
 
@@ -181,12 +185,20 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     function activate() {
       if (activated) return;
       activated = true;
+      const generation = ++activationGeneration;
       capturedFocus =
         document.activeElement instanceof HTMLElement && document.activeElement !== document.body
           ? document.activeElement
           : null;
       pushTrap({ id: trapId, node });
-      queueMicrotask(focusTrapTarget);
+      // Defer focusing so the trap's content is in the DOM. Guard against the trap being
+      // deactivated (or deactivated then reactivated) before this microtask drains — moving focus
+      // into a no-longer-current activation would steal it back after `deactivate()` already
+      // restored it to the previously-focused element.
+      queueMicrotask(() => {
+        if (!activated || generation !== activationGeneration) return;
+        focusTrapTarget();
+      });
     }
 
     function deactivate() {
