@@ -77,12 +77,15 @@
     return Math.max(0, Math.min(normalizedCount, rounded));
   }
 
-  // `resolvedValue` is the single source of truth for the snapped rating that
-  // the template and `commit()` read. `value` holds only the raw external input;
-  // `commit()` snaps before writing it, so there is no need to mirror the
-  // normalized value back into the prop via an effect (which would create an
-  // extra reactive cycle and silently mutate the $bindable without onchange).
   const resolvedValue = $derived(snapToOption(value ?? 0));
+
+  // Mirror normalized value back onto the prop without firing onchange so
+  // consumers always see a normalized number even when they pass garbage in.
+  $effect(() => {
+    if (resolvedValue !== value) {
+      value = resolvedValue;
+    }
+  });
 
   let hoverValue = $state<number | null>(null);
   const displayValue = $derived(hoverValue ?? resolvedValue);
@@ -378,7 +381,7 @@
   {/if}
 
   {#if error}
-    <p id={ownErrorId} class="cinder-rating-field__error" aria-live="polite">
+    <p id={ownErrorId} class="cinder-rating-field__error" aria-live="polite" aria-atomic="true">
       {error}
     </p>
   {/if}
