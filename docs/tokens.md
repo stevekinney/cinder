@@ -257,6 +257,7 @@ Stacking order is fixed: tooltip < dropdown ≈ popover < modal ≈ sheet < toas
 | `--cinder-z-tooltip`  | `1000`  |
 | `--cinder-z-dropdown` | `1100`  |
 | `--cinder-z-popover`  | `1100`  |
+| `--cinder-z-backdrop` | `1150`  |
 | `--cinder-z-modal`    | `1200`  |
 | `--cinder-z-sheet`    | `1200`  |
 | `--cinder-z-toast`    | `1300`  |

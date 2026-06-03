@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "backdrop",
+  "import": "cinder/backdrop",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic backdrop",
+      "description": "A full-viewport scrim that dims content behind it. Click the backdrop to dismiss it.",
+      "code": "<script lang=\"ts\">\n  import { Backdrop } from 'cinder/backdrop';\n  import { Button } from 'cinder/button';\n  import { Spinner } from 'cinder/spinner';\n\n  let open = $state(false);\n  let invisible = $state(false);\n</script>\n\n<div style=\"display: flex; gap: 0.75rem; flex-wrap: wrap;\">\n  <Button\n    label=\"Show dimmed backdrop\"\n    onclick={() => {\n      invisible = false;\n      open = true;\n    }}\n  />\n  <Button\n    variant=\"secondary\"\n    label=\"Show invisible backdrop\"\n    onclick={() => {\n      invisible = true;\n      open = true;\n    }}\n  />\n</div>\n\n<Backdrop {open} {invisible} onclick={() => (open = false)}>\n  <div\n    style=\"display: flex; flex-direction: column; align-items: center; gap: 1rem; color: white; pointer-events: none;\"\n  >\n    <Spinner size=\"lg\" label=\"Loading\" />\n    <span style=\"font-size: 1rem; font-weight: 500;\">Loading… click anywhere to dismiss</span>\n  </div>\n</Backdrop>\n"
+    }
+  ]
+}

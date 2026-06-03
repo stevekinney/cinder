@@ -17,6 +17,7 @@
 @import '../components/aspect-ratio/aspect-ratio.css';
 @import '../components/avatar/avatar.css';
 @import '../components/avatar-group/avatar-group.css';
+@import '../components/backdrop/backdrop.css';
 @import '../components/badge/badge.css';
 @import '../components/banner/banner.css';
 @import '../components/bar-chart/bar-chart.css';

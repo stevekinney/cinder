@@ -293,6 +293,33 @@
       }
     },
     {
+      "name": "Backdrop",
+      "id": "backdrop",
+      "import": "cinder/backdrop",
+      "exportName": "Backdrop",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Full-viewport fixed scrim primitive for custom overlay patterns such as loading dimmers and image lightboxes.",
+      "tags": ["overlay", "scrim"],
+      "useWhen": [
+        "Providing a full-screen dimming layer behind a custom overlay that is not modal, drawer, or sheet.",
+        "Building a loading state that dims the full viewport while an async operation runs."
+      ],
+      "avoidWhen": [
+        "Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.",
+        "Showing a side panel — use drawer instead.",
+        "Showing structured content in a dialog — use modal, drawer, or sheet which compose Backdrop internally."
+      ],
+      "related": ["modal", "drawer", "sheet"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/backdrop/schema",
+        "variables": "cinder/backdrop/variables",
+        "examples": "cinder/backdrop/examples"
+      }
+    },
+    {
       "name": "Badge",
       "id": "badge",
       "import": "cinder/badge",
