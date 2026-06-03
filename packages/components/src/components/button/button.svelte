@@ -205,7 +205,6 @@
   <a
     {...anchorAttributes}
     href={loading ? undefined : href}
-    role={loading ? 'link' : undefined}
     tabindex={loading ? -1 : anchorTabIndex}
     class={mergedClassName}
     {...dataAttributes}

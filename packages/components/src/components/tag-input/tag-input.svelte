@@ -111,11 +111,13 @@
   );
   // Memoize the delimiter matcher: a RegExp delimiter only changes when the prop
   // changes, so build the expression once here instead of allocating a new
-  // RegExp on every keydown. The global flag is stripped so `.test()` is stateless.
+  // RegExp on every keydown. Both the global (g) and sticky (y) flags are stripped
+  // because they make `.test()` stateful (it advances/reads `lastIndex`), which would
+  // make repeated calls on the memoized instance return inconsistent results.
   const delimiterExpression = $derived(
     typeof delimiter === 'string'
       ? null
-      : new RegExp(delimiter.source, delimiter.flags.replaceAll('g', '')),
+      : new RegExp(delimiter.source, delimiter.flags.replaceAll('g', '').replaceAll('y', '')),
   );
   const labelledBy = $derived(composeDescribedBy(context?.labelId, consumerAriaLabelledBy));
   const ariaLabel = $derived(
