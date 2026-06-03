@@ -1,0 +1,104 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * LINK
+ * Inline text link for use inside prose/body content.
+ * For wayfinding links in nav bars or sidebars, use NavigationItem.
+ * ======================================== */
+
+  .cinder-link {
+    color: var(--cinder-accent);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    transition: color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* ----------------------------------------
+ * Color variants
+ * ---------------------------------------- */
+
+  .cinder-link[data-color='primary'] {
+    color: var(--cinder-accent);
+  }
+
+  .cinder-link[data-color='inherit'] {
+    color: inherit;
+  }
+
+  /* ----------------------------------------
+ * Underline variants
+ * ---------------------------------------- */
+
+  .cinder-link[data-underline='always'] {
+    text-decoration: underline;
+  }
+
+  .cinder-link[data-underline='none'] {
+    text-decoration: none;
+  }
+
+  .cinder-link[data-underline='hover'] {
+    text-decoration: none;
+  }
+
+  /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
+ * "stick" after tap on touch devices that emulate :hover. */
+  @media (hover: hover) {
+    .cinder-link[data-underline='hover']:hover:not([data-disabled]) {
+      text-decoration: underline;
+    }
+
+    .cinder-link[data-underline='none']:hover:not([data-disabled]) {
+      text-decoration: none;
+    }
+
+    .cinder-link[data-color='primary']:hover:not([data-disabled]) {
+      color: var(--cinder-accent-hover);
+    }
+  }
+
+  /* ----------------------------------------
+ * Focus visible — transparent outline + box-shadow ring
+ * Matches the pattern from button.css and navigation-item.css.
+ * ---------------------------------------- */
+
+  .cinder-link:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    border-radius: 2px;
+  }
+
+  /* For underline='hover' and underline='none', keyboard focus must restore the
+   * underline so keyboard users get the same affordance as mouse users on hover.
+   * This is spec-required: underline='hover' documents "underline on hover and focus". */
+  .cinder-link[data-underline='hover']:focus-visible:not([data-disabled]),
+  .cinder-link[data-underline='none']:focus-visible:not([data-disabled]) {
+    text-decoration: underline;
+  }
+
+  /* Forced Colors Mode (Windows High Contrast) — box-shadow rings are invisible;
+ * replace with a real outline. */
+  @media (forced-colors: active) {
+    .cinder-link:focus-visible {
+      outline: var(--cinder-ring-width) solid LinkText;
+      outline-offset: 3px;
+    }
+  }
+
+  /* ----------------------------------------
+ * Disabled state
+ * ---------------------------------------- */
+
+  .cinder-link[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+}

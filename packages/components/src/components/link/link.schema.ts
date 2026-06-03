@@ -1,0 +1,63 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    color: {
+      enum: ['primary', 'inherit'],
+      description:
+        "Controls the link color.\n- `'primary'` — uses the accent/primary color token.\n- `'inherit'` — inherits the surrounding text color.",
+      default: "'primary'",
+    },
+    href: {
+      type: 'string',
+      description:
+        'The URL the link points to. Required for enabled links; ignored when `disabled` is true.',
+    },
+    underline: {
+      enum: ['always', 'hover', 'none'],
+      description:
+        "Controls text-decoration behavior.\n- `'always'` — underline is always visible.\n- `'hover'` — underline appears on hover and focus (default).\n- `'none'` — underline is never shown.",
+      default: "'hover'",
+    },
+    external: {
+      type: 'boolean',
+      description:
+        'When true, automatically adds `target="_blank"` and merges `rel="noopener noreferrer"`\nwith any consumer-supplied `rel`. Consumer-supplied `target` is preserved if provided.',
+      default: false,
+    },
+    disabled: {
+      type: 'boolean',
+      description:
+        'When true, renders a `<span aria-disabled="true">` instead of `<a>`. The href is not\nemitted and pointer-events are disabled. Use to show a link that is contextually\nunavailable without removing it from the visual layout.',
+      default: false,
+    },
+    target: {
+      type: 'string',
+      description:
+        'Forwarded to the rendered `<a>`. Merged with `external`-derived values when `external` is true.',
+    },
+    rel: {
+      type: 'string',
+      description:
+        'Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-link`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['href'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

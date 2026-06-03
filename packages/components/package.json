@@ -1653,6 +1653,31 @@
       "import": "./src/components/line-chart/line-chart.examples.json",
       "default": "./src/components/line-chart/line-chart.examples.json"
     },
+    "./link": {
+      "types": "./dist/components/link/index.d.ts",
+      "svelte": "./src/components/link/index.ts",
+      "node": "./dist/server/components/link/index.js",
+      "default": "./dist/components/link/index.js"
+    },
+    "./link/schema": {
+      "types": "./dist/components/link/link.schema.d.ts",
+      "svelte": "./src/components/link/link.schema.ts",
+      "node": "./dist/server/components/link/link.schema.js",
+      "default": "./dist/components/link/link.schema.js"
+    },
+    "./link/variables": {
+      "types": "./dist/components/link/link.variables.d.ts",
+      "svelte": "./src/components/link/link.variables.ts",
+      "node": "./dist/server/components/link/link.variables.js",
+      "default": "./dist/components/link/link.variables.js"
+    },
+    "./link/styles": {
+      "default": "./dist/components/link/link.css"
+    },
+    "./link/examples": {
+      "import": "./src/components/link/link.examples.json",
+      "default": "./src/components/link/link.examples.json"
+    },
     "./load-more": {
       "types": "./dist/components/load-more/index.d.ts",
       "svelte": "./src/components/load-more/index.ts",
