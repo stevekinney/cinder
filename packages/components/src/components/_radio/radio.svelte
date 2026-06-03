@@ -17,13 +17,9 @@
 
 <script lang="ts">
   import type { RadioProps } from './radio.types.ts';
-  import { getContext } from 'svelte';
 
   import { ariaInvalid, composeDescribedBy, describeId } from '../../_internal/field-control.ts';
-  import {
-    RADIO_GROUP_CONTEXT_KEY,
-    type RadioGroupContext,
-  } from '../radio-group/radio-group.svelte';
+  import { getRadioGroupContext } from '../radio-group/radio-group-context.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let {
@@ -37,11 +33,7 @@
     ...rest
   }: RadioProps = $props();
 
-  const rawGroup = getContext<RadioGroupContext | undefined>(RADIO_GROUP_CONTEXT_KEY);
-  if (!rawGroup) {
-    throw new Error('Radio must be used inside a RadioGroup component.');
-  }
-  const group: RadioGroupContext = rawGroup;
+  const group = getRadioGroupContext();
 
   const checked = $derived(group.value === value);
   const effectiveDisabled = $derived(disabled ?? group.disabled);

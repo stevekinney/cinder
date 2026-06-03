@@ -23,7 +23,7 @@ describe('DropdownMenu', () => {
           children: createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} })),
         },
       }),
-    ).toThrow(/must be used within a Dropdown/);
+    ).toThrow(/missing_context/);
   });
 
   test('is absent until the trigger opens it, then renders with role="menu"', async () => {

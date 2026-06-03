@@ -12,17 +12,14 @@
    * @avoidWhen Hiding a single optional region — use a plain disclosure or details element.
    * @related accordion-item, tabs, tree
    */
-  export { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';
   export type { AccordionContext, AccordionProps } from './accordion.types.ts';
 </script>
 
 <script lang="ts">
-  import { setContext } from 'svelte';
-
   import { createMultiSelection } from '../../_internal/collection.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { ACCORDION_CONTEXT_KEY } from './accordion.context.ts';
-  import type { AccordionContext, AccordionProps } from './accordion.types.ts';
+  import { setAccordionContext } from './accordion.context.ts';
+  import type { AccordionProps } from './accordion.types.ts';
 
   let {
     multiple = false,
@@ -49,7 +46,7 @@
     }
   }
 
-  setContext<AccordionContext>(ACCORDION_CONTEXT_KEY, {
+  setAccordionContext({
     get expandedIds() {
       return expandedIds;
     },

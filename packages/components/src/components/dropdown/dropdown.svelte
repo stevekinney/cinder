@@ -12,26 +12,18 @@
    * @avoidWhen Showing supplementary content rather than a menu of choices — use popover.
    * @related dropdown-trigger, dropdown-menu, dropdown-item, dropdown-label, dropdown-separator
    */
-  export {
-    DROPDOWN_CONTEXT,
-    DROPDOWN_REGISTER,
-    DROPDOWN_REGISTER_TRIGGER,
-    DROPDOWN_SET_OPEN,
-  } from './dropdown.context.ts';
   export type { DropdownContext, DropdownPlacement, DropdownProps } from './dropdown.types.ts';
 </script>
 
 <script lang="ts">
-  import { setContext } from 'svelte';
-
   import { classNames } from '../../utilities/class-names.ts';
   import {
-    DROPDOWN_CONTEXT,
-    DROPDOWN_REGISTER,
-    DROPDOWN_REGISTER_TRIGGER,
-    DROPDOWN_SET_OPEN,
+    setDropdownContext,
+    setDropdownRegister,
+    setDropdownRegisterTrigger,
+    setDropdownSetOpen,
   } from './dropdown.context.ts';
-  import type { DropdownContext, DropdownProps } from './dropdown.types.ts';
+  import type { DropdownProps } from './dropdown.types.ts';
 
   const generatedId = $props.id();
 
@@ -93,7 +85,7 @@
     compoundOpen = nextOpen;
   }
 
-  setContext<DropdownContext>(DROPDOWN_CONTEXT, {
+  setDropdownContext({
     get menuId() {
       return compoundMenuId;
     },
@@ -118,12 +110,9 @@
     close: closeCompoundMenu,
     focusTrigger: focusCompoundTrigger,
   });
-  setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerCompoundMenu);
-  setContext<(element: HTMLElement | null) => void>(
-    DROPDOWN_REGISTER_TRIGGER,
-    registerCompoundTrigger,
-  );
-  setContext<(nextOpen: boolean) => void>(DROPDOWN_SET_OPEN, setCompoundOpen);
+  setDropdownRegister(registerCompoundMenu);
+  setDropdownRegisterTrigger(registerCompoundTrigger);
+  setDropdownSetOpen(setCompoundOpen);
 
   // Keep aria-expanded on the trigger element in sync with open state.
   $effect(() => {

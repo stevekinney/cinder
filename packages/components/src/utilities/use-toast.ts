@@ -12,9 +12,7 @@
  * impossible with this model.
  */
 
-import { getContext } from 'svelte';
-
-import { TOAST_CONTEXT_KEY, type ToastApi } from '../_internal/toast-context.ts';
+import { getToastContext } from '../_internal/toast-context.ts';
 
 /**
  * Returns the toast API for the nearest enclosing `<ToastRegion />`.
@@ -23,14 +21,8 @@ import { TOAST_CONTEXT_KEY, type ToastApi } from '../_internal/toast-context.ts'
  * intentionally loud — calling `useToast()` outside a region is always a
  * setup bug, not something to silently no-op.
  */
-export function useToast(): ToastApi {
-  const api = getContext<ToastApi | undefined>(TOAST_CONTEXT_KEY);
-  if (!api) {
-    throw new Error(
-      'useToast() must be called inside a <ToastRegion />. Mount one in your root layout.',
-    );
-  }
-  return api;
+export function useToast() {
+  return getToastContext();
 }
 
 export type {

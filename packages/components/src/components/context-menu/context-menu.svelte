@@ -17,20 +17,19 @@
 
 <script lang="ts">
   import type { ContextMenuProps } from './context-menu.types.ts';
-  import { setContext, tick } from 'svelte';
+  import { tick } from 'svelte';
   import type { VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import {
-    DROPDOWN_CONTEXT,
-    DROPDOWN_REGISTER,
-    DROPDOWN_REGISTER_TRIGGER,
-    DROPDOWN_SET_OPEN,
+    setDropdownContext,
+    setDropdownRegister,
+    setDropdownRegisterTrigger,
+    setDropdownSetOpen,
   } from '../dropdown/dropdown.context.ts';
-  import type { DropdownContext } from '../dropdown/dropdown.types.ts';
-  import { CONTEXT_MENU_CONTEXT, type ContextMenuContext } from './context-menu.context.ts';
+  import { setContextMenuContext } from './context-menu.context.ts';
 
   let {
     open = $bindable(false),
@@ -125,7 +124,7 @@
     close();
   }
 
-  setContext<DropdownContext>(DROPDOWN_CONTEXT, {
+  setDropdownContext({
     get menuId() {
       return menuId;
     },
@@ -141,10 +140,10 @@
     close,
     focusTrigger,
   });
-  setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER, registerMenu);
-  setContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER_TRIGGER, registerTrigger);
-  setContext<(nextOpen: boolean) => void>(DROPDOWN_SET_OPEN, setOpen);
-  setContext<ContextMenuContext>(CONTEXT_MENU_CONTEXT, {
+  setDropdownRegister(registerMenu);
+  setDropdownRegisterTrigger(registerTrigger);
+  setDropdownSetOpen(setOpen);
+  setContextMenuContext({
     get disabled() {
       return disabled;
     },

@@ -17,15 +17,9 @@
 
 <script lang="ts">
   import type { DropdownItemProps } from './dropdown-item.types.ts';
-  import { getContext, hasContext } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { DROPDOWN_CONTEXT } from '../dropdown/dropdown.context.ts';
-  import type { DropdownContext } from '../dropdown/dropdown.types.ts';
-
-  if (!hasContext(DROPDOWN_CONTEXT)) {
-    throw new Error('DropdownItem must be used within a Dropdown.');
-  }
+  import { getDropdownContext } from '../dropdown/dropdown.context.ts';
 
   let {
     variant = 'default',
@@ -38,7 +32,7 @@
     ...rest
   }: DropdownItemProps = $props();
 
-  const context = getContext<DropdownContext>(DROPDOWN_CONTEXT);
+  const context = getDropdownContext();
 
   type DropdownItemClickHandler = (
     event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },

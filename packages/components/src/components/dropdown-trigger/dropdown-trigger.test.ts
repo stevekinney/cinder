@@ -18,7 +18,7 @@ describe('DropdownTrigger', () => {
           children: createRawSnippet(() => ({ render: () => '<span>x</span>', setup: () => {} })),
         },
       }),
-    ).toThrow(/must be used within a Dropdown/);
+    ).toThrow(/missing_context/);
   });
 
   test('renders a button with aria-haspopup="menu"', () => {

@@ -133,7 +133,6 @@ describe('RadioGroup', () => {
       error = err instanceof Error ? err : new Error(String(err));
     }
     expect(error).not.toBeNull();
-    expect(error?.message).toContain('RadioGroup');
   });
 
   // Reference imports so tree-shaking doesn't drop them; they're used through

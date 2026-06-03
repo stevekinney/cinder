@@ -17,17 +17,12 @@
 
 <script lang="ts">
   import type { ContextMenuTriggerProps } from './context-menu-trigger.types.ts';
-  import { getContext, hasContext, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
-  import { DROPDOWN_REGISTER_TRIGGER } from '../dropdown/dropdown.context.ts';
-  import {
-    CONTEXT_MENU_CONTEXT,
-    type ContextMenuContext,
-  } from '../context-menu/context-menu.context.ts';
+  import { getDropdownRegisterTrigger } from '../dropdown/dropdown.context.ts';
+  import { getContextMenuContext } from '../context-menu/context-menu.context.ts';
 
-  if (!hasContext(DROPDOWN_REGISTER_TRIGGER) || !hasContext(CONTEXT_MENU_CONTEXT)) {
-    throw new Error('ContextMenu.Trigger must be used within a ContextMenu.');
-  }
+  const context = getContextMenuContext();
 
   let {
     class: className,
@@ -43,9 +38,7 @@
     ...rest
   }: ContextMenuTriggerProps = $props();
 
-  const registerTrigger =
-    getContext<(element: HTMLElement | null) => void>(DROPDOWN_REGISTER_TRIGGER);
-  const context = getContext<ContextMenuContext>(CONTEXT_MENU_CONTEXT);
+  const registerTrigger = getDropdownRegisterTrigger();
 
   let triggerElement = $state<HTMLDivElement | null>(null);
   let longPressTimer: ReturnType<typeof setTimeout> | undefined;

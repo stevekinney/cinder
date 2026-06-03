@@ -12,15 +12,12 @@
    * @avoidWhen Showing ordered progress through a wizard — use steps instead.
    * @related tab, tab-list, tab-panel, segmented-control
    */
-  /** Symbol key for the tabs Svelte context. */
-  export const TABS_CONTEXT_KEY = Symbol('cinder-tabs');
-
   export type { TabsContext, TabsOrientation, TabsProps } from './tabs.types.ts';
 </script>
 
 <script lang="ts">
-  import type { TabsContext, TabsProps } from './tabs.types.ts';
-  import { setContext } from 'svelte';
+  import type { TabsProps } from './tabs.types.ts';
+  import { setTabsContext } from './tabs-context.ts';
 
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -161,7 +158,7 @@
     }
   }
 
-  setContext<TabsContext>(TABS_CONTEXT_KEY, {
+  setTabsContext({
     get value() {
       return value;
     },

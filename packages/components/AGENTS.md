@@ -510,6 +510,35 @@ Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
   demonstrate `Parent.Leaf` composition and list every namespaced leaf in
   their `Subcomponents` region. Leaf READMEs point back at the parent for
   composed usage instead of duplicating a standalone snippet.
+- **Context uses `createContext`, never raw `Symbol` keys.** Define the
+  family's context in a dedicated `*-context.ts` module (`<family>.context.ts`
+  beside the parent, or `_internal/<family>-context.ts` for shared internals)
+  with Svelte's `createContext<T>()`:
+
+  ```ts
+  import { createContext } from 'svelte';
+
+  export type FooContext = {
+    /* … */
+  };
+
+  const [getFooContextStrict, setFooContext] = createContext<FooContext>();
+  export { setFooContext };
+  // Required (a leaf outside its parent is a programmer error): export the
+  // strict getter directly — it throws automatically on a missing provider.
+  export const getFooContext = getFooContextStrict;
+  // Optional (a leaf may legitimately run with no provider): wrap with
+  // optionalContext so a missing provider yields `undefined` instead of throwing.
+  // export const tryGetFooContext = optionalContext(getFooContextStrict);
+  ```
+
+  Do **not** hand-roll `setContext<T>(SYMBOL, …)` / `getContext<T | undefined>(SYMBOL)`
+  with a manual `if (!ctx) throw` — `createContext` provides the typed get/set
+  pair and the throw-on-missing-provider guard for you, and consumers get
+  compile-time narrowing without the `rawCtx`→`ctx` two-step cast. The Symbol
+  key must not be exported from the family barrel. See `tabs/tabs-context.ts`,
+  `dropdown/dropdown.context.ts`, and `_internal/side-navigation-group-context.ts`
+  (optional) for the canonical shapes.
 
 ### Generators
 

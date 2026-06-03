@@ -11,15 +11,12 @@
    * @avoidWhen Selecting zero or more independent options — use checkbox-group instead.
    * @related checkbox-group
    */
-  /** Symbol key for the radio-group Svelte context. */
-  export const RADIO_GROUP_CONTEXT_KEY = Symbol('cinder-radio-group');
-
   export type { RadioGroupContext, RadioGroupProps } from './radio-group.types.ts';
 </script>
 
 <script lang="ts">
-  import type { RadioGroupContext, RadioGroupProps } from './radio-group.types.ts';
-  import { setContext } from 'svelte';
+  import type { RadioGroupProps } from './radio-group.types.ts';
+  import { setRadioGroupContext } from './radio-group-context.ts';
 
   import {
     ariaInvalid,
@@ -49,7 +46,7 @@
   const errId = $derived(buildErrorId(groupId, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));
 
-  setContext<RadioGroupContext>(RADIO_GROUP_CONTEXT_KEY, {
+  setRadioGroupContext({
     get name() {
       return name;
     },

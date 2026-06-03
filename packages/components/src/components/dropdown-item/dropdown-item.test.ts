@@ -25,7 +25,7 @@ describe('DropdownItem', () => {
           children: createRawSnippet(() => ({ render: () => '<span>x</span>', setup: () => {} })),
         },
       }),
-    ).toThrow(/must be used within a Dropdown/);
+    ).toThrow(/missing_context/);
   });
 
   test('renders as a button with role="menuitem"', async () => {

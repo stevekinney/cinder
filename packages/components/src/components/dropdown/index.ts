@@ -25,10 +25,14 @@ const Dropdown = Object.assign(DropdownRoot, {
 
 export default Dropdown;
 export {
-  DROPDOWN_CONTEXT,
-  DROPDOWN_REGISTER,
-  DROPDOWN_REGISTER_TRIGGER,
-  DROPDOWN_SET_OPEN,
+  getDropdownContext,
+  getDropdownRegister,
+  getDropdownRegisterTrigger,
+  getDropdownSetOpen,
+  setDropdownContext,
+  setDropdownRegister,
+  setDropdownRegisterTrigger,
+  setDropdownSetOpen,
 } from './dropdown.context.ts';
 export type { DropdownContext, DropdownPlacement, DropdownProps } from './dropdown.types.ts';
 export { Dropdown };

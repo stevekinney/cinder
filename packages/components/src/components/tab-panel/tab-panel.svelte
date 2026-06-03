@@ -17,18 +17,13 @@
 
 <script lang="ts">
   import type { TabPanelProps } from './tab-panel.types.ts';
-  import { getContext } from 'svelte';
 
-  import { TABS_CONTEXT_KEY, type TabsContext } from '../tabs/tabs.svelte';
+  import { getTabsContext } from '../tabs/tabs-context.ts';
   import { cn } from '../../utilities/class-names.ts';
 
   let { value, class: className, children }: TabPanelProps = $props();
 
-  const rawTabs = getContext<TabsContext | undefined>(TABS_CONTEXT_KEY);
-  if (!rawTabs) {
-    throw new Error('TabPanel must be used inside a Tabs component.');
-  }
-  const tabs: TabsContext = rawTabs;
+  const tabs = getTabsContext();
 
   const isActive = $derived(tabs.isActive(value));
   // Both ids are derived from the root's baseId and this panel's value so

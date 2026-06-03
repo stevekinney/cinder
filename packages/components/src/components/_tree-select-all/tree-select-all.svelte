@@ -16,11 +16,9 @@
 </script>
 
 <script lang="ts">
-  import { getContext } from 'svelte';
-
   import type { TreeContext } from '../../_internal/tree-context.ts';
+  import { getTreeContext } from '../../_internal/tree-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { TREE_CONTEXT_KEY } from '../tree/tree.svelte';
   import type { TreeSelectAllProps } from './tree-select-all.types.ts';
 
   let {
@@ -32,11 +30,7 @@
     class: className,
   }: TreeSelectAllProps = $props();
 
-  const treeContext = getContext<TreeContext | undefined>(TREE_CONTEXT_KEY);
-  if (!treeContext) {
-    throw new Error('TreeSelectAll must be rendered from a Tree selectionControls snippet.');
-  }
-  const context = treeContext;
+  const context: TreeContext = getTreeContext();
 
   const disabled = $derived(
     !context.multiselectable || !context.hasSelectableSelectionScope(parentId, includeDescendants),
