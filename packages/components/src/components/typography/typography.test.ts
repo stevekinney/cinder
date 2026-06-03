@@ -328,4 +328,17 @@ describe('Typography robustness', () => {
     expect(element?.getAttribute('data-cinder-variant')).toBe('body1');
     expect(element?.textContent).toContain('Still renders');
   });
+
+  test('a variant matching an Object.prototype key falls back to body1 (no prototype leak)', () => {
+    // `'toString' in defaultElements` is true via the prototype chain, so without
+    // Object.hasOwn this would resolve to a function and break <svelte:element>.
+    const { container } = render(Typography, {
+      variant: 'toString' as never,
+      children: textSnippet('Prototype-safe'),
+    });
+    const element = container.querySelector('.cinder-typography');
+    expect(element?.tagName.toLowerCase()).toBe('p');
+    expect(element?.getAttribute('data-cinder-variant')).toBe('body1');
+    expect(element?.textContent).toContain('Prototype-safe');
+  });
 });

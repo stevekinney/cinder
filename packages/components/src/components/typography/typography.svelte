@@ -58,8 +58,10 @@
   // Normalize an unknown variant (only reachable from untyped JS callers) to 'body1'
   // and use it for BOTH the element lookup AND the data-cinder-variant attribute, so
   // the rendered element is a styled <p> rather than an unstyled fallback whose CSS
-  // selector matches nothing.
-  const resolvedVariant = $derived(variant in defaultElements ? variant : 'body1');
+  // selector matches nothing. Use Object.hasOwn — NOT the `in` operator — so inherited
+  // prototype keys like 'toString'/'constructor' don't pass as valid variants (which
+  // would make defaultElements[variant] a function and break <svelte:element>).
+  const resolvedVariant = $derived(Object.hasOwn(defaultElements, variant) ? variant : 'body1');
   const resolvedTag = $derived(component ?? defaultElements[resolvedVariant]);
 </script>
 
