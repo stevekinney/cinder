@@ -250,7 +250,7 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 
 ## Z-index layers
 
-Stacking order is fixed: tooltip < dropdown ≈ popover < modal ≈ sheet < toast. Toast sits above modal so confirmations and warnings still reach the user when a modal is open. Override these only if you are integrating cinder into an app with its own established stacking contract.
+Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal and Sheet render their own scrim via the native `<dialog>::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open. Override these only if you are integrating cinder into an app with its own established stacking contract.
 
 | Token                 | Default |
 | --------------------- | ------- |

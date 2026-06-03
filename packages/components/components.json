@@ -308,7 +308,7 @@
       "avoidWhen": [
         "Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.",
         "Showing a side panel — use drawer instead.",
-        "Showing structured content in a dialog — use modal, drawer, or sheet which compose Backdrop internally."
+        "Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim."
       ],
       "related": ["modal", "drawer", "sheet"],
       "hasConstraints": false,

@@ -10,7 +10,7 @@
    * @useWhen Building a loading state that dims the full viewport while an async operation runs.
    * @avoidWhen Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.
    * @avoidWhen Showing a side panel — use drawer instead.
-   * @avoidWhen Showing structured content in a dialog — use modal, drawer, or sheet which compose Backdrop internally.
+   * @avoidWhen Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim.
    * @related modal, drawer, sheet
    */
 
@@ -52,17 +52,29 @@
   const reducedMotion = useReducedMotion();
   const effectiveDuration = $derived(reducedMotion.current ? 0 : transitionDuration);
 
-  // Lock body scroll while open (counted lock — safe to nest with other overlays)
-  // so the page behind the scrim doesn't scroll under it. Opt out with
-  // lockScroll={false} when the consumer manages scrolling itself.
+  // SSR/hydration gate (overlay contract — see _internal/overlay.ts / OVERLAY-POLICY.md).
+  // `$effect` runs only on the client, so `hydrated` stays false through SSR and the
+  // server emits no scrim. Wrapping the element in `{#if hydrated}` keeps SSR HTML free
+  // of a dimmer whose scroll lock (a client-only effect) has not yet run.
+  let hydrated = $state(false);
   $effect(() => {
-    if (!open || !lockScroll) return;
+    hydrated = true;
+  });
+
+  // Lock body scroll while the scrim is present — including the fade-out outro, so
+  // the page can't scroll under a still-visible dimmer. We track the rendered scrim
+  // element rather than keying on `open`: the {#if open} block (with its outro) sets
+  // `scrimElement` on intro and clears it on outroend, so the lock is held for the
+  // element's full visible lifetime. Counted lock — safe to nest with other overlays.
+  let scrimElement: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!scrimElement || !lockScroll) return;
     const release = lockBodyScroll();
     return release;
   });
 </script>
 
-{#if open}
+{#if hydrated && open}
   <!--
     The scrim itself is decorative chrome. With no children it is hidden from
     assistive technology (aria-hidden). But when `children` are rendered — e.g. a
@@ -70,12 +82,14 @@
     aria-hidden, or that announced content is silenced for screen readers.
   -->
   <div
+    bind:this={scrimElement}
     {...rest}
     aria-hidden={children ? undefined : 'true'}
     class={classNames('cinder-backdrop', invisible && 'cinder-backdrop--invisible', className)}
     data-cinder-invisible={invisible ? '' : undefined}
     {onclick}
     transition:fade={{ duration: effectiveDuration }}
+    onoutroend={() => (scrimElement = undefined)}
   >
     {#if children}
       {@render children()}
