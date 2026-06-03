@@ -18,6 +18,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusRegionNavigator, type FocusRegion } from './focus-navigation.ts';
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
   import { stringifyOrNull } from '../../utilities/stringify.ts';
@@ -67,6 +68,9 @@
     type UnifiedDiffOptions,
     type UnifiedDiffResult,
   } from 'cinder/commentary/export';
+
+  // Shared reduced-motion preference (OVERLAY-POLICY: use the shared hook, not inline matchMedia).
+  const reducedMotion = useReducedMotion();
 
   let {
     id,
@@ -243,12 +247,7 @@
    * @returns 'instant' if user prefers reduced motion, 'smooth' otherwise
    */
   function getScrollBehavior(): ScrollBehavior {
-    // Check the media query at call time (not reactive) to respect user preference
-    if (typeof window !== 'undefined') {
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      return prefersReducedMotion ? 'instant' : 'smooth';
-    }
-    return 'instant'; // Default to instant during SSR
+    return reducedMotion.current ? 'instant' : 'smooth';
   }
 
   // =========================================================================

@@ -29,6 +29,7 @@
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import type {
     ToastItem,
     ToastOptions,
@@ -67,6 +68,9 @@
     swipeX?: number;
     swiping?: boolean;
   };
+
+  // Shared reduced-motion preference (OVERLAY-POLICY: use the shared hook, not inline matchMedia).
+  const reducedMotion = useReducedMotion();
 
   // Hydration gate — toast live regions are client-only, but wrapped app
   // content and the context provider still render during SSR.
@@ -324,10 +328,6 @@
     return regionElement?.querySelector(`[data-cinder-toast-id="${CSS.escape(id)}"]`) ?? null;
   }
 
-  function prefersReducedMotion(): boolean {
-    return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-  }
-
   function beginDismiss(id: string, reason: DismissReason): void {
     const item = findToast(id);
     if (!item || item.leaving) return;
@@ -337,8 +337,7 @@
 
     const element = getToastElement(id);
     const shell = element?.closest<HTMLElement>('.cinder-toast-shell');
-    const reducedMotion = prefersReducedMotion();
-    if (element && shell && !reducedMotion) {
+    if (element && shell && !reducedMotion.current) {
       shell.style.setProperty('--cinder-toast-height', `${shell.offsetHeight}px`);
       void shell.offsetHeight;
     }
@@ -361,7 +360,7 @@
     clearRemovalTimer(id);
     const cancelCompletion = waitForTransitionCompletion({
       element: shell,
-      reducedMotion,
+      reducedMotion: reducedMotion.current,
       onComplete: () => reallyRemove(id, generation),
     });
     removalTimers.set(id, cancelCompletion);

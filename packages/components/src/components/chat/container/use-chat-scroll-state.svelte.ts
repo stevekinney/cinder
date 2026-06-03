@@ -10,6 +10,7 @@
  */
 
 import type { Attachment } from 'svelte/attachments';
+import { useReducedMotion } from '../../../utilities/use-reduced-motion.svelte.ts';
 import type { ChatScrollStateChangeEvent } from './chat-events.ts';
 import {
   isAtBottom as checkIsAtBottom,
@@ -101,23 +102,6 @@ export interface UseChatScrollStateReturn {
 // Utilities
 // ==========================================================================
 
-/**
- * Detects if the user prefers reduced motion.
- * Uses matchMedia for browser support, falls back to false for SSR.
- */
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/**
- * Returns the appropriate scroll behavior based on user preference.
- * Respects prefers-reduced-motion by using 'auto' instead of 'smooth'.
- */
-function getScrollBehavior(): ScrollBehavior {
-  return prefersReducedMotion() ? 'auto' : 'smooth';
-}
-
 // ==========================================================================
 // Helper
 // ==========================================================================
@@ -170,6 +154,17 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     onScrollStateChange,
     onReachBottom,
   } = options ?? {};
+
+  // Shared reduced-motion preference (OVERLAY-POLICY: use the shared hook, not inline matchMedia).
+  const reducedMotion = useReducedMotion();
+
+  /**
+   * Returns the appropriate scroll behavior based on user preference.
+   * Respects prefers-reduced-motion by using 'auto' instead of 'smooth'.
+   */
+  function getScrollBehavior(): ScrollBehavior {
+    return reducedMotion.current ? 'auto' : 'smooth';
+  }
 
   // Reactive state
   let isAtBottom = $state(true);
@@ -302,7 +297,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     // Focus last message for keyboard users and clear the user scrolling flag
     // after animation completes (typical smooth scroll takes ~300-500ms)
     // For reduced motion, use minimal delay since scroll is instant
-    const scrollDuration = prefersReducedMotion() ? 50 : 500;
+    const scrollDuration = reducedMotion.current ? 50 : 500;
     setTimeout(() => {
       isUserScrolling = false;
       const wrappers = viewport.querySelectorAll<HTMLElement>('.chat-message-wrapper');
