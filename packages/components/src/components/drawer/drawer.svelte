@@ -24,7 +24,6 @@
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
   let {
@@ -41,7 +40,7 @@
     ...rest
   }: DrawerProps = $props();
 
-  const titleId = useId('cinder-drawer-title');
+  const titleId = $props.id();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();

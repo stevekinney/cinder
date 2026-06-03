@@ -30,7 +30,6 @@
     setSortableContext,
   } from '../../utilities/sortable-controller.svelte.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import SortableItem from '../_sortable-item.svelte';
   import {
     findCard,
@@ -77,8 +76,9 @@
     },
   });
 
-  const instructionsId = useId('cinder-kanban-board-instructions');
-  const columnInstructionsId = useId('cinder-kanban-board-column-instructions');
+  const baseId = $props.id();
+  const instructionsId = `${baseId}-instructions`;
+  const columnInstructionsId = `${baseId}-column-instructions`;
   let columnsElement = $state<HTMLElement | null>(null);
   let cardTarget = $state<CardMoveTarget | null>(null);
   let pointerColumnIndex = $state<number | null>(null);

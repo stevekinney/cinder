@@ -23,7 +23,6 @@
 
 <script lang="ts" generics="Item">
   import { getSortableContext } from '../utilities/sortable-controller.svelte.ts';
-  import { useId } from '../utilities/use-id.ts';
   import { cn } from '../utilities/class-names.ts';
 
   let {
@@ -42,7 +41,7 @@
   const context = getSortableContext();
 
   // Stable internal row id for pointer midpoint calculations.
-  const rowId = useId('cinder-sortable-row');
+  const rowId = $props.id();
 
   let handleEl = $state<HTMLButtonElement | null>(null);
   let rowEl = $state<HTMLLIElement | null>(null);

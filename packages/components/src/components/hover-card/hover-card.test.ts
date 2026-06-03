@@ -126,8 +126,16 @@ describe('HoverCard', () => {
     expect(wrapper.hasAttribute('aria-controls')).toBe(false);
     const card = queryHoverCard();
     expect(card).not.toBeNull();
-    expect(wrapper.getAttribute('aria-describedby')).toContain(card?.id ?? '');
-    expect(wrapper.getAttribute('aria-describedby')).toContain('cinder-hover-card-description');
+    const describedBy = wrapper.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain(card?.id ?? '');
+    // The description id is derived from the same $props.id() base as the card
+    // id: cardId = `${base}-card`, descriptionId = `${base}-description`. Assert
+    // the structural contract — suffix /-description$/ — rather than a literal
+    // prefix that $props.id() no longer produces.
+    const descriptionIdInDescribedBy = describedBy
+      .split(' ')
+      .find((token) => token !== card?.id && token.length > 0);
+    expect(descriptionIdInDescribedBy).toMatch(/-description$/);
   });
 
   test('showArrow enables Floating UI arrow middleware and positions the arrow', async () => {

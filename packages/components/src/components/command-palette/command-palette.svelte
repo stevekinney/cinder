@@ -23,7 +23,6 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { inDocumentOrder } from '../../utilities/document-order.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import {
     setCommandListContext,
     type CommandItemRegistrationInput,
@@ -44,8 +43,9 @@
   }: CommandPaletteProps = $props();
 
   // ── IDs ──────────────────────────────────────────────────────────────────
-  const listboxId = useId('cinder-command-palette-listbox');
-  const inputId = useId('cinder-command-palette-input');
+  const baseId = $props.id();
+  const listboxId = `${baseId}-listbox`;
+  const inputId = `${baseId}-input`;
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
   let dialogElement: HTMLDialogElement | undefined = $state();

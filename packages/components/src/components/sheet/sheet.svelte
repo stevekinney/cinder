@@ -24,7 +24,6 @@
   import { overflowFade } from '../../utilities/attachments.ts';
   import { cn } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
   let {
@@ -40,7 +39,7 @@
     ...rest
   }: SheetProps = $props();
 
-  const titleId = useId('cinder-sheet-title');
+  const titleId = $props.id();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();

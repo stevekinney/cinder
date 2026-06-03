@@ -28,7 +28,6 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { cn } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
 
   let {
     value = $bindable(''),
@@ -45,7 +44,7 @@
 
   // Group ID is needed to scope the description/error ids; consumers don't
   // pass an id because the group itself is a fieldset, not a labelled input.
-  const groupId = useId('cinder-radio-group');
+  const groupId = $props.id();
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));

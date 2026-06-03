@@ -28,7 +28,6 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
 
   let {
@@ -52,7 +51,7 @@
   const context = getFormFieldContext();
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
-  const generatedId = useId('cinder-file-upload');
+  const generatedId = $props.id();
   const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
   const consumerDescribedBy = $derived(rest['aria-describedby']);
   const describedBy = $derived(composeDescribedBy(context?.describedBy, consumerDescribedBy));

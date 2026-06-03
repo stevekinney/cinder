@@ -23,7 +23,8 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { cn } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const groupId = $props.id();
 
   let {
     legend,
@@ -35,8 +36,6 @@
     class: className,
     children,
   }: CheckboxGroupProps = $props();
-
-  const groupId = useId('cinder-checkbox-group');
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));

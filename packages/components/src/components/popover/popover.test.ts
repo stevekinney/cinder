@@ -392,7 +392,12 @@ describe('Popover — trigger ARIA', () => {
     const button = container.querySelector('button')!;
     expect(button.getAttribute('aria-expanded')).toBe('true');
     expect(button.getAttribute('aria-haspopup')).toBe('dialog');
-    expect(button.getAttribute('aria-controls')).toMatch(/^cinder-popover-/);
+    const ariaControls = button.getAttribute('aria-controls');
+    expect(ariaControls).toBeTruthy();
+    // aria-controls must point at the actual panel's id (the panel is asserted
+    // non-null above). $props.id() no longer produces a 'cinder-popover-' prefix,
+    // so assert the relationship rather than a literal prefix format.
+    expect(ariaControls).toBe(queryPopoverPanel()!.id);
   });
 
   test('aria-controls is absent when open=false', () => {
@@ -476,7 +481,11 @@ describe('Popover — trigger ARIA', () => {
       expect(queryPopoverPanel()).not.toBeNull();
     });
     expect(triggerButton.getAttribute('aria-expanded')).toBe('true');
-    expect(triggerButton.getAttribute('aria-controls')).toMatch(/^cinder-popover-/);
+    // Popover must have changed aria-controls from the pre-existing value to
+    // the actual panel id. $props.id() no longer produces a 'cinder-popover-'
+    // prefix, so assert the relationship rather than a literal prefix format.
+    expect(triggerButton.getAttribute('aria-controls')).not.toBe('preexisting-controls');
+    expect(triggerButton.getAttribute('aria-controls')).toBe(queryPopoverPanel()!.id);
     expect(triggerButton.getAttribute('aria-haspopup')).toBe('dialog');
 
     await rerender({

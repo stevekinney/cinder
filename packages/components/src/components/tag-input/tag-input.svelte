@@ -23,10 +23,9 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import type { TagInputProps } from './tag-input.types.ts';
 
-  const generatedId = useId('cinder-tag-input');
+  const generatedId = $props.id();
 
   let {
     id,

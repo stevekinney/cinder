@@ -30,7 +30,6 @@
   import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
   import DropdownLabel from '../dropdown-label/dropdown-label.svelte';
@@ -67,7 +66,7 @@
     ...rest
   }: RestSafeProps = $props();
 
-  const generatedId = useId('cinder-menu-bar');
+  const generatedId = $props.id();
   const rootId = $derived(providedId ?? generatedId);
 
   let rootElement = $state<HTMLDivElement | null>(null);

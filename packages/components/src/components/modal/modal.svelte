@@ -25,7 +25,8 @@
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const titleId = $props.id();
 
   let {
     open = $bindable(false),
@@ -86,7 +87,6 @@
     releaseEscapeHandler = null;
   }
 
-  const titleId = useId('cinder-modal-title');
   const bodyOverflowFade = overflowFade();
 
   $effect(() => {

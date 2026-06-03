@@ -18,7 +18,6 @@
 <script lang="ts">
   import type { SideNavigationGroupProps } from './side-navigation-group.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import {
     setSideNavigationGroupContext,
     tryGetSideNavigationGroupContext,
@@ -37,7 +36,7 @@
     ...rest
   }: SideNavigationGroupProps = $props();
 
-  const generatedId = useId('side-navigation-group');
+  const generatedId = $props.id();
   const id = $derived(idProp ?? generatedId);
 
   const validatedLabel = $derived.by(() => {

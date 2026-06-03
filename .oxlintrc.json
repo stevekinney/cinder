@@ -60,7 +60,18 @@
       }
     ],
     "unicorn/no-array-sort": "error",
-    "unicorn/prefer-add-event-listener": "error"
+    "unicorn/prefer-add-event-listener": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/utilities/use-id", "**/utilities/use-id.ts", "**/use-id.ts"],
+            "message": "use-id.ts was removed (SSR/hydration-unsafe module counter). Use Svelte 5's built-in $props.id() for component-scoped ARIA ids, or useStableId(seed) from id-factory.ts when an SSR-stable seed is available."
+          }
+        ]
+      }
+    ]
   },
   "ignorePatterns": [
     "dist/**",
