@@ -22,7 +22,7 @@
   import ChevronRight from 'lucide-svelte/icons/chevron-right';
   import X from 'lucide-svelte/icons/x';
   import { createFocusTrap } from '../../focus-trap/index.ts';
-  import { bodyScrollLock } from '../../../utilities/attachments.ts';
+  import { createBodyScrollLock } from '../../../utilities/attachments.ts';
 
   let { images, initialIndex = 0, open = $bindable(false), onclose }: ImageLightboxProps = $props();
 
@@ -94,7 +94,7 @@
     onkeydown={handleKeyDown}
     tabindex="-1"
     transition:fade={{ duration: 150 }}
-    {@attach bodyScrollLock}
+    {@attach createBodyScrollLock()}
     {@attach createFocusTrap()}
   >
     <button type="button" class="lightbox-close" aria-label="Close image viewer" onclick={close}>
