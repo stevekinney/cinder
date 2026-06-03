@@ -93,7 +93,7 @@
   data-count={validImages.length}
   {...rest}
 >
-  {#each validImages as { image, url }, loopIndex (url)}
+  {#each validImages as { image, url }, loopIndex (url + '-' + loopIndex)}
     {@const displayIndex = loopIndex + 1}
     {@const alt = getAltText(image, displayIndex)}
     <figure class="message-attachment" role="listitem">

@@ -468,7 +468,7 @@
       {emptyMessage}
     </div>
   {:else}
-    {#each renderedSuggestions as suggestion, index (suggestion.value)}
+    {#each renderedSuggestions as suggestion, index (suggestion.value + '-' + index)}
       {@const suggestionLabel = suggestion.label ?? suggestion.value}
       {@const parts = highlightParts(suggestionLabel, value)}
       <div

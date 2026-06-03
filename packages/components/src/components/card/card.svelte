@@ -34,7 +34,15 @@
     ...rest
   }: CardProps = $props();
 
-  const titleTag = $derived(`h${headingLevel}` as const);
+  // Coerce + clamp at runtime: a consumer can pass 0, 7, NaN, or a non-numeric
+  // value (JS callers, schema-driven usage). Building `h${headingLevel}` directly
+  // would emit invalid markup like <h0>/<hNaN>. Matches EmptyState's heading clamp.
+  const resolvedHeadingLevel = $derived(
+    Number.isFinite(Math.trunc(Number(headingLevel)))
+      ? Math.min(6, Math.max(1, Math.trunc(Number(headingLevel))))
+      : 3,
+  );
+  const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
 </script>
 
 <div
