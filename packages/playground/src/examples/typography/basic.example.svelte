@@ -22,9 +22,7 @@
   <Typography variant="overline">Overline — uppercase, rendered as span.</Typography>
   <Typography variant="label">Label — medium weight, rendered as span.</Typography>
   <Typography variant="h2" component="span">h2 styled as a span (component override)</Typography>
-  <Typography variant="body1" gutterBottom
-    >Body with gutterBottom — adds margin-block-end.</Typography
-  >
+  <Typography variant="body1" gutterBottom>Body with gutterBottom.</Typography>
   <Typography variant="body1" noWrap style="max-width: 200px;">
     noWrap — this long text will be truncated with an ellipsis when it overflows.
   </Typography>

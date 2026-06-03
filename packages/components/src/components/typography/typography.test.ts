@@ -314,9 +314,10 @@ describe('Typography class merging and native attribute forwarding', () => {
 });
 
 describe('Typography robustness', () => {
-  test('an unknown variant (untyped consumer) falls back to a <p> element', () => {
+  test('an unknown variant (untyped consumer) falls back to a styled body1 <p>', () => {
     // TypeScript prevents this, but a JS consumer could pass an unknown variant.
-    // Without the fallback, `<svelte:element this={undefined}>` would render nothing.
+    // The unknown variant normalizes to body1 for BOTH the element and the
+    // data-cinder-variant hook, so the fallback is a *styled* <p>, not an unstyled one.
     const { container } = render(Typography, {
       variant: 'nonsense' as never,
       children: textSnippet('Still renders'),
@@ -324,6 +325,7 @@ describe('Typography robustness', () => {
     const element = container.querySelector('.cinder-typography');
     expect(element).not.toBeNull();
     expect(element?.tagName.toLowerCase()).toBe('p');
+    expect(element?.getAttribute('data-cinder-variant')).toBe('body1');
     expect(element?.textContent).toContain('Still renders');
   });
 });

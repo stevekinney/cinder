@@ -55,17 +55,19 @@
     label: 'span',
   };
 
-  // `defaultElements[variant] ?? 'p'` guards against an untyped (JS) consumer passing
-  // an unknown variant: without the fallback, `defaultElements[badVariant]` is
-  // `undefined` and `<svelte:element this={undefined}>` renders nothing.
-  const resolvedTag = $derived(component ?? defaultElements[variant] ?? 'p');
+  // Normalize an unknown variant (only reachable from untyped JS callers) to 'body1'
+  // and use it for BOTH the element lookup AND the data-cinder-variant attribute, so
+  // the rendered element is a styled <p> rather than an unstyled fallback whose CSS
+  // selector matches nothing.
+  const resolvedVariant = $derived(variant in defaultElements ? variant : 'body1');
+  const resolvedTag = $derived(component ?? defaultElements[resolvedVariant]);
 </script>
 
 <svelte:element
   this={resolvedTag}
   {...rest}
   class={classNames('cinder-typography', className)}
-  data-cinder-variant={variant}
+  data-cinder-variant={resolvedVariant}
   data-cinder-gutter={gutterBottom ? '' : undefined}
   data-cinder-nowrap={noWrap ? '' : undefined}
 >
