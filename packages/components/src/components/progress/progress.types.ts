@@ -9,7 +9,8 @@ export type ProgressSize = 'sm' | 'md' | 'lg';
  * and a static surface under `prefers-reduced-motion: reduce`.
  *
  * ACCESSIBLE NAME (required): every progressbar must have an accessible name
- * per ARIA 1.2 §6.9. Provide exactly one of `ariaLabel` or `ariaLabelledby`.
+ * per ARIA 1.2 §6.9. Provide `ariaLabel` or `ariaLabelledby` (at least one). If
+ * both are supplied, `aria-labelledby` wins per ARIA name-computation precedence.
  * `label` does NOT satisfy this — it only feeds `aria-valuetext` (the announced
  * status string), not the element's accessible name.
  */

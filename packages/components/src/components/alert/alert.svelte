@@ -75,9 +75,17 @@
     const next = candidates.find((element) =>
       Boolean(alertElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
     );
-    const previous = candidates.findLast((element) =>
-      Boolean(alertElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
-    );
+    // Manual reverse scan instead of Array.prototype.findLast — that method is
+    // newer than the project's runtime target and is avoided elsewhere for
+    // broader browser compatibility.
+    let previous: HTMLElement | undefined;
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const element = candidates[i]!;
+      if (alertElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING) {
+        previous = element;
+        break;
+      }
+    }
 
     return next ?? previous ?? alertDocument.body;
   }

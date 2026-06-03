@@ -357,7 +357,7 @@
            so key by value to reuse chip DOM on removal instead of recreating
            every chip after the removed index. Duplicates make a pure value key
            ambiguous, so fall back to a position-qualified composite. -->
-      {#each currentTags as tag, index (allowDuplicates ? `${index}:${tag}` : tag)}
+      {#each currentTags as tag, index (`${index}:${tag}`)}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>
           {#if !field.disabled && !resolvedReadonly}
