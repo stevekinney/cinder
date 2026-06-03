@@ -16,33 +16,58 @@
 </script>
 
 <script lang="ts">
+  import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
+
   import { classNames } from '../../utilities/class-names.ts';
-  import type { LinkArm, NavigationItemProps } from './navigation-item.types.ts';
+  import type { NavigationItemProps } from './navigation-item.types.ts';
 
-  const props: NavigationItemProps = $props();
+  // `href` and `onclick` are destructured explicitly because they drive the link-vs-button
+  // discriminant and are handled by the internal `handleClick` wrapper.
+  // `...rest` carries remaining native HTML attributes to the underlying element.
+  // The per-branch `$derived` casts (anchorAttributes / buttonAttributes) are safe because
+  // the template `{#if isLink}` discriminant has already chosen the correct element —
+  // this mirrors the pattern used in button.svelte for the same reason.
+  const {
+    active,
+    disabled,
+    variant,
+    class: customClassName,
+    children,
+    onclick,
+    href,
+    // `tabindex` is pulled out so a disabled item can force -1 (removed from the tab
+    // order) while still honoring a consumer-supplied value on an enabled item.
+    tabindex,
+    ...rest
+  }: NavigationItemProps = $props();
 
-  const isLink = $derived('href' in props);
+  const isLink = $derived(href !== undefined);
 
-  const resolvedClass = $derived(classNames('cinder-navigation-item', props.class));
-  const active = $derived(props.active ?? false);
-  const disabled = $derived(props.disabled ?? false);
-  const variant = $derived(props.variant ?? 'horizontal');
+  const resolvedClass = $derived(classNames('cinder-navigation-item', customClassName));
+  const isActive = $derived(active ?? false);
+  const isDisabled = $derived(disabled ?? false);
+  const resolvedVariant = $derived(variant ?? 'horizontal');
+  // Disabled forces tabindex=-1; otherwise the consumer's value (or undefined) is kept.
+  const resolvedTabindex = $derived(isDisabled ? -1 : tabindex);
+
+  const anchorAttributes = $derived(
+    rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'tabindex'>,
+  );
+  const buttonAttributes = $derived(
+    rest as Omit<HTMLButtonAttributes, 'class' | 'onclick' | 'disabled' | 'tabindex'>,
+  );
 
   function handleClick(event: MouseEvent): void {
-    if (disabled) {
+    if (isDisabled) {
       event.preventDefault();
       return;
     }
-    if (isLink) {
-      // Link arm: forward to consumer onclick if provided. The consumer
-      // decides whether to preventDefault — useful for SPA navigation that
-      // wants modified clicks (cmd/ctrl/shift/alt, middle-click) to fall
-      // through to native browser behavior.
-      const linkOnclick = (props as LinkArm).onclick;
-      linkOnclick?.(event);
-      return;
-    }
-    (props as { onclick: (event: MouseEvent) => void }).onclick(event);
+    // Forward to the consumer's onclick if one was provided. The optional call is
+    // important for both arms: a link forwards so the consumer can manage SPA
+    // navigation (and let modified/middle clicks fall through to the browser), and
+    // the button arm must not crash when `href={someUndefinedValue}` routes a
+    // consumer into the button branch without supplying an onclick.
+    (onclick as ((event: MouseEvent) => void) | undefined)?.(event);
   }
 </script>
 
@@ -59,30 +84,33 @@
     plain <a aria-disabled> yourself instead of a disabled NavigationItem.
   -->
   <a
-    href={disabled ? undefined : (props as LinkArm).href}
-    class={resolvedClass}
-    aria-current={active ? 'page' : undefined}
-    aria-disabled={disabled ? true : undefined}
-    tabindex={disabled ? -1 : undefined}
-    data-active={active}
+    {...anchorAttributes}
+    href={isDisabled ? undefined : href}
+    aria-current={isActive ? 'page' : undefined}
+    aria-disabled={isDisabled ? true : undefined}
+    tabindex={resolvedTabindex}
+    data-active={isActive}
     data-cinder-navigation-item
-    data-variant={variant}
+    data-variant={resolvedVariant}
     onclick={handleClick}
+    class={resolvedClass}
   >
-    {@render props.children()}
+    {@render children()}
   </a>
 {:else}
   <button
+    {...buttonAttributes}
     type="button"
-    class={resolvedClass}
-    aria-current={active ? 'page' : undefined}
-    aria-disabled={disabled ? true : undefined}
-    {disabled}
-    data-active={active}
+    aria-current={isActive ? 'page' : undefined}
+    aria-disabled={isDisabled ? true : undefined}
+    disabled={isDisabled}
+    tabindex={resolvedTabindex}
+    data-active={isActive}
     data-cinder-navigation-item
-    data-variant={variant}
+    data-variant={resolvedVariant}
     onclick={handleClick}
+    class={resolvedClass}
   >
-    {@render props.children()}
+    {@render children()}
   </button>
 {/if}

@@ -25,6 +25,7 @@
     totalPages,
     totalCount,
     class: customClassName,
+    ...rest
   }: PaginationProps = $props();
 
   const mergedClassName = $derived(classNames('cinder-pagination', customClassName));
@@ -94,7 +95,7 @@
   }
 </script>
 
-<nav class={mergedClassName} aria-label="Pagination">
+<nav class={mergedClassName} aria-label="Pagination" {...rest}>
   {#if totalCount !== undefined}
     <p class="cinder-pagination__count" aria-live="polite">
       {formatNumber(totalCount)} results

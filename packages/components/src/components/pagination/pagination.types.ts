@@ -1,4 +1,6 @@
-export type PaginationProps = {
+import type { HTMLAttributes } from 'svelte/elements';
+
+export type PaginationProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Current page number (1-indexed). Bindable. */
   currentPage: number;
   /** Total number of pages. */

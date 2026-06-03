@@ -3,12 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import {
-  analyzeAll,
-  analyzeComponent,
-  getProjectCreationCount,
-  resetProject,
-} from './analyze.ts';
+import { analyzeAll, analyzeComponent, getProjectCreationCount, resetProject } from './analyze.ts';
 
 const COMPONENTS_DIR = join(import.meta.dirname, '../../components/src/components');
 
@@ -279,21 +274,23 @@ describe('shared ts-morph project', () => {
 });
 
 // ---------------------------------------------------------------------------
-// NavigationItem — non-destructuring $props() returns empty props array
+// SideNavigationItem — non-destructuring $props() returns empty props array
 // ---------------------------------------------------------------------------
 
-describe('analyzeComponent — navigation-item.svelte (non-destructuring $props)', () => {
+describe('analyzeComponent — side-navigation-item.svelte (non-destructuring $props)', () => {
   it('returns an empty props array when $props() is not destructured', async () => {
-    const manifest = await analyzeComponent(componentPath('navigation-item'));
-    // NavigationItem uses `const props: NavigationItemProps = $props()` (no destructuring),
-    // so extractPropsFromSvelteAst returns [] and the manifest has no props.
+    const manifest = await analyzeComponent(componentPath('side-navigation-item'));
+    // SideNavigationItem uses `const props: SideNavigationItemProps = $props()` (no
+    // destructuring), so extractPropsFromSvelteAst returns [] and the manifest has no props.
+    // (NavigationItem previously covered this path but now destructures $props() to forward
+    // native attributes via `...rest`, so the non-destructure case moved to this component.)
     expect(manifest.props).toEqual([]);
   });
 
   it('still returns the correct name and kebabName', async () => {
-    const manifest = await analyzeComponent(componentPath('navigation-item'));
-    expect(manifest.name).toBe('NavigationItem');
-    expect(manifest.kebabName).toBe('navigation-item');
+    const manifest = await analyzeComponent(componentPath('side-navigation-item'));
+    expect(manifest.name).toBe('SideNavigationItem');
+    expect(manifest.kebabName).toBe('side-navigation-item');
   });
 });
 

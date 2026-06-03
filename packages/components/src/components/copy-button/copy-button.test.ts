@@ -152,6 +152,64 @@ describe('CopyButton', () => {
     });
   });
 
+  test('native attributes pass through to the button element', () => {
+    const { container } = render(CopyButton, {
+      value: 'hello',
+      id: 'copy-btn',
+      'data-testid': 'copy-btn-testid',
+      name: 'copy-action',
+    });
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('id')).toBe('copy-btn');
+    expect(button?.getAttribute('data-testid')).toBe('copy-btn-testid');
+    expect(button?.getAttribute('name')).toBe('copy-action');
+  });
+
+  test('consumer cannot clobber controlled aria-label or aria-live', () => {
+    // These attrs are computed internally and Omit-ted from the prop type, so a
+    // consumer can only reach them by bypassing types (props object cast). Even then
+    // the component wins by spread ordering: a bypassed value lands in `rest` but the
+    // explicit aria-label/aria-live bindings rendered AFTER {...rest} override it.
+    const { container } = render(CopyButton, {
+      value: 'hello',
+      'aria-label': 'CONSUMER_OVERRIDE',
+      'aria-live': 'assertive',
+    } as never);
+    const button = container.querySelector('button');
+    // Internal computed label wins
+    expect(button?.getAttribute('aria-label')).toBe('Copy to clipboard');
+    // Internal aria-live="polite" wins
+    expect(button?.getAttribute('aria-live')).toBe('polite');
+  });
+
+  test('consumer onclick via rest does not bypass the internal copy handler', async () => {
+    // `onclick` is Omit-ted from the type (compile-time guard). A bypassed handler lands
+    // in `rest`, but the explicit onclick={handleClick} rendered AFTER {...rest} overrides
+    // it (Svelte 5: the later same-key attribute wins), so the clipboard logic still runs.
+    const writes: string[] = [];
+    mockClipboard(writes);
+    let consumerFired = 0;
+    const { container } = render(CopyButton, {
+      value: 'copy-me',
+      onclick: () => {
+        consumerFired += 1;
+      },
+    } as never);
+    const button = container.querySelector('button') as HTMLButtonElement;
+    await fireEvent.click(button);
+    // The internal handler ran (value copied)…
+    await waitFor(() => expect(writes).toEqual(['copy-me']));
+    // …and the consumer's overridden onclick never fired.
+    expect(consumerFired).toBe(0);
+  });
+
+  test('consumer cannot turn the copy button into a form submitter via type', () => {
+    // `type` is Omit-ted and `type="button"` is rendered AFTER {...rest}, so a bypassed
+    // `type="submit"` cannot make CopyButton submit an enclosing form.
+    const { container } = render(CopyButton, { value: 'x', type: 'submit' } as never);
+    expect(container.querySelector('button')?.getAttribute('type')).toBe('button');
+  });
+
   test('unmounting after a copy leaves no pending reset timer', async () => {
     // handleClick schedules a setTimeout(confirmDuration) to flip `copied`
     // back to false. onDestroy must clear it — otherwise the callback fires

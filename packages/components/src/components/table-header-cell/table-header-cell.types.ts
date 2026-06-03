@@ -1,5 +1,13 @@
 import type { Snippet } from 'svelte';
-export type TableHeaderCellProps = {
+import type { HTMLThAttributes } from 'svelte/elements';
+
+// `aria-sort` is owned by the component (computed from the parent Table's sort state
+// and emitted after the attribute spread), so it's Omit-ted — a consumer value would
+// be silently dropped at runtime.
+export type TableHeaderCellProps = Omit<
+  HTMLThAttributes,
+  'class' | 'align' | 'scope' | 'aria-sort'
+> & {
   /**
    * Column key. Required when `sortable=true` so the parent Table can
    * track which column the user activated.

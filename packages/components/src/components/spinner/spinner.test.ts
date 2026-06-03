@@ -72,4 +72,29 @@ describe('Spinner', () => {
     );
     expect(css).not.toContain('--cinder-duration-slow, 1s');
   });
+
+  test('forwards native HTML attributes (id, data-testid) to the root span', () => {
+    const { container } = render(Spinner, { props: { id: 'my-spinner', 'data-testid': 'spin' } });
+    const spinner = container.querySelector('.cinder-spinner');
+    expect(spinner?.getAttribute('id')).toBe('my-spinner');
+    expect(spinner?.getAttribute('data-testid')).toBe('spin');
+  });
+
+  test('component-controlled role="status" cannot be clobbered by rest spread', () => {
+    // Passing role via rest must NOT override the component's own role attr because
+    // {...rest} is spread before role="status" in the template.
+    const { container } = render(Spinner, { props: { role: 'img' } as never });
+    const spinner = container.querySelector('.cinder-spinner');
+    expect(spinner?.getAttribute('role')).toBe('status');
+  });
+
+  test('component-controlled aria-label cannot be clobbered by rest spread', () => {
+    // When the consumer passes aria-label via rest, the component's own aria-label
+    // (derived from the `label` prop) wins because it appears after {...rest}.
+    const { container } = render(Spinner, {
+      props: { label: 'Loading data', 'aria-label': 'should be ignored' } as never,
+    });
+    const spinner = container.querySelector('.cinder-spinner');
+    expect(spinner?.getAttribute('aria-label')).toBe('Loading data');
+  });
 });

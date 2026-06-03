@@ -4,6 +4,8 @@
   export type TableHeaderCellFixtureProps = {
     align?: TableHeaderCellProps['align'];
     sortable?: TableHeaderCellProps['sortable'];
+    /** Optional extra native attributes forwarded to the TableHeaderCell (for passthrough tests). */
+    headerCellProps?: Omit<TableHeaderCellProps, 'children'>;
   };
 </script>
 
@@ -15,13 +17,18 @@
   import TableHeaderCell from '../../components/table-header-cell/table-header-cell.svelte';
   import TableRow from '../../components/table-row/table-row.svelte';
 
-  let { align, sortable = false }: TableHeaderCellFixtureProps = $props();
+  let { align, sortable = false, headerCellProps }: TableHeaderCellFixtureProps = $props();
 </script>
 
 <Table>
   <TableHeader>
     <TableRow>
-      <TableHeaderCell {...align === undefined ? {} : { align }} {sortable} column="commits">
+      <TableHeaderCell
+        {...align === undefined ? {} : { align }}
+        {sortable}
+        column="commits"
+        {...headerCellProps}
+      >
         Commits
       </TableHeaderCell>
     </TableRow>

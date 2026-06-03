@@ -1,4 +1,6 @@
 import type { Snippet } from 'svelte';
+import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
+
 type CommonArm = {
   active?: boolean;
   disabled?: boolean;
@@ -17,16 +19,30 @@ type CommonArm = {
   variant?: 'horizontal' | 'mobile' | 'vertical';
   children: Snippet;
 };
-export type LinkArm = CommonArm & {
-  href: string;
-  /**
-   * Optional click handler called for the rendered `<a>` element. Useful for
-   * intercepting plain left-clicks for SPA navigation while letting modified
-   * clicks (cmd/ctrl/shift/alt or middle-click) fall through to native browser
-   * behavior. Disabled-state preventDefault still applies.
-   */
-  onclick?: (event: MouseEvent) => void;
-};
-type ButtonArm = CommonArm & { onclick: (event: MouseEvent) => void };
+// `aria-current` and `aria-disabled` are owned by the component (derived from the
+// `active` / `disabled` props and emitted after the attribute spread). They're
+// Omit-ted from both arms so a consumer value is a compile error rather than being
+// silently overridden at runtime. `disabled` is owned by `CommonArm`, so it's also
+// Omit-ted from the button arm to keep a single source of truth (matching the
+// `buttonAttributes` runtime cast).
+export type LinkArm = CommonArm &
+  Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'aria-current' | 'aria-disabled'> & {
+    href: string;
+    /**
+     * Optional click handler called for the rendered `<a>` element. Useful for
+     * intercepting plain left-clicks for SPA navigation while letting modified
+     * clicks (cmd/ctrl/shift/alt or middle-click) fall through to native browser
+     * behavior. Disabled-state preventDefault still applies.
+     */
+    onclick?: (event: MouseEvent) => void;
+  };
+type ButtonArm = CommonArm &
+  Omit<
+    HTMLButtonAttributes,
+    'class' | 'onclick' | 'disabled' | 'type' | 'aria-current' | 'aria-disabled'
+  > & {
+    href?: undefined;
+    onclick: (event: MouseEvent) => void;
+  };
 /** Props for the NavigationItem component. Pass `href` for a link, `onclick` for a button. */
 export type NavigationItemProps = LinkArm | ButtonArm;

@@ -27,6 +27,7 @@
     align = 'left',
     class: className,
     children,
+    ...rest
   }: TableHeaderCellProps = $props();
 
   const table = getTableContext();
@@ -48,6 +49,7 @@
 </script>
 
 <th
+  {...rest}
   {scope}
   class={cn('cinder-table__header-cell', className)}
   data-cinder-align={align}

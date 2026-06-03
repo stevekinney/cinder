@@ -4,14 +4,17 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    active: {
-      type: 'boolean',
+    class: {
+      type: 'string',
+    },
+    href: {
+      type: 'string',
     },
     disabled: {
       type: 'boolean',
     },
-    class: {
-      type: 'string',
+    active: {
+      type: 'boolean',
     },
     listItemClass: {
       type: 'string',

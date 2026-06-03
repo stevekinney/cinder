@@ -152,4 +152,36 @@ describe('Pagination', () => {
     const currentButtons = container.querySelectorAll('[aria-current="page"]');
     expect(currentButtons.length).toBe(1);
   });
+
+  // §Native attribute passthrough — rest spread
+
+  test('forwards id and data-* attributes to the nav element', () => {
+    const { container } = render(Pagination, {
+      props: {
+        currentPage: 1,
+        totalPages: 5,
+        id: 'main-pagination',
+        'data-testid': 'pagination-nav',
+      },
+    });
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('id')).toBe('main-pagination');
+    expect(nav?.getAttribute('data-testid')).toBe('pagination-nav');
+  });
+
+  test('default aria-label="Pagination" is present when consumer does not override it', () => {
+    const { container } = render(Pagination, {
+      props: { currentPage: 1, totalPages: 5 },
+    });
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe('Pagination');
+  });
+
+  test('consumer can override aria-label via rest spread', () => {
+    const { container } = render(Pagination, {
+      props: { currentPage: 1, totalPages: 5, 'aria-label': 'Search results pages' },
+    });
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe('Search results pages');
+  });
 });

@@ -135,3 +135,38 @@ describe('EmptyState rendering', () => {
     expect(iconRule).not.toContain('var(--cinder-text-disabled)');
   });
 });
+
+describe('EmptyState native attribute passthrough', () => {
+  test('forwards id to the root div', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Empty', id: 'my-empty-state' },
+    });
+    const root = container.querySelector('.cinder-empty-state');
+    expect(root?.getAttribute('id')).toBe('my-empty-state');
+  });
+
+  test('forwards data-* attributes to the root div', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Empty', 'data-testid': 'empty-state-fixture' },
+    });
+    const root = container.querySelector('.cinder-empty-state');
+    expect(root?.getAttribute('data-testid')).toBe('empty-state-fixture');
+  });
+
+  test('forwards aria-describedby to the root div', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Empty', 'aria-describedby': 'desc-id' },
+    });
+    const root = container.querySelector('.cinder-empty-state');
+    expect(root?.getAttribute('aria-describedby')).toBe('desc-id');
+  });
+
+  test('consumer class is merged with cinder-empty-state, not replaced', () => {
+    const { container } = render(EmptyState, {
+      props: { title: 'Empty', class: 'extra-class', 'data-testid': 'passthrough-class' },
+    });
+    const root = container.querySelector('.cinder-empty-state');
+    expect(root?.classList.contains('cinder-empty-state')).toBe(true);
+    expect(root?.classList.contains('extra-class')).toBe(true);
+  });
+});

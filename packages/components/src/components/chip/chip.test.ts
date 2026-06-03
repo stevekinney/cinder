@@ -359,6 +359,96 @@ describe('Chip', () => {
     expect(body).not.toContain('color: var(--cinder-text)');
     expect(chipCss).toContain('border-radius: var(--cinder-radius-full)');
   });
+
+  // Native attribute passthrough regression tests.
+  // These guard that the HTMLAttributes union extension works end-to-end:
+  // arbitrary native attrs reach the DOM, but component-controlled attrs cannot be clobbered.
+  describe('native attribute passthrough', () => {
+    test('display mode forwards aria-describedby to the root span', () => {
+      const { container } = render(Chip, {
+        label: 'Tag',
+        'aria-describedby': 'hint-text',
+      });
+      const chip = container.querySelector('.cinder-chip');
+      expect(chip?.getAttribute('aria-describedby')).toBe('hint-text');
+    });
+
+    test('display mode forwards tabindex to the root span', () => {
+      const { container } = render(Chip, {
+        label: 'Tag',
+        tabindex: 0,
+      } as any);
+      const chip = container.querySelector('.cinder-chip');
+      expect(chip?.getAttribute('tabindex')).toBe('0');
+    });
+
+    test('display mode: consumer cannot clobber data-cinder-mode via native spread', () => {
+      const { container } = render(Chip, {
+        label: 'Tag',
+        'data-cinder-mode': 'toggle',
+      } as any);
+      const chip = container.querySelector('.cinder-chip');
+      // Component's explicit data-cinder-mode="display" must override the spread value.
+      expect(chip?.getAttribute('data-cinder-mode')).toBe('display');
+    });
+
+    test('toggle mode forwards aria-describedby to the root button', () => {
+      const { container } = render(Chip, {
+        mode: 'toggle',
+        label: 'Filter',
+        pressed: false,
+        'aria-describedby': 'filter-hint',
+      });
+      const chip = container.querySelector('button.cinder-chip');
+      expect(chip?.getAttribute('aria-describedby')).toBe('filter-hint');
+    });
+
+    test('toggle mode: consumer cannot clobber aria-pressed via native spread', () => {
+      // `aria-pressed` is Omit-ted from ChipToggleProps (component-owned), so it's
+      // injected via a type-bypassing cast the way an untyped JS consumer could.
+      const { container } = render(Chip, {
+        mode: 'toggle',
+        label: 'Filter',
+        pressed: true,
+        'aria-pressed': 'false',
+      } as never);
+      const chip = container.querySelector('button.cinder-chip');
+      // Component's explicit aria-pressed={pressed} (true) must override the spread value.
+      expect(chip?.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('toggle mode: consumer cannot turn the chip into a form submitter via type', () => {
+      // `type` is Omit-ted and `type="button"` is rendered AFTER {...rest}, so a bypassed
+      // `type="submit"` cannot make a toggle chip submit an enclosing form.
+      const { container } = render(Chip, {
+        mode: 'toggle',
+        label: 'Filter',
+        pressed: false,
+        type: 'submit',
+      } as never);
+      expect(container.querySelector('button.cinder-chip')?.getAttribute('type')).toBe('button');
+    });
+
+    test('removable mode forwards aria-describedby to the root span', () => {
+      const { container } = render(Chip, {
+        mode: 'removable',
+        label: 'JavaScript',
+        'aria-describedby': 'remove-hint',
+      });
+      const chip = container.querySelector('span.cinder-chip');
+      expect(chip?.getAttribute('aria-describedby')).toBe('remove-hint');
+    });
+
+    test('removable mode forwards id to the root span', () => {
+      const { container } = render(Chip, {
+        mode: 'removable',
+        label: 'JavaScript',
+        id: 'chip-removable',
+      });
+      const chip = container.querySelector('span.cinder-chip');
+      expect(chip?.getAttribute('id')).toBe('chip-removable');
+    });
+  });
 });
 
 // Source-level guard for the disabled-chip contrast fix. The disabled label must

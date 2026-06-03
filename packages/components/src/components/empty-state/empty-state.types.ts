@@ -1,5 +1,7 @@
 import type { Snippet } from 'svelte';
-export type EmptyStateProps = {
+import type { HTMLAttributes } from 'svelte/elements';
+
+export type EmptyStateProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   title: string;
   description?: string;
   class?: string;
