@@ -136,4 +136,22 @@ describe('Backdrop body-scroll lock', () => {
     unmount();
     expect(document.body.style.overflow).toBe('');
   });
+
+  test('keeps the lock held across a rapid close→reopen toggle', async () => {
+    // Rapid-toggle race (Cursor Bugbot): open → close (outro starts) → reopen
+    // before the outro completes. A stale outro callback must NOT release the lock
+    // while the scrim is open and visible. The onoutroend guard (`if (!open)`)
+    // ensures only a genuine close clears the tracked element.
+    _resetScrollLock();
+    const { rerender } = render(Backdrop, { props: { open: true } });
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await rerender({ open: false });
+    await rerender({ open: true });
+    // The scrim is open again; scroll must remain locked.
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await rerender({ open: false });
+    expect(document.body.style.overflow).toBe('');
+  });
 });

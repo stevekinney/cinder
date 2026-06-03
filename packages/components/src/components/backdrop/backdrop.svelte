@@ -63,9 +63,10 @@
 
   // Lock body scroll while the scrim is present — including the fade-out outro, so
   // the page can't scroll under a still-visible dimmer. We track the rendered scrim
-  // element rather than keying on `open`: the {#if open} block (with its outro) sets
-  // `scrimElement` on intro and clears it on outroend, so the lock is held for the
-  // element's full visible lifetime. Counted lock — safe to nest with other overlays.
+  // element rather than keying on `open`: the {#if open} block sets `scrimElement` on
+  // intro (bind:this) and clears it on a genuine close (guarded onoutroend), so the
+  // lock is held for the element's full visible lifetime. Counted lock — safe to
+  // nest with other overlays.
   let scrimElement: HTMLElement | undefined = $state();
   $effect(() => {
     if (!scrimElement || !lockScroll) return;
@@ -89,7 +90,13 @@
     data-cinder-invisible={invisible ? '' : undefined}
     {onclick}
     transition:fade={{ duration: effectiveDuration }}
-    onoutroend={() => (scrimElement = undefined)}
+    onoutroend={() => {
+      // Only clear on a genuine close. If `open` flipped back to true during the
+      // outro, a keyless {#if} reuses this node and cancels the outro — but guard
+      // against any late/zero-duration outro callback releasing the lock while the
+      // scrim is still open and visible.
+      if (!open) scrimElement = undefined;
+    }}
   >
     {#if children}
       {@render children()}
