@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { InputProps } from './input.types.ts';
-  import { DEV } from 'esm-env';
 
   import {
     ariaInvalid,
@@ -27,6 +26,7 @@
   } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     id,
@@ -48,9 +48,8 @@
   const context = getFormFieldContext();
 
   $effect(() => {
-    if (!DEV) return;
     if (context && context.controlId !== id) {
-      console.warn(
+      devWarn(
         `[cinder/Input] id mismatch: Input id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
       );
     }

@@ -20,9 +20,9 @@
 <script lang="ts">
   import type { ButtonGroupProps } from './button-group.types.ts';
   import type { Attachment } from 'svelte/attachments';
-  import { DEV } from 'esm-env';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     label,
@@ -89,26 +89,24 @@
   };
 
   $effect(() => {
-    if (!DEV) return;
-
     const hasLabel = typeof label === 'string';
     const hasLabelledBy = typeof labelledBy === 'string';
 
     if (!hasLabel && !hasLabelledBy) {
-      console.warn(
+      devWarn(
         "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
       );
       return;
     }
 
     if (hasLabel && label.trim().length === 0) {
-      console.warn(
+      devWarn(
         "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
       );
     }
 
     if (hasLabelledBy && labelledBy.trim().length === 0) {
-      console.warn(
+      devWarn(
         "[cinder/ButtonGroup] rendered without a non-empty accessible name — pass a non-empty 'label' or 'labelledBy'.",
       );
     }

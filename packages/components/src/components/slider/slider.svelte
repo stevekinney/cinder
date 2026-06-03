@@ -26,6 +26,7 @@
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     value,
@@ -48,30 +49,30 @@
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
-  // tick generator loop forever, so fall back to `1` and warn during dev.
-  const safeStep = $derived.by(() => {
-    if (!Number.isFinite(step) || step <= 0) {
-      if (typeof console !== 'undefined') {
-        console.warn(
-          `[cinder/Slider] step must be a positive finite number — received ${step}. Falling back to 1.`,
-        );
-      }
-      return 1;
-    }
-    return step;
-  });
+  // tick generator loop forever, so fall back to `1`. Keep the derived pure — the
+  // invalid-value warning lives in a $effect below, since $derived expressions
+  // must be side-effect free (Svelte 5 may re-evaluate them speculatively).
+  const safeStep = $derived(!Number.isFinite(step) || step <= 0 ? 1 : step);
 
   const safePageStep = $derived.by(() => {
     if (pageStep === undefined) return safeStep * 10;
-    if (!Number.isFinite(pageStep) || pageStep <= 0) {
-      if (typeof console !== 'undefined') {
-        console.warn(
-          `[cinder/Slider] pageStep must be a positive finite number — received ${pageStep}. Falling back to ${safeStep * 10}.`,
-        );
-      }
-      return safeStep * 10;
-    }
+    if (!Number.isFinite(pageStep) || pageStep <= 0) return safeStep * 10;
     return pageStep;
+  });
+
+  // Dev-only validation of step / pageStep, kept out of the deriveds so those
+  // stay pure. devWarn self-gates on DEV and is stripped from production.
+  $effect(() => {
+    if (!Number.isFinite(step) || step <= 0) {
+      devWarn(
+        `[cinder/Slider] step must be a positive finite number — received ${step}. Falling back to 1.`,
+      );
+    }
+    if (pageStep !== undefined && (!Number.isFinite(pageStep) || pageStep <= 0)) {
+      devWarn(
+        `[cinder/Slider] pageStep must be a positive finite number — received ${pageStep}. Falling back to ${safeStep * 10}.`,
+      );
+    }
   });
 
   // Normalize a tick array (or boolean) once. The list is filtered to

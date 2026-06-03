@@ -29,6 +29,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     applyPointerDragDelta,
     applyPairDelta,
@@ -213,9 +214,9 @@
   });
 
   $effect(() => {
-    if (!issues.length || typeof console === 'undefined') return;
+    if (!issues.length) return;
     for (const issue of issues) {
-      console.warn(`[cinder/ResizablePanels] ${issue}`);
+      devWarn(`[cinder/ResizablePanels] ${issue}`);
     }
   });
 

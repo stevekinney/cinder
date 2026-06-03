@@ -15,12 +15,12 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
   import { untrack } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
   import { on } from 'svelte/events';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import type { ToolbarProps } from './toolbar.types.ts';
 
@@ -336,7 +336,7 @@
   }
 
   function warnAboutAccessibleName(): void {
-    if (!DEV || !rootElement) return;
+    if (!rootElement) return;
     const warningKey = `${ariaLabel ?? ''}|${ariaLabelledBy ?? ''}`;
     if (warningKey === lastWarnedNameSource) return;
 
@@ -345,7 +345,7 @@
     if (ariaLabelledBy?.trim() && hasResolvedLabelledByText()) return;
 
     lastWarnedNameSource = warningKey;
-    console.warn(
+    devWarn(
       '[cinder/Toolbar] rendered without a resolvable accessible name. Pass a non-empty `aria-label` or `aria-labelledby` that points to non-empty text.',
     );
   }

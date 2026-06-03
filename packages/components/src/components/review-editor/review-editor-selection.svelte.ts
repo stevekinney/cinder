@@ -23,6 +23,7 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 import { buildAnchorFromSelection } from 'cinder/commentary/anchoring';
 import type { ThreadCreateEvent } from 'cinder/commentary/comments';
 import { extractMentions, generateId } from 'cinder/commentary/comments';
+import { devWarn } from '../../utilities/dev-warn.ts';
 import type {
   PopoverPosition,
   ReviewMode,
@@ -206,7 +207,7 @@ export function createSelectionPopover(options: SelectionPopoverOptions): Select
   function handleComment(body: string): void {
     // Helper to clear state and announce failure
     function failWithMessage(message: string): void {
-      console.warn(message);
+      devWarn(message);
       clear();
       announce('Could not add comment. Please try selecting text again.', 'assertive');
     }

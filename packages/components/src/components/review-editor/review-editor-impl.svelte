@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { createFocusRegionNavigator, type FocusRegion } from './focus-navigation.ts';
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
   import { stringifyOrNull } from '../../utilities/stringify.ts';
@@ -917,7 +918,7 @@
    */
   function handleAddDocumentComment(body: string): void {
     if (!currentUserId) {
-      console.warn('Cannot add document comment: no currentUserId');
+      devWarn('Cannot add document comment: no currentUserId');
       return;
     }
 
@@ -1130,7 +1131,7 @@
   function handleSelectionComment(body: string): void {
     // Helper to clear popover state and announce failure
     function failWithMessage(message: string): void {
-      console.warn(message);
+      devWarn(message);
       selectionPopoverPosition = null;
       capturedSelectionForPopover = null;
       selectionPopoverExpanded = false;
@@ -1243,18 +1244,18 @@
    */
   export function createThread(body: string, authorId: string): string | null {
     if (!currentSelection || currentSelection.isCollapsed) {
-      console.warn('Cannot create thread: no text selected');
+      devWarn('Cannot create thread: no text selected');
       return null;
     }
 
     if (mode === 'readonly') {
-      console.warn('Cannot create thread: editor is readonly');
+      devWarn('Cannot create thread: editor is readonly');
       return null;
     }
 
     const view = editorRef?.getView();
     if (!view) {
-      console.warn('Cannot create thread: editor view not available');
+      devWarn('Cannot create thread: editor view not available');
       return null;
     }
 
@@ -1297,7 +1298,7 @@
    */
   export function createDocumentThread(body: string, authorId: string): string | null {
     if (mode === 'readonly') {
-      console.warn('Cannot create thread: editor is readonly');
+      devWarn('Cannot create thread: editor is readonly');
       return null;
     }
 
@@ -1475,13 +1476,13 @@
    */
   export function createBlockThread(body: string, authorId: string): string | null {
     if (mode === 'readonly') {
-      console.warn('Cannot create block thread: editor is readonly');
+      devWarn('Cannot create block thread: editor is readonly');
       return null;
     }
 
     const view = editorRef?.getView();
     if (!view) {
-      console.warn('Cannot create block thread: editor view not available');
+      devWarn('Cannot create block thread: editor view not available');
       return null;
     }
 
@@ -1520,7 +1521,7 @@
       return requestId;
     }
 
-    console.warn('Cannot create block thread: cursor not inside a block');
+    devWarn('Cannot create block thread: cursor not inside a block');
     return null;
   }
 

@@ -1,6 +1,6 @@
 import type { Attachment } from 'svelte/attachments';
 
-import { DEV } from 'esm-env';
+import { devWarn } from '../../utilities/dev-warn.ts';
 
 import { readOption } from '../../utilities/read-option.ts';
 
@@ -141,8 +141,8 @@ export function createPortalAttachment(
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
-        if (DEV && lastWarnedUnresolvedKey !== resolved.key) {
-          console.warn(
+        if (lastWarnedUnresolvedKey !== resolved.key) {
+          devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
           );
           lastWarnedUnresolvedKey = resolved.key;

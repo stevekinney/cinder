@@ -17,8 +17,8 @@
 
 <script lang="ts">
   import type { HoverCardProps } from './hover-card.types.ts';
-  import { DEV } from 'esm-env';
   import { onDestroy } from 'svelte';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -206,12 +206,10 @@
   });
 
   $effect(() => {
-    if (!DEV || !open || !cardElement) return;
+    if (!open || !cardElement) return;
     const focusable = cardElement.querySelector(focusableSelector);
     if (focusable) {
-      console.warn(
-        'HoverCard content should be non-interactive. Use Popover for focusable content.',
-      );
+      devWarn('HoverCard content should be non-interactive. Use Popover for focusable content.');
     }
   });
 </script>

@@ -6,14 +6,12 @@
 // once (dev only) so consumers migrate before the alias is removed in the
 // next major. Generated/managed by scripts/generate-exports.ts.
 
-import { DEV } from 'esm-env';
+import { devWarn } from '../../../utilities/dev-warn.ts';
 
-if (DEV) {
-  console.warn(
-    "[cinder] 'cinder/experimental/timeline-item' is deprecated and will be removed in the next major. " +
-      "Import from 'cinder/timeline-item' instead.",
-  );
-}
+devWarn(
+  "[cinder] 'cinder/experimental/timeline-item' is deprecated and will be removed in the next major. " +
+    "Import from 'cinder/timeline-item' instead.",
+);
 
 export { default, TimelineItem } from '../../timeline-item/index.ts';
 export type { TimelineItemProps } from '../../timeline-item/index.ts';

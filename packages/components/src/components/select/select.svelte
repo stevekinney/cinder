@@ -20,6 +20,7 @@
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     id,
@@ -60,7 +61,7 @@
   // server output with warnings. $effect never runs on the server in Svelte 5.
   $effect(() => {
     if (typeof window !== 'undefined' && options.length === 0) {
-      console.warn('Select: options is empty');
+      devWarn('Select: options is empty');
     }
   });
 </script>

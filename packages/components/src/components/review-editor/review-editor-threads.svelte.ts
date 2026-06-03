@@ -30,6 +30,7 @@ import type {
   ThreadDeleteEvent,
 } from 'cinder/commentary/comments';
 import { createDocumentAnchor, extractMentions, generateId } from 'cinder/commentary/comments';
+import { devWarn } from '../../utilities/dev-warn.ts';
 import type { PopoverPosition, ReviewMode } from './review-editor-types';
 
 /** Type alias for thread ID to improve readability */
@@ -378,18 +379,18 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     selection: { from: number; to: number } | null,
   ): string | null {
     if (!selection || selection.from === selection.to) {
-      console.warn('Cannot create thread: no text selected');
+      devWarn('Cannot create thread: no text selected');
       return null;
     }
 
     if (getMode() === 'readonly') {
-      console.warn('Cannot create thread: editor is readonly');
+      devWarn('Cannot create thread: editor is readonly');
       return null;
     }
 
     const view = getEditorView();
     if (!view) {
-      console.warn('Cannot create thread: editor view not available');
+      devWarn('Cannot create thread: editor view not available');
       return null;
     }
 
@@ -413,7 +414,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
 
   function createDocumentThread(body: string, authorId: string): string | null {
     if (getMode() === 'readonly') {
-      console.warn('Cannot create thread: editor is readonly');
+      devWarn('Cannot create thread: editor is readonly');
       return null;
     }
 
@@ -436,13 +437,13 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
 
   function createBlockThread(body: string, authorId: string): string | null {
     if (getMode() === 'readonly') {
-      console.warn('Cannot create block thread: editor is readonly');
+      devWarn('Cannot create block thread: editor is readonly');
       return null;
     }
 
     const view = getEditorView();
     if (!view) {
-      console.warn('Cannot create block thread: editor view not available');
+      devWarn('Cannot create block thread: editor view not available');
       return null;
     }
 
@@ -470,7 +471,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
       return requestId;
     }
 
-    console.warn('Cannot create block thread: cursor not inside a block');
+    devWarn('Cannot create block thread: cursor not inside a block');
     return null;
   }
 
