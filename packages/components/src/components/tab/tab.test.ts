@@ -43,6 +43,9 @@ describe('Tab', () => {
     const baseB = tabs[1]?.id.replace(/-tab-b$/, '');
     expect(baseA).toBe(baseB);
     expect(baseA).toBeTruthy();
+    // Guard against a regression that re-introduces a hardcoded global prefix
+    // like 'cinder-tab' — the whole point is that the base is per-instance.
+    expect(baseA).not.toBe('cinder-tab');
   });
 
   test('aria-selected and roving tabindex respond to the active value', () => {

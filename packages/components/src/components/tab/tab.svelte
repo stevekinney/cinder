@@ -36,9 +36,17 @@
   const tabs: TabsContext = rawTabs;
 
   // Derive both ids from the root's baseId and the tab's value so that two
-  // Tabs instances sharing the same value produce distinct DOM ids. Consumers
-  // can still override the tab id via the `id` prop; the panel id stays
-  // deterministic and namespace-scoped to this Tabs instance.
+  // Tabs instances sharing the same value produce distinct DOM ids. The panel
+  // id is always computed from baseId and value; it does not track a custom
+  // `id` prop on this Tab.
+  //
+  // ⚠️  Known limitation: if you supply a custom `id` prop to override this
+  // Tab's element id, the paired TabPanel's `aria-labelledby` will still point
+  // at the baseId-derived id (e.g. `${baseId}-tab-${value}`) — which will no
+  // longer match the button's id. This breaks the ARIA tab→panel relationship
+  // for the custom-id case. If you need a custom id, you must also set a
+  // matching `aria-labelledby` on the TabPanel manually. Removing the custom
+  // `id` override restores automatic wiring.
   const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
   const panelId = $derived(`${tabs.baseId}-panel-${value}`);
 

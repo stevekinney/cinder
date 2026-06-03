@@ -417,11 +417,11 @@
       return;
     }
     if (event.key === ' ' || event.key === 'Enter') {
-      // Prevent the default action and stop propagation so the synthesized
-      // click that the browser fires on keyup does not reach handleColumnClick
-      // after the column has already been dropped and columnLiftedKey is null.
+      // Prevent the default action so the browser does not synthesize a click
+      // event on keyup — for Space, preventDefault() on keydown suppresses the
+      // synthetic keyup-click, so handleColumnClick never fires after the column
+      // is already dropped and columnLiftedKey is null again.
       event.preventDefault();
-      event.stopPropagation();
       dropColumn(column, currentTarget);
       return;
     }

@@ -47,6 +47,15 @@
 </script>
 
 {#if isLink}
+  <!--
+    Disabled anchor: href is stripped (not just aria-disabled) so the element
+    loses its link role and is removed from the tab order entirely. This is a
+    deliberate product decision — a disabled navigation link represents a route
+    the user cannot access, and hiding it from the links list (screen reader
+    VO+U / NVDA Insert+F7) is preferable to a greyed-out unreachable destination.
+    If you need the link to remain discoverable as a named link in AT, set
+    `aria-disabled` but keep `href` — the click is still blocked by handleClick.
+  -->
   <a
     href={disabled ? undefined : (props as LinkArm).href}
     class={resolvedClass}
