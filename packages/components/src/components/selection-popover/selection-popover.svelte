@@ -146,7 +146,14 @@
   // $derived keeps the attachment stable across renders (recreating it would re-bind the
   // document listener every update); enabled gates it to the open state.
   const dismissOnOutsidePointerdown = $derived(
-    createClickOutside({ handler: closePopover, enabled: () => open, eventType: 'pointerdown' }),
+    // capture: false preserves the original bubble-phase semantics
+    // (the previous document.addEventListener call had no capture arg).
+    createClickOutside({
+      handler: closePopover,
+      enabled: () => open,
+      eventType: 'pointerdown',
+      capture: false,
+    }),
   );
 
   $effect(() => {

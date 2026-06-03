@@ -78,7 +78,10 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
   const { handler, enabled = true, eventType = 'click', capture = true, ignoreRefs } = options;
 
   return (node: HTMLElement) => {
-    function handleEvent(event: Event) {
+    // All three event types (click, pointerdown, mousedown) produce MouseEvent or its
+    // subtype PointerEvent — typing as MouseEvent is accurate and preserves mouse properties
+    // should the handler or future callers need them.
+    function handleEvent(event: MouseEvent) {
       const isEnabled = typeof enabled === 'function' ? enabled() : enabled;
       if (!isEnabled) return;
       const target = event.target;

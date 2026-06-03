@@ -440,4 +440,45 @@ describe('createClickOutside', () => {
     expect(calls).toBe(1); // no further calls after teardown
     outside.remove();
   });
+
+  test('capture: false — bubble-phase listener is correctly removed on teardown', () => {
+    // When capture:false, removeEventListener must be called with the same phase flag.
+    // A regression that hard-codes `true` in removeEventListener would silently fail to
+    // deregister the listener. This test verifies teardown symmetry for capture:false.
+    let calls = 0;
+    attach({ handler: () => (calls += 1), capture: false });
+
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    fire('click', outside);
+    expect(calls).toBe(1);
+
+    cleanup?.();
+    cleanup = undefined;
+    fire('click', outside);
+    expect(calls).toBe(1); // listener removed — no further calls
+    outside.remove();
+  });
+
+  test('non-Node target (null) is treated as outside and triggers the handler', () => {
+    // Defensive branch: event.target can be null on synthetic events or in shadow-DOM
+    // scenarios. A null target must NOT prevent the handler from firing.
+    let calls = 0;
+    attach({ handler: () => (calls += 1) });
+
+    // Dispatch a click event with a null target by intercepting it via a custom event
+    // that sets target to null — or simply dispatch from document directly where
+    // event.target will be document rather than a Node in the tree.
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    // Override target to null via Object.defineProperty to simulate the defensive branch.
+    // happy-dom allows this for synthetic events dispatched off-tree.
+    const nullTargetEvent = Object.defineProperty(
+      new MouseEvent('click', { bubbles: true, cancelable: true }),
+      'target',
+      { get: () => null, configurable: true },
+    );
+    document.dispatchEvent(nullTargetEvent);
+    expect(calls).toBe(1); // null target => treated as outside => handler fires
+    void event; // suppress unused warning
+  });
 });
