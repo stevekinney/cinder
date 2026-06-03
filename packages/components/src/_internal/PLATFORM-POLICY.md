@@ -95,10 +95,14 @@ Every form control that wraps a native form element (`<input>`, `<select>`,
 `<textarea>`, or a custom element that participates in form submission) **MUST**
 call `resolveFieldControl` from `src/_internal/field-control.ts` to resolve its
 `id`, `aria-describedby`, `aria-invalid`, `required`, and `disabled` attributes.
-Manual re-derivation of these values (e.g. calling `describeId`, `errorId`, or
-`composeDescribedBy` piecemeal) is not permitted in new or modified form controls.
+Manually _re-deriving_ the base wiring (e.g. hand-rolling `describeId`/`errorId` +
+`composeDescribedBy` to reconstruct what `resolveFieldControl` already returns) is not
+permitted in new or modified form controls. Layering an _additional_ component-owned id
+on top of `field.describedBy` IS allowed — e.g. tag-input's component-generated inline
+validation error: `composeDescribedBy(field.describedBy, inlineErrorId)`.
 
-`input.svelte` is the canonical example. The reference call shape is:
+`autocomplete.svelte` and `checkbox.svelte` are the canonical examples (they call
+`resolveFieldControl`). The reference call shape is:
 
 ```ts
 import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -109,7 +113,8 @@ const generatedId = $props.id();
 
 const field = $derived(
   resolveFieldControl({
-    id, // prop, may be undefined
+    // Conditionally spread `id` (exactOptionalPropertyTypes): don't pass `id: undefined`.
+    ...(id !== undefined ? { id } : {}),
     generatedId, // $props.id() fallback
     context, // FormField context, may be undefined
     hasDescription: !!description,
