@@ -25,6 +25,7 @@
 
 <script lang="ts" generics="Card">
   import { cn } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     SortableController,
     setSortableContext,
@@ -111,7 +112,7 @@
     const warningSignature = `${duplicateColumns}|${duplicateCards}`;
     if (warningSignature === lastInvalidKeyWarning) return;
     lastInvalidKeyWarning = warningSignature;
-    console.warn(
+    devWarn(
       `[cinder-kanban-board] duplicate keys disable reordering. Duplicate columns: ${duplicateColumns || 'none'}. Duplicate cards: ${duplicateCards || 'none'}.`,
     );
   });

@@ -11,8 +11,6 @@
    * @avoidWhen Wrapping a single control with its label and error — use form-field instead.
    * @related form-field, section-heading
    */
-  import { DEV } from 'esm-env';
-
   const headingTags: Record<FormSectionHeadingLevel, string> = {
     2: 'h2',
     3: 'h3',
@@ -27,6 +25,7 @@
 <script lang="ts">
   import type { FormSectionHeadingLevel, FormSectionProps } from './form-section.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     as = 'section',
@@ -38,16 +37,18 @@
     children,
   }: FormSectionProps = $props();
 
-  const headingTag = $derived(headingTags[headingLevel as FormSectionHeadingLevel] ?? 'h2');
-
+  // Re-check reactively: `as` and `heading` are ordinary (non-bindable) props
+  // that a parent can change on re-render, so the warning must fire whenever the
+  // combination becomes invalid, not only at mount. devWarn self-gates on DEV.
   $effect(() => {
-    if (!DEV) return;
     if (as === 'fieldset' && !heading) {
-      console.warn(
+      devWarn(
         '[cinder/FormSection] `as="fieldset"` requires a `heading` prop — a fieldset without a legend has no accessible group name.',
       );
     }
   });
+
+  const headingTag = $derived(headingTags[headingLevel as FormSectionHeadingLevel] ?? 'h2');
 </script>
 
 {#if as === 'fieldset'}

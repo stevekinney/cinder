@@ -17,8 +17,9 @@
 
 <script lang="ts">
   import type { PinInputProps } from './pin-input.types.ts';
-  import { DEV } from 'esm-env';
   import { untrack } from 'svelte';
+
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
     ariaInvalid,
@@ -137,9 +138,8 @@
   );
 
   $effect(() => {
-    if (!DEV) return;
     if (!hasGroupAccessibleName) {
-      console.warn(
+      devWarn(
         `[cinder/PinInput] No accessible name source for id="${id}". Provide a label, aria-label, aria-labelledby, or wrap in a FormField.`,
       );
     }

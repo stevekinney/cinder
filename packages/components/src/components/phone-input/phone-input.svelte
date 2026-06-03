@@ -27,7 +27,7 @@
     PhoneInputCountryOption,
     PhoneInputProps,
   } from './phone-input.types.ts';
-  import { DEV } from 'esm-env';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
     ariaInvalid,
@@ -73,9 +73,8 @@
   );
 
   $effect(() => {
-    if (!DEV) return;
     if (usedFallback) {
-      console.warn(
+      devWarn(
         `[cinder/PhoneInput] No supported country in the provided countries allow-list — falling back to ['US'].`,
       );
     }
@@ -183,11 +182,9 @@
     if (country === knownCountry) return;
     knownCountry = country;
     if (!isAllowed(country)) {
-      if (DEV) {
-        console.warn(
-          `[cinder/PhoneInput] country="${country}" is not in the countries allow-list — falling back to "${fallbackCountry()}".`,
-        );
-      }
+      devWarn(
+        `[cinder/PhoneInput] country="${country}" is not in the countries allow-list — falling back to "${fallbackCountry()}".`,
+      );
       country = fallbackCountry();
       return;
     }
@@ -391,9 +388,8 @@
   );
 
   $effect(() => {
-    if (!DEV) return;
     if (!hasGroupAccessibleName) {
-      console.warn(
+      devWarn(
         `[cinder/PhoneInput] No accessible name source for id="${id}". Provide a label, aria-label, aria-labelledby, or wrap in a FormField.`,
       );
     }

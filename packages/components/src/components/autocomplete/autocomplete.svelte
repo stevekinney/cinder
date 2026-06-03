@@ -20,9 +20,8 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
-
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     ariaInvalid,
     composeDescribedBy,
@@ -63,9 +62,8 @@
   const resolvedMaxVisibleSuggestions = $derived(toNonNegativeInteger(maxVisibleSuggestions, 50));
 
   $effect(() => {
-    if (!DEV) return;
     if (context && id && context.controlId !== id) {
-      console.warn(
+      devWarn(
         `[cinder/Autocomplete] id mismatch: Autocomplete id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
       );
     }
@@ -209,9 +207,7 @@
       if (controller.signal.aborted || currentVersion !== requestVersion) return;
       suggestions = [];
       closePopup();
-      if (DEV) {
-        console.warn('[cinder/autocomplete] suggestionSource failed.', errorValue);
-      }
+      devWarn('[cinder/autocomplete] suggestionSource failed.', errorValue);
       return;
     }
 
@@ -239,9 +235,7 @@
         }
         suggestions = [];
         closePopup();
-        if (DEV) {
-          console.warn('[cinder/autocomplete] suggestionSource failed.', errorValue);
-        }
+        devWarn('[cinder/autocomplete] suggestionSource failed.', errorValue);
       })
       .finally(() => {
         if (pendingRequestController === controller) {

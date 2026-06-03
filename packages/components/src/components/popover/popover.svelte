@@ -24,10 +24,10 @@
 <script lang="ts">
   import type { PopoverProps } from './popover.types.ts';
   import { onDestroy, untrack } from 'svelte';
-  import { DEV } from 'esm-env';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createPortalAttachment } from '../portal/index.ts';
@@ -203,22 +203,21 @@
   // Effect: dev-only guidance warnings. Single effect, fires on each open
   // transition; the cost of repeat warnings is acceptable for dev mode.
   $effect(() => {
-    if (!DEV) return;
     if (!open) return;
     if (!anchorElement) {
-      console.warn(
+      devWarn(
         '[cinder/popover] open without a trigger anchor. ' +
           'Provide either a `trigger` snippet with a focusable child or a `triggerRef`.',
       );
     }
     if (role === 'dialog' && !label && !ariaLabelledby) {
-      console.warn(
+      devWarn(
         '[cinder/popover] role="dialog" without `label` or `ariaLabelledby` falls back to ' +
           'aria-label="Popover". Pass a descriptive name for production usage.',
       );
     }
     if (role === 'listbox' && wireTriggerAria) {
-      console.warn(
+      devWarn(
         '[cinder/popover] role="listbox" only sets the surface role. ' +
           'You must render role="option" children and own selection/keyboard semantics. ' +
           'See popover.a11y.md §Role.',

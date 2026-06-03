@@ -18,6 +18,7 @@
 <script lang="ts">
   import { loadDefaultHighlighter } from './code-block-default-highlighter.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import type { CodeBlockProps } from './code-block.types.ts';
 
@@ -81,10 +82,7 @@
         // Never log the code itself — a code block can contain secrets. Log
         // the language and the error class/message only.
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-        console.warn(
-          `[cinder/CodeBlock] highlight failed for language "${pendingLanguage}":`,
-          detail,
-        );
+        devWarn(`[cinder/CodeBlock] highlight failed for language "${pendingLanguage}":`, detail);
       }
     })();
 

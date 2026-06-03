@@ -14,11 +14,10 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
-
   import type { ToolbarSpacerProps } from './toolbar.types.ts';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let { class: className, flex = 1, ...rest }: ToolbarSpacerProps = $props();
 
@@ -27,11 +26,8 @@
   );
 
   $effect(() => {
-    if (!DEV) return;
     if (typeof flex === 'number' && Number.isFinite(flex) && flex > 0) return;
-    console.warn(
-      '[cinder/Toolbar.Spacer] `flex` must be a positive finite number. Falling back to 1.',
-    );
+    devWarn('[cinder/Toolbar.Spacer] `flex` must be a positive finite number. Falling back to 1.');
   });
 </script>
 

@@ -6,14 +6,12 @@
 // only) so consumers migrate before the alias is removed in the next major.
 // Generated/managed by scripts/generate-exports.ts.
 
-import { DEV } from 'esm-env';
+import { devWarn } from '../../../utilities/dev-warn.ts';
 
-if (DEV) {
-  console.warn(
-    "[cinder] 'cinder/experimental/message' is deprecated and will be removed in the next major. " +
-      "Import from 'cinder/message' instead.",
-  );
-}
+devWarn(
+  "[cinder] 'cinder/experimental/message' is deprecated and will be removed in the next major. " +
+    "Import from 'cinder/message' instead.",
+);
 
 export { default, Message } from '../../message/index.ts';
 export type { MessageProps, MessageRole } from '../../message/index.ts';

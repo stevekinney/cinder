@@ -21,11 +21,10 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
-
   import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import type { FileUploadEntry, FileUploadProps, RejectedFile } from './file-upload.types.ts';
@@ -73,9 +72,8 @@
   const renderedEntries = $derived(files ?? internalEntries);
 
   $effect(() => {
-    if (!DEV) return;
     if (context && id && context.controlId !== id) {
-      console.warn(
+      devWarn(
         `[cinder/FileUpload] id mismatch: FileUpload id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
       );
     }

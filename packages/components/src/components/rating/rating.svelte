@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { RatingProps } from './rating.types.ts';
-  import { DEV } from 'esm-env';
 
   import {
     ariaInvalid,
@@ -27,6 +26,7 @@
   } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     id,
@@ -124,9 +124,8 @@
   );
 
   $effect(() => {
-    if (!DEV) return;
     if (!hasGroupAccessibleName) {
-      console.warn(
+      devWarn(
         `[cinder/Rating] No accessible name source for id="${id}". Provide a label, aria-label, aria-labelledby, or wrap in a FormField.`,
       );
     }

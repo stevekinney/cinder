@@ -24,6 +24,7 @@
     tryGetTableSectionContext,
   } from '../table/table.context.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     class: className,
@@ -63,7 +64,7 @@
 
   // Warn when a row is rendered directly under Table (no section context) with selection on.
   if (selectionEnabled && section === undefined) {
-    console.warn(
+    devWarn(
       '[Cinder] TableRow: rendered outside TableHeader or TableBody while Table.selectable is true. ' +
         'The leading selection cell will not be rendered.',
     );

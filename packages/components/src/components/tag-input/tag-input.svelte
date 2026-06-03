@@ -16,8 +16,9 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
   import { tick, untrack } from 'svelte';
+
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -111,9 +112,8 @@
   const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
 
   $effect(() => {
-    if (!DEV) return;
     if (context && id && context.controlId !== id) {
-      console.warn(
+      devWarn(
         `[cinder/TagInput] id mismatch: TagInput id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
       );
     }

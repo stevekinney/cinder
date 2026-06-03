@@ -88,3 +88,26 @@ for human judgment rather than banning features outright. It runs in the
 When a new modern feature enters the codebase, add a row to the classification
 table above (with its tier and rule) in the same change. A feature with no row is
 unclassified and will be flagged in review.
+
+## Development-only diagnostics
+
+Component contract-misuse warnings — a missing required prop, an `id` that does
+not match the wrapping `FormField`, a duplicate key, an unresolved portal target,
+a deprecated import path — are diagnostics for the **developer building the app**,
+never for the end user. They must route through `devWarn(...)` from
+`utilities/dev-warn.ts`, which gates on `DEV` from `esm-env` and is dead-code-
+eliminated from production bundles. A bare `console.warn` in component source
+ships the warning string (and internal naming) to end users and is forbidden.
+
+- **Rule:** no bare `console.warn` in `src/components/**` (`.svelte` or `.ts`).
+  Use `devWarn(message, ...args)` instead. `devWarn` self-gates on `DEV`, so do
+  **not** wrap it in `if (DEV) { … }` or add a `!DEV` early-return around it.
+- **Don't keep a `$effect` alive solely to warn.** A reactive effect whose only
+  job is to log re-subscribes on every state change for no runtime benefit. Warn
+  from a plain guard at the point of misuse (e.g. right after the `$props()`
+  destructure for a "missing required prop" check) unless the condition is
+  genuinely reactive and a test asserts the warning fires on a specific change.
+- **Enforcement:** `bun run check:no-bare-console-warn` (a scanned grep with an
+  explicit allow-list, in the `lint` chain and CI) fails on any bare
+  `console.warn` in component source. oxlint cannot express this rule because
+  Svelte files are in its `ignorePatterns`.

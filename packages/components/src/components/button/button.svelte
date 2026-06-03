@@ -16,10 +16,10 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
   import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import type { ButtonProps } from './button.types.ts';
 
   // Destructured props let the Phase 4 analyzer read names + defaults straight off the AST.
@@ -150,12 +150,9 @@
     }
   }
 
-  // Dev-mode guards. DEV from esm-env is a bundler-replaced constant: true in dev, false in
-  // prod — the whole $effect body is tree-shaken in production. Guards run reactively so prop
-  // changes after mount also surface issues.
+  // Dev-mode guards. devWarn no-ops in production (bundler DCE strips the call when DEV=false).
+  // Guards run reactively so prop changes after mount also surface issues.
   $effect(() => {
-    if (!DEV) return;
-
     // Guard 1 — Updated baseline: warn when the button has no accessible name at all.
     // Use the normalized resolved values so an empty aria-label="" doesn't falsely satisfy the check.
     const hasLabel = typeof label === 'string' && label.trim().length > 0;
@@ -163,7 +160,7 @@
     const hasAriaLabel = resolvedAriaLabel !== undefined;
     const hasAriaLabelledBy = resolvedAriaLabelledBy !== undefined;
     if (!hasLabel && !hasChildren && !hasAriaLabel && !hasAriaLabelledBy) {
-      console.warn(
+      devWarn(
         '[cinder/Button] rendered without an accessible name — pass a non-empty `label`, `children`, `aria-label`, or `aria-labelledby`.',
       );
     }
@@ -171,14 +168,14 @@
     // Guard 2 — icon-only accessible name: children alone does not count because it may be a
     // non-text SVG. Requires aria-label, aria-labelledby, or a non-empty label string.
     if (iconOnly && !hasAriaLabel && !hasAriaLabelledBy && !hasLabel) {
-      console.warn(
+      devWarn(
         '[cinder/Button] iconOnly=true requires aria-label, aria-labelledby, or a non-empty label.',
       );
     }
 
     // Guard 3 — icon-only visual: a blank square is a real UI failure, not just an a11y issue.
     if (iconOnly && !leadingIcon && !trailingIcon && !children) {
-      console.warn(
+      devWarn(
         '[cinder/Button] iconOnly=true requires a visible icon — pass leadingIcon, trailingIcon, or children.',
       );
     }

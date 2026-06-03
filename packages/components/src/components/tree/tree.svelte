@@ -22,6 +22,7 @@
   import { setTreeContext, setTreeItemParentContext } from '../../_internal/tree-context.ts';
   import { TreeRegistry } from '../../_internal/tree-registry.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     deselectIds,
     selectIds,
@@ -68,7 +69,7 @@
   $effect(() => {
     if (!ariaLabel && !ariaLabelledBy && !hasWarnedNoLabel) {
       hasWarnedNoLabel = true;
-      console.warn('[cinder-tree] Tree requires either aria-label or aria-labelledby.');
+      devWarn('[cinder-tree] Tree requires either aria-label or aria-labelledby.');
     }
   });
 

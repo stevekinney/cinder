@@ -17,9 +17,9 @@
 <script lang="ts">
   import type { ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
   import { tick, untrack } from 'svelte';
-  import { DEV } from 'esm-env';
 
   import { cn } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { hasAlpha, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import Check from 'lucide-svelte/icons/check';
@@ -136,14 +136,12 @@
 
   // Warn in dev mode when duplicate colors appear in the palette.
   $effect(() => {
-    if (DEV) {
-      const colorValues = colors.map((c) => c.color);
-      if (new Set(colorValues).size !== colorValues.length) {
-        console.warn(
-          '[ColorSwatchPicker] Duplicate color values detected in palette. ' +
-            'Only the first matching swatch will be shown as selected.',
-        );
-      }
+    const colorValues = colors.map((c) => c.color);
+    if (new Set(colorValues).size !== colorValues.length) {
+      devWarn(
+        '[ColorSwatchPicker] Duplicate color values detected in palette. ' +
+          'Only the first matching swatch will be shown as selected.',
+      );
     }
   });
 </script>

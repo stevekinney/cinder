@@ -7,7 +7,7 @@ The tree implementation follows the [WAI-ARIA Tree pattern](https://www.w3.org/W
 ### Tree root
 
 - `role="tree"` — identifies the container as a tree widget.
-- `aria-label` or `aria-labelledby` — required. The component emits `console.warn` once per mount (with `[cinder-tree]` prefix) when neither is provided, in both development and production builds. No synthetic fallback label is invented.
+- `aria-label` or `aria-labelledby` — required. The component emits a development-only warning (`devWarn`, `[cinder-tree]` prefix) once per mount when neither is provided; it is stripped from production bundles. No synthetic fallback label is invented.
 - `aria-multiselectable="true"` — present only when `selectionMode="multiple"`. Omitted in `'none'` and `'single'` modes.
 
 ### TreeItem nodes

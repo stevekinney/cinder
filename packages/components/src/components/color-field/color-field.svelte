@@ -16,10 +16,10 @@
 </script>
 
 <script lang="ts">
-  import { DEV } from 'esm-env';
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
   import Input from '../input/input.svelte';
   import type { ColorFieldProps } from './color-field.types.ts';
@@ -187,9 +187,7 @@
   $effect(() => {
     if (!isControlled) return;
     if (value === undefined) {
-      if (DEV) {
-        console.warn('[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)');
-      }
+      devWarn('[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)');
       return;
     }
     if (value === lastReconciledValue) return;

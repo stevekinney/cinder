@@ -24,6 +24,7 @@
 <script lang="ts">
   import { BROWSER as browser } from 'esm-env';
   import { onDestroy } from 'svelte';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import type { Ctx } from '@milkdown/kit/ctx';
   import type {
     ActiveBlockType,
@@ -132,7 +133,7 @@
     try {
       return pipelineUtilities?.normalize(markdown) ?? normalizeForEditor(markdown);
     } catch (error) {
-      console.warn('Failed to normalize markdown, using raw value:', error);
+      devWarn('Failed to normalize markdown, using raw value:', error);
       return markdown;
     }
   }
@@ -495,7 +496,7 @@
         try {
           latestMarkdown = editorState.getMarkdown();
         } catch (error) {
-          console.warn('Failed to read markdown from editor during mode switch:', error);
+          devWarn('Failed to read markdown from editor during mode switch:', error);
         }
         editorState.clearPendingTimers();
       }
