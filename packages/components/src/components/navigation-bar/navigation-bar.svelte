@@ -152,6 +152,7 @@
     id={regionId}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
+    inert={menuToggle !== undefined && !mobileMenuOpen ? true : undefined}
   >
     {@render items({ variant })}
   </div>

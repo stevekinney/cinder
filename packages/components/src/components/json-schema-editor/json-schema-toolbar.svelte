@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import Badge from '../badge/badge.svelte';
@@ -59,14 +60,6 @@
     );
   }
 
-  // The set of enabled actions depends on these editor-state fields. Deriving a
-  // signature value makes the dependency explicit so the roving $effect re-runs
-  // whenever participation could change — rather than relying on `void` reads,
-  // which only track correctly when `editorState` happens to be a $state proxy.
-  const participationSignature = $derived(
-    `${editorState.canUndo}|${editorState.canRedo}|${editorState.hasChanges}|${editorState.readonly}|${editorState.copyValue}`,
-  );
-
   /**
    * Apply roving tabindex: exactly one enabled button gets tabindex=0, all
    * others get tabindex=-1. When the current rovingIndex goes out of range
@@ -75,25 +68,41 @@
    * toolbar.
    */
   $effect(() => {
-    // Reading the signature subscribes the effect to every state field that can
-    // change which actions are enabled.
-    void participationSignature;
+    // Read each state field that can change which actions are enabled directly.
+    // Getters on the `editorState` prop track correctly because they read the
+    // closure's $state internally — no signature-string or `void` workaround is
+    // needed. The reads must stay in the reactive scope so the effect re-runs
+    // when participation changes.
+    void editorState.canUndo;
+    void editorState.canRedo;
+    void editorState.hasChanges;
+    void editorState.readonly;
+    void editorState.copyValue;
+    // Track `rovingIndex` too so a keydown/focusin handler moving the roved
+    // button re-applies the DOM tabindex on the next flush.
+    const currentRovingIndex = rovingIndex;
 
     const buttons = getActionButtons();
     if (buttons.length === 0) {
       // No enabled actions: nothing to rove. Reset the index so a future
       // re-enable starts from the first action rather than a stale offset.
-      rovingIndex = 0;
+      // Write untracked: the effect already depends on `rovingIndex`, so an
+      // untracked write avoids re-triggering itself purely from its own reset.
+      untrack(() => {
+        rovingIndex = 0;
+      });
       return;
     }
 
     // Clamp the roving index to the current participant count.
-    let activeIndex = rovingIndex;
+    let activeIndex = currentRovingIndex;
     if (activeIndex >= buttons.length) {
       const wasFocusedInsideToolbar =
         toolbarRightElement?.contains(document.activeElement) ?? false;
       activeIndex = 0;
-      rovingIndex = 0;
+      untrack(() => {
+        rovingIndex = 0;
+      });
       if (wasFocusedInsideToolbar) {
         buttons[0]?.focus();
       }

@@ -157,6 +157,7 @@
 <div
   bind:this={triggerElement}
   class={classNames('cinder-context-menu-trigger', className)}
+  aria-haspopup="menu"
   oncontextmenu={handleContextmenu}
   onpointerdown={handlePointerdown}
   onpointerup={handlePointerup}

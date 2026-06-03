@@ -18,6 +18,7 @@
 <script lang="ts">
   import type { ProgressProps } from './progress.types.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     value,
@@ -29,6 +30,20 @@
     ariaLabelledby,
     class: className,
   }: ProgressProps = $props();
+
+  // A progressbar must have an accessible name (ARIA 1.2 §6.9). `label` feeds
+  // aria-valuetext only, so warn JS consumers (who bypass the TS docs) when
+  // neither name source is supplied. Re-checks reactively; devWarn self-gates on DEV.
+  $effect(() => {
+    const hasAriaLabel = typeof ariaLabel === 'string' && ariaLabel.trim().length > 0;
+    const hasAriaLabelledby =
+      typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0;
+    if (!hasAriaLabel && !hasAriaLabelledby) {
+      devWarn(
+        '[cinder/Progress] rendered without an accessible name — pass `ariaLabel` or `ariaLabelledby`. `label` only sets aria-valuetext and does not name the progressbar.',
+      );
+    }
+  });
 
   // A usable upper bound: only a finite, strictly-positive `max` can define a
   // determinate scale. Zero, negative, or non-finite `max` cannot, so the bar

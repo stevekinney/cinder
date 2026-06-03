@@ -15,14 +15,22 @@
  *
  * @example
  * ```ts
+ * // Construct during component initialization — the internal onDestroy hook
+ * // clears the pending timer automatically, so no manual cleanup is required.
  * const copyState = createCopyState();
- * $effect(() => copyState.destroy);
  *
  * // In a handler:
  * await copyState.trigger('json', JSON.stringify(data));
  *
  * // In template:
  * {#if copyState.copiedKey === 'json'}...{/if}
+ *
+ * // If you construct it conditionally or asynchronously (outside the
+ * // initialization phase where onDestroy can register), register cleanup
+ * // yourself by RETURNING the destroy function from an $effect:
+ * $effect(() => {
+ *   return () => copyState.destroy();
+ * });
  * ```
  */
 

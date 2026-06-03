@@ -92,7 +92,7 @@
     return Math.max(0, rootPixels - Math.max(0, panes.length - 1) * handlePixels);
   }
 
-  const availablePanePixels = $derived.by(() => computeAvailablePanePixels());
+  const availablePanePixels = $derived(computeAvailablePanePixels());
 
   const unmeasuredSizes = $derived(
     panes.map((pane, index) => {
@@ -404,7 +404,11 @@
       valueNow,
       valueMin: 0,
       valueMax: 100,
-      valueText: `${valueNow}% (0px)`,
+      // Match the measured-state format (`getHandleAriaState`): pixels first,
+      // percent in parens. Pre-measurement the pixel span is unknown, so it
+      // reports 0px. Keeping a single field order means a screen reader tracking
+      // a focused handle does not hear the format invert on first paint.
+      valueText: `0px (${valueNow}%)`,
     };
   }
 </script>

@@ -36,13 +36,12 @@
   // id is always computed from baseId and value; it does not track a custom
   // `id` prop on this Tab.
   //
-  // ⚠️  Known limitation: if you supply a custom `id` prop to override this
-  // Tab's element id, the paired TabPanel's `aria-labelledby` will still point
-  // at the baseId-derived id (e.g. `${baseId}-tab-${value}`) — which will no
-  // longer match the button's id. This breaks the ARIA tab→panel relationship
-  // for the custom-id case. If you need a custom id, you must also set a
-  // matching `aria-labelledby` on the TabPanel manually. Removing the custom
-  // `id` override restores automatic wiring.
+  // ⚠️  Custom-id wiring: if you supply a custom `id` prop to override this
+  // Tab's element id, the paired TabPanel's default `aria-labelledby` still
+  // points at the baseId-derived id (e.g. `${baseId}-tab-${value}`), which no
+  // longer matches the button's id. Close the gap by passing the SAME custom id
+  // to the paired TabPanel's `ariaLabelledby` prop. Removing the custom `id`
+  // override restores fully automatic wiring.
   const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
   const panelId = $derived(`${tabs.baseId}-panel-${value}`);
 

@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { PinInputProps } from './pin-input.types.ts';
-  import { untrack } from 'svelte';
 
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -75,30 +74,19 @@
     return out;
   }
 
-  // Internal segment state. Synced whenever the joined view drifts from the
-  // current normalized value; never fires `onchange` because that represents
-  // prop synchronization, not user input.
-  let segments = $state<string[]>(
-    Array.from({ length: untrack(() => normalizedLength) }, () => ''),
-  );
-
-  function writeSegmentsFromValue(next: string): void {
-    const filtered = filterValue(next);
-    const nextSegments = Array.from(
-      { length: normalizedLength },
-      (_, index) => filtered[index] ?? '',
-    );
-    segments = nextSegments;
-  }
+  // Segments are a pure projection of the bound value: filter to allowed
+  // characters, then pad to the normalized length. Every writer (commit,
+  // distributeFrom, handleKeyDown) drives `value`, so deriving segments keeps
+  // a single source of truth instead of a $state + sync-$effect pair.
+  const segments = $derived.by(() => {
+    const filtered = filterValue(value ?? '');
+    return Array.from({ length: normalizedLength }, (_, index) => filtered[index] ?? '');
+  });
 
   $effect(() => {
-    // Re-normalize the bound value when length, mode, or external value drifts
-    // from what the segments currently render. Comparing against the current
-    // segments themselves is enough — no separate "last synced" bookkeeping.
+    // The only effectful residue: normalize the bound value when an external
+    // setter (or a length/mode change) leaves disallowed characters in it.
     const filtered = filterValue(value ?? '');
-    const currentJoined = segments.join('').slice(0, normalizedLength);
-    if (filtered === currentJoined && segments.length === normalizedLength) return;
-    writeSegmentsFromValue(filtered);
     if (filtered !== value) value = filtered;
   });
 
@@ -177,7 +165,7 @@
   }
 
   function commit(nextSegments: string[]): void {
-    segments = nextSegments;
+    // Writing `value` re-derives `segments`; no separate segment write needed.
     const joined = nextSegments.join('');
     if (joined !== value) {
       value = joined;

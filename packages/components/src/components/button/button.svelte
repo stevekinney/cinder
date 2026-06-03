@@ -86,37 +86,35 @@
   // destructured. TypeScript can't narrow a destructured remainder per branch, so each
   // template arm casts `rest` to the attribute shape its element actually accepts. The cast
   // is safe because the `#if href !== undefined` discriminant has already chosen the branch.
-  // These are `$derived` so the read of `rest` stays reactive and consumer prop changes
-  // flow through to the rendered attributes.
-  const anchorAttributes = $derived(
-    rest as Omit<
-      HTMLAnchorAttributes,
-      | 'class'
-      | 'href'
-      | 'tabindex'
-      | 'onclick'
-      | 'aria-disabled'
-      | 'aria-busy'
-      | 'aria-label'
-      | 'aria-labelledby'
-    >,
-  );
-  const buttonAttributes = $derived(
-    rest as Omit<
-      HTMLButtonAttributes,
-      | 'class'
-      | 'type'
-      | 'disabled'
-      | 'onclick'
-      | 'aria-disabled'
-      | 'aria-busy'
-      | 'aria-label'
-      | 'aria-labelledby'
-    >,
-  );
+  // These are plain `const` casts — `rest` from `$props()` is already reactive, so the
+  // template spread re-reads consumer prop changes without an intermediate `$derived` node.
+  const anchorAttributes = rest as Omit<
+    HTMLAnchorAttributes,
+    | 'class'
+    | 'href'
+    | 'tabindex'
+    | 'onclick'
+    | 'aria-disabled'
+    | 'aria-busy'
+    | 'aria-label'
+    | 'aria-labelledby'
+  >;
+  const buttonAttributes = rest as Omit<
+    HTMLButtonAttributes,
+    | 'class'
+    | 'type'
+    | 'disabled'
+    | 'onclick'
+    | 'aria-disabled'
+    | 'aria-busy'
+    | 'aria-label'
+    | 'aria-labelledby'
+  >;
 
-  // Branch-specific prop reads still need `$derived` because `loading` prop flips must
-  // propagate to `disabled` / `tabindex` attributes.
+  // Branch-specific prop reads stay `$derived` because they extract a *value* off `rest`
+  // (a property access snapshots, unlike the spread of `rest` itself which re-reads the
+  // reactive proxy). Keeping these derived ensures consumer `tabindex` / `type` / `disabled`
+  // changes after mount still propagate to the rendered attributes.
   const anchorTabIndex = $derived(
     (rest as { tabindex?: HTMLAnchorAttributes['tabindex'] }).tabindex,
   );

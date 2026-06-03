@@ -42,9 +42,18 @@
   const normalizedAriaLabel = $derived(
     typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined,
   );
-  const role = $derived(
-    normalizedAriaLabel && explicitRegionElements.has(as) ? 'region' : undefined,
+  // `aria-labelledby` reaches the element through `...rest`. Treat it the same as
+  // `ariaLabel` for landmark purposes: a neutral element (`div`/`pre`) with an
+  // accessible name — whether from `ariaLabel` or `aria-labelledby` — becomes a
+  // region landmark. Without this, `<ScrollArea as="div" aria-labelledby="…">`
+  // would be a named, focusable, but landmark-less container while the `ariaLabel`
+  // form would not — an asymmetry invisible to the consumer.
+  const ariaLabelledby = $derived((rest as { 'aria-labelledby'?: string })['aria-labelledby']);
+  const hasAccessibleName = $derived(
+    Boolean(normalizedAriaLabel) ||
+      (typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0),
   );
+  const role = $derived(hasAccessibleName && explicitRegionElements.has(as) ? 'region' : undefined);
 </script>
 
 <svelte:element

@@ -29,22 +29,34 @@
     ...rest
   }: EmptyStateProps = $props();
 
+  // SSR-safe, per-instance id so the container can name itself from its title,
+  // giving the heading a programmatic relationship to the region it labels.
+  const titleId = $props.id();
+
   // Coerce + clamp at runtime: a consumer can pass 0, 7, NaN, or a non-numeric
   // value despite the TS literal union, and <h0>/<hNaN> is invalid markup.
-  const safeLevel = $derived.by(() => {
-    const n = Math.trunc(Number(headingLevel));
-    return Number.isFinite(n) ? Math.min(6, Math.max(1, n)) : 3;
-  });
+  const safeLevel = $derived(
+    Number.isFinite(Math.trunc(Number(headingLevel)))
+      ? Math.min(6, Math.max(1, Math.trunc(Number(headingLevel))))
+      : 3,
+  );
   const tag = $derived(`h${safeLevel}`);
 </script>
 
-<div {...rest} class={classNames('cinder-empty-state', className)}>
+<div
+  {...rest}
+  class={classNames('cinder-empty-state', className)}
+  role="group"
+  aria-labelledby={titleId}
+>
   {#if icon}
     <div class="cinder-empty-state-icon" aria-hidden="true">
       {@render icon()}
     </div>
   {/if}
-  <svelte:element this={tag} class="cinder-empty-state-title">{title}</svelte:element>
+  <svelte:element this={tag} id={titleId} class="cinder-empty-state-title">
+    {title}
+  </svelte:element>
   {#if description}
     <p class="cinder-empty-state-description">{description}</p>
   {/if}

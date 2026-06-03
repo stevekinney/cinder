@@ -146,6 +146,7 @@
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
     data-cinder-disabled={disabled || undefined}
+    aria-disabled={disabled || undefined}
     class={classNames('cinder-chip', customClassName)}
   >
     {#if leadingIcon}

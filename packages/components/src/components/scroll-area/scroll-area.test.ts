@@ -113,6 +113,27 @@ describe('ScrollArea', () => {
     expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
+  test('adds role="region" when aria-labelledby names a neutral element', () => {
+    const { container } = render(ScrollArea, {
+      as: 'div',
+      'aria-labelledby': 'transcript-heading',
+      children: textSnippet('body'),
+    } as never);
+    const root = container.querySelector('.cinder-scroll-area');
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.getAttribute('aria-labelledby')).toBe('transcript-heading');
+  });
+
+  test('does not add role="region" via aria-labelledby on a semantic element', () => {
+    const { container } = render(ScrollArea, {
+      as: 'main',
+      'aria-labelledby': 'transcript-heading',
+      children: textSnippet('body'),
+    } as never);
+    const root = container.querySelector('main.cinder-scroll-area');
+    expect(root?.hasAttribute('role')).toBe(false);
+  });
+
   test('applies tabindex="0" by default so keyboard users can scroll', () => {
     const { container } = render(ScrollArea, { children: textSnippet('body') });
     expect(container.querySelector('.cinder-scroll-area')?.getAttribute('tabindex')).toBe('0');

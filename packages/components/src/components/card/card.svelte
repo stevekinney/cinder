@@ -12,7 +12,7 @@
    * @avoidWhen Presenting a single key metric — use stat or stat-group instead.
    * @related surface, stat, stacked-list-item, section-heading
    */
-  export type { CardProps, CardTone, CardVariant } from './card.types.ts';
+  export type { CardHeadingLevel, CardProps, CardTone, CardVariant } from './card.types.ts';
 </script>
 
 <script lang="ts">
@@ -24,6 +24,7 @@
     children,
     header,
     title,
+    headingLevel = 3,
     description,
     footer,
     variant = 'card',
@@ -32,6 +33,16 @@
     edgeToEdgeOnMobile = false,
     ...rest
   }: CardProps = $props();
+
+  // Coerce + clamp at runtime: a consumer can pass 0, 7, NaN, or a non-numeric
+  // value (JS callers, schema-driven usage). Building `h${headingLevel}` directly
+  // would emit invalid markup like <h0>/<hNaN>. Matches EmptyState's heading clamp.
+  const resolvedHeadingLevel = $derived(
+    Number.isFinite(Math.trunc(Number(headingLevel)))
+      ? Math.min(6, Math.max(1, Math.trunc(Number(headingLevel))))
+      : 3,
+  );
+  const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
 </script>
 
 <div
@@ -46,7 +57,7 @@
     </div>
   {:else if title}
     <div class="cinder-card__header">
-      <h3 class="cinder-card__title">{title}</h3>
+      <svelte:element this={titleTag} class="cinder-card__title">{title}</svelte:element>
       {#if description}
         <p class="cinder-card__description">{description}</p>
       {/if}

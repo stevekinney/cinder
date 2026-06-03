@@ -596,7 +596,7 @@
           <p>No messages yet</p>
           {#if emptyPrompts && emptyPrompts.length > 0}
             <div class="chat-empty-prompts" role="group" aria-label="Suggested prompts">
-              {#each emptyPrompts as prompt, index (`${index}-${prompt}`)}
+              {#each emptyPrompts as prompt, index (index)}
                 <button
                   type="button"
                   class="chat-empty-prompt"

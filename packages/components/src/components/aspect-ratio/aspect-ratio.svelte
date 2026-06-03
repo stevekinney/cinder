@@ -33,17 +33,13 @@
     ...rest
   }: AspectRatioProps = $props();
 
-  const ratioValue = $derived.by(() => {
-    if (typeof ratio === 'string') {
-      return ratio;
-    }
-
-    if (Number.isFinite(ratio) && ratio > 0) {
-      return String(ratio);
-    }
-
-    return undefined;
-  });
+  const ratioValue = $derived(
+    typeof ratio === 'string'
+      ? ratio
+      : Number.isFinite(ratio) && ratio > 0
+        ? String(ratio)
+        : undefined,
+  );
 </script>
 
 <svelte:element

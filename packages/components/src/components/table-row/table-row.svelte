@@ -114,7 +114,7 @@
           type="checkbox"
           class="cinder-table__selection-checkbox"
           disabled
-          aria-label="Selection not allowed for this row"
+          aria-label={selectionLabel ?? 'Selection not allowed for this row'}
         />
       </td>
     {:else}

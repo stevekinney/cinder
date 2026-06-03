@@ -32,12 +32,19 @@
 
   const table = getTableContext();
 
+  // A column is only actually sortable when both `sortable` is set and a `column`
+  // identifier is supplied — the inner <button> renders under that same guard.
+  // Without it we would advertise a sortable-but-unsorted column to assistive
+  // technology (`aria-sort="none"`, `data-cinder-sortable`) with no operable
+  // control behind it.
+  const isSortable = $derived(sortable && !!column);
+
   // aria-sort lives on the <th> per WAI-ARIA. The accessible name and
   // keyboard activation live on the inner <button> when sortable.
   const ariaSort = $derived(
-    sortable && column && table.sort?.column === column
-      ? table.sort.direction
-      : sortable
+    isSortable && table.sort?.column === column
+      ? table.sort?.direction
+      : isSortable
         ? 'none'
         : undefined,
   );
@@ -53,10 +60,10 @@
   {scope}
   class={cn('cinder-table__header-cell', className)}
   data-cinder-align={align}
-  data-cinder-sortable={sortable || undefined}
+  data-cinder-sortable={isSortable || undefined}
   aria-sort={ariaSort}
 >
-  {#if sortable && column}
+  {#if isSortable}
     <button type="button" class="cinder-table__sort-button" onclick={handleClick}>
       {@render children()}
       <span

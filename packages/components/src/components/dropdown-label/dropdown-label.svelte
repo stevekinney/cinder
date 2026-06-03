@@ -22,7 +22,9 @@
   let { class: customClassName, children, ...rest }: DropdownLabelProps = $props();
 </script>
 
-<div class={classNames('cinder-dropdown-label', customClassName)} {...rest}>
+<!-- {...rest} is spread first so the intrinsic role="presentation" — DropdownLabel's
+     sole correct role inside a role="menu" — cannot be overridden by a consumer. -->
+<div {...rest} class={classNames('cinder-dropdown-label', customClassName)} role="presentation">
   {#if children}
     {@render children()}
   {/if}

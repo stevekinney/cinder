@@ -57,11 +57,16 @@
     context?.errorId === `${field.id}-error` ? `${field.id}-select-error` : `${field.id}-error`,
   );
 
-  // Guard runs only in the browser after mount so SSR render doesn't pollute
-  // server output with warnings. $effect never runs on the server in Svelte 5.
+  // `devWarn` is dead-code-eliminated from production builds (gated on DEV from
+  // esm-env), so the previous `typeof window` guard was redundant for the prod path.
+  // It runs inside this $effect, which is client-only, so SSR is not a concern here.
+  // The effect remains because `options` can change reactively (e.g. async load),
+  // and we only want to surface the diagnostic once the list is genuinely empty.
   $effect(() => {
-    if (typeof window !== 'undefined' && options.length === 0) {
-      devWarn('Select: options is empty');
+    if (options.length === 0) {
+      devWarn(
+        '[cinder/Select] options is empty — pass at least one option, or ignore during async load.',
+      );
     }
   });
 </script>

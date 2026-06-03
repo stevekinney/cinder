@@ -11,7 +11,7 @@ const { default: Progress } = await import('./progress.svelte');
 
 describe('Progress (bar)', () => {
   test('renders role=progressbar with min/max/now for determinate', () => {
-    const { container } = render(Progress, { value: 30 });
+    const { container } = render(Progress, { value: 30, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el).not.toBeNull();
     expect(el?.getAttribute('aria-valuemin')).toBe('0');
@@ -20,39 +20,43 @@ describe('Progress (bar)', () => {
   });
 
   test('aria-valuetext defaults to "{percent}%" for determinate', () => {
-    const { container } = render(Progress, { value: 42 });
+    const { container } = render(Progress, { value: 42, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('aria-valuetext')).toBe('42%');
   });
 
   test('label prop overrides aria-valuetext', () => {
-    const { container } = render(Progress, { value: 50, label: 'Half-way there' });
+    const { container } = render(Progress, {
+      value: 50,
+      label: 'Half-way there',
+      ariaLabel: 'Progress',
+    });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('aria-valuetext')).toBe('Half-way there');
   });
 
   test('value clamps to [0, max]', () => {
-    const { container: lo } = render(Progress, { value: -10 });
+    const { container: lo } = render(Progress, { value: -10, ariaLabel: 'Progress' });
     expect(lo.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('0');
-    const { container: hi } = render(Progress, { value: 200 });
+    const { container: hi } = render(Progress, { value: 200, ariaLabel: 'Progress' });
     expect(hi.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('100');
   });
 
   test('omitting value renders indeterminate (no aria-valuenow, data-cinder-indeterminate)', () => {
-    const { container } = render(Progress, {});
+    const { container } = render(Progress, { ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('aria-valuenow')).toBeNull();
     expect(el?.hasAttribute('data-cinder-indeterminate')).toBe(true);
   });
 
   test('indeterminate aria-valuetext defaults to "Loading"', () => {
-    const { container } = render(Progress, {});
+    const { container } = render(Progress, { ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('aria-valuetext')).toBe('Loading');
   });
 
   test('custom max scales the percent calculation', () => {
-    const { container } = render(Progress, { value: 50, max: 200 });
+    const { container } = render(Progress, { value: 50, max: 200, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('aria-valuemax')).toBe('200');
     expect(el?.getAttribute('aria-valuenow')).toBe('50');
@@ -62,13 +66,18 @@ describe('Progress (bar)', () => {
 
 describe('Progress (ring)', () => {
   test('variant=ring renders an svg with the progressbar role on the wrapper', () => {
-    const { container } = render(Progress, { value: 60, variant: 'ring' });
+    const { container } = render(Progress, { value: 60, variant: 'ring', ariaLabel: 'Progress' });
     expect(container.querySelector('[role="progressbar"]')).not.toBeNull();
     expect(container.querySelector('svg')).not.toBeNull();
   });
 
   test('ring variant carries the same data-cinder-size attribute', () => {
-    const { container } = render(Progress, { value: 60, variant: 'ring', size: 'lg' });
+    const { container } = render(Progress, {
+      value: 60,
+      variant: 'ring',
+      size: 'lg',
+      ariaLabel: 'Progress',
+    });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('data-cinder-size')).toBe('lg');
   });
@@ -218,7 +227,7 @@ describe('Progress — degenerate max/value guards', () => {
   // A determinate scale needs a finite, strictly-positive max. Anything else
   // must fall back to indeterminate rather than dividing by zero (NaN/Infinity).
   test('max=0 renders indeterminate, not NaN/Infinity', () => {
-    const { container } = render(Progress, { value: 10, max: 0 });
+    const { container } = render(Progress, { value: 10, max: 0, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
     expect(el?.getAttribute('aria-valuenow')).toBeNull();
@@ -228,7 +237,7 @@ describe('Progress — degenerate max/value guards', () => {
   });
 
   test('negative max renders indeterminate', () => {
-    const { container } = render(Progress, { value: 10, max: -5 });
+    const { container } = render(Progress, { value: 10, max: -5, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
     expect(el?.getAttribute('aria-valuenow')).toBeNull();
@@ -236,21 +245,21 @@ describe('Progress — degenerate max/value guards', () => {
 
   test('non-finite max (Infinity/NaN) renders indeterminate', () => {
     for (const max of [Number.POSITIVE_INFINITY, Number.NaN]) {
-      const { container } = render(Progress, { value: 10, max });
+      const { container } = render(Progress, { value: 10, max, ariaLabel: 'Progress' });
       const el = container.querySelector('[role="progressbar"]');
       expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
     }
   });
 
   test('non-finite value renders indeterminate even with a valid max', () => {
-    const { container } = render(Progress, { value: Number.NaN, max: 100 });
+    const { container } = render(Progress, { value: Number.NaN, max: 100, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('data-cinder-indeterminate')).toBe('true');
     expect(el?.getAttribute('aria-valuenow')).toBeNull();
   });
 
   test('a valid finite max still computes a clamped determinate percent', () => {
-    const { container } = render(Progress, { value: 25, max: 50 });
+    const { container } = render(Progress, { value: 25, max: 50, ariaLabel: 'Progress' });
     const el = container.querySelector('[role="progressbar"]');
     expect(el?.getAttribute('data-cinder-indeterminate')).toBeNull();
     expect(el?.getAttribute('aria-valuenow')).toBe('25');

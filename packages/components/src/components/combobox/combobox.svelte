@@ -74,6 +74,7 @@
   let open = $state(false);
   let activeIndex = $state(-1);
   let inputElement = $state<HTMLInputElement | null>(null);
+  let listboxElement = $state<HTMLElement | null>(null);
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -87,7 +88,12 @@
   // When a value is provided externally, mirror its label in the input box.
   // The current input text is read untracked so typing can keep driving filtering.
   $effect(() => {
-    if (!value) return;
+    if (!value) {
+      // Clearing the value (deselect/reset) must also clear the visible text;
+      // otherwise the input keeps showing the previously selected option's label.
+      if (untrack(() => inputValue)) inputValue = '';
+      return;
+    }
     const matched = options.find((option) => option.value === value);
     if (matched && untrack(() => inputValue) !== matched.label) {
       inputValue = matched.label;
@@ -112,9 +118,11 @@
   }
 
   function handleBlur(event: FocusEvent) {
-    // Defer close so a click on a listbox option can complete first.
-    const next = event.relatedTarget as HTMLElement | null;
-    if (next?.closest(`#${listboxId}`)) return;
+    // Defer close so a click on a listbox option can complete first. Use a DOM
+    // containment check rather than a `#${listboxId}` selector so ids with
+    // CSS-special characters (colons, dots, leading digits) don't throw.
+    const next = event.relatedTarget as Node | null;
+    if (next && listboxElement?.contains(next)) return;
     open = false;
   }
 
@@ -203,7 +211,7 @@
       widthMode="match-anchor"
       class="cinder-combobox__panel"
     >
-      <ul role="presentation" class="cinder-combobox__listbox">
+      <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
         {#each filteredOptions as option, index (option.value)}
           <li
             id="{id}-option-{index}"

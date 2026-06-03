@@ -19,7 +19,7 @@
   import type { ConnectionIndicatorProps, ConnectionState } from './connection-indicator.types.ts';
   import { cn } from '../../utilities/class-names.ts';
 
-  let { state, label, class: className }: ConnectionIndicatorProps = $props();
+  let { state, label, class: className, ...rest }: ConnectionIndicatorProps = $props();
 
   const defaultLabels: Record<ConnectionState, string> = {
     connected: 'Connected',
@@ -31,7 +31,14 @@
   const visibleLabel = $derived(label ?? defaultLabels[state]);
 </script>
 
-<span class={cn('cinder-connection-indicator', className)} data-cinder-state={state} role="status">
+<span
+  {...rest}
+  class={cn('cinder-connection-indicator', className)}
+  data-cinder-state={state}
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+>
   <span class="cinder-connection-indicator__dot" aria-hidden="true"></span>
   <span class="cinder-connection-indicator__label">{visibleLabel}</span>
 </span>

@@ -4,6 +4,14 @@ import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements
 type CommonArm = {
   active?: boolean;
   disabled?: boolean;
+  /**
+   * The `aria-current` token emitted while `active` is true. Defaults to `'page'`,
+   * which is correct for navigation bars and breadcrumb-adjacent links. Use
+   * `'true'` (or another standard token such as `'step'` / `'location'`) for
+   * section/view switchers, where `'page'` would mislabel the current section as
+   * the current page in the browsing context.
+   */
+  current?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
   class?: string;
   /**
    * Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.

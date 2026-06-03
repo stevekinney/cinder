@@ -42,7 +42,7 @@
   const maximumLength = $derived(resolveMaximumLength(maxlength));
   const countId = $derived(showCount && maximumLength !== undefined ? `${id}-count` : undefined);
   const currentCount = $derived(value?.length ?? 0);
-  const ownRequired = $derived(required === true ? true : required === false ? false : undefined);
+  const ownRequired = $derived(required ?? undefined);
   const field = $derived(
     resolveFieldControl({
       id,

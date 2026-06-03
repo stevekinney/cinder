@@ -26,7 +26,6 @@
 
   const props: SideNavigationItemProps = $props();
   const active = $derived(props.active ?? false);
-  const listItemClass = $derived(props.listItemClass);
   // Forward everything except listItemClass to NavigationItem.
   const navigationItemProps = $derived.by(() => {
     const { listItemClass: _omit, ...rest } = props;
@@ -57,6 +56,6 @@
   });
 </script>
 
-<li class={classNames('cinder-side-navigation__item', listItemClass)}>
+<li class={classNames('cinder-side-navigation__item', props.listItemClass)}>
   <NavigationItem {...navigationItemProps} variant="vertical" />
 </li>

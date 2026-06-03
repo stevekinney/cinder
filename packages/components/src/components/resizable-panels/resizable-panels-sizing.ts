@@ -643,7 +643,8 @@ export function getHandleAriaState(
   });
 
   if (state.availablePanePixels <= 0 || pairTotal <= 0) {
-    return { valueNow: 0, valueMin: 0, valueMax: 100, valueText: '0% (0px)' };
+    // Pixels-first to match the non-degenerate return below and the unmeasured state.
+    return { valueNow: 0, valueMin: 0, valueMax: 100, valueText: '0px (0%)' };
   }
 
   const currentPixels = state.panels[handleIndex]!.sizePixels;

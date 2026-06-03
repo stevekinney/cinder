@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { ContextMenuProps } from './context-menu.types.ts';
-  import { tick } from 'svelte';
   import type { VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
@@ -80,12 +79,9 @@
     requestedY = y;
     if (!open) capturedFocus = captureFocus();
     setOpen(true);
-    void tick().then(() => {
-      const item = menuElement?.querySelector<HTMLElement>(
-        '[role="menuitem"]:not([data-disabled])',
-      );
-      item?.focus();
-    });
+    // DropdownMenu owns open→focus for this (non-popover) path: its $effect fires
+    // when context.isOpen becomes true and focuses the first item because
+    // context.initialFocus is 'first'. Focusing here too would be redundant work.
   }
 
   function makeVirtualReference(x: number, y: number): VirtualElement {
@@ -104,10 +100,9 @@
     };
   }
 
-  const virtualReference = $derived.by<VirtualElement | null>(() => {
-    if (!open) return null;
-    return makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY);
-  });
+  const virtualReference: VirtualElement | null = $derived(
+    open ? makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY) : null,
+  );
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,

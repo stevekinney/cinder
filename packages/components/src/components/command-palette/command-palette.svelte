@@ -70,7 +70,12 @@
   let itemCounter = 0;
 
   // ── Active item (virtual focus) ───────────────────────────────────────────
-  let activeItemId = $state<string | null>(null);
+  // `intendedActiveId` is the user's last navigation/hover intent. The resolved
+  // `activeItemId` clamps that intent to the currently-enabled set, so it is a
+  // pure function of intent + enabledIds rather than a value repaired one tick
+  // late inside an $effect. Keyboard/hover handlers write intent; everything
+  // downstream reads the resolved derived.
+  let intendedActiveId = $state<string | null>(null);
 
   // Ordered list of non-disabled item ids. Derived so arrow-key navigation
   // always walks the current set, including after prop changes (e.g. toggling
@@ -81,14 +86,14 @@
       .map((r) => r.id);
   });
 
-  // Repair activeItemId whenever the enabled set changes (registration churn,
-  // disabled toggled, query change). Preserve the current selection if it's
-  // still present and non-disabled; otherwise fall back to first enabled or null.
-  $effect(() => {
-    const ids = enabledIds;
-    if (activeItemId !== null && ids.includes(activeItemId)) return;
-    activeItemId = ids[0] ?? null;
-  });
+  // Resolved active id: preserve the user's intent if it's still in the enabled
+  // set, otherwise fall back to the first enabled item (or null). This collapses
+  // the previous read-then-write $effect into a single synchronous derivation.
+  const activeItemId = $derived(
+    intendedActiveId !== null && enabledIds.includes(intendedActiveId)
+      ? intendedActiveId
+      : (enabledIds[0] ?? null),
+  );
 
   // ── Empty-state flash prevention ─────────────────────────────────────────
   // `registrationsReady` prevents the empty snippet from flashing on initial
@@ -195,29 +200,29 @@
       if (ids.length === 0) return;
       if (activeItemId === null) {
         const firstId = ids[0];
-        if (firstId !== undefined) activeItemId = firstId;
+        if (firstId !== undefined) intendedActiveId = firstId;
       } else {
         const index = ids.indexOf(activeItemId);
         const nextId = ids[(index + 1) % ids.length];
-        if (nextId !== undefined) activeItemId = nextId;
+        if (nextId !== undefined) intendedActiveId = nextId;
       }
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       if (ids.length === 0) return;
       if (activeItemId === null) {
         const lastId = ids[ids.length - 1];
-        if (lastId !== undefined) activeItemId = lastId;
+        if (lastId !== undefined) intendedActiveId = lastId;
       } else {
         const index = ids.indexOf(activeItemId);
         const previousId = ids[index <= 0 ? ids.length - 1 : index - 1];
-        if (previousId !== undefined) activeItemId = previousId;
+        if (previousId !== undefined) intendedActiveId = previousId;
       }
     } else if (event.key === 'Home') {
       event.preventDefault();
-      activeItemId = ids[0] ?? null;
+      intendedActiveId = ids[0] ?? null;
     } else if (event.key === 'End') {
       event.preventDefault();
-      activeItemId = ids[ids.length - 1] ?? null;
+      intendedActiveId = ids[ids.length - 1] ?? null;
     } else if (event.key === 'Enter') {
       event.preventDefault();
       if (activeItemId !== null) context.activateItemById(activeItemId);
@@ -231,7 +236,11 @@
 
   $effect(() => {
     if (activeItemId === null) return;
-    document.getElementById(activeItemId)?.scrollIntoView({ block: 'nearest' });
+    // Use the node captured at registration time rather than
+    // document.getElementById, which assumes globally-unique ids and breaks in
+    // shadow DOM, iframes, or multi-instance scenarios.
+    const record = registrations.find((r) => r.id === activeItemId);
+    record?.node.scrollIntoView({ block: 'nearest' });
   });
 
   // ── Context ───────────────────────────────────────────────────────────────
@@ -244,25 +253,25 @@
     },
     register(input: CommandItemRegistrationInput, node: HTMLElement) {
       const id = `${listboxId}-item-${++itemCounter}`;
-      registrations = [
-        ...registrations,
-        {
-          id,
-          node,
-          getValue: input.getValue,
-          getOnselect: input.getOnselect,
-          getDisabled: input.getDisabled,
-        },
-      ];
+      // Mutate in place: $state wraps the array in a deep reactive proxy that
+      // tracks push/splice, so we avoid allocating a fresh array per register.
+      registrations.push({
+        id,
+        node,
+        getValue: input.getValue,
+        getOnselect: input.getOnselect,
+        getDisabled: input.getDisabled,
+      });
       return {
         id,
         unregister: () => {
-          registrations = registrations.filter((r) => r.id !== id);
+          const index = registrations.findIndex((r) => r.id === id);
+          if (index !== -1) registrations.splice(index, 1);
         },
       };
     },
     setActiveById(id: string) {
-      activeItemId = id;
+      intendedActiveId = id;
     },
     activateItemById(id: string) {
       const record = registrations.find((r) => r.id === id);

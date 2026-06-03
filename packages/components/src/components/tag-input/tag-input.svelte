@@ -109,6 +109,16 @@
   const resolvedMax = $derived(
     Number.isFinite(max) ? Math.max(0, Math.floor(max as number)) : undefined,
   );
+  // Memoize the delimiter matcher: a RegExp delimiter only changes when the prop
+  // changes, so build the expression once here instead of allocating a new
+  // RegExp on every keydown. Both the global (g) and sticky (y) flags are stripped
+  // because they make `.test()` stateful (it advances/reads `lastIndex`), which would
+  // make repeated calls on the memoized instance return inconsistent results.
+  const delimiterExpression = $derived(
+    typeof delimiter === 'string'
+      ? null
+      : new RegExp(delimiter.source, delimiter.flags.replaceAll('g', '').replaceAll('y', '')),
+  );
   const labelledBy = $derived(composeDescribedBy(context?.labelId, consumerAriaLabelledBy));
   const ariaLabel = $derived(
     labelledBy ? undefined : consumerAriaLabel?.trim() ? consumerAriaLabel : undefined,
@@ -200,8 +210,7 @@
 
   function matchesDelimiter(key: string): boolean {
     if (typeof delimiter === 'string') return key === delimiter;
-    const expression = new RegExp(delimiter.source, delimiter.flags.replaceAll('g', ''));
-    return expression.test(key);
+    return delimiterExpression?.test(key) ?? false;
   }
 
   function commitDraft(): boolean {
@@ -346,6 +355,9 @@
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
     >
+      <!-- Always key by a position-qualified composite (index:tag). A controlled
+           `value` prop can contain duplicate strings even when allowDuplicates is
+           false, so a pure value key would throw each_key_duplicate. -->
       {#each currentTags as tag, index (`${index}:${tag}`)}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>

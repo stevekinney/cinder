@@ -42,6 +42,7 @@
     trailing,
     leadingInteractive = false,
     trailingInteractive = false,
+    'aria-describedby': consumerDescribedBy,
     ...rest
   }: InputProps = $props();
 
@@ -67,7 +68,9 @@
   );
   const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
   const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+  const describedBy = $derived(
+    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, consumerDescribedBy),
+  );
   const resolvedAriaInvalid = $derived(
     error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
   );

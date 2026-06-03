@@ -102,8 +102,10 @@ describe('Timeline', () => {
       'li.cinder-timeline-item > .cinder-timeline__group-header',
     );
     expect(heading?.textContent?.trim()).toBe('Launch day');
-    expect(heading?.getAttribute('role')).toBe('heading');
-    expect(heading?.getAttribute('aria-level')).toBe('2');
+    // Native heading element conveys the level implicitly — no role/aria-level.
+    expect(heading?.tagName).toBe('H2');
+    expect(heading?.hasAttribute('role')).toBe(false);
+    expect(heading?.hasAttribute('aria-level')).toBe(false);
   });
 
   test('filters role props to preserve ordered-list semantics', () => {

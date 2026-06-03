@@ -48,6 +48,22 @@ describe('NavigationItem rendering', () => {
     expect(anchor?.hasAttribute('aria-current')).toBe(false);
   });
 
+  test('active link honors a custom `current` token for non-page contexts', () => {
+    const { container } = render(NavigationItem, {
+      props: { href: '/home', active: true, current: 'true', children: (() => {}) as never },
+    });
+    const anchor = container.querySelector('a');
+    expect(anchor?.getAttribute('aria-current')).toBe('true');
+  });
+
+  test('inactive item never emits aria-current even with a custom `current` token', () => {
+    const { container } = render(NavigationItem, {
+      props: { onclick: () => {}, active: false, current: 'step', children: (() => {}) as never },
+    });
+    const button = container.querySelector('button');
+    expect(button?.hasAttribute('aria-current')).toBe(false);
+  });
+
   test('active button has aria-current="page"', () => {
     const { container } = render(NavigationItem, {
       props: { onclick: () => {}, active: true, children: (() => {}) as never },

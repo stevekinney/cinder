@@ -8,9 +8,11 @@ export type ProgressSize = 'sm' | 'md' | 'lg';
  * component renders a looping animation under normal motion preferences
  * and a static surface under `prefers-reduced-motion: reduce`.
  *
- * Every progressbar must have an accessible name. Provide one via:
- * - `ariaLabel` — a direct string label when no visible label element exists.
- * - `ariaLabelledby` — the `id` of a visible label element in the page.
+ * ACCESSIBLE NAME (required): every progressbar must have an accessible name
+ * per ARIA 1.2 §6.9. Provide `ariaLabel` or `ariaLabelledby` (at least one). If
+ * both are supplied, `aria-labelledby` wins per ARIA name-computation precedence.
+ * `label` does NOT satisfy this — it only feeds `aria-valuetext` (the announced
+ * status string), not the element's accessible name.
  */
 export type ProgressProps = {
   /** Current progress value. Omit for indeterminate. */
@@ -21,16 +23,21 @@ export type ProgressProps = {
   variant?: ProgressVariant;
   /** Size token. Default `md`. */
   size?: ProgressSize;
-  /** Human-readable status, exposed as `aria-valuetext`. */
+  /**
+   * Human-readable status, exposed as `aria-valuetext`. NOT the accessible
+   * name — supply `ariaLabel` or `ariaLabelledby` for that.
+   */
   label?: string;
   /**
    * Accessible name applied directly to the progressbar element when no
-   * visible label element is present in the page.
+   * visible label element is present in the page. Required unless
+   * `ariaLabelledby` is supplied.
    */
   ariaLabel?: string;
   /**
    * Id of a visible element that serves as the accessible name for the
    * progressbar. Prefer this over `ariaLabel` when a visible label exists.
+   * Required unless `ariaLabel` is supplied.
    */
   ariaLabelledby?: string;
   /** Additional class names merged with `.cinder-progress`. */
