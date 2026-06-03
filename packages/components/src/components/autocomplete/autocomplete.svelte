@@ -26,6 +26,7 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
     id,
@@ -100,6 +101,14 @@
   const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
+  );
+
+  // Persistent live-region status for screen readers. The loading/empty messaging
+  // shown inside the popover is portaled and freshly-mounted, so NVDA/JAWS do not
+  // reliably announce it. Mirror it into an always-present visually-hidden region
+  // outside the popover (see PLATFORM-POLICY § Live regions).
+  const statusMessage = $derived(
+    loading ? loadingMessage : open && renderedSuggestions.length === 0 ? emptyMessage : '',
   );
 
   function isEligibleQuery(query: string): boolean {
@@ -436,6 +445,10 @@
   {#if error}
     <p id={field.ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
   {/if}
+
+  <!-- Persistent status announcer (loading / no-results), outside the portaled
+       popover so screen readers reliably hear it. -->
+  <VisuallyHiddenLiveRegion message={statusMessage} />
 </div>
 
 <Popover

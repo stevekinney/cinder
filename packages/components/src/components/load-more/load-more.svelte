@@ -18,6 +18,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useIntersection } from '../../utilities/use-intersection.svelte.ts';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
     onLoadMore = async () => {},
@@ -130,7 +131,5 @@
     </button>
   {/if}
 
-  <div role="status" aria-live="polite" aria-atomic="true" class="cinder-sr-only">
-    {statusText}
-  </div>
+  <VisuallyHiddenLiveRegion message={statusText} />
 </div>

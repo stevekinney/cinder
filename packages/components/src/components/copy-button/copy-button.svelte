@@ -23,6 +23,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { cn } from '../../utilities/class-names.ts';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
     value,
@@ -45,6 +46,12 @@
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // Drive the announcement from a dedicated live region (below), not from
+  // aria-live on the button itself. A live region on an interactive control
+  // double-announces (the AT reads the button's name on focus AND as a live
+  // change) and conflicts with the button role — it's an ARIA anti-pattern.
+  const copiedAnnouncement = $derived(copied ? (copiedLabel ?? 'Copied') : '');
+
   async function handleClick() {
     const ok = await copyToClipboard(value);
     if (!ok) return;
@@ -60,22 +67,22 @@
   });
 </script>
 
-<!-- aria-label MUST flip on `copied` so the polite live region announces the
-     state change. Without that flip, screen readers receive no feedback when
-     copy succeeds in iconOnly mode (the visible icon is aria-hidden). -->
+<!-- The button keeps a STABLE accessible name (it remains a "copy" control even
+     while showing the confirmation). Success feedback is announced by the
+     separate live region below, not via aria-live on the button — putting a live
+     region on the interactive control double-announces and conflicts with the
+     button role. -->
 <button
   {...rest}
   type="button"
   data-cinder-copied={copied || undefined}
-  aria-label={copied ? (copiedLabel ?? 'Copied') : (label ?? 'Copy to clipboard')}
-  aria-live="polite"
+  aria-label={label ?? 'Copy to clipboard'}
   onclick={handleClick}
   class={cn('cinder-copy-button', className)}
 >
-  <!-- Accessible name for every branch comes from `aria-label` on the button.
-       In iconOnly mode the icon is decorative — `aria-hidden` keeps it out of the
-       accessibility tree. The `aria-live` region on the button announces state
-       changes (Copy → Copied) without needing a redundant sr-only label. -->
+  <!-- Accessible name comes from `aria-label`. In iconOnly mode the icon is
+       decorative (`aria-hidden`). Visible "Copied" text is presentational only;
+       the announcement is owned by the live region. -->
   {#if copied && confirmation}
     {@render confirmation()}
   {:else if copied && iconOnly}
@@ -90,3 +97,7 @@
     Copy
   {/if}
 </button>
+
+<!-- Dedicated polite live region: announces the copy confirmation exactly once
+     per successful copy, decoupled from the interactive button. -->
+<VisuallyHiddenLiveRegion message={copiedAnnouncement} />

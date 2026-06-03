@@ -296,9 +296,11 @@ describe('LoadMore', () => {
     });
   });
 
-  test('announces the end-of-list message immediately when hasMore is false on initial mount', () => {
-    // statusText is now a $derived (hasMore ? '' : endOfListMessage), so an initially-exhausted
-    // list announces its state on first paint — more correct than staying silent for an empty list.
+  test('announces the end-of-list message when hasMore is false on initial mount', async () => {
+    // statusText is `$derived(hasMore ? '' : endOfListMessage)`, so an initially-exhausted
+    // list announces its state — more correct than staying silent for an empty list. The
+    // shared VisuallyHiddenLiveRegion blanks-then-sets on the next microtask (so a repeated
+    // message still re-announces), so wait one tick for the text to land.
     const { getByRole } = render(LoadMore, {
       props: {
         onLoadMore: () => {},
@@ -306,7 +308,9 @@ describe('LoadMore', () => {
         endOfListMessage: 'All caught up',
       },
     });
-    expect(getByRole('status').textContent?.trim()).toBe('All caught up');
+    await waitFor(() => {
+      expect(getByRole('status').textContent?.trim()).toBe('All caught up');
+    });
   });
 
   test('announces the end-of-list message only after hasMore transitions to false', async () => {
