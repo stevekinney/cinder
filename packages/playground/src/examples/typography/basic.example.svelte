@@ -28,4 +28,7 @@
   <Typography variant="body1" noWrap style="max-width: 200px;">
     noWrap — this long text will be truncated with an ellipsis when it overflows.
   </Typography>
+  <Typography variant="caption" noWrap style="max-width: 200px;">
+    noWrap also truncates inline variants like caption, not just block ones.
+  </Typography>
 </div>

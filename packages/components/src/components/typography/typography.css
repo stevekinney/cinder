@@ -133,6 +133,14 @@
   /* --- Modifier: no wrap --- */
 
   .cinder-typography[data-cinder-nowrap] {
+    /* `display: block` is required for `text-overflow: ellipsis` to take effect on
+     * the inline variants (caption/overline/label) and on `component="span"` — an
+     * inline box never establishes the formatting context ellipsis needs.
+     * `max-inline-size: 100%` constrains the line to its container so it actually
+     * truncates; `min-inline-size: 0` lets it shrink inside a flex/grid parent. */
+    display: block;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -55,7 +55,10 @@
     label: 'span',
   };
 
-  const resolvedTag = $derived(component ?? defaultElements[variant]);
+  // `defaultElements[variant] ?? 'p'` guards against an untyped (JS) consumer passing
+  // an unknown variant: without the fallback, `defaultElements[badVariant]` is
+  // `undefined` and `<svelte:element this={undefined}>` renders nothing.
+  const resolvedTag = $derived(component ?? defaultElements[variant] ?? 'p');
 </script>
 
 <svelte:element

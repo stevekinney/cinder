@@ -312,3 +312,18 @@ describe('Typography class merging and native attribute forwarding', () => {
     expect(container.querySelector('[data-testid="typography-root"]')).not.toBeNull();
   });
 });
+
+describe('Typography robustness', () => {
+  test('an unknown variant (untyped consumer) falls back to a <p> element', () => {
+    // TypeScript prevents this, but a JS consumer could pass an unknown variant.
+    // Without the fallback, `<svelte:element this={undefined}>` would render nothing.
+    const { container } = render(Typography, {
+      variant: 'nonsense' as never,
+      children: textSnippet('Still renders'),
+    });
+    const element = container.querySelector('.cinder-typography');
+    expect(element).not.toBeNull();
+    expect(element?.tagName.toLowerCase()).toBe('p');
+    expect(element?.textContent).toContain('Still renders');
+  });
+});
