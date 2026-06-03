@@ -36,7 +36,14 @@
   // Render a native h1–h6 rather than `<div role="heading">`. Native headings
   // carry stronger, more widely supported semantics (outline navigation, implicit
   // level) and match the codebase pattern in section-heading and form-section.
-  const groupHeaderTag = $derived(`h${groupHeaderLevel}` satisfies `h${TimelineHeadingLevel}`);
+  // Coerce + clamp at runtime: JS/schema-driven callers can pass 0/7/NaN, which
+  // would emit invalid <h0>/<hNaN>. Matches card.svelte and empty-state.svelte.
+  const resolvedGroupHeaderLevel = $derived(
+    Number.isFinite(Math.trunc(Number(groupHeaderLevel)))
+      ? Math.min(6, Math.max(1, Math.trunc(Number(groupHeaderLevel))))
+      : 3,
+  );
+  const groupHeaderTag = $derived(`h${resolvedGroupHeaderLevel}` as `h${TimelineHeadingLevel}`);
 </script>
 
 <li
