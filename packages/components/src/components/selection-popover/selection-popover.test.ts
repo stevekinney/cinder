@@ -146,13 +146,19 @@ describe('SelectionPopover', () => {
   });
 
   test('does nothing on external close when no focus was captured', async () => {
-    document.body.focus();
-    const initialActive = document.activeElement;
+    // Use a real focusable element so `document.activeElement` is deterministic.
+    // `document.body.focus()` is unreliable in HappyDOM (body is not focusable
+    // without tabindex), so focus may not move to body at all.
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Trigger';
+    document.body.append(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
 
     const { rerender } = render(SelectionPopover, {
       props: {
         id: 'selection-comment',
-        // Never opened (and never expanded), so nothing is captured.
+        // Never opened — wasOpen latch is never set, so restoreFocus is never called.
         open: false,
         position: { x: 120, y: 80 },
       },
@@ -161,7 +167,8 @@ describe('SelectionPopover', () => {
     // Toggling the already-closed popover must not throw and must not steal focus.
     await rerender({ open: false, position: { x: 120, y: 80 } });
 
-    expect(document.activeElement).toBe(initialActive);
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
   });
 
   test('internal cancel restores focus exactly once and the external effect is a no-op', async () => {
