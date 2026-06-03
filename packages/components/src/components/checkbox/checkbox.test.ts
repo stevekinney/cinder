@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
+const { default: FormFieldCheckboxFixture } =
+  await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
 
 describe('Checkbox', () => {
   test('renders a native input[type=checkbox] with the given id', () => {
@@ -135,5 +137,60 @@ describe('Checkbox indicator', () => {
     expect(wrapper).not.toBeNull();
     expect(wrapper!.querySelector('input#ind2')).not.toBeNull();
     expect(wrapper!.querySelector('.cinder-checkbox-field__indicator')).not.toBeNull();
+  });
+});
+
+describe('Checkbox — FormField context wiring', () => {
+  test('inherits aria-describedby from FormField description', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Read the terms before proceeding',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-describedby')).toBe('agree-description');
+  });
+
+  test('inherits aria-invalid and aria-describedby from FormField error', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldError: 'You must agree to continue',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('agree-error');
+  });
+
+  test('inherits disabled state from FormField context', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        disabled: true,
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  test('id wiring: id, label[for], and aria-describedby all use the resolved id', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Terms',
+        checkboxLabel: 'I agree',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    const label = container.querySelector('label[for="agree"]');
+    expect(input).not.toBeNull();
+    expect(label).not.toBeNull();
+    expect(input.getAttribute('aria-describedby')).toBe('agree-description');
   });
 });

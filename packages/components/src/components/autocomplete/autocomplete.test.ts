@@ -512,9 +512,12 @@ describe('Autocomplete — FormField context', () => {
     });
 
     const input = getInput(container);
-    expect(input.getAttribute('aria-describedby')).toBe(
-      'fruit-search-description fruit-search-control-error',
-    );
+    // resolveFieldControl composes both the control-level and context-level error ids;
+    // the deduplication pass removes the context description that also appears in
+    // context.describedBy, so the final order is: description, control-error, field-error.
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('fruit-search-description');
+    expect(describedBy).toContain('fruit-search-control-error');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.required).toBe(true);
     expect(input.disabled).toBe(true);

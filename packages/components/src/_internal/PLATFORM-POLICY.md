@@ -89,6 +89,53 @@ When a new modern feature enters the codebase, add a row to the classification
 table above (with its tier and rule) in the same change. A feature with no row is
 unclassified and will be flagged in review.
 
+## Field-control wiring
+
+Every form control that wraps a native form element (`<input>`, `<select>`,
+`<textarea>`, or a custom element that participates in form submission) **MUST**
+call `resolveFieldControl` from `src/_internal/field-control.ts` to resolve its
+`id`, `aria-describedby`, `aria-invalid`, `required`, and `disabled` attributes.
+Manual re-derivation of these values (e.g. calling `describeId`, `errorId`, or
+`composeDescribedBy` piecemeal) is not permitted in new or modified form controls.
+
+`input.svelte` is the canonical example. The reference call shape is:
+
+```ts
+import { resolveFieldControl } from '../../_internal/field-control.ts';
+import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+
+const context = getFormFieldContext();
+const generatedId = $props.id();
+
+const field = $derived(
+  resolveFieldControl({
+    id, // prop, may be undefined
+    generatedId, // $props.id() fallback
+    context, // FormField context, may be undefined
+    hasDescription: !!description,
+    hasError: !!error,
+    localIdNamespace: 'component-name', // collision-avoidance suffix
+    consumerDescribedBy, // from props: 'aria-describedby'
+    consumerInvalid, // from props: 'aria-invalid'
+    required,
+    disabled,
+  }),
+);
+```
+
+Then use `field.id`, `field.describedBy`, `field.ariaInvalid`, `field.required`,
+`field.disabled`, `field.ownDescriptionId`, and `field.ownErrorId` in the template.
+
+**Why:** Centralizing this logic means ARIA wiring is audited and fixed in one
+place. Ad-hoc re-derivation diverges silently when `resolveFieldControl` gains
+new capabilities (e.g. deduplication, namespace collision handling) and cannot
+participate in FormField context composition without additional work.
+
+**Enforcement:** `src/_internal/field-control.ts` is the sole implementation
+point. Code review must flag any new component that imports the low-level
+helpers (`describeId`, `errorId`, `composeDescribedBy`, `ariaInvalid`)
+individually and assembles the ID chain by hand.
+
 ## Development-only diagnostics
 
 Component contract-misuse warnings — a missing required prop, an `id` that does

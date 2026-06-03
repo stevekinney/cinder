@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts">
-  import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
@@ -44,6 +44,8 @@
     fileList,
     onchange,
     onreject,
+    'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerInvalid,
     ...rest
   }: FileUploadProps = $props();
 
@@ -51,15 +53,20 @@
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
   const generatedId = $props.id();
-  const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
-  const consumerDescribedBy = $derived(rest['aria-describedby']);
-  const describedBy = $derived(composeDescribedBy(context?.describedBy, consumerDescribedBy));
-  const consumerAriaInvalid = $derived(rest['aria-invalid']);
-  const resolvedAriaInvalid = $derived(
-    context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
+  const field = $derived(
+    resolveFieldControl({
+      ...(id !== undefined ? { id } : {}),
+      generatedId,
+      context,
+      hasDescription: false,
+      hasError: false,
+      consumerDescribedBy,
+      consumerInvalid,
+      disabled: disabled ?? undefined,
+      required: required ?? undefined,
+    }),
   );
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
-  const resolvedRequired = $derived(required ?? context?.required ?? false);
+  const resolvedId = $derived(field.id);
   const dropzoneLabelledBy = $derived(context?.labelId);
   const dropzoneLabel = $derived(dropzoneLabelledBy === undefined ? 'File upload' : undefined);
 
@@ -197,12 +204,12 @@
   }
 
   function handleInputChange() {
-    if (resolvedDisabled || !inputElement?.files) return;
+    if (field.disabled || !inputElement?.files) return;
     processFiles(Array.from(inputElement.files));
   }
 
   function handleDragEnter(event: DragEvent) {
-    if (resolvedDisabled || !hasFilesPayload(event.dataTransfer)) return;
+    if (field.disabled || !hasFilesPayload(event.dataTransfer)) return;
     dragDepth += 1;
   }
 
@@ -214,7 +221,7 @@
   function handleDragOver(event: DragEvent) {
     if (!hasFilesPayload(event.dataTransfer)) return;
     event.preventDefault();
-    if (resolvedDisabled) return;
+    if (field.disabled) return;
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'copy';
     }
@@ -224,14 +231,14 @@
     if (!hasFilesPayload(event.dataTransfer)) return;
     event.preventDefault();
     dragDepth = 0;
-    if (resolvedDisabled) return;
+    if (field.disabled) return;
     const droppedFiles = Array.from(event.dataTransfer?.files ?? []);
     if (droppedFiles.length === 0) return;
     processFiles(droppedFiles);
   }
 
   function openPicker() {
-    if (resolvedDisabled) return;
+    if (field.disabled) return;
     clearInputValue();
     inputElement?.click();
   }
@@ -243,7 +250,7 @@
   }
 
   function handleInputClick() {
-    if (resolvedDisabled) return;
+    if (field.disabled) return;
     clearInputValue();
   }
 
@@ -291,7 +298,7 @@
     aria-label={dropzoneLabel}
     aria-labelledby={dropzoneLabelledBy}
     data-drag-active={isDragActive || undefined}
-    data-disabled={resolvedDisabled || undefined}
+    data-disabled={field.disabled || undefined}
     ondragenter={handleDragEnter}
     ondragleave={handleDragLeave}
     ondragover={handleDragOver}
@@ -305,11 +312,11 @@
       {accept}
       {multiple}
       {name}
-      disabled={resolvedDisabled}
-      required={resolvedRequired}
+      disabled={field.disabled}
+      required={field.required}
       {...rest}
-      aria-describedby={describedBy}
-      aria-invalid={resolvedAriaInvalid}
+      aria-describedby={field.describedBy}
+      aria-invalid={field.ariaInvalid}
       onclick={handleInputClick}
       onchange={handleInputChange}
     />
@@ -329,7 +336,7 @@
     <button
       type="button"
       class="cinder-file-upload__button"
-      disabled={resolvedDisabled}
+      disabled={field.disabled}
       onclick={openPicker}
     >
       Choose files
